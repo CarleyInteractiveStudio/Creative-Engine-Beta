@@ -120,6 +120,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 5. Core Editor Functions ---
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel;
+
+    updateAssetBrowser = async function() {
+        if (!projectsDirHandle || !dom.assetsContent) return;
+        const assetsContainer = dom.assetsContent;
+        assetsContainer.innerHTML = ''; // Clear existing assets
+
+        async function populateAssetTree(directoryHandle, container, depth = 0) {
+            for await (const entry of directoryHandle.values()) {
+                const entryElement = document.createElement('div');
+                entryElement.className = 'asset-item';
+                entryElement.style.paddingLeft = `${depth * 20 + 10}px`;
+                entryElement.textContent = entry.name;
+
+                if (entry.kind === 'directory') {
+                    entryElement.classList.add('folder');
+                    // We could add expand/collapse logic here later
+                    container.appendChild(entryElement);
+                    const subContainer = document.createElement('div');
+                    container.appendChild(subContainer);
+                    await populateAssetTree(entry, subContainer, depth + 1);
+                } else {
+                    // It's a file
+                    if (entry.name.endsWith('.ces')) {
+                        entryElement.classList.add('script');
+                    }
+                    container.appendChild(entryElement);
+                }
+            }
+        }
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            await populateAssetTree(projectHandle, assetsContainer);
+        } catch (error) {
+            console.error("Error updating asset browser:", error);
+            assetsContainer.innerHTML = '<p class="error-message">Could not load project assets.</p>';
+        }
+    };
+
     updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
     updateInspector = function() {
         if (!dom.inspectorContent) return;
@@ -572,12 +612,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderer.resize();
             }
         });
+
+        // Asset Browser item selection
+        dom.assetsContent.addEventListener('click', (e) => {
+            const item = e.target.closest('.asset-item');
+            if (item) {
+                // Remove active class from any other item
+                const currentActive = dom.assetsContent.querySelector('.asset-item.active');
+                if (currentActive) {
+                    currentActive.classList.remove('active');
+                }
+                // Add active class to the clicked item
+                item.classList.add('active');
+            }
+        });
     }
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
@@ -603,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Initial UI updates
             updateHierarchy();
             updateInspector();
-            // await updateAssetBrowser(); // Assuming you have this function
+            await updateAssetBrowser();
 
             setupEventListeners();
 
