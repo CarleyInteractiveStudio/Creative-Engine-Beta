@@ -5,6 +5,23 @@ class CreativeScript extends Leyes { constructor(materia, scriptName) { super(ma
 class UICanvas extends Leyes { constructor(materia) { super(materia); } }
 class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; } }
 class UIButton extends Leyes { constructor(materia) { super(materia); this.label = new UIText(materia, 'Botón'); this.color = '#2d2d30'; } }
+
+class Rigidbody extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
+        this.mass = 1.0;
+    }
+}
+
+class BoxCollider extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 1.0;
+        this.height = 1.0;
+    }
+}
+
 let MATERIA_ID_COUNTER = 0;
 class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
 class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } }
@@ -41,9 +58,153 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel;
     updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
-    updateInspector = function() { dom.inspectorContent.innerHTML = ''; if (!selectedMateria) { dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>'; return; } dom.inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}">`; selectedMateria.leyes.forEach(ley => { if (ley instanceof Transform) { dom.inspectorContent.innerHTML += `<h4>Transform</h4><div class="transform-grid"><label>X</label><input type="number" class="prop-input" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"><label>Y</label><input type="number" class="prop-input" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}"></div>`; } else if (ley instanceof UICanvas) { dom.inspectorContent.innerHTML += '<h4>UI Canvas</h4>'; } else if (ley instanceof UIText) { dom.inspectorContent.innerHTML += `<h4>UI Text</h4><label>Texto</label><input type="text" class="prop-input" data-component="UIText" data-prop="text" value="${ley.text}"><label>Tamaño Fuente</label><input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">`; } else if (ley instanceof UIButton) { dom.inspectorContent.innerHTML += `<h4>UI Button</h4><label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}"><label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`; } else if (ley instanceof CreativeScript) { dom.inspectorContent.innerHTML += `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`; } }); dom.inspectorContent.innerHTML += `<button id="add-component-btn" class="add-component-btn">Añadir Ley</button>`; document.getElementById('materia-name').addEventListener('change', e => { selectedMateria.name = e.target.value; updateHierarchy(); }); dom.inspectorContent.querySelectorAll('.prop-input').forEach(input => { input.addEventListener('change', (e) => { const componentName = e.target.dataset.component; const propName = e.target.dataset.prop; let value = e.target.value; const component = selectedMateria.getComponent(eval(componentName)); if (component) { if (e.target.type === 'number') value = parseFloat(value) || 0; const props = propName.split('.'); if (props.length > 1) { component[props[0]][props[1]] = value; } else { component[propName] = value; } updateScene(); } }); }); document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal); };
+    updateInspector = function() {
+        if (!dom.inspectorContent) return;
+        dom.inspectorContent.innerHTML = '';
+        if (!selectedMateria) {
+            dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
+            return;
+        }
+
+        // Name input
+        dom.inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}">`;
+
+        // Components
+        selectedMateria.leyes.forEach(ley => {
+            let componentHTML = '';
+            if (ley instanceof Transform) {
+                componentHTML = `<h4>Transform</h4>
+                <div class="component-grid">
+                    <label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}">
+                    <label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}">
+                </div>`;
+            } else if (ley instanceof Rigidbody) {
+                componentHTML = `<h4>Rigidbody</h4>
+                <div class="component-grid">
+                    <label>Body Type</label>
+                    <select class="prop-input" data-component="Rigidbody" data-prop="bodyType">
+                        <option value="dynamic" ${ley.bodyType === 'dynamic' ? 'selected' : ''}>Dynamic</option>
+                        <option value="static" ${ley.bodyType === 'static' ? 'selected' : ''}>Static</option>
+                        <option value="kinematic" ${ley.bodyType === 'kinematic' ? 'selected' : ''}>Kinematic</option>
+                    </select>
+                    <label>Mass</label><input type="number" class="prop-input" step="0.1" data-component="Rigidbody" data-prop="mass" value="${ley.mass}">
+                </div>`;
+            } else if (ley instanceof BoxCollider) {
+                componentHTML = `<h4>Box Collider</h4>
+                <div class="component-grid">
+                    <label>Width</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="width" value="${ley.width}">
+                    <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
+                </div>`;
+            } else if (ley instanceof UICanvas) {
+                componentHTML = '<h4>UI Canvas</h4>';
+            } else if (ley instanceof UIText) {
+                componentHTML = `<h4>UI Text</h4>
+                <label>Texto</label><input type="text" class="prop-input" data-component="UIText" data-prop="text" value="${ley.text}">
+                <label>Tamaño Fuente</label><input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">`;
+            } else if (ley instanceof UIButton) {
+                componentHTML = `<h4>UI Button</h4>
+                <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
+                <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
+            } else if (ley instanceof CreativeScript) {
+                componentHTML = `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`;
+            }
+            dom.inspectorContent.innerHTML += componentHTML;
+        });
+
+        // Add Component Button
+        dom.inspectorContent.innerHTML += `<button id="add-component-btn" class="add-component-btn">Añadir Ley</button>`;
+
+        // Add event listeners for the new inputs
+        document.getElementById('materia-name').addEventListener('change', e => {
+            if(selectedMateria) {
+                selectedMateria.name = e.target.value;
+                updateHierarchy();
+            }
+        });
+        dom.inspectorContent.querySelectorAll('.prop-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                if (!selectedMateria) return;
+                const componentName = e.target.dataset.component;
+                const propName = e.target.dataset.prop;
+                let value = e.target.value;
+
+                // This is a security risk in production, but acceptable for this tool's context.
+                const ComponentClass = window[componentName] || eval(componentName);
+                if (!ComponentClass) return;
+
+                const component = selectedMateria.getComponent(ComponentClass);
+                if (component) {
+                    if (e.target.type === 'number') {
+                        value = parseFloat(value) || 0;
+                    }
+
+                    const props = propName.split('.');
+                    if (props.length > 1) {
+                        // Handles nested properties like 'label.text' for UIButton
+                        let obj = component;
+                        for (let i = 0; i < props.length - 1; i++) {
+                            obj = obj[props[i]];
+                        }
+                        obj[props[props.length - 1]] = value;
+                    } else {
+                        component[propName] = value;
+                    }
+                    updateScene(); // Re-render scene if a visual property changed
+                }
+            });
+        });
+        document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
+    };
     updateScene = function() { dom.sceneContent.innerHTML = ''; currentScene.materias.forEach(materia => { const vis = document.createElement('div'); vis.id = `materia-vis-${materia.id}`; vis.className = 'scene-object-vis'; const transform = materia.getComponent(Transform); vis.style.transform = `translate(${transform.x}px, ${transform.y}px)`; if (materia.getComponent(UICanvas)) { vis.classList.add('ui-canvas'); } else if (materia.getComponent(UIText)) { const uiText = materia.getComponent(UIText); vis.classList.add('ui-text'); vis.textContent = uiText.text; vis.style.fontSize = `${uiText.fontSize}px`; } else if (materia.getComponent(UIButton)) { const uiButton = materia.getComponent(UIButton); vis.classList.add('ui-button'); vis.textContent = uiButton.label.text; vis.style.backgroundColor = uiButton.color; } if (selectedMateria && materia.id === selectedMateria.id) { vis.classList.add('active'); } dom.sceneContent.appendChild(vis); }); };
     selectMateria = function(materiaId) { if (materiaId === null) { selectedMateria = null; } else { selectedMateria = currentScene.findMateriaById(materiaId) || null; } updateHierarchy(); updateInspector(); updateScene(); };
+
+    const availableComponents = {
+        'Físicas': [Rigidbody, BoxCollider],
+        'UI': [UICanvas, UIText, UIButton],
+        'Scripting': [CreativeScript]
+    };
+
+    showAddComponentModal = function() {
+        if (!selectedMateria) return;
+        dom.componentList.innerHTML = '';
+
+        for (const category in availableComponents) {
+            const categoryHeader = document.createElement('h4');
+            categoryHeader.textContent = category;
+            dom.componentList.appendChild(categoryHeader);
+
+            availableComponents[category].forEach(ComponentClass => {
+                // Don't show option if component already exists on the materia
+                if (selectedMateria.getComponent(ComponentClass)) {
+                    return;
+                }
+
+                const componentItem = document.createElement('div');
+                componentItem.className = 'component-item';
+                componentItem.textContent = ComponentClass.name;
+                componentItem.addEventListener('click', () => {
+                    // Special case for script
+                    if (ComponentClass === CreativeScript) {
+                        const scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement.ces):");
+                        if (scriptName) {
+                            const newScript = new CreativeScript(selectedMateria, scriptName);
+                            // In a real scenario, you'd create the .ces file here
+                            selectedMateria.addComponent(newScript);
+                        }
+                    } else {
+                        selectedMateria.addComponent(new ComponentClass(selectedMateria));
+                    }
+
+                    dom.addComponentModal.style.display = 'none';
+                    updateInspector();
+                });
+                dom.componentList.appendChild(componentItem);
+            });
+        }
+
+        dom.addComponentModal.style.display = 'block';
+    };
+
     updateDebugPanel = function() {
         if (!dom.debugContent) return;
 
@@ -259,12 +420,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectMateria(materiaId);
             }
         });
+
+        // Modal close buttons
+        dom.addComponentModal.querySelector('.close-button').addEventListener('click', () => {
+            dom.addComponentModal.style.display = 'none';
+        });
     }
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'console-content', 'project-name-display', 'debug-content'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
