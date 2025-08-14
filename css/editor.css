@@ -223,6 +223,33 @@ body {
     grid-area: assets;
 }
 
+/* --- Dynamic Layout States --- */
+#editor-main-content.no-hierarchy {
+    grid-template-columns: 1fr 320px;
+    grid-template-areas:
+        "scene inspector"
+        "assets inspector";
+}
+#editor-main-content.no-inspector {
+    grid-template-columns: 260px 1fr;
+    grid-template-areas:
+        "hierarchy scene"
+        "hierarchy assets";
+}
+#editor-main-content.no-assets {
+    grid-template-rows: 1fr;
+    grid-template-areas:
+        "hierarchy scene inspector";
+}
+#editor-main-content.no-hierarchy.no-inspector {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "scene"
+        "assets";
+}
+/* Add other combinations as needed */
+
+
 .editor-panel {
     background-color: var(--bg-secondary);
     border-radius: 4px;
@@ -240,7 +267,23 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
+
+.close-panel-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+.close-panel-btn:hover {
+    color: var(--text-primary);
+}
+
 
 .add-btn {
     background-color: var(--accent-color);
@@ -314,6 +357,11 @@ body {
 .view-toggle-btn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+/* --- Utility Classes --- */
+.hidden {
+    display: none !important;
 }
 
 /* --- Debug Display --- */
@@ -504,9 +552,12 @@ body {
 }
 
 .tab-bar {
-    padding: 4px 4px 0 4px; /* Remove bottom padding */
+    padding: 0 4px 0 4px; /* Remove vertical padding */
+    justify-content: space-between; /* Pushes tabs and close button apart */
+}
+.tab-buttons {
+    display: flex;
     gap: 4px;
-    justify-content: flex-start; /* Align tabs to the left */
 }
 .tab-btn {
     background: none;

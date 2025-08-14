@@ -152,6 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
     let renderer = null;
+    const panelVisibility = {
+        hierarchy: true,
+        inspector: true,
+        assets: true,
+    };
     let physicsSystem = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move';
     let isGameRunning = false;
@@ -551,6 +556,34 @@ function update(deltaTime) {
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
 
+    function updateWindowMenuUI() {
+        for (const panelName in panelVisibility) {
+            const menuItem = document.getElementById(`menu-window-${panelName}`);
+            if (menuItem) {
+                const isVisible = panelVisibility[panelName];
+                if (isVisible) {
+                    menuItem.textContent = `✓ ${menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '')}`;
+                    if(!menuItem.dataset.baseName) menuItem.dataset.baseName = menuItem.textContent.replace('✓ ', '');
+                } else {
+                    menuItem.textContent = menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '');
+                }
+            }
+        }
+    }
+
+    function updateEditorLayout() {
+        const mainContent = dom.editorMainContent;
+        mainContent.classList.toggle('no-hierarchy', !panelVisibility.hierarchy);
+        mainContent.classList.toggle('no-inspector', !panelVisibility.inspector);
+        mainContent.classList.toggle('no-assets', !panelVisibility.assets);
+
+        // The renderer needs to be resized after the layout changes
+        if(renderer) {
+            // Delay resize slightly to allow CSS to apply
+            setTimeout(() => renderer.resize(), 50);
+        }
+    }
+
     function createEmptyMateria(name = 'Objeto Vacío') {
         const newMateria = new Materia(name);
         currentScene.addMateria(newMateria);
@@ -819,6 +852,46 @@ function update(deltaTime) {
             }
             hideContextMenus();
         });
+
+        // Panel Close Button Logic
+        document.querySelectorAll('.close-panel-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const panelId = e.target.dataset.panel;
+                const panel = document.getElementById(panelId);
+                if (panel) {
+                    panel.classList.add('hidden');
+                    const panelName = panelId.replace('-panel', '');
+                    panelVisibility[panelName] = false;
+                    updateEditorLayout();
+                    updateWindowMenuUI();
+                }
+            });
+        });
+
+        // Window Menu Logic
+        dom.menubar.querySelector('.menu-item:nth-child(3) .menu-content').addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = e.target.id;
+            let panelName = '';
+            // A bit of a hacky way to get the panel name from the menu item id
+            if (targetId.startsWith('menu-window-')) {
+                panelName = targetId.substring('menu-window-'.length);
+            } else {
+                return;
+            }
+
+            // The assets panel is special, its menu item is 'assets' but panel is 'assets-panel'
+            if (panelName === 'assets' || panelName === 'hierarchy' || panelName === 'inspector') {
+                 const panel = document.getElementById(`${panelName}-panel`);
+                if (panel) {
+                    const isVisible = !panel.classList.contains('hidden');
+                    panel.classList.toggle('hidden', isVisible);
+                    panelVisibility[panelName] = !isVisible;
+                    updateEditorLayout();
+                    updateWindowMenuUI();
+                }
+            }
+        });
     }
 
     // --- 7. Initial Setup ---
@@ -852,6 +925,7 @@ function update(deltaTime) {
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
+            updateWindowMenuUI();
 
             setupEventListeners();
 

@@ -70,7 +70,7 @@
              <div id="hierarchy-panel" class="editor-panel">
                 <div class="panel-header">
                     <span>Jerarquía</span>
-                    <!-- The + button is removed, functionality will be via context menu -->
+                    <button class="close-panel-btn" data-panel="hierarchy-panel">&times;</button>
                 </div>
                 <div class="panel-content" id="hierarchy-content"></div>
              </div>
@@ -106,14 +106,20 @@
                 </div>
             </div>
              <div id="inspector-panel" class="editor-panel">
-                <div class="panel-header">Inspector</div>
+                <div class="panel-header">
+                    <span>Inspector</span>
+                    <button class="close-panel-btn" data-panel="inspector-panel">&times;</button>
+                </div>
                 <div class="panel-content"></div>
             </div>
              <div id="assets-panel" class="editor-panel">
                 <div class="panel-header tab-bar">
-                    <button class="tab-btn active" data-tab="assets-content">Navegador</button>
-                    <button class="tab-btn" data-tab="console-content">Consola</button>
-                    <button class="tab-btn" data-tab="debug-content">Depurador</button>
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="assets-content">Navegador</button>
+                        <button class="tab-btn" data-tab="console-content">Consola</button>
+                        <button class="tab-btn" data-tab="debug-content">Depurador</button>
+                    </div>
+                    <button class="close-panel-btn" data-panel="assets-panel">&times;</button>
                 </div>
                 <div class="panel-content-container">
                     <div id="assets-content" class="panel-content tab-content active">
