@@ -16,27 +16,43 @@
     </header>
 
     <main>
-        <section id="welcome">
-            <h2>¡Bienvenido!</h2>
-            <p>
-                Este es <strong>Creative Engine</strong>, un motor de videojuegos 2D gratuito para crear directamente en tu navegador. ¡Tus proyectos son 100% tuyos!
-            </p>
+        <div id="welcome-view">
+            <section id="welcome">
+                <h2>¡Bienvenido!</h2>
+                <p>
+                    Este es <strong>Creative Engine</strong>, un motor de videojuegos 2D gratuito para crear directamente en tu navegador. ¡Tus proyectos son 100% tuyos!
+                </p>
 
-            <div class="image-container">
-                <img src="image/Creative_Engine_beta.png" alt="Banner de Creative Engine">
+                <div class="image-container">
+                    <img src="image/Creative_Engine_beta.png" alt="Banner de Creative Engine">
+                </div>
+
+                <p class="credits">
+                    Hecho por <strong>Carley Interactive Studio</strong> con la ayuda de <strong>Google Jules</strong>.
+                </p>
+            </section>
+
+            <section id="actions">
+                <button id="btn-start">Empezar a Crear</button>
+                <button id="btn-support">Apóyanos a Crecer</button>
+                <button id="btn-report">Reportar Errores</button>
+                <button id="btn-license">Licencia</button>
+            </section>
+        </div>
+
+        <div id="launcher-view" style="display: none;">
+            <h2>Mis Proyectos</h2>
+            <div id="project-list" class="project-list">
+                <!-- Los proyectos se añadirán aquí dinámicamente -->
+                <p class="no-projects-message">Aún no tienes proyectos. ¡Crea uno para empezar!</p>
             </div>
-
-            <p class="credits">
-                Hecho por <strong>Carley Interactive Studio</strong> con la ayuda de <strong>Google Jules</strong>.
-            </p>
-        </section>
-
-        <section id="actions">
-            <button id="btn-start">Empezar a Crear</button>
-            <button id="btn-support">Apóyanos a Crecer</button>
-            <button id="btn-report">Reportar Errores</button>
-            <button id="btn-license">Licencia</button>
-        </section>
+            <div class="launcher-actions">
+                <button id="btn-create-project">Crear Nuevo Proyecto</button>
+            </div>
+            <div class="storage-warning">
+                <p><strong>Aviso Importante:</strong> Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.</p>
+            </div>
+        </div>
     </main>
 
     <footer>

@@ -161,5 +161,68 @@ footer {
 
 #donate-button-container { margin-top: 15px; }
 
+/* --- Launcher View Styles --- */
+#launcher-view h2 {
+    color: var(--highlight-color);
+    font-size: 2em;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--accent-color);
+    padding-bottom: 10px;
+}
+
+.project-list {
+    background-color: var(--primary-bg-color);
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    min-height: 200px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.no-projects-message {
+    color: #888;
+    text-align: center;
+    padding: 50px 0;
+    font-size: 1.1em;
+}
+
+.launcher-actions {
+    margin-bottom: 20px;
+}
+
+#btn-create-project {
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: 2px solid var(--button-bg-color);
+    padding: 15px 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#btn-create-project:hover {
+    background-color: var(--button-hover-bg-color);
+    border-color: var(--button-hover-bg-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3);
+}
+
+.storage-warning {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(189, 147, 0, 0.1);
+    border: 1px solid rgba(189, 147, 0, 0.4);
+    border-radius: 5px;
+    font-size: 0.9em;
+}
+
+.storage-warning p {
+    margin: 0;
+}
+
+
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
