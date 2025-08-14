@@ -22,9 +22,71 @@ class BoxCollider extends Leyes {
     }
 }
 
+class SpriteRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sprite = new Image();
+        this.source = ''; // URL to the image
+        this.color = '#ffffff'; // Tint color
+    }
+
+    setSource(url) {
+        this.source = url;
+        if (url) {
+            this.sprite.src = url;
+        }
+    }
+}
+
 let MATERIA_ID_COUNTER = 0;
 class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
 class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } }
+
+class Camera {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.zoom = 1.0;
+    }
+}
+
+class Renderer {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.camera = new Camera();
+        this.resize();
+    }
+
+    resize() {
+        this.canvas.width = this.canvas.clientWidth;
+        this.canvas.height = this.canvas.clientHeight;
+    }
+
+    begin() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+        // Center the camera and apply zoom
+        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.scale(this.camera.zoom, this.camera.zoom);
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+    }
+
+    end() {
+        this.ctx.restore();
+    }
+
+    drawRect(x, y, width, height, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+    }
+
+    // Placeholder for now
+    drawImage(image, x, y, width, height) {
+        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+    }
+}
+
 
 // --- Engine Core Classes ---
 import { InputManager } from './engine/Input.js';
@@ -39,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
+    let renderer = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move';
     let isGameRunning = false;
     let lastFrameTime = 0;
@@ -95,6 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Width</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="width" value="${ley.width}">
                     <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
                 </div>`;
+            } else if (ley instanceof SpriteRenderer) {
+                componentHTML = `<h4>Sprite Renderer</h4>
+                <div class="component-grid">
+                    <label>Source</label><input type="text" class="prop-input" data-component="SpriteRenderer" data-prop="source" value="${ley.source}">
+                    <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                </div>`;
             } else if (ley instanceof UICanvas) {
                 componentHTML = '<h4>UI Canvas</h4>';
             } else if (ley instanceof UIText) {
@@ -139,7 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     const props = propName.split('.');
-                    if (props.length > 1) {
+                    if (component instanceof SpriteRenderer && propName === 'source') {
+                        component.setSource(value);
+                    } else if (props.length > 1) {
                         // Handles nested properties like 'label.text' for UIButton
                         let obj = component;
                         for (let i = 0; i < props.length - 1; i++) {
@@ -155,10 +226,76 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
     };
-    updateScene = function() { dom.sceneContent.innerHTML = ''; currentScene.materias.forEach(materia => { const vis = document.createElement('div'); vis.id = `materia-vis-${materia.id}`; vis.className = 'scene-object-vis'; const transform = materia.getComponent(Transform); vis.style.transform = `translate(${transform.x}px, ${transform.y}px)`; if (materia.getComponent(UICanvas)) { vis.classList.add('ui-canvas'); } else if (materia.getComponent(UIText)) { const uiText = materia.getComponent(UIText); vis.classList.add('ui-text'); vis.textContent = uiText.text; vis.style.fontSize = `${uiText.fontSize}px`; } else if (materia.getComponent(UIButton)) { const uiButton = materia.getComponent(UIButton); vis.classList.add('ui-button'); vis.textContent = uiButton.label.text; vis.style.backgroundColor = uiButton.color; } if (selectedMateria && materia.id === selectedMateria.id) { vis.classList.add('active'); } dom.sceneContent.appendChild(vis); }); };
+
+    updateScene = function() {
+        if (!renderer) return;
+        renderer.begin();
+
+        // Draw a grid for reference
+        const gridSize = 50;
+        const halfWidth = renderer.canvas.width / renderer.camera.zoom;
+        const halfHeight = renderer.canvas.height / renderer.camera.zoom;
+        const startX = Math.floor((renderer.camera.x - halfWidth) / gridSize) * gridSize;
+        const endX = Math.ceil((renderer.camera.x + halfWidth) / gridSize) * gridSize;
+        const startY = Math.floor((renderer.camera.y - halfHeight) / gridSize) * gridSize;
+        const endY = Math.ceil((renderer.camera.y + halfHeight) / gridSize) * gridSize;
+
+        renderer.ctx.strokeStyle = '#3a3a3a';
+        renderer.ctx.lineWidth = 1 / renderer.camera.zoom;
+        renderer.ctx.beginPath();
+        for (let x = startX; x <= endX; x += gridSize) {
+            renderer.ctx.moveTo(x, startY);
+            renderer.ctx.lineTo(x, endY);
+        }
+        for (let y = startY; y <= endY; y += gridSize) {
+            renderer.ctx.moveTo(startX, y);
+            renderer.ctx.lineTo(endX, y);
+        }
+        renderer.ctx.stroke();
+
+        // Draw Materias
+        currentScene.materias.forEach(materia => {
+            const transform = materia.getComponent(Transform);
+            if (!transform) return;
+
+            let drawn = false;
+            const spriteRenderer = materia.getComponent(SpriteRenderer);
+            if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
+                // For now, assume sprite is 100x100 pixels, will need size from component later
+                renderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100, 100);
+                drawn = true;
+            }
+
+            const boxCollider = materia.getComponent(BoxCollider);
+            if (boxCollider) {
+                // Draw collider shape if no sprite was drawn
+                if (!drawn) {
+                    renderer.drawRect(transform.x, transform.y, boxCollider.width, boxCollider.height, 'rgba(144, 238, 144, 0.5)');
+                }
+            }
+
+            // If nothing else to draw, draw a default placeholder
+            if (!drawn && !boxCollider) {
+                 renderer.drawRect(transform.x, transform.y, 20, 20, 'rgba(128, 128, 128, 0.5)');
+            }
+
+            // Draw selection outline
+            if (selectedMateria && selectedMateria.id === materia.id) {
+                renderer.ctx.strokeStyle = 'yellow';
+                renderer.ctx.lineWidth = 2 / renderer.camera.zoom;
+                const selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
+                const selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+                renderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+            }
+        });
+
+        renderer.end();
+    };
+
     selectMateria = function(materiaId) { if (materiaId === null) { selectedMateria = null; } else { selectedMateria = currentScene.findMateriaById(materiaId) || null; } updateHierarchy(); updateInspector(); updateScene(); };
 
     const availableComponents = {
+        'Renderizado': [SpriteRenderer],
         'Físicas': [Rigidbody, BoxCollider],
         'UI': [UICanvas, UIText, UIButton],
         'Scripting': [CreativeScript]
@@ -266,6 +403,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         updateDebugPanel();
+
+        // Always update the scene rendering
+        updateScene();
 
         if(isGameRunning) {
             runGameLoop(); // No longer needs timestamp
@@ -425,6 +565,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.addComponentModal.querySelector('.close-button').addEventListener('click', () => {
             dom.addComponentModal.style.display = 'none';
         });
+
+        // Canvas resizing
+        window.addEventListener('resize', () => {
+            if (renderer) {
+                renderer.resize();
+            }
+        });
     }
 
     // --- 7. Initial Setup ---
@@ -436,6 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom[camelCaseId] = document.getElementById(id);
         });
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
+        dom.sceneCanvas = document.getElementById('scene-canvas');
 
         console.log("Initializing Creative Engine Editor...");
         try {
@@ -443,18 +591,18 @@ document.addEventListener('DOMContentLoaded', () => {
             projectsDirHandle = await getDirHandle();
             if (!projectsDirHandle) {
                 console.error("No project directory handle found. Please go back to the launcher and select a directory.");
-                // Potentially redirect or show a blocking overlay
                 return;
             }
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
-            InputManager.initialize(dom.sceneContent);
+            // Initialize Core Systems
+            renderer = new Renderer(dom.sceneCanvas);
+            InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
             // Initial UI updates
             updateHierarchy();
             updateInspector();
-            updateScene();
             // await updateAssetBrowser(); // Assuming you have this function
 
             setupEventListeners();
