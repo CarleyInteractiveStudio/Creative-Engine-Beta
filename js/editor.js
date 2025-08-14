@@ -11,6 +11,7 @@ class Rigidbody extends Leyes {
         super(materia);
         this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
         this.mass = 1.0;
+        this.velocity = { x: 0, y: 0 };
     }
 }
 
@@ -87,6 +88,55 @@ class Renderer {
     }
 }
 
+class PhysicsSystem {
+    constructor(scene) {
+        this.scene = scene;
+        this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
+    }
+
+    update(deltaTime) {
+        // Update positions based on velocity
+        for (const materia of this.scene.materias) {
+            const rigidbody = materia.getComponent(Rigidbody);
+            const transform = materia.getComponent(Transform);
+
+            if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
+                rigidbody.velocity.y += this.gravity.y * deltaTime;
+                transform.x += rigidbody.velocity.x * deltaTime;
+                transform.y += rigidbody.velocity.y * deltaTime;
+            }
+        }
+
+        // Collision detection
+        const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
+        for (let i = 0; i < collidables.length; i++) {
+            for (let j = i + 1; j < collidables.length; j++) {
+                const materiaA = collidables[i];
+                const materiaB = collidables[j];
+
+                const transformA = materiaA.getComponent(Transform);
+                const colliderA = materiaA.getComponent(BoxCollider);
+                const transformB = materiaB.getComponent(Transform);
+                const colliderB = materiaB.getComponent(BoxCollider);
+
+                const leftA = transformA.x - colliderA.width / 2;
+                const rightA = transformA.x + colliderA.width / 2;
+                const topA = transformA.y - colliderA.height / 2;
+                const bottomA = transformA.y + colliderA.height / 2;
+
+                const leftB = transformB.x - colliderB.width / 2;
+                const rightB = transformB.x + colliderB.width / 2;
+                const topB = transformB.y - colliderB.height / 2;
+                const bottomB = transformB.y + colliderB.height / 2;
+
+                if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
+                    console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
+                }
+            }
+        }
+    }
+}
+
 
 // --- Engine Core Classes ---
 import { InputManager } from './engine/Input.js';
@@ -102,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
     let renderer = null;
+    let physicsSystem = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move';
     let isGameRunning = false;
     let lastFrameTime = 0;
@@ -359,14 +410,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 const componentItem = document.createElement('div');
                 componentItem.className = 'component-item';
                 componentItem.textContent = ComponentClass.name;
-                componentItem.addEventListener('click', () => {
+                componentItem.addEventListener('click', async () => {
                     // Special case for script
                     if (ComponentClass === CreativeScript) {
-                        const scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement.ces):");
+                        let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
                         if (scriptName) {
-                            const newScript = new CreativeScript(selectedMateria, scriptName);
-                            // In a real scenario, you'd create the .ces file here
-                            selectedMateria.addComponent(newScript);
+                            // Sanitize and add extension
+                            scriptName = scriptName.replace(/\.ces$/, '') + '.ces';
+
+                            const scriptTemplate = `// Script para ${selectedMateria.name}
+function start() {
+    // Se ejecuta una vez al iniciar
+    console.log("¡El script ha comenzado!");
+};
+
+function update(deltaTime) {
+    // Se ejecuta en cada frame
+};
+`;
+                            try {
+                                const projectName = new URLSearchParams(window.location.search).get('project');
+                                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                                const fileHandle = await projectHandle.getFileHandle(scriptName, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(scriptTemplate);
+                                await writable.close();
+
+                                const newScript = new CreativeScript(selectedMateria, scriptName);
+                                selectedMateria.addComponent(newScript);
+                                console.log(`Script '${scriptName}' creado y añadido.`);
+                                await updateAssetBrowser(); // Refresh asset browser
+                            } catch(err) {
+                                console.error(`Error al crear el script '${scriptName}':`, err);
+                                alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
+                            }
                         }
                     } else {
                         selectedMateria.addComponent(new ComponentClass(selectedMateria));
@@ -425,13 +502,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runGameLoop = function() {
-        // Update all game objects
+        // Update physics
+        if (physicsSystem) {
+            physicsSystem.update(deltaTime);
+        }
+
+        // Update all game objects scripts
         for (const materia of currentScene.materias) {
             materia.update(deltaTime);
         }
-
-        // Render game view (if separate from scene view)
-        // For now, we assume they are the same
     };
 
     const editorLoop = (timestamp) => {
@@ -652,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Initialize Core Systems
             renderer = new Renderer(dom.sceneCanvas);
+            physicsSystem = new PhysicsSystem(currentScene);
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
             // Initial UI updates
