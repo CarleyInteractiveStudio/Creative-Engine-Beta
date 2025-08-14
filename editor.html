@@ -132,7 +132,16 @@
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
             <li data-action="create-empty">Crear Objeto Vacío</li>
-            <li data-action="create-materia">Crear Materia</li>
+            <li class="has-submenu">
+                UI <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-ui-canvas">Canvas</li>
+                    <li data-action="create-ui-text">Texto</li>
+                    <li data-action="create-ui-button">Botón</li>
+                </ul>
+            </li>
+            <hr>
+            <li data-action="create-materia">Crear Materia (Primitiva)</li>
         </ul>
     </div>
     <div id="add-component-modal" class="modal" style="display: none;">

@@ -314,6 +314,32 @@ body {
     color: white;
 }
 
+.context-menu .has-submenu {
+    position: relative;
+}
+
+.context-menu .submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -5px; /* Adjust to align with parent */
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 5px 0;
+    list-style: none;
+    min-width: 150px;
+}
+
+.context-menu .has-submenu:hover .submenu {
+    display: block;
+}
+
+.context-menu .arrow {
+    float: right;
+    margin-left: 10px;
+}
+
 #component-list .component-item {
     padding: 8px 12px;
     cursor: pointer;
@@ -570,6 +596,34 @@ body {
 .scene-object-vis.active {
     border: 2px solid var(--accent-color);
     box-shadow: 0 0 8px var(--accent-color);
+}
+
+/* --- UI Component Render Styles --- */
+.ui-canvas {
+    background-color: rgba(150, 150, 150, 0.1);
+    border: 1px dashed var(--text-secondary);
+    width: 800px; /* Default size */
+    height: 600px;
+}
+
+.ui-text {
+    background-color: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    width: auto;
+    height: auto;
+    padding: 5px;
+    color: var(--text-primary);
+}
+
+.ui-button {
+    border: 1px solid var(--border-color);
+    width: 100px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: var(--text-primary);
 }
 
 /* --- Context Menu --- */
