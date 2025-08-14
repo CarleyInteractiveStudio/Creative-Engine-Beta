@@ -49,7 +49,24 @@ header h1 { color: var(--highlight-color); font-size: 2.8em; margin: 0; font-wei
 main { padding: 20px 0; }
 #welcome h2 { color: var(--highlight-color); font-size: 2.2em; margin-bottom: 15px; }
 #welcome p { font-size: 1.1em; line-height: 1.6; max-width: 600px; margin: 0 auto 25px auto; }
-.image-container img { max-width: 90%; height: auto; border-radius: 8px; margin: 10px 0 25px 0; border: 3px solid var(--accent-color); }
+.image-container {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.image-container img {
+    max-width: 40%;
+    height: auto;
+    border-radius: 8px;
+    background-color: var(--primary-bg-color);
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border: 1px solid #2a2a2a;
+    max-height: 150px;
+}
 .credits { font-size: 0.9em; margin-top: 30px; color: var(--highlight-color); }
 
 /* --- Action Buttons --- */

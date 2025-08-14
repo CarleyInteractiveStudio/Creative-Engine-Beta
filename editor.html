@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editor | Creative Engine</title>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/debug.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
 </head>
 <body>
@@ -112,6 +113,7 @@
                 <div class="panel-header tab-bar">
                     <button class="tab-btn active" data-tab="assets-content">Navegador</button>
                     <button class="tab-btn" data-tab="console-content">Consola</button>
+                    <button class="tab-btn" data-tab="debug-content">Depurador</button>
                 </div>
                 <div class="panel-content-container">
                     <div id="assets-content" class="panel-content tab-content active">
@@ -119,6 +121,9 @@
                     </div>
                     <div id="console-content" class="panel-content tab-content">
                         <!-- Console messages will go here -->
+                    </div>
+                    <div id="debug-content" class="panel-content tab-content">
+                        <!-- Debug info will be injected here by editor.js -->
                     </div>
                 </div>
             </div>
@@ -165,6 +170,7 @@
             <p>Aquí se configurará el tema del editor, los layouts, etc.</p>
         </div>
     </div>
+    <div id="debug-display"></div>
     <script type="module" src="js/editor.js"></script>
 </body>
 </html>

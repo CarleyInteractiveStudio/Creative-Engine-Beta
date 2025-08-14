@@ -314,6 +314,21 @@ body {
     color: white;
 }
 
+/* --- Debug Display --- */
+#debug-display {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.75);
+    color: #0f0;
+    padding: 8px;
+    border-radius: 5px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    z-index: 10000;
+    pointer-events: none; /* So it doesn't block mouse events */
+}
+
 .context-menu .has-submenu {
     position: relative;
 }
