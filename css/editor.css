@@ -3,6 +3,66 @@
     --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* --- Menubar Styles --- */
+#menubar {
+    display: flex;
+    background-color: var(--bg-tertiary);
+    padding: 0 5px;
+    flex-shrink: 0;
+}
+
+.menu-item {
+    position: relative;
+}
+
+.menu-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.menu-btn:hover {
+    background-color: var(--accent-color);
+}
+
+.menu-content {
+    display: none;
+    position: absolute;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 4px 4px;
+    min-width: 200px;
+    z-index: 3000;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.menu-item:hover .menu-content {
+    /* For now, we can use hover to show the menu. JS will handle click later. */
+    /* display: block; */
+}
+
+.menu-content a {
+    display: block;
+    padding: 8px 15px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.menu-content a:hover {
+    background-color: var(--accent-color);
+}
+.menu-content hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 4px 0;
+}
+
+.modal-content.large {
+    max-width: 700px;
+}
+
 [data-theme="dark-modern"] {
     --bg-primary: #1e1e1e;
     --bg-secondary: #2d2d30;
@@ -304,6 +364,26 @@ body {
     background-color: var(--accent-color);
     color: white;
     font-weight: 600;
+}
+
+.hierarchy-item .toggle {
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin-right: 5px;
+}
+
+.hierarchy-item .toggle.open {
+    transform: rotate(90deg);
+}
+
+.hierarchy-item.drag-over {
+    background-color: var(--accent-color) !important;
+    opacity: 0.7;
 }
 
 /* --- Inspector Panel Styles --- */

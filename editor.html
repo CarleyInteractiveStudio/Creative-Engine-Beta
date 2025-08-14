@@ -9,6 +9,45 @@
 </head>
 <body>
     <div id="editor-container">
+        <div id="menubar">
+            <div class="menu-item">
+                <button class="menu-btn">Archivo</button>
+                <div class="menu-content">
+                    <a href="#" id="menu-import-project">Importar Proyecto</a>
+                    <a href="#" id="menu-export-project">Exportar Proyecto</a>
+                    <hr>
+                    <a href="#" id="menu-import-asset">Importar Asset</a>
+                    <hr>
+                    <a href="#" id="menu-build">Build</a>
+                </div>
+            </div>
+            <div class="menu-item">
+                <button class="menu-btn">Editar</button>
+                <div class="menu-content">
+                    <a href="#" id="menu-project-settings">Configuración del Proyecto</a>
+                    <a href="#" id="menu-preferences">Preferencias</a>
+                </div>
+            </div>
+            <div class="menu-item">
+                <button class="menu-btn">Ventana</button>
+                <div class="menu-content">
+                    <a href="#" id="menu-window-scene">Escena</a>
+                    <a href="#" id="menu-window-hierarchy">Jerarquía</a>
+                    <a href="#" id="menu-window-inspector">Inspector</a>
+                    <a href="#" id="menu-window-assets">Navegador</a>
+                    <a href="#" id="menu-window-console">Consola</a>
+                    <hr>
+                    <a href="#" id="menu-window-animation">Editor de Animación</a>
+                    <a href="#" id="menu-window-character">Creador de Personajes</a>
+                </div>
+            </div>
+            <div class="menu-item">
+                <button class="menu-btn">Ayuda</button>
+                <div class="menu-content">
+                    <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help">Ayuda</a>
+                </div>
+            </div>
+        </div>
         <header id="editor-toolbar">
             <div class="logo-area">
                 <img src="image/Creative_Engine_beta.png" alt="Logo">
@@ -30,7 +69,7 @@
              <div id="hierarchy-panel" class="editor-panel">
                 <div class="panel-header">
                     <span>Jerarquía</span>
-                    <button id="add-materia-btn" class="add-btn" title="Añadir nueva Materia">+</button>
+                    <!-- The + button is removed, functionality will be via context menu -->
                 </div>
                 <div class="panel-content" id="hierarchy-content"></div>
              </div>
@@ -90,13 +129,31 @@
             <li data-action="create-script">Crear Script (.ces)</li>
         </ul>
     </div>
+    <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="create-empty">Crear Objeto Vacío</li>
+            <li data-action="create-materia">Crear Materia</li>
+        </ul>
+    </div>
     <div id="add-component-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <span class="close-button">&times;</span>
             <h2>Añadir Ley (Componente)</h2>
-            <div id="component-list">
-                <!-- Lista de scripts .ces se generará aquí -->
-            </div>
+            <div id="component-list"></div>
+        </div>
+    </div>
+    <div id="project-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Configuración del Proyecto</h2>
+            <p>Aquí se configurará el nombre del ejecutable, la plataforma (Android/Windows), etc.</p>
+        </div>
+    </div>
+    <div id="preferences-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Preferencias</h2>
+            <p>Aquí se configurará el tema del editor, los layouts, etc.</p>
         </div>
     </div>
     <script type="module" src="js/editor.js"></script>
