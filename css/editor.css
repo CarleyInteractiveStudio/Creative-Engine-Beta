@@ -205,9 +205,9 @@ body {
 /* --- Editor Grid Layout --- */
 #editor-main-content {
     display: grid;
-    flex-grow: 1;
+    height: calc(100vh - 42px); /* 100% viewport height minus toolbar */
     grid-template-columns: 260px 1fr 320px; /* Hierarchy | Scene | Inspector */
-    grid-template-rows: 2fr 1fr; /* Scene / Assets */
+    grid-template-rows: minmax(0, 2fr) minmax(0, 1fr); /* Scene / Assets */
     grid-template-areas:
         "hierarchy scene inspector"
         "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
@@ -219,7 +219,9 @@ body {
 #hierarchy-panel { grid-area: hierarchy; }
 #scene-panel { grid-area: scene; }
 #inspector-panel { grid-area: inspector; }
-#assets-panel { grid-area: assets; }
+#assets-panel {
+    grid-area: assets;
+}
 
 .editor-panel {
     background-color: var(--bg-secondary);

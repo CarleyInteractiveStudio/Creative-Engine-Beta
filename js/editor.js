@@ -629,34 +629,23 @@ function update(deltaTime) {
 
         if (tabBar && contentContainer) {
             tabBar.addEventListener('click', (e) => {
-                console.log('Tab bar clicked.');
                 if (e.target.matches('.tab-btn')) {
-                    console.log('Target is a tab button:', e.target);
                     const tabId = e.target.dataset.tab;
-                    console.log('Tab ID:', tabId);
 
-                    // Update button states
-                    console.log('Deactivating all tab buttons...');
+                    // Deactivate all buttons and content panels first
                     tabBar.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-                    console.log('Activating target button. Classes before:', e.target.className);
+                    // Activate the clicked button
                     e.target.classList.add('active');
-                    console.log('Classes after:', e.target.className);
 
-
-                    // Update content visibility
-                    contentContainer.querySelectorAll('.tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
+                    // Activate the corresponding content panel
                     const activeContent = contentContainer.querySelector(`#${tabId}`);
                     if (activeContent) {
                         activeContent.classList.add('active');
-                        console.log('Activated content panel:', activeContent.id);
                     }
                 }
             });
-        } else {
-            console.error("Could not find tab bar or content container for assets panel.");
         }
 
         // Global Keyboard Shortcuts
