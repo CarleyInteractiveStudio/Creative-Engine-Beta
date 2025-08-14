@@ -175,7 +175,36 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset;
+
+    updateInspectorForAsset = async function(assetElement) {
+        if (!assetElement || !assetElement.textContent.endsWith('.ces')) {
+            // If it's not a script or nothing is selected, show default inspector
+            updateInspector();
+            return;
+        }
+
+        const scriptName = assetElement.textContent;
+        dom.inspectorContent.innerHTML = `<h4>Script: ${scriptName}</h4>`;
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const fileHandle = await projectHandle.getFileHandle(scriptName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.className = 'language-javascript'; // for potential syntax highlighting
+            code.textContent = content;
+            pre.appendChild(code);
+            dom.inspectorContent.appendChild(pre);
+
+        } catch (error) {
+            console.error(`Error al leer el script '${scriptName}':`, error);
+            dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo cargar el contenido del script.</p>`;
+        }
+    };
 
     updateAssetBrowser = async function() {
         if (!projectsDirHandle || !dom.assetsContent) return;
@@ -388,7 +417,22 @@ document.addEventListener('DOMContentLoaded', () => {
         renderer.end();
     };
 
-    selectMateria = function(materiaId) { if (materiaId === null) { selectedMateria = null; } else { selectedMateria = currentScene.findMateriaById(materiaId) || null; } updateHierarchy(); updateInspector(); updateScene(); };
+    selectMateria = function(materiaId) {
+        // When a materia is selected, deselect any asset
+        const currentActiveAsset = dom.assetsContent.querySelector('.asset-item.active');
+        if (currentActiveAsset) {
+            currentActiveAsset.classList.remove('active');
+        }
+
+        if (materiaId === null) {
+            selectedMateria = null;
+        } else {
+            selectedMateria = currentScene.findMateriaById(materiaId) || null;
+        }
+        updateHierarchy();
+        updateInspector(); // This will now show the materia inspector
+        updateScene();
+    };
 
     const availableComponents = {
         'Renderizado': [SpriteRenderer],
@@ -774,13 +818,18 @@ function update(deltaTime) {
         dom.assetsContent.addEventListener('click', (e) => {
             const item = e.target.closest('.asset-item');
             if (item) {
-                // Remove active class from any other item
+                // Deselect any materia
+                selectMateria(null);
+
+                // Handle asset selection
                 const currentActive = dom.assetsContent.querySelector('.asset-item.active');
                 if (currentActive) {
                     currentActive.classList.remove('active');
                 }
-                // Add active class to the clicked item
                 item.classList.add('active');
+
+                // Update inspector for the selected asset
+                updateInspectorForAsset(item);
             }
         });
 
@@ -843,12 +892,67 @@ function update(deltaTime) {
         });
 
         // Asset Context Menu Actions
-        dom.contextMenu.addEventListener('click', (e) => {
+        dom.contextMenu.addEventListener('click', async (e) => {
             const action = e.target.dataset.action;
             if (!action) return;
 
             if (action === 'create-script') {
-                createNewScript();
+                await createNewScript();
+            } else if (action === 'delete') {
+                const selectedAsset = dom.assetsContent.querySelector('.asset-item.active');
+                if (selectedAsset) {
+                    const assetName = selectedAsset.textContent;
+                    if (confirm(`¿Estás seguro de que quieres borrar '${assetName}'? Esta acción no se puede deshacer.`)) {
+                        try {
+                            const projectName = new URLSearchParams(window.location.search).get('project');
+                            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                            await projectHandle.removeEntry(assetName, { recursive: true });
+                            console.log(`'${assetName}' borrado.`);
+                            await updateAssetBrowser();
+                        } catch (err) {
+                            console.error(`Error al borrar '${assetName}':`, err);
+                            alert(`No se pudo borrar el asset.`);
+                        }
+                    }
+                } else {
+                    alert("Por favor, selecciona un archivo o carpeta para borrar.");
+                }
+            } else if (action === 'rename') {
+                const selectedAsset = dom.assetsContent.querySelector('.asset-item.active');
+                if (selectedAsset) {
+                    if (selectedAsset.classList.contains('folder')) {
+                        alert("Actualmente no se puede renombrar carpetas.");
+                        hideContextMenus();
+                        return;
+                    }
+                    const oldName = selectedAsset.textContent;
+                    const newName = prompt(`Renombrar '${oldName}':`, oldName);
+
+                    if (newName && newName !== oldName) {
+                        try {
+                            const projectName = new URLSearchParams(window.location.search).get('project');
+                            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                            const oldFileHandle = await projectHandle.getFileHandle(oldName);
+                            const content = await (await oldFileHandle.getFile()).text();
+
+                            const newFileHandle = await projectHandle.getFileHandle(newName, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(content);
+                            await writable.close();
+
+                            await projectHandle.removeEntry(oldName);
+
+                            console.log(`'${oldName}' renombrado a '${newName}'.`);
+                            await updateAssetBrowser();
+                        } catch (err) {
+                            console.error(`Error al renombrar '${oldName}':`, err);
+                            alert(`No se pudo renombrar el asset.`);
+                        }
+                    }
+                } else {
+                    alert("Por favor, selecciona un archivo para renombrar.");
+                }
             }
             hideContextMenus();
         });

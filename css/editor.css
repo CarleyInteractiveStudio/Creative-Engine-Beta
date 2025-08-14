@@ -358,6 +358,9 @@ body {
     background-color: var(--accent-color);
     color: white;
 }
+.context-menu li.danger:hover {
+    background-color: #c0392b;
+}
 
 /* --- Utility Classes --- */
 .hidden {

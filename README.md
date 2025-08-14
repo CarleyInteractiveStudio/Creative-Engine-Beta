@@ -8,9 +8,9 @@ acesible para todos los dispositivos solo nesesitas un navegador web y internet 
 ¡Aquí está la lista de las increíbles características que construiremos para Creative Engine!
 
 ### Funcionalidad del Motor
-- [ ] **Sistema de Físicas:**
-    - [ ] Componente `Rigidbody` para simular físicas.
-    - [ ] Componentes `Collider` para la detección de colisiones.
+- [x] **Sistema de Físicas:**
+    - [x] Componente `Rigidbody` para simular físicas.
+    - [x] Componentes `Collider` para la detección de colisiones.
     - [ ] Componente `CharacterController` para movimiento de personajes.
 - [ ] **Sistema de Renderizado Avanzado:**
     - [ ] Componente de `Luz` (Light).
@@ -18,9 +18,9 @@ acesible para todos los dispositivos solo nesesitas un navegador web y internet 
 - [ ] **Sistema de Animación:**
     - [ ] Componente `Animator` para controlar animaciones en objetos.
     - [ ] Panel "Animator Controller" para crear máquinas de estado de animación.
-- [ ] **Sistema de UI (Interfaz de Usuario):**
+- [x] **Sistema de UI (Interfaz de Usuario):**
     - [x] Componentes base (`Canvas`, `UIText`, `UIButton`).
-    - [ ] Renderizado y edición de propiedades de UI.
+    - [x] Renderizado y edición de propiedades de UI.
 - [ ] **Sistema de Capas (Layers):**
     - [ ] Asignar `Materias` a capas para controlar renderizado y colisiones.
 
@@ -35,8 +35,8 @@ acesible para todos los dispositivos solo nesesitas un navegador web y internet 
     - [ ] Gizmo visual en la Escena para mover, rotar y escalar objetos.
     - [ ] Múltiples layouts de editor seleccionables en "Preferencias".
     - [ ] Implementar las opciones de "Configuración del Proyecto" (plataforma de build, etc.).
-- [ ] **Jerarquía Avanzada:**
-    - [ ] "Crear Objeto Vacío".
+- [x] **Jerarquía Avanzada:**
+    - [x] "Crear Objeto Vacío".
     - [ ] Anidación de objetos por arrastrar y soltar.
 
 ### General
