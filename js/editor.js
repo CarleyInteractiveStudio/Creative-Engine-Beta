@@ -1,106 +1,86 @@
 // --- Engine Core Classes ---
 class Leyes { constructor(materia) { this.materia = materia; } update() {} }
 class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
+class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; } async load() { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); const fileHandle = await projectHandle.getFileHandle(this.scriptName); const file = await fileHandle.getFile(); const code = await file.text(); const scriptModule = new Function(`${code}\nreturn { start, update };`)(); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; } }
 let MATERIA_ID_COUNTER = 0;
-class Materia {
-    constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.addComponent(new Transform(this)); }
-    addComponent(component) { this.leyes.push(component); component.materia = this; }
-    getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); }
-    update() { for (const ley of this.leyes) { ley.update(); } }
-}
-class Scene {
-    constructor() { this.materias = []; }
-    addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } }
-    findMateriaById(id) { return this.materias.find(m => m.id === id); }
-}
+class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } update() { for (const ley of this.leyes) { ley.update(); } } }
+class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } }
+
+// --- CodeMirror Integration ---
+import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
+import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
+import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Editor State ---
-    const currentScene = new Scene();
-    let selectedMateria = null;
-    let isDragging = false;
-    let dragOffsetX = 0, dragOffsetY = 0;
-    let activeTool = 'move'; // 'move' or 'pan'
+    // --- 1. Editor State ---
+    let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
+    const currentScene = new Scene(); let selectedMateria = null;
+    let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move';
+    let gameLoopId = null;
 
-    // --- DOM Elements ---
-    const sceneContent = document.getElementById('scene-content');
-    const toolMoveBtn = document.getElementById('tool-move');
-    const toolPanBtn = document.getElementById('tool-pan');
-    const consoleContent = document.getElementById('console-content');
+    // --- 2. DOM Elements ---
+    const dom = {};
+    function getDOMElements() { Object.assign(dom, { projectNameDisplay: document.getElementById('project-name-display'), hierarchyContent: document.getElementById('hierarchy-content'), addMateriaBtn: document.getElementById('add-materia-btn'), inspectorContent: document.getElementById('inspector-panel').querySelector('.panel-content'), sceneContent: document.getElementById('scene-content'), consoleContent: document.getElementById('console-content'), assetsContent: document.getElementById('assets-content'), centerPanelTabBar: document.querySelector('#scene-panel .view-toggle'), bottomPanelTabBar: document.querySelector('#assets-panel .tab-bar'), toolMoveBtn: document.getElementById('tool-move'), toolPanBtn: document.getElementById('tool-pan'), contextMenu: document.getElementById('context-menu'), addComponentModal: document.getElementById('add-component-modal'), playBtn: document.getElementById('btn-play'), pauseBtn: document.getElementById('btn-pause'), stopBtn: document.getElementById('btn-stop') }); }
+    getDOMElements(); // Populate DOM elements object immediately
 
-    // --- Console Override ---
-    function logToUIConsole(message, type = 'log') { const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; consoleContent.appendChild(msgEl); consoleContent.scrollTop = consoleContent.scrollHeight; }
-    const originalLog = console.log; const originalWarn = console.warn; const originalError = console.error;
-    console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); };
-    console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); };
-    console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
+    // --- 3. IndexedDB Logic ---
+    const dbName = 'CreativeEngineDB'; let db;
+    function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
+    function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
-    // --- Core Editor Functions ---
-    let hierarchyContent, inspectorContent;
-    function updateHierarchy() { if(!hierarchyContent) hierarchyContent = document.getElementById('hierarchy-content'); hierarchyContent.innerHTML = ''; currentScene.materias.forEach(materia => { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.textContent = materia.name; item.dataset.id = materia.id; if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); hierarchyContent.appendChild(item); }); }
-    function updateInspector() { if(!inspectorContent) inspectorContent = document.getElementById('inspector-panel').querySelector('.panel-content'); inspectorContent.innerHTML = ''; if (!selectedMateria) { inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>'; return; } const transform = selectedMateria.getComponent(Transform); inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}"><h4>Transform</h4><div class="transform-grid"><label>X</label><input type="number" id="pos-x" value="${transform.x.toFixed(0)}"><label>Y</label><input type="number" id="pos-y" value="${transform.y.toFixed(0)}"></div>`; document.getElementById('materia-name').addEventListener('change', e => { selectedMateria.name = e.target.value; updateHierarchy(); }); document.getElementById('pos-x').addEventListener('change', e => { transform.x = parseFloat(e.target.value) || 0; updateScene(); }); document.getElementById('pos-y').addEventListener('change', e => { transform.y = parseFloat(e.target.value) || 0; updateScene(); }); }
-    function updateScene() { currentScene.materias.forEach(materia => { let vis = document.getElementById(`materia-vis-${materia.id}`); if (!vis) { vis = document.createElement('div'); vis.id = `materia-vis-${materia.id}`; vis.className = 'scene-object-vis'; sceneContent.appendChild(vis); } const transform = materia.getComponent(Transform); vis.style.transform = `translate(${transform.x}px, ${transform.y}px)`; vis.classList.toggle('active', selectedMateria && materia.id === selectedMateria.id); }); }
+    // --- 4. Console Override ---
+    const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
+    function logToUIConsole(message, type = 'log') { const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; dom.consoleContent.appendChild(msgEl); dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight; }
+    console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
+
+    // --- 5. Core Editor Functions ---
+    function updateHierarchy() { dom.hierarchyContent.innerHTML = ''; currentScene.materias.forEach(materia => { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.textContent = materia.name; item.dataset.id = materia.id; if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); dom.hierarchyContent.appendChild(item); }); }
+    function updateInspector() { dom.inspectorContent.innerHTML = ''; if (!selectedMateria) { dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>'; return; } dom.inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}">`; selectedMateria.leyes.forEach(ley => { if (ley instanceof Transform) { dom.inspectorContent.innerHTML += `<h4>Transform</h4><div class="transform-grid"><label>X</label><input type="number" id="pos-x" value="${ley.x.toFixed(0)}"><label>Y</label><input type="number" id="pos-y" value="${ley.y.toFixed(0)}"></div>`; } else if (ley instanceof CreativeScript) { dom.inspectorContent.innerHTML += `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`; } }); dom.inspectorContent.innerHTML += `<button id="add-component-btn" class="add-component-btn">Añadir Ley</button>`; document.getElementById('materia-name').addEventListener('change', e => { selectedMateria.name = e.target.value; updateHierarchy(); }); const transform = selectedMateria.getComponent(Transform); if (transform) { document.getElementById('pos-x').addEventListener('change', e => { transform.x = parseFloat(e.target.value) || 0; updateScene(); }); document.getElementById('pos-y').addEventListener('change', e => { transform.y = parseFloat(e.target.value) || 0; updateScene(); }); } document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal); }
+    function updateScene() { dom.sceneContent.innerHTML = ''; currentScene.materias.forEach(materia => { const vis = document.createElement('div'); vis.id = `materia-vis-${materia.id}`; vis.className = 'scene-object-vis'; dom.sceneContent.appendChild(vis); const transform = materia.getComponent(Transform); vis.style.transform = `translate(${transform.x}px, ${transform.y}px)`; vis.classList.toggle('active', selectedMateria && materia.id === selectedMateria.id); }); }
     function selectMateria(materiaId) { if (materiaId === null) { selectedMateria = null; } else { selectedMateria = currentScene.findMateriaById(materiaId) || null; } updateHierarchy(); updateInspector(); updateScene(); }
+    async function updateAssetBrowser() { if (!projectsDirHandle) { dom.assetsContent.innerHTML = '<p>No se pudo cargar el directorio del proyecto.</p>'; return; } const projectName = new URLSearchParams(window.location.search).get('project'); if (!projectName) return; dom.assetsContent.innerHTML = ''; try { const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); for await (const entry of projectHandle.values()) { const item = document.createElement('div'); item.className = 'asset-item'; item.textContent = entry.name; item.dataset.filename = entry.name; if (entry.kind === 'directory') item.classList.add('folder'); else if (entry.name.endsWith('.ces')) item.classList.add('script'); dom.assetsContent.appendChild(item); } } catch (error) { console.error(`Error al leer el directorio del proyecto: ${error.message}`); } }
+    async function createScriptFile() { const scriptName = prompt("Nombre del nuevo script:", "NuevoScript"); if (!scriptName) return; const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); const newFileHandle = await projectHandle.getFileHandle(fileName, { create: true }); const writable = await newFileHandle.createWritable(); await writable.write(`// Script: ${fileName}\n\nfunction start() {\n    console.log(this.materia.name + ' started!');\n    this.transform = this.materia.getComponent(Transform);\n}\n\nfunction update() {\n    // this.transform.x += 1;\n}\n`); await writable.close(); console.log(`Script '${fileName}' creado.`); updateAssetBrowser(); } catch (error) { console.error(`Failed to create script: ${error.message}`); } }
+    async function openScriptInEditor(fileName) { try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); const fileHandle = await projectHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const content = await file.text(); currentlyOpenFileHandle = fileHandle; codeEditor.dispatch({ changes: { from: 0, to: codeEditor.state.doc.length, insert: content } }); document.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click(); console.log(`Abierto el script: ${fileName}`); } catch (error) { console.error(`No se pudo abrir el script: ${error.message}`); } }
+    async function saveCurrentScript() { if (!currentlyOpenFileHandle) { console.warn("No hay ningún archivo abierto para guardar."); return; } try { const writable = await currentlyOpenFileHandle.createWritable(); await writable.write(codeEditor.state.doc.toString()); await writable.close(); console.log(`Archivo guardado: ${currentlyOpenFileHandle.name}`); } catch (error) { console.error(`No se pudo guardar el archivo: ${error.message}`); } }
+    function showAddComponentModal() { const list = dom.addComponentModal.querySelector('#component-list'); list.innerHTML = ''; const scriptAssets = document.querySelectorAll('#assets-content .asset-item.script'); if (scriptAssets.length === 0) { list.innerHTML = '<p>No hay scripts en el proyecto. Crea uno en el Navegador.</p>'; } else { scriptAssets.forEach(asset => { const scriptName = asset.dataset.filename; const item = document.createElement('div'); item.className = 'component-item'; item.textContent = scriptName; item.onclick = () => { const newComponent = new CreativeScript(selectedMateria, scriptName); selectedMateria.addComponent(newComponent); updateInspector(); dom.addComponentModal.style.display = 'none'; }; list.appendChild(item); }); } dom.addComponentModal.style.display = 'block'; }
+    async function startGame() { console.log("Iniciando juego..."); dom.playBtn.style.display = 'none'; dom.pauseBtn.style.display = 'inline-block'; dom.stopBtn.style.display = 'inline-block'; for (const materia of currentScene.materias) { for (const ley of materia.leyes) { if (ley instanceof CreativeScript) { await ley.load(); } } } for (const materia of currentScene.materias) { for (const ley of materia.leyes) { if (ley instanceof CreativeScript && ley.instance) { ley.instance.start.call(ley); } } } runGameLoop(); }
+    function runGameLoop() { for (const materia of currentScene.materias) { for (const ley of materia.leyes) { if (ley instanceof CreativeScript && ley.instance) { ley.instance.update.call(ley); } } } updateScene(); gameLoopId = requestAnimationFrame(runGameLoop); }
+    function stopGame() { console.log("Juego detenido."); dom.playBtn.style.display = 'inline-block'; dom.pauseBtn.style.display = 'none'; dom.stopBtn.style.display = 'none'; if (gameLoopId) { cancelAnimationFrame(gameLoopId); gameLoopId = null; } }
 
-    // --- Event Listeners ---
-    document.getElementById('add-materia-btn').addEventListener('click', () => { const newMateria = new Materia(); currentScene.addMateria(newMateria); selectMateria(newMateria.id); console.log(`Creada nueva Materia: ${newMateria.name} (ID: ${newMateria.id})`); });
-    document.getElementById('hierarchy-content').addEventListener('click', e => { const target = e.target.closest('.hierarchy-item'); if (target) selectMateria(parseInt(target.dataset.id, 10)); });
-    document.querySelector('.tab-bar').addEventListener('click', e => { if (e.target.matches('.tab-btn')) { const tabId = e.target.dataset.tab; document.querySelector('.tab-bar').querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active')); e.target.classList.add('active'); document.getElementById(tabId).classList.add('active'); } });
-
-    // --- Tool Switching Logic ---
-    function setActiveTool(tool) {
-        activeTool = tool;
-        toolMoveBtn.classList.toggle('active', tool === 'move');
-        toolPanBtn.classList.toggle('active', tool === 'pan');
-        console.log(`Herramienta activa: ${tool}`);
-    }
-    toolMoveBtn.addEventListener('click', () => setActiveTool('move'));
-    toolPanBtn.addEventListener('click', () => setActiveTool('pan'));
-
-    // --- Scene Interaction Events ---
-    sceneContent.addEventListener('mousedown', e => {
-        if (activeTool === 'move') {
-            const target = e.target.closest('.scene-object-vis');
-            if (target) {
-                const materiaId = parseInt(target.id.split('-')[2], 10);
-                selectMateria(materiaId);
-                isDragging = true;
-                const transform = selectedMateria.getComponent(Transform);
-                const sceneRect = sceneContent.getBoundingClientRect();
-                dragOffsetX = e.clientX - sceneRect.left - transform.x;
-                dragOffsetY = e.clientY - sceneRect.top - transform.y;
-                target.style.cursor = 'grabbing';
-            } else {
-                selectMateria(null);
-            }
-        } else if (activeTool === 'pan') {
-            isDragging = true; // Use the same flag for panning
-            console.log("Iniciando paneo de cámara...");
-        }
-    });
-    sceneContent.addEventListener('mousemove', e => {
-        if (!isDragging) return;
-        e.preventDefault();
-        if (activeTool === 'move' && selectedMateria) {
-            const transform = selectedMateria.getComponent(Transform);
-            const sceneRect = sceneContent.getBoundingClientRect();
-            transform.x = e.clientX - sceneRect.left - dragOffsetX;
-            transform.y = e.clientY - sceneRect.top - dragOffsetY;
-            updateScene();
-            updateInspector();
-        } else if (activeTool === 'pan') {
-            // Future pan logic here
-        }
-    });
+    // --- 6. Event Listeners ---
+    dom.addMateriaBtn.addEventListener('click', () => { const newMateria = new Materia(); currentScene.addMateria(newMateria); selectMateria(newMateria.id); console.log(`Creada nueva Materia: ${newMateria.name}`); });
+    dom.hierarchyContent.addEventListener('click', e => { const target = e.target.closest('.hierarchy-item'); if (target) selectMateria(parseInt(target.dataset.id, 10)); });
+    function setupTabBar(tabBarElement) { tabBarElement.addEventListener('click', (e) => { if (e.target.matches('.tab-btn, .view-toggle-btn')) { const tabId = e.target.dataset.view || e.target.dataset.tab; const parentPanel = e.target.closest('.editor-panel'); parentPanel.querySelectorAll('.tab-btn, .view-toggle-btn').forEach(btn => btn.classList.remove('active')); parentPanel.querySelectorAll('.panel-content, .view-content, .tab-content').forEach(content => content.classList.remove('active')); e.target.classList.add('active'); document.getElementById(tabId).classList.add('active'); if (parentPanel.id === 'scene-panel') { document.getElementById('game-controls').style.display = (tabId === 'game-content') ? 'flex' : 'none'; } } }); }
+    setupTabBar(dom.centerPanelTabBar); setupTabBar(dom.bottomPanelTabBar);
+    function setActiveTool(tool) { activeTool = tool; dom.toolMoveBtn.classList.toggle('active', tool === 'move'); dom.toolPanBtn.classList.toggle('active', tool === 'pan'); console.log(`Herramienta activa: ${tool}`); }
+    dom.toolMoveBtn.addEventListener('click', () => setActiveTool('move')); dom.toolPanBtn.addEventListener('click', () => setActiveTool('pan'));
+    dom.sceneContent.addEventListener('mousedown', e => { if (activeTool === 'move') { const target = e.target.closest('.scene-object-vis'); if (target) { const materiaId = parseInt(target.id.split('-')[2], 10); selectMateria(materiaId); isDragging = true; const transform = selectedMateria.getComponent(Transform); const sceneRect = dom.sceneContent.getBoundingClientRect(); dragOffsetX = e.clientX - sceneRect.left - transform.x; dragOffsetY = e.clientY - sceneRect.top - transform.y; target.style.cursor = 'grabbing'; } else { selectMateria(null); } } else if (activeTool === 'pan') { isDragging = true; console.log("Iniciando paneo de cámara..."); } });
+    dom.sceneContent.addEventListener('mousemove', e => { if (!isDragging) return; e.preventDefault(); if (activeTool === 'move' && selectedMateria) { const transform = selectedMateria.getComponent(Transform); const sceneRect = dom.sceneContent.getBoundingClientRect(); transform.x = e.clientX - sceneRect.left - dragOffsetX; transform.y = e.clientY - sceneRect.top - dragOffsetY; updateScene(); updateInspector(); } });
     function endDrag() { if (isDragging) { if(activeTool === 'move' && selectedMateria) { const vis = document.getElementById(`materia-vis-${selectedMateria.id}`); if (vis) vis.style.cursor = 'grab'; } isDragging = false; console.log("Finalizado arrastre/paneo."); } }
-    sceneContent.addEventListener('mouseup', endDrag);
-    sceneContent.addEventListener('mouseleave', endDrag);
+    dom.sceneContent.addEventListener('mouseup', endDrag); dom.sceneContent.addEventListener('mouseleave', endDrag);
+    dom.assetsContent.addEventListener('contextmenu', (e) => { e.preventDefault(); dom.contextMenu.style.display = 'block'; dom.contextMenu.style.left = `${e.pageX}px`; dom.contextMenu.style.top = `${e.pageY}px`; });
+    window.addEventListener('click', () => { dom.contextMenu.style.display = 'none'; });
+    dom.contextMenu.addEventListener('click', (e) => { e.stopPropagation(); const action = e.target.dataset.action; if (action === 'create-script') { createScriptFile(); } dom.contextMenu.style.display = 'none'; });
+    dom.assetsContent.addEventListener('dblclick', e => { const target = e.target.closest('.asset-item.script'); if(target) { openScriptInEditor(target.dataset.filename); } });
+    window.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveCurrentScript(); } });
+    dom.addComponentModal.querySelector('.close-button').addEventListener('click', () => { dom.addComponentModal.style.display = 'none'; });
+    dom.playBtn.addEventListener('click', startGame); dom.stopBtn.addEventListener('click', stopGame);
 
-    // --- Initial Setup & Other Logic ---
-    updateHierarchy(); updateInspector();
-    document.getElementById('project-name-display').textContent = new URLSearchParams(window.location.search).get('project') || "Proyecto sin nombre";
-    const themeButtons = document.querySelectorAll('.theme-btn'); const htmlElement = document.documentElement; themeButtons.forEach(button => { button.addEventListener('click', () => { htmlElement.setAttribute('data-theme', button.dataset.themeSet); themeButtons.forEach(btn => btn.classList.remove('active')); button.classList.add('active'); }); });
-    const sceneViewBtn = document.getElementById('btn-scene-view'); const gameViewBtn = document.getElementById('btn-game-view'); const gameControls = document.getElementById('game-controls'); const gameContent = document.getElementById('game-content'); const playBtn = document.getElementById('btn-play'); const pauseBtn = document.getElementById('btn-pause'); const stopBtn = document.getElementById('btn-stop'); sceneViewBtn.addEventListener('click', () => { gameContent.style.display = 'none'; sceneContent.style.display = 'block'; gameControls.style.display = 'none'; gameViewBtn.classList.remove('active'); sceneViewBtn.classList.add('active'); }); gameViewBtn.addEventListener('click', () => { sceneContent.style.display = 'none'; gameContent.style.display = 'block'; gameControls.style.display = 'flex'; sceneViewBtn.classList.remove('active'); gameViewBtn.classList.add('active'); }); playBtn.addEventListener('click', () => { playBtn.style.display = 'none'; pauseBtn.style.display = 'inline-block'; stopBtn.style.display = 'inline-block'; }); pauseBtn.addEventListener('click', () => { pauseBtn.style.display = 'none'; playBtn.style.display = 'inline-block'; }); stopBtn.addEventListener('click', () => { stopBtn.style.display = 'none'; pauseBtn.style.display = 'none'; playBtn.style.display = 'inline-block'; });
-    console.log('Creative Engine Editor Initialized with Tool Logic.');
+    // --- 7. Initial Setup ---
+    async function initializeEditor() {
+        getDOMElements();
+        await openDB();
+        projectsDirHandle = await getDirHandle();
+        updateAssetBrowser();
+        updateHierarchy();
+        updateInspector();
+        dom.projectNameDisplay.textContent = new URLSearchParams(window.location.search).get('project') || "Proyecto sin nombre";
+        const themeButtons = document.querySelectorAll('.theme-btn');
+        const htmlElement = document.documentElement;
+        themeButtons.forEach(button => { button.addEventListener('click', () => { htmlElement.setAttribute('data-theme', button.dataset.themeSet); themeButtons.forEach(btn => btn.classList.remove('active')); button.classList.add('active'); }); });
+        codeEditor = new EditorView({ extensions: [basicSetup, javascript(), oneDark], parent: document.getElementById('code-editor-content'), doc: `// Selecciona o crea un archivo .ces para empezar\n` });
+        console.log('Creative Engine Editor Initialized.');
+    }
+    initializeEditor();
 });

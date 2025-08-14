@@ -42,8 +42,9 @@
                             <button id="tool-pan" class="toolbar-btn" title="Mover Cámara (W)">↔️</button>
                         </div>
                         <div class="view-toggle">
-                            <button id="btn-scene-view" class="view-toggle-btn active">Escena</button>
-                            <button id="btn-game-view" class="view-toggle-btn">Juego</button>
+                            <button class="view-toggle-btn active" data-view="scene-content">Escena</button>
+                            <button class="view-toggle-btn" data-view="game-content">Juego</button>
+                            <button class="view-toggle-btn" data-view="code-editor-content">Código</button>
                         </div>
                     </div>
                     <div id="game-controls" class="game-controls" style="display: none;">
@@ -52,11 +53,16 @@
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
                     </div>
                 </div>
-                <div class="panel-content" id="scene-content">
-                    <!-- Scene editing canvas will go here -->
-                </div>
-                <div class="panel-content" id="game-content" style="display: none;">
-                    <!-- Game running view will go here -->
+                <div class="panel-content-container">
+                    <div id="scene-content" class="panel-content view-content active">
+                        <!-- Scene editing canvas will go here -->
+                    </div>
+                    <div id="game-content" class="panel-content view-content">
+                        <!-- Game running view will go here -->
+                    </div>
+                    <div id="code-editor-content" class="panel-content view-content">
+                        <!-- CodeMirror will attach here -->
+                    </div>
                 </div>
             </div>
              <div id="inspector-panel" class="editor-panel">
@@ -79,6 +85,20 @@
             </div>
         </main>
     </div>
-    <script src="js/editor.js"></script>
+    <div id="context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="create-script">Crear Script (.ces)</li>
+        </ul>
+    </div>
+    <div id="add-component-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Añadir Ley (Componente)</h2>
+            <div id="component-list">
+                <!-- Lista de scripts .ces se generará aquí -->
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/editor.js"></script>
 </body>
 </html>

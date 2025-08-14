@@ -254,6 +254,16 @@ body {
     color: white;
 }
 
+#component-list .component-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#component-list .component-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
 .game-controls {
     display: flex;
     gap: 8px;
@@ -342,6 +352,34 @@ body {
 }
 
 /* --- Tabbed Panel Styles --- */
+#scene-panel .panel-content-container,
+#assets-panel .panel-content-container {
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+#scene-panel .tab-content,
+#assets-panel .tab-content {
+    display: none;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    position: absolute;
+}
+
+#scene-panel .tab-content.active,
+#assets-panel .tab-content.active {
+    display: block;
+}
+
+#code-editor-content,
+#code-editor-content .cm-editor {
+    height: 100%;
+    width: 100%;
+    font-size: 14px;
+}
+
 .tab-bar {
     padding: 4px 4px 0 4px; /* Remove bottom padding */
     gap: 4px;
@@ -373,8 +411,45 @@ body {
     display: block;
 }
 #assets-panel {
-    padding: 0; /* Remove padding from the main panel since content has it */
+    padding: 0;
 }
+
+#assets-content {
+    padding: 10px;
+    user-select: none;
+}
+
+.asset-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.asset-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.asset-item.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.asset-item::before {
+    content: '📄'; /* Default file icon */
+    font-size: 1.2em;
+}
+
+.asset-item.folder::before {
+    content: '📁';
+}
+
+.asset-item.script::before {
+    content: '📜';
+}
+
 
 /* --- Console Message Styles --- */
 #console-content {
@@ -415,4 +490,31 @@ body {
 .scene-object-vis.active {
     border: 2px solid var(--accent-color);
     box-shadow: 0 0 8px var(--accent-color);
+}
+
+/* --- Context Menu --- */
+.context-menu {
+    position: absolute;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    padding: 5px 0;
+    z-index: 2000;
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context-menu li {
+    padding: 8px 15px;
+    cursor: pointer;
+}
+
+.context-menu li:hover {
+    background-color: var(--accent-color);
+    color: white;
 }
