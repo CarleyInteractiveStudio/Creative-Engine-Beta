@@ -549,6 +549,62 @@ function update(deltaTime) {
 
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
+    let createNewScript; // To be defined
+
+    function createEmptyMateria(name = 'Objeto Vacío') {
+        const newMateria = new Materia(name);
+        currentScene.addMateria(newMateria);
+        updateHierarchy();
+        selectMateria(newMateria.id);
+    }
+
+    function showContextMenu(menu, e) {
+        // First, hide any other context menus
+        dom.contextMenu.style.display = 'none';
+        dom.hierarchyContextMenu.style.display = 'none';
+
+        menu.style.display = 'block';
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+    }
+
+    function hideContextMenus() {
+        dom.contextMenu.style.display = 'none';
+        dom.hierarchyContextMenu.style.display = 'none';
+    }
+
+    createNewScript = async function() {
+        let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
+        if (!scriptName) return;
+
+        // Sanitize and add extension
+        scriptName = scriptName.replace(/\.ces$/, '') + '.ces';
+
+        const scriptTemplate = `// Script creado en Creative Engine
+function start() {
+    // Se ejecuta una vez al iniciar
+    console.log("¡El script ha comenzado!");
+};
+
+function update(deltaTime) {
+    // Se ejecuta en cada frame
+};
+`;
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const fileHandle = await projectHandle.getFileHandle(scriptName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(scriptTemplate);
+            await writable.close();
+
+            console.log(`Script '${scriptName}' creado.`);
+            await updateAssetBrowser(); // Refresh asset browser
+        } catch(err) {
+            console.error(`Error al crear el script '${scriptName}':`, err);
+            alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
+        }
+    };
 
     saveCurrentScript = async function() {
         if (currentlyOpenFileHandle && codeEditor) {
@@ -694,12 +750,81 @@ function update(deltaTime) {
                 item.classList.add('active');
             }
         });
+
+        // Custom Context Menu handler
+        window.addEventListener('contextmenu', (e) => {
+            if (dom.hierarchyContent.contains(e.target)) {
+                e.preventDefault();
+                showContextMenu(dom.hierarchyContextMenu, e);
+            } else if (dom.assetsContent.contains(e.target)) {
+                e.preventDefault();
+                showContextMenu(dom.contextMenu, e);
+            }
+        });
+
+        // Hide context menu on left-click
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideContextMenus();
+            }
+        });
+
+        // Hierarchy Context Menu Actions
+        dom.hierarchyContextMenu.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (!action) return;
+
+            switch (action) {
+                case 'create-empty':
+                    createEmptyMateria();
+                    break;
+                case 'create-materia':
+                    createEmptyMateria('Materia');
+                    break;
+                case 'create-ui-canvas': {
+                    const canvasMateria = new Materia('Canvas');
+                    canvasMateria.addComponent(new UICanvas(canvasMateria));
+                    currentScene.addMateria(canvasMateria);
+                    updateHierarchy();
+                    selectMateria(canvasMateria.id);
+                    break;
+                }
+                case 'create-ui-text': {
+                    const textMateria = new Materia('Texto');
+                    textMateria.addComponent(new UIText(textMateria));
+                    currentScene.addMateria(textMateria);
+                    updateHierarchy();
+                    selectMateria(textMateria.id);
+                    break;
+                }
+                case 'create-ui-button': {
+                    const buttonMateria = new Materia('Botón');
+                    buttonMateria.addComponent(new UIButton(buttonMateria));
+                    currentScene.addMateria(buttonMateria);
+                    updateHierarchy();
+                    selectMateria(buttonMateria.id);
+                    break;
+                }
+            }
+            hideContextMenus();
+        });
+
+        // Asset Context Menu Actions
+        dom.contextMenu.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (!action) return;
+
+            if (action === 'create-script') {
+                createNewScript();
+            }
+            hideContextMenus();
+        });
     }
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
