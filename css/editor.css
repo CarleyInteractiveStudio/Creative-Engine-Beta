@@ -141,7 +141,28 @@ body {
     padding: 8px 12px;
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.add-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 22px;
     text-align: center;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.add-btn:hover {
+    opacity: 0.8;
 }
 
 .panel-content {
@@ -217,4 +238,92 @@ body {
 
 .game-controls button:hover {
     opacity: 1;
+}
+
+/* --- Hierarchy Item Styles --- */
+.hierarchy-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin: 2px 0;
+    font-size: 0.95em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hierarchy-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.hierarchy-item.active {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: 600;
+}
+
+/* --- Inspector Panel Styles --- */
+.inspector-placeholder {
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 20px;
+}
+
+#inspector-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 15px;
+}
+
+#inspector-panel label {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+#inspector-panel input[type="text"],
+#inspector-panel input[type="number"] {
+    width: calc(100% - 16px); /* Adjust for padding */
+    padding: 8px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#inspector-panel h4 {
+    margin: 15px 0 5px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--bg-tertiary);
+    color: var(--highlight-color);
+}
+
+.transform-grid {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 5px 8px;
+    align-items: center;
+}
+
+/* --- Scene View Visuals --- */
+#scene-content {
+    position: relative;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+.scene-object-vis {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background-color: rgba(100, 100, 255, 0.5);
+    border: 1px solid white;
+    cursor: grab;
+}
+
+.scene-object-vis.active {
+    border: 2px solid var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-color);
 }
