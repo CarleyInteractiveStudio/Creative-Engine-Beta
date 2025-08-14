@@ -36,9 +36,15 @@
              </div>
              <div id="scene-panel" class="editor-panel">
                 <div class="panel-header">
-                    <div class="view-toggle">
-                        <button id="btn-scene-view" class="view-toggle-btn active">Escena</button>
-                        <button id="btn-game-view" class="view-toggle-btn">Juego</button>
+                    <div class="left-header-controls">
+                        <div class="viewport-tools">
+                            <button id="tool-move" class="toolbar-btn active" title="Mover Objeto (Q)">🖐️</button>
+                            <button id="tool-pan" class="toolbar-btn" title="Mover Cámara (W)">↔️</button>
+                        </div>
+                        <div class="view-toggle">
+                            <button id="btn-scene-view" class="view-toggle-btn active">Escena</button>
+                            <button id="btn-game-view" class="view-toggle-btn">Juego</button>
+                        </div>
                     </div>
                     <div id="game-controls" class="game-controls" style="display: none;">
                         <button id="btn-play" title="Play">▶️</button>
@@ -58,8 +64,18 @@
                 <div class="panel-content"></div>
             </div>
              <div id="assets-panel" class="editor-panel">
-                <div class="panel-header">Navegador de Archivos</div>
-                <div class="panel-content"></div>
+                <div class="panel-header tab-bar">
+                    <button class="tab-btn active" data-tab="assets-content">Navegador</button>
+                    <button class="tab-btn" data-tab="console-content">Consola</button>
+                </div>
+                <div class="panel-content-container">
+                    <div id="assets-content" class="panel-content tab-content active">
+                        <!-- Asset browser content will go here -->
+                    </div>
+                    <div id="console-content" class="panel-content tab-content">
+                        <!-- Console messages will go here -->
+                    </div>
+                </div>
             </div>
         </main>
     </div>

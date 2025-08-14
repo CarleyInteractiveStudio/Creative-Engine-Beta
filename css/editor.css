@@ -108,6 +108,40 @@ body {
     color: var(--text-secondary);
 }
 
+.left-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.viewport-tools {
+    display: flex;
+    gap: 5px;
+}
+
+.toolbar-btn {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-btn:hover {
+    background-color: #4f4f56;
+}
+
+.toolbar-btn.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
 /* --- Editor Grid Layout --- */
 #editor-main-content {
     display: grid;
@@ -306,6 +340,61 @@ body {
     gap: 5px 8px;
     align-items: center;
 }
+
+/* --- Tabbed Panel Styles --- */
+.tab-bar {
+    padding: 4px 4px 0 4px; /* Remove bottom padding */
+    gap: 4px;
+    justify-content: flex-start; /* Align tabs to the left */
+}
+.tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.tab-btn.active {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--accent-color);
+}
+.panel-content-container {
+    flex-grow: 1;
+    overflow: hidden;
+}
+.tab-content {
+    display: none;
+    height: 100%;
+}
+.tab-content.active {
+    display: block;
+}
+#assets-panel {
+    padding: 0; /* Remove padding from the main panel since content has it */
+}
+
+/* --- Console Message Styles --- */
+#console-content {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    padding: 10px;
+}
+.console-msg {
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+.console-msg.log-warn {
+    color: #f3ca58;
+}
+.console-msg.log-error {
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
+}
+
 
 /* --- Scene View Visuals --- */
 #scene-content {
