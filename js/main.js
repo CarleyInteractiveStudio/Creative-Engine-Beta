@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadProjects() {
         const dirHandle = await getDirHandle();
         if (!dirHandle) {
-            console.log("No stored directory handle found.");
             projectList.innerHTML = '<p class="no-projects-message">Elige una carpeta para tus proyectos al crear el primero.</p>';
             return;
         }
@@ -80,8 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     projectFound = true;
                     const projectItem = document.createElement('div');
                     projectItem.className = 'project-item';
-                    projectItem.textContent = entry.name;
                     projectItem.dataset.projectName = entry.name;
+
+                    const projectNameEl = document.createElement('h3');
+                    projectNameEl.textContent = entry.name;
+                    projectItem.appendChild(projectNameEl);
+
                     projectList.appendChild(projectItem);
                 }
             }
@@ -99,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startButton.addEventListener('click', () => {
         welcomeView.style.display = 'none';
         launcherView.style.display = 'block';
-        loadProjects(); // Load projects when switching to launcher
+        loadProjects();
     });
 
     createProjectBtn.addEventListener('click', async () => {
@@ -111,17 +114,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!projectName) return;
 
         try {
-            const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
-            saveDirHandle(dirHandle); // Save handle for future sessions
+            let dirHandle = await getDirHandle();
+            if (!dirHandle) {
+                 dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
+                 saveDirHandle(dirHandle);
+            }
+
             await dirHandle.getDirectoryHandle(projectName, { create: true });
             alert(`¡Proyecto "${projectName}" creado con éxito!`);
-            loadProjects(); // Refresh the list
+            loadProjects();
         } catch (error) {
             if (error.name !== 'AbortError') console.error('Error:', error);
         }
     });
 
-    // --- Modal Logic ---
+    projectList.addEventListener('click', (event) => {
+        const projectItem = event.target.closest('.project-item');
+        if (projectItem) {
+            const projectName = projectItem.dataset.projectName;
+            if (projectName) {
+                window.location.href = `editor.html?project=${encodeURIComponent(projectName)}`;
+            }
+        }
+    });
+
+    // --- Modal Logic & Other Buttons ---
     const openModal = (modal) => { if (modal) modal.style.display = 'block'; };
     const closeModal = () => {
         if (reportModal) reportModal.style.display = 'none';
@@ -134,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('click', (event) => {
         if (event.target == reportModal || event.target == supportModal) closeModal();
     });
-
-    // --- Form Submissions & Other Buttons ---
     submitOpinionBtn.addEventListener('click', () => {
         const subject = encodeURIComponent('Opinión sobre Creative Engine');
         const body = encodeURIComponent(opinionText.value);
@@ -163,6 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initialize ---
-    openDB(); // Open DB on start
-    console.log('Creative Engine UI Initialized with Project Loading capability.');
+    openDB();
+    console.log('Creative Engine UI Initialized with Full Launcher capability.');
 });

@@ -1,0 +1,220 @@
+/* --- Base Editor Styles & Theme Variables --- */
+:root {
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+[data-theme="dark-modern"] {
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #2d2d30;
+    --bg-tertiary: #3f3f46;
+    --text-primary: #cccccc;
+    --text-secondary: #9a9a9a;
+    --border-color: #424242;
+    --accent-color: #0e639c;
+}
+
+/* --- Theme Palettes --- */
+/* White (Light) Theme */
+[data-theme="dark-white"] {
+    --bg-primary: #f4f4f4;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e9e9e9;
+    --text-primary: #212121;
+    --text-secondary: #5f5f5f;
+    --border-color: #d1d1d1;
+    --accent-color: #0d47a1;
+}
+
+/* Navy Blue Theme */
+[data-theme="dark-blue"] {
+    --bg-primary: #0a192f;
+    --bg-secondary: #172a45;
+    --bg-tertiary: #233554;
+    --text-primary: #ccd6f6;
+    --text-secondary: #8892b0;
+    --border-color: #1d3d66;
+    --accent-color: #64ffda;
+}
+
+
+/* --- Theme Switcher Styles --- */
+.theme-switcher {
+    display: flex;
+    gap: 8px;
+}
+.theme-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.theme-btn:hover {
+    transform: scale(1.1);
+}
+.theme-btn.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+}
+.theme-btn[data-theme-set="dark-modern"] { background-color: #2d2d30; }
+.theme-btn[data-theme-set="dark-white"] { background-color: #f4f4f4; }
+.theme-btn[data-theme-set="dark-blue"] { background-color: #0a192f; }
+
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    margin: 0;
+    overflow: hidden;
+}
+
+/* --- Main Editor Container & Toolbar --- */
+#editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#editor-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 5px 15px;
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo-area img {
+    width: 22px;
+    height: 22px;
+}
+
+.logo-area span {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.project-name-area {
+    margin: 0 auto;
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+/* --- Editor Grid Layout --- */
+#editor-main-content {
+    display: grid;
+    flex-grow: 1;
+    grid-template-columns: 260px 1fr 320px; /* Hierarchy | Scene | Inspector */
+    grid-template-rows: 2fr 1fr; /* Scene / Assets */
+    grid-template-areas:
+        "hierarchy scene inspector"
+        "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
+    gap: 6px;
+    padding: 6px;
+}
+
+/* --- Panel Assignments & Styles --- */
+#hierarchy-panel { grid-area: hierarchy; }
+#scene-panel { grid-area: scene; }
+#inspector-panel { grid-area: inspector; }
+#assets-panel { grid-area: assets; }
+
+.editor-panel {
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-header {
+    background-color: var(--bg-tertiary);
+    padding: 8px 12px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.panel-content {
+    padding: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Custom scrollbar for webkit browsers */
+.panel-content::-webkit-scrollbar {
+    width: 8px;
+}
+.panel-content::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+.panel-content::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+.panel-content::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* --- Scene/Game View Controls --- */
+#scene-panel .panel-header {
+    justify-content: space-between;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 5px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.view-toggle-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.view-toggle-btn:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.view-toggle-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.game-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.game-controls button {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.3em;
+    cursor: pointer;
+    padding: 0 5px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.game-controls button:hover {
+    opacity: 1;
+}

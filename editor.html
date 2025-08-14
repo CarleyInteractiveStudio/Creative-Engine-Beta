@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark-modern">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor | Creative Engine</title>
+    <link rel="stylesheet" href="css/editor.css">
+    <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+</head>
+<body>
+    <div id="editor-container">
+        <header id="editor-toolbar">
+            <div class="logo-area">
+                <img src="image/Creative_Engine_beta.png" alt="Logo">
+                <span>Creative Engine</span>
+            </div>
+            <div class="project-name-area">
+                <span id="project-name-display"></span>
+            </div>
+            <div class="toolbar-actions">
+                <div class="theme-switcher">
+                    <button data-theme-set="dark-modern" class="theme-btn active" title="Tema Oscuro Moderno"></button>
+                    <button data-theme-set="dark-white" class="theme-btn" title="Tema Claro"></button>
+                    <button data-theme-set="dark-blue" class="theme-btn" title="Tema Azul Marino"></button>
+                </div>
+            </div>
+        </header>
+        <main id="editor-main-content">
+            <!-- The editor panels will go here in the next step -->
+             <div id="hierarchy-panel" class="editor-panel">
+                <div class="panel-header">Jerarquía</div>
+                <div class="panel-content"></div>
+             </div>
+             <div id="scene-panel" class="editor-panel">
+                <div class="panel-header">
+                    <div class="view-toggle">
+                        <button id="btn-scene-view" class="view-toggle-btn active">Escena</button>
+                        <button id="btn-game-view" class="view-toggle-btn">Juego</button>
+                    </div>
+                    <div id="game-controls" class="game-controls" style="display: none;">
+                        <button id="btn-play" title="Play">▶️</button>
+                        <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
+                        <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
+                    </div>
+                </div>
+                <div class="panel-content" id="scene-content">
+                    <!-- Scene editing canvas will go here -->
+                </div>
+                <div class="panel-content" id="game-content" style="display: none;">
+                    <!-- Game running view will go here -->
+                </div>
+            </div>
+             <div id="inspector-panel" class="editor-panel">
+                <div class="panel-header">Inspector</div>
+                <div class="panel-content"></div>
+            </div>
+             <div id="assets-panel" class="editor-panel">
+                <div class="panel-header">Navegador de Archivos</div>
+                <div class="panel-content"></div>
+            </div>
+        </main>
+    </div>
+    <script src="js/editor.js"></script>
+</body>
+</html>
