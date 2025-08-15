@@ -848,7 +848,7 @@ function update(deltaTime) {
         window.addEventListener('click', (e) => {
             if (!e.target.closest('.context-menu') && !e.target.closest('.menu-btn')) {
                 hideContextMenus();
-                dom.menubar.querySelectorAll('.menu-content').forEach(mc => mc.style.display = 'none');
+                dom.menubar.querySelectorAll('.menu-content').forEach(mc => mc.classList.remove('visible'));
             }
         });
 

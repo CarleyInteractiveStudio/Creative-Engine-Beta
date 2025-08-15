@@ -43,6 +43,10 @@
     display: block;
 }
 
+.menu-content.visible {
+    display: block;
+}
+
 .menu-content a {
     display: block;
     padding: 8px 15px;
