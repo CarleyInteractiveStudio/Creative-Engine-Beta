@@ -213,36 +213,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const markdownConverter = new showdown.Converter();
+
     updateInspectorForAsset = async function(assetName) {
         if (!assetName) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
             return;
         }
 
-        if (!assetName.endsWith('.ces')) {
-            dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4><p>No hay vista previa disponible para este tipo de archivo.</p>`;
-            return;
-        }
+        dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4>`;
 
-        const scriptName = assetName;
-        dom.inspectorContent.innerHTML = `<h4>Script: ${scriptName}</h4>`;
         try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const fileHandle = await projectHandle.getFileHandle(scriptName);
+            const fileHandle = await currentDirectoryHandle.getFileHandle(assetName);
             const file = await fileHandle.getFile();
             const content = await file.text();
 
-            const pre = document.createElement('pre');
-            const code = document.createElement('code');
-            code.className = 'language-javascript'; // for potential syntax highlighting
-            code.textContent = content;
-            pre.appendChild(code);
-            dom.inspectorContent.appendChild(pre);
+            if (assetName.endsWith('.ces')) {
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                code.className = 'language-javascript';
+                code.textContent = content;
+                pre.appendChild(code);
+                dom.inspectorContent.appendChild(pre);
+            } else if (assetName.endsWith('.md')) {
+                const html = markdownConverter.makeHtml(content);
+                const preview = document.createElement('div');
+                preview.className = 'markdown-preview';
+                preview.innerHTML = html;
+                dom.inspectorContent.appendChild(preview);
+            } else {
+                 dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
+            }
 
         } catch (error) {
-            console.error(`Error al leer el script '${scriptName}':`, error);
-            dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo cargar el contenido del script.</p>`;
+            console.error(`Error al leer el asset '${assetName}':`, error);
+            dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo cargar el contenido del asset.</p>`;
         }
     };
 
@@ -748,8 +753,23 @@ function update(deltaTime) {
         dom.hierarchyContextMenu.style.display = 'none';
 
         menu.style.display = 'block';
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
+        let x = e.clientX;
+        let y = e.clientY;
+
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        if (x + menuWidth > windowWidth) {
+            x = windowWidth - menuWidth - 5;
+        }
+        if (y + menuHeight > windowHeight) {
+            y = windowHeight - menuHeight - 5;
+        }
+
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
     }
 
     function hideContextMenus() {
@@ -1033,6 +1053,7 @@ function update(deltaTime) {
 
             if (activeTool === 'pan') {
                 isPanning = true;
+                dom.sceneCanvas.classList.add('is-panning');
                 lastMousePosition = { x: e.clientX, y: e.clientY };
                 return;
             }
@@ -1056,7 +1077,7 @@ function update(deltaTime) {
                     startMouseY: worldPos.y,
                 };
             } else {
-                // If not clicking a handle, try to select a new materia
+                // If not clicking a handle, we might be starting a pan or selecting a new materia
                 let clickedMateria = null;
                 for (const materia of [...currentScene.materias].reverse()) {
                     if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
@@ -1064,7 +1085,16 @@ function update(deltaTime) {
                         break;
                     }
                 }
-                selectMateria(clickedMateria ? clickedMateria.id : null);
+
+                if (clickedMateria) {
+                    selectMateria(clickedMateria.id);
+                } else {
+                    // This is a click on an empty area, start panning
+                    isPanning = true;
+                    dom.sceneCanvas.classList.add('is-panning');
+                    lastMousePosition = { x: e.clientX, y: e.clientY };
+                    selectMateria(null);
+                }
             }
         });
 
@@ -1105,6 +1135,9 @@ function update(deltaTime) {
         });
 
         window.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                dom.sceneCanvas.classList.remove('is-panning');
+            }
             isPanning = false;
             isDragging = false;
             dragState = {};
@@ -1158,6 +1191,10 @@ function update(deltaTime) {
             e.preventDefault();
             showContextMenu(dom.hierarchyContextMenu, e);
         });
+
+        // Disable default context menus on other panels
+        dom.scenePanel.addEventListener('contextmenu', e => e.preventDefault());
+        dom.inspectorPanel.addEventListener('contextmenu', e => e.preventDefault());
 
         // Hide context menu on left-click
         window.addEventListener('click', (e) => {
@@ -1217,6 +1254,29 @@ function update(deltaTime) {
 
             if (action === 'create-script') {
                 await createNewScript(currentDirectoryHandle);
+            } else if (action === 'create-folder') {
+                const folderName = prompt("Nombre de la nueva carpeta:");
+                if (folderName) {
+                    try {
+                        await currentDirectoryHandle.getDirectoryHandle(folderName, { create: true });
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear la carpeta:", err);
+                        alert("No se pudo crear la carpeta.");
+                    }
+                }
+            } else if (action === 'create-readme') {
+                const fileName = "NUEVO-LEAME.md";
+                try {
+                    const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write("# Nuevo Archivo Léame\n\nEscribe tu contenido aquí.");
+                    await writable.close();
+                    await updateAssetBrowser();
+                } catch (err) {
+                    console.error("Error al crear el archivo Léame:", err);
+                    alert("No se pudo crear el archivo.");
+                }
             } else if (action === 'delete') {
                 if (selectedAsset) {
                     const assetName = selectedAsset.dataset.name;

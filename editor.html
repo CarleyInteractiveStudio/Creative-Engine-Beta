@@ -150,7 +150,14 @@
     </div>
     <div id="context-menu" class="context-menu" style="display: none;">
         <ul>
-            <li data-action="create-script">Crear Script (.ces)</li>
+            <li class="has-submenu">
+                Crear <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-folder">Carpeta</li>
+                    <li data-action="create-script">Script (.ces)</li>
+                    <li data-action="create-readme">Archivo Léame (.md)</li>
+                </ul>
+            </li>
             <hr>
             <li data-action="rename">Renombrar</li>
             <li data-action="delete" class="danger">Borrar</li>
@@ -213,6 +220,7 @@
         </div>
     </div>
     <div id="debug-display"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script type="module" src="js/editor.js"></script>
 </body>
 </html>
