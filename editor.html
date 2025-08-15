@@ -100,8 +100,13 @@
                     <div id="game-content" class="panel-content view-content">
                         <canvas id="game-canvas"></canvas>
                     </div>
-                    <div id="code-editor-content" class="panel-content view-content">
-                        <!-- CodeMirror will attach here -->
+                    <div id="code-editor-content" class="panel-content view-content no-padding">
+                        <div id="code-editor-toolbar">
+                            <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
+                            <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
+                            <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                        </div>
+                        <div id="codemirror-container"></div>
                     </div>
                 </div>
             </div>

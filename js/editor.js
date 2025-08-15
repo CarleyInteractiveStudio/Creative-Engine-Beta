@@ -145,6 +145,7 @@ import { InputManager } from './engine/Input.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
+import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 codeEditor = new EditorView({
                     doc: content,
                     extensions: [basicSetup, javascript(), oneDark],
-                    parent: dom.codeEditorContent
+                    parent: dom.codemirrorContainer
                 });
             } else {
                 // Editor already exists, just update its content
@@ -1077,6 +1078,15 @@ function update(deltaTime) {
             }
         });
 
+        // Code Editor Toolbar Buttons
+        document.getElementById('code-save-btn').addEventListener('click', () => saveCurrentScript());
+        document.getElementById('code-undo-btn').addEventListener('click', () => {
+            if (codeEditor) undo(codeEditor);
+        });
+        document.getElementById('code-redo-btn').addEventListener('click', () => {
+            if (codeEditor) redo(codeEditor);
+        });
+
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1097,7 +1107,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

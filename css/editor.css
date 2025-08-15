@@ -557,11 +557,45 @@ body {
     display: block;
 }
 
-#code-editor-content,
-#code-editor-content .cm-editor {
+.no-padding {
+    padding: 0 !important;
+}
+
+#code-editor-content {
+    display: flex;
+    flex-direction: column;
     height: 100%;
-    width: 100%;
-    font-size: 14px;
+}
+
+#code-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#code-editor-toolbar button {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#code-editor-toolbar button:hover {
+    background-color: #4f4f56;
+}
+
+#codemirror-container {
+    flex-grow: 1;
+    overflow: hidden; /* Ensures the container itself doesn't scroll */
+}
+
+#codemirror-container .cm-editor {
+    height: 100%;
 }
 
 .tab-bar {
