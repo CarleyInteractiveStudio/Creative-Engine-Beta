@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentScene = new Scene(); let selectedMateria = null;
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
+    let currentDirectoryHandle = null; // To track the folder selected in the asset browser
     const panelVisibility = {
         hierarchy: true,
         inspector: true,
@@ -211,14 +212,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateInspectorForAsset = async function(assetElement) {
-        if (!assetElement || !assetElement.textContent.endsWith('.ces')) {
-            // If it's not a script or nothing is selected, show default inspector
-            updateInspector();
+    updateInspectorForAsset = async function(assetName) {
+        if (!assetName) {
+            dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
             return;
         }
 
-        const scriptName = assetElement.textContent;
+        if (!assetName.endsWith('.ces')) {
+            dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4><p>No hay vista previa disponible para este tipo de archivo.</p>`;
+            return;
+        }
+
+        const scriptName = assetName;
         dom.inspectorContent.innerHTML = `<h4>Script: ${scriptName}</h4>`;
         try {
             const projectName = new URLSearchParams(window.location.search).get('project');
@@ -240,42 +245,89 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateAssetBrowser = async function() {
-        if (!projectsDirHandle || !dom.assetsContent) return;
-        const assetsContainer = dom.assetsContent;
-        assetsContainer.innerHTML = ''; // Clear existing assets
+    updateAssetBrowser = async function(selectHandle = null) {
+        if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
-        async function populateAssetTree(directoryHandle, container, depth = 0) {
-            for await (const entry of directoryHandle.values()) {
-                const entryElement = document.createElement('div');
-                entryElement.className = 'asset-item';
-                entryElement.style.paddingLeft = `${depth * 20 + 10}px`;
-                entryElement.textContent = entry.name;
+        const folderTreeContainer = dom.assetFolderTree;
+        const gridViewContainer = dom.assetGridView;
+
+        folderTreeContainer.innerHTML = '';
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+        if (!currentDirectoryHandle) {
+             currentDirectoryHandle = assetsHandle;
+        }
+
+        async function populateGridView(dirHandle) {
+            gridViewContainer.innerHTML = '';
+            // Store the handle on the element for context menus
+            gridViewContainer.directoryHandle = dirHandle;
+
+            for await (const entry of dirHandle.values()) {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                item.dataset.name = entry.name;
+                item.dataset.kind = entry.kind;
+
+                const icon = document.createElement('div');
+                icon.className = 'icon';
 
                 if (entry.kind === 'directory') {
-                    entryElement.classList.add('folder');
-                    // We could add expand/collapse logic here later
-                    container.appendChild(entryElement);
+                    icon.textContent = '📁';
+                } else if (entry.name.endsWith('.ces')) {
+                    icon.textContent = '📜';
+                } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
+                    icon.textContent = '🖼️';
+                } else {
+                    icon.textContent = '📄';
+                }
+
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = entry.name;
+
+                item.appendChild(icon);
+                item.appendChild(name);
+                gridViewContainer.appendChild(item);
+            }
+        }
+
+        async function populateFolderTree(dirHandle, container, depth = 0) {
+            const folderItem = document.createElement('div');
+            folderItem.className = 'folder-item';
+            folderItem.textContent = dirHandle.name;
+            folderItem.style.paddingLeft = `${depth * 15 + 5}px`;
+            folderItem.directoryHandle = dirHandle; // Attach handle to element
+
+            if (dirHandle.isSameEntry(currentDirectoryHandle)) {
+                folderItem.classList.add('active');
+            }
+
+            folderItem.addEventListener('click', () => {
+                currentDirectoryHandle = dirHandle;
+                updateAssetBrowser(); // Re-render everything
+            });
+
+            container.appendChild(folderItem);
+
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'directory') {
                     const subContainer = document.createElement('div');
                     container.appendChild(subContainer);
-                    await populateAssetTree(entry, subContainer, depth + 1);
-                } else {
-                    // It's a file
-                    if (entry.name.endsWith('.ces')) {
-                        entryElement.classList.add('script');
-                    }
-                    container.appendChild(entryElement);
+                    await populateFolderTree(entry, subContainer, depth + 1);
                 }
             }
         }
 
         try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            await populateAssetTree(projectHandle, assetsContainer);
+            await populateFolderTree(assetsHandle, folderTreeContainer);
+            await populateGridView(currentDirectoryHandle);
         } catch (error) {
             console.error("Error updating asset browser:", error);
-            assetsContainer.innerHTML = '<p class="error-message">Could not load project assets.</p>';
+            gridViewContainer.innerHTML = '<p class="error-message">Could not load project assets.</p>';
         }
     };
 
@@ -692,7 +744,11 @@ function update(deltaTime) {
         dom.hierarchyContextMenu.style.display = 'none';
     }
 
-    createNewScript = async function() {
+    createNewScript = async function(directoryHandle) {
+        if (!directoryHandle) {
+            alert("No se ha seleccionado ninguna carpeta.");
+            return;
+        }
         let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
         if (!scriptName) return;
 
@@ -710,14 +766,12 @@ function update(deltaTime) {
 };
 `;
         try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const fileHandle = await projectHandle.getFileHandle(scriptName, { create: true });
+            const fileHandle = await directoryHandle.getFileHandle(scriptName, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(scriptTemplate);
             await writable.close();
 
-            console.log(`Script '${scriptName}' creado.`);
+            console.log(`Script '${scriptName}' creado en ${directoryHandle.name}.`);
             await updateAssetBrowser(); // Refresh asset browser
         } catch(err) {
             console.error(`Error al crear el script '${scriptName}':`, err);
@@ -777,11 +831,22 @@ function update(deltaTime) {
     }
 
     function setupEventListeners() {
-        // Double-click to open script
-        dom.assetsContent.addEventListener('dblclick', async (e) => {
-            const item = e.target.closest('.asset-item');
-            if (item && item.textContent.endsWith('.ces')) {
-                await openScriptInEditor(item.textContent);
+        // --- Asset Browser Listeners ---
+        const gridView = dom.assetGridView;
+
+        // Double-click to open script or enter folder
+        gridView.addEventListener('dblclick', async (e) => {
+            const item = e.target.closest('.grid-item');
+            if (!item) return;
+
+            const name = item.dataset.name;
+            const kind = item.dataset.kind;
+
+            if (kind === 'directory') {
+                currentDirectoryHandle = await currentDirectoryHandle.getDirectoryHandle(name);
+                updateAssetBrowser();
+            } else if (name.endsWith('.ces')) {
+                await openScriptInEditor(name);
             }
         });
 
@@ -863,34 +928,42 @@ function update(deltaTime) {
             if (gameRenderer) gameRenderer.resize();
         });
 
-        // Asset Browser item selection
-        dom.assetsContent.addEventListener('click', (e) => {
-            const item = e.target.closest('.asset-item');
+        // Single-click to select asset
+        gridView.addEventListener('click', (e) => {
+            const item = e.target.closest('.grid-item');
+
+            // De-select all others
+            gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+
             if (item) {
-                // Deselect any materia
-                selectMateria(null);
-
-                // Handle asset selection
-                const currentActive = dom.assetsContent.querySelector('.asset-item.active');
-                if (currentActive) {
-                    currentActive.classList.remove('active');
-                }
+                selectMateria(null); // Deselect any materia
                 item.classList.add('active');
-
-                // Update inspector for the selected asset
-                updateInspectorForAsset(item);
+                updateInspectorForAsset(item.dataset.name);
+            } else {
+                 // Clicked on background, show current folder info
+                 updateInspectorForAsset(null);
             }
         });
 
-        // Custom Context Menu handler
-        window.addEventListener('contextmenu', (e) => {
-            if (dom.hierarchyContent.contains(e.target)) {
-                e.preventDefault();
-                showContextMenu(dom.hierarchyContextMenu, e);
-            } else if (dom.assetsContent.contains(e.target)) {
-                e.preventDefault();
-                showContextMenu(dom.contextMenu, e);
+        // Custom Context Menu handler for assets
+        gridView.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+
+            const item = e.target.closest('.grid-item');
+            if (item) {
+                // Right-clicked on an item, select it first
+                gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                updateInspectorForAsset(item.dataset.name);
             }
+
+            showContextMenu(dom.contextMenu, e);
+        });
+
+        // Custom Context Menu handler for hierarchy
+        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showContextMenu(dom.hierarchyContextMenu, e);
         });
 
         // Hide context menu on left-click
@@ -945,18 +1018,18 @@ function update(deltaTime) {
         dom.contextMenu.addEventListener('click', async (e) => {
             const action = e.target.dataset.action;
             if (!action) return;
+            hideContextMenus();
+
+            const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
 
             if (action === 'create-script') {
-                await createNewScript();
+                await createNewScript(currentDirectoryHandle);
             } else if (action === 'delete') {
-                const selectedAsset = dom.assetsContent.querySelector('.asset-item.active');
                 if (selectedAsset) {
-                    const assetName = selectedAsset.textContent;
+                    const assetName = selectedAsset.dataset.name;
                     if (confirm(`¿Estás seguro de que quieres borrar '${assetName}'? Esta acción no se puede deshacer.`)) {
                         try {
-                            const projectName = new URLSearchParams(window.location.search).get('project');
-                            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                            await projectHandle.removeEntry(assetName, { recursive: true });
+                            await currentDirectoryHandle.removeEntry(assetName, { recursive: true });
                             console.log(`'${assetName}' borrado.`);
                             await updateAssetBrowser();
                         } catch (err) {
@@ -968,30 +1041,25 @@ function update(deltaTime) {
                     alert("Por favor, selecciona un archivo o carpeta para borrar.");
                 }
             } else if (action === 'rename') {
-                const selectedAsset = dom.assetsContent.querySelector('.asset-item.active');
                 if (selectedAsset) {
-                    if (selectedAsset.classList.contains('folder')) {
-                        alert("Actualmente no se puede renombrar carpetas.");
-                        hideContextMenus();
-                        return;
-                    }
-                    const oldName = selectedAsset.textContent;
+                    const oldName = selectedAsset.dataset.name;
                     const newName = prompt(`Renombrar '${oldName}':`, oldName);
 
                     if (newName && newName !== oldName) {
                         try {
-                            const projectName = new URLSearchParams(window.location.search).get('project');
-                            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                            const oldFileHandle = await projectHandle.getFileHandle(oldName);
+                             if (selectedAsset.dataset.kind === 'directory') {
+                                alert("El renombrado de carpetas aún no está implementado.");
+                                return;
+                            }
+                            const oldFileHandle = await currentDirectoryHandle.getFileHandle(oldName);
                             const content = await (await oldFileHandle.getFile()).text();
 
-                            const newFileHandle = await projectHandle.getFileHandle(newName, { create: true });
+                            const newFileHandle = await currentDirectoryHandle.getFileHandle(newName, { create: true });
                             const writable = await newFileHandle.createWritable();
                             await writable.write(content);
                             await writable.close();
 
-                            await projectHandle.removeEntry(oldName);
+                            await currentDirectoryHandle.removeEntry(oldName);
 
                             console.log(`'${oldName}' renombrado a '${newName}'.`);
                             await updateAssetBrowser();
@@ -1004,7 +1072,6 @@ function update(deltaTime) {
                     alert("Por favor, selecciona un archivo para renombrar.");
                 }
             }
-            hideContextMenus();
         });
 
         // Scene/Game/Code View Toggle Logic
@@ -1107,7 +1174,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

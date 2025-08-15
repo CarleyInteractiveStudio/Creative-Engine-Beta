@@ -120,8 +120,78 @@ document.addEventListener('DOMContentLoaded', () => {
                  saveDirHandle(dirHandle);
             }
 
-            await dirHandle.getDirectoryHandle(projectName, { create: true });
-            alert(`¡Proyecto "${projectName}" creado con éxito!`);
+            const projectDirHandle = await dirHandle.getDirectoryHandle(projectName, { create: true });
+
+            // Create default Assets folder and README files
+            const assetsDirHandle = await projectDirHandle.getDirectoryHandle('Assets', { create: true });
+
+            const readmeMotorContent = `# ¡Bienvenido a Creative Engine!
+
+Este es tu nuevo proyecto. ¡Estamos emocionados de ver lo que crearás!
+
+## Estructura del Proyecto
+
+- **Carpeta \`Assets\`**: Este es el corazón de tu proyecto. Todos los recursos que uses (imágenes, scripts, sonidos, etc.) deben ir aquí. El motor buscará automáticamente los assets en esta carpeta.
+
+## Uso Básico
+
+1.  **Crea Assets**: Usa el menú contextual (clic derecho) en el Navegador de Assets para crear nuevos scripts, carpetas y más.
+2.  **Crea Materias**: Usa el menú contextual en la Jerarquía para crear \`Materias\` (GameObjects). Son los objetos que poblarán tu escena.
+3.  **Añade Leyes**: Con una \`Materia\` seleccionada, ve al Inspector y haz clic en "Añadir Ley" (Componente) para darle funcionalidades como un sprite, físicas o un script.
+
+¡Diviértete creando!
+
+*Este motor fue creado con la ayuda de Google Jules y Carley Interactive Studio.*`;
+
+            const readmeCesContent = `# Creative Scripting (CES) - Guía de Inicio Rápido
+
+Creative Scripting (o \`.ces\`) es el lenguaje que da vida a tus \`Materias\`. Es muy similar a JavaScript, pero se ejecuta dentro del motor.
+
+## Funciones Principales
+
+Cada script \`.ces\` puede tener dos funciones especiales que el motor llamará automáticamente:
+
+### \`start()\`
+
+Esta función se llama **una sola vez** cuando la escena comienza (justo antes del primer fotograma). Es el lugar perfecto para inicializar variables o configurar el estado inicial de tu Materia.
+
+**Ejemplo:**
+\`\`\`javascript
+function start() {
+    // Imprime un mensaje en la consola del editor
+    console.log("¡La Materia ha comenzado a existir!");
+}
+\`\`\`
+
+### \`update(deltaTime)\`
+
+Esta función se llama **en cada fotograma** del juego. Es donde va toda la lógica que se ejecuta continuamente, como el movimiento, la comprobación de input o cualquier cosa que deba ocurrir con el tiempo.
+
+- \`deltaTime\`: Es un parámetro muy importante. Representa el tiempo (en segundos) que ha pasado desde el último fotograma. Usarlo para el movimiento asegura que tu juego corra a la misma velocidad en ordenadores rápidos y lentos.
+
+**Ejemplo:**
+\`\`\`javascript
+function update(deltaTime) {
+    // Esta función se llamará constantemente
+}
+\`\`\`
+
+---
+
+¡Eso es todo lo que necesitas para empezar! Experimenta creando un script, añadiéndolo a una Materia y viendo cómo \`console.log\` imprime mensajes en la consola del editor.`;
+
+            const motorReadmeHandle = await assetsDirHandle.getFileHandle('LEAME-SOBRE-EL-MOTOR.md', { create: true });
+            const motorReadmeWritable = await motorReadmeHandle.createWritable();
+            await motorReadmeWritable.write(readmeMotorContent);
+            await motorReadmeWritable.close();
+
+            const cesReadmeHandle = await assetsDirHandle.getFileHandle('LEAME-APRENDE-CES.md', { create: true });
+            const cesReadmeWritable = await cesReadmeHandle.createWritable();
+            await cesReadmeWritable.write(readmeCesContent);
+            await cesReadmeWritable.close();
+
+
+            alert(`¡Proyecto "${projectName}" creado con éxito con la estructura de carpetas por defecto!`);
             loadProjects();
         } catch (error) {
             if (error.name !== 'AbortError') console.error('Error:', error);
