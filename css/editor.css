@@ -1,3 +1,7 @@
+body.is-dragging-panel {
+    user-select: none;
+}
+
 /* --- Base Editor Styles & Theme Variables --- */
 :root {
     --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -409,15 +413,19 @@ body {
 /* --- Animation Panel Styles --- */
 .floating-panel {
     position: absolute;
-    width: 80%;
-    max-width: 900px;
-    height: 400px;
+    width: 70%;
+    max-width: 800px;
+    height: 350px;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 1500;
     box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     resize: both;
+}
+
+#animation-panel .panel-header {
+    cursor: move;
 }
 
 #animation-panel .panel-content {
@@ -452,12 +460,38 @@ body {
 #animation-timeline-container {
     height: 120px;
     background-color: var(--bg-primary);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
     padding: 10px;
     overflow-x: auto;
     overflow-y: hidden;
     flex-shrink: 0;
+    transition: height 0.2s ease;
+}
+
+#timeline-resizer {
+    height: 5px;
+    background-color: var(--bg-tertiary);
+    cursor: n-resize;
+    position: relative;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#timeline-toggle-btn {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 0px 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.timeline-collapsed #animation-timeline-container,
+.timeline-collapsed #timeline-resizer {
+    display: none;
 }
 
 #animation-timeline {
@@ -510,7 +544,8 @@ body {
 }
 
 #drawing-canvas {
-    background-color: white;
+    /* The container provides the checkered background */
+    background-color: transparent;
     cursor: crosshair;
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }

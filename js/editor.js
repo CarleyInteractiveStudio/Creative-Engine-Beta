@@ -228,6 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let drawingTool = 'pencil';
     let drawingColor = '#ffffff';
     let lastDrawPos = { x: 0, y: 0 };
+    let isMovingPanel = false;
+    let panelMoveOffset = { x: 0, y: 0 };
+
 
     let isGameRunning = false;
     let lastFrameTime = 0;
@@ -1565,6 +1568,42 @@ function update(deltaTime) {
             drawingColor = e.target.value;
         });
 
+
+        // --- Floating Panel Dragging ---
+        const animPanelHeader = dom.animationPanel.querySelector('.panel-header');
+        animPanelHeader.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking a button on the header
+            if (e.target.matches('button')) return;
+
+            isMovingPanel = true;
+            const rect = dom.animationPanel.getBoundingClientRect();
+            panelMoveOffset.x = e.clientX - rect.left;
+            panelMoveOffset.y = e.clientY - rect.top;
+
+            // Add a class to the body to prevent text selection while dragging
+            document.body.classList.add('is-dragging-panel');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isMovingPanel) {
+                const newX = e.clientX - panelMoveOffset.x;
+                const newY = e.clientY - panelMoveOffset.y;
+                dom.animationPanel.style.left = `${newX}px`;
+                dom.animationPanel.style.top = `${newY}px`;
+                // Important: remove transform after first move to prevent conflict
+                dom.animationPanel.style.transform = 'none';
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMovingPanel = false;
+            document.body.classList.remove('is-dragging-panel');
+        });
+
+        // --- Animation Panel Toggles ---
+        document.getElementById('timeline-toggle-btn').addEventListener('click', () => {
+            dom.animationPanel.classList.toggle('timeline-collapsed');
+        });
 
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
