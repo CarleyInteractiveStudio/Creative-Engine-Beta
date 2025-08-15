@@ -222,6 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move'; // 'move', 'pan', 'scale'
     let isPanning = false;
     let dragState = {}; // To hold info about the current drag operation
+
+    // Animation Editor State
+    let isDrawing = false;
+    let drawingTool = 'pencil';
+    let drawingColor = '#ffffff';
+    let lastDrawPos = { x: 0, y: 0 };
+
     let isGameRunning = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
@@ -1511,6 +1518,54 @@ function update(deltaTime) {
             if (codeEditor) redo(codeEditor);
         });
 
+        // --- Animation Drawing Listeners ---
+        const drawingCanvas = dom.drawingCanvas;
+        const drawingCtx = drawingCanvas.getContext('2d');
+
+        function getDrawPos(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        drawingCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastDrawPos = getDrawPos(e);
+        });
+
+        drawingCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const currentPos = getDrawPos(e);
+
+            drawingCtx.beginPath();
+            drawingCtx.strokeStyle = drawingTool === 'pencil' ? drawingColor : '#FFFFFF'; // Eraser is just white
+            drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.moveTo(lastDrawPos.x, lastDrawPos.y);
+            drawingCtx.lineTo(currentPos.x, currentPos.y);
+            drawingCtx.stroke();
+
+            lastDrawPos = currentPos;
+        });
+
+        drawingCanvas.addEventListener('mouseup', () => isDrawing = false);
+        drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
+
+        dom.drawingTools.addEventListener('click', (e) => {
+            if (e.target.matches('.tool-btn')) {
+                dom.drawingTools.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                drawingTool = e.target.dataset.tool;
+            }
+        });
+
+        dom.drawingColorPicker.addEventListener('change', (e) => {
+            drawingColor = e.target.value;
+        });
+
+
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1531,7 +1586,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

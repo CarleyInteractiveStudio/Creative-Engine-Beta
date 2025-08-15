@@ -449,16 +449,70 @@ body {
     flex-shrink: 0;
 }
 
-#animation-preview {
+#animation-timeline-container {
+    height: 120px;
+    background-color: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+}
+
+#animation-timeline {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    height: 100%;
+}
+
+#animation-editor-main {
     flex-grow: 1;
-    display: grid;
-    place-items: center;
+    display: flex;
     overflow: hidden;
 }
 
-#animation-preview-canvas {
-    max-width: 100%;
-    max-height: 100%;
+#drawing-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--bg-tertiary);
+    border-right: 1px solid var(--border-color);
+}
+
+#drawing-tools .tool-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2em;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+#drawing-tools .tool-btn.active {
+    background-color: var(--accent-color);
+}
+
+#drawing-canvas-container {
+    flex-grow: 1;
+    display: grid;
+    place-items: center;
+    overflow: auto; /* Allow scrolling/panning if canvas is larger */
+    background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+#drawing-canvas {
+    background-color: white;
+    cursor: crosshair;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
 
 .markdown-preview {

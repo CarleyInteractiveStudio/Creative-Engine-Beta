@@ -160,11 +160,20 @@
                         <input type="number" id="animation-speed" value="10" min="1">
                         <span>FPS</span>
                     </div>
-                    <div id="animation-timeline">
-                        <!-- Frames will be added here -->
+                    <div id="animation-timeline-container">
+                        <div id="animation-timeline">
+                            <!-- Frames will be added here -->
+                        </div>
                     </div>
-                    <div id="animation-preview">
-                        <canvas id="animation-preview-canvas"></canvas>
+                    <div id="animation-editor-main">
+                        <div id="drawing-tools">
+                            <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
+                            <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
+                            <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
+                        </div>
+                        <div id="drawing-canvas-container">
+                            <canvas id="drawing-canvas" width="512" height="512"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
