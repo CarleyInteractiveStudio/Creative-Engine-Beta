@@ -846,8 +846,9 @@ function update(deltaTime) {
 
         // Hide context menu on left-click
         window.addEventListener('click', (e) => {
-            if (!e.target.closest('.context-menu')) {
+            if (!e.target.closest('.context-menu') && !e.target.closest('.menu-btn')) {
                 hideContextMenus();
+                dom.menubar.querySelectorAll('.menu-content').forEach(mc => mc.style.display = 'none');
             }
         });
 

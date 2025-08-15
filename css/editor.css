@@ -40,8 +40,7 @@
 }
 
 .menu-item:hover .menu-content {
-    /* For now, we can use hover to show the menu. JS will handle click later. */
-    /* display: block; */
+    display: block;
 }
 
 .menu-content a {
