@@ -587,6 +587,7 @@ body {
 .panel-content-container {
     flex-grow: 1;
     overflow: hidden;
+    position: relative;
 }
 .tab-content {
     display: none;
