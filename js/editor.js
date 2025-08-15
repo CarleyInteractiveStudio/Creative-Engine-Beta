@@ -161,7 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
         assets: true,
     };
     let physicsSystem = null;
-    let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move';
+    let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move'; // 'move', 'pan', 'scale'
+    let isPanning = false;
+    let dragState = {}; // To hold info about the current drag operation
     let isGameRunning = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
@@ -353,6 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="component-grid">
                     <label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}">
                     <label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}">
+                    <label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}">
+                    <label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}">
                 </div>`;
             } else if (ley instanceof Rigidbody) {
                 componentHTML = `<h4>Rigidbody</h4>
@@ -476,28 +480,35 @@ document.addEventListener('DOMContentLoaded', () => {
             let drawn = false;
             const spriteRenderer = materia.getComponent(SpriteRenderer);
             if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
-                targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100, 100);
+                targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100 * transform.scale.x, 100 * transform.scale.y);
                 drawn = true;
             }
 
             const boxCollider = materia.getComponent(BoxCollider);
             if (boxCollider) {
                 if (!drawn) {
-                    targetRenderer.drawRect(transform.x, transform.y, boxCollider.width, boxCollider.height, 'rgba(144, 238, 144, 0.5)');
+                    targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
                 }
             }
 
             if (!drawn && !boxCollider) {
-                 targetRenderer.drawRect(transform.x, transform.y, 20, 20, 'rgba(128, 128, 128, 0.5)');
+                 targetRenderer.drawRect(transform.x, transform.y, 20 * transform.scale.x, 20 * transform.scale.y, 'rgba(128, 128, 128, 0.5)');
             }
 
             // Draw selection outline only in the editor scene view
             if (!isGameView && selectedMateria && selectedMateria.id === materia.id) {
                 targetRenderer.ctx.strokeStyle = 'yellow';
                 targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.zoom;
-                const selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
-                const selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+                let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
+                let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+
+                selectionWidth *= transform.scale.x;
+                selectionHeight *= transform.scale.y;
+
                 targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+
+                // Draw gizmos on top of the selected materia
+                drawGizmos(targetRenderer, selectedMateria);
             }
         });
 
@@ -829,7 +840,108 @@ function update(deltaTime) {
             case 'w':
                 setActiveTool('pan');
                 break;
+            case 'e':
+                setActiveTool('scale');
+                break;
         }
+    }
+
+    const GIZMO_HANDLE_SIZE = 10; // In screen pixels
+
+    function drawGizmos(renderer, materia) {
+        const transform = materia.getComponent(Transform);
+        if (!transform) return;
+
+        const ctx = renderer.ctx;
+        const camera = renderer.camera;
+
+        // Gizmo positions are in world space, but their size is constant on screen
+        const handleScreenSize = GIZMO_HANDLE_SIZE / camera.zoom;
+        const halfHandleSize = handleScreenSize / 2;
+
+        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
+        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
+        const x = transform.x;
+        const y = transform.y;
+
+        ctx.save();
+        ctx.fillStyle = 'red';
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2 / camera.zoom;
+
+        if (activeTool === 'move') {
+            // Y-axis arrow
+            ctx.fillStyle = 'green';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - h / 2 - handleScreenSize * 2);
+            ctx.stroke();
+            ctx.moveTo(x, y - h / 2 - handleScreenSize * 2);
+            ctx.lineTo(x - handleScreenSize, y - h/2 - handleScreenSize);
+            ctx.lineTo(x + handleScreenSize, y - h/2 - handleScreenSize);
+            ctx.closePath();
+            ctx.fill();
+
+            // X-axis arrow
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w / 2 + handleScreenSize * 2, y);
+            ctx.stroke();
+            ctx.moveTo(x + w / 2 + handleScreenSize * 2, y);
+            ctx.lineTo(x + w/2 + handleScreenSize, y - handleScreenSize);
+            ctx.lineTo(x + w/2 + handleScreenSize, y + handleScreenSize);
+            ctx.closePath();
+            ctx.fill();
+        } else if (activeTool === 'scale') {
+            ctx.fillStyle = 'blue';
+            // Top-left
+            ctx.fillRect(x - w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
+            // Top-right
+            ctx.fillRect(x + w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
+            // Bottom-left
+            ctx.fillRect(x - w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
+            // Bottom-right
+            ctx.fillRect(x + w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
+        }
+
+        ctx.restore();
+    }
+
+    function getGizmoHandleAt(worldPos, materia, renderer) {
+        const transform = materia.getComponent(Transform);
+        if (!transform) return null;
+
+        const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.zoom;
+        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
+        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
+        const x = transform.x;
+        const y = transform.y;
+
+        const checkRect = (px, py) => {
+            return worldPos.x >= px - handleScreenSize/2 && worldPos.x <= px + handleScreenSize/2 &&
+                   worldPos.y >= py - handleScreenSize/2 && worldPos.y <= py + handleScreenSize/2;
+        };
+
+        if (activeTool === 'scale') {
+            if (checkRect(x - w / 2, y - h / 2)) return 'scale-tl';
+            if (checkRect(x + w / 2, y - h / 2)) return 'scale-tr';
+            if (checkRect(x - w / 2, y + h / 2)) return 'scale-bl';
+            if (checkRect(x + w / 2, y + h / 2)) return 'scale-br';
+        } else if (activeTool === 'move') {
+            // A larger hit area for the arrows
+            const arrowLength = h / 2 + handleScreenSize * 2;
+            const arrowWidth = w / 2 + handleScreenSize * 2;
+            if (worldPos.x > x && worldPos.x < x + arrowWidth && Math.abs(worldPos.y - y) < handleScreenSize) return 'move-x';
+            if (worldPos.y < y && worldPos.y > y - arrowLength && Math.abs(worldPos.x - x) < handleScreenSize) return 'move-y';
+        }
+
+        // Check if clicking the object itself for a move action
+        if (worldPos.x >= x - w/2 && worldPos.x <= x + w/2 && worldPos.y >= y - h/2 && worldPos.y <= y + h/2) {
+            return 'move-body';
+        }
+
+        return null;
     }
 
     function setupEventListeners() {
@@ -855,14 +967,17 @@ function update(deltaTime) {
         // Tool selection
         const toolMoveBtn = document.getElementById('tool-move');
         const toolPanBtn = document.getElementById('tool-pan');
+        const toolScaleBtn = document.getElementById('tool-scale');
         setActiveTool = (toolName) => {
             activeTool = toolName;
             toolMoveBtn.classList.toggle('active', toolName === 'move');
             toolPanBtn.classList.toggle('active', toolName === 'pan');
+            toolScaleBtn.classList.toggle('active', toolName === 'scale');
             console.log(`Herramienta activa: ${activeTool}`);
         };
         toolMoveBtn.addEventListener('click', () => setActiveTool('move'));
         toolPanBtn.addEventListener('click', () => setActiveTool('pan'));
+        toolScaleBtn.addEventListener('click', () => setActiveTool('scale'));
 
 
         // Global deselection
@@ -910,13 +1025,89 @@ function update(deltaTime) {
             }
         });
 
-        // Scene object selection
-        dom.sceneContent.addEventListener('click', (e) => {
-             const item = e.target.closest('.scene-object-vis');
-            if (item) {
-                const materiaId = parseInt(item.id.replace('materia-vis-', ''), 10);
-                selectMateria(materiaId);
+        // --- Scene Canvas Mouse Listeners for Tools ---
+        dom.sceneCanvas.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only handle left-clicks
+
+            const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+
+            if (activeTool === 'pan') {
+                isPanning = true;
+                lastMousePosition = { x: e.clientX, y: e.clientY };
+                return;
             }
+
+            let handle = null;
+            if (selectedMateria) {
+                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+            }
+
+            if (handle) {
+                isDragging = true;
+                const transform = selectedMateria.getComponent(Transform);
+                dragState = {
+                    handle,
+                    materia: selectedMateria,
+                    initialX: transform.x,
+                    initialY: transform.y,
+                    initialScaleX: transform.scale.x,
+                    initialScaleY: transform.scale.y,
+                    startMouseX: worldPos.x,
+                    startMouseY: worldPos.y,
+                };
+            } else {
+                // If not clicking a handle, try to select a new materia
+                let clickedMateria = null;
+                for (const materia of [...currentScene.materias].reverse()) {
+                    if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
+                        clickedMateria = materia;
+                        break;
+                    }
+                }
+                selectMateria(clickedMateria ? clickedMateria.id : null);
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const dx = (e.clientX - lastMousePosition.x) / renderer.camera.zoom;
+                const dy = (e.clientY - lastMousePosition.y) / renderer.camera.zoom;
+                renderer.camera.x -= dx;
+                renderer.camera.y -= dy;
+                lastMousePosition = { x: e.clientX, y: e.clientY };
+                updateScene(renderer, false); // Re-render on pan
+            }
+
+            if (isDragging) {
+                const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+                const dx = worldPos.x - dragState.startMouseX;
+                const dy = worldPos.y - dragState.startMouseY;
+                const transform = dragState.materia.getComponent(Transform);
+
+                if (dragState.handle.startsWith('move')) {
+                     if (dragState.handle === 'move-x' || dragState.handle === 'move-body') {
+                        transform.x = dragState.initialX + dx;
+                     }
+                     if (dragState.handle === 'move-y' || dragState.handle === 'move-body') {
+                        transform.y = dragState.initialY + dy;
+                     }
+                } else if (dragState.handle.startsWith('scale')) {
+                    // This scaling logic is simplified and might not feel perfect with pivots.
+                    const newScaleX = dragState.initialScaleX + (dx / 100);
+                    const newScaleY = dragState.initialScaleY - (dy / 100); // Invert Y
+                    transform.scale.x = Math.max(0.1, newScaleX);
+                    transform.scale.y = Math.max(0.1, newScaleY);
+                }
+
+                updateInspector();
+                updateScene(renderer, false);
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            isPanning = false;
+            isDragging = false;
+            dragState = {};
         });
 
         // Modal close buttons

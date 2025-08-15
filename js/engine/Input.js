@@ -173,6 +173,22 @@ class InputManager {
     static getMousePositionInCanvas() {
         return this._mousePositionInCanvas;
     }
+
+    /**
+     * Converts a screen (canvas) position to world coordinates.
+     * @param {Camera} camera The scene camera.
+     * @param {HTMLCanvasElement} canvas The scene canvas.
+     * @returns {{x: number, y: number}}
+     */
+    static getMouseWorldPosition(camera, canvas) {
+        if (!canvas || !camera) return { x: 0, y: 0 };
+        const canvasPos = this._mousePositionInCanvas;
+
+        const worldX = (canvasPos.x - canvas.width / 2) / camera.zoom + camera.x;
+        const worldY = (canvasPos.y - canvas.height / 2) / camera.zoom + camera.y;
+
+        return { x: worldX, y: worldY };
+    }
 }
 
 // Ensure it's a singleton-like static class
