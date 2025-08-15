@@ -230,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDrawPos = { x: 0, y: 0 };
     let isMovingPanel = false;
     let panelMoveOffset = { x: 0, y: 0 };
+    let isResizingPanel = false;
+    let panelResizeState = {};
 
 
     let isGameRunning = false;
@@ -1542,8 +1544,14 @@ function update(deltaTime) {
             if (!isDrawing) return;
             const currentPos = getDrawPos(e);
 
+            if (drawingTool === 'eraser') {
+                drawingCtx.globalCompositeOperation = 'destination-out';
+            } else {
+                drawingCtx.globalCompositeOperation = 'source-over';
+            }
+
             drawingCtx.beginPath();
-            drawingCtx.strokeStyle = drawingTool === 'pencil' ? drawingColor : '#FFFFFF'; // Eraser is just white
+            drawingCtx.strokeStyle = drawingColor;
             drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
             drawingCtx.lineCap = 'round';
             drawingCtx.moveTo(lastDrawPos.x, lastDrawPos.y);
@@ -1569,19 +1577,38 @@ function update(deltaTime) {
         });
 
 
-        // --- Floating Panel Dragging ---
-        const animPanelHeader = dom.animationPanel.querySelector('.panel-header');
-        animPanelHeader.addEventListener('mousedown', (e) => {
-            // Don't drag if clicking a button on the header
-            if (e.target.matches('button')) return;
+        // --- Floating Panel Dragging & Resizing ---
+        dom.animationPanel.addEventListener('mousedown', (e) => {
+            // Check for resize handles
+            if (e.target.matches('.resize-handle')) {
+                isResizingPanel = true;
+                const rect = dom.animationPanel.getBoundingClientRect();
+                panelResizeState = {
+                    direction: e.target.dataset.direction,
+                    initialX: e.clientX,
+                    initialY: e.clientY,
+                    initialWidth: rect.width,
+                    initialHeight: rect.height
+                };
+                document.body.classList.add('is-dragging-panel');
+                e.preventDefault(); // Prevent text selection
+                return;
+            }
 
-            isMovingPanel = true;
-            const rect = dom.animationPanel.getBoundingClientRect();
-            panelMoveOffset.x = e.clientX - rect.left;
-            panelMoveOffset.y = e.clientY - rect.top;
+            // Check for header dragging
+            const header = e.target.closest('.panel-header');
+            if (header) {
+                 // Don't drag if clicking a button on the header
+                if (e.target.matches('button')) return;
 
-            // Add a class to the body to prevent text selection while dragging
-            document.body.classList.add('is-dragging-panel');
+                isMovingPanel = true;
+                const rect = dom.animationPanel.getBoundingClientRect();
+                panelMoveOffset.x = e.clientX - rect.left;
+                panelMoveOffset.y = e.clientY - rect.top;
+
+                document.body.classList.add('is-dragging-panel');
+                e.preventDefault(); // Prevent text selection
+            }
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -1590,13 +1617,25 @@ function update(deltaTime) {
                 const newY = e.clientY - panelMoveOffset.y;
                 dom.animationPanel.style.left = `${newX}px`;
                 dom.animationPanel.style.top = `${newY}px`;
-                // Important: remove transform after first move to prevent conflict
                 dom.animationPanel.style.transform = 'none';
+            } else if (isResizingPanel) {
+                const dx = e.clientX - panelResizeState.initialX;
+                const dy = e.clientY - panelResizeState.initialY;
+
+                if (panelResizeState.direction === 'right' || panelResizeState.direction === 'both') {
+                    const newWidth = panelResizeState.initialWidth + dx;
+                    dom.animationPanel.style.width = `${Math.max(300, newWidth)}px`;
+                }
+                if (panelResizeState.direction === 'bottom' || panelResizeState.direction === 'both') {
+                    const newHeight = panelResizeState.initialHeight + dy;
+                    dom.animationPanel.style.height = `${Math.max(200, newHeight)}px`;
+                }
             }
         });
 
         window.addEventListener('mouseup', () => {
             isMovingPanel = false;
+            isResizingPanel = false;
             document.body.classList.remove('is-dragging-panel');
         });
 
