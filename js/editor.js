@@ -996,12 +996,28 @@ function update(deltaTime) {
                 }
             }
         });
+
+        // Edit Menu Modals
+        document.getElementById('menu-project-settings').addEventListener('click', (e) => {
+            e.preventDefault();
+            dom.projectSettingsModal.style.display = 'block';
+        });
+        document.getElementById('menu-preferences').addEventListener('click', (e) => {
+            e.preventDefault();
+            dom.preferencesModal.style.display = 'block';
+        });
+        dom.projectSettingsModal.querySelector('.close-button').addEventListener('click', () => {
+            dom.projectSettingsModal.style.display = 'none';
+        });
+        dom.preferencesModal.querySelector('.close-button').addEventListener('click', () => {
+            dom.preferencesModal.style.display = 'none';
+        });
     }
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

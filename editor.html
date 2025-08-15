@@ -38,8 +38,8 @@
                     <a href="#" id="menu-window-assets">Navegador</a>
                     <a href="#" id="menu-window-console">Consola</a>
                     <hr>
-                    <a href="#" id="menu-window-animation">Editor de Animación</a>
-                    <a href="#" id="menu-window-character">Creador de Personajes</a>
+                    <a href="#" id="menu-window-animation" class="disabled">Editor de Animación</a>
+                    <a href="#" id="menu-window-animator" class="disabled">Controlador de Animación</a>
                 </div>
             </div>
             <div class="menu-item">
@@ -169,14 +169,34 @@
         <div class="modal-content large">
             <span class="close-button">&times;</span>
             <h2>Configuración del Proyecto</h2>
-            <p>Aquí se configurará el nombre del ejecutable, la plataforma (Android/Windows), etc.</p>
+            <div class="settings-form">
+                <label for="settings-app-name">Nombre de la App</label>
+                <input type="text" id="settings-app-name" value="MiJuego">
+                <label for="settings-app-version">Versión</label>
+                <input type="text" id="settings-app-version" value="0.1.0">
+                <label for="settings-author">Autor</label>
+                <input type="text" id="settings-author" value="Un Creador">
+                <div>
+                    <input type="checkbox" id="settings-mod-support">
+                    <label for="settings-mod-support">Admite Mods</label>
+                </div>
+            </div>
         </div>
     </div>
     <div id="preferences-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <span class="close-button">&times;</span>
             <h2>Preferencias</h2>
-            <p>Aquí se configurará el tema del editor, los layouts, etc.</p>
+            <div class="settings-form">
+                <label for="prefs-theme">Tema del Editor</label>
+                <select id="prefs-theme">
+                    <option value="dark-modern">Oscuro Moderno</option>
+                    <option value="dark-white">Claro</option>
+                    <option value="dark-blue">Azul Marino</option>
+                </select>
+                <label for="prefs-language">Idioma</label>
+                <p>(Funcionalidad de idioma próximamente)</p>
+            </div>
         </div>
     </div>
     <div id="debug-display"></div>

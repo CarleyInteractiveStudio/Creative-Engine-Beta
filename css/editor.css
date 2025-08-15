@@ -53,6 +53,11 @@
 .menu-content a:hover {
     background-color: var(--accent-color);
 }
+.menu-content a.disabled {
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    background-color: transparent !important;
+}
 .menu-content hr {
     border: none;
     border-top: 1px solid var(--border-color);
