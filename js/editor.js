@@ -182,9 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openScriptInEditor = async function(fileName) {
         try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            currentlyOpenFileHandle = await projectHandle.getFileHandle(fileName);
+            // Use the currently selected directory handle to find the file
+            currentlyOpenFileHandle = await currentDirectoryHandle.getFileHandle(fileName);
             const file = await currentlyOpenFileHandle.getFile();
             const content = await file.text();
 
@@ -313,11 +312,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             container.appendChild(folderItem);
 
+            // This container will hold the children, to allow for expand/collapse later
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-children';
+            folderItem.appendChild(childrenContainer); // Append to the item, not the main container
+
             for await (const entry of dirHandle.values()) {
                 if (entry.kind === 'directory') {
-                    const subContainer = document.createElement('div');
-                    container.appendChild(subContainer);
-                    await populateFolderTree(entry, subContainer, depth + 1);
+                    await populateFolderTree(entry, childrenContainer, depth + 1);
                 }
             }
         }

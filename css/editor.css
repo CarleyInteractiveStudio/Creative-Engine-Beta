@@ -214,8 +214,8 @@ body {
 #editor-main-content {
     display: grid;
     height: calc(100vh - 42px); /* 100% viewport height minus toolbar */
-    grid-template-columns: 260px 1fr 320px; /* Hierarchy | Scene | Inspector */
-    grid-template-rows: minmax(0, 2fr) minmax(0, 1fr); /* Scene / Assets */
+    grid-template-columns: 220px 1fr 320px; /* Hierarchy | Scene | Inspector */
+    grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); /* Scene / Assets */
     grid-template-areas:
         "hierarchy scene inspector"
         "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
