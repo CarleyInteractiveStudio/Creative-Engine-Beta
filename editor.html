@@ -38,7 +38,7 @@
                     <a href="#" id="menu-window-assets">Navegador</a>
                     <a href="#" id="menu-window-console">Consola</a>
                     <hr>
-                    <a href="#" id="menu-window-animation" class="disabled">Editor de Animación</a>
+                    <a href="#" id="menu-window-animation">Editor de Animación</a>
                     <a href="#" id="menu-window-animator" class="disabled">Controlador de Animación</a>
                 </div>
             </div>
@@ -146,6 +146,28 @@
                     </div>
                 </div>
             </div>
+             <div id="animation-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span>Editor de Animación</span>
+                    <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
+                </div>
+                <div class="panel-content">
+                    <div id="animation-toolbar">
+                        <select id="animation-state-selector"></select>
+                        <button id="animation-play-btn">▶️</button>
+                        <button id="animation-stop-btn">⏹️</button>
+                        <label for="animation-speed">Velocidad:</label>
+                        <input type="number" id="animation-speed" value="10" min="1">
+                        <span>FPS</span>
+                    </div>
+                    <div id="animation-timeline">
+                        <!-- Frames will be added here -->
+                    </div>
+                    <div id="animation-preview">
+                        <canvas id="animation-preview-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
     <div id="context-menu" class="context-menu" style="display: none;">
@@ -156,6 +178,7 @@
                     <li data-action="create-folder">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-readme">Archivo Léame (.md)</li>
+                    <li data-action="create-animation">Asset de Animación (.cea)</li>
                 </ul>
             </li>
             <hr>
@@ -176,6 +199,7 @@
             </li>
             <hr>
             <li data-action="create-materia">Crear Materia (Primitiva)</li>
+            <li data-action="create-animated-materia">Crear Materia Animada</li>
         </ul>
     </div>
     <div id="add-component-modal" class="modal" style="display: none;">

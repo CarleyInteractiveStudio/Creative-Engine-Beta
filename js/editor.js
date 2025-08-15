@@ -39,6 +39,64 @@ class SpriteRenderer extends Leyes {
     }
 }
 
+class Animation {
+    constructor(name = 'New Animation') {
+        this.name = name;
+        this.frames = []; // Array of image source paths
+        this.speed = 10; // Frames per second
+        this.loop = true;
+    }
+}
+
+class Animator extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.animations = new Map(); // Map of animation names to Animation objects
+        this.currentState = null;
+        this.currentFrame = 0;
+        this.frameTimer = 0;
+        this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+    }
+
+    play(stateName) {
+        if (this.currentState !== stateName && this.animations.has(stateName)) {
+            this.currentState = stateName;
+            this.currentFrame = 0;
+            this.frameTimer = 0;
+        }
+    }
+
+    update(deltaTime) {
+        if (!this.currentState || !this.spriteRenderer) {
+            if (!this.spriteRenderer) {
+                this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+            }
+            return;
+        }
+
+        const animation = this.animations.get(this.currentState);
+        if (!animation || animation.frames.length === 0) return;
+
+        this.frameTimer += deltaTime;
+        const frameDuration = 1 / animation.speed;
+
+        if (this.frameTimer >= frameDuration) {
+            this.frameTimer -= frameDuration;
+            this.currentFrame++;
+
+            if (this.currentFrame >= animation.frames.length) {
+                if (animation.loop) {
+                    this.currentFrame = 0;
+                } else {
+                    this.currentFrame = animation.frames.length - 1; // Stay on last frame
+                }
+            }
+
+            this.spriteRenderer.setSource(animation.frames[this.currentFrame]);
+        }
+    }
+}
+
 let MATERIA_ID_COUNTER = 0;
 class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
 class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } }
@@ -285,6 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.textContent = '📁';
                 } else if (entry.name.endsWith('.ces')) {
                     icon.textContent = '📜';
+                } else if (entry.name.endsWith('.cea')) {
+                    icon.textContent = '🎞️';
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
                     icon.textContent = '🖼️';
                 } else {
@@ -398,6 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
             } else if (ley instanceof CreativeScript) {
                 componentHTML = `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`;
+            } else if (ley instanceof Animator) {
+                componentHTML = `<h4>Animator</h4>
+                <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
+                <p>Asset de Animación: (Próximamente)</p>
+                <button id="open-animator-btn">Abrir Editor de Animación</button>`;
             }
             dom.inspectorContent.innerHTML += componentHTML;
         });
@@ -541,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const availableComponents = {
         'Renderizado': [SpriteRenderer],
+        'Animación': [Animator],
         'Físicas': [Rigidbody, BoxCollider],
         'UI': [UICanvas, UIText, UIButton],
         'Scripting': [CreativeScript]
@@ -1192,6 +1258,13 @@ function update(deltaTime) {
             showContextMenu(dom.hierarchyContextMenu, e);
         });
 
+        // Inspector button delegation
+        dom.inspectorPanel.addEventListener('click', (e) => {
+            if (e.target.id === 'open-animator-btn') {
+                dom.animationPanel.classList.remove('hidden');
+            }
+        });
+
         // Disable default context menus on other panels
         dom.scenePanel.addEventListener('contextmenu', e => e.preventDefault());
         dom.inspectorPanel.addEventListener('contextmenu', e => e.preventDefault());
@@ -1240,6 +1313,15 @@ function update(deltaTime) {
                     selectMateria(buttonMateria.id);
                     break;
                 }
+                case 'create-animated-materia': {
+                    const animMateria = new Materia('Materia Animada');
+                    animMateria.addComponent(new SpriteRenderer(animMateria));
+                    animMateria.addComponent(new Animator(animMateria));
+                    currentScene.addMateria(animMateria);
+                    updateHierarchy();
+                    selectMateria(animMateria.id);
+                    break;
+                }
             }
             hideContextMenus();
         });
@@ -1276,6 +1358,26 @@ function update(deltaTime) {
                 } catch (err) {
                     console.error("Error al crear el archivo Léame:", err);
                     alert("No se pudo crear el archivo.");
+                }
+            } else if (action === 'create-animation') {
+                const animName = prompt("Nombre del nuevo asset de animación:");
+                if (animName) {
+                    const fileName = `${animName}.cea`;
+                    const defaultContent = {
+                        animations: [
+                            { name: 'default', speed: 10, loop: true, frames: [] }
+                        ]
+                    };
+                    try {
+                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(defaultContent, null, 2));
+                        await writable.close();
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear el asset de animación:", err);
+                        alert("No se pudo crear el asset de animación.");
+                    }
                 }
             } else if (action === 'delete') {
                 if (selectedAsset) {
@@ -1395,6 +1497,8 @@ function update(deltaTime) {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
+            } else if (panelName === 'animation') {
+                dom.animationPanel.classList.toggle('hidden');
             }
         });
 
@@ -1427,7 +1531,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
