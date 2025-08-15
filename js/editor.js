@@ -255,15 +255,41 @@ document.addEventListener('DOMContentLoaded', () => {
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas;
 
     addFrameFromCanvas = function() {
+        if (!currentAnimationAsset) {
+            alert("No hay ningún asset de animación cargado.");
+            return;
+        }
         const dataUrl = dom.drawingCanvas.toDataURL();
-        console.log("Frame saved (Data URL):", dataUrl.substring(0, 50) + "...");
-        // In the next step, this will add the frame to the currentAnimationAsset
-        // and update the timeline UI.
+
+        // Assume we're editing the first animation state for now
+        if (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) {
+            currentAnimationAsset.animations[0].frames.push(dataUrl);
+            populateTimeline();
+        } else {
+            alert("El asset de animación no tiene un estado de animación válido.");
+        }
 
         // Clear canvas for next frame
         const ctx = dom.drawingCanvas.getContext('2d');
         ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
     };
+
+    function populateTimeline() {
+        dom.animationTimeline.innerHTML = '';
+        if (!currentAnimationAsset || !currentAnimationAsset.animations.length) return;
+
+        // For now, we only edit the first animation state
+        const animation = currentAnimationAsset.animations[0];
+        if (!animation) return;
+
+        animation.frames.forEach((frameData, index) => {
+            const frameImg = document.createElement('img');
+            frameImg.className = 'timeline-frame';
+            frameImg.src = frameData;
+            frameImg.dataset.index = index;
+            dom.animationTimeline.appendChild(frameImg);
+        });
+    }
 
     openAnimationAsset = async function(fileName) {
         try {
@@ -272,15 +298,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = await file.text();
             currentAnimationAsset = JSON.parse(content);
 
-            // Open the panel and populate it
             dom.animationPanel.classList.remove('hidden');
+            dom.animationPanelOverlay.classList.add('hidden');
             console.log(`Abierto ${fileName}:`, currentAnimationAsset);
-            // In the next step, this will populate the timeline.
-            dom.animationTimeline.innerHTML = ''; // Clear for now
+
+            populateTimeline();
+
         } catch(error) {
             console.error(`Error al abrir el asset de animación '${fileName}':`, error);
         }
     };
+
+    function resetAnimationPanel() {
+        dom.animationPanelOverlay.classList.remove('hidden');
+        currentAnimationAsset = null;
+    }
 
     openScriptInEditor = async function(fileName) {
         try {
@@ -1511,10 +1543,14 @@ function update(deltaTime) {
                 const panel = document.getElementById(panelId);
                 if (panel) {
                     panel.classList.add('hidden');
-                    const panelName = panelId.replace('-panel', '');
-                    panelVisibility[panelName] = false;
-                    updateEditorLayout();
-                    updateWindowMenuUI();
+                    if (panelId === 'animation-panel') {
+                        resetAnimationPanel();
+                    } else {
+                        const panelName = panelId.replace('-panel', '');
+                        panelVisibility[panelName] = false;
+                        updateEditorLayout();
+                        updateWindowMenuUI();
+                    }
                 }
             });
         });
@@ -1717,7 +1753,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'animation-timeline'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'animation-timeline', 'animation-panel-overlay'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

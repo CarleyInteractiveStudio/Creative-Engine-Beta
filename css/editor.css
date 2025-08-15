@@ -528,6 +528,21 @@ body {
     height: 100%;
 }
 
+.timeline-frame {
+    height: 80px;
+    width: 80px;
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    object-fit: contain;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.timeline-frame.active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
 #animation-editor-main {
     flex-grow: 1;
     display: flex;
@@ -575,6 +590,25 @@ body {
     background-color: transparent;
     cursor: crosshair;
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+#animation-panel-overlay {
+    position: absolute;
+    top: 45px; /* Below the header */
+    left: 0;
+    width: 100%;
+    height: calc(100% - 45px);
+    background-color: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 1.2em;
+    z-index: 1600; /* Above other content, below header */
+}
+
+#animation-panel-overlay.hidden {
+    display: none;
 }
 
 .markdown-preview {
