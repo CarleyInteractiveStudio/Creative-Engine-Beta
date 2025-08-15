@@ -226,9 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Animation Editor State
     let isDrawing = false;
     let drawingTool = 'pencil';
+    let drawingMode = 'free'; // 'free' or 'pixel'
     let drawingColor = '#ffffff';
     let lastDrawPos = { x: 0, y: 0 };
     let isMovingPanel = false;
+    let currentAnimationAsset = null; // Holds the parsed .cea file content
     let panelMoveOffset = { x: 0, y: 0 };
     let isResizingPanel = false;
     let panelResizeState = {};
@@ -250,7 +252,35 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas;
+
+    addFrameFromCanvas = function() {
+        const dataUrl = dom.drawingCanvas.toDataURL();
+        console.log("Frame saved (Data URL):", dataUrl.substring(0, 50) + "...");
+        // In the next step, this will add the frame to the currentAnimationAsset
+        // and update the timeline UI.
+
+        // Clear canvas for next frame
+        const ctx = dom.drawingCanvas.getContext('2d');
+        ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
+    };
+
+    openAnimationAsset = async function(fileName) {
+        try {
+            const fileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            currentAnimationAsset = JSON.parse(content);
+
+            // Open the panel and populate it
+            dom.animationPanel.classList.remove('hidden');
+            console.log(`Abierto ${fileName}:`, currentAnimationAsset);
+            // In the next step, this will populate the timeline.
+            dom.animationTimeline.innerHTML = ''; // Clear for now
+        } catch(error) {
+            console.error(`Error al abrir el asset de animación '${fileName}':`, error);
+        }
+    };
 
     openScriptInEditor = async function(fileName) {
         try {
@@ -1059,6 +1089,8 @@ function update(deltaTime) {
                 updateAssetBrowser();
             } else if (name.endsWith('.ces')) {
                 await openScriptInEditor(name);
+            } else if (name.endsWith('.cea')) {
+                await openAnimationAsset(name);
             }
         });
 
@@ -1540,23 +1572,35 @@ function update(deltaTime) {
             lastDrawPos = getDrawPos(e);
         });
 
+        const PIXEL_GRID_SIZE = 16;
+
         drawingCanvas.addEventListener('mousemove', (e) => {
             if (!isDrawing) return;
-            const currentPos = getDrawPos(e);
 
-            if (drawingTool === 'eraser') {
-                drawingCtx.globalCompositeOperation = 'destination-out';
-            } else {
-                drawingCtx.globalCompositeOperation = 'source-over';
+            let currentPos = getDrawPos(e);
+
+            if (drawingMode === 'pixel') {
+                drawingCtx.globalCompositeOperation = 'source-over'; // Eraser in pixel mode just paints background
+                const x = Math.floor(currentPos.x / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
+                const y = Math.floor(currentPos.y / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
+                drawingCtx.fillStyle = drawingTool === 'pencil' ? drawingColor : 'rgba(0,0,0,0)';
+                if(drawingTool === 'eraser') drawingCtx.clearRect(x,y,PIXEL_GRID_SIZE,PIXEL_GRID_SIZE);
+                else drawingCtx.fillRect(x, y, PIXEL_GRID_SIZE, PIXEL_GRID_SIZE);
+
+            } else { // Free mode
+                if (drawingTool === 'eraser') {
+                    drawingCtx.globalCompositeOperation = 'destination-out';
+                } else {
+                    drawingCtx.globalCompositeOperation = 'source-over';
+                }
+                drawingCtx.beginPath();
+                drawingCtx.strokeStyle = drawingColor;
+                drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
+                drawingCtx.lineCap = 'round';
+                drawingCtx.moveTo(lastDrawPos.x, lastDrawPos.y);
+                drawingCtx.lineTo(currentPos.x, currentPos.y);
+                drawingCtx.stroke();
             }
-
-            drawingCtx.beginPath();
-            drawingCtx.strokeStyle = drawingColor;
-            drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
-            drawingCtx.lineCap = 'round';
-            drawingCtx.moveTo(lastDrawPos.x, lastDrawPos.y);
-            drawingCtx.lineTo(currentPos.x, currentPos.y);
-            drawingCtx.stroke();
 
             lastDrawPos = currentPos;
         });
@@ -1565,10 +1609,17 @@ function update(deltaTime) {
         drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
 
         dom.drawingTools.addEventListener('click', (e) => {
-            if (e.target.matches('.tool-btn')) {
-                dom.drawingTools.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                drawingTool = e.target.dataset.tool;
+            const toolButton = e.target.closest('.tool-btn');
+            if (toolButton) {
+                if (toolButton.dataset.tool) {
+                    dom.drawingTools.querySelectorAll('[data-tool]').forEach(btn => btn.classList.remove('active'));
+                    toolButton.classList.add('active');
+                    drawingTool = toolButton.dataset.tool;
+                } else if (toolButton.dataset.drawMode) {
+                    dom.drawingTools.querySelectorAll('[data-draw-mode]').forEach(btn => btn.classList.remove('active'));
+                    toolButton.classList.add('active');
+                    drawingMode = toolButton.dataset.drawMode;
+                }
             }
         });
 
@@ -1644,6 +1695,8 @@ function update(deltaTime) {
             dom.animationPanel.classList.toggle('timeline-collapsed');
         });
 
+        dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
+
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1664,7 +1717,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'animation-timeline'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

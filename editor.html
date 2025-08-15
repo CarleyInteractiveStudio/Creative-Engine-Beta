@@ -159,6 +159,7 @@
                         <label for="animation-speed">Velocidad:</label>
                         <input type="number" id="animation-speed" value="10" min="1">
                         <span>FPS</span>
+                        <button id="add-frame-btn">➕ Añadir Frame</button>
                     </div>
                     <div id="animation-timeline-container">
                         <div id="animation-timeline">
@@ -173,6 +174,9 @@
                             <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
                             <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
                             <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
+                            <hr>
+                            <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
+                            <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
                         </div>
                         <div id="drawing-canvas-container">
                             <canvas id="drawing-canvas" width="512" height="512"></canvas>
