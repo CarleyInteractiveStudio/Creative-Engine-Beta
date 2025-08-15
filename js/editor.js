@@ -151,7 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
-    let renderer = null;
+    let renderer = null, gameRenderer = null;
+    let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
         hierarchy: true,
         inspector: true,
@@ -176,6 +177,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 5. Core Editor Functions ---
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset;
+
+    openScriptInEditor = async function(fileName) {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            currentlyOpenFileHandle = await projectHandle.getFileHandle(fileName);
+            const file = await currentlyOpenFileHandle.getFile();
+            const content = await file.text();
+
+            if (!codeEditor) {
+                // First time opening a file, initialize the editor
+                codeEditor = new EditorView({
+                    doc: content,
+                    extensions: [basicSetup, javascript(), oneDark],
+                    parent: dom.codeEditorContent
+                });
+            } else {
+                // Editor already exists, just update its content
+                codeEditor.dispatch({
+                    changes: {from: 0, to: codeEditor.state.doc.length, insert: content}
+                });
+            }
+
+            // Switch to the code editor tab
+            dom.scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
+            console.log(`Abierto ${fileName} en el editor.`);
+
+        } catch (error) {
+            console.error(`Error al abrir el script '${fileName}':`, error);
+            alert(`No se pudo abrir el script. Revisa la consola.`);
+        }
+    };
 
     updateInspectorForAsset = async function(assetElement) {
         if (!assetElement || !assetElement.textContent.endsWith('.ces')) {
@@ -352,31 +385,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
     };
 
-    updateScene = function() {
-        if (!renderer) return;
-        renderer.begin();
+    updateScene = function(targetRenderer, isGameView = false) {
+        if (!targetRenderer) return;
+        targetRenderer.begin();
 
-        // Draw a grid for reference
-        const gridSize = 50;
-        const halfWidth = renderer.canvas.width / renderer.camera.zoom;
-        const halfHeight = renderer.canvas.height / renderer.camera.zoom;
-        const startX = Math.floor((renderer.camera.x - halfWidth) / gridSize) * gridSize;
-        const endX = Math.ceil((renderer.camera.x + halfWidth) / gridSize) * gridSize;
-        const startY = Math.floor((renderer.camera.y - halfHeight) / gridSize) * gridSize;
-        const endY = Math.ceil((renderer.camera.y + halfHeight) / gridSize) * gridSize;
+        // Draw a grid for reference only in the editor scene view
+        if (!isGameView) {
+            const gridSize = 50;
+            const halfWidth = targetRenderer.canvas.width / targetRenderer.camera.zoom;
+            const halfHeight = targetRenderer.canvas.height / targetRenderer.camera.zoom;
+            const startX = Math.floor((targetRenderer.camera.x - halfWidth) / gridSize) * gridSize;
+            const endX = Math.ceil((targetRenderer.camera.x + halfWidth) / gridSize) * gridSize;
+            const startY = Math.floor((targetRenderer.camera.y - halfHeight) / gridSize) * gridSize;
+            const endY = Math.ceil((targetRenderer.camera.y + halfHeight) / gridSize) * gridSize;
 
-        renderer.ctx.strokeStyle = '#3a3a3a';
-        renderer.ctx.lineWidth = 1 / renderer.camera.zoom;
-        renderer.ctx.beginPath();
-        for (let x = startX; x <= endX; x += gridSize) {
-            renderer.ctx.moveTo(x, startY);
-            renderer.ctx.lineTo(x, endY);
+            targetRenderer.ctx.strokeStyle = '#3a3a3a';
+            targetRenderer.ctx.lineWidth = 1 / targetRenderer.camera.zoom;
+            targetRenderer.ctx.beginPath();
+            for (let x = startX; x <= endX; x += gridSize) {
+                targetRenderer.ctx.moveTo(x, startY);
+                targetRenderer.ctx.lineTo(x, endY);
+            }
+            for (let y = startY; y <= endY; y += gridSize) {
+                targetRenderer.ctx.moveTo(startX, y);
+                targetRenderer.ctx.lineTo(endX, y);
+            }
+            targetRenderer.ctx.stroke();
         }
-        for (let y = startY; y <= endY; y += gridSize) {
-            renderer.ctx.moveTo(startX, y);
-            renderer.ctx.lineTo(endX, y);
-        }
-        renderer.ctx.stroke();
 
         // Draw Materias
         currentScene.materias.forEach(materia => {
@@ -386,35 +421,32 @@ document.addEventListener('DOMContentLoaded', () => {
             let drawn = false;
             const spriteRenderer = materia.getComponent(SpriteRenderer);
             if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
-                // For now, assume sprite is 100x100 pixels, will need size from component later
-                renderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100, 100);
+                targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100, 100);
                 drawn = true;
             }
 
             const boxCollider = materia.getComponent(BoxCollider);
             if (boxCollider) {
-                // Draw collider shape if no sprite was drawn
                 if (!drawn) {
-                    renderer.drawRect(transform.x, transform.y, boxCollider.width, boxCollider.height, 'rgba(144, 238, 144, 0.5)');
+                    targetRenderer.drawRect(transform.x, transform.y, boxCollider.width, boxCollider.height, 'rgba(144, 238, 144, 0.5)');
                 }
             }
 
-            // If nothing else to draw, draw a default placeholder
             if (!drawn && !boxCollider) {
-                 renderer.drawRect(transform.x, transform.y, 20, 20, 'rgba(128, 128, 128, 0.5)');
+                 targetRenderer.drawRect(transform.x, transform.y, 20, 20, 'rgba(128, 128, 128, 0.5)');
             }
 
-            // Draw selection outline
-            if (selectedMateria && selectedMateria.id === materia.id) {
-                renderer.ctx.strokeStyle = 'yellow';
-                renderer.ctx.lineWidth = 2 / renderer.camera.zoom;
+            // Draw selection outline only in the editor scene view
+            if (!isGameView && selectedMateria && selectedMateria.id === materia.id) {
+                targetRenderer.ctx.strokeStyle = 'yellow';
+                targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.zoom;
                 const selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
                 const selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
-                renderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+                targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
             }
         });
 
-        renderer.end();
+        targetRenderer.end();
     };
 
     selectMateria = function(materiaId) {
@@ -431,7 +463,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateHierarchy();
         updateInspector(); // This will now show the materia inspector
-        updateScene();
+        if (renderer) {
+            updateScene(renderer, false);
+        }
     };
 
     const availableComponents = {
@@ -572,11 +606,18 @@ function update(deltaTime) {
         InputManager.update();
         updateDebugPanel();
 
-        // Always update the scene rendering
-        updateScene();
-
-        if(isGameRunning) {
-            runGameLoop(); // No longer needs timestamp
+        if (isGameRunning) {
+            runGameLoop(); // This handles the logic update
+            // When game is running, update both views
+            if (renderer) updateScene(renderer, false); // Editor view with gizmos
+            if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
+        } else {
+            // When paused, only update the currently active view
+            if (activeView === 'scene-content' && renderer) {
+                updateScene(renderer, false);
+            } else if (activeView === 'game-content' && gameRenderer) {
+                updateScene(gameRenderer, true);
+            }
         }
 
         editorLoopId = requestAnimationFrame(editorLoop);
@@ -735,6 +776,14 @@ function update(deltaTime) {
     }
 
     function setupEventListeners() {
+        // Double-click to open script
+        dom.assetsContent.addEventListener('dblclick', async (e) => {
+            const item = e.target.closest('.asset-item');
+            if (item && item.textContent.endsWith('.ces')) {
+                await openScriptInEditor(item.textContent);
+            }
+        });
+
         // Tool selection
         const toolMoveBtn = document.getElementById('tool-move');
         const toolPanBtn = document.getElementById('tool-pan');
@@ -809,9 +858,8 @@ function update(deltaTime) {
 
         // Canvas resizing
         window.addEventListener('resize', () => {
-            if (renderer) {
-                renderer.resize();
-            }
+            if (renderer) renderer.resize();
+            if (gameRenderer) gameRenderer.resize();
         });
 
         // Asset Browser item selection
@@ -958,6 +1006,37 @@ function update(deltaTime) {
             hideContextMenus();
         });
 
+        // Scene/Game/Code View Toggle Logic
+        dom.scenePanel.querySelector('.view-toggle').addEventListener('click', (e) => {
+            if (e.target.matches('.view-toggle-btn')) {
+                const viewId = e.target.dataset.view;
+                activeView = viewId;
+
+                // Update button active states
+                dom.scenePanel.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Update view content visibility
+                dom.scenePanel.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
+                document.getElementById(viewId).classList.add('active');
+
+                // Show/hide game controls
+                const gameControls = dom.scenePanel.querySelector('#game-controls');
+                if (viewId === 'scene-content' || viewId === 'game-content') {
+                    gameControls.style.display = 'flex';
+                } else {
+                    gameControls.style.display = 'none';
+                }
+
+                // Ensure canvas is resized after being made visible
+                if (viewId === 'scene-content' && renderer) {
+                    setTimeout(() => renderer.resize(), 0);
+                } else if (viewId === 'game-content' && gameRenderer) {
+                    setTimeout(() => gameRenderer.resize(), 0);
+                }
+            }
+        });
+
         // Panel Close Button Logic
         document.querySelectorAll('.close-panel-btn').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -1018,13 +1097,14 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
         });
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
         dom.sceneCanvas = document.getElementById('scene-canvas');
+        dom.gameCanvas = document.getElementById('game-canvas');
 
         console.log("Initializing Creative Engine Editor...");
         try {
@@ -1039,6 +1119,7 @@ function update(deltaTime) {
 
             // Initialize Core Systems
             renderer = new Renderer(dom.sceneCanvas);
+            gameRenderer = new Renderer(dom.gameCanvas);
             physicsSystem = new PhysicsSystem(currentScene);
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
