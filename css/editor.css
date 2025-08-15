@@ -541,16 +541,18 @@ body {
     position: relative;
 }
 
-#scene-panel .tab-content,
+#scene-panel .view-content,
 #assets-panel .tab-content {
     display: none;
     height: 100%;
     width: 100%;
     overflow: auto;
     position: absolute;
+    top: 0;
+    left: 0;
 }
 
-#scene-panel .tab-content.active,
+#scene-panel .view-content.active,
 #assets-panel .tab-content.active {
     display: block;
 }
