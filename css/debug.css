@@ -1,0 +1,37 @@
+#debug-content {
+    background-color: #1a1a1a;
+    color: #00ff00;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    padding: 10px;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-content: flex-start;
+}
+
+.debug-section {
+    background-color: #262626;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 10px;
+    flex: 1 1 250px; /* Flexbox for responsive sections */
+}
+
+.debug-section h4 {
+    color: #00caff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.debug-section pre {
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #d1d1d1;
+}
