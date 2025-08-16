@@ -290,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSceneFileHandle = null;
     let currentDirectoryPath = 'Assets';
     let isSceneDirty = false; // To track unsaved changes
+    const assetURLCache = new Map();
 
 
     // --- 2. DOM Elements ---
@@ -302,7 +303,17 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, getURLForFileHandle;
+
+    getURLForFileHandle = async function(fileHandle) {
+        if (assetURLCache.has(fileHandle.name)) {
+            return assetURLCache.get(fileHandle.name);
+        }
+        const file = await fileHandle.getFile();
+        const url = URL.createObjectURL(file);
+        assetURLCache.set(fileHandle.name, url);
+        return url;
+    };
 
     saveAssetMeta = async function(assetName, metaData) {
         try {
@@ -851,8 +862,16 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Proyecto:", projectName);
             const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
             console.log("Project handle obtenido:", projectHandle);
-            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-            console.log("Assets handle obtenido:", assetsHandle);
+
+            let assetsHandle;
+            try {
+                assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                console.log("Assets handle obtenido:", assetsHandle);
+            } catch (e) {
+                console.error("¡ERROR CRÍTICO! No se pudo obtener el handle de la carpeta 'Assets'.", e);
+                alert("Error fatal: No se pudo encontrar la carpeta 'Assets' en el directorio del proyecto. El proyecto puede estar corrupto o no tener la estructura correcta.");
+                return;
+            }
 
             if (!currentDirectoryHandle) {
              currentDirectoryHandle = assetsHandle;
@@ -888,7 +907,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Poblando grid view para:`, dirHandle.name);
 
             for await (const entry of dirHandle.values()) {
-                console.log(`Encontrado entry en grid view:`, entry.name, `(kind: ${entry.kind})`);
                 const item = document.createElement('div');
                 item.className = 'grid-item';
                 item.draggable = true;
@@ -898,6 +916,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const icon = document.createElement('div');
                 icon.className = 'icon';
+
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = entry.name;
+
+                item.appendChild(icon);
+                item.appendChild(name);
+                gridViewContainer.appendChild(item);
 
                 if (entry.kind === 'directory') {
                     icon.textContent = '📁';
