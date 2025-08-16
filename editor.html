@@ -16,12 +16,12 @@
                 <div class="menu-content">
                     <a href="#" id="menu-save-scene">Guardar Escena</a>
                     <a href="#" id="menu-save-scene-as">Guardar Escena Como...</a>
-                    <hr>
+                    <div role="separator"><hr></div>
                     <a href="#" id="menu-import-project">Importar Proyecto</a>
                     <a href="#" id="menu-export-project">Exportar Proyecto</a>
-                    <hr>
+                    <div role="separator"><hr></div>
                     <a href="#" id="menu-import-asset">Importar Asset</a>
-                    <hr>
+                    <div role="separator"><hr></div>
                     <a href="#" id="menu-build">Build</a>
                 </div>
             </div>
@@ -40,7 +40,7 @@
                     <a href="#" id="menu-window-inspector">Inspector</a>
                     <a href="#" id="menu-window-assets">Navegador</a>
                     <a href="#" id="menu-window-console">Consola</a>
-                    <hr>
+                    <div role="separator"><hr></div>
                     <a href="#" id="menu-window-animation">Editor de Animación</a>
                     <a href="#" id="menu-window-animator" class="disabled">Controlador de Animación</a>
                 </div>
@@ -158,7 +158,7 @@
                 <div class="panel-content">
                     <div id="animation-toolbar">
                         <button id="animation-save-btn" title="Guardar Asset">💾 Guardar</button>
-                        <select id="animation-state-selector"></select>
+                        <select id="animation-state-selector" title="Seleccionar estado de animación"></select>
                         <button id="animation-play-btn">▶️</button>
                         <button id="animation-stop-btn">⏹️</button>
                         <label for="animation-speed">Velocidad:</label>
@@ -218,10 +218,10 @@
                     <li data-action="create-material">Material (.ceMat)</li>
                 </ul>
             </li>
-            <hr>
+            <li role="separator"><hr></li>
             <li data-action="rename">Renombrar</li>
             <li data-action="delete" class="danger">Borrar</li>
-            <hr class="folder-only-divider" style="display: none;">
+            <li role="separator" class="folder-only-divider" style="display: none;"><hr></li>
             <li data-action="export-package" class="folder-only" style="display: none;">Exportar Paquete (.cep)</li>
         </ul>
     </div>
@@ -237,7 +237,7 @@
                     <li data-action="create-ui-image">Imagen</li>
                 </ul>
             </li>
-            <hr>
+            <li role="separator"><hr></li>
             <li data-action="create-camera">Cámara</li>
             <li data-action="create-materia">Crear Materia (Primitiva)</li>
             <li data-action="create-animated-materia">Crear Materia Animada</li>
