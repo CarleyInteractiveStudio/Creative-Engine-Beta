@@ -288,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let editorLoopId = null;
     let deltaTime = 0;
     let currentSceneFileHandle = null;
+    let currentDirectoryPath = 'Assets';
     let isSceneDirty = false; // To track unsaved changes
 
 
@@ -834,18 +835,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateAssetBrowser = async function(selectHandle = null) {
-        if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
+        console.log("Iniciando updateAssetBrowser...");
+        if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) {
+            console.error("Error: projectsDirHandle o elementos del DOM no encontrados.");
+            return;
+        }
 
         const folderTreeContainer = dom.assetFolderTree;
         const gridViewContainer = dom.assetGridView;
 
         folderTreeContainer.innerHTML = '';
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            console.log("Proyecto:", projectName);
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            console.log("Project handle obtenido:", projectHandle);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+            console.log("Assets handle obtenido:", assetsHandle);
 
-        if (!currentDirectoryHandle) {
+            if (!currentDirectoryHandle) {
              currentDirectoryHandle = assetsHandle;
         }
 
@@ -876,8 +885,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gridViewContainer.innerHTML = '';
             // Store the handle on the element for context menus
             gridViewContainer.directoryHandle = dirHandle;
+            console.log(`Poblando grid view para:`, dirHandle.name);
 
             for await (const entry of dirHandle.values()) {
+                console.log(`Encontrado entry en grid view:`, entry.name, `(kind: ${entry.kind})`);
                 const item = document.createElement('div');
                 item.className = 'grid-item';
                 item.draggable = true;
@@ -931,18 +942,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         async function populateFolderTree(dirHandle, container, path, depth = 0) {
+            console.log(`Poblando folder tree para:`, dirHandle.name, `en path: ${path}`);
             const folderItem = document.createElement('div');
             folderItem.className = 'folder-item';
             folderItem.textContent = dirHandle.name;
             folderItem.style.paddingLeft = `${depth * 15 + 5}px`;
             folderItem.directoryHandle = dirHandle; // Attach handle to element
+            folderItem.dataset.path = path;
 
             if (dirHandle.isSameEntry(currentDirectoryHandle)) {
                 folderItem.classList.add('active');
             }
 
-            folderItem.addEventListener('click', () => {
-                currentDirectoryHandle = dirHandle;
+            folderItem.addEventListener('click', (e) => {
+                const item = e.currentTarget;
+                currentDirectoryHandle = item.directoryHandle;
+                currentDirectoryPath = item.dataset.path;
                 updateAssetBrowser(); // Re-render everything
             });
 
@@ -976,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await populateFolderTree(assetsHandle, folderTreeContainer, 'Assets');
-            await populateGridView(currentDirectoryHandle);
+            await populateGridView(currentDirectoryHandle, currentDirectoryPath);
         } catch (error) {
             console.error("Error updating asset browser:", error);
             gridViewContainer.innerHTML = '<p class="error-message">Could not load project assets.</p>';
