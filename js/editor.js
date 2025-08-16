@@ -332,9 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        await findImages(projectHandle);
+        const assetsHandle = await projectsDirHandle.getDirectoryHandle('Assets');
+        await findImages(assetsHandle, 'Assets');
 
         imageFiles.forEach(imgPath => {
             const img = document.createElement('img');
@@ -873,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        async function populateGridView(dirHandle) {
+        async function populateGridView(dirHandle, currentPath = 'Assets') {
             gridViewContainer.innerHTML = '';
             // Store the handle on the element for context menus
             gridViewContainer.directoryHandle = dirHandle;
@@ -884,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.draggable = true;
                 item.dataset.name = entry.name;
                 item.dataset.kind = entry.kind;
+                item.dataset.fullPath = `${currentPath}/${entry.name}`;
 
                 const icon = document.createElement('div');
                 icon.className = 'icon';
@@ -930,7 +930,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        async function populateFolderTree(dirHandle, container, depth = 0) {
+        async function populateFolderTree(dirHandle, container, path, depth = 0) {
             const folderItem = document.createElement('div');
             folderItem.className = 'folder-item';
             folderItem.textContent = dirHandle.name;
@@ -969,13 +969,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for await (const entry of dirHandle.values()) {
                 if (entry.kind === 'directory') {
-                    await populateFolderTree(entry, childrenContainer, depth + 1);
+                    await populateFolderTree(entry, childrenContainer, `${path}/${entry.name}`, depth + 1);
                 }
             }
         }
 
         try {
-            await populateFolderTree(assetsHandle, folderTreeContainer);
+            await populateFolderTree(assetsHandle, folderTreeContainer, 'Assets');
             await populateGridView(currentDirectoryHandle);
         } catch (error) {
             console.error("Error updating asset browser:", error);
@@ -1728,7 +1728,7 @@ function update(deltaTime) {
                     }
                 }
             } else if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
-                const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
+                const assetPath = data.fullPath;
                 if (targetMateria) {
                     const spriteRenderer = targetMateria.getComponent(SpriteRenderer);
                     if (spriteRenderer) {
@@ -1762,7 +1762,8 @@ function update(deltaTime) {
             if (item) {
                 e.dataTransfer.setData('text/plain', JSON.stringify({
                     name: item.dataset.name,
-                    kind: item.dataset.kind
+                    kind: item.dataset.kind,
+                    fullPath: item.dataset.fullPath // Store the full path
                 }));
                 e.dataTransfer.effectAllowed = 'copy';
             }
@@ -2105,8 +2106,7 @@ function update(deltaTime) {
                     if (selectedMateria) {
                         const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                         if (spriteRenderer) {
-                            const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
-                            spriteRenderer.setSource(assetPath);
+                            spriteRenderer.setSource(data.fullPath);
                             updateInspector();
                             updateScene(renderer, false);
                         }
