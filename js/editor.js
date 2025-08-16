@@ -31,8 +31,9 @@ class SpriteRenderer extends Leyes {
         this.color = '#ffffff'; // Tint color
     }
 
-    setSource(url) {
-        this.source = url;
+    async setSource(fileHandle) {
+        this.source = fileHandle.name; // Store the name for serialization
+        const url = await getURLForFileHandle(fileHandle);
         if (url) {
             this.sprite.src = url;
         }
@@ -332,29 +333,29 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         dom.spriteSelectorModal.classList.remove('hidden');
 
-        const imageFiles = [];
-        async function findImages(dirHandle, path = '') {
+        const imageHandles = [];
+        async function findImages(dirHandle) {
             for await (const entry of dirHandle.values()) {
-                const entryPath = path ? `${path}/${entry.name}` : entry.name;
                 if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg'))) {
-                    imageFiles.push(entryPath);
+                    imageHandles.push(entry);
                 } else if (entry.kind === 'directory') {
-                    await findImages(entry, entryPath);
+                    await findImages(entry);
                 }
             }
         }
 
         const assetsHandle = await projectsDirHandle.getDirectoryHandle('Assets');
-        await findImages(assetsHandle, 'Assets');
+        await findImages(assetsHandle);
 
-        imageFiles.forEach(imgPath => {
+        imageHandles.forEach(handle => {
             const img = document.createElement('img');
-            img.src = imgPath;
+            getURLForFileHandle(handle).then(url => img.src = url);
+
             img.addEventListener('click', () => {
                 if (selectedMateria) {
                     const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                     if (spriteRenderer) {
-                        spriteRenderer.setSource(imgPath);
+                        spriteRenderer.setSource(handle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -732,10 +733,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                     <hr>
                     <div class="preview-container">
-                        <img src="${currentDirectoryHandle.name}/${assetName}" alt="Preview">
+                        <img data-asset-name="${assetName}" alt="Preview">
                     </div>
                 `;
                 dom.inspectorContent.appendChild(settingsContainer);
+
+                currentDirectoryHandle.getFileHandle(assetName)
+                    .then(handle => getURLForFileHandle(handle))
+                    .then(url => {
+                        const img = dom.inspectorContent.querySelector(`img[data-asset-name="${assetName}"]`);
+                        if(img) img.src = url;
+                    });
             } else if (assetName.endsWith('.ceMat')) {
                 const matData = JSON.parse(content);
                 const settingsContainer = document.createElement('div');
@@ -952,7 +960,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (entry.name.endsWith('.ceMat')) {
                     icon.textContent = '🎨';
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
-                    icon.textContent = '🖼️';
+                    icon.textContent = '🖼️'; // Placeholder
+                    getURLForFileHandle(entry).then(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        icon.innerHTML = '';
+                        icon.appendChild(img);
+                    });
                 } else {
                     icon.textContent = '📄';
                 }
@@ -964,6 +978,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.appendChild(icon);
                 item.appendChild(name);
                 gridViewContainer.appendChild(item);
+
+                if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg'))) {
+                    getURLForFileHandle(entry).then(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        icon.innerHTML = ''; // Clear placeholder
+                        icon.appendChild(img);
+                    });
+                }
             }
         }
 
@@ -1065,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
                 </div>`;
             } else if (ley instanceof SpriteRenderer) {
-                const previewImg = ley.source ? `<img src="${ley.source}" alt="Preview">` : 'None';
+                const previewImg = ley.source ? `<img data-source-name="${ley.source}" alt="Preview">` : 'None';
                 componentHTML = `<h4>Sprite Renderer</h4>
                 <div class="component-grid">
                     <label>Sprite</label>
@@ -1770,25 +1793,24 @@ function update(deltaTime) {
                 }
             } else if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
                 const assetPath = data.fullPath;
-                if (targetMateria) {
-                    const spriteRenderer = targetMateria.getComponent(SpriteRenderer);
-                    if (spriteRenderer) {
-                        spriteRenderer.setSource(assetPath);
+                currentDirectoryHandle.getFileHandle(data.name).then(fileHandle => {
+                    if (targetMateria) {
+                        const spriteRenderer = targetMateria.getComponent(SpriteRenderer) || new SpriteRenderer(targetMateria);
+                        spriteRenderer.setSource(fileHandle);
+                        if (!targetMateria.getComponent(SpriteRenderer)) {
+                            targetMateria.addComponent(spriteRenderer);
+                        }
+                        updateInspector();
                     } else {
-                        const newSpriteRenderer = new SpriteRenderer(targetMateria);
-                        newSpriteRenderer.setSource(assetPath);
-                        targetMateria.addComponent(newSpriteRenderer);
+                        const newMateria = new Materia(data.name.split('.')[0]);
+                        const spriteRenderer = new SpriteRenderer(newMateria);
+                        spriteRenderer.setSource(fileHandle);
+                        newMateria.addComponent(spriteRenderer);
+                        currentScene.addMateria(newMateria);
+                        updateHierarchy();
+                        selectMateria(newMateria.id);
                     }
-                    updateInspector();
-                } else {
-                    const newMateria = new Materia(data.name.split('.')[0]);
-                    const spriteRenderer = new SpriteRenderer(newMateria);
-                    spriteRenderer.setSource(assetPath);
-                    newMateria.addComponent(spriteRenderer);
-                    currentScene.addMateria(newMateria);
-                    updateHierarchy();
-                    selectMateria(newMateria.id);
-                }
+                });
             } else {
                 console.log(`El tipo de archivo '${data.name}' no se puede soltar en la jerarquía.`);
             }
@@ -2147,9 +2169,11 @@ function update(deltaTime) {
                     if (selectedMateria) {
                         const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                         if (spriteRenderer) {
-                            spriteRenderer.setSource(data.fullPath);
-                            updateInspector();
-                            updateScene(renderer, false);
+                            currentDirectoryHandle.getFileHandle(data.name).then(fileHandle => {
+                                spriteRenderer.setSource(fileHandle);
+                                updateInspector();
+                                updateScene(renderer, false);
+                            });
                         }
                     }
                 } else {
