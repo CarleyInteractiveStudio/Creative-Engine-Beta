@@ -1601,12 +1601,56 @@ function update(deltaTime) {
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', handleKeyboardShortcuts);
 
-        // Hierarchy item selection
-        dom.hierarchyContent.addEventListener('click', (e) => {
+        // Hierarchy item selection & drag/drop
+        const hierarchyContent = dom.hierarchyContent;
+        hierarchyContent.addEventListener('click', (e) => {
             const item = e.target.closest('.hierarchy-item');
             if (item) {
                 const materiaId = parseInt(item.dataset.id, 10);
                 selectMateria(materiaId);
+            }
+        });
+
+        hierarchyContent.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.hierarchy-item');
+            if(item) {
+                e.dataTransfer.setData('text/plain', item.dataset.id);
+                e.dataTransfer.effectAllowed = 'move';
+            }
+        });
+
+        hierarchyContent.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const item = e.target.closest('.hierarchy-item');
+            if(item) {
+                 // Simple visual feedback
+                document.querySelectorAll('.hierarchy-item.drag-over').forEach(i => i.classList.remove('drag-over'));
+                item.classList.add('drag-over');
+            }
+        });
+
+        hierarchyContent.addEventListener('dragleave', (e) => {
+            const item = e.target.closest('.hierarchy-item');
+            if(item) item.classList.remove('drag-over');
+        });
+
+        hierarchyContent.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.hierarchy-item.drag-over').forEach(i => i.classList.remove('drag-over'));
+
+            const targetItem = e.target.closest('.hierarchy-item');
+            const draggedId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+
+            if (targetItem) {
+                const targetId = parseInt(targetItem.dataset.id, 10);
+                if (draggedId !== targetId) { // Can't parent to self
+                    const draggedMateria = currentScene.findMateriaById(draggedId);
+                    const targetMateria = currentScene.findMateriaById(targetId);
+                    if (draggedMateria && targetMateria) {
+                        targetMateria.addChild(draggedMateria);
+                        updateHierarchy();
+                    }
+                }
             }
         });
 
