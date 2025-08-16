@@ -216,6 +216,8 @@
             <hr>
             <li data-action="rename">Renombrar</li>
             <li data-action="delete" class="danger">Borrar</li>
+            <hr class="folder-only-divider" style="display: none;">
+            <li data-action="export-package" class="folder-only" style="display: none;">Exportar Paquete (.cep)</li>
         </ul>
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
@@ -277,6 +279,7 @@
     </div>
     <div id="debug-display"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="js/editor.js"></script>
 </body>
 </html>

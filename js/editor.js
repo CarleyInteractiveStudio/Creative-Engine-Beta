@@ -258,7 +258,54 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage;
+
+    function downloadBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    async function addFolderToZip(zip, dirHandle, path = '') {
+        const manifest = [];
+        for await (const entry of dirHandle.values()) {
+            const entryPath = path ? `${path}/${entry.name}` : entry.name;
+            manifest.push({name: entry.name, kind: entry.kind});
+            if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                zip.file(entryPath, file);
+            } else if (entry.kind === 'directory') {
+                const folderZip = zip.folder(entryPath);
+                await addFolderToZip(folderZip, entry, ''); // Recurse with empty path for sub-zip
+            }
+        }
+        // This manifest logic is simplified; a real implementation might be more complex
+        // zip.file(path ? `${path}/manifest.json` : 'manifest.json', JSON.stringify(manifest, null, 2));
+    }
+
+    exportPackage = async function(folderName) {
+        if (!folderName) return;
+        console.log(`Exportando paquete desde: ${folderName}`);
+        try {
+            const dirHandle = await currentDirectoryHandle.getDirectoryHandle(folderName);
+            const zip = new JSZip();
+
+            await addFolderToZip(zip, dirHandle, folderName);
+
+            const content = await zip.generateAsync({type: 'blob'});
+            downloadBlob(content, `${folderName}.cep`);
+            console.log("Paquete exportado con éxito.");
+
+        } catch(error) {
+            console.error(`Error al exportar el paquete:`, error);
+            alert("No se pudo exportar el paquete.");
+        }
+    };
 
     serializeScene = function(scene) {
         const sceneData = {
@@ -1525,11 +1572,27 @@ function update(deltaTime) {
             e.preventDefault();
 
             const item = e.target.closest('.grid-item');
-            if (item) {
-                // Right-clicked on an item, select it first
+            const exportOption = dom.contextMenu.querySelector('[data-action="export-package"]');
+            const exportDivider = dom.contextMenu.querySelector('.folder-only-divider');
+
+            if (item && item.dataset.kind === 'directory') {
+                // Right-clicked on a folder, select it and show export option
                 gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 updateInspectorForAsset(item.dataset.name);
+                exportOption.style.display = 'block';
+                exportDivider.style.display = 'block';
+            } else if (item) {
+                 // Right-clicked on a file
+                gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                updateInspectorForAsset(item.dataset.name);
+                exportOption.style.display = 'none';
+                exportDivider.style.display = 'none';
+            } else {
+                // Right-clicked on empty space
+                exportOption.style.display = 'none';
+                exportDivider.style.display = 'none';
             }
 
             showContextMenu(dom.contextMenu, e);
@@ -1707,6 +1770,12 @@ function update(deltaTime) {
                 } else {
                     alert("Por favor, selecciona un archivo o carpeta para borrar.");
                 }
+            } else if (action === 'export-package') {
+                 if (selectedAsset && selectedAsset.dataset.kind === 'directory') {
+                    await exportPackage(selectedAsset.dataset.name);
+                 } else {
+                    alert("Por favor, selecciona una carpeta para exportar.");
+                 }
             } else if (action === 'rename') {
                 if (selectedAsset) {
                     const oldName = selectedAsset.dataset.name;
