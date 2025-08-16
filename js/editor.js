@@ -671,6 +671,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.textContent = '🎞️';
                 } else if (entry.name.endsWith('.ceScene')) {
                     icon.textContent = '🎬';
+                } else if (entry.name.endsWith('.cep')) {
+                    icon.textContent = '📦';
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
                     icon.textContent = '🖼️';
                 } else {
@@ -1162,6 +1164,26 @@ function update(deltaTime) {
 
         menu.style.left = `${x}px`;
         menu.style.top = `${y}px`;
+
+        // Check and reposition submenus
+        const submenus = menu.querySelectorAll('.submenu');
+        submenus.forEach(submenu => {
+            const parentItem = submenu.parentElement.getBoundingClientRect();
+            const submenuHeight = submenu.offsetHeight; // This might be 0 if not displayed, need to temporarily show it
+
+            // Temporarily display to measure
+            submenu.style.visibility = 'hidden';
+            submenu.style.display = 'block';
+            const realHeight = submenu.offsetHeight;
+            submenu.style.visibility = '';
+            submenu.style.display = '';
+
+            if (parentItem.top + realHeight > windowHeight) {
+                submenu.classList.add('submenu-up');
+            } else {
+                submenu.classList.remove('submenu-up');
+            }
+        });
     }
 
     function hideContextMenus() {
@@ -1776,6 +1798,25 @@ function update(deltaTime) {
                  } else {
                     alert("Por favor, selecciona una carpeta para exportar.");
                  }
+            } else if (action === 'create-package') {
+                const packageName = prompt("Nombre del nuevo paquete:");
+                if (packageName) {
+                    const fileName = `${packageName}.cep`;
+                    const zip = new JSZip();
+                    zip.file("manifest.json", JSON.stringify({ name: packageName, version: "1.0.0", contents: [] }, null, 2));
+
+                    try {
+                        const blob = await zip.generateAsync({type: 'blob'});
+                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear el paquete:", err);
+                        alert("No se pudo crear el paquete.");
+                    }
+                }
             } else if (action === 'rename') {
                 if (selectedAsset) {
                     const oldName = selectedAsset.dataset.name;

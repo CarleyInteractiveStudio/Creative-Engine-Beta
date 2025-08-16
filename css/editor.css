@@ -704,6 +704,11 @@ body {
     left: 100%;
     top: -5px; /* Adjust to align with parent */
     background-color: var(--bg-tertiary);
+}
+
+.context-menu .submenu.submenu-up {
+    top: auto;
+    bottom: 0;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 5px 0;
