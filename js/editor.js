@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDrawPos = { x: 0, y: 0 };
     let isMovingPanel = false;
     let currentAnimationAsset = null; // Holds the parsed .cea file content
+    let currentAnimationFileHandle = null; // Holds the file handle for saving
     let currentFrameIndex = -1;
     let isAnimationPlaying = false;
     let animationPlaybackId = null;
@@ -297,10 +298,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function saveAnimationAsset() {
+        if (!currentAnimationAsset || !currentAnimationFileHandle) {
+            alert("No hay asset de animación cargado para guardar.");
+            return;
+        }
+        try {
+            const writable = await currentAnimationFileHandle.createWritable();
+            const content = JSON.stringify(currentAnimationAsset, null, 2);
+            await writable.write(content);
+            await writable.close();
+            console.log(`Asset '${currentAnimationFileHandle.name}' guardado.`);
+            // Optional: add a visual confirmation (e.g., a temporary "Saved!" message)
+        } catch (error) {
+            console.error("Error al guardar el asset de animación:", error);
+            alert("No se pudo guardar el archivo.");
+        }
+    }
+
     openAnimationAsset = async function(fileName) {
         try {
-            const fileHandle = await currentDirectoryHandle.getFileHandle(fileName);
-            const file = await fileHandle.getFile();
+            currentAnimationFileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            const file = await currentAnimationFileHandle.getFile();
             const content = await file.text();
             currentAnimationAsset = JSON.parse(content);
 
@@ -426,6 +445,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 preview.className = 'markdown-preview';
                 preview.innerHTML = html;
                 dom.inspectorContent.appendChild(preview);
+            } else if (assetName.endsWith('.cea')) {
+                const animData = JSON.parse(content);
+                const anim = animData.animations[0]; // Assume first animation
+
+                const previewContainer = document.createElement('div');
+                previewContainer.className = 'inspector-anim-preview';
+
+                const frameCount = document.createElement('p');
+                frameCount.textContent = `Fotogramas: ${anim.frames.length}`;
+
+                const timeline = document.createElement('div');
+                timeline.className = 'mini-timeline';
+                anim.frames.forEach(frameSrc => {
+                    const img = document.createElement('img');
+                    img.src = frameSrc;
+                    timeline.appendChild(img);
+                });
+
+                const controls = document.createElement('div');
+                const playBtn = document.createElement('button');
+                playBtn.textContent = '▶️ Play';
+
+                let isPlaying = false;
+                let playbackId = null;
+                let currentFrame = 0;
+
+                playBtn.addEventListener('click', () => {
+                    isPlaying = !isPlaying;
+                    if (isPlaying) {
+                        playBtn.textContent = '⏹️ Stop';
+                        let lastTime = performance.now();
+
+                        function loop(time) {
+                            if (!isPlaying) return;
+                            if (time - lastTime > (1000 / anim.speed)) {
+                                lastTime = time;
+                                currentFrame = (currentFrame + 1) % anim.frames.length;
+                                // Highlight the current frame in the mini-timeline
+                                timeline.childNodes.forEach((node, i) => node.style.border = i === currentFrame ? '2px solid var(--accent-color)' : 'none');
+                            }
+                           playbackId = requestAnimationFrame(loop);
+                        }
+                        playbackId = requestAnimationFrame(loop);
+
+                    } else {
+                        playBtn.textContent = '▶️ Play';
+                        cancelAnimationFrame(playbackId);
+                        timeline.childNodes.forEach(node => node.style.border = 'none');
+                    }
+                });
+
+                controls.appendChild(playBtn);
+                previewContainer.appendChild(frameCount);
+                previewContainer.appendChild(timeline);
+                previewContainer.appendChild(controls);
+                dom.inspectorContent.appendChild(previewContainer);
+
             } else {
                  dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
             }
@@ -1788,6 +1864,7 @@ function update(deltaTime) {
 
         dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
         dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
+        dom.animationSaveBtn.addEventListener('click', saveAnimationAsset);
 
         dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
 
@@ -1842,7 +1919,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
