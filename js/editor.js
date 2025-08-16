@@ -244,6 +244,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
+    let currentSceneFileHandle = null;
+    let isSceneDirty = false; // To track unsaved changes
 
 
     // --- 2. DOM Elements ---
@@ -256,7 +258,79 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene;
+
+    serializeScene = function(scene) {
+        const sceneData = {
+            materias: []
+        };
+        for (const materia of scene.materias) {
+            const materiaData = {
+                id: materia.id,
+                name: materia.name,
+                leyes: []
+            };
+            for (const ley of materia.leyes) {
+                const leyData = {
+                    type: ley.constructor.name,
+                    properties: {}
+                };
+                // Copy properties, but not the 'materia' back-reference
+                for (const key in ley) {
+                    if (key !== 'materia' && typeof ley[key] !== 'function') {
+                        leyData.properties[key] = ley[key];
+                    }
+                }
+                materiaData.leyes.push(leyData);
+            }
+            sceneData.materias.push(materiaData);
+        }
+        return sceneData;
+    };
+
+    deserializeScene = function(sceneData) {
+        const newScene = new Scene();
+        for (const materiaData of sceneData.materias) {
+            const newMateria = new Materia(materiaData.name);
+            newMateria.id = materiaData.id;
+            newMateria.leyes = []; // Clear default transform
+
+            for (const leyData of materiaData.leyes) {
+                const ComponentClass = window[leyData.type] || eval(leyData.type);
+                if (ComponentClass) {
+                    const newLey = new ComponentClass(newMateria);
+                    Object.assign(newLey, leyData.properties);
+                    newMateria.addComponent(newLey);
+                }
+            }
+            newScene.addMateria(newMateria);
+        }
+        return newScene;
+    };
+
+    loadScene = async function(fileName) {
+        if(isSceneDirty) {
+            if(!confirm("Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.")) {
+                return;
+            }
+        }
+        try {
+            const fileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const sceneData = JSON.parse(content);
+
+            currentScene = deserializeScene(sceneData);
+            currentSceneFileHandle = fileHandle;
+            dom.currentSceneName.textContent = fileName.replace('.ceScene', '');
+
+            updateHierarchy();
+            selectMateria(null);
+            isSceneDirty = false;
+        } catch (error) {
+            console.error(`Error al cargar la escena '${fileName}':`, error);
+        }
+    };
 
     addFrameFromCanvas = function() {
         if (!currentAnimationAsset) {
@@ -548,6 +622,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.textContent = '📜';
                 } else if (entry.name.endsWith('.cea')) {
                     icon.textContent = '🎞️';
+                } else if (entry.name.endsWith('.ceScene')) {
+                    icon.textContent = '🎬';
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
                     icon.textContent = '🖼️';
                 } else {
@@ -1252,6 +1328,8 @@ function update(deltaTime) {
                 await openScriptInEditor(name);
             } else if (name.endsWith('.cea')) {
                 await openAnimationAsset(name);
+            } else if (name.endsWith('.ceScene')) {
+                await loadScene(name);
             }
         });
 
@@ -1552,6 +1630,17 @@ function update(deltaTime) {
                         alert("No se pudo crear la carpeta.");
                     }
                 }
+            } else if (action === 'create-folder') {
+                const folderName = prompt("Nombre de la nueva carpeta:");
+                if (folderName) {
+                    try {
+                        await currentDirectoryHandle.getDirectoryHandle(folderName, { create: true });
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear la carpeta:", err);
+                        alert("No se pudo crear la carpeta.");
+                    }
+                }
             } else if (action === 'create-readme') {
                 const fileName = "NUEVO-LEAME.md";
                 try {
@@ -1563,6 +1652,24 @@ function update(deltaTime) {
                 } catch (err) {
                     console.error("Error al crear el archivo Léame:", err);
                     alert("No se pudo crear el archivo.");
+                }
+            } else if (action === 'create-scene') {
+                const sceneName = prompt("Nombre de la nueva escena:");
+                if (sceneName) {
+                    const fileName = `${sceneName}.ceScene`;
+                    const defaultContent = {
+                        materias: [] // An empty scene
+                    };
+                    try {
+                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(defaultContent, null, 2));
+                        await writable.close();
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear la escena:", err);
+                        alert("No se pudo crear la escena.");
+                    }
                 }
             } else if (action === 'create-animation') {
                 const animName = prompt("Nombre del nuevo asset de animación:");
@@ -1919,7 +2026,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

@@ -186,6 +186,15 @@ body {
     gap: 15px;
 }
 
+#current-scene-name {
+    font-weight: normal;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
 .viewport-tools {
     display: flex;
     gap: 5px;
