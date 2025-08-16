@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDrawPos = { x: 0, y: 0 };
     let isMovingPanel = false;
     let currentAnimationAsset = null; // Holds the parsed .cea file content
+    let currentFrameIndex = -1;
     let panelMoveOffset = { x: 0, y: 0 };
     let isResizingPanel = false;
     let panelResizeState = {};
@@ -285,6 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
         animation.frames.forEach((frameData, index) => {
             const frameImg = document.createElement('img');
             frameImg.className = 'timeline-frame';
+            if (index === currentFrameIndex) {
+                frameImg.classList.add('active');
+            }
             frameImg.src = frameData;
             frameImg.dataset.index = index;
             dom.animationTimeline.appendChild(frameImg);
@@ -312,6 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetAnimationPanel() {
         dom.animationPanelOverlay.classList.remove('hidden');
         currentAnimationAsset = null;
+        currentFrameIndex = -1;
+        dom.animationTimeline.innerHTML = '';
     }
 
     openScriptInEditor = async function(fileName) {
@@ -1735,6 +1741,37 @@ function update(deltaTime) {
 
         dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
 
+        dom.deleteFrameBtn.addEventListener('click', () => {
+            if (currentFrameIndex === -1) {
+                alert("Por favor, selecciona un fotograma para borrar.");
+                return;
+            }
+
+            if (currentAnimationAsset && currentAnimationAsset.animations[0]) {
+                currentAnimationAsset.animations[0].frames.splice(currentFrameIndex, 1);
+                currentFrameIndex = -1; // Deselect
+
+                const ctx = dom.drawingCanvas.getContext('2d');
+                ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
+
+                populateTimeline();
+            }
+        });
+
+        dom.animationTimeline.addEventListener('click', (e) => {
+            const frame = e.target.closest('.timeline-frame');
+            if (!frame) return;
+
+            const index = parseInt(frame.dataset.index, 10);
+            currentFrameIndex = index;
+
+            const ctx = dom.drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
+            ctx.drawImage(frame, 0, 0);
+
+            populateTimeline(); // Re-render to show active state
+        });
+
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
             e.preventDefault();
@@ -1755,7 +1792,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'animation-timeline', 'animation-panel-overlay'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
