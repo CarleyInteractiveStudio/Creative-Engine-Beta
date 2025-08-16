@@ -848,6 +848,25 @@ body {
     align-items: center;
 }
 
+.text-transform-controls {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+.text-transform-controls button {
+    flex-grow: 1;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.text-transform-controls button.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
 /* --- Tabbed Panel Styles --- */
 #scene-panel .panel-content-container,
 #assets-panel .panel-content-container {

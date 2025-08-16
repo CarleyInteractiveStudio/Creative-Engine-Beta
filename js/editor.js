@@ -3,7 +3,7 @@ class Leyes { constructor(materia) { this.materia = materia; } update() {} }
 class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
 class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load() { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); const fileHandle = await projectHandle.getFileHandle(this.scriptName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } }
 class UICanvas extends Leyes { constructor(materia) { super(materia); } }
-class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; } }
+class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; this.color = '#ffffff'; this.textTransform = 'none'; } }
 class UIButton extends Leyes { constructor(materia) { super(materia); this.label = new UIText(materia, 'Botón'); this.color = '#2d2d30'; } }
 
 class Rigidbody extends Leyes {
@@ -170,6 +170,22 @@ class Renderer {
     // Placeholder for now
     drawImage(image, x, y, width, height) {
         this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+    }
+
+    drawText(text, x, y, color, fontSize, textTransform) {
+        this.ctx.fillStyle = color;
+        this.ctx.font = `${fontSize}px sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        let transformedText = text;
+        if (textTransform === 'uppercase') {
+            transformedText = text.toUpperCase();
+        } else if (textTransform === 'lowercase') {
+            transformedText = text.toLowerCase();
+        }
+
+        this.ctx.fillText(transformedText, x, y);
     }
 }
 
@@ -857,8 +873,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 componentHTML = '<h4>UI Canvas</h4>';
             } else if (ley instanceof UIText) {
                 componentHTML = `<h4>UI Text</h4>
-                <label>Texto</label><input type="text" class="prop-input" data-component="UIText" data-prop="text" value="${ley.text}">
-                <label>Tamaño Fuente</label><input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">`;
+                <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
+                <div class="text-transform-controls">
+                    <button class="prop-btn ${ley.textTransform === 'none' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="none">aA</button>
+                    <button class="prop-btn ${ley.textTransform === 'uppercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="uppercase">AA</button>
+                    <button class="prop-btn ${ley.textTransform === 'lowercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="lowercase">aa</button>
+                </div>
+                <div class="component-grid">
+                    <label>Font Size</label><input type="number" class="prop-input" step="1" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">
+                    <label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
+                </div>
+                `;
             } else if (ley instanceof UIButton) {
                 componentHTML = `<h4>UI Button</h4>
                 <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
@@ -925,6 +950,25 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
+
+        dom.inspectorContent.querySelectorAll('.prop-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                if (!selectedMateria) return;
+                const componentName = e.target.dataset.component;
+                const propName = e.target.dataset.prop;
+                const value = e.target.dataset.value;
+
+                const ComponentClass = window[componentName] || eval(componentName);
+                if (!ComponentClass) return;
+
+                const component = selectedMateria.getComponent(ComponentClass);
+                if (component) {
+                    component[propName] = value;
+                    updateInspector(); // Re-render inspector to update active state
+                    updateScene();
+                }
+            });
+        });
     };
 
     updateScene = function(targetRenderer, isGameView = false) {
@@ -972,6 +1016,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!drawn) {
                     targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
                 }
+            }
+
+            const uiText = materia.getComponent(UIText);
+            if (uiText) {
+                targetRenderer.drawText(uiText.text, transform.x, transform.y, uiText.color, uiText.fontSize, uiText.textTransform);
+                drawn = true;
             }
 
             if (!drawn && !boxCollider) {
