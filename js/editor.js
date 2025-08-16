@@ -301,7 +301,46 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector;
+
+    openSpriteSelector = async function() {
+        const grid = dom.spriteSelectorGrid;
+        grid.innerHTML = '';
+        dom.spriteSelectorModal.classList.remove('hidden');
+
+        const imageFiles = [];
+        async function findImages(dirHandle, path = '') {
+            for await (const entry of dirHandle.values()) {
+                const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg'))) {
+                    imageFiles.push(entryPath);
+                } else if (entry.kind === 'directory') {
+                    await findImages(entry, entryPath);
+                }
+            }
+        }
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        await findImages(projectHandle);
+
+        imageFiles.forEach(imgPath => {
+            const img = document.createElement('img');
+            img.src = imgPath;
+            img.addEventListener('click', () => {
+                if (selectedMateria) {
+                    const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
+                    if (spriteRenderer) {
+                        spriteRenderer.setSource(imgPath);
+                        updateInspector();
+                        updateScene(renderer, false);
+                    }
+                }
+                dom.spriteSelectorModal.classList.add('hidden');
+            });
+            grid.appendChild(img);
+        });
+    };
 
     function downloadBlob(blob, name) {
         const url = URL.createObjectURL(blob);
@@ -864,9 +903,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
                 </div>`;
             } else if (ley instanceof SpriteRenderer) {
+                const previewImg = ley.source ? `<img src="${ley.source}" alt="Preview">` : 'None';
                 componentHTML = `<h4>Sprite Renderer</h4>
                 <div class="component-grid">
-                    <label>Source</label><input type="text" class="prop-input" data-component="SpriteRenderer" data-prop="source" value="${ley.source}">
+                    <label>Sprite</label>
+                    <div class="sprite-dropper">
+                        <div class="sprite-preview" data-component="SpriteRenderer" data-prop="source">${previewImg}</div>
+                        <button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button>
+                    </div>
                     <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
                 </div>`;
             } else if (ley instanceof UICanvas) {
@@ -1873,10 +1917,50 @@ function update(deltaTime) {
             showContextMenu(dom.hierarchyContextMenu, e);
         });
 
-        // Inspector button delegation
+        // Inspector button delegation & Drag/Drop
         dom.inspectorPanel.addEventListener('click', (e) => {
             if (e.target.id === 'open-animator-btn') {
                 dom.animationPanel.classList.remove('hidden');
+            } else if (e.target.matches('.sprite-select-btn')) {
+                openSpriteSelector();
+            }
+        });
+
+        dom.inspectorPanel.addEventListener('dragover', (e) => {
+            const dropTarget = e.target.closest('.sprite-preview');
+            if (dropTarget) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                dropTarget.classList.add('drag-over');
+            }
+        });
+
+        dom.inspectorPanel.addEventListener('dragleave', (e) => {
+            const dropTarget = e.target.closest('.sprite-preview');
+            if (dropTarget) {
+                dropTarget.classList.remove('drag-over');
+            }
+        });
+
+        dom.inspectorPanel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dropTarget = e.target.closest('.sprite-preview');
+            if (dropTarget) {
+                dropTarget.classList.remove('drag-over');
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
+                    if (selectedMateria) {
+                        const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
+                        if (spriteRenderer) {
+                            const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
+                            spriteRenderer.setSource(assetPath);
+                            updateInspector();
+                            updateScene(renderer, false);
+                        }
+                    }
+                } else {
+                    alert("Solo se pueden asignar archivos .png o .jpg como sprites.");
+                }
             }
         });
 
@@ -1926,6 +2010,14 @@ function update(deltaTime) {
                     currentScene.addMateria(buttonMateria);
                     updateHierarchy();
                     selectMateria(buttonMateria.id);
+                    break;
+                }
+                case 'create-ui-image': {
+                    const imageMateria = new Materia('Imagen');
+                    imageMateria.addComponent(new SpriteRenderer(imageMateria));
+                    currentScene.addMateria(imageMateria);
+                    updateHierarchy();
+                    selectMateria(imageMateria.id);
                     break;
                 }
                 case 'create-animated-materia': {
@@ -2391,7 +2483,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal', 'sprite-selector-grid'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);

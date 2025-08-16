@@ -223,6 +223,44 @@ body {
     border-color: var(--accent-color);
 }
 
+.sprite-dropper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.sprite-preview {
+    width: 64px;
+    height: 64px;
+    background-color: var(--bg-primary);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    text-align: center;
+}
+.sprite-preview.drag-over {
+    border-color: var(--accent-color);
+    background-color: rgba(14, 99, 156, 0.2);
+}
+.sprite-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.sprite-select-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    cursor: pointer;
+    font-size: 1.2em;
+    line-height: 22px; /* Center the icon */
+}
+
 /* --- Editor Grid Layout --- */
 #editor-main-content {
     display: grid;
@@ -672,6 +710,29 @@ body {
 }
 .context-menu li.danger:hover {
     background-color: #c0392b;
+}
+
+#sprite-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+}
+#sprite-selector-grid img {
+    width: 100%;
+    height: 100px;
+    object-fit: contain;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+#sprite-selector-grid img:hover {
+    border-color: var(--accent-color);
 }
 
 /* --- Utility Classes --- */
