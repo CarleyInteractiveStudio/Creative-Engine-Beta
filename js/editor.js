@@ -99,21 +99,22 @@ class Animator extends Leyes {
 
 let MATERIA_ID_COUNTER = 0;
 class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
-class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } }
+class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } findFirstCamera() { return this.materias.find(m => m.getComponent(Camera)); } }
 
-class Camera {
-    constructor() {
-        this.x = 0;
-        this.y = 0;
-        this.zoom = 1.0;
+class Camera extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
+        this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
     }
 }
 
 class Renderer {
-    constructor(canvas) {
+    constructor(canvas, isEditor = false) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.camera = new Camera();
+        this.camera = null; // Will be assigned from the scene
+        this.isEditor = isEditor;
         this.resize();
     }
 
@@ -123,11 +124,37 @@ class Renderer {
     }
 
     begin() {
+        const sceneCameraMateria = currentScene.findFirstCamera();
+        let cameraComponent;
+        let cameraTransform;
+
+        if (sceneCameraMateria) {
+            cameraComponent = sceneCameraMateria.getComponent(Camera);
+            cameraTransform = sceneCameraMateria.getComponent(Transform);
+        }
+
+        // The editor renderer creates a default camera if none exists.
+        // The game renderer will have a null camera and won't render.
+        if (!cameraComponent && this.isEditor) {
+            cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
+            cameraTransform = { x: 0, y: 0 };
+        }
+
+        this.camera = cameraComponent ? {
+            ...cameraComponent,
+            x: cameraTransform.x,
+            y: cameraTransform.y,
+            // Game view zoom is determined by ortho size, editor can have its own zoom
+            effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
+        } : null;
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        // Center the camera and apply zoom
+
+        if (!this.camera) return;
+
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-        this.ctx.scale(this.camera.zoom, this.camera.zoom);
+        this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
         this.ctx.translate(-this.camera.x, -this.camera.y);
     }
 
@@ -843,6 +870,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
                 <p>Asset de Animación: (Próximamente)</p>
                 <button id="open-animator-btn">Abrir Editor de Animación</button>`;
+            } else if (ley instanceof Camera) {
+                componentHTML = `<h4>Camera</h4>
+                <div class="component-grid">
+                    <label>Orthographic Size</label>
+                    <input type="number" class="prop-input" step="10" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}">
+                </div>`;
             }
             dom.inspectorContent.innerHTML += componentHTML;
         });
@@ -946,19 +979,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Draw selection outline only in the editor scene view
-            if (!isGameView && selectedMateria && selectedMateria.id === materia.id) {
-                targetRenderer.ctx.strokeStyle = 'yellow';
-                targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.zoom;
-                let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
-                let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+            if (!isGameView) {
+                if (selectedMateria && selectedMateria.id === materia.id) {
+                    targetRenderer.ctx.strokeStyle = 'yellow';
+                    targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.effectiveZoom;
+                    let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
+                    let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
 
-                selectionWidth *= transform.scale.x;
-                selectionHeight *= transform.scale.y;
+                    selectionWidth *= transform.scale.x;
+                    selectionHeight *= transform.scale.y;
 
-                targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
-
-                // Draw gizmos on top of the selected materia
-                drawGizmos(targetRenderer, selectedMateria);
+                    targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+                }
+                // Draw gizmos for all materias in the scene view
+                drawGizmos(targetRenderer, materia);
             }
         });
 
@@ -987,6 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const availableComponents = {
         'Renderizado': [SpriteRenderer],
         'Animación': [Animator],
+        'Cámara': [Camera],
         'Físicas': [Rigidbody, BoxCollider],
         'UI': [UICanvas, UIText, UIButton],
         'Scripting': [CreativeScript]
@@ -1338,6 +1373,17 @@ function update(deltaTime) {
         const transform = materia.getComponent(Transform);
         if (!transform) return;
 
+        // Draw camera gizmo for any materia with a Camera component, if not selected
+        if (materia.getComponent(Camera) && (!selectedMateria || selectedMateria.id !== materia.id)) {
+            renderer.ctx.font = `${40 / renderer.camera.effectiveZoom}px sans-serif`;
+            renderer.ctx.textAlign = 'center';
+            renderer.ctx.fillText('📷', transform.x, transform.y);
+        }
+
+        if (!selectedMateria || selectedMateria.id !== materia.id) {
+            return; // Only draw manipulation gizmos for the selected materia
+        }
+
         const ctx = renderer.ctx;
         const camera = renderer.camera;
 
@@ -1567,6 +1613,7 @@ function update(deltaTime) {
         // --- Scene Canvas Mouse Listeners for Tools ---
         dom.sceneCanvas.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return; // Only handle left-clicks
+            if (!renderer.camera) return;
 
             const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
 
@@ -1619,15 +1666,20 @@ function update(deltaTime) {
 
         window.addEventListener('mousemove', (e) => {
             if (isPanning) {
-                const dx = (e.clientX - lastMousePosition.x) / renderer.camera.zoom;
-                const dy = (e.clientY - lastMousePosition.y) / renderer.camera.zoom;
-                renderer.camera.x -= dx;
-                renderer.camera.y -= dy;
+                const dx = (e.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
+                const dy = (e.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+                const camMateria = currentScene.findFirstCamera();
+                if(camMateria) {
+                    const camTransform = camMateria.getComponent(Transform);
+                    camTransform.x -= dx;
+                    camTransform.y -= dy;
+                }
                 lastMousePosition = { x: e.clientX, y: e.clientY };
                 updateScene(renderer, false); // Re-render on pan
             }
 
             if (isDragging) {
+                if (!renderer.camera) return;
                 const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
                 const dx = worldPos.x - dragState.startMouseX;
                 const dy = worldPos.y - dragState.startMouseY;
@@ -1789,6 +1841,14 @@ function update(deltaTime) {
                     currentScene.addMateria(animMateria);
                     updateHierarchy();
                     selectMateria(animMateria.id);
+                    break;
+                }
+                case 'create-camera': {
+                    const camMateria = new Materia('Cámara');
+                    camMateria.addComponent(new Camera(camMateria));
+                    currentScene.addMateria(camMateria);
+                    updateHierarchy();
+                    selectMateria(camMateria.id);
                     break;
                 }
             }
@@ -2258,8 +2318,8 @@ function update(deltaTime) {
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
             // Initialize Core Systems
-            renderer = new Renderer(dom.sceneCanvas);
-            gameRenderer = new Renderer(dom.gameCanvas);
+            renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
+            gameRenderer = new Renderer(dom.gameCanvas); // This is the game renderer
             physicsSystem = new PhysicsSystem(currentScene);
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
