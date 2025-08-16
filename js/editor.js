@@ -1186,81 +1186,85 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateScene = function(targetRenderer, isGameView = false) {
-        if (!targetRenderer) return;
-        targetRenderer.begin();
+        try {
+            if (!targetRenderer) return;
+            targetRenderer.begin();
 
-        // Draw a grid for reference only in the editor scene view
-        if (!isGameView) {
-            const gridSize = 50;
-            const halfWidth = targetRenderer.canvas.width / targetRenderer.camera.zoom;
-            const halfHeight = targetRenderer.canvas.height / targetRenderer.camera.zoom;
-            const startX = Math.floor((targetRenderer.camera.x - halfWidth) / gridSize) * gridSize;
-            const endX = Math.ceil((targetRenderer.camera.x + halfWidth) / gridSize) * gridSize;
-            const startY = Math.floor((targetRenderer.camera.y - halfHeight) / gridSize) * gridSize;
-            const endY = Math.ceil((targetRenderer.camera.y + halfHeight) / gridSize) * gridSize;
-
-            targetRenderer.ctx.strokeStyle = '#3a3a3a';
-            targetRenderer.ctx.lineWidth = 1 / targetRenderer.camera.zoom;
-            targetRenderer.ctx.beginPath();
-            for (let x = startX; x <= endX; x += gridSize) {
-                targetRenderer.ctx.moveTo(x, startY);
-                targetRenderer.ctx.lineTo(x, endY);
-            }
-            for (let y = startY; y <= endY; y += gridSize) {
-                targetRenderer.ctx.moveTo(startX, y);
-                targetRenderer.ctx.lineTo(endX, y);
-            }
-            targetRenderer.ctx.stroke();
-        }
-
-        // Draw Materias
-        currentScene.materias.forEach(materia => {
-            const transform = materia.getComponent(Transform);
-            if (!transform) return;
-
-            let drawn = false;
-            const spriteRenderer = materia.getComponent(SpriteRenderer);
-            if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
-                targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100 * transform.scale.x, 100 * transform.scale.y);
-                drawn = true;
-            }
-
-            const boxCollider = materia.getComponent(BoxCollider);
-            if (boxCollider) {
-                if (!drawn) {
-                    targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
-                }
-            }
-
-            const uiText = materia.getComponent(UIText);
-            if (uiText) {
-                targetRenderer.drawText(uiText.text, transform.x, transform.y, uiText.color, uiText.fontSize, uiText.textTransform);
-                drawn = true;
-            }
-
-            if (!drawn && !boxCollider) {
-                 targetRenderer.drawRect(transform.x, transform.y, 20 * transform.scale.x, 20 * transform.scale.y, 'rgba(128, 128, 128, 0.5)');
-            }
-
-            // Draw selection outline only in the editor scene view
+            // Draw a grid for reference only in the editor scene view
             if (!isGameView) {
-                if (selectedMateria && selectedMateria.id === materia.id) {
-                    targetRenderer.ctx.strokeStyle = 'yellow';
-                    targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.effectiveZoom;
-                    let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
-                    let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+                const gridSize = 50;
+                const halfWidth = targetRenderer.canvas.width / targetRenderer.camera.zoom;
+                const halfHeight = targetRenderer.canvas.height / targetRenderer.camera.zoom;
+                const startX = Math.floor((targetRenderer.camera.x - halfWidth) / gridSize) * gridSize;
+                const endX = Math.ceil((targetRenderer.camera.x + halfWidth) / gridSize) * gridSize;
+                const startY = Math.floor((targetRenderer.camera.y - halfHeight) / gridSize) * gridSize;
+                const endY = Math.ceil((targetRenderer.camera.y + halfHeight) / gridSize) * gridSize;
 
-                    selectionWidth *= transform.scale.x;
-                    selectionHeight *= transform.scale.y;
-
-                    targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+                targetRenderer.ctx.strokeStyle = '#3a3a3a';
+                targetRenderer.ctx.lineWidth = 1 / targetRenderer.camera.zoom;
+                targetRenderer.ctx.beginPath();
+                for (let x = startX; x <= endX; x += gridSize) {
+                    targetRenderer.ctx.moveTo(x, startY);
+                    targetRenderer.ctx.lineTo(x, endY);
                 }
-                // Draw gizmos for all materias in the scene view
-                drawGizmos(targetRenderer, materia);
+                for (let y = startY; y <= endY; y += gridSize) {
+                    targetRenderer.ctx.moveTo(startX, y);
+                    targetRenderer.ctx.lineTo(endX, y);
+                }
+                targetRenderer.ctx.stroke();
             }
-        });
 
-        targetRenderer.end();
+            // Draw Materias
+            currentScene.materias.forEach(materia => {
+                const transform = materia.getComponent(Transform);
+                if (!transform) return;
+
+                let drawn = false;
+                const spriteRenderer = materia.getComponent(SpriteRenderer);
+                if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
+                    targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100 * transform.scale.x, 100 * transform.scale.y);
+                    drawn = true;
+                }
+
+                const boxCollider = materia.getComponent(BoxCollider);
+                if (boxCollider) {
+                    if (!drawn) {
+                        targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
+                    }
+                }
+
+                const uiText = materia.getComponent(UIText);
+                if (uiText) {
+                    targetRenderer.drawText(uiText.text, transform.x, transform.y, uiText.color, uiText.fontSize, uiText.textTransform);
+                    drawn = true;
+                }
+
+                if (!drawn && !boxCollider) {
+                     targetRenderer.drawRect(transform.x, transform.y, 20 * transform.scale.x, 20 * transform.scale.y, 'rgba(128, 128, 128, 0.5)');
+                }
+
+                // Draw selection outline only in the editor scene view
+                if (!isGameView) {
+                    if (selectedMateria && selectedMateria.id === materia.id) {
+                        targetRenderer.ctx.strokeStyle = 'yellow';
+                        targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.effectiveZoom;
+                        let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
+                        let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
+
+                        selectionWidth *= transform.scale.x;
+                        selectionHeight *= transform.scale.y;
+
+                        targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+                    }
+                    // Draw gizmos for all materias in the scene view
+                    drawGizmos(targetRenderer, materia);
+                }
+            });
+
+            targetRenderer.end();
+        } catch (e) {
+            console.error("Error during scene update:", e);
+        }
     };
 
     selectMateria = function(materiaId) {
