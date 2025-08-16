@@ -1,248 +1,5 @@
-// --- Engine Core Classes ---
-class Leyes { constructor(materia) { this.materia = materia; } update() {} }
-class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
-class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load() { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); const fileHandle = await projectHandle.getFileHandle(this.scriptName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } }
-class UICanvas extends Leyes { constructor(materia) { super(materia); } }
-class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; this.color = '#ffffff'; this.textTransform = 'none'; } }
-class UIButton extends Leyes { constructor(materia) { super(materia); this.label = new UIText(materia, 'Botón'); this.color = '#2d2d30'; } }
-
-class Rigidbody extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
-        this.mass = 1.0;
-        this.velocity = { x: 0, y: 0 };
-    }
-}
-
-class BoxCollider extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.width = 1.0;
-        this.height = 1.0;
-    }
-}
-
-class SpriteRenderer extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.sprite = new Image();
-        this.source = ''; // URL to the image
-        this.color = '#ffffff'; // Tint color
-    }
-
-    setSource(url) {
-        this.source = url;
-        if (url) {
-            this.sprite.src = url;
-        }
-    }
-}
-
-class Animation {
-    constructor(name = 'New Animation') {
-        this.name = name;
-        this.frames = []; // Array of image source paths
-        this.speed = 10; // Frames per second
-        this.loop = true;
-    }
-}
-
-class Animator extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.animations = new Map(); // Map of animation names to Animation objects
-        this.currentState = null;
-        this.currentFrame = 0;
-        this.frameTimer = 0;
-        this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-    }
-
-    play(stateName) {
-        if (this.currentState !== stateName && this.animations.has(stateName)) {
-            this.currentState = stateName;
-            this.currentFrame = 0;
-            this.frameTimer = 0;
-        }
-    }
-
-    update(deltaTime) {
-        if (!this.currentState || !this.spriteRenderer) {
-            if (!this.spriteRenderer) {
-                this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-            }
-            return;
-        }
-
-        const animation = this.animations.get(this.currentState);
-        if (!animation || animation.frames.length === 0) return;
-
-        this.frameTimer += deltaTime;
-        const frameDuration = 1 / animation.speed;
-
-        if (this.frameTimer >= frameDuration) {
-            this.frameTimer -= frameDuration;
-            this.currentFrame++;
-
-            if (this.currentFrame >= animation.frames.length) {
-                if (animation.loop) {
-                    this.currentFrame = 0;
-                } else {
-                    this.currentFrame = animation.frames.length - 1; // Stay on last frame
-                }
-            }
-
-            this.spriteRenderer.setSource(animation.frames[this.currentFrame]);
-        }
-    }
-}
-
-let MATERIA_ID_COUNTER = 0;
-class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
-class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } findFirstCamera() { return this.materias.find(m => m.getComponent(Camera)); } }
-
-class Camera extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
-        this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
-    }
-}
-
-class Renderer {
-    constructor(canvas, isEditor = false) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.camera = null; // Will be assigned from the scene
-        this.isEditor = isEditor;
-        this.resize();
-    }
-
-    resize() {
-        this.canvas.width = this.canvas.clientWidth;
-        this.canvas.height = this.canvas.clientHeight;
-    }
-
-    begin() {
-        const sceneCameraMateria = currentScene.findFirstCamera();
-        let cameraComponent;
-        let cameraTransform;
-
-        if (sceneCameraMateria) {
-            cameraComponent = sceneCameraMateria.getComponent(Camera);
-            cameraTransform = sceneCameraMateria.getComponent(Transform);
-        }
-
-        // The editor renderer creates a default camera if none exists.
-        // The game renderer will have a null camera and won't render.
-        if (!cameraComponent && this.isEditor) {
-            cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
-            cameraTransform = { x: 0, y: 0 };
-        }
-
-        this.camera = cameraComponent ? {
-            ...cameraComponent,
-            x: cameraTransform.x,
-            y: cameraTransform.y,
-            // Game view zoom is determined by ortho size, editor can have its own zoom
-            effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
-        } : null;
-
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save();
-
-        if (!this.camera) return;
-
-        this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-        this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-    }
-
-    end() {
-        this.ctx.restore();
-    }
-
-    drawRect(x, y, width, height, color) {
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
-    }
-
-    // Placeholder for now
-    drawImage(image, x, y, width, height) {
-        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-    }
-
-    drawText(text, x, y, color, fontSize, textTransform) {
-        this.ctx.fillStyle = color;
-        this.ctx.font = `${fontSize}px sans-serif`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-
-        let transformedText = text;
-        if (textTransform === 'uppercase') {
-            transformedText = text.toUpperCase();
-        } else if (textTransform === 'lowercase') {
-            transformedText = text.toLowerCase();
-        }
-
-        this.ctx.fillText(transformedText, x, y);
-    }
-}
-
-class PhysicsSystem {
-    constructor(scene) {
-        this.scene = scene;
-        this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
-    }
-
-    update(deltaTime) {
-        // Update positions based on velocity
-        for (const materia of this.scene.materias) {
-            const rigidbody = materia.getComponent(Rigidbody);
-            const transform = materia.getComponent(Transform);
-
-            if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
-                rigidbody.velocity.y += this.gravity.y * deltaTime;
-                transform.x += rigidbody.velocity.x * deltaTime;
-                transform.y += rigidbody.velocity.y * deltaTime;
-            }
-        }
-
-        // Collision detection
-        const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
-        for (let i = 0; i < collidables.length; i++) {
-            for (let j = i + 1; j < collidables.length; j++) {
-                const materiaA = collidables[i];
-                const materiaB = collidables[j];
-
-                const transformA = materiaA.getComponent(Transform);
-                const colliderA = materiaA.getComponent(BoxCollider);
-                const transformB = materiaB.getComponent(Transform);
-                const colliderB = materiaB.getComponent(BoxCollider);
-
-                const leftA = transformA.x - colliderA.width / 2;
-                const rightA = transformA.x + colliderA.width / 2;
-                const topA = transformA.y - colliderA.height / 2;
-                const bottomA = transformA.y + colliderA.height / 2;
-
-                const leftB = transformB.x - colliderB.width / 2;
-                const rightB = transformB.x + colliderB.width / 2;
-                const topB = transformB.y - colliderB.height / 2;
-                const bottomB = transformB.y + colliderB.height / 2;
-
-                if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
-                    console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
-                }
-            }
-        }
-    }
-}
-
-
-// --- Engine Core Classes ---
-import { InputManager } from './engine/Input.js';
-
 // --- CodeMirror Integration ---
+import { InputManager } from './engine/Input.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
@@ -250,12 +7,261 @@ import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Engine Core Classes ---
+    class Leyes { constructor(materia) { this.materia = materia; } update() {} }
+    class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
+    class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load() { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
+    class UICanvas extends Leyes { constructor(materia) { super(materia); } }
+    class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; this.color = '#ffffff'; this.textTransform = 'none'; } }
+    class UIButton extends Leyes { constructor(materia) { super(materia); this.label = new UIText(materia, 'Botón'); this.color = '#2d2d30'; } }
+
+    class Rigidbody extends Leyes {
+        constructor(materia) {
+            super(materia);
+            this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
+            this.mass = 1.0;
+            this.velocity = { x: 0, y: 0 };
+        }
+    }
+
+    class BoxCollider extends Leyes {
+        constructor(materia) {
+            super(materia);
+            this.width = 1.0;
+            this.height = 1.0;
+        }
+    }
+
+    class SpriteRenderer extends Leyes {
+        constructor(materia) {
+            super(materia);
+            this.sprite = new Image();
+            this.source = ''; // Path to the image, relative to project root
+            this.color = '#ffffff'; // Tint color
+        }
+
+        setSourcePath(path) {
+            this.source = path;
+        }
+
+        async loadSprite() {
+            if (this.source) {
+                const url = await getURLForAssetPath(this.source);
+                if (url) {
+                    this.sprite.src = url;
+                }
+            } else {
+                this.sprite.src = ''; // Clear the image if source is empty
+            }
+        }
+    }
+
+    class Animation {
+        constructor(name = 'New Animation') {
+            this.name = name;
+            this.frames = []; // Array of image source paths
+            this.speed = 10; // Frames per second
+            this.loop = true;
+        }
+    }
+
+    class Animator extends Leyes {
+        constructor(materia) {
+            super(materia);
+            this.animations = new Map(); // Map of animation names to Animation objects
+            this.currentState = null;
+            this.currentFrame = 0;
+            this.frameTimer = 0;
+            this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+        }
+
+        play(stateName) {
+            if (this.currentState !== stateName && this.animations.has(stateName)) {
+                this.currentState = stateName;
+                this.currentFrame = 0;
+                this.frameTimer = 0;
+            }
+        }
+
+        update(deltaTime) {
+            if (!this.currentState || !this.spriteRenderer) {
+                if (!this.spriteRenderer) {
+                    this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+                }
+                return;
+            }
+
+            const animation = this.animations.get(this.currentState);
+            if (!animation || animation.frames.length === 0) return;
+
+            this.frameTimer += deltaTime;
+            const frameDuration = 1 / animation.speed;
+
+            if (this.frameTimer >= frameDuration) {
+                this.frameTimer -= frameDuration;
+                this.currentFrame++;
+
+                if (this.currentFrame >= animation.frames.length) {
+                    if (animation.loop) {
+                        this.currentFrame = 0;
+                    } else {
+                        this.currentFrame = animation.frames.length - 1; // Stay on last frame
+                    }
+                }
+                // The animation frames should be pre-loaded object URLs
+                this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
+            }
+        }
+    }
+
+    let MATERIA_ID_COUNTER = 0;
+    class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
+    class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } findFirstCamera() { return this.materias.find(m => m.getComponent(Camera)); } }
+
+    class Camera extends Leyes {
+        constructor(materia) {
+            super(materia);
+            this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
+            this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
+        }
+    }
+
+    class Renderer {
+        constructor(canvas, isEditor = false) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.camera = null; // Will be assigned from the scene
+            this.isEditor = isEditor;
+            this.resize();
+        }
+
+        resize() {
+            this.canvas.width = this.canvas.clientWidth;
+            this.canvas.height = this.canvas.clientHeight;
+        }
+
+        begin() {
+            const sceneCameraMateria = currentScene.findFirstCamera();
+            let cameraComponent;
+            let cameraTransform;
+
+            if (sceneCameraMateria) {
+                cameraComponent = sceneCameraMateria.getComponent(Camera);
+                cameraTransform = sceneCameraMateria.getComponent(Transform);
+            }
+
+            // The editor renderer creates a default camera if none exists.
+            // The game renderer will have a null camera and won't render.
+            if (!cameraComponent && this.isEditor) {
+                cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
+                cameraTransform = { x: 0, y: 0 };
+            }
+
+            this.camera = cameraComponent ? {
+                ...cameraComponent,
+                x: cameraTransform.x,
+                y: cameraTransform.y,
+                // Game view zoom is determined by ortho size, editor can have its own zoom
+                effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
+            } : null;
+
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.save();
+
+            if (!this.camera) return;
+
+            this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
+            this.ctx.translate(-this.camera.x, -this.camera.y);
+        }
+
+        end() {
+            this.ctx.restore();
+        }
+
+        drawRect(x, y, width, height, color) {
+            this.ctx.fillStyle = color;
+            this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+        }
+
+        // Placeholder for now
+        drawImage(image, x, y, width, height) {
+            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+        }
+
+        drawText(text, x, y, color, fontSize, textTransform) {
+            this.ctx.fillStyle = color;
+            this.ctx.font = `${fontSize}px sans-serif`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+
+            let transformedText = text;
+            if (textTransform === 'uppercase') {
+                transformedText = text.toUpperCase();
+            } else if (textTransform === 'lowercase') {
+                transformedText = text.toLowerCase();
+            }
+
+            this.ctx.fillText(transformedText, x, y);
+        }
+    }
+
+    class PhysicsSystem {
+        constructor(scene) {
+            this.scene = scene;
+            this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
+        }
+
+        update(deltaTime) {
+            // Update positions based on velocity
+            for (const materia of this.scene.materias) {
+                const rigidbody = materia.getComponent(Rigidbody);
+                const transform = materia.getComponent(Transform);
+
+                if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
+                    rigidbody.velocity.y += this.gravity.y * deltaTime;
+                    transform.x += rigidbody.velocity.x * deltaTime;
+                    transform.y += rigidbody.velocity.y * deltaTime;
+                }
+            }
+
+            // Collision detection
+            const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
+            for (let i = 0; i < collidables.length; i++) {
+                for (let j = i + 1; j < collidables.length; j++) {
+                    const materiaA = collidables[i];
+                    const materiaB = collidables[j];
+
+                    const transformA = materiaA.getComponent(Transform);
+                    const colliderA = materiaA.getComponent(BoxCollider);
+                    const transformB = materiaB.getComponent(Transform);
+                    const colliderB = materiaB.getComponent(BoxCollider);
+
+                    const leftA = transformA.x - colliderA.width / 2;
+                    const rightA = transformA.x + colliderA.width / 2;
+                    const topA = transformA.y - colliderA.height / 2;
+                    const bottomA = transformA.y + colliderA.height / 2;
+
+                    const leftB = transformB.x - colliderB.width / 2;
+                    const rightB = transformB.x + colliderB.width / 2;
+                    const topB = transformB.y - colliderB.height / 2;
+                    const bottomB = transformB.y + colliderB.height / 2;
+
+                    if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
+                        console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
+                    }
+                }
+            }
+        }
+    }
+
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
-    let currentDirectoryHandle = null; // To track the folder selected in the asset browser
+    let currentDirectoryHandle = { handle: null, path: '' }; // To track the folder selected in the asset browser
     const panelVisibility = {
         hierarchy: true,
         inspector: true,
@@ -303,9 +309,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
 
+    /**
+     * Takes a project-relative path and returns a browser-usable object URL.
+     * @param {string} path - The relative path to the asset (e.g., "Assets/Textures/player.png").
+     * @returns {Promise<string|null>} A promise that resolves to an object URL or null if an error occurs.
+     */
+    async function getURLForAssetPath(path) {
+        if (!projectsDirHandle || !path) return null;
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+            let currentHandle = projectHandle;
+            const parts = path.split('/').filter(p => p); // Filter out empty strings from path
+            const fileName = parts.pop();
+
+            for (const part of parts) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+
+            const fileHandle = await currentHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            return URL.createObjectURL(file);
+        } catch (error) {
+            console.error(`Could not create URL for asset path: ${path}`, error);
+            return null;
+        }
+    }
+
     saveAssetMeta = async function(assetName, metaData) {
         try {
-            const metaFileHandle = await currentDirectoryHandle.getFileHandle(`${assetName}.meta`, { create: true });
+            const metaFileHandle = await currentDirectoryHandle.handle.getFileHandle(`${assetName}.meta`, { create: true });
             const writable = await metaFileHandle.createWritable();
             await writable.write(JSON.stringify(metaData, null, 2));
             await writable.close();
@@ -334,16 +368,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        await findImages(projectHandle);
+        await findImages(projectHandle, ''); // Start with empty path
 
         imageFiles.forEach(imgPath => {
             const img = document.createElement('img');
-            img.src = imgPath;
-            img.addEventListener('click', () => {
+            getURLForAssetPath(imgPath).then(url => { if(url) img.src = url; });
+            img.addEventListener('click', async () => {
                 if (selectedMateria) {
                     const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                     if (spriteRenderer) {
-                        spriteRenderer.setSource(imgPath);
+                        spriteRenderer.setSourcePath(imgPath);
+                        await spriteRenderer.loadSprite();
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -386,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!folderName) return;
         console.log(`Exportando paquete desde: ${folderName}`);
         try {
-            const dirHandle = await currentDirectoryHandle.getDirectoryHandle(folderName);
+            const dirHandle = await currentDirectoryHandle.handle.getDirectoryHandle(folderName);
             const zip = new JSZip();
 
             await addFolderToZip(zip, dirHandle, folderName);
@@ -429,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return sceneData;
     };
 
-    deserializeScene = function(sceneData) {
+    deserializeScene = async function(sceneData) {
         const newScene = new Scene();
         for (const materiaData of sceneData.materias) {
             const newMateria = new Materia(materiaData.name);
@@ -442,6 +477,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newLey = new ComponentClass(newMateria);
                     Object.assign(newLey, leyData.properties);
                     newMateria.addComponent(newLey);
+
+                    // If the component is a SpriteRenderer, load its sprite.
+                    if (newLey instanceof SpriteRenderer) {
+                        await newLey.loadSprite();
+                    }
+                    // Also handle CreativeScript loading here
+                    if (newLey instanceof CreativeScript) {
+                        await newLey.load();
+                    }
                 }
             }
             newScene.addMateria(newMateria);
@@ -456,12 +500,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         try {
-            const fileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName);
             const file = await fileHandle.getFile();
             const content = await file.text();
             const sceneData = JSON.parse(content);
 
-            currentScene = deserializeScene(sceneData);
+            currentScene = await deserializeScene(sceneData); // Await the async deserialization
             currentSceneFileHandle = fileHandle;
             dom.currentSceneName.textContent = fileName.replace('.ceScene', '');
 
@@ -533,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openAnimationAsset = async function(fileName) {
         try {
-            currentAnimationFileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            currentAnimationFileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName);
             const file = await currentAnimationFileHandle.getFile();
             const content = await file.text();
             currentAnimationAsset = JSON.parse(content);
@@ -604,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openScriptInEditor = async function(fileName) {
         try {
             // Use the currently selected directory handle to find the file
-            currentlyOpenFileHandle = await currentDirectoryHandle.getFileHandle(fileName);
+            currentlyOpenFileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName);
             const file = await currentlyOpenFileHandle.getFile();
             const content = await file.text();
 
@@ -634,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markdownConverter = new showdown.Converter();
 
-    updateInspectorForAsset = async function(assetName) {
+    updateInspectorForAsset = async function(assetName, assetPath) {
         if (!assetName) {
             dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
             return;
@@ -643,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4>`;
 
         try {
-            const fileHandle = await currentDirectoryHandle.getFileHandle(assetName);
+            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(assetName);
             const file = await fileHandle.getFile();
             const content = await file.text();
 
@@ -663,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (assetName.endsWith('.png') || assetName.endsWith('.jpg')) {
                 let metaData = { textureType: 'Sprite (2D and UI)' }; // Default
                 try {
-                    const metaFileHandle = await currentDirectoryHandle.getFileHandle(`${assetName}.meta`);
+                    const metaFileHandle = await currentDirectoryHandle.handle.getFileHandle(`${assetName}.meta`);
                     const metaFile = await metaFileHandle.getFile();
                     metaData = JSON.parse(await metaFile.text());
                 } catch (e) {
@@ -681,10 +725,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                     <hr>
                     <div class="preview-container">
-                        <img src="${currentDirectoryHandle.name}/${assetName}" alt="Preview">
+                        <img id="inspector-preview-img" src="" alt="Preview">
                     </div>
                 `;
                 dom.inspectorContent.appendChild(settingsContainer);
+                const imgElement = document.getElementById('inspector-preview-img');
+                if (imgElement && assetPath) {
+                    const url = await getURLForAssetPath(assetPath);
+                    if (url) imgElement.src = url;
+                }
             } else if (assetName.endsWith('.cea')) {
                 const animData = JSON.parse(content);
                 const anim = animData.animations[0]; // Assume first animation
@@ -699,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeline.className = 'mini-timeline';
                 anim.frames.forEach(frameSrc => {
                     const img = document.createElement('img');
-                    img.src = frameSrc;
+                    img.src = frameSrc; // These are data URLs from the .cea file
                     timeline.appendChild(img);
                 });
 
@@ -722,7 +771,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (time - lastTime > (1000 / anim.speed)) {
                                 lastTime = time;
                                 currentFrame = (currentFrame + 1) % anim.frames.length;
-                                // Highlight the current frame in the mini-timeline
                                 timeline.childNodes.forEach((node, i) => node.style.border = i === currentFrame ? '2px solid var(--accent-color)' : 'none');
                             }
                            playbackId = requestAnimationFrame(loop);
@@ -752,37 +800,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateAssetBrowser = async function(selectHandle = null) {
+    updateAssetBrowser = async function() {
         if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
         const folderTreeContainer = dom.assetFolderTree;
         const gridViewContainer = dom.assetGridView;
-
         folderTreeContainer.innerHTML = '';
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
-        if (!currentDirectoryHandle) {
-             currentDirectoryHandle = assetsHandle;
+        if (!currentDirectoryHandle.handle) {
+             currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
         }
 
-        async function handleDropOnFolder(targetFolderHandle, droppedData) {
-            console.log(`Soltado ${droppedData.name} en ${targetFolderHandle.name}`);
+        async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
+            console.log(`Soltado ${droppedData.path} en ${targetPath}`);
             try {
-                const sourceFileHandle = await currentDirectoryHandle.getFileHandle(droppedData.name);
+                // This logic is now more complex as we need to resolve the source handle from a path
+                const sourcePath = droppedData.path;
+                const sourceParts = sourcePath.split('/').filter(p => p);
+                const sourceFileName = sourceParts.pop();
+
+                // Start from the project root and walk down to the source directory
+                let sourceDirHandle = projectHandle;
+                for(const part of sourceParts) {
+                    if(part) sourceDirHandle = await sourceDirHandle.getDirectoryHandle(part);
+                }
+
+                const sourceFileHandle = await sourceDirHandle.getFileHandle(sourceFileName);
                 const file = await sourceFileHandle.getFile();
 
-                const newFileHandle = await targetFolderHandle.getFileHandle(droppedData.name, { create: true });
+                const newFileHandle = await targetFolderHandle.getFileHandle(sourceFileName, { create: true });
                 const writable = await newFileHandle.createWritable();
                 await writable.write(file);
                 await writable.close();
 
                 // Now delete the old file
-                await currentDirectoryHandle.removeEntry(droppedData.name);
+                await sourceDirHandle.removeEntry(sourceFileName);
 
-                console.log(`Movido ${droppedData.name} a ${targetFolderHandle.name}`);
+                console.log(`Movido ${sourceFileName} a ${targetPath}`);
                 await updateAssetBrowser();
 
             } catch (error) {
@@ -791,10 +849,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        async function populateGridView(dirHandle) {
+        async function populateGridView(dirHandle, dirPath) {
             gridViewContainer.innerHTML = '';
-            // Store the handle on the element for context menus
             gridViewContainer.directoryHandle = dirHandle;
+            gridViewContainer.dataset.path = dirPath;
 
             for await (const entry of dirHandle.values()) {
                 const item = document.createElement('div');
@@ -802,97 +860,105 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.draggable = true;
                 item.dataset.name = entry.name;
                 item.dataset.kind = entry.kind;
+                const fullPath = `${dirPath}/${entry.name}`;
+                item.dataset.path = fullPath;
 
-                const icon = document.createElement('div');
-                icon.className = 'icon';
+                const iconContainer = document.createElement('div');
+                iconContainer.className = 'icon';
 
                 if (entry.kind === 'directory') {
-                    icon.textContent = '📁';
-                    item.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        item.classList.add('drag-over');
-                    });
+                    iconContainer.textContent = '📁';
+                    item.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; item.classList.add('drag-over'); });
                     item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
                     item.addEventListener('drop', async (e) => {
                         e.preventDefault();
-                        e.stopPropagation(); // Prevent drop from bubbling to parent
+                        e.stopPropagation();
                         item.classList.remove('drag-over');
                         const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
                         const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
-                        handleDropOnFolder(targetFolderHandle, droppedData);
+                        await handleDropOnFolder(targetFolderHandle, fullPath, droppedData);
+                    });
+                } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
+                    getURLForAssetPath(fullPath).then(url => {
+                        if (url) {
+                            const imgIcon = document.createElement('img');
+                            imgIcon.src = url;
+                            imgIcon.className = 'icon-preview';
+                            iconContainer.innerHTML = '';
+                            iconContainer.appendChild(imgIcon);
+                        } else {
+                            iconContainer.textContent = '🖼️';
+                        }
                     });
                 } else if (entry.name.endsWith('.ces')) {
-                    icon.textContent = '📜';
+                    iconContainer.textContent = '📜';
                 } else if (entry.name.endsWith('.cea')) {
-                    icon.textContent = '🎞️';
+                    iconContainer.textContent = '🎞️';
                 } else if (entry.name.endsWith('.ceScene')) {
-                    icon.textContent = '🎬';
+                    iconContainer.textContent = '🎬';
                 } else if (entry.name.endsWith('.cep')) {
-                    icon.textContent = '📦';
-                } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
-                    icon.textContent = '🖼️';
+                    iconContainer.textContent = '📦';
                 } else {
-                    icon.textContent = '📄';
+                    iconContainer.textContent = '📄';
                 }
 
                 const name = document.createElement('div');
                 name.className = 'name';
                 name.textContent = entry.name;
 
-                item.appendChild(icon);
+                item.appendChild(iconContainer);
                 item.appendChild(name);
                 gridViewContainer.appendChild(item);
             }
         }
 
-        async function populateFolderTree(dirHandle, container, depth = 0) {
+        async function populateFolderTree(dirHandle, currentPath, container, depth = 0) {
             const folderItem = document.createElement('div');
             folderItem.className = 'folder-item';
             folderItem.textContent = dirHandle.name;
             folderItem.style.paddingLeft = `${depth * 15 + 5}px`;
-            folderItem.directoryHandle = dirHandle; // Attach handle to element
+            folderItem.dataset.path = currentPath;
 
-            if (dirHandle.isSameEntry(currentDirectoryHandle)) {
+            if (dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
                 folderItem.classList.add('active');
             }
 
-            folderItem.addEventListener('click', () => {
-                currentDirectoryHandle = dirHandle;
-                updateAssetBrowser(); // Re-render everything
+            folderItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentDirectoryHandle = { handle: dirHandle, path: currentPath };
+                updateAssetBrowser();
             });
 
-            folderItem.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                folderItem.classList.add('drag-over');
-            });
+            folderItem.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; folderItem.classList.add('drag-over'); });
             folderItem.addEventListener('dragleave', () => folderItem.classList.remove('drag-over'));
-            folderItem.addEventListener('drop', (e) => {
+            folderItem.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 folderItem.classList.remove('drag-over');
                 const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                handleDropOnFolder(dirHandle, droppedData);
+                await handleDropOnFolder(dirHandle, currentPath, droppedData);
             });
 
             container.appendChild(folderItem);
 
-            // This container will hold the children, to allow for expand/collapse later
             const childrenContainer = document.createElement('div');
             childrenContainer.className = 'folder-children';
-            folderItem.appendChild(childrenContainer); // Append to the item, not the main container
+            folderItem.appendChild(childrenContainer);
 
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'directory') {
-                    await populateFolderTree(entry, childrenContainer, depth + 1);
+            try {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'directory') {
+                        await populateFolderTree(entry, `${currentPath}/${entry.name}`, childrenContainer, depth + 1);
+                    }
                 }
+            } catch(e) {
+                console.warn(`Could not iterate directory ${dirHandle.name}. Permissions issue?`, e);
             }
         }
 
         try {
-            await populateFolderTree(assetsHandle, folderTreeContainer);
-            await populateGridView(currentDirectoryHandle);
+            await populateFolderTree(assetsHandle, 'Assets', folderTreeContainer);
+            await populateGridView(currentDirectoryHandle.handle, currentDirectoryHandle.path);
         } catch (error) {
             console.error("Error updating asset browser:", error);
             gridViewContainer.innerHTML = '<p class="error-message">Could not load project assets.</p>';
@@ -900,11 +966,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
-    updateInspector = function() {
+    updateInspector = async function() {
         if (!dom.inspectorContent) return;
         dom.inspectorContent.innerHTML = '';
         if (!selectedMateria) {
-            dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
+            const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
+            if(selectedAsset) {
+                await updateInspectorForAsset(selectedAsset.dataset.name, selectedAsset.dataset.path);
+            } else {
+                dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
+            }
             return;
         }
 
@@ -940,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
                 </div>`;
             } else if (ley instanceof SpriteRenderer) {
-                const previewImg = ley.source ? `<img src="${ley.source}" alt="Preview">` : 'None';
+                const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
                 componentHTML = `<h4>Sprite Renderer</h4>
                 <div class="component-grid">
                     <label>Sprite</label>
@@ -1013,11 +1084,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         value = parseFloat(value) || 0;
                     }
 
-                    const props = propName.split('.');
                     if (component instanceof SpriteRenderer && propName === 'source') {
-                        component.setSource(value);
-                    } else if (props.length > 1) {
-                        // Handles nested properties like 'label.text' for UIButton
+                        // This property is now handled by dropping assets, not manual input.
+                        // We could re-enable it by making this async and calling loadSprite.
+                    } else if (propName.includes('.')) {
+                        const props = propName.split('.');
                         let obj = component;
                         for (let i = 0; i < props.length - 1; i++) {
                             obj = obj[props[i]];
@@ -1026,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         component[propName] = value;
                     }
-                    updateScene(); // Re-render scene if a visual property changed
+                    updateScene(renderer, false);
                 }
             });
         });
@@ -1046,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (component) {
                     component[propName] = value;
                     updateInspector(); // Re-render inspector to update active state
-                    updateScene();
+                    updateScene(renderer, false);
                 }
             });
         });
@@ -1197,7 +1268,8 @@ function update(deltaTime) {
                             try {
                                 const projectName = new URLSearchParams(window.location.search).get('project');
                                 const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                                const fileHandle = await projectHandle.getFileHandle(scriptName, { create: true });
+                                // Create script in current asset directory
+                                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(scriptName, { create: true });
                                 const writable = await fileHandle.createWritable();
                                 await writable.write(scriptTemplate);
                                 await writable.close();
@@ -1621,19 +1693,17 @@ function update(deltaTime) {
             hierarchyContent.classList.remove('drag-over');
         });
 
-        hierarchyContent.addEventListener('drop', (e) => {
+        hierarchyContent.addEventListener('drop', async (e) => {
             e.preventDefault();
             hierarchyContent.classList.remove('drag-over');
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
-            if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
+            if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
                 const newMateria = new Materia(data.name.split('.')[0]);
                 const spriteRenderer = new SpriteRenderer(newMateria);
 
-                // We need to construct the full path to the asset
-                // This is a simplification; a real engine might need a more robust path system
-                const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
-                spriteRenderer.setSource(assetPath);
+                spriteRenderer.setSourcePath(data.path);
+                await spriteRenderer.loadSprite();
 
                 newMateria.addComponent(spriteRenderer);
                 currentScene.addMateria(newMateria);
@@ -1654,7 +1724,8 @@ function update(deltaTime) {
             if (item) {
                 e.dataTransfer.setData('text/plain', JSON.stringify({
                     name: item.dataset.name,
-                    kind: item.dataset.kind
+                    kind: item.dataset.kind,
+                    path: item.dataset.path // Include the full path
                 }));
                 e.dataTransfer.effectAllowed = 'copy';
             }
@@ -1667,9 +1738,10 @@ function update(deltaTime) {
 
             const name = item.dataset.name;
             const kind = item.dataset.kind;
+            const path = item.dataset.path;
 
             if (kind === 'directory') {
-                currentDirectoryHandle = await currentDirectoryHandle.getDirectoryHandle(name);
+                currentDirectoryHandle = { handle: await currentDirectoryHandle.handle.getDirectoryHandle(name), path: path };
                 updateAssetBrowser();
             } else if (name.endsWith('.ces')) {
                 await openScriptInEditor(name);
@@ -1733,8 +1805,7 @@ function update(deltaTime) {
         window.addEventListener('keydown', handleKeyboardShortcuts);
 
         // Hierarchy item selection & drag/drop
-        const hierarchyContent = dom.hierarchyContent;
-        hierarchyContent.addEventListener('click', (e) => {
+        dom.hierarchyContent.addEventListener('click', (e) => {
             const item = e.target.closest('.hierarchy-item');
             if (item) {
                 const materiaId = parseInt(item.dataset.id, 10);
@@ -1742,7 +1813,7 @@ function update(deltaTime) {
             }
         });
 
-        hierarchyContent.addEventListener('dragstart', (e) => {
+        dom.hierarchyContent.addEventListener('dragstart', (e) => {
             const item = e.target.closest('.hierarchy-item');
             if(item) {
                 e.dataTransfer.setData('text/plain', item.dataset.id);
@@ -1750,7 +1821,7 @@ function update(deltaTime) {
             }
         });
 
-        hierarchyContent.addEventListener('dragover', (e) => {
+        dom.hierarchyContent.addEventListener('dragover', (e) => {
             e.preventDefault();
             const item = e.target.closest('.hierarchy-item');
             if(item) {
@@ -1760,12 +1831,12 @@ function update(deltaTime) {
             }
         });
 
-        hierarchyContent.addEventListener('dragleave', (e) => {
+        dom.hierarchyContent.addEventListener('dragleave', (e) => {
             const item = e.target.closest('.hierarchy-item');
             if(item) item.classList.remove('drag-over');
         });
 
-        hierarchyContent.addEventListener('drop', (e) => {
+        dom.hierarchyContent.addEventListener('drop', (e) => {
             e.preventDefault();
             document.querySelectorAll('.hierarchy-item.drag-over').forEach(i => i.classList.remove('drag-over'));
 
@@ -1904,21 +1975,22 @@ function update(deltaTime) {
         gridView.addEventListener('click', (e) => {
             const item = e.target.closest('.grid-item');
 
-            // De-select all others
+            // De-select all others first
             gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
 
             if (item) {
-                selectMateria(null); // Deselect any materia
+                // Add active class *before* calling the inspector updates.
                 item.classList.add('active');
-                updateInspectorForAsset(item.dataset.name);
+                // This will call updateInspector, which now correctly finds the active asset.
+                selectMateria(null);
             } else {
-                 // Clicked on background, show current folder info
-                 updateInspectorForAsset(null);
+                 // Clicked on background, clear inspector.
+                 selectMateria(null);
             }
         });
 
         // Custom Context Menu handler for assets
-        gridView.addEventListener('contextmenu', (e) => {
+        gridView.addEventListener('contextmenu', async (e) => {
             e.preventDefault();
 
             const item = e.target.closest('.grid-item');
@@ -1929,14 +2001,14 @@ function update(deltaTime) {
                 // Right-clicked on a folder, select it and show export option
                 gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                updateInspectorForAsset(item.dataset.name);
+                await updateInspectorForAsset(item.dataset.name, item.dataset.path);
                 exportOption.style.display = 'block';
                 exportDivider.style.display = 'block';
             } else if (item) {
                  // Right-clicked on a file
                 gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                updateInspectorForAsset(item.dataset.name);
+                await updateInspectorForAsset(item.dataset.name, item.dataset.path);
                 exportOption.style.display = 'none';
                 exportDivider.style.display = 'none';
             } else {
@@ -1987,18 +2059,18 @@ function update(deltaTime) {
             }
         });
 
-        dom.inspectorPanel.addEventListener('drop', (e) => {
+        dom.inspectorPanel.addEventListener('drop', async (e) => {
             e.preventDefault();
             const dropTarget = e.target.closest('.sprite-preview');
             if (dropTarget) {
                 dropTarget.classList.remove('drag-over');
                 const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
+                if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
                     if (selectedMateria) {
                         const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                         if (spriteRenderer) {
-                            const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
-                            spriteRenderer.setSource(assetPath);
+                            spriteRenderer.setSourcePath(data.path);
+                            await spriteRenderer.loadSprite();
                             updateInspector();
                             updateScene(renderer, false);
                         }
@@ -2095,23 +2167,12 @@ function update(deltaTime) {
             const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
 
             if (action === 'create-script') {
-                await createNewScript(currentDirectoryHandle);
+                await createNewScript(currentDirectoryHandle.handle);
             } else if (action === 'create-folder') {
                 const folderName = prompt("Nombre de la nueva carpeta:");
                 if (folderName) {
                     try {
-                        await currentDirectoryHandle.getDirectoryHandle(folderName, { create: true });
-                        await updateAssetBrowser();
-                    } catch (err) {
-                        console.error("Error al crear la carpeta:", err);
-                        alert("No se pudo crear la carpeta.");
-                    }
-                }
-            } else if (action === 'create-folder') {
-                const folderName = prompt("Nombre de la nueva carpeta:");
-                if (folderName) {
-                    try {
-                        await currentDirectoryHandle.getDirectoryHandle(folderName, { create: true });
+                        await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
                         await updateAssetBrowser();
                     } catch (err) {
                         console.error("Error al crear la carpeta:", err);
@@ -2121,7 +2182,7 @@ function update(deltaTime) {
             } else if (action === 'create-readme') {
                 const fileName = "NUEVO-LEAME.md";
                 try {
-                    const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write("# Nuevo Archivo Léame\n\nEscribe tu contenido aquí.");
                     await writable.close();
@@ -2138,7 +2199,7 @@ function update(deltaTime) {
                         materias: [] // An empty scene
                     };
                     try {
-                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(JSON.stringify(defaultContent, null, 2));
                         await writable.close();
@@ -2158,7 +2219,7 @@ function update(deltaTime) {
                         ]
                     };
                     try {
-                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(JSON.stringify(defaultContent, null, 2));
                         await writable.close();
@@ -2173,7 +2234,7 @@ function update(deltaTime) {
                     const assetName = selectedAsset.dataset.name;
                     if (confirm(`¿Estás seguro de que quieres borrar '${assetName}'? Esta acción no se puede deshacer.`)) {
                         try {
-                            await currentDirectoryHandle.removeEntry(assetName, { recursive: true });
+                            await currentDirectoryHandle.handle.removeEntry(assetName, { recursive: true });
                             console.log(`'${assetName}' borrado.`);
                             await updateAssetBrowser();
                         } catch (err) {
@@ -2199,7 +2260,7 @@ function update(deltaTime) {
 
                     try {
                         const blob = await zip.generateAsync({type: 'blob'});
-                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(blob);
                         await writable.close();
@@ -2220,15 +2281,15 @@ function update(deltaTime) {
                                 alert("El renombrado de carpetas aún no está implementado.");
                                 return;
                             }
-                            const oldFileHandle = await currentDirectoryHandle.getFileHandle(oldName);
+                            const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
                             const content = await (await oldFileHandle.getFile()).text();
 
-                            const newFileHandle = await currentDirectoryHandle.getFileHandle(newName, { create: true });
+                            const newFileHandle = await currentDirectoryHandle.handle.getFileHandle(newName, { create: true });
                             const writable = await newFileHandle.createWritable();
                             await writable.write(content);
                             await writable.close();
 
-                            await currentDirectoryHandle.removeEntry(oldName);
+                            await currentDirectoryHandle.handle.removeEntry(oldName);
 
                             console.log(`'${oldName}' renombrado a '${newName}'.`);
                             await updateAssetBrowser();
