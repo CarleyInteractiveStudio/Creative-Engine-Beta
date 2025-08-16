@@ -161,26 +161,32 @@
                         <span>FPS</span>
                         <button id="add-frame-btn">➕ Añadir Frame</button>
                         <button id="delete-frame-btn" title="Borrar Frame Seleccionado">🗑️</button>
-                    </div>
-                    <div id="animation-timeline-container">
-                        <div id="animation-timeline">
-                            <!-- Frames will be added here -->
-                        </div>
-                    </div>
-                    <div id="timeline-resizer">
                         <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo">▲</button>
                     </div>
-                    <div id="animation-editor-main">
-                        <div id="drawing-tools">
-                            <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
-                            <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
-                            <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
-                            <hr>
-                            <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
-                            <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
+                    <div id="animation-content-container">
+                        <div id="animation-edit-view">
+                            <div id="animation-timeline-container">
+                                <div id="animation-timeline">
+                                    <!-- Frames will be added here -->
+                                </div>
+                            </div>
+                            <div id="timeline-resizer"></div>
+                            <div id="animation-editor-main">
+                                <div id="drawing-tools">
+                                    <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
+                                    <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
+                                    <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
+                                    <hr>
+                                    <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
+                                    <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
+                                </div>
+                                <div id="drawing-canvas-container">
+                                    <canvas id="drawing-canvas" width="512" height="512"></canvas>
+                                </div>
+                            </div>
                         </div>
-                        <div id="drawing-canvas-container">
-                            <canvas id="drawing-canvas" width="512" height="512"></canvas>
+                        <div id="animation-playback-view" class="hidden">
+                            <canvas id="animation-playback-canvas" width="512" height="512"></canvas>
                         </div>
                     </div>
                     <div id="animation-panel-overlay">

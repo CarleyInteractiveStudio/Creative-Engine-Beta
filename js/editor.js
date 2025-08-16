@@ -232,6 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMovingPanel = false;
     let currentAnimationAsset = null; // Holds the parsed .cea file content
     let currentFrameIndex = -1;
+    let isAnimationPlaying = false;
+    let animationPlaybackId = null;
     let panelMoveOffset = { x: 0, y: 0 };
     let isResizingPanel = false;
     let panelResizeState = {};
@@ -318,6 +320,51 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAnimationAsset = null;
         currentFrameIndex = -1;
         dom.animationTimeline.innerHTML = '';
+        stopAnimationPlayback();
+    }
+
+    function startAnimationPlayback() {
+        if (isAnimationPlaying || !currentAnimationAsset) return;
+
+        const animation = currentAnimationAsset.animations[0];
+        if (!animation || !animation.frames.length) return;
+
+        isAnimationPlaying = true;
+        dom.animationEditView.classList.add('hidden');
+        dom.animationPlaybackView.classList.remove('hidden');
+
+        let startTime = performance.now();
+        const playbackCtx = dom.animationPlaybackCanvas.getContext('2d');
+        const frameImages = animation.frames.map(src => {
+            const img = new Image();
+            img.src = src;
+            return img;
+        });
+
+        function playbackLoop(currentTime) {
+            if (!isAnimationPlaying) return;
+
+            const elapsedTime = currentTime - startTime;
+            const frameDuration = 1000 / animation.speed;
+            const currentFrame = Math.floor(elapsedTime / frameDuration) % frameImages.length;
+
+            const img = frameImages[currentFrame];
+            playbackCtx.clearRect(0, 0, dom.animationPlaybackCanvas.width, dom.animationPlaybackCanvas.height);
+            if (img.complete) {
+                playbackCtx.drawImage(img, 0, 0);
+            }
+
+            animationPlaybackId = requestAnimationFrame(playbackLoop);
+        }
+        animationPlaybackId = requestAnimationFrame(playbackLoop);
+    }
+
+    function stopAnimationPlayback() {
+        if (!isAnimationPlaying) return;
+        isAnimationPlaying = false;
+        cancelAnimationFrame(animationPlaybackId);
+        dom.animationEditView.classList.remove('hidden');
+        dom.animationPlaybackView.classList.add('hidden');
     }
 
     openScriptInEditor = async function(fileName) {
@@ -1739,6 +1786,9 @@ function update(deltaTime) {
             timelineToggleBtn.textContent = isCollapsed ? '▼' : '▲';
         });
 
+        dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
+        dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
+
         dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
 
         dom.deleteFrameBtn.addEventListener('click', () => {
@@ -1792,7 +1842,7 @@ function update(deltaTime) {
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay'];
+        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn'];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
