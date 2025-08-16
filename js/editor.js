@@ -429,6 +429,46 @@ document.addEventListener('DOMContentLoaded', () => {
         return sceneData;
     };
 
+    saveScene = async function() {
+        if (currentSceneFileHandle) {
+            try {
+                const writable = await currentSceneFileHandle.createWritable();
+                const sceneData = serializeScene(currentScene);
+                await writable.write(JSON.stringify(sceneData, null, 2));
+                await writable.close();
+                isSceneDirty = false;
+                console.log(`Escena '${currentSceneFileHandle.name}' guardada.`);
+            } catch (error) {
+                console.error("Error al guardar la escena:", error);
+            }
+        } else {
+            // If no handle exists, this is a new scene, so we do "Save As"
+            saveSceneAs();
+        }
+    };
+
+    const saveSceneAs = async () => {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: 'NuevaEscena.ceScene',
+                types: [{
+                    description: 'Creative Engine Scene',
+                    accept: { 'application/json': ['.ceScene'] },
+                }],
+            });
+            currentSceneFileHandle = handle;
+            // After getting the handle, we can just run the normal save function
+            await saveScene();
+            // Update the UI with the new scene name
+            dom.currentSceneName.textContent = handle.name.replace('.ceScene', '');
+
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                console.error('Error al guardar la escena:', error);
+            }
+        }
+    };
+
     deserializeScene = function(sceneData) {
         const newScene = new Scene();
         for (const materiaData of sceneData.materias) {
@@ -685,6 +725,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
                 dom.inspectorContent.appendChild(settingsContainer);
+            } else if (assetName.endsWith('.ceMat')) {
+                const matData = JSON.parse(content);
+                const settingsContainer = document.createElement('div');
+                settingsContainer.className = 'asset-settings';
+
+                const canvas = document.createElement('canvas');
+                canvas.id = 'material-preview-canvas';
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+
+                function drawSphere(color) {
+                    ctx.clearRect(0,0,128,128);
+                    const gradient = ctx.createRadialGradient(45, 45, 10, 64, 64, 64);
+                    gradient.addColorStop(0, 'white');
+                    gradient.addColorStop(1, color);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0,0,128,128);
+                    ctx.globalCompositeOperation = 'multiply';
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0,0,128,128);
+                    ctx.globalCompositeOperation = 'source-over';
+                }
+                drawSphere(matData.color);
+
+                const colorPicker = document.createElement('input');
+                colorPicker.type = 'color';
+                colorPicker.value = matData.color;
+                colorPicker.addEventListener('input', (e) => {
+                    const newColor = e.target.value;
+                    drawSphere(newColor);
+                });
+                colorPicker.addEventListener('change', (e) => {
+                    const newColor = e.target.value;
+                    matData.color = newColor;
+                    saveAssetMeta(assetName, matData);
+                });
+
+                settingsContainer.appendChild(canvas);
+                settingsContainer.appendChild(colorPicker);
+                dom.inspectorContent.appendChild(settingsContainer);
+
             } else if (assetName.endsWith('.cea')) {
                 const animData = JSON.parse(content);
                 const anim = animData.animations[0]; // Assume first animation
@@ -830,6 +912,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.textContent = '🎬';
                 } else if (entry.name.endsWith('.cep')) {
                     icon.textContent = '📦';
+                } else if (entry.name.endsWith('.ceMat')) {
+                    icon.textContent = '🎨';
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
                     icon.textContent = '🖼️';
                 } else {
@@ -999,6 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.inspectorContent.querySelectorAll('.prop-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 if (!selectedMateria) return;
+                isSceneDirty = true;
                 const componentName = e.target.dataset.component;
                 const propName = e.target.dataset.prop;
                 let value = e.target.value;
@@ -1625,21 +1710,44 @@ function update(deltaTime) {
             e.preventDefault();
             hierarchyContent.classList.remove('drag-over');
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const targetItem = e.target.closest('.hierarchy-item');
+            const targetMateria = targetItem ? currentScene.findMateriaById(parseInt(targetItem.dataset.id, 10)) : null;
 
-            if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
-                const newMateria = new Materia(data.name.split('.')[0]);
-                const spriteRenderer = new SpriteRenderer(newMateria);
-
-                // We need to construct the full path to the asset
-                // This is a simplification; a real engine might need a more robust path system
+            if (data.name.endsWith('.ceMat')) {
+                if(targetMateria) {
+                    const spriteRenderer = targetMateria.getComponent(SpriteRenderer);
+                    if (spriteRenderer) {
+                        currentDirectoryHandle.getFileHandle(data.name).then(handle => handle.getFile()).then(file => file.text()).then(text => {
+                            const matData = JSON.parse(text);
+                            spriteRenderer.color = matData.color;
+                            updateInspector();
+                            updateScene(renderer, false);
+                        });
+                    } else {
+                        alert("El objeto de destino no tiene un componente SpriteRenderer para aplicar el material.");
+                    }
+                }
+            } else if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
                 const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
-                spriteRenderer.setSource(assetPath);
-
-                newMateria.addComponent(spriteRenderer);
-                currentScene.addMateria(newMateria);
-                updateHierarchy();
-                selectMateria(newMateria.id);
-                console.log(`Creada nueva Materia '${newMateria.name}' desde el sprite '${data.name}'.`);
+                if (targetMateria) {
+                    const spriteRenderer = targetMateria.getComponent(SpriteRenderer);
+                    if (spriteRenderer) {
+                        spriteRenderer.setSource(assetPath);
+                    } else {
+                        const newSpriteRenderer = new SpriteRenderer(targetMateria);
+                        newSpriteRenderer.setSource(assetPath);
+                        targetMateria.addComponent(newSpriteRenderer);
+                    }
+                    updateInspector();
+                } else {
+                    const newMateria = new Materia(data.name.split('.')[0]);
+                    const spriteRenderer = new SpriteRenderer(newMateria);
+                    spriteRenderer.setSource(assetPath);
+                    newMateria.addComponent(spriteRenderer);
+                    currentScene.addMateria(newMateria);
+                    updateHierarchy();
+                    selectMateria(newMateria.id);
+                }
             } else {
                 console.log(`El tipo de archivo '${data.name}' no se puede soltar en la jerarquía.`);
             }
@@ -2209,6 +2317,24 @@ function update(deltaTime) {
                         alert("No se pudo crear el paquete.");
                     }
                 }
+            } else if (action === 'create-material') {
+                const matName = prompt("Nombre del nuevo material:");
+                if (matName) {
+                    const fileName = `${matName}.ceMat`;
+                    const defaultContent = {
+                        color: "#ffffff"
+                    };
+                    try {
+                        const fileHandle = await currentDirectoryHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(defaultContent, null, 2));
+                        await writable.close();
+                        await updateAssetBrowser();
+                    } catch (err) {
+                        console.error("Error al crear el material:", err);
+                        alert("No se pudo crear el material.");
+                    }
+                }
             } else if (action === 'rename') {
                 if (selectedAsset) {
                     const oldName = selectedAsset.dataset.name;
@@ -2507,6 +2633,17 @@ function update(deltaTime) {
 
             populateTimeline(); // Re-render to show active state
         });
+
+        // --- File Menu Listeners ---
+        document.getElementById('menu-save-scene').addEventListener('click', (e) => {
+            e.preventDefault();
+            saveScene();
+        });
+        document.getElementById('menu-save-scene-as').addEventListener('click', (e) => {
+            e.preventDefault();
+            saveSceneAs();
+        });
+
 
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
