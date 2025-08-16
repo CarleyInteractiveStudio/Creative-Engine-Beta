@@ -931,7 +931,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 item.appendChild(icon);
                 item.appendChild(name);
-                gridViewContainer.appendChild(item);
 
                 if (entry.kind === 'directory') {
                     icon.textContent = '📁';
@@ -943,11 +942,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
                     item.addEventListener('drop', async (e) => {
                         e.preventDefault();
-                        e.stopPropagation(); // Prevent drop from bubbling to parent
+                        e.stopPropagation();
                         item.classList.remove('drag-over');
                         const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
                         const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
-                        handleDropOnFolder(targetFolderHandle, droppedData);
+                        await handleDropOnFolder(targetFolderHandle, droppedData);
                     });
                 } else if (entry.name.endsWith('.ces')) {
                     icon.textContent = '📜';
@@ -971,22 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.textContent = '📄';
                 }
 
-                const name = document.createElement('div');
-                name.className = 'name';
-                name.textContent = entry.name;
-
-                item.appendChild(icon);
-                item.appendChild(name);
                 gridViewContainer.appendChild(item);
-
-                if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg'))) {
-                    getURLForFileHandle(entry).then(url => {
-                        const img = document.createElement('img');
-                        img.src = url;
-                        icon.innerHTML = ''; // Clear placeholder
-                        icon.appendChild(img);
-                    });
-                }
             }
         }
 
@@ -2729,6 +2713,7 @@ function update(deltaTime) {
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        console.log("1. Caching DOM elements...");
         // Cache all DOM elements
         const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal', 'sprite-selector-grid'];
         ids.forEach(id => {
@@ -2738,17 +2723,25 @@ function update(deltaTime) {
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
         dom.sceneCanvas = document.getElementById('scene-canvas');
         dom.gameCanvas = document.getElementById('game-canvas');
+        console.log("... DOM elements cached.");
 
         console.log("Initializing Creative Engine Editor...");
         try {
+            console.log("2. Opening DB...");
             await openDB();
+            console.log("... DB Opened.");
+
+            console.log("3. Getting projects directory handle...");
             projectsDirHandle = await getDirHandle();
             if (!projectsDirHandle) {
                 console.error("No project directory handle found. Please go back to the launcher and select a directory.");
                 return;
             }
+            console.log("... Projects directory handle retrieved:", projectsDirHandle.name);
+
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
+            console.log("4. Project name from URL:", projectName);
 
             // Initialize Core Systems
             renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
@@ -2757,21 +2750,26 @@ function update(deltaTime) {
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
             // Initial UI updates
+            console.log("5. Performing initial UI updates...");
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
+            console.log("... Initial UI updates complete.");
 
+            console.log("6. Setting up event listeners...");
             setupEventListeners();
+            console.log("... Event listeners set up.");
 
             // Start the main editor loop
+            console.log("7. Starting editor loop...");
             editorLoopId = requestAnimationFrame(editorLoop);
 
             console.log("Editor Initialized Successfully.");
 
         } catch (error) {
-            console.error("Failed to initialize editor:", error);
-            alert("Error fatal al inicializar el editor. Revisa la consola.");
+            console.error("FATAL ERROR during editor initialization:", error);
+            alert("Error fatal al inicializar el editor. Revisa la consola para más detalles.");
         }
     }
     initializeEditor();
