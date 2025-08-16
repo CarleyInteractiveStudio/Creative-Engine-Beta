@@ -649,6 +649,29 @@ document.addEventListener('DOMContentLoaded', () => {
              currentDirectoryHandle = assetsHandle;
         }
 
+        async function handleDropOnFolder(targetFolderHandle, droppedData) {
+            console.log(`Soltado ${droppedData.name} en ${targetFolderHandle.name}`);
+            try {
+                const sourceFileHandle = await currentDirectoryHandle.getFileHandle(droppedData.name);
+                const file = await sourceFileHandle.getFile();
+
+                const newFileHandle = await targetFolderHandle.getFileHandle(droppedData.name, { create: true });
+                const writable = await newFileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+
+                // Now delete the old file
+                await currentDirectoryHandle.removeEntry(droppedData.name);
+
+                console.log(`Movido ${droppedData.name} a ${targetFolderHandle.name}`);
+                await updateAssetBrowser();
+
+            } catch (error) {
+                console.error("Error al mover el archivo:", error);
+                alert("No se pudo mover el archivo.");
+            }
+        }
+
         async function populateGridView(dirHandle) {
             gridViewContainer.innerHTML = '';
             // Store the handle on the element for context menus
@@ -657,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for await (const entry of dirHandle.values()) {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
+                item.draggable = true;
                 item.dataset.name = entry.name;
                 item.dataset.kind = entry.kind;
 
@@ -665,6 +689,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (entry.kind === 'directory') {
                     icon.textContent = '📁';
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        item.classList.add('drag-over');
+                    });
+                    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+                    item.addEventListener('drop', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent drop from bubbling to parent
+                        item.classList.remove('drag-over');
+                        const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
+                        handleDropOnFolder(targetFolderHandle, droppedData);
+                    });
                 } else if (entry.name.endsWith('.ces')) {
                     icon.textContent = '📜';
                 } else if (entry.name.endsWith('.cea')) {
@@ -703,6 +741,20 @@ document.addEventListener('DOMContentLoaded', () => {
             folderItem.addEventListener('click', () => {
                 currentDirectoryHandle = dirHandle;
                 updateAssetBrowser(); // Re-render everything
+            });
+
+            folderItem.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                folderItem.classList.add('drag-over');
+            });
+            folderItem.addEventListener('dragleave', () => folderItem.classList.remove('drag-over'));
+            folderItem.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                folderItem.classList.remove('drag-over');
+                const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                handleDropOnFolder(dirHandle, droppedData);
             });
 
             container.appendChild(folderItem);
@@ -1379,8 +1431,57 @@ function update(deltaTime) {
     }
 
     function setupEventListeners() {
+        // --- Hierarchy Drag and Drop ---
+        const hierarchyContent = dom.hierarchyContent;
+
+        hierarchyContent.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            hierarchyContent.classList.add('drag-over');
+        });
+
+        hierarchyContent.addEventListener('dragleave', (e) => {
+            hierarchyContent.classList.remove('drag-over');
+        });
+
+        hierarchyContent.addEventListener('drop', (e) => {
+            e.preventDefault();
+            hierarchyContent.classList.remove('drag-over');
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+            if (data.name.endsWith('.png') || data.name.endsWith('.jpg')) {
+                const newMateria = new Materia(data.name.split('.')[0]);
+                const spriteRenderer = new SpriteRenderer(newMateria);
+
+                // We need to construct the full path to the asset
+                // This is a simplification; a real engine might need a more robust path system
+                const assetPath = `${currentDirectoryHandle.name}/${data.name}`;
+                spriteRenderer.setSource(assetPath);
+
+                newMateria.addComponent(spriteRenderer);
+                currentScene.addMateria(newMateria);
+                updateHierarchy();
+                selectMateria(newMateria.id);
+                console.log(`Creada nueva Materia '${newMateria.name}' desde el sprite '${data.name}'.`);
+            } else {
+                console.log(`El tipo de archivo '${data.name}' no se puede soltar en la jerarquía.`);
+            }
+        });
+
+
         // --- Asset Browser Listeners ---
         const gridView = dom.assetGridView;
+
+        gridView.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.grid-item');
+            if (item) {
+                e.dataTransfer.setData('text/plain', JSON.stringify({
+                    name: item.dataset.name,
+                    kind: item.dataset.kind
+                }));
+                e.dataTransfer.effectAllowed = 'copy';
+            }
+        });
 
         // Double-click to open script or enter folder
         gridView.addEventListener('dblclick', async (e) => {
