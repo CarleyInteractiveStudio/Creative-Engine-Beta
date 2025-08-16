@@ -1727,8 +1727,10 @@ function update(deltaTime) {
         });
 
         // --- Animation Panel Toggles ---
-        document.getElementById('timeline-toggle-btn').addEventListener('click', () => {
-            dom.animationPanel.classList.toggle('timeline-collapsed');
+        const timelineToggleBtn = document.getElementById('timeline-toggle-btn');
+        timelineToggleBtn.addEventListener('click', () => {
+            const isCollapsed = dom.animationPanel.classList.toggle('timeline-collapsed');
+            timelineToggleBtn.textContent = isCollapsed ? '▼' : '▲';
         });
 
         dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
