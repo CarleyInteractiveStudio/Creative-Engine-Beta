@@ -1,5 +1,6 @@
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
+import { Inspector } from './editor/Inspector.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     const currentScene = new Scene(); let selectedMateria = null;
-    let renderer = null, gameRenderer = null;
+    let renderer = null, gameRenderer = null, inspector = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     let currentDirectoryHandle = { handle: null, path: '' }; // To track the folder selected in the asset browser
     const panelVisibility = {
@@ -307,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateScene, selectMateria, startGame, runGameLoop, stopGame, updateDebugPanel, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
 
     /**
      * Takes a project-relative path and returns a browser-usable object URL.
@@ -678,128 +679,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markdownConverter = new showdown.Converter();
 
-    updateInspectorForAsset = async function(assetName, assetPath) {
-        if (!assetName) {
-            dom.inspectorContent.innerHTML = `<p class="inspector-placeholder">Selecciona un asset</p>`;
-            return;
-        }
-
-        dom.inspectorContent.innerHTML = `<h4>Asset: ${assetName}</h4>`;
-
-        try {
-            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(assetName);
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-
-            if (assetName.endsWith('.ces')) {
-                const pre = document.createElement('pre');
-                const code = document.createElement('code');
-                code.className = 'language-javascript';
-                code.textContent = content;
-                pre.appendChild(code);
-                dom.inspectorContent.appendChild(pre);
-            } else if (assetName.endsWith('.md')) {
-                const html = markdownConverter.makeHtml(content);
-                const preview = document.createElement('div');
-                preview.className = 'markdown-preview';
-                preview.innerHTML = html;
-                dom.inspectorContent.appendChild(preview);
-            } else if (assetName.endsWith('.png') || assetName.endsWith('.jpg')) {
-                let metaData = { textureType: 'Sprite (2D and UI)' }; // Default
-                try {
-                    const metaFileHandle = await currentDirectoryHandle.handle.getFileHandle(`${assetName}.meta`);
-                    const metaFile = await metaFileHandle.getFile();
-                    metaData = JSON.parse(await metaFile.text());
-                } catch (e) {
-                    // Meta file doesn't exist, will be created on first change.
-                }
-
-                const settingsContainer = document.createElement('div');
-                settingsContainer.className = 'asset-settings';
-                settingsContainer.innerHTML = `
-                    <label for="texture-type">Texture Type</label>
-                    <select id="texture-type" data-asset-name="${assetName}">
-                        <option value="Default" ${metaData.textureType === 'Default' ? 'selected' : ''}>Default</option>
-                        <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
-                        <option value="Normal Map" ${metaData.textureType === 'Normal Map' ? 'selected' : ''}>Normal Map</option>
-                    </select>
-                    <hr>
-                    <div class="preview-container">
-                        <img id="inspector-preview-img" src="" alt="Preview">
-                    </div>
-                `;
-                dom.inspectorContent.appendChild(settingsContainer);
-                const imgElement = document.getElementById('inspector-preview-img');
-                if (imgElement && assetPath) {
-                    const url = await getURLForAssetPath(assetPath);
-                    if (url) imgElement.src = url;
-                }
-            } else if (assetName.endsWith('.cea')) {
-                const animData = JSON.parse(content);
-                const anim = animData.animations[0]; // Assume first animation
-
-                const previewContainer = document.createElement('div');
-                previewContainer.className = 'inspector-anim-preview';
-
-                const frameCount = document.createElement('p');
-                frameCount.textContent = `Fotogramas: ${anim.frames.length}`;
-
-                const timeline = document.createElement('div');
-                timeline.className = 'mini-timeline';
-                anim.frames.forEach(frameSrc => {
-                    const img = document.createElement('img');
-                    img.src = frameSrc; // These are data URLs from the .cea file
-                    timeline.appendChild(img);
-                });
-
-                const controls = document.createElement('div');
-                const playBtn = document.createElement('button');
-                playBtn.textContent = '▶️ Play';
-
-                let isPlaying = false;
-                let playbackId = null;
-                let currentFrame = 0;
-
-                playBtn.addEventListener('click', () => {
-                    isPlaying = !isPlaying;
-                    if (isPlaying) {
-                        playBtn.textContent = '⏹️ Stop';
-                        let lastTime = performance.now();
-
-                        function loop(time) {
-                            if (!isPlaying) return;
-                            if (time - lastTime > (1000 / anim.speed)) {
-                                lastTime = time;
-                                currentFrame = (currentFrame + 1) % anim.frames.length;
-                                timeline.childNodes.forEach((node, i) => node.style.border = i === currentFrame ? '2px solid var(--accent-color)' : 'none');
-                            }
-                           playbackId = requestAnimationFrame(loop);
-                        }
-                        playbackId = requestAnimationFrame(loop);
-
-                    } else {
-                        playBtn.textContent = '▶️ Play';
-                        cancelAnimationFrame(playbackId);
-                        timeline.childNodes.forEach(node => node.style.border = 'none');
-                    }
-                });
-
-                controls.appendChild(playBtn);
-                previewContainer.appendChild(frameCount);
-                previewContainer.appendChild(timeline);
-                previewContainer.appendChild(controls);
-                dom.inspectorContent.appendChild(previewContainer);
-
-            } else {
-                 dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
-            }
-
-        } catch (error) {
-            console.error(`Error al leer el asset '${assetName}':`, error);
-            dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo cargar el contenido del asset.</p>`;
-        }
-    };
-
     updateAssetBrowser = async function() {
         if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
@@ -966,162 +845,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
-    updateInspector = async function() {
-        if (!dom.inspectorContent) return;
-        dom.inspectorContent.innerHTML = '';
-        if (!selectedMateria) {
-            const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
-            if(selectedAsset) {
-                await updateInspectorForAsset(selectedAsset.dataset.name, selectedAsset.dataset.path);
-            } else {
-                dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
-            }
-            return;
-        }
-
-        // Name input
-        dom.inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}">`;
-
-        // Components
-        selectedMateria.leyes.forEach(ley => {
-            let componentHTML = '';
-            if (ley instanceof Transform) {
-                componentHTML = `<h4>Transform</h4>
-                <div class="component-grid">
-                    <label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}">
-                    <label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}">
-                    <label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}">
-                    <label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}">
-                </div>`;
-            } else if (ley instanceof Rigidbody) {
-                componentHTML = `<h4>Rigidbody</h4>
-                <div class="component-grid">
-                    <label>Body Type</label>
-                    <select class="prop-input" data-component="Rigidbody" data-prop="bodyType">
-                        <option value="dynamic" ${ley.bodyType === 'dynamic' ? 'selected' : ''}>Dynamic</option>
-                        <option value="static" ${ley.bodyType === 'static' ? 'selected' : ''}>Static</option>
-                        <option value="kinematic" ${ley.bodyType === 'kinematic' ? 'selected' : ''}>Kinematic</option>
-                    </select>
-                    <label>Mass</label><input type="number" class="prop-input" step="0.1" data-component="Rigidbody" data-prop="mass" value="${ley.mass}">
-                </div>`;
-            } else if (ley instanceof BoxCollider) {
-                componentHTML = `<h4>Box Collider</h4>
-                <div class="component-grid">
-                    <label>Width</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="width" value="${ley.width}">
-                    <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
-                </div>`;
-            } else if (ley instanceof SpriteRenderer) {
-                const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-                componentHTML = `<h4>Sprite Renderer</h4>
-                <div class="component-grid">
-                    <label>Sprite</label>
-                    <div class="sprite-dropper">
-                        <div class="sprite-preview" data-component="SpriteRenderer" data-prop="source">${previewImg}</div>
-                        <button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button>
-                    </div>
-                    <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
-                </div>`;
-            } else if (ley instanceof UICanvas) {
-                componentHTML = '<h4>UI Canvas</h4>';
-            } else if (ley instanceof UIText) {
-                componentHTML = `<h4>UI Text</h4>
-                <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
-                <div class="text-transform-controls">
-                    <button class="prop-btn ${ley.textTransform === 'none' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="none">aA</button>
-                    <button class="prop-btn ${ley.textTransform === 'uppercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="uppercase">AA</button>
-                    <button class="prop-btn ${ley.textTransform === 'lowercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="lowercase">aa</button>
-                </div>
-                <div class="component-grid">
-                    <label>Font Size</label><input type="number" class="prop-input" step="1" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">
-                    <label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
-                </div>
-                `;
-            } else if (ley instanceof UIButton) {
-                componentHTML = `<h4>UI Button</h4>
-                <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
-                <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
-            } else if (ley instanceof CreativeScript) {
-                componentHTML = `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`;
-            } else if (ley instanceof Animator) {
-                componentHTML = `<h4>Animator</h4>
-                <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
-                <p>Asset de Animación: (Próximamente)</p>
-                <button id="open-animator-btn">Abrir Editor de Animación</button>`;
-            } else if (ley instanceof Camera) {
-                componentHTML = `<h4>Camera</h4>
-                <div class="component-grid">
-                    <label>Orthographic Size</label>
-                    <input type="number" class="prop-input" step="10" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}">
-                </div>`;
-            }
-            dom.inspectorContent.innerHTML += componentHTML;
-        });
-
-        // Add Component Button
-        dom.inspectorContent.innerHTML += `<button id="add-component-btn" class="add-component-btn">Añadir Ley</button>`;
-
-        // Add event listeners for the new inputs
-        document.getElementById('materia-name').addEventListener('change', e => {
-            if(selectedMateria) {
-                selectedMateria.name = e.target.value;
-                updateHierarchy();
-            }
-        });
-        dom.inspectorContent.querySelectorAll('.prop-input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                let value = e.target.value;
-
-                // This is a security risk in production, but acceptable for this tool's context.
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    if (e.target.type === 'number') {
-                        value = parseFloat(value) || 0;
-                    }
-
-                    if (component instanceof SpriteRenderer && propName === 'source') {
-                        // This property is now handled by dropping assets, not manual input.
-                        // We could re-enable it by making this async and calling loadSprite.
-                    } else if (propName.includes('.')) {
-                        const props = propName.split('.');
-                        let obj = component;
-                        for (let i = 0; i < props.length - 1; i++) {
-                            obj = obj[props[i]];
-                        }
-                        obj[props[props.length - 1]] = value;
-                    } else {
-                        component[propName] = value;
-                    }
-                    updateScene(renderer, false);
-                }
-            });
-        });
-        document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
-
-        dom.inspectorContent.querySelectorAll('.prop-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                const value = e.target.dataset.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    component[propName] = value;
-                    updateInspector(); // Re-render inspector to update active state
-                    updateScene(renderer, false);
-                }
-            });
-        });
-    };
 
     updateScene = function(targetRenderer, isGameView = false) {
         if (!targetRenderer) return;
@@ -1214,87 +937,10 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedMateria = currentScene.findMateriaById(materiaId) || null;
         }
         updateHierarchy();
-        updateInspector(); // This will now show the materia inspector
+        inspector.update(); // NEW: Update inspector module
         if (renderer) {
             updateScene(renderer, false);
         }
-    };
-
-    const availableComponents = {
-        'Renderizado': [SpriteRenderer],
-        'Animación': [Animator],
-        'Cámara': [Camera],
-        'Físicas': [Rigidbody, BoxCollider],
-        'UI': [UICanvas, UIText, UIButton],
-        'Scripting': [CreativeScript]
-    };
-
-    showAddComponentModal = function() {
-        if (!selectedMateria) return;
-        dom.componentList.innerHTML = '';
-
-        for (const category in availableComponents) {
-            const categoryHeader = document.createElement('h4');
-            categoryHeader.textContent = category;
-            dom.componentList.appendChild(categoryHeader);
-
-            availableComponents[category].forEach(ComponentClass => {
-                // Don't show option if component already exists on the materia
-                if (selectedMateria.getComponent(ComponentClass)) {
-                    return;
-                }
-
-                const componentItem = document.createElement('div');
-                componentItem.className = 'component-item';
-                componentItem.textContent = ComponentClass.name;
-                componentItem.addEventListener('click', async () => {
-                    // Special case for script
-                    if (ComponentClass === CreativeScript) {
-                        let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
-                        if (scriptName) {
-                            // Sanitize and add extension
-                            scriptName = scriptName.replace(/\.ces$/, '') + '.ces';
-
-                            const scriptTemplate = `// Script para ${selectedMateria.name}
-function start() {
-    // Se ejecuta una vez al iniciar
-    console.log("¡El script ha comenzado!");
-};
-
-function update(deltaTime) {
-    // Se ejecuta en cada frame
-};
-`;
-                            try {
-                                const projectName = new URLSearchParams(window.location.search).get('project');
-                                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                                // Create script in current asset directory
-                                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(scriptName, { create: true });
-                                const writable = await fileHandle.createWritable();
-                                await writable.write(scriptTemplate);
-                                await writable.close();
-
-                                const newScript = new CreativeScript(selectedMateria, scriptName);
-                                selectedMateria.addComponent(newScript);
-                                console.log(`Script '${scriptName}' creado y añadido.`);
-                                await updateAssetBrowser(); // Refresh asset browser
-                            } catch(err) {
-                                console.error(`Error al crear el script '${scriptName}':`, err);
-                                alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
-                            }
-                        }
-                    } else {
-                        selectedMateria.addComponent(new ComponentClass(selectedMateria));
-                    }
-
-                    dom.addComponentModal.style.display = 'none';
-                    updateInspector();
-                });
-                dom.componentList.appendChild(componentItem);
-            });
-        }
-
-        dom.addComponentModal.style.display = 'block';
     };
 
     updateDebugPanel = function() {
@@ -1981,12 +1627,10 @@ function update(deltaTime) {
             if (item) {
                 // Add active class *before* calling the inspector updates.
                 item.classList.add('active');
-                // This will call updateInspector, which now correctly finds the active asset.
-                selectMateria(null);
-            } else {
-                 // Clicked on background, clear inspector.
-                 selectMateria(null);
             }
+            // The inspector will now handle updating itself based on the active grid item.
+            selectMateria(null);
+
         });
 
         // Custom Context Menu handler for assets
@@ -1997,22 +1641,19 @@ function update(deltaTime) {
             const exportOption = dom.contextMenu.querySelector('[data-action="export-package"]');
             const exportDivider = dom.contextMenu.querySelector('.folder-only-divider');
 
-            if (item && item.dataset.kind === 'directory') {
-                // Right-clicked on a folder, select it and show export option
-                gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+            // Select the item that was right-clicked
+            gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+            if (item) {
                 item.classList.add('active');
-                await updateInspectorForAsset(item.dataset.name, item.dataset.path);
+            }
+            // The inspector will update itself based on the new selection.
+            selectMateria(null);
+
+
+            if (item && item.dataset.kind === 'directory') {
                 exportOption.style.display = 'block';
                 exportDivider.style.display = 'block';
-            } else if (item) {
-                 // Right-clicked on a file
-                gridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                await updateInspectorForAsset(item.dataset.name, item.dataset.path);
-                exportOption.style.display = 'none';
-                exportDivider.style.display = 'none';
             } else {
-                // Right-clicked on empty space
                 exportOption.style.display = 'none';
                 exportDivider.style.display = 'none';
             }
@@ -2026,64 +1667,8 @@ function update(deltaTime) {
             showContextMenu(dom.hierarchyContextMenu, e);
         });
 
-        // Inspector button delegation & Drag/Drop
-        dom.inspectorPanel.addEventListener('click', (e) => {
-            if (e.target.id === 'open-animator-btn') {
-                dom.animationPanel.classList.remove('hidden');
-            } else if (e.target.matches('.sprite-select-btn')) {
-                openSpriteSelector();
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragover', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-                dropTarget.classList.add('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragleave', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('change', (e) => {
-            if(e.target.id === 'texture-type') {
-                const assetName = e.target.dataset.assetName;
-                const newType = e.target.value;
-                saveAssetMeta(assetName, { textureType: newType });
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
-                    if (selectedMateria) {
-                        const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
-                        if (spriteRenderer) {
-                            spriteRenderer.setSourcePath(data.path);
-                            await spriteRenderer.loadSprite();
-                            updateInspector();
-                            updateScene(renderer, false);
-                        }
-                    }
-                } else {
-                    alert("Solo se pueden asignar archivos .png o .jpg como sprites.");
-                }
-            }
-        });
-
         // Disable default context menus on other panels
         dom.scenePanel.addEventListener('contextmenu', e => e.preventDefault());
-        dom.inspectorPanel.addEventListener('contextmenu', e => e.preventDefault());
 
         // Hide context menu on left-click
         window.addEventListener('click', (e) => {
@@ -2599,39 +2184,70 @@ function update(deltaTime) {
         dom.gameCanvas = document.getElementById('game-canvas');
 
         console.log("Initializing Creative Engine Editor...");
-        try {
-            await openDB();
-            projectsDirHandle = await getDirHandle();
-            if (!projectsDirHandle) {
-                console.error("No project directory handle found. Please go back to the launcher and select a directory.");
-                return;
-            }
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
-
-            // Initialize Core Systems
-            renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
-            gameRenderer = new Renderer(dom.gameCanvas); // This is the game renderer
-            physicsSystem = new PhysicsSystem(currentScene);
-            InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
-
-            // Initial UI updates
-            updateHierarchy();
-            updateInspector();
-            await updateAssetBrowser();
-            updateWindowMenuUI();
-
-            setupEventListeners();
-
-            // Start the main editor loop
-            editorLoopId = requestAnimationFrame(editorLoop);
-
-            console.log("Editor Initialized Successfully.");
-
-        } catch (error) {
-            console.error("Failed to initialize editor:", error);
-            alert("Error fatal al inicializar el editor. Revisa la consola.");
+        await openDB();
+        projectsDirHandle = await getDirHandle();
+        if (!projectsDirHandle) {
+            console.error("No project directory handle found. Please go back to the launcher and select a directory.");
+            return;
         }
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
+
+        const markdownConverter = new showdown.Converter();
+
+        // Create an object to act as the main editor context for modules
+        const editorContext = {
+            dom,
+            markdownConverter,
+            getSelectedMateria: () => selectedMateria,
+            getAssetHandle: (assetName) => currentDirectoryHandle.handle.getFileHandle(assetName),
+            getURLForAssetPath: getURLForAssetPath,
+            openSpriteSelector: openSpriteSelector,
+            saveAssetMeta: saveAssetMeta,
+            createScriptFile: async (scriptName, materiaName) => {
+                const scriptTemplate = `// Script para ${materiaName}\nfunction start() {\n    console.log("¡El script ha comenzado!");\n};\n\nfunction update(deltaTime) {\n    // se ejecuta en cada frame\n};`;
+                try {
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(scriptName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(scriptTemplate);
+                    await writable.close();
+                    console.log(`Script '${scriptName}' creado y añadido.`);
+                    await updateAssetBrowser();
+                } catch(err) {
+                    console.error(`Error al crear el script '${scriptName}':`, err);
+                    alert(`No se pudo crear el script.`);
+                }
+            },
+            updateHierarchy: () => updateHierarchy(),
+            updateScene: () => updateScene(renderer, false)
+        };
+
+        // Initialize Modules
+        inspector = new Inspector(editorContext);
+        inspector.setEngineClasses({
+            Transform, Rigidbody, BoxCollider, SpriteRenderer, UICanvas, UIText, UIButton, CreativeScript, Animator, Camera
+        });
+        inspector.initializeEventListeners();
+
+
+        // Initialize Core Systems
+        renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
+        gameRenderer = new Renderer(dom.gameCanvas); // This is the game renderer
+        physicsSystem = new PhysicsSystem(currentScene);
+        InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
+
+        // Initial UI updates
+        updateHierarchy();
+        inspector.update();
+        await updateAssetBrowser();
+        updateWindowMenuUI();
+
+        setupEventListeners();
+
+        // Start the main editor loop
+        editorLoopId = requestAnimationFrame(editorLoop);
+
+        console.log("Editor Initialized Successfully.");
     }
     initializeEditor();
 });
