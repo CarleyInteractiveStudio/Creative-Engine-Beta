@@ -301,7 +301,19 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
+
+    saveAssetMeta = async function(assetName, metaData) {
+        try {
+            const metaFileHandle = await currentDirectoryHandle.getFileHandle(`${assetName}.meta`, { create: true });
+            const writable = await metaFileHandle.createWritable();
+            await writable.write(JSON.stringify(metaData, null, 2));
+            await writable.close();
+            console.log(`Metadatos guardados para ${assetName}`);
+        } catch (error) {
+            console.error(`No se pudieron guardar los metadatos para ${assetName}:`, error);
+        }
+    };
 
     openSpriteSelector = async function() {
         const grid = dom.spriteSelectorGrid;
@@ -648,6 +660,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 preview.className = 'markdown-preview';
                 preview.innerHTML = html;
                 dom.inspectorContent.appendChild(preview);
+            } else if (assetName.endsWith('.png') || assetName.endsWith('.jpg')) {
+                let metaData = { textureType: 'Sprite (2D and UI)' }; // Default
+                try {
+                    const metaFileHandle = await currentDirectoryHandle.getFileHandle(`${assetName}.meta`);
+                    const metaFile = await metaFileHandle.getFile();
+                    metaData = JSON.parse(await metaFile.text());
+                } catch (e) {
+                    // Meta file doesn't exist, will be created on first change.
+                }
+
+                const settingsContainer = document.createElement('div');
+                settingsContainer.className = 'asset-settings';
+                settingsContainer.innerHTML = `
+                    <label for="texture-type">Texture Type</label>
+                    <select id="texture-type" data-asset-name="${assetName}">
+                        <option value="Default" ${metaData.textureType === 'Default' ? 'selected' : ''}>Default</option>
+                        <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
+                        <option value="Normal Map" ${metaData.textureType === 'Normal Map' ? 'selected' : ''}>Normal Map</option>
+                    </select>
+                    <hr>
+                    <div class="preview-container">
+                        <img src="${currentDirectoryHandle.name}/${assetName}" alt="Preview">
+                    </div>
+                `;
+                dom.inspectorContent.appendChild(settingsContainer);
             } else if (assetName.endsWith('.cea')) {
                 const animData = JSON.parse(content);
                 const anim = animData.animations[0]; // Assume first animation
@@ -1939,6 +1976,14 @@ function update(deltaTime) {
             const dropTarget = e.target.closest('.sprite-preview');
             if (dropTarget) {
                 dropTarget.classList.remove('drag-over');
+            }
+        });
+
+        dom.inspectorPanel.addEventListener('change', (e) => {
+            if(e.target.id === 'texture-type') {
+                const assetName = e.target.dataset.assetName;
+                const newType = e.target.value;
+                saveAssetMeta(assetName, { textureType: newType });
             }
         });
 
