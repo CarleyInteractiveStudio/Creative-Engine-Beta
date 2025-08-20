@@ -1,23 +1,30 @@
 /* --- General Styles & Modern Dark Theme --- */
 :root {
-    --primary-bg-color: #121212;
-    --secondary-bg-color: #1e1e1e;
-    --primary-text-color: #e0e0e0;
-    --accent-color: #0d47a1; /* Dark Navy Blue */
-    --highlight-color: #bbdefb; /* Light Blue for text */
-    --button-bg-color: #0d47a1; /* Dark Navy Blue */
-    --button-hover-bg-color: #1565c0; /* Brighter Navy Blue */
+    --primary-bg-color: #0d1117; /* GitHub Dark Dimmed BG */
+    --secondary-bg-color: #161b22; /* GitHub Dark Dimmed secondary BG */
+    --primary-text-color: #c9d1d9; /* GitHub Dark Dimmed text */
+    --accent-color: #58a6ff; /* GitHub Dark Dimmed blue */
+    --highlight-color: #f0f6fc; /* GitHub Dark Dimmed lighter text */
+    --button-bg-color: #238636; /* GitHub green */
+    --button-hover-bg-color: #2ea043; /* GitHub green hover */
     --button-text-color: #ffffff;
-    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --border-color: #30363d;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 body {
     background-color: var(--primary-bg-color);
+    background-image: radial-gradient(circle at 10% 20%, rgba(88, 166, 255, 0.1), rgba(13, 17, 23, 0.1) 30%),
+                      radial-gradient(circle at 90% 80%, rgba(35, 134, 54, 0.1), rgba(13, 17, 23, 0.1) 40%);
     color: var(--primary-text-color);
     font-family: var(--font-family);
     margin: 0;
     padding: 20px;
     text-align: center;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* --- Main Container --- */
@@ -27,11 +34,11 @@ body {
     max-width: 800px;
     width: 100%;
     margin: 20px auto;
-    padding: 30px;
+    padding: 40px;
     background-color: var(--secondary-bg-color);
     border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-    border: 1px solid #2a2a2a;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
 }
 
 /* --- Header & Main Content --- */
@@ -41,37 +48,81 @@ header {
     justify-content: center;
     gap: 15px;
     padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
 }
 
-#header-logo { width: 45px; height: 45px; }
-header h1 { color: var(--highlight-color); font-size: 2.8em; margin: 0; font-weight: 600; }
+#header-logo { width: 40px; height: 40px; }
+header h1 { color: var(--highlight-color); font-size: 2.5em; margin: 0; font-weight: 600; flex-grow: 1; text-align: left; padding-left: 15px;}
+
+#auth-status-container { text-align: right; }
+#btn-auth-action {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+#btn-auth-action:hover {
+    background-color: var(--accent-color);
+    color: var(--secondary-bg-color);
+    border-color: var(--accent-color);
+}
 
 main { padding: 20px 0; }
-#welcome h2 { color: var(--highlight-color); font-size: 2.2em; margin-bottom: 15px; }
-#welcome p { font-size: 1.1em; line-height: 1.6; max-width: 600px; margin: 0 auto 25px auto; }
-.image-container {
-    margin: 20px 0;
+
+/* --- Intro Animation Styles --- */
+#intro-sequence {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    gap: 30px;
+    min-height: 180px; /* Pre-allocate space */
 }
-.image-container img {
-    max-width: 40%;
+
+.intro-step {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.intro-step.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#intro-sequence img {
+    max-width: 150px;
     height: auto;
     border-radius: 8px;
-    background-color: var(--primary-bg-color);
+    background-color: rgba(0,0,0,0.2);
     padding: 10px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    border: 1px solid #2a2a2a;
-    max-height: 150px;
 }
-.credits { font-size: 0.9em; margin-top: 30px; color: var(--highlight-color); }
+
+#main-content {
+    /* Main content starts hidden and becomes visible */
+}
+
+#welcome h2 { font-size: 2em; margin-bottom: 8px; color: var(--highlight-color); }
+#welcome .description { font-size: 1.1em; line-height: 1.6; max-width: 600px; margin: 0 auto 15px auto; }
+#motivational-quote {
+    font-size: 1.2em;
+    font-style: italic;
+    color: var(--accent-color);
+    margin: 20px auto;
+    min-height: 50px; /* Prevent layout shift */
+    transition: opacity 0.5s ease-in-out;
+}
+.quote-fade-out { opacity: 0; }
+.credits { font-size: 0.9em; margin-top: 30px; color: #8b949e; }
 
 /* --- Action Buttons --- */
 #actions {
-    margin-top: 20px;
+    margin-top: 25px;
     margin-bottom: 30px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -79,188 +130,245 @@ main { padding: 20px 0; }
 }
 
 #actions button {
-    background-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    border: 2px solid var(--button-bg-color);
-    padding: 15px 20px;
+    background-color: #21262d;
+    color: var(--highlight-color);
+    border: 1px solid var(--border-color);
+    padding: 14px 20px;
     font-size: 1em;
-    font-weight: bold;
+    font-weight: 500;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease-in-out;
+}
+#actions button:hover {
+    background-color: #30363d;
+    border-color: #8b949e;
 }
 
-#actions button:hover {
+/* Style for <a> tags that should look like buttons */
+.button-link {
+    display: inline-block;
+    background-color: #21262d;
+    color: var(--highlight-color);
+    border: 1px solid var(--border-color);
+    padding: 14px 20px;
+    font-size: 1em;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+}
+.button-link:hover {
+    background-color: #30363d;
+    border-color: #8b949e;
+}
+
+#btn-donate {
+    background-color: #00457C; /* PayPal Blue */
+    border-color: #00457C;
+    color: #ffffff;
+    font-weight: bold;
+}
+#btn-donate:hover {
+    background-color: #002e54;
+    border-color: #002e54;
+}
+
+#actions button#btn-start {
+    background-color: var(--button-bg-color);
+    border-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    font-weight: bold;
+}
+#actions button#btn-start:hover {
     background-color: var(--button-hover-bg-color);
     border-color: var(--button-hover-bg-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3);
 }
 
 /* --- Footer --- */
 footer {
-    margin-top: auto; /* Pushes footer to the bottom of the flex container */
     padding-top: 20px;
-    border-top: 1px solid #2a2a2a;
     font-size: 0.9em;
-    color: var(--highlight-color);
+    color: #8b949e; /* GitHub Dimmed faint text */
 }
 
 /* --- Modal Styles --- */
 .modal {
-    display: none; /* Hidden by default */
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.7);
-    animation: fadeIn 0.3s ease;
+    display: none;
 }
-
+.modal.is-open {
+    display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+    overflow: auto; background-color: rgba(0, 0, 0, 0.8); animation: fadeIn 0.3s ease;
+}
 .modal-content {
-    background-color: var(--secondary-bg-color);
-    margin: 10% auto;
-    padding: 25px;
-    border: 1px solid #333;
-    width: 80%;
-    max-width: 500px;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    animation: slideIn 0.4s ease;
+    background: #161b22; /* Use explicit solid background to prevent transparency issues in some renderers */
+    margin: 8% auto; padding: 30px; border: 1px solid var(--border-color);
+    width: 90%; max-width: 550px; border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); animation: slideIn 0.4s ease;
+    position: relative; /* Ensure it's a stacking context */
+    z-index: 1001;
 }
-
 .close-button {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
+    color: #8b949e; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 0.8;
 }
+.close-button:hover, .close-button:focus { color: var(--button-text-color); }
 
-.close-button:hover,
-.close-button:focus {
-    color: var(--button-text-color);
-    text-decoration: none;
+.modal h2 { color: var(--accent-color); margin-top: 0; }
+.modal p { color: var(--primary-text-color); line-height: 1.6; }
+.modal hr { border-color: var(--border-color); margin: 25px 0; }
+
+/* Form Styles */
+.modal form label {
+    display: block;
+    text-align: left;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--primary-text-color);
 }
-
-.modal h2 { color: var(--highlight-color); }
-.modal p { color: var(--primary-text-color); }
-.modal hr { border-color: #333; margin: 20px 0; }
-
-.modal textarea {
-    width: 95%;
-    height: 100px;
+.modal form input, .modal form textarea {
+    width: 100%;
     padding: 10px;
-    margin-top: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     background-color: var(--primary-bg-color);
     color: var(--primary-text-color);
-    border: 1px solid #444;
-    border-radius: 5px;
-    resize: vertical;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
 }
+.modal form input:focus, .modal form textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+.modal form textarea { resize: vertical; min-height: 120px; }
 
 .modal-btn {
-    background-color: var(--button-bg-color);
+    background-color: var(--accent-color);
     color: var(--button-text-color);
-    border: none;
-    padding: 12px 20px;
-    font-size: 1em;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
+    border: none; padding: 12px 20px; font-size: 1em; font-weight: bold;
+    border-radius: 6px; cursor: pointer; transition: background-color 0.3s;
+    width: 100%;
 }
+.modal-btn:hover { background-color: #6ab0ff; }
+.modal-btn:disabled { background-color: #30363d; cursor: not-allowed; }
 
-.modal-btn:hover { background-color: var(--button-hover-bg-color); }
-
-#donate-button-container { margin-top: 15px; }
-
-/* --- Launcher View Styles --- */
-#launcher-view h2 {
-    color: var(--highlight-color);
-    font-size: 2em;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--accent-color);
-    padding-bottom: 10px;
-}
-
-.project-list {
-    background-color: var(--primary-bg-color);
-    border: 1px solid #2a2a2a;
+/* PayPal Button Container */
+#donate-button-container {
+    margin-top: 15px;
+    padding: 20px;
+    background-color: rgba(88, 166, 255, 0.05);
     border-radius: 8px;
-    min-height: 200px;
-    padding: 15px;
-    margin-bottom: 20px;
-    text-align: left;
+    border: 1px dashed var(--border-color);
 }
 
-.no-projects-message {
-    color: #888;
-    text-align: center;
-    padding: 50px 0;
-    font-size: 1.1em;
-}
-
-.project-item {
+/* License Modal Styles */
+.license-text {
+    max-height: 400px;
+    overflow-y: auto;
     background-color: var(--primary-bg-color);
     padding: 15px;
     border-radius: 6px;
-    margin-bottom: 10px;
-    border: 1px solid #3a3a3a;
-    cursor: pointer;
+    border: 1px solid var(--border-color);
+    text-align: left;
+    font-size: 0.9em;
+}
+.license-text h4 { color: var(--accent-color); margin-top: 15px; margin-bottom: 5px; }
+.license-highlight {
+    background-color: rgba(35, 134, 54, 0.15);
+    border-left: 3px solid var(--button-bg-color);
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+}
+.license-highlight p { margin: 0; }
+
+/* --- Launcher View Styles (largely unchanged) --- */
+#launcher-view h2 {
+    color: var(--highlight-color); font-size: 2em; margin-bottom: 20px;
+    border-bottom: 1px solid var(--accent-color); padding-bottom: 10px;
+}
+.project-list {
+    background-color: var(--primary-bg-color); border: 1px solid var(--border-color);
+    border-radius: 8px; min-height: 200px; padding: 15px; margin-bottom: 20px; text-align: left;
+}
+.no-projects-message { color: #888; text-align: center; padding: 50px 0; font-size: 1.1em; }
+.project-item {
+    background-color: var(--secondary-bg-color); padding: 15px; border-radius: 6px;
+    margin-bottom: 10px; border: 1px solid var(--border-color); cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
+.project-item:hover { background-color: #21262d; border-color: var(--accent-color); }
+.project-item h3 { margin: 0; color: var(--highlight-color); font-size: 1.2em; }
+.launcher-actions { margin-bottom: 20px; }
+#btn-create-project {
+    background-color: var(--button-bg-color); color: var(--button-text-color);
+    border: 1px solid var(--button-hover-bg-color); padding: 15px 25px; font-size: 1.1em;
+    font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
+}
+#btn-create-project:hover { background-color: var(--button-hover-bg-color); }
+.storage-warning {
+    margin-top: 20px; padding: 15px; background-color: rgba(189, 147, 0, 0.1);
+    border: 1px solid rgba(189, 147, 0, 0.4); border-radius: 5px; font-size: 0.9em;
+}
+.storage-warning p { margin: 0; }
 
-.project-item:hover {
-    background-color: #2a2a2e;
-    border-color: var(--accent-color);
+/* Auth Modal Specific Styles */
+.auth-switch {
+    font-size: 0.9em;
+    margin-top: 15px;
+    text-align: center;
+}
+.auth-switch a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+.password-hint {
+    font-size: 0.8em;
+    color: #8b949e;
+    text-align: left;
+    margin-top: -10px;
+    margin-bottom: 15px;
 }
 
-.project-item h3 {
-    margin: 0;
+
+/* Verifying Overlay Styles */
+#verifying-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(13, 17, 23, 0.9);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     color: var(--highlight-color);
-    font-size: 1.2em;
+    font-size: 1.5em;
 }
-
-.launcher-actions {
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-left-color: var(--accent-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
     margin-bottom: 20px;
 }
 
-#btn-create-project {
-    background-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    border: 2px solid var(--button-bg-color);
-    padding: 15px 25px;
-    font-size: 1.1em;
-    font-weight: bold;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-#btn-create-project:hover {
-    background-color: var(--button-hover-bg-color);
-    border-color: var(--button-hover-bg-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(21, 101, 192, 0.3);
-}
-
-.storage-warning {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: rgba(189, 147, 0, 0.1);
-    border: 1px solid rgba(189, 147, 0, 0.4);
-    border-radius: 5px;
-    font-size: 0.9em;
-}
-
-.storage-warning p {
-    margin: 0;
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 
+/* --- Keyframe Animations --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

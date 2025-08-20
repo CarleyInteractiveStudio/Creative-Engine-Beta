@@ -1,7 +1,10 @@
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
+import * as SceneManager from './engine/SceneManager.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
+import { CreativeScript, UICanvas, UIText, UIButton, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform } from './engine/Components.js';
+import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 
@@ -9,123 +12,6 @@ import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Engine Core Classes ---
-    class Leyes { constructor(materia) { this.materia = materia; } update() {} }
-    class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
-    class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load() { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
-    class UICanvas extends Leyes { constructor(materia) { super(materia); } }
-    class UIText extends Leyes { constructor(materia, text = 'Hola Mundo') { super(materia); this.text = text; this.fontSize = 16; this.color = '#ffffff'; this.textTransform = 'none'; } }
-    class UIButton extends Leyes { constructor(materia) { super(materia); this.label = new UIText(materia, 'Botón'); this.color = '#2d2d30'; } }
-
-    class Rigidbody extends Leyes {
-        constructor(materia) {
-            super(materia);
-            this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
-            this.mass = 1.0;
-            this.velocity = { x: 0, y: 0 };
-        }
-    }
-
-    class BoxCollider extends Leyes {
-        constructor(materia) {
-            super(materia);
-            this.width = 1.0;
-            this.height = 1.0;
-        }
-    }
-
-    class SpriteRenderer extends Leyes {
-        constructor(materia) {
-            super(materia);
-            this.sprite = new Image();
-            this.source = ''; // Path to the image, relative to project root
-            this.color = '#ffffff'; // Tint color
-        }
-
-        setSourcePath(path) {
-            this.source = path;
-        }
-
-        async loadSprite() {
-            if (this.source) {
-                const url = await getURLForAssetPath(this.source);
-                if (url) {
-                    this.sprite.src = url;
-                }
-            } else {
-                this.sprite.src = ''; // Clear the image if source is empty
-            }
-        }
-    }
-
-    class Animation {
-        constructor(name = 'New Animation') {
-            this.name = name;
-            this.frames = []; // Array of image source paths
-            this.speed = 10; // Frames per second
-            this.loop = true;
-        }
-    }
-
-    class Animator extends Leyes {
-        constructor(materia) {
-            super(materia);
-            this.animations = new Map(); // Map of animation names to Animation objects
-            this.currentState = null;
-            this.currentFrame = 0;
-            this.frameTimer = 0;
-            this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-        }
-
-        play(stateName) {
-            if (this.currentState !== stateName && this.animations.has(stateName)) {
-                this.currentState = stateName;
-                this.currentFrame = 0;
-                this.frameTimer = 0;
-            }
-        }
-
-        update(deltaTime) {
-            if (!this.currentState || !this.spriteRenderer) {
-                if (!this.spriteRenderer) {
-                    this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-                }
-                return;
-            }
-
-            const animation = this.animations.get(this.currentState);
-            if (!animation || animation.frames.length === 0) return;
-
-            this.frameTimer += deltaTime;
-            const frameDuration = 1 / animation.speed;
-
-            if (this.frameTimer >= frameDuration) {
-                this.frameTimer -= frameDuration;
-                this.currentFrame++;
-
-                if (this.currentFrame >= animation.frames.length) {
-                    if (animation.loop) {
-                        this.currentFrame = 0;
-                    } else {
-                        this.currentFrame = animation.frames.length - 1; // Stay on last frame
-                    }
-                }
-                // The animation frames should be pre-loaded object URLs
-                this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
-            }
-        }
-    }
-
-    let MATERIA_ID_COUNTER = 0;
-    class Materia { constructor(name = 'Materia') { this.id = MATERIA_ID_COUNTER++; this.name = `${name}`; this.leyes = []; this.parent = null; this.children = []; this.addComponent(new Transform(this)); } addComponent(component) { this.leyes.push(component); component.materia = this; } getComponent(componentClass) { return this.leyes.find(ley => ley instanceof componentClass); } addChild(child) { if (child.parent) { child.parent.removeChild(child); } child.parent = this; this.children.push(child); } removeChild(child) { const index = this.children.indexOf(child); if (index > -1) { this.children.splice(index, 1); child.parent = null; } } update() { for (const ley of this.leyes) { ley.update(); } } }
-    class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } findFirstCamera() { return this.materias.find(m => m.getComponent(Camera)); } }
-
-    class Camera extends Leyes {
-        constructor(materia) {
-            super(materia);
-            this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
-            this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
-        }
-    }
 
     class Renderer {
         constructor(canvas, isEditor = false) {
@@ -142,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         begin() {
-            const sceneCameraMateria = currentScene.findFirstCamera();
+            const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
             let cameraComponent;
             let cameraTransform;
 
@@ -258,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
-    const currentScene = new Scene(); let selectedMateria = null;
+    let selectedMateria = null;
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     let currentDirectoryHandle = { handle: null, path: '' }; // To track the folder selected in the asset browser
@@ -293,8 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
-    let currentSceneFileHandle = null;
-    let isSceneDirty = false; // To track unsaved changes
+    let isScanningForComponents = false;
 
 
     // --- 2. DOM Elements ---
@@ -307,34 +192,175 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame;
 
-    /**
-     * Takes a project-relative path and returns a browser-usable object URL.
-     * @param {string} path - The relative path to the asset (e.g., "Assets/Textures/player.png").
-     * @returns {Promise<string|null>} A promise that resolves to an object URL or null if an error occurs.
-     */
-    async function getURLForAssetPath(path) {
-        if (!projectsDirHandle || !path) return null;
-        try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+    runChecksAndPlay = async function() {
+        if (!projectsDirHandle) {
+            alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
+            return;
+        }
+        console.log("Verificando todos los scripts del proyecto...");
+        dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
+        const allErrors = [];
+        let mainGameJsCode = null;
 
-            let currentHandle = projectHandle;
-            const parts = path.split('/').filter(p => p); // Filter out empty strings from path
-            const fileName = parts.pop();
+        // 1. Encontrar todos los archivos .ces
+        const cesFiles = [];
+        async function findCesFiles(dirHandle, currentPath = '') {
+            console.log(`Buscando en: ${currentPath || 'Assets'}`);
+            for await (const entry of dirHandle.values()) {
+                console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
+                if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
+                    console.log(`    -> ¡Script .ces encontrado! Añadiendo a la lista.`);
+                    cesFiles.push(entry);
+                } else if (entry.kind === 'directory') {
+                    await findCesFiles(entry, `${currentPath}/${entry.name}`);
+                }
+            }
+        }
 
-            for (const part of parts) {
-                currentHandle = await currentHandle.getDirectoryHandle(part);
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        await findCesFiles(assetsHandle);
+
+        if (cesFiles.length === 0) {
+            console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
+            originalStartGame(); // Usar la función original que guardamos
+            return;
+        }
+
+        // 2. Transpilar cada archivo y recolectar errores
+        for (const fileHandle of cesFiles) {
+            const file = await fileHandle.getFile();
+            const code = await file.text();
+            const result = transpile(code); // Usar la función transpile que añadiremos
+
+            if (result.errors && result.errors.length > 0) {
+                allErrors.push({fileName: fileHandle.name, errors: result.errors});
+            } else if (fileHandle.name === 'main.ces') { // Asumimos que main.ces es el punto de entrada
+                mainGameJsCode = result.jsCode;
+            }
+        }
+
+        // 3. Actuar según el resultado
+        if (allErrors.length > 0) {
+            console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
+            for (const fileErrors of allErrors) {
+                console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
+                for (const error of fileErrors.errors) {
+                    console.error(`  - ${error}`);
+                }
+            }
+            // Opcional: Cambiar a la pestaña de la consola para que los errores sean visibles
+            dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
+        } else {
+            console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
+            // 4. Cargar el script del juego y empezar
+            if (mainGameJsCode) {
+                try {
+                    // Crear un módulo dinámico desde el código JS transpilado
+                    const blob = new Blob([mainGameJsCode], { type: 'application/javascript' });
+                    const url = URL.createObjectURL(blob);
+                    await import(url); // Importar el script para que defina Engine.start/update
+                    URL.revokeObjectURL(url); // Limpiar
+                    console.log("Script principal cargado. Iniciando juego...");
+                    originalStartGame(); // Llamar a la función de inicio original
+                } catch (e) {
+                    console.error("Error al ejecutar el script del juego:", e);
+                }
+            } else {
+                console.warn("Build exitoso, pero no se encontró 'main.ces'. El juego podría no tener lógica de scripting.");
+                originalStartGame();
+            }
+        }
+    };
+
+    // --- Lógica del Transpilador (movida desde transpiler.js) ---
+    function transpile(code) {
+        const usingMap = {
+            'creative.engine': "import * as Engine from './modules/engine.js';",
+            'creative.engine.core': "import * as Core from './modules/core.js';",
+            'creative.engine.ui': "import * as UI from './modules/ui.js';",
+            'creative.engine.animator': "import * as Animator from './modules/animator.js';",
+            'creative.engine.physics': "import * as Physics from './modules/physics.js';",
+        };
+        const lines = code.split(/\r?\n/);
+        const errors = [];
+        let jsCode = '';
+        const imports = new Set();
+        let inBlock = false;
+
+        lines.forEach((line, index) => {
+            const lineNumber = index + 1;
+            let trimmedLine = line.trim();
+
+            if (trimmedLine === '' || trimmedLine.startsWith('//')) return;
+
+            if (trimmedLine.includes('{')) inBlock = true;
+
+            if (!inBlock) {
+                const usingMatch = trimmedLine.match(/^using\s+([^;]+);/);
+                if (usingMatch) {
+                    const namespace = usingMatch[1].trim();
+                    if (usingMap[namespace]) imports.add(usingMap[namespace]);
+                    else errors.push(`Línea ${lineNumber}: Namespace '${namespace}' desconocido.`);
+                    return;
+                }
+                const varMatch = trimmedLine.match(/^public\s+(?:materia\/gameObject)\s+([^;]+);/);
+                if (varMatch) {
+                    jsCode += `let ${varMatch[1]};\n`;
+                    return;
+                }
             }
 
-            const fileHandle = await currentHandle.getFileHandle(fileName);
-            const file = await fileHandle.getFile();
-            return URL.createObjectURL(file);
-        } catch (error) {
-            console.error(`Could not create URL for asset path: ${path}`, error);
-            return null;
-        }
+            const starMatch = trimmedLine.match(/^public\s+star\s*\(\)\s*{/);
+            if (starMatch) {
+                jsCode += 'Engine.start = function() {\n';
+                return;
+            }
+            const updateMatch = trimmedLine.match(/^public\s+update\s*\(([^)]*)\)\s*{/);
+            if (updateMatch) {
+                jsCode += `Engine.update = function(${updateMatch[1]}) {\n`;
+                return;
+            }
+            if (trimmedLine.match(/public\s+.*\(\)\s*{/)) {
+                errors.push(`Línea ${lineNumber}: Declaración de función no válida: "${trimmedLine}"`);
+                return;
+            }
+
+            if (inBlock) {
+                if (trimmedLine.includes('}')) {
+                    inBlock = false;
+                    if (!trimmedLine.startsWith('}')) {
+                        let content = trimmedLine.substring(0, trimmedLine.indexOf('}'));
+                        content = content.replace(/materia\s+crear\s+([^,]+),"([^"]+)";/g, 'Assets.loadModel("$1", "$2");');
+                        content = content.replace(/ley\s+gravedad\s+activar;/g, 'Physics.enableGravity(true);');
+                        content = content.replace(/ley\s+gravedad\s+desactivar;/g, 'Physics.enableGravity(false);');
+                        jsCode += `    ${content}\n`;
+                    }
+                    jsCode += '};\n';
+                    return;
+                }
+
+                let originalLine = trimmedLine;
+                let processedLine = trimmedLine.replace(/materia\s+crear\s+([^,]+),"([^"]+)";/g, 'Assets.loadModel("$1", "$2");');
+                processedLine = processedLine.replace(/ley\s+gravedad\s+activar;/g, 'Physics.enableGravity(true);');
+                processedLine = processedLine.replace(/ley\s+gravedad\s+desactivar;/g, 'Physics.enableGravity(false);');
+
+                if (processedLine === originalLine && !originalLine.match(/(if|for|while|{|})|^\w+\.\w+\(.*\);?$/)) {
+                     errors.push(`Línea ${lineNumber}: Comando desconocido dentro de un bloque: "${originalLine}"`);
+                } else {
+                    jsCode += `    ${processedLine}\n`;
+                }
+                return;
+            }
+            errors.push(`Línea ${lineNumber}: Sintaxis inesperada: "${trimmedLine}"`);
+        });
+
+        if (errors.length > 0) return { errors };
+        const finalImports = Array.from(imports).join('\n');
+        return { jsCode: `${finalImports}\n\n${jsCode}` };
     }
 
     saveAssetMeta = async function(assetName, metaData) {
@@ -352,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openSpriteSelector = async function() {
         const grid = dom.spriteSelectorGrid;
         grid.innerHTML = '';
-        dom.spriteSelectorModal.classList.remove('hidden');
+        dom.spriteSelectorModal.classList.add('is-open');
 
         const imageFiles = [];
         async function findImages(dirHandle, path = '') {
@@ -372,18 +398,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         imageFiles.forEach(imgPath => {
             const img = document.createElement('img');
-            getURLForAssetPath(imgPath).then(url => { if(url) img.src = url; });
+            SceneManager.getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
             img.addEventListener('click', async () => {
                 if (selectedMateria) {
                     const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                     if (spriteRenderer) {
                         spriteRenderer.setSourcePath(imgPath);
-                        await spriteRenderer.loadSprite();
+                        await spriteRenderer.loadSprite(projectsDirHandle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
                 }
-                dom.spriteSelectorModal.classList.add('hidden');
+                dom.spriteSelectorModal.classList.remove('is-open');
             });
             grid.appendChild(img);
         });
@@ -417,6 +443,42 @@ document.addEventListener('DOMContentLoaded', () => {
         // zip.file(path ? `${path}/manifest.json` : 'manifest.json', JSON.stringify(manifest, null, 2));
     }
 
+    async function importPackage(fileHandle) {
+        try {
+            const file = await fileHandle.getFile();
+            const zip = await JSZip.loadAsync(file);
+            const rootDir = currentDirectoryHandle.handle;
+
+            for (const relativePath in zip.files) {
+                const zipEntry = zip.files[relativePath];
+                const pathParts = relativePath.split('/').filter(p => p);
+
+                if (zipEntry.dir) {
+                    let currentDir = rootDir;
+                    for (const part of pathParts) {
+                        currentDir = await currentDir.getDirectoryHandle(part, { create: true });
+                    }
+                } else {
+                    const fileName = pathParts.pop();
+                    let currentDir = rootDir;
+                    for (const part of pathParts) {
+                        currentDir = await currentDir.getDirectoryHandle(part, { create: true });
+                    }
+                    const newFileHandle = await currentDir.getFileHandle(fileName, { create: true });
+                    const content = await zipEntry.async('blob');
+                    const writable = await newFileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                }
+            }
+            console.log(`Paquete '${fileHandle.name}' importado con éxito.`);
+            await updateAssetBrowser();
+        } catch (error) {
+            console.error(`Error al importar el paquete:`, error);
+            alert("No se pudo importar el paquete.");
+        }
+    }
+
     exportPackage = async function(folderName) {
         if (!folderName) return;
         console.log(`Exportando paquete desde: ${folderName}`);
@@ -433,87 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(error) {
             console.error(`Error al exportar el paquete:`, error);
             alert("No se pudo exportar el paquete.");
-        }
-    };
-
-    serializeScene = function(scene) {
-        const sceneData = {
-            materias: []
-        };
-        for (const materia of scene.materias) {
-            const materiaData = {
-                id: materia.id,
-                name: materia.name,
-                leyes: []
-            };
-            for (const ley of materia.leyes) {
-                const leyData = {
-                    type: ley.constructor.name,
-                    properties: {}
-                };
-                // Copy properties, but not the 'materia' back-reference
-                for (const key in ley) {
-                    if (key !== 'materia' && typeof ley[key] !== 'function') {
-                        leyData.properties[key] = ley[key];
-                    }
-                }
-                materiaData.leyes.push(leyData);
-            }
-            sceneData.materias.push(materiaData);
-        }
-        return sceneData;
-    };
-
-    deserializeScene = async function(sceneData) {
-        const newScene = new Scene();
-        for (const materiaData of sceneData.materias) {
-            const newMateria = new Materia(materiaData.name);
-            newMateria.id = materiaData.id;
-            newMateria.leyes = []; // Clear default transform
-
-            for (const leyData of materiaData.leyes) {
-                const ComponentClass = window[leyData.type] || eval(leyData.type);
-                if (ComponentClass) {
-                    const newLey = new ComponentClass(newMateria);
-                    Object.assign(newLey, leyData.properties);
-                    newMateria.addComponent(newLey);
-
-                    // If the component is a SpriteRenderer, load its sprite.
-                    if (newLey instanceof SpriteRenderer) {
-                        await newLey.loadSprite();
-                    }
-                    // Also handle CreativeScript loading here
-                    if (newLey instanceof CreativeScript) {
-                        await newLey.load();
-                    }
-                }
-            }
-            newScene.addMateria(newMateria);
-        }
-        return newScene;
-    };
-
-    loadScene = async function(fileName) {
-        if(isSceneDirty) {
-            if(!confirm("Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.")) {
-                return;
-            }
-        }
-        try {
-            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName);
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-            const sceneData = JSON.parse(content);
-
-            currentScene = await deserializeScene(sceneData); // Await the async deserialization
-            currentSceneFileHandle = fileHandle;
-            dom.currentSceneName.textContent = fileName.replace('.ceScene', '');
-
-            updateHierarchy();
-            selectMateria(null);
-            isSceneDirty = false;
-        } catch (error) {
-            console.error(`Error al cargar la escena '${fileName}':`, error);
         }
     };
 
@@ -731,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.inspectorContent.appendChild(settingsContainer);
                 const imgElement = document.getElementById('inspector-preview-img');
                 if (imgElement && assetPath) {
-                    const url = await getURLForAssetPath(assetPath);
+                    const url = await SceneManager.getURLForAssetPath(assetPath, projectsDirHandle);
                     if (url) imgElement.src = url;
                 }
             } else if (assetName.endsWith('.cea')) {
@@ -790,6 +771,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.appendChild(controls);
                 dom.inspectorContent.appendChild(previewContainer);
 
+            } else if (assetName.endsWith('.cmel')) {
+                const materialData = JSON.parse(content);
+                const settingsContainer = document.createElement('div');
+                settingsContainer.className = 'asset-settings';
+                let html = '';
+                for (const key in materialData) {
+                    html += `<label>${key}</label><input type="text" value="${materialData[key]}" readonly>`;
+                }
+                settingsContainer.innerHTML = html;
+                dom.inspectorContent.appendChild(settingsContainer);
             } else {
                  dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
             }
@@ -854,7 +845,17 @@ document.addEventListener('DOMContentLoaded', () => {
             gridViewContainer.directoryHandle = dirHandle;
             gridViewContainer.dataset.path = dirPath;
 
+            const entries = [];
             for await (const entry of dirHandle.values()) {
+                entries.push(entry);
+            }
+
+            if (entries.length === 0) {
+                gridViewContainer.innerHTML = '<p class="empty-folder-message">La carpeta está vacía</p>';
+                return;
+            }
+
+            for (const entry of entries) {
                 const item = document.createElement('div');
                 item.className = 'grid-item';
                 item.draggable = true;
@@ -866,8 +867,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const iconContainer = document.createElement('div');
                 iconContainer.className = 'icon';
 
+                const imgIcon = document.createElement('img');
+                imgIcon.className = 'icon-preview';
+
                 if (entry.kind === 'directory') {
                     iconContainer.textContent = '📁';
+                    const folderHandle = await dirHandle.getDirectoryHandle(entry.name);
+                    let childrenNames = [];
+                    for await (const child of folderHandle.values()) {
+                        childrenNames.push(child.name);
+                    }
+                    if (childrenNames.length > 0) {
+                        item.title = `Contenido: ${childrenNames.join(', ')}`;
+                    } else {
+                        item.title = "Carpeta vacía";
+                    }
                     item.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; item.classList.add('drag-over'); });
                     item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
                     item.addEventListener('drop', async (e) => {
@@ -875,29 +889,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.stopPropagation();
                         item.classList.remove('drag-over');
                         const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                        const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
-                        await handleDropOnFolder(targetFolderHandle, fullPath, droppedData);
+                        await handleDropOnFolder(folderHandle, fullPath, droppedData);
                     });
                 } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg')) {
-                    getURLForAssetPath(fullPath).then(url => {
+                    SceneManager.getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
                         if (url) {
-                            const imgIcon = document.createElement('img');
                             imgIcon.src = url;
-                            imgIcon.className = 'icon-preview';
-                            iconContainer.innerHTML = '';
                             iconContainer.appendChild(imgIcon);
                         } else {
                             iconContainer.textContent = '🖼️';
                         }
                     });
                 } else if (entry.name.endsWith('.ces')) {
-                    iconContainer.textContent = '📜';
+                    imgIcon.src = 'image/Script.png';
+                    iconContainer.appendChild(imgIcon);
                 } else if (entry.name.endsWith('.cea')) {
-                    iconContainer.textContent = '🎞️';
+                    imgIcon.src = 'image/cea.png';
+                    iconContainer.appendChild(imgIcon);
+                } else if (entry.name.endsWith('.ceanim')) {
+                    imgIcon.src = 'image/animacion_controler.svg';
+                    iconContainer.appendChild(imgIcon);
+                } else if (entry.name.endsWith('.cep')) {
+                    imgIcon.src = 'image/Paquete.png';
+                    iconContainer.appendChild(imgIcon);
+                } else if (entry.name.endsWith('.cmel')) {
+                    iconContainer.textContent = '🎨';
                 } else if (entry.name.endsWith('.ceScene')) {
                     iconContainer.textContent = '🎬';
-                } else if (entry.name.endsWith('.cep')) {
-                    iconContainer.textContent = '📦';
                 } else {
                     iconContainer.textContent = '📄';
                 }
@@ -965,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) item.classList.add('active'); container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
+    updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = SceneManager.currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; if (!materia.isActive) { item.classList.add('disabled'); } item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) { item.classList.add('active'); } container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
     updateInspector = async function() {
         if (!dom.inspectorContent) return;
         dom.inspectorContent.innerHTML = '';
@@ -979,14 +997,37 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Name input
-        dom.inspectorContent.innerHTML = `<label for="materia-name">Nombre</label><input type="text" id="materia-name" value="${selectedMateria.name}">`;
+        // Name input and active toggle
+        dom.inspectorContent.innerHTML = `
+            <div class="inspector-materia-header">
+                <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
+                <input type="text" id="materia-name-input" value="${selectedMateria.name}">
+            </div>
+        `;
+
+        // Helper para los iconos de componentes
+        const componentIcons = {
+            Transform: '✥',
+            Rigidbody: '🏋️',
+            BoxCollider: '🟩',
+            SpriteRenderer: '🖼️',
+            Animator: '🏃',
+            Camera: '📷',
+            UICanvas: '📋',
+            UIText: '📄',
+            UIButton: '🔘',
+            CreativeScript: 'image/Script.png'
+        };
 
         // Components
         selectedMateria.leyes.forEach(ley => {
             let componentHTML = '';
+            const componentName = ley.constructor.name;
+            const icon = componentIcons[componentName] || '⚙️'; // Icono por defecto
+            const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
+
             if (ley instanceof Transform) {
-                componentHTML = `<h4>Transform</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Transform</h4></div>
                 <div class="component-grid">
                     <label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}">
                     <label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}">
@@ -994,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}">
                 </div>`;
             } else if (ley instanceof Rigidbody) {
-                componentHTML = `<h4>Rigidbody</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Rigidbody</h4></div>
                 <div class="component-grid">
                     <label>Body Type</label>
                     <select class="prop-input" data-component="Rigidbody" data-prop="bodyType">
@@ -1005,14 +1046,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Mass</label><input type="number" class="prop-input" step="0.1" data-component="Rigidbody" data-prop="mass" value="${ley.mass}">
                 </div>`;
             } else if (ley instanceof BoxCollider) {
-                componentHTML = `<h4>Box Collider</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Box Collider</h4></div>
                 <div class="component-grid">
                     <label>Width</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="width" value="${ley.width}">
                     <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
                 </div>`;
             } else if (ley instanceof SpriteRenderer) {
                 const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-                componentHTML = `<h4>Sprite Renderer</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
                 <div class="component-grid">
                     <label>Sprite</label>
                     <div class="sprite-dropper">
@@ -1022,9 +1063,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
                 </div>`;
             } else if (ley instanceof UICanvas) {
-                componentHTML = '<h4>UI Canvas</h4>';
+                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>`;
             } else if (ley instanceof UIText) {
-                componentHTML = `<h4>UI Text</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Text</h4></div>
                 <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
                 <div class="text-transform-controls">
                     <button class="prop-btn ${ley.textTransform === 'none' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="none">aA</button>
@@ -1037,18 +1078,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 `;
             } else if (ley instanceof UIButton) {
-                componentHTML = `<h4>UI Button</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
                 <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
                 <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
             } else if (ley instanceof CreativeScript) {
-                componentHTML = `<h4>Creative Script</h4><div class="component-item script">${ley.scriptName}</div>`;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
             } else if (ley instanceof Animator) {
-                componentHTML = `<h4>Animator</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div>
                 <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
                 <p>Asset de Animación: (Próximamente)</p>
                 <button id="open-animator-btn">Abrir Editor de Animación</button>`;
             } else if (ley instanceof Camera) {
-                componentHTML = `<h4>Camera</h4>
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
                 <div class="component-grid">
                     <label>Orthographic Size</label>
                     <input type="number" class="prop-input" step="10" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}">
@@ -1058,69 +1099,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Add Component Button
-        dom.inspectorContent.innerHTML += `<button id="add-component-btn" class="add-component-btn">Añadir Ley</button>`;
-
-        // Add event listeners for the new inputs
-        document.getElementById('materia-name').addEventListener('change', e => {
-            if(selectedMateria) {
-                selectedMateria.name = e.target.value;
-                updateHierarchy();
-            }
-        });
-        dom.inspectorContent.querySelectorAll('.prop-input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                let value = e.target.value;
-
-                // This is a security risk in production, but acceptable for this tool's context.
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    if (e.target.type === 'number') {
-                        value = parseFloat(value) || 0;
-                    }
-
-                    if (component instanceof SpriteRenderer && propName === 'source') {
-                        // This property is now handled by dropping assets, not manual input.
-                        // We could re-enable it by making this async and calling loadSprite.
-                    } else if (propName.includes('.')) {
-                        const props = propName.split('.');
-                        let obj = component;
-                        for (let i = 0; i < props.length - 1; i++) {
-                            obj = obj[props[i]];
-                        }
-                        obj[props[props.length - 1]] = value;
-                    } else {
-                        component[propName] = value;
-                    }
-                    updateScene(renderer, false);
-                }
-            });
-        });
-        document.getElementById('add-component-btn').addEventListener('click', showAddComponentModal);
-
-        dom.inspectorContent.querySelectorAll('.prop-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                const value = e.target.dataset.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    component[propName] = value;
-                    updateInspector(); // Re-render inspector to update active state
-                    updateScene(renderer, false);
-                }
-            });
-        });
+        const addComponentBtn = document.createElement('button');
+        addComponentBtn.type = 'button';
+        addComponentBtn.id = 'add-component-btn';
+        addComponentBtn.className = 'add-component-btn';
+        addComponentBtn.textContent = 'Añadir Ley';
+        addComponentBtn.addEventListener('click', () => showAddComponentModal()); // Use arrow function to ensure `this` context is correct if needed later
+        dom.inspectorContent.appendChild(addComponentBtn);
     };
 
     updateScene = function(targetRenderer, isGameView = false) {
@@ -1152,9 +1137,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Draw Materias
-        currentScene.materias.forEach(materia => {
+        SceneManager.currentScene.materias.forEach(materia => {
+            if (isGameView && !materia.isActive) {
+                return; // Don't render inactive objects in the final game view
+            }
+
             const transform = materia.getComponent(Transform);
             if (!transform) return;
+
+            const isInactiveInEditor = !isGameView && !materia.isActive;
+            if (isInactiveInEditor) {
+                targetRenderer.ctx.globalAlpha = 0.5;
+            }
 
             let drawn = false;
             const spriteRenderer = materia.getComponent(SpriteRenderer);
@@ -1196,6 +1190,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Draw gizmos for all materias in the scene view
                 drawGizmos(targetRenderer, materia);
             }
+
+            // Reset alpha if it was changed
+            if (!isGameView && !materia.isActive) {
+                targetRenderer.ctx.globalAlpha = 1.0;
+            }
         });
 
         targetRenderer.end();
@@ -1211,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (materiaId === null) {
             selectedMateria = null;
         } else {
-            selectedMateria = currentScene.findMateriaById(materiaId) || null;
+            selectedMateria = SceneManager.currentScene.findMateriaById(materiaId) || null;
         }
         updateHierarchy();
         updateInspector(); // This will now show the materia inspector
@@ -1229,72 +1228,112 @@ document.addEventListener('DOMContentLoaded', () => {
         'Scripting': [CreativeScript]
     };
 
-    showAddComponentModal = function() {
+    showAddComponentModal = async function() {
         if (!selectedMateria) return;
-        dom.componentList.innerHTML = '';
 
+        dom.componentList.innerHTML = '';
+        const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
+        const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof CreativeScript).map(ley => ley.scriptName));
+
+        // --- 1. Render Built-in Components ---
         for (const category in availableComponents) {
+            // Skip Scripts category for now, we'll handle it separately
+            if (category === 'Scripting') continue;
+
             const categoryHeader = document.createElement('h4');
             categoryHeader.textContent = category;
             dom.componentList.appendChild(categoryHeader);
 
             availableComponents[category].forEach(ComponentClass => {
-                // Don't show option if component already exists on the materia
-                if (selectedMateria.getComponent(ComponentClass)) {
-                    return;
+                if (existingComponents.has(ComponentClass)) {
+                    return; // Skip component if it already exists
                 }
-
                 const componentItem = document.createElement('div');
                 componentItem.className = 'component-item';
                 componentItem.textContent = ComponentClass.name;
-                componentItem.addEventListener('click', async () => {
-                    // Special case for script
-                    if (ComponentClass === CreativeScript) {
-                        let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
-                        if (scriptName) {
-                            // Sanitize and add extension
-                            scriptName = scriptName.replace(/\.ces$/, '') + '.ces';
-
-                            const scriptTemplate = `// Script para ${selectedMateria.name}
-function start() {
-    // Se ejecuta una vez al iniciar
-    console.log("¡El script ha comenzado!");
-};
-
-function update(deltaTime) {
-    // Se ejecuta en cada frame
-};
-`;
-                            try {
-                                const projectName = new URLSearchParams(window.location.search).get('project');
-                                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                                // Create script in current asset directory
-                                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(scriptName, { create: true });
-                                const writable = await fileHandle.createWritable();
-                                await writable.write(scriptTemplate);
-                                await writable.close();
-
-                                const newScript = new CreativeScript(selectedMateria, scriptName);
-                                selectedMateria.addComponent(newScript);
-                                console.log(`Script '${scriptName}' creado y añadido.`);
-                                await updateAssetBrowser(); // Refresh asset browser
-                            } catch(err) {
-                                console.error(`Error al crear el script '${scriptName}':`, err);
-                                alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
-                            }
-                        }
-                    } else {
-                        selectedMateria.addComponent(new ComponentClass(selectedMateria));
-                    }
-
-                    dom.addComponentModal.style.display = 'none';
+                componentItem.addEventListener('click', () => {
+                    selectedMateria.addComponent(new ComponentClass(selectedMateria));
+                    dom.addComponentModal.classList.remove('is-open');
                     updateInspector();
                 });
                 dom.componentList.appendChild(componentItem);
             });
         }
 
-        dom.addComponentModal.style.display = 'block';
+        // --- 2. Show the modal Immediately ---
+        dom.addComponentModal.classList.add('is-open');
+
+        // --- 3. Find and Render Custom Scripts Asynchronously ---
+        const scriptsCategoryHeader = document.createElement('h4');
+        scriptsCategoryHeader.textContent = 'Scripts';
+        dom.componentList.appendChild(scriptsCategoryHeader);
+
+        const placeholder = document.createElement('p');
+        placeholder.className = 'script-scan-status';
+        dom.componentList.appendChild(placeholder);
+
+        if (!projectsDirHandle) {
+            placeholder.textContent = "No se ha seleccionado un directorio de proyecto.";
+            return;
+        }
+
+        if (isScanningForComponents) {
+            placeholder.textContent = 'Escaneo de scripts ya en progreso...';
+            return;
+        }
+
+        isScanningForComponents = true;
+        placeholder.textContent = 'Buscando scripts...';
+
+        try {
+            const scriptFiles = [];
+            async function findScriptFiles(dirHandle) {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
+                        scriptFiles.push(entry);
+                    } else if (entry.kind === 'directory') {
+                        try {
+                            await findScriptFiles(entry);
+                        } catch (e) {
+                            console.warn(`No se pudo acceder al directorio '${entry.name}'. Permisos? Saltando.`);
+                        }
+                    }
+                }
+            }
+
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+            await findScriptFiles(assetsHandle);
+
+            placeholder.remove();
+
+            if (scriptFiles.length === 0) {
+                const noScriptsMsg = document.createElement('p');
+                noScriptsMsg.textContent = "No se encontraron scripts (.ces) en la carpeta Assets.";
+                dom.componentList.appendChild(noScriptsMsg);
+            } else {
+                scriptFiles.forEach(fileHandle => {
+                    if (existingScripts.has(fileHandle.name)) return;
+                    const componentItem = document.createElement('div');
+                    componentItem.className = 'component-item';
+                    componentItem.textContent = fileHandle.name;
+                    componentItem.addEventListener('click', () => {
+                        const newScript = new CreativeScript(selectedMateria, fileHandle.name);
+                        selectedMateria.addComponent(newScript);
+                        dom.addComponentModal.classList.remove('is-open');
+                        updateInspector();
+                    });
+                    dom.componentList.appendChild(componentItem);
+                });
+            }
+        } catch (error) {
+            console.error("Error crítico durante el escaneo de scripts:", error);
+            placeholder.textContent = "Error al buscar scripts.";
+            placeholder.className += ' error-message';
+        } finally {
+            isScanningForComponents = false;
+        }
     };
 
     updateDebugPanel = function() {
@@ -1316,8 +1355,8 @@ function update(deltaTime) {
         const dtMs = (deltaTime * 1000).toFixed(2);
 
         // Scene Stats
-        const totalMaterias = currentScene.materias.length;
-        const rootMaterias = currentScene.getRootMaterias().length;
+        const totalMaterias = SceneManager.currentScene.materias.length;
+        const rootMaterias = SceneManager.currentScene.getRootMaterias().length;
 
         dom.debugContent.innerHTML = `
             <div class="debug-section">
@@ -1346,7 +1385,8 @@ function update(deltaTime) {
         }
 
         // Update all game objects scripts
-        for (const materia of currentScene.materias) {
+        for (const materia of SceneManager.currentScene.materias) {
+            if (!materia.isActive) continue;
             materia.update(deltaTime);
         }
     };
@@ -1425,8 +1465,8 @@ function update(deltaTime) {
     }
 
     function createEmptyMateria(name = 'Objeto Vacío') {
-        const newMateria = new Materia(name);
-        currentScene.addMateria(newMateria);
+        const newMateria = new SceneManager.Materia(name);
+        SceneManager.currentScene.addMateria(newMateria);
         updateHierarchy();
         selectMateria(newMateria.id);
     }
@@ -1703,10 +1743,10 @@ function update(deltaTime) {
                 const spriteRenderer = new SpriteRenderer(newMateria);
 
                 spriteRenderer.setSourcePath(data.path);
-                await spriteRenderer.loadSprite();
+                await spriteRenderer.loadSprite(projectsDirHandle);
 
                 newMateria.addComponent(spriteRenderer);
-                currentScene.addMateria(newMateria);
+                SceneManager.currentScene.addMateria(newMateria);
                 updateHierarchy();
                 selectMateria(newMateria.id);
                 console.log(`Creada nueva Materia '${newMateria.name}' desde el sprite '${data.name}'.`);
@@ -1748,7 +1788,20 @@ function update(deltaTime) {
             } else if (name.endsWith('.cea')) {
                 await openAnimationAsset(name);
             } else if (name.endsWith('.ceScene')) {
-                await loadScene(name);
+                const sceneData = await SceneManager.loadScene(name, currentDirectoryHandle.handle, projectsDirHandle);
+                if (sceneData) {
+                    SceneManager.setCurrentScene(sceneData.scene);
+                    SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
+                    dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                    updateHierarchy();
+                    selectMateria(null);
+                    SceneManager.setSceneDirty(false);
+                }
+            } else if (name.endsWith('.cep')) {
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+                await importPackage(fileHandle);
+            } else if (name.endsWith('.cmel')) {
+                await updateInspectorForAsset(name, path);
             }
         });
 
@@ -1846,8 +1899,8 @@ function update(deltaTime) {
             if (targetItem) {
                 const targetId = parseInt(targetItem.dataset.id, 10);
                 if (draggedId !== targetId) { // Can't parent to self
-                    const draggedMateria = currentScene.findMateriaById(draggedId);
-                    const targetMateria = currentScene.findMateriaById(targetId);
+                    const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);
+                    const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
                     if (draggedMateria && targetMateria) {
                         targetMateria.addChild(draggedMateria);
                         updateHierarchy();
@@ -1891,7 +1944,7 @@ function update(deltaTime) {
             } else {
                 // If not clicking a handle, we might be starting a pan or selecting a new materia
                 let clickedMateria = null;
-                for (const materia of [...currentScene.materias].reverse()) {
+                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
                     if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
                         clickedMateria = materia;
                         break;
@@ -1914,7 +1967,7 @@ function update(deltaTime) {
             if (isPanning) {
                 const dx = (e.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
                 const dy = (e.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
-                const camMateria = currentScene.findFirstCamera();
+                const camMateria = SceneManager.currentScene.findFirstCamera();
                 if(camMateria) {
                     const camTransform = camMateria.getComponent(Transform);
                     camTransform.x -= dx;
@@ -1961,8 +2014,10 @@ function update(deltaTime) {
         });
 
         // Modal close buttons
-        dom.addComponentModal.querySelector('.close-button').addEventListener('click', () => {
-            dom.addComponentModal.style.display = 'none';
+        document.querySelectorAll('.modal .close-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.target.closest('.modal').classList.remove('is-open');
+            });
         });
 
         // Canvas resizing
@@ -1992,7 +2047,6 @@ function update(deltaTime) {
         // Custom Context Menu handler for assets
         gridView.addEventListener('contextmenu', async (e) => {
             e.preventDefault();
-
             const item = e.target.closest('.grid-item');
             const exportOption = dom.contextMenu.querySelector('[data-action="export-package"]');
             const exportDivider = dom.contextMenu.querySelector('.folder-only-divider');
@@ -2032,6 +2086,75 @@ function update(deltaTime) {
                 dom.animationPanel.classList.remove('hidden');
             } else if (e.target.matches('.sprite-select-btn')) {
                 openSpriteSelector();
+            } else if (e.target.matches('.prop-btn')) {
+                 if (!selectedMateria) return;
+                const componentName = e.target.dataset.component;
+                const propName = e.target.dataset.prop;
+                const value = e.target.dataset.value;
+
+                const ComponentClass = window[componentName] || eval(componentName);
+                if (!ComponentClass) return;
+
+                const component = selectedMateria.getComponent(ComponentClass);
+                if (component) {
+                    component[propName] = value;
+                    updateInspector(); // Re-render inspector to update active state
+                    updateScene(renderer, false);
+                }
+            }
+        });
+
+        dom.inspectorPanel.addEventListener('change', e => {
+            if (!selectedMateria) {
+                // Handle asset inspector changes if no materia is selected
+                const target = e.target;
+                if (target.id === 'texture-type') {
+                     const assetName = target.dataset.assetName;
+                     const newType = target.value;
+                     saveAssetMeta(assetName, { textureType: newType });
+                }
+                return;
+            }
+
+            const target = e.target;
+            if (target.id === 'materia-active-toggle') {
+                if (selectedMateria) {
+                    selectedMateria.isActive = target.checked;
+                    updateHierarchy(); // Update hierarchy to show disabled state
+                }
+            } else if (target.id === 'materia-name-input') {
+                 if (selectedMateria) {
+                    selectedMateria.name = target.value;
+                    updateHierarchy();
+                 }
+            } else if (target.matches('.prop-input')) {
+                const componentName = target.dataset.component;
+                const propName = target.dataset.prop;
+                let value = target.value;
+
+                const ComponentClass = window[componentName] || eval(componentName);
+                if (!ComponentClass) return;
+
+                const component = selectedMateria.getComponent(ComponentClass);
+                if (component) {
+                    if (target.type === 'number') {
+                        value = parseFloat(value) || 0;
+                    }
+
+                    if (component instanceof SpriteRenderer && propName === 'source') {
+                        // Handled by drop
+                    } else if (propName.includes('.')) {
+                        const props = propName.split('.');
+                        let obj = component;
+                        for (let i = 0; i < props.length - 1; i++) {
+                            obj = obj[props[i]];
+                        }
+                        obj[props[props.length - 1]] = value;
+                    } else {
+                        component[propName] = value;
+                    }
+                    updateScene(renderer, false);
+                }
             }
         });
 
@@ -2070,7 +2193,7 @@ function update(deltaTime) {
                         const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
                         if (spriteRenderer) {
                             spriteRenderer.setSourcePath(data.path);
-                            await spriteRenderer.loadSprite();
+                            await spriteRenderer.loadSprite(projectsDirHandle);
                             updateInspector();
                             updateScene(renderer, false);
                         }
@@ -2108,7 +2231,7 @@ function update(deltaTime) {
                 case 'create-ui-canvas': {
                     const canvasMateria = new Materia('Canvas');
                     canvasMateria.addComponent(new UICanvas(canvasMateria));
-                    currentScene.addMateria(canvasMateria);
+                    SceneManager.currentScene.addMateria(canvasMateria);
                     updateHierarchy();
                     selectMateria(canvasMateria.id);
                     break;
@@ -2116,7 +2239,7 @@ function update(deltaTime) {
                 case 'create-ui-text': {
                     const textMateria = new Materia('Texto');
                     textMateria.addComponent(new UIText(textMateria));
-                    currentScene.addMateria(textMateria);
+                    SceneManager.currentScene.addMateria(textMateria);
                     updateHierarchy();
                     selectMateria(textMateria.id);
                     break;
@@ -2124,7 +2247,7 @@ function update(deltaTime) {
                 case 'create-ui-button': {
                     const buttonMateria = new Materia('Botón');
                     buttonMateria.addComponent(new UIButton(buttonMateria));
-                    currentScene.addMateria(buttonMateria);
+                    SceneManager.currentScene.addMateria(buttonMateria);
                     updateHierarchy();
                     selectMateria(buttonMateria.id);
                     break;
@@ -2132,7 +2255,7 @@ function update(deltaTime) {
                 case 'create-ui-image': {
                     const imageMateria = new Materia('Imagen');
                     imageMateria.addComponent(new SpriteRenderer(imageMateria));
-                    currentScene.addMateria(imageMateria);
+                    SceneManager.currentScene.addMateria(imageMateria);
                     updateHierarchy();
                     selectMateria(imageMateria.id);
                     break;
@@ -2141,7 +2264,7 @@ function update(deltaTime) {
                     const animMateria = new Materia('Materia Animada');
                     animMateria.addComponent(new SpriteRenderer(animMateria));
                     animMateria.addComponent(new Animator(animMateria));
-                    currentScene.addMateria(animMateria);
+                    SceneManager.currentScene.addMateria(animMateria);
                     updateHierarchy();
                     selectMateria(animMateria.id);
                     break;
@@ -2149,7 +2272,7 @@ function update(deltaTime) {
                 case 'create-camera': {
                     const camMateria = new Materia('Cámara');
                     camMateria.addComponent(new Camera(camMateria));
-                    currentScene.addMateria(camMateria);
+                    SceneManager.currentScene.addMateria(camMateria);
                     updateHierarchy();
                     selectMateria(camMateria.id);
                     break;
@@ -2572,17 +2695,11 @@ function update(deltaTime) {
         // Edit Menu Modals
         document.getElementById('menu-project-settings').addEventListener('click', (e) => {
             e.preventDefault();
-            dom.projectSettingsModal.style.display = 'block';
+            dom.projectSettingsModal.classList.add('is-open');
         });
         document.getElementById('menu-preferences').addEventListener('click', (e) => {
             e.preventDefault();
-            dom.preferencesModal.style.display = 'block';
-        });
-        dom.projectSettingsModal.querySelector('.close-button').addEventListener('click', () => {
-            dom.projectSettingsModal.style.display = 'none';
-        });
-        dom.preferencesModal.querySelector('.close-button').addEventListener('click', () => {
-            dom.preferencesModal.style.display = 'none';
+            dom.preferencesModal.classList.add('is-open');
         });
     }
 
@@ -2612,7 +2729,14 @@ function update(deltaTime) {
             // Initialize Core Systems
             renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
             gameRenderer = new Renderer(dom.gameCanvas); // This is the game renderer
-            physicsSystem = new PhysicsSystem(currentScene);
+            const sceneData = await SceneManager.initialize(projectsDirHandle);
+            if (sceneData) {
+                SceneManager.setCurrentScene(sceneData.scene);
+                SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
+                dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
+                SceneManager.setSceneDirty(false);
+            }
+            physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
 
             // Initial UI updates
@@ -2625,6 +2749,17 @@ function update(deltaTime) {
 
             // Start the main editor loop
             editorLoopId = requestAnimationFrame(editorLoop);
+
+            // --- Intercept Play Button ---
+            const oldPlayButton = document.getElementById('btn-play');
+            const newPlayButton = oldPlayButton.cloneNode(true);
+            oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
+            dom.btnPlay = newPlayButton; // Update cached element
+            dom.btnPlay.addEventListener('click', runChecksAndPlay);
+            // Also update the keyboard shortcut to use the new flow
+            originalStartGame = startGame; // Store the original function
+            startGame = runChecksAndPlay; // Reassign startGame to our new function
+
 
             console.log("Editor Initialized Successfully.");
 
