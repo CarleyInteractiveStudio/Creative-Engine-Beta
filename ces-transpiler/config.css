@@ -1,0 +1,187 @@
+/* --- Estilos del Contenedor Principal --- */
+.config-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    border: 1px solid #333;
+}
+
+.config-container header {
+    text-align: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 1.5rem;
+}
+
+.config-container header h1 {
+    margin-bottom: 0.5rem;
+}
+
+.config-container footer {
+    text-align: center;
+    margin-top: 2rem;
+    border-top: 1px solid #333;
+    padding-top: 1.5rem;
+}
+
+/* --- Navegación por Pestañas --- */
+.tab-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #333;
+}
+
+.tab-link {
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    background-color: transparent;
+    color: #bdbdbd;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.tab-link:hover {
+    color: #ffffff;
+}
+
+.tab-link.active {
+    color: #4dd0e1;
+    border-bottom-color: #4dd0e1;
+}
+
+/* --- Paneles de Contenido --- */
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.5s;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* --- Estilos de Formularios --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: #e0e0e0;
+    text-align: left;
+}
+
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 1rem;
+}
+
+.form-group input[type="file"] {
+    padding: 0.5rem;
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --- Estilos para Listas Dinámicas (Logos, Inputs) --- */
+.dynamic-list-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.dynamic-list-item .form-group {
+    flex-grow: 1;
+}
+
+.btn-remove {
+    background-color: #ef5350;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* --- Botones --- */
+.btn-primary {
+    background: linear-gradient(90deg, #4dd0e1, #4db6ac);
+    color: #121212;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 8px;
+    padding: 1rem 2rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(77, 208, 225, 0.2);
+}
+
+.btn-secondary {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* --- Salida JSON --- */
+#json-output-container {
+    margin-top: 2rem;
+    text-align: left;
+}
+
+#json-output {
+    background-color: #121212;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 1rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #4dd0e1;
+}

@@ -452,6 +452,11 @@ body {
 .grid-item .icon {
     font-size: 3em; /* 48px */
 }
+.grid-item .icon img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
 .grid-item .name {
     font-size: 0.85em;
     word-break: break-all;
@@ -817,14 +822,100 @@ body {
     margin-left: 10px;
 }
 
-#component-list .component-item {
-    padding: 8px 12px;
+/* --- Modal Styles --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2500; /* Below menubar (3000) but above most other things */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.6); /* Semi-transparent black background */
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
+}
+
+.modal.is-open {
+  display: flex; /* Use flex for centering */
+}
+
+.modal-content {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  margin: auto;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 80%;
+  max-width: 450px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.modal .close-button {
+    color: var(--text-secondary);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
     cursor: pointer;
-    border-radius: 4px;
+    position: absolute;
+    top: 5px;
+    right: 15px;
+}
+
+.modal .close-button:hover,
+.modal .close-button:focus {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+#component-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 10px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+#component-list h4 {
+    margin-top: 15px;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+#component-list .component-item {
+  padding: 8px 12px;
+  background-color: var(--bg-primary);
+  margin-bottom: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
 }
 
 #component-list .component-item:hover {
-    background-color: var(--bg-tertiary);
+  background-color: var(--accent-color);
+  color: white;
+}
+
+#add-component-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+#add-component-btn:hover {
+    opacity: 0.9;
 }
 
 .game-controls {
@@ -869,6 +960,10 @@ body {
     font-weight: 600;
 }
 
+.hierarchy-item.disabled {
+    color: var(--text-secondary);
+}
+
 .hierarchy-item .toggle {
     width: 0;
     height: 0;
@@ -896,6 +991,32 @@ body {
 }
 
 /* --- Inspector Panel Styles --- */
+.inspector-materia-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+
+#materia-active-toggle {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+#materia-name-input {
+    flex-grow: 1;
+    font-size: 1.1em;
+    font-weight: bold;
+    padding: 6px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+}
+
 .inspector-placeholder {
     color: var(--text-secondary);
     text-align: center;

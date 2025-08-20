@@ -1,0 +1,16 @@
+{
+  "name": "ces-transpiler",
+  "version": "1.0.0",
+  "description": "A simple transpiler for Creative Engine Scripting (.ces) to JavaScript.",
+  "main": "transpiler.js",
+  "scripts": {
+    "transpile": "node transpiler.js"
+  },
+  "keywords": [
+    "dsl",
+    "transpiler",
+    "game-engine"
+  ],
+  "author": "JOHN",
+  "license": "ISC"
+}

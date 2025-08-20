@@ -1,0 +1,49 @@
+{
+  "general": {
+    "gameName": "Mi Juego Asombroso",
+    "version": "0.1.0-alpha",
+    "author": "Estudio Creativo",
+    "packageId": "com.estudiocreativo.mijuego",
+    "icon": "assets/icon.png"
+  },
+  "graphics": {
+    "shadows": true,
+    "splashScreen": "assets/splash.jpg",
+    "sceneBackgrounds": {
+      "Nivel1": "assets/fondos/bosque.png",
+      "MenuPrincipal": "assets/fondos/espacio.png"
+    }
+  },
+  "startupLogos": [
+    {
+      "file": "https://via.placeholder.com/300x150.png?text=Creative+Engine+Logo",
+      "duration": 4
+    },
+    {
+      "file": "https://via.placeholder.com/250x100.png?text=Mi+Estudio",
+      "duration": 3
+    }
+  ],
+  "security": {
+    "antiTampering": true,
+    "encryptionKey": "clave-secreta-de-ejemplo",
+    "keystore": {
+      "author": "Mi Nombre",
+      "password": "password123"
+    }
+  },
+  "inputManager": [
+    {
+      "action": "Saltar",
+      "key": "Space"
+    },
+    {
+      "action": "Moverse_Adelante",
+      "key": "w"
+    },
+    {
+      "action": "Moverse_Atras",
+      "key": "s"
+    }
+  ]
+}
