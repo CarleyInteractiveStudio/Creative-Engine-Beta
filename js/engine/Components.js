@@ -72,37 +72,71 @@ export class Animation {
 export class Animator extends Leyes {
     constructor(materia) {
         super(materia);
-        this.animations = new Map(); // Map of animation names to Animation objects
+        this.controllerPath = ''; // Path to the .ceanim asset
+        this.controller = null; // The loaded controller data
+        this.states = new Map(); // Holds the runtime animation data, keyed by state name
+        this.parameters = new Map(); // Holds runtime parameter values
+
         this.currentState = null;
         this.currentFrame = 0;
         this.frameTimer = 0;
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
     }
 
+    async loadController(projectsDirHandle) {
+        if (!this.controllerPath) return;
+        this.spriteRenderer = this.materia.getComponent(SpriteRenderer); // Ensure we have the renderer
+
+        try {
+            const url = await getURLForAssetPath(this.controllerPath, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for controller: ${this.controllerPath}`);
+
+            const response = await fetch(url);
+            this.controller = await response.json();
+
+            // Load all animations defined in the states
+            for (const state of this.controller.states) {
+                const animUrl = await getURLForAssetPath(state.animationAsset, projectsDirHandle);
+                if (animUrl) {
+                    const animResponse = await fetch(animUrl);
+                    const animData = await animResponse.json();
+                    // We assume the .cea file has an array of animations, we take the first one
+                    this.states.set(state.name, { ...state, ...animData.animations[0] });
+                }
+            }
+
+            // Set initial state
+            if (this.controller.entryState) {
+                this.play(this.controller.entryState);
+            }
+
+        } catch (error) {
+            console.error(`Failed to load Animator Controller at '${this.controllerPath}':`, error);
+        }
+    }
+
     play(stateName) {
-        if (this.currentState !== stateName && this.animations.has(stateName)) {
-            this.currentState = stateName;
+        if (this.currentState?.name !== stateName && this.states.has(stateName)) {
+            this.currentState = this.states.get(stateName);
             this.currentFrame = 0;
             this.frameTimer = 0;
+            console.log(`Animator state changed to: ${stateName}`);
         }
     }
 
     update(deltaTime) {
         if (!this.currentState || !this.spriteRenderer) {
-            if (!this.spriteRenderer) {
-                this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-            }
             return;
         }
 
-        const animation = this.animations.get(this.currentState);
-        if (!animation || animation.frames.length === 0) return;
+        const animation = this.currentState;
+        if (!animation.frames || animation.frames.length === 0) return;
 
         this.frameTimer += deltaTime;
-        const frameDuration = 1 / animation.speed;
+        const frameDuration = 1 / (animation.speed || 10);
 
         if (this.frameTimer >= frameDuration) {
-            this.frameTimer -= frameDuration;
+            this.frameTimer = 0; // Reset timer
             this.currentFrame++;
 
             if (this.currentFrame >= animation.frames.length) {
@@ -110,9 +144,10 @@ export class Animator extends Leyes {
                     this.currentFrame = 0;
                 } else {
                     this.currentFrame = animation.frames.length - 1; // Stay on last frame
+                    // Here we would check for transitions in the future
                 }
             }
-            // The animation frames should be pre-loaded object URLs
+            // The animation frames are pre-loaded data URLs from the .cea file
             this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
         }
     }

@@ -7,6 +7,36 @@ import { CreativeScript, UICanvas, UIText, UIButton, Rigidbody, BoxCollider, Spr
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
+import {autocompletion} from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+
+// --- Autocomplete Logic for Creative Engine Script ---
+const cesKeywords = [
+  {label: "public", type: "keyword"},
+  {label: "private", type: "keyword"},
+  {label: "sprite", type: "type"},
+  {label: "SpriteAnimacion", type: "type"},
+  {label: "crear", type: "function"},
+  {label: "destruir", type: "function"},
+  {label: "reproducir", type: "function"},
+  {label: "obtener", type: "function"},
+  {label: "si", type: "keyword"},
+  {label: "sino", type: "keyword"},
+  {label: "para", type: "keyword"},
+  {label: "mientras", type: "keyword"},
+  {label: "start", type: "function"},
+  {label: "update", type: "function"}
+];
+
+function cesCompletions(context) {
+  let word = context.matchBefore(/\w*/);
+  if (word.from == word.to && !context.explicit) {
+    return null;
+  }
+  return {
+    from: word.from,
+    options: cesKeywords
+  };
+}
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -152,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hierarchy: true,
         inspector: true,
         assets: true,
+        animator: false, // For the new controller panel
     };
     let physicsSystem = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move'; // 'move', 'pan', 'scale'
@@ -171,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAnimationPlaying = false;
     let animationPlaybackId = null;
     let panelMoveOffset = { x: 0, y: 0 };
+    let panelMoveState = {};
     let isResizingPanel = false;
     let panelResizeState = {};
 
@@ -180,6 +212,33 @@ document.addEventListener('DOMContentLoaded', () => {
     let editorLoopId = null;
     let deltaTime = 0;
     let isScanningForComponents = false;
+
+    // Animator Controller State
+    let currentControllerHandle = null;
+    let currentControllerData = null;
+    let graphView = null; // Will be the graph DOM element
+    let isDraggingNode = false;
+    let dragNodeInfo = {};
+
+    // Project Settings State
+    let currentProjectConfig = {};
+    // Editor Preferences State
+    let currentPreferences = {};
+    let autoSaveIntervalId = null;
+
+    // Music Player State
+    let playlist = [];
+    let currentTrackIndex = -1;
+    let audioElement = new Audio();
+
+    // Export/Import State
+    let exportContext = {
+        type: null, // 'project' or 'asset'
+        description: '',
+        rootHandle: null,
+        fileName: ''
+    };
+    let exportFileHandleMap = new Map();
 
 
     // --- 2. DOM Elements ---
@@ -192,7 +251,190 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig;
+
+    loadProjectConfig = async function() {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: false });
+            const file = await configFileHandle.getFile();
+            const content = await file.text();
+            currentProjectConfig = JSON.parse(content);
+            console.log("Configuración del proyecto cargada:", currentProjectConfig);
+        } catch (error) {
+            console.warn("No se encontró 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
+            currentProjectConfig = {
+                appName: 'MiJuego',
+                authorName: 'Un Creador',
+                appVersion: '1.0.0',
+                engineVersion: '0.1.0-beta',
+                iconPath: '',
+                splashLogos: [],
+                showEngineLogo: true,
+                keystore: { path: '', pass: '', alias: '', aliasPass: '' }
+            };
+            // Automatically save the default config file if it doesn't exist
+            await saveProjectConfig(false);
+        }
+
+        // Populate the UI
+        if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
+        if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
+        if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
+        if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
+        if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
+
+        if (dom.settingsIconPreview && currentProjectConfig.iconPath) {
+            // We can't get a direct URL from a file handle for security reasons after page reload.
+            // We will just show that a path is set. A real app might store this differently.
+            dom.settingsIconPreview.style.display = 'block';
+            dom.settingsIconPreview.src = 'image/Paquete.png'; // Placeholder image
+        }
+
+        // Populate logo list
+        dom.settingsLogoList.innerHTML = ''; // Clear existing
+        if (currentProjectConfig.splashLogos && currentProjectConfig.splashLogos.length > 0) {
+            currentProjectConfig.splashLogos.forEach(logoData => {
+                addLogoToList(logoData.path, logoData.duration);
+            });
+        }
+    };
+
+    // --- Preferences Logic ---
+    function applyPreferences() {
+        if (!currentPreferences) return;
+
+        // Apply theme
+        const theme = currentPreferences.theme;
+        if (theme === 'custom') {
+            document.documentElement.setAttribute('data-theme', 'custom');
+            document.documentElement.style.setProperty('--bg-secondary', currentPreferences.customColors.bg);
+            document.documentElement.style.setProperty('--bg-tertiary', currentPreferences.customColors.header);
+            document.documentElement.style.setProperty('--accent-color', currentPreferences.customColors.accent);
+        } else {
+            document.documentElement.removeAttribute('style'); // Clear custom colors
+            document.documentElement.setAttribute('data-theme', theme || 'dark-modern');
+        }
+
+        // Apply autosave
+        if (currentPreferences.autosave) {
+            if (autoSaveIntervalId) clearInterval(autoSaveIntervalId); // Clear previous interval
+            autoSaveIntervalId = setInterval(saveCurrentScript, currentPreferences.autosaveInterval * 1000);
+        } else {
+            if (autoSaveIntervalId) clearInterval(autoSaveIntervalId);
+        }
+    }
+
+    function savePreferences() {
+        // Gather data from UI
+        currentPreferences.theme = dom.prefsTheme.value;
+        if (currentPreferences.theme === 'custom') {
+            currentPreferences.customColors = {
+                bg: dom.prefsColorBg.value,
+                header: dom.prefsColorHeader.value,
+                accent: dom.prefsColorAccent.value
+            };
+        }
+        currentPreferences.autosave = dom.prefsAutosaveToggle.checked;
+        currentPreferences.autosaveInterval = dom.prefsAutosaveInterval.value;
+        currentPreferences.scriptLang = dom.prefsScriptLang.value;
+        currentPreferences.snapping = dom.prefsSnappingToggle.checked;
+        currentPreferences.gridSize = dom.prefsSnappingGridSize.value;
+
+        localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
+        applyPreferences();
+        alert("Preferencias guardadas.");
+        dom.preferencesModal.classList.remove('is-open');
+    }
+
+    function loadPreferences() {
+        const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+        if (savedPrefs) {
+            currentPreferences = JSON.parse(savedPrefs);
+        } else {
+            // Default preferences
+            currentPreferences = {
+                theme: 'dark-modern',
+                customColors: { bg: '#2d2d30', header: '#3f3f46', accent: '#0e639c' },
+                autosave: false,
+                autosaveInterval: 30,
+                scriptLang: 'ces',
+                snapping: false,
+                gridSize: 25
+            };
+        }
+
+        // Populate UI
+        if (dom.prefsTheme) dom.prefsTheme.value = currentPreferences.theme;
+        if (dom.prefsColorBg) dom.prefsColorBg.value = currentPreferences.customColors.bg;
+        if (dom.prefsColorHeader) dom.prefsColorHeader.value = currentPreferences.customColors.header;
+        if (dom.prefsColorAccent) dom.prefsColorAccent.value = currentPreferences.customColors.accent;
+        if (dom.prefsAutosaveToggle) dom.prefsAutosaveToggle.checked = currentPreferences.autosave;
+        if (dom.prefsAutosaveInterval) dom.prefsAutosaveInterval.value = currentPreferences.autosaveInterval;
+        if (dom.prefsScriptLang) dom.prefsScriptLang.value = currentPreferences.scriptLang;
+        if (dom.prefsSnappingToggle) dom.prefsSnappingToggle.checked = currentPreferences.snapping;
+        if (dom.prefsSnappingGridSize) dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
+
+        // Show/hide relevant fields based on loaded prefs
+        if (dom.prefsTheme.value === 'custom') {
+            dom.prefsCustomThemePicker.classList.remove('hidden');
+        } else {
+            dom.prefsCustomThemePicker.classList.add('hidden');
+        }
+        if (dom.prefsAutosaveToggle.checked) {
+            dom.prefsAutosaveIntervalGroup.classList.remove('hidden');
+        } else {
+            dom.prefsAutosaveIntervalGroup.classList.add('hidden');
+        }
+
+
+        applyPreferences();
+    }
+
+
+    saveProjectConfig = async function(showAlert = true) {
+        if (!projectsDirHandle) {
+            if(showAlert) alert("El directorio del proyecto no está disponible.");
+            return;
+        }
+
+        // Gather data from UI if the modal is open, otherwise save the current state
+        if (dom.projectSettingsModal.classList.contains('is-open')) {
+            currentProjectConfig.appName = dom.settingsAppName.value;
+            currentProjectConfig.authorName = dom.settingsAuthorName.value;
+            currentProjectConfig.appVersion = dom.settingsAppVersion.value;
+            currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
+            currentProjectConfig.keystore.pass = dom.settingsKeystorePass.value;
+            currentProjectConfig.keystore.alias = dom.settingsKeyAlias.value;
+            currentProjectConfig.keystore.aliasPass = dom.settingsKeyPass.value;
+            // The iconPath and keystore.path are updated directly by the pickers
+
+            // Gather logo data from the DOM
+            currentProjectConfig.splashLogos = [];
+            const logoItems = dom.settingsLogoList.querySelectorAll('.logo-list-item');
+            logoItems.forEach(item => {
+                currentProjectConfig.splashLogos.push({
+                    path: item.dataset.path,
+                    duration: item.querySelector('input[type=range]').value
+                });
+            });
+        }
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+            const writable = await configFileHandle.createWritable();
+            await writable.write(JSON.stringify(currentProjectConfig, null, 2));
+            await writable.close();
+            console.log("Configuración del proyecto guardada.");
+            if(showAlert) alert("¡Configuración guardada!");
+        } catch (error) {
+            console.error("Error al guardar la configuración del proyecto:", error);
+            if(showAlert) alert("No se pudo guardar la configuración.");
+        }
+    };
 
     runChecksAndPlay = async function() {
         if (!projectsDirHandle) {
@@ -479,18 +721,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    exportPackage = async function(folderName) {
-        if (!folderName) return;
-        console.log(`Exportando paquete desde: ${folderName}`);
-        try {
-            const dirHandle = await currentDirectoryHandle.handle.getDirectoryHandle(folderName);
-            const zip = new JSZip();
+    async function populateFileTree(container, dirHandle, pathPrefix = '') {
+        exportFileHandleMap.clear(); // Clear the map before populating
 
-            await addFolderToZip(zip, dirHandle, folderName);
+        async function buildTree(currentDir, prefix) {
+            for await (const entry of currentDir.values()) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'file-tree-item';
+                itemDiv.style.paddingLeft = `${prefix.split('/').filter(p=>p).length * 20}px`;
+                const currentPath = `${prefix}${entry.name}`;
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = true;
+                checkbox.dataset.path = currentPath;
+                exportFileHandleMap.set(currentPath, entry); // Store handle in map
+
+                const label = document.createElement('label');
+                label.textContent = ` ${entry.kind === 'directory' ? '📁' : '📄'} ${entry.name}`;
+
+                itemDiv.appendChild(checkbox);
+                itemDiv.appendChild(label);
+                container.appendChild(itemDiv);
+
+                if (entry.kind === 'directory') {
+                    await buildTree(entry, `${currentPath}/`);
+                }
+            }
+        }
+
+        await buildTree(dirHandle, pathPrefix);
+    }
+
+    exportPackage = async function(filesToExport, manifest) {
+        if (!filesToExport || filesToExport.length === 0) {
+            alert("No se seleccionaron archivos para exportar.");
+            return;
+        }
+        console.log(`Exportando paquete con ${filesToExport.length} entradas.`);
+        try {
+            const zip = new JSZip();
+            zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+            for (const fileInfo of filesToExport) {
+                if (fileInfo.handle.kind === 'file') {
+                    const file = await fileInfo.handle.getFile();
+                    zip.file(fileInfo.path, file);
+                }
+            }
 
             const content = await zip.generateAsync({type: 'blob'});
-            downloadBlob(content, `${folderName}.cep`);
+            downloadBlob(content, exportContext.fileName);
             console.log("Paquete exportado con éxito.");
+            dom.packageFileTreeModal.classList.remove('is-open');
 
         } catch(error) {
             console.error(`Error al exportar el paquete:`, error);
@@ -637,7 +920,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // First time opening a file, initialize the editor
                 codeEditor = new EditorView({
                     doc: content,
-                    extensions: [basicSetup, javascript(), oneDark],
+                    extensions: [
+                        basicSetup,
+                        javascript(),
+                        oneDark,
+                        autocompletion({override: [cesCompletions]})
+                    ],
                     parent: dom.codemirrorContainer
                 });
             } else {
@@ -770,6 +1058,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.appendChild(timeline);
                 previewContainer.appendChild(controls);
                 dom.inspectorContent.appendChild(previewContainer);
+
+            } else if (assetName.endsWith('.cep')) {
+                try {
+                    const zip = await JSZip.loadAsync(file);
+                    const manifestFile = zip.file('manifest.json');
+                    if (manifestFile) {
+                        const manifestContent = await manifestFile.async('string');
+                        const manifestData = JSON.parse(manifestContent);
+
+                        const packageInfo = document.createElement('div');
+                        packageInfo.className = 'asset-settings';
+                        packageInfo.innerHTML = `
+                            <label>Tipo de Paquete</label>
+                            <input type="text" value="${manifestData.type === 'project' ? 'Proyecto Completo' : 'Asset'}" readonly>
+                            <label>Descripción</label>
+                            <textarea readonly rows="5">${manifestData.description || 'Sin descripción.'}</textarea>
+                        `;
+                        dom.inspectorContent.appendChild(packageInfo);
+                    } else {
+                        dom.inspectorContent.innerHTML += `<p class="error-message">Este paquete .cep no es válido (falta manifest.json).</p>`;
+                    }
+                } catch(e) {
+                    console.error("Error al leer el paquete .cep:", e);
+                    dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo leer el archivo del paquete.</p>`;
+                }
 
             } else if (assetName.endsWith('.cmel')) {
                 const materialData = JSON.parse(content);
@@ -1475,6 +1788,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // First, hide any other context menus
         dom.contextMenu.style.display = 'none';
         dom.hierarchyContextMenu.style.display = 'none';
+        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
 
         menu.style.display = 'block';
         let x = e.clientX;
@@ -1519,6 +1833,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideContextMenus() {
         dom.contextMenu.style.display = 'none';
         dom.hierarchyContextMenu.style.display = 'none';
+        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
     }
 
     createNewScript = async function(directoryHandle) {
@@ -1526,13 +1841,19 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("No se ha seleccionado ninguna carpeta.");
             return;
         }
-        let scriptName = prompt("Introduce el nombre del nuevo script (ej: PlayerMovement):");
+        const scriptLang = currentPreferences.scriptLang || 'ces';
+        const extension = `.${scriptLang}`;
+        const defaultName = scriptLang === 'ces' ? 'PlayerMovement' : 'main';
+
+        let scriptName = prompt(`Introduce el nombre del nuevo script (ej: ${defaultName}):`);
         if (!scriptName) return;
 
         // Sanitize and add extension
-        scriptName = scriptName.replace(/\.ces$/, '') + '.ces';
+        const sanitizedName = scriptName.replace(/\.ces$|\.js$/, '');
+        scriptName = sanitizedName + extension;
 
-        const scriptTemplate = `// Script creado en Creative Engine
+        const scriptTemplate = scriptLang === 'ces'
+            ? `// Script creado en Creative Engine
 function start() {
     // Se ejecuta una vez al iniciar
     console.log("¡El script ha comenzado!");
@@ -1540,8 +1861,19 @@ function start() {
 
 function update(deltaTime) {
     // Se ejecuta en cada frame
-};
+};`
+            : `// JavaScript file created in Creative Engine
+// This file can be used with a bundler or for more complex logic.
+
+function start() {
+    console.log("JS Script started!");
+}
+
+function update(deltaTime) {
+    // Runs every frame
+}
 `;
+
         try {
             const fileHandle = await directoryHandle.getFileHandle(scriptName, { create: true });
             const writable = await fileHandle.createWritable();
@@ -1771,6 +2103,35 @@ function update(deltaTime) {
             }
         });
 
+        // This function encapsulates opening a controller from anywhere
+        async function openAnimatorController(fileHandle) {
+            try {
+                // Ensure panel is visible
+                if (dom.animatorControllerPanel.classList.contains('hidden')) {
+                    document.getElementById('menu-window-animator').click();
+                }
+
+                const file = await fileHandle.getFile();
+                const content = await file.text();
+                currentControllerData = JSON.parse(content);
+                currentControllerHandle = fileHandle;
+
+                // Visually mark the item as selected in the panel's list
+                const controllerAssetsList = dom.animatorControllerPanel.querySelector('#animator-controllers-list .list-content');
+                controllerAssetsList.querySelectorAll('.asset-list-item').forEach(i => i.classList.remove('active'));
+                const itemInList = controllerAssetsList.querySelector(`[data-name="${fileHandle.name}"]`);
+                if (itemInList) {
+                    itemInList.classList.add('active');
+                }
+
+                console.log(`Cargado controlador: ${fileHandle.name}`, currentControllerData);
+                renderAnimatorGraph();
+            } catch (error) {
+                console.error(`Error al cargar el controlador '${fileHandle.name}':`, error);
+                alert("No se pudo cargar el controlador.");
+            }
+        }
+
         // Double-click to open script or enter folder
         gridView.addEventListener('dblclick', async (e) => {
             const item = e.target.closest('.grid-item');
@@ -1787,6 +2148,9 @@ function update(deltaTime) {
                 await openScriptInEditor(name);
             } else if (name.endsWith('.cea')) {
                 await openAnimationAsset(name);
+            } else if (name.endsWith('.ceanim')) {
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+                await openAnimatorController(fileHandle);
             } else if (name.endsWith('.ceScene')) {
                 const sceneData = await SceneManager.loadScene(name, currentDirectoryHandle.handle, projectsDirHandle);
                 if (sceneData) {
@@ -1852,6 +2216,84 @@ function update(deltaTime) {
                     }
                 }
             });
+        }
+
+        if (dom.prefsSnappingToggle) {
+            dom.prefsSnappingToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    dom.prefsSnappingGridSizeGroup.classList.remove('hidden');
+                } else {
+                    dom.prefsSnappingGridSizeGroup.classList.add('hidden');
+                }
+            });
+        }
+
+        // Logo List Logic
+        if (dom.settingsAddLogoBtn) {
+            dom.settingsAddLogoBtn.addEventListener('click', async () => {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
+                        multiple: false
+                    });
+                    addLogoToList(fileHandle);
+                } catch (err) {
+                    console.log("User cancelled file picker or error occurred:", err);
+                }
+            });
+        }
+
+        function addLogoToList(fileOrPath, duration = 5) {
+            const listItem = document.createElement('div');
+            listItem.className = 'logo-list-item';
+
+            const img = document.createElement('img');
+            const fileName = document.createElement('span');
+            fileName.className = 'logo-filename';
+
+            if (fileOrPath.name) { // It's a FileHandle
+                fileName.textContent = fileOrPath.name;
+                listItem.dataset.path = fileOrPath.name;
+                fileOrPath.getFile().then(file => {
+                    img.src = URL.createObjectURL(file);
+                });
+            } else { // It's just a path string from config
+                fileName.textContent = fileOrPath;
+                listItem.dataset.path = fileOrPath;
+                // Can't show preview from path alone after reload for security reasons.
+                img.src = 'image/Paquete.png'; // Show placeholder
+            }
+
+
+            const sliderContainer = document.createElement('div');
+            sliderContainer.className = 'slider-container';
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = 1;
+            slider.max = 10;
+            slider.value = duration;
+            const durationLabel = document.createElement('span');
+            durationLabel.textContent = `${slider.value}s`;
+            slider.addEventListener('input', () => {
+                durationLabel.textContent = `${slider.value}s`;
+            });
+
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Quitar';
+            removeBtn.className = 'danger-btn';
+            removeBtn.addEventListener('click', () => {
+                listItem.remove();
+            });
+
+            sliderContainer.appendChild(slider);
+            sliderContainer.appendChild(durationLabel);
+
+            listItem.appendChild(img);
+            listItem.appendChild(fileName);
+            listItem.appendChild(sliderContainer);
+            listItem.appendChild(removeBtn);
+
+            dom.settingsLogoList.appendChild(listItem);
         }
 
         // Global Keyboard Shortcuts
@@ -1985,11 +2427,20 @@ function update(deltaTime) {
                 const transform = dragState.materia.getComponent(Transform);
 
                 if (dragState.handle.startsWith('move')) {
+                    let newX = dragState.initialX + dx;
+                    let newY = dragState.initialY + dy;
+
+                    if (currentPreferences.snapping) {
+                        const gridSize = parseInt(currentPreferences.gridSize, 10) || 25;
+                        newX = Math.round(newX / gridSize) * gridSize;
+                        newY = Math.round(newY / gridSize) * gridSize;
+                    }
+
                      if (dragState.handle === 'move-x' || dragState.handle === 'move-body') {
-                        transform.x = dragState.initialX + dx;
+                        transform.x = newX;
                      }
                      if (dragState.handle === 'move-y' || dragState.handle === 'move-body') {
-                        transform.y = dragState.initialY + dy;
+                        transform.y = newY;
                      }
                 } else if (dragState.handle.startsWith('scale')) {
                     // This scaling logic is simplified and might not feel perfect with pivots.
@@ -2028,6 +2479,7 @@ function update(deltaTime) {
 
         // Single-click to select asset
         gridView.addEventListener('click', (e) => {
+            const exportAssetBtn = document.getElementById('menu-export-asset');
             const item = e.target.closest('.grid-item');
 
             // De-select all others first
@@ -2038,9 +2490,17 @@ function update(deltaTime) {
                 item.classList.add('active');
                 // This will call updateInspector, which now correctly finds the active asset.
                 selectMateria(null);
+
+                // Enable/disable export asset button
+                if (item.dataset.kind === 'directory') {
+                    exportAssetBtn.classList.remove('disabled');
+                } else {
+                    exportAssetBtn.classList.add('disabled');
+                }
             } else {
                  // Clicked on background, clear inspector.
                  selectMateria(null);
+                 exportAssetBtn.classList.add('disabled');
             }
         });
 
@@ -2075,10 +2535,78 @@ function update(deltaTime) {
         });
 
         // Custom Context Menu handler for hierarchy
-        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
+        dom.hierarchyContextMenu.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             showContextMenu(dom.hierarchyContextMenu, e);
         });
+
+        // Animator Node Context Menu Actions
+        dom.animNodeContextMenu.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            const fromState = graphView.dataset.contextNode;
+            hideContextMenus();
+
+            if (action === 'create-transition') {
+                if (fromState) {
+                    graphView.classList.add('is-connecting');
+                    graphView.dataset.fromState = fromState;
+                }
+            }
+            // Other actions like delete-state would be handled here
+        });
+
+        // --- Animator Graph Dragging ---
+        if (graphView) { // Ensure graphView is assigned before adding listeners
+            graphView.addEventListener('mousedown', (e) => {
+                const node = e.target.closest('.graph-node');
+                if (node) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    isDraggingNode = true;
+                    const rect = node.getBoundingClientRect();
+                    const graphRect = graphView.getBoundingClientRect();
+                    dragNodeInfo = {
+                        node: node,
+                        offsetX: e.clientX - rect.left,
+                        offsetY: e.clientY - rect.top,
+                    };
+                    graphView.classList.add('is-dragging');
+                }
+            });
+        }
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingNode) {
+                e.preventDefault();
+                const graphRect = graphView.getBoundingClientRect();
+                let newX = e.clientX - graphRect.left - dragNodeInfo.offsetX;
+                let newY = e.clientY - graphRect.top - dragNodeInfo.offsetY;
+
+                // Clamp position within the graph view
+                newX = Math.max(0, Math.min(newX, graphRect.width - dragNodeInfo.node.offsetWidth));
+                newY = Math.max(0, Math.min(newY, graphRect.height - dragNodeInfo.node.offsetHeight));
+
+                dragNodeInfo.node.style.left = `${newX}px`;
+                dragNodeInfo.node.style.top = `${newY}px`;
+
+                // Update the data model
+                const nodeName = dragNodeInfo.node.dataset.name;
+                const state = currentControllerData.states.find(s => s.name === nodeName);
+                if (state) {
+                    state.position.x = newX;
+                    state.position.y = newY;
+                    updateGraphData(); // Keep the JSON data fresh for saving
+                }
+            }
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (isDraggingNode) {
+                isDraggingNode = false;
+                dragNodeInfo = {};
+                graphView.classList.remove('is-dragging');
+            }
+        });
+
 
         // Inspector button delegation & Drag/Drop
         dom.inspectorPanel.addEventListener('click', (e) => {
@@ -2478,7 +3006,7 @@ function update(deltaTime) {
         });
 
         // Window Menu Logic
-        dom.menubar.querySelector('.menu-item:nth-child(3) .menu-content').addEventListener('click', (e) => {
+        dom.menubar.querySelector('.menu-item:nth-child(3) .menu-content').addEventListener('click', async (e) => {
             e.preventDefault();
             const targetId = e.target.id;
             let panelName = '';
@@ -2501,6 +3029,73 @@ function update(deltaTime) {
                 }
             } else if (panelName === 'animation') {
                 dom.animationPanel.classList.toggle('hidden');
+            } else if (panelName === 'animator') {
+                const panel = dom.animatorControllerPanel;
+                const isHiding = panel.classList.toggle('hidden');
+                panelVisibility[panelName] = !isHiding;
+                updateWindowMenuUI();
+
+                if (!isHiding) {
+                    graphView = panel.querySelector('.graph-view'); // Assign the graph view element
+
+                    // Populate the lists when the panel is opened
+                    const animAssetsList = panel.querySelector('#animator-assets-list .list-content');
+                    const controllerAssetsList = panel.querySelector('#animator-controllers-list .list-content');
+                    animAssetsList.innerHTML = 'Buscando...';
+                    controllerAssetsList.innerHTML = 'Buscando...';
+
+                    const animFiles = [];
+                    const controllerFiles = [];
+                    async function findFiles(dirHandle) {
+                        for await (const entry of dirHandle.values()) {
+                            if (entry.kind === 'file') {
+                                if (entry.name.endsWith('.cea')) animFiles.push(entry.name);
+                                if (entry.name.endsWith('.ceanim')) controllerFiles.push({name: entry.name, handle: entry});
+                            } else if (entry.kind === 'directory') {
+                                await findFiles(entry);
+                            }
+                        }
+                    }
+
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    await findFiles(projectHandle);
+
+                    animAssetsList.innerHTML = '';
+                    animFiles.forEach(name => {
+                        const item = document.createElement('div');
+                        item.textContent = name;
+                        item.className = 'asset-list-item';
+                        animAssetsList.appendChild(item);
+                    });
+
+                    controllerAssetsList.innerHTML = '';
+                    controllerFiles.forEach(fileInfo => {
+                        const item = document.createElement('div');
+                        item.textContent = fileInfo.name;
+                        item.className = 'asset-list-item';
+                        item.dataset.name = fileInfo.name;
+                        item.addEventListener('click', async () => {
+                             try {
+                                const file = await fileInfo.handle.getFile();
+                                const content = await file.text();
+                                currentControllerData = JSON.parse(content);
+                                currentControllerHandle = fileInfo.handle;
+
+                                // Visually mark this item as selected
+                                controllerAssetsList.querySelectorAll('.asset-list-item').forEach(i => i.classList.remove('active'));
+                                item.classList.add('active');
+
+                                console.log(`Cargado controlador: ${fileInfo.name}`, currentControllerData);
+                                renderAnimatorGraph();
+                            } catch (error) {
+                                console.error(`Error al cargar el controlador '${fileInfo.name}':`, error);
+                                alert("No se pudo cargar el controlador.");
+                            }
+                        });
+                        controllerAssetsList.appendChild(item);
+                    });
+                }
             }
         });
 
@@ -2586,58 +3181,477 @@ function update(deltaTime) {
         });
 
 
-        // --- Floating Panel Dragging & Resizing ---
-        dom.animationPanel.addEventListener('mousedown', (e) => {
-            // Check for resize handles
-            if (e.target.matches('.resize-handle')) {
+        // Project Settings Listeners
+        document.getElementById('menu-project-settings').addEventListener('click', () => {
+            dom.projectSettingsModal.classList.add('is-open');
+        });
+
+        if (dom.settingsSaveBtn) {
+            dom.settingsSaveBtn.addEventListener('click', saveProjectConfig);
+        }
+
+        // Engine Logo confirmation logic
+        if (dom.settingsShowEngineLogo) {
+            dom.settingsShowEngineLogo.addEventListener('click', (e) => {
+                if (!e.target.checked) {
+                    e.preventDefault();
+                    dom.engineLogoConfirmModal.classList.add('is-open');
+                }
+            });
+        }
+
+        if (dom.confirmDisableLogoBtn) {
+            dom.confirmDisableLogoBtn.addEventListener('click', () => {
+                dom.settingsShowEngineLogo.checked = false;
+                dom.engineLogoConfirmModal.classList.remove('is-open');
+            });
+        }
+
+        // File Pickers for Project Settings
+        if (dom.settingsIconPickerBtn) {
+            dom.settingsIconPickerBtn.addEventListener('click', async () => {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/x-icon': ['.ico'] } }],
+                        multiple: false
+                    });
+                    currentProjectConfig.iconPath = fileHandle.name; // For simplicity, just store the name
+                    const file = await fileHandle.getFile();
+                    dom.settingsIconPreview.src = URL.createObjectURL(file);
+                    dom.settingsIconPreview.style.display = 'block';
+                } catch (err) {
+                    console.log("User cancelled file picker or error occurred:", err);
+                }
+            });
+        }
+
+        if (dom.settingsExportProjectBtn) {
+            dom.settingsExportProjectBtn.addEventListener('click', () => {
+                alert("Esta función exportará la carpeta 'Assets' como un paquete .cep. La funcionalidad para exportar un build completo del juego se añadirá en el futuro.");
+                exportPackage('Assets');
+            });
+        }
+
+        // Preferences Listeners
+        document.getElementById('menu-preferences').addEventListener('click', () => {
+            dom.preferencesModal.classList.add('is-open');
+        });
+
+        if (dom.prefsTheme) {
+            dom.prefsTheme.addEventListener('change', (e) => {
+                if (e.target.value === 'custom') {
+                    dom.prefsCustomThemePicker.classList.remove('hidden');
+                } else {
+                    dom.prefsCustomThemePicker.classList.add('hidden');
+                }
+            });
+        }
+
+        if (dom.prefsAutosaveToggle) {
+            dom.prefsAutosaveToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    dom.prefsAutosaveIntervalGroup.classList.remove('hidden');
+                } else {
+                    dom.prefsAutosaveIntervalGroup.classList.add('hidden');
+                }
+            });
+        }
+
+        if (dom.prefsSaveBtn) {
+            dom.prefsSaveBtn.addEventListener('click', savePreferences);
+        }
+
+        // Keystore Creation Logic
+        if (dom.keystoreCreateBtn) {
+            dom.keystoreCreateBtn.addEventListener('click', () => {
+                dom.keystoreCreateModal.classList.add('is-open');
+            });
+        }
+
+        // --- Music Player Logic ---
+        function updatePlaylistUI() {
+            if (!dom.playlistContainer) return;
+            dom.playlistContainer.innerHTML = '';
+            playlist.forEach((track, index) => {
+                const item = document.createElement('div');
+                item.className = 'playlist-item';
+                if (index === currentTrackIndex) {
+                    item.classList.add('playing');
+                }
+                item.textContent = track.name;
+                item.dataset.index = index;
+                item.addEventListener('click', () => playTrack(index));
+                dom.playlistContainer.appendChild(item);
+            });
+        }
+
+        function playTrack(index) {
+            if (index < 0 || index >= playlist.length) {
+                // Stop playback if playlist ends
+                audioElement.pause();
+                currentTrackIndex = -1;
+                dom.nowPlayingTitle.textContent = "Nada en reproducción";
+                dom.musicPlayPauseBtn.textContent = "▶️";
+                updatePlaylistUI();
+                return;
+            }
+            currentTrackIndex = index;
+            const track = playlist[index];
+            dom.nowPlayingTitle.textContent = track.name;
+
+            track.handle.getFile().then(file => {
+                const url = URL.createObjectURL(file);
+                audioElement.src = url;
+                audioElement.play();
+                dom.musicPlayPauseBtn.textContent = "⏸️";
+            });
+
+            updatePlaylistUI();
+        }
+
+        if (dom.toolbarMusicBtn) {
+            dom.toolbarMusicBtn.addEventListener('click', () => {
+                dom.musicPlayerPanel.classList.toggle('hidden');
+            });
+        }
+
+        if (dom.musicAddBtn) {
+            dom.musicAddBtn.addEventListener('click', async () => {
+                try {
+                    const fileHandles = await window.showOpenFilePicker({
+                        types: [{ description: 'Audio', accept: { 'audio/*': ['.mp3', '.wav', '.ogg'] } }],
+                        multiple: true
+                    });
+                    fileHandles.forEach(handle => {
+                        playlist.push({ name: handle.name, handle: handle });
+                    });
+                    updatePlaylistUI();
+                    if (currentTrackIndex === -1 && playlist.length > 0) {
+                        playTrack(0);
+                    }
+                } catch (err) {
+                    console.log("User cancelled file picker or error occurred:", err);
+                }
+            });
+        }
+
+        if (dom.musicPlayPauseBtn) {
+            dom.musicPlayPauseBtn.addEventListener('click', () => {
+                if (audioElement.paused && currentTrackIndex !== -1) {
+                    audioElement.play();
+                    dom.musicPlayPauseBtn.textContent = "⏸️";
+                } else {
+                    audioElement.pause();
+                    dom.musicPlayPauseBtn.textContent = "▶️";
+                }
+            });
+        }
+
+        if (dom.musicNextBtn) {
+            dom.musicNextBtn.addEventListener('click', () => {
+                playTrack((currentTrackIndex + 1) % playlist.length);
+            });
+        }
+
+        if (dom.musicPrevBtn) {
+            dom.musicPrevBtn.addEventListener('click', () => {
+                const newIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+                playTrack(newIndex);
+            });
+        }
+
+        if (dom.musicVolumeSlider) {
+            dom.musicVolumeSlider.addEventListener('input', (e) => {
+                audioElement.volume = e.target.value;
+            });
+        }
+
+        audioElement.addEventListener('ended', () => {
+            playTrack((currentTrackIndex + 1) % playlist.length); // Autoplay next
+        });
+
+
+        // Keystore Creation Logic
+        if (dom.ksGenerateBtn) {
+            dom.ksGenerateBtn.addEventListener('click', async () => {
+                // Validate form
+                const requiredFields = ['ks-alias', 'ks-password', 'ks-storepass', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename'];
+                for (const id of requiredFields) {
+                    const element = document.getElementById(id);
+                    if (!element.value) {
+                        alert(`El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
+                        return;
+                    }
+                }
+                if (dom.ksPassword.value.length < 6) {
+                    alert("La contraseña de la clave debe tener al menos 6 caracteres.");
+                    return;
+                }
+
+                // Construct the dname
+                const dname = `CN=${dom.ksCn.value}, OU=${dom.ksOu.value}, O=${dom.ksO.value}, L=${dom.ksL.value}, ST=${dom.ksSt.value}, C=${dom.ksC.value}`;
+
+                // Construct the command
+                const command = `keytool -genkey -v -keystore ${dom.ksFilename.value} -alias ${dom.ksAlias.value} -keyalg RSA -keysize 2048 -validity ${dom.ksValidity.value * 365} -storepass ${dom.ksStorepass.value} -keypass ${dom.ksPassword.value} -dname "${dname}"`;
+
+                dom.ksCommandTextarea.value = command;
+                dom.ksCommandOutput.classList.remove('hidden');
+
+                alert("Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.");
+            });
+        }
+
+        if (dom.settingsKeystorePickerBtn) {
+            dom.settingsKeystorePickerBtn.addEventListener('click', async () => {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({ multiple: false });
+                    currentProjectConfig.keystore.path = fileHandle.name;
+                    dom.settingsKeystorePath.value = fileHandle.name;
+                } catch (err) {
+                    console.log("User cancelled file picker or error occurred:", err);
+                }
+            });
+        }
+
+        if (dom.cancelDisableLogoBtn) {
+            dom.cancelDisableLogoBtn.addEventListener('click', () => {
+                dom.settingsShowEngineLogo.checked = true;
+                dom.engineLogoConfirmModal.classList.remove('is-open');
+            });
+        }
+
+
+        // --- Export/Import Listeners ---
+        document.getElementById('menu-import-asset').addEventListener('click', () => handleImport());
+        document.getElementById('menu-import-project').addEventListener('click', () => handleImport());
+
+        async function confirmImport(zip) {
+            const checkedItems = dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked');
+            console.log(`Importando ${checkedItems.length} archivos...`);
+
+            try {
+                for (const item of checkedItems) {
+                    const path = item.dataset.path;
+                    const zipEntry = zip.file(path);
+
+                    if (zipEntry && !zipEntry.dir) {
+                        const pathParts = path.split('/').filter(p => p);
+                        const fileName = pathParts.pop();
+
+                        let currentDirHandle = currentDirectoryHandle.handle; // Start from the current asset folder
+
+                        // Create directories if they don't exist
+                        for (const part of pathParts) {
+                            currentDirHandle = await currentDirHandle.getDirectoryHandle(part, { create: true });
+                        }
+
+                        const newFileHandle = await currentDirHandle.getFileHandle(fileName, { create: true });
+                        const content = await zipEntry.async('blob');
+                        const writable = await newFileHandle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+                    }
+                }
+                alert("¡Importación completada con éxito!");
+                dom.packageFileTreeModal.classList.remove('is-open');
+                await updateAssetBrowser();
+
+            } catch (error) {
+                console.error("Error durante la importación de archivos:", error);
+                alert("Ocurrió un error al importar los archivos. Revisa la consola.");
+            }
+        }
+
+        async function handleImport() {
+            try {
+                const [fileHandle] = await window.showOpenFilePicker({
+                    types: [{ description: 'Creative Engine Package', accept: { 'application/zip': ['.cep'] } }],
+                    multiple: false
+                });
+
+                const file = await fileHandle.getFile();
+                const zip = await JSZip.loadAsync(file);
+                const manifestFile = zip.file('manifest.json');
+
+                if (!manifestFile) {
+                    alert("Este no es un paquete válido. Falta el archivo manifest.json.");
+                    return;
+                }
+
+                const manifestContent = await manifestFile.async('string');
+                const manifest = JSON.parse(manifestContent);
+
+                // Configure and show the package modal for IMPORT
+                dom.packageModalTitle.textContent = 'Importar Paquete';
+                dom.packageModalDescription.innerHTML = `<p><b>Descripción:</b> ${manifest.description || 'N/A'}</p>`;
+                dom.packageExportControls.style.display = 'none';
+                dom.packageImportControls.style.display = 'flex';
+
+                // Populate file tree from manifest
+                const container = dom.packageFileTreeContainer;
+                container.innerHTML = '';
+                manifest.fileList.forEach(path => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'file-tree-item';
+                    const depth = path.split('/').length - 1;
+                    itemDiv.style.paddingLeft = `${depth * 20}px`;
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.path = path;
+
+                    const label = document.createElement('label');
+                    label.textContent = ` ${path.endsWith('/') ? '📁' : '📄'} ${path.split('/').pop() || path}`;
+
+                    itemDiv.appendChild(checkbox);
+                    itemDiv.appendChild(label);
+                    container.appendChild(itemDiv);
+                });
+
+                dom.packageFileTreeModal.classList.add('is-open');
+
+                // Store context for the import confirmation button
+                dom.importConfirmBtn.onclick = async () => {
+                    await confirmImport(zip);
+                };
+
+            } catch(err) {
+                console.log("Importación cancelada o fallida:", err);
+            }
+        }
+
+        document.getElementById('menu-export-project').addEventListener('click', () => {
+            exportContext.type = 'project';
+            dom.exportDescriptionText.value = '';
+            dom.exportDescriptionModal.classList.add('is-open');
+        });
+
+        document.getElementById('menu-export-asset').addEventListener('click', async () => {
+            const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
+            if (!selectedAsset || selectedAsset.dataset.kind !== 'directory') {
+                alert("Por favor, selecciona una carpeta en el Navegador de Assets para exportar.");
+                return;
+            }
+            exportContext.type = 'asset';
+            // Correctly get the handle for the selected asset folder
+            exportContext.assetName = selectedAsset.dataset.name;
+            dom.exportDescriptionText.value = '';
+            dom.exportDescriptionModal.classList.add('is-open');
+        });
+
+        dom.exportDescriptionNextBtn.addEventListener('click', async () => {
+            exportContext.description = dom.exportDescriptionText.value;
+            dom.exportDescriptionModal.classList.remove('is-open');
+
+            // Configure and show the package modal for EXPORT
+            dom.packageModalTitle.textContent = 'Seleccionar Archivos para Exportar';
+            dom.packageModalDescription.innerHTML = ''; // Not needed for export
+            dom.packageImportControls.style.display = 'none';
+            dom.packageExportControls.style.display = 'flex';
+            dom.packageFileTreeContainer.innerHTML = 'Cargando archivos...';
+            dom.packageFileTreeModal.classList.add('is-open');
+
+            try {
+                let root;
+                let defaultFilename;
+                let pathPrefix = '';
+                const projectName = new URLSearchParams(window.location.search).get('project');
+
+                if (exportContext.type === 'project') {
+                    root = await projectsDirHandle.getDirectoryHandle(projectName);
+                    defaultFilename = `${projectName}.cep`;
+                } else { // asset
+                    root = await currentDirectoryHandle.handle.getDirectoryHandle(exportContext.assetName);
+                    defaultFilename = `${exportContext.assetName}.cep`;
+                    pathPrefix = `${exportContext.assetName}/`;
+                }
+                exportContext.rootHandle = root; // Store the actual handle
+                dom.exportFilename.value = defaultFilename;
+                dom.packageFileTreeContainer.innerHTML = ''; // Use correct variable
+                await populateFileTree(dom.packageFileTreeContainer, root, pathPrefix); // Use correct variable
+
+            } catch (error) {
+                console.error("Error detallado al poblar el árbol de archivos:", error);
+                dom.packageFileTreeContainer.innerHTML = `<p class="error-message">No se pudieron cargar los archivos. Revisa la consola del navegador (F12) para más detalles.</p>`;
+            }
+        });
+
+        dom.exportConfirmBtn.addEventListener('click', async () => {
+            const filesToExport = [];
+            const checkboxes = dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked'); // Use correct variable
+
+            checkboxes.forEach(cb => {
+                const path = cb.dataset.path;
+                const handle = exportFileHandleMap.get(path);
+                if (handle) {
+                    filesToExport.push({ path: path, handle: handle });
+                }
+            });
+
+            const manifest = {
+                type: exportContext.type,
+                description: exportContext.description,
+                fileList: filesToExport.map(f => f.path)
+            };
+            exportContext.fileName = dom.exportFilename.value || 'package.cep';
+
+            await exportPackage(filesToExport, manifest);
+        });
+
+
+        // --- Floating Panel Dragging & Resizing (Generic) ---
+        document.body.addEventListener('mousedown', (e) => {
+            const handle = e.target.closest('.floating-panel .resize-handle');
+            const header = e.target.closest('.floating-panel .panel-header');
+
+            if (handle) {
                 isResizingPanel = true;
-                const rect = dom.animationPanel.getBoundingClientRect();
+                const panel = handle.closest('.floating-panel');
+                const rect = panel.getBoundingClientRect();
                 panelResizeState = {
-                    direction: e.target.dataset.direction,
+                    panel: panel,
+                    direction: handle.dataset.direction,
                     initialX: e.clientX,
                     initialY: e.clientY,
                     initialWidth: rect.width,
                     initialHeight: rect.height
                 };
                 document.body.classList.add('is-dragging-panel');
-                e.preventDefault(); // Prevent text selection
-                return;
-            }
-
-            // Check for header dragging
-            const header = e.target.closest('.panel-header');
-            if (header) {
-                 // Don't drag if clicking a button on the header
-                if (e.target.matches('button')) return;
-
+                e.preventDefault();
+            } else if (header) {
+                if (e.target.matches('button, input, select')) return;
                 isMovingPanel = true;
-                const rect = dom.animationPanel.getBoundingClientRect();
-                panelMoveOffset.x = e.clientX - rect.left;
-                panelMoveOffset.y = e.clientY - rect.top;
-
+                const panel = header.closest('.floating-panel');
+                const rect = panel.getBoundingClientRect();
+                panelMoveOffset = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                panelMoveState = { panel: panel };
                 document.body.classList.add('is-dragging-panel');
-                e.preventDefault(); // Prevent text selection
+                e.preventDefault();
             }
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (isMovingPanel) {
+            if (isMovingPanel && panelMoveState.panel) {
                 const newX = e.clientX - panelMoveOffset.x;
                 const newY = e.clientY - panelMoveOffset.y;
-                dom.animationPanel.style.left = `${newX}px`;
-                dom.animationPanel.style.top = `${newY}px`;
-                dom.animationPanel.style.transform = 'none';
-            } else if (isResizingPanel) {
+                panelMoveState.panel.style.left = `${newX}px`;
+                panelMoveState.panel.style.top = `${newY}px`;
+                panelMoveState.panel.style.transform = 'none';
+            } else if (isResizingPanel && panelResizeState.panel) {
                 const dx = e.clientX - panelResizeState.initialX;
                 const dy = e.clientY - panelResizeState.initialY;
 
                 if (panelResizeState.direction === 'right' || panelResizeState.direction === 'both') {
                     const newWidth = panelResizeState.initialWidth + dx;
-                    dom.animationPanel.style.width = `${Math.max(300, newWidth)}px`;
+                    panelResizeState.panel.style.width = `${Math.max(400, newWidth)}px`;
                 }
                 if (panelResizeState.direction === 'bottom' || panelResizeState.direction === 'both') {
                     const newHeight = panelResizeState.initialHeight + dy;
-                    dom.animationPanel.style.height = `${Math.max(200, newHeight)}px`;
+                    panelResizeState.panel.style.height = `${Math.max(300, newHeight)}px`;
                 }
             }
         });
@@ -2645,6 +3659,8 @@ function update(deltaTime) {
         window.addEventListener('mouseup', () => {
             isMovingPanel = false;
             isResizingPanel = false;
+            panelMoveState = {};
+            panelResizeState = {};
             document.body.classList.remove('is-dragging-panel');
         });
 
@@ -2692,21 +3708,141 @@ function update(deltaTime) {
             populateTimeline(); // Re-render to show active state
         });
 
-        // Edit Menu Modals
-        document.getElementById('menu-project-settings').addEventListener('click', (e) => {
-            e.preventDefault();
-            dom.projectSettingsModal.classList.add('is-open');
+        // Animator Controller Toolbar Logic
+        const newAnimCtrlBtn = document.getElementById('anim-ctrl-new-btn');
+        const saveAnimCtrlBtn = document.getElementById('anim-ctrl-save-btn');
+
+        // This function will be called to render the graph from data
+        function renderAnimatorGraph() {
+            if (!currentControllerData || !graphView) return;
+
+            graphView.innerHTML = ''; // Clear previous state
+            currentControllerData.states.forEach(state => {
+                const node = document.createElement('div');
+                node.className = 'graph-node';
+                node.textContent = state.name;
+                node.style.left = `${state.position.x}px`;
+                node.style.top = `${state.position.y}px`;
+                node.dataset.name = state.name;
+
+                // Mark entry state
+                if (state.name === currentControllerData.entryState) {
+                    node.classList.add('entry-state');
+                }
+
+                graphView.appendChild(node);
+            });
+
+            // Update the dataset for the save button
+            updateGraphData();
+        }
+
+        // This function updates the dataset used by the save button
+        function updateGraphData() {
+            if (graphView && currentControllerData) {
+                graphView.dataset.controllerContent = JSON.stringify(currentControllerData, null, 2);
+            }
+        }
+
+
+        saveAnimCtrlBtn.addEventListener('click', async () => {
+            if (!currentControllerHandle) {
+                alert("No hay ningún controlador seleccionado para guardar.");
+                return;
+            }
+            try {
+                // The data is now kept up-to-date by interactions
+                const contentToSave = graphView.dataset.controllerContent;
+                const writable = await currentControllerHandle.createWritable();
+                await writable.write(contentToSave);
+                await writable.close();
+                alert(`Controlador '${currentControllerHandle.name}' guardado con éxito.`);
+            } catch (error) {
+                console.error("Error al guardar el controlador:", error);
+                alert("No se pudo guardar el controlador.");
+            }
         });
-        document.getElementById('menu-preferences').addEventListener('click', (e) => {
-            e.preventDefault();
-            dom.preferencesModal.classList.add('is-open');
+
+        newAnimCtrlBtn.addEventListener('click', async () => {
+            const controllerName = prompt("Nombre del nuevo controlador de animación:", "NewAnimator");
+            if (!controllerName) return;
+
+            const fileName = `${controllerName}.ceanim`;
+            const defaultContent = {
+                name: controllerName,
+                entryState: "Idle",
+                states: [{
+                    name: "Idle",
+                    animationAsset: "",
+                    speed: 1.0,
+                    position: { x: 100, y: 100 }
+                }],
+                transitions: []
+            };
+
+            try {
+                const projectName = new URLSearchParams(window.location.search).get('project');
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+
+                const fileHandle = await assetsHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(defaultContent, null, 2));
+                await writable.close();
+
+                console.log(`Creado nuevo controlador: ${fileName}`);
+                // Refresh the list
+                document.getElementById('menu-window-animator').click(); // A bit of a hack to refresh
+                document.getElementById('menu-window-animator').click();
+            } catch (error) {
+                console.error("Error al crear el controlador de animación:", error);
+                alert("No se pudo crear el archivo del controlador.");
+            }
         });
     }
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // Cache all DOM elements
-        const ids = ['editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content', 'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content', 'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu', 'hierarchy-context-menu', 'project-settings-modal', 'preferences-modal', 'code-editor-content', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas', 'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal', 'sprite-selector-grid'];
+        const ids = [
+            'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
+            'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
+            'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu',
+            'hierarchy-context-menu', 'anim-node-context-menu', 'preferences-modal', 'code-editor-content',
+            'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas',
+            'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline',
+            'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas',
+            'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal',
+            'sprite-selector-grid', 'animator-controller-panel',
+
+            // Project Settings Modal elements
+            'project-settings-modal', 'settings-app-name', 'settings-author-name', 'settings-app-version', 'settings-engine-version',
+            'settings-icon-preview', 'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn',
+            'settings-show-engine-logo', 'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass',
+            'settings-key-alias', 'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn',
+
+            // Confirmation Modal elements
+            'engine-logo-confirm-modal', 'confirm-disable-logo-btn', 'cancel-disable-logo-btn',
+
+            // Keystore Creation Modal elements
+            'keystore-create-modal', 'keystore-create-btn', 'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou',
+            'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename', 'ks-storepass', 'ks-command-output',
+            'ks-command-textarea', 'ks-generate-btn',
+
+            // Preferences Modal elements
+            'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header', 'prefs-color-accent',
+            'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval', 'prefs-save-btn',
+            'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group', 'prefs-snapping-grid-size',
+
+            // Music Player elements
+            'toolbar-music-btn', 'music-player-panel', 'now-playing-bar', 'now-playing-title', 'playlist-container',
+            'music-controls', 'music-add-btn', 'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider',
+
+            // Export Modals
+            'export-description-modal', 'export-description-text', 'export-description-next-btn',
+            'package-file-tree-modal', 'package-modal-title', 'package-modal-description', 'package-file-tree-container',
+            'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn'
+        ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
             dom[camelCaseId] = document.getElementById(id);
@@ -2744,6 +3880,8 @@ function update(deltaTime) {
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
+            await loadProjectConfig();
+            loadPreferences(); // Load user preferences
 
             setupEventListeners();
 

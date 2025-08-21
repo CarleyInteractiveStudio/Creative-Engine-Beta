@@ -40,6 +40,9 @@
         <header>
             <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo" id="header-logo">
             <h1>Creative Engine</h1>
+            <div id="header-controls">
+                <button id="btn-mute-music" title="Silenciar Música">🔊</button>
+            </div>
             <div id="auth-status-container">
                 <button id="btn-auth-action">Iniciar Sesión</button>
             </div>
@@ -68,14 +71,17 @@
                 </section>
 
                 <section id="actions">
-                    <button id="btn-start">Empezar a Crear</button>
-                    <button id="btn-support">Contacto y Soporte</button>
-                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" rel="noopener noreferrer" class="button-link" id="btn-donate">Donar con PayPal</a>
-                    <button id="btn-license">Licencia</button>
+                    <button id="btn-start" class="rainbow-animated-btn">Empezar a Crear</button>
+                    <button id="btn-support" class="rainbow-animated-btn">Contacto y Soporte</button>
+                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-donate">Donar con PayPal</a>
+                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-discord">Unirte a Discord</a>
                 </section>
                  <p class="credits">
                     Hecho por <strong>Carley Interactive Studio</strong> con la ayuda de <strong>Google Jules</strong>.
                 </p>
+                <div class="license-container">
+                    <button id="btn-license">Lee nuestra licencia</button>
+                </div>
             </div>
         </div>
 
@@ -100,6 +106,29 @@
     </div> <!-- Cierre de .container -->
 
     <!-- Modals -->
+    <div id="custom-dialog-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="custom-dialog-title">Título</h2>
+            <p id="custom-dialog-message">Este es un mensaje de ejemplo.</p>
+            <div id="custom-dialog-buttons" class="dialog-buttons">
+                <!-- Buttons will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="create-project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-create-project">&times;</span>
+            <h2>Crear Nuevo Proyecto</h2>
+            <form id="create-project-form">
+                <label for="project-name">Nombre del Proyecto:</label>
+                <input id="project-name" type="text" name="projectName" placeholder="Mi-Juego-Genial" required>
+                <p class="modal-hint">Usa letras, números y guiones. Sin espacios ni caracteres especiales.</p>
+                <button type="submit" class="modal-btn">Crear</button>
+            </form>
+        </div>
+    </div>
+
     <div id="support-modal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="close-support">&times;</span>
@@ -204,5 +233,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <ul>
+            <li id="ctx-rename">Renombrar</li>
+            <li id="ctx-delete">Eliminar</li>
+        </ul>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="musica/MUSICA SUAVE.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
 </body>
 </html>

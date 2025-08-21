@@ -164,6 +164,129 @@ body {
     gap: 8px;
 }
 
+#export-file-tree-container {
+    height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.file-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.file-tree-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+/* --- Music Player Panel --- */
+#music-player-panel {
+    width: 350px;
+    height: 450px;
+    max-width: 90vw;
+    max-height: 80vh;
+}
+#music-player-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+}
+#now-playing-bar {
+    padding: 10px;
+    text-align: center;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    font-style: italic;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#playlist-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+.playlist-item {
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.playlist-item:hover {
+    background-color: var(--bg-tertiary);
+}
+.playlist-item.playing {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: bold;
+}
+#music-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 10px;
+    background-color: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+}
+#music-controls button {
+    font-size: 1.5em;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+#music-controls #music-add-btn {
+    font-size: 1em;
+    font-weight: bold;
+    background-color: var(--bg-primary);
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+#music-volume-slider {
+    width: 100px;
+}
+
+/* --- Preferences Modal --- */
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+.checkbox-field input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+.checkbox-field label {
+    margin-bottom: 0; /* Override default label margin */
+    font-weight: normal;
+    color: var(--text-primary);
+}
+
+#prefs-custom-theme-picker {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+}
+.color-picker-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.color-picker-group input[type="color"] {
+    border: none;
+    width: 100px;
+    height: 30px;
+    background: none;
+}
+
 .logo-area img {
     width: 22px;
     height: 22px;
@@ -416,6 +539,288 @@ body {
 .view-toggle-btn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+/* --- Project Settings Modal --- */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 15px; /* For scrollbar */
+}
+
+.settings-section {
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+}
+
+.settings-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--accent-color);
+}
+
+.settings-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.settings-form input[type="text"],
+.settings-form input[type="password"] {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+.field-description {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-top: -5px;
+    margin-bottom: 10px;
+}
+
+.file-picker, .image-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.image-picker img {
+    height: 40px;
+    width: 40px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+.settings-form button {
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.settings-form button:hover {
+    border-color: var(--accent-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.primary-btn {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+    color: white !important;
+}
+
+.danger-btn {
+    background-color: #c0392b !important;
+    border-color: #c0392b !important;
+    color: white !important;
+}
+
+.logo-list-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+.logo-list-item img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+.logo-list-item .logo-filename {
+    flex-grow: 1;
+    font-family: 'Courier New', Courier, monospace;
+}
+.logo-list-item .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* --- Animator Controller Panel Styles --- */
+#animator-controller-panel .panel-content {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+}
+
+#animator-assets-list, #animator-controllers-list {
+    width: 200px;
+    background-color: var(--bg-primary);
+    border-right: 1px solid var(--border-color);
+    padding: 10px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+#animator-controllers-list {
+    border-right: none;
+    border-left: 1px solid var(--border-color);
+}
+
+#animator-controller-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 20px;
+}
+
+#animator-controller-toolbar button {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#animator-controller-toolbar button:hover {
+    background-color: var(--bg-tertiary);
+}
+
+#current-anim-ctrl-name {
+    font-size: 0.8em;
+    font-style: italic;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+#animator-graph-view {
+    flex-grow: 1;
+    position: relative;
+    background-color: #2a2a2e; /* A slightly different background */
+    overflow: auto;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.anim-state-node {
+    position: absolute;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 20px;
+    cursor: grab;
+    user-select: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    text-align: center;
+    min-width: 120px;
+}
+
+.anim-state-node:active {
+    cursor: grabbing;
+    z-index: 10;
+}
+
+.anim-state-node.entry-state {
+    background-color: #5d3a00;
+    border-color: #ff8c00;
+    color: #ffc98a;
+}
+
+.anim-transition-line {
+    position: absolute;
+    height: 2px;
+    background-color: var(--accent-color);
+    transform-origin: 0 0;
+    z-index: 1; /* Below nodes */
+}
+
+#animator-graph-view.is-connecting {
+    cursor: crosshair;
+}
+
+#animator-assets-list .list-header, #animator-controllers-list .list-header {
+    padding: 8px;
+    font-weight: 600;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+#animator-assets-list input[type="search"], #animator-controllers-list input[type="search"] {
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+#animator-assets-list .list-content, #animator-controllers-list .list-content {
+    padding: 5px;
+}
+
+.asset-list-item {
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+}
+
+.asset-list-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.asset-list-item.active {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: bold;
+    border-color: var(--accent-color);
+}
+
+#animator-assets-list .list-header, #animator-controllers-list .list-header {
+    padding: 8px;
+    font-weight: 600;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#animator-assets-list input[type="search"], #animator-controllers-list input[type="search"] {
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+#animator-assets-list .list-content, #animator-controllers-list .list-content {
+    padding: 5px;
 }
 
 .folder-item {

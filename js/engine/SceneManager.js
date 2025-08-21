@@ -76,6 +76,10 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 if (newLey instanceof CreativeScript) {
                     await newLey.load(projectsDirHandle);
                 }
+                // Also handle Animator loading here
+                if (newLey instanceof Animator) {
+                    await newLey.loadController(projectsDirHandle);
+                }
             }
         }
         newScene.addMateria(newMateria);
@@ -107,6 +111,16 @@ export async function loadScene(fileName, directoryHandle, projectsDirHandle) {
     }
 }
 
+export function createSprite(name, imagePath) {
+    const newMateria = new Materia(name);
+    const spriteRenderer = new SpriteRenderer(newMateria);
+    spriteRenderer.setSourcePath(imagePath);
+    // Note: The sprite will be loaded when the scene is rendered or the component is updated in the editor.
+    newMateria.addComponent(spriteRenderer);
+    currentScene.addMateria(newMateria);
+    return newMateria;
+}
+
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!projectsDirHandle || !path) return null;
     try {
@@ -132,7 +146,7 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
 
 export async function initialize(projectsDirHandle) {
     const defaultSceneName = 'default.ceScene';
-    const assetsHandle = await projectsDirHandle.getDirectoryHandle('Assets', { create: true });
+    const assetsHandle = await projectsDirHandle.getDirectoryHandle('assets', { create: true });
     try {
         const fileHandle = await assetsHandle.getFileHandle(defaultSceneName);
         return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
