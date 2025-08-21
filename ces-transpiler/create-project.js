@@ -21,9 +21,9 @@ console.log(`Creando proyecto '${projectName}'...`);
 
 // 1. Crear directorios del proyecto
 fs.mkdirSync(projectPath, { recursive: true });
-fs.mkdirSync(path.join(projectPath, 'assets'), { recursive: true });
+fs.mkdirSync(path.join(projectPath, 'Assets'), { recursive: true });
 fs.mkdirSync(path.join(projectPath, 'modules'), { recursive: true });
-fs.mkdirSync(path.join(projectPath, 'assets/tutorial'), { recursive: true });
+fs.mkdirSync(path.join(projectPath, 'Assets/Tutorial'), { recursive: true });
 
 console.log("Directorios creados.");
 
@@ -31,13 +31,13 @@ console.log("Directorios creados.");
 try {
     // Copiar Tutorial
     const tutorialContent = fs.readFileSync(path.join(sourcePath, 'template/TUTORIAL.md'), 'utf8');
-    fs.writeFileSync(path.join(projectPath, 'assets/tutorial/TUTORIAL.md'), tutorialContent);
-    console.log("- Archivo 'assets/tutorial/TUTORIAL.md' creado.");
+    fs.writeFileSync(path.join(projectPath, 'Assets/Tutorial/TUTORIAL.md'), tutorialContent);
+    console.log("- Archivo 'Assets/Tutorial/TUTORIAL.md' creado.");
 
     // Copiar Referencia de Scripting
     const scriptingRefContent = fs.readFileSync(path.join(sourcePath, 'template/Creative Engine Scripting.md'), 'utf8');
-    fs.writeFileSync(path.join(projectPath, 'assets/tutorial/Creative Engine Scripting.md'), scriptingRefContent);
-    console.log("- Archivo 'assets/tutorial/Creative Engine Scripting.md' creado.");
+    fs.writeFileSync(path.join(projectPath, 'Assets/Tutorial/Creative Engine Scripting.md'), scriptingRefContent);
+    console.log("- Archivo 'Assets/Tutorial/Creative Engine Scripting.md' creado.");
 } catch (error) {
     console.warn("Advertencia: No se pudieron crear los archivos de documentación. Puede que las plantillas no existan.");
     console.warn(error.message);
@@ -66,9 +66,9 @@ filesToCopy.forEach(file => {
     const sourceFile = path.join(sourcePath, file);
     let destFile;
 
-    // Los archivos de escena y scripts de ejemplo van en 'assets'
+    // Los archivos de escena y scripts de ejemplo van en 'Assets'
     if (file.endsWith('.ces') || file.endsWith('.ceScene')) {
-        destFile = path.join(projectPath, 'assets', path.basename(file));
+        destFile = path.join(projectPath, 'Assets', path.basename(file));
     } else {
         // Otros archivos mantienen la estructura anterior
         destFile = path.join(projectPath, file.replace('template/', ''));

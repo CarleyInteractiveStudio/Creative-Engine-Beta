@@ -114,6 +114,9 @@
                     </div>
                 </div>
             </div>
+            <div class="resizer-v" id="resizer-left"></div>
+            <div class="resizer-v" id="resizer-right"></div>
+            <div class="resizer-h" id="resizer-bottom"></div>
              <div id="inspector-panel" class="editor-panel">
                 <div class="panel-header">
                     <span>Inspector</span>
@@ -262,20 +265,28 @@
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
-            <li data-action="create-empty">Crear Objeto Vacío</li>
+            <li data-action="create-empty">Crear Materia Vacio</li>
             <li class="has-submenu">
                 UI <span class="arrow">▶</span>
                 <ul class="submenu">
                     <li data-action="create-ui-canvas">Canvas</li>
+                    <li data-action="create-ui-panel">Panel</li>
                     <li data-action="create-ui-text">Texto</li>
                     <li data-action="create-ui-button">Botón</li>
                     <li data-action="create-ui-image">Imagen</li>
                 </ul>
             </li>
+            <li class="has-submenu">
+                Objeto Primitivo <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-primitive-square">Cuadrado</li>
+                </ul>
+            </li>
             <hr>
             <li data-action="create-camera">Cámara</li>
-            <li data-action="create-materia">Crear Materia (Primitiva)</li>
-            <li data-action="create-animated-materia">Crear Materia Animada</li>
+            <hr>
+            <li data-action="rename">Renombrar</li>
+            <li data-action="delete" class="danger">Eliminar</li>
         </ul>
     </div>
     <div id="sprite-selector-modal" class="modal">
@@ -329,6 +340,29 @@
                     </div>
                 </fieldset>
 
+                <fieldset class="settings-section">
+                    <legend>Layers</legend>
+                    <div class="layer-manager">
+                        <div class="layer-column">
+                            <h4>Sorting Layers</h4>
+                            <p class="field-description">Controlan el orden de dibujado. El de arriba se dibuja primero.</p>
+                            <div id="settings-sorting-layer-list" class="layer-list"></div>
+                            <div class="layer-add-row">
+                                <input type="text" id="new-sorting-layer-name" placeholder="Nuevo layer...">
+                                <button id="add-sorting-layer-btn">Añadir</button>
+                            </div>
+                        </div>
+                        <div class="layer-column">
+                            <h4>Collision Layers</h4>
+                            <p class="field-description">Usados por el motor de físicas para filtrar colisiones.</p>
+                            <div id="settings-collision-layer-list" class="layer-list"></div>
+                             <div class="layer-add-row">
+                                <input type="text" id="new-collision-layer-name" placeholder="Nuevo layer...">
+                                <button id="add-collision-layer-btn">Añadir</button>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
                 <fieldset class="settings-section">
                     <legend>Build</legend>
                     <h4>Firma de Android (Keystore)</h4>
@@ -472,6 +506,11 @@
                         <label for="prefs-snapping-grid-size">Tamaño de la rejilla (píxeles)</label>
                         <input type="number" id="prefs-snapping-grid-size" min="1" value="25">
                     </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Ventanas</legend>
+                    <button id="prefs-reset-layout-btn">Restablecer Diseño de Paneles</button>
+                    <p class="field-description">Vuelve a la disposición de paneles por defecto.</p>
                 </fieldset>
             </div>
             <div class="modal-footer">

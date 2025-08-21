@@ -164,6 +164,54 @@ body {
     gap: 8px;
 }
 
+/* --- Layer Manager Styles --- */
+.layer-manager {
+    display: flex;
+    gap: 20px;
+}
+.layer-column {
+    flex: 1;
+}
+.layer-list {
+    min-height: 150px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+.layer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 3px;
+}
+.layer-item:nth-child(odd) {
+    background-color: rgba(0,0,0,0.1);
+}
+.layer-item .remove-layer-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: bold;
+}
+.layer-item .remove-layer-btn:hover {
+    color: #c0392b;
+}
+.layer-add-row {
+    display: flex;
+    gap: 5px;
+}
+.layer-add-row input {
+    flex-grow: 1;
+    margin: 0 !important; /* Override default margin */
+}
+.layer-add-row button {
+    flex-shrink: 0;
+}
+
 #export-file-tree-container {
     height: 400px;
     overflow-y: auto;
@@ -388,48 +436,39 @@ body {
 #editor-main-content {
     display: grid;
     height: calc(100vh - 42px); /* 100% viewport height minus toolbar */
-    grid-template-columns: 220px 1fr 320px; /* Hierarchy | Scene | Inspector */
-    grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); /* Scene / Assets */
-    grid-template-areas:
-        "hierarchy scene inspector"
-        "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
-    gap: 6px;
+    /* Define tracks for panels and resizers */
+    grid-template-columns: 220px 6px 1fr 6px 320px;
+    grid-template-rows: 1.5fr 6px 1fr;
     padding: 6px;
+    gap: 6px; /* Keep the visual gap, but resizers will be placed over it */
+}
+
+/* --- Resizer Styles --- */
+.resizer-v, .resizer-h {
+    background: transparent; /* Initially transparent */
+    z-index: 100;
+    transition: background-color 0.2s ease;
+}
+.resizer-v:hover, .resizer-h:hover {
+    background-color: var(--accent-color);
+}
+.resizer-v {
+    cursor: col-resize;
+}
+.resizer-h {
+    cursor: row-resize;
 }
 
 /* --- Panel Assignments & Styles --- */
-#hierarchy-panel { grid-area: hierarchy; }
-#scene-panel { grid-area: scene; }
-#inspector-panel { grid-area: inspector; }
-#assets-panel {
-    grid-area: assets;
-}
+#hierarchy-panel { grid-column: 1; grid-row: 1 / 4; }
+#resizer-left { grid-column: 2; grid-row: 1 / 4; }
+#scene-panel { grid-column: 3; grid-row: 1; }
+#resizer-bottom { grid-column: 3; grid-row: 2; }
+#assets-panel { grid-column: 3; grid-row: 3; }
+#resizer-right { grid-column: 4; grid-row: 1 / 4; }
+#inspector-panel { grid-column: 5; grid-row: 1 / 4; }
 
-/* --- Dynamic Layout States --- */
-#editor-main-content.no-hierarchy {
-    grid-template-columns: 1fr 320px;
-    grid-template-areas:
-        "scene inspector"
-        "assets inspector";
-}
-#editor-main-content.no-inspector {
-    grid-template-columns: 260px 1fr;
-    grid-template-areas:
-        "hierarchy scene"
-        "hierarchy assets";
-}
-#editor-main-content.no-assets {
-    grid-template-rows: 1fr;
-    grid-template-areas:
-        "hierarchy scene inspector";
-}
-#editor-main-content.no-hierarchy.no-inspector {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-        "scene"
-        "assets";
-}
-/* Add other combinations as needed */
+/* Dynamic layout is now handled by JS */
 
 
 .editor-panel {
@@ -1389,6 +1428,13 @@ body {
     opacity: 0.7;
 }
 
+.empty-message {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+    font-style: italic;
+}
+
 #hierarchy-content.drag-over {
     outline: 2px dashed var(--accent-color);
     outline-offset: -4px;
@@ -1414,6 +1460,28 @@ body {
 #materia-name-input {
     flex-grow: 1;
     font-size: 1.1em;
+}
+
+.inspector-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.inspector-row label {
+    margin-top: 0;
+    font-weight: 600;
+}
+
+.inspector-row select {
+    flex-grow: 1;
+    padding: 6px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+}
     font-weight: bold;
     padding: 6px;
     background-color: var(--bg-primary);
@@ -1431,8 +1499,22 @@ body {
 #inspector-panel .panel-content {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 15px;
+    padding: 10px;
+    /* Ensure the container itself doesn't overflow but lets its children handle it */
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.inspector-components-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0; /* This is the key fix to allow shrinking */
+    padding-right: 5px; /* Space for scrollbar */
+}
+
+#add-component-btn {
+    flex-shrink: 0; /* Prevent button from shrinking */
+    margin-top: 10px; /* Give it some space from the scrolling area */
 }
 
 #inspector-panel label {
@@ -1464,6 +1546,29 @@ body {
     grid-template-columns: 20px 1fr;
     gap: 5px 8px;
     align-items: center;
+}
+
+.prop-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.prop-cell {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1; /* Each cell takes equal space */
+}
+
+.prop-cell label {
+    margin: 0; /* Remove default margins */
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.prop-cell input {
+    width: 100%; /* Make input fill the cell */
 }
 
 .text-transform-controls {

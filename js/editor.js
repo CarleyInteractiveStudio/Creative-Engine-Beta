@@ -1,9 +1,10 @@
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
+import { uiEventSystem } from './engine/UIEventSystem.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { CreativeScript, UICanvas, UIText, UIButton, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform } from './engine/Components.js';
+import { CreativeScript, RectTransform, UICanvas, UIImage, UIPanel, UIMask, UIText, UIButton, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform, HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup } from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
@@ -251,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate;
 
     loadProjectConfig = async function() {
         try {
@@ -272,10 +273,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconPath: '',
                 splashLogos: [],
                 showEngineLogo: true,
-                keystore: { path: '', pass: '', alias: '', aliasPass: '' }
+                keystore: { path: '', pass: '', alias: '', aliasPass: '' },
+                layers: {
+                    sortingLayers: ['Default', 'UI'],
+                    collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
+                }
             };
             // Automatically save the default config file if it doesn't exist
             await saveProjectConfig(false);
+        }
+
+        // Ensure layers config exists for older projects
+        if (!currentProjectConfig.layers) {
+            currentProjectConfig.layers = {
+                sortingLayers: ['Default', 'UI'],
+                collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
+            };
         }
 
         // Populate the UI
@@ -299,7 +312,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 addLogoToList(logoData.path, logoData.duration);
             });
         }
+
+        // Populate Layer lists
+        populateLayerLists();
     };
+
+    function populateLayerLists() {
+        if (!currentProjectConfig.layers) return;
+
+        const createLayerItem = (name, index, type) => {
+            const item = document.createElement('div');
+            item.className = 'layer-item';
+            item.textContent = `${index}: ${name}`;
+
+            // The first few layers are often built-in and shouldn't be removed
+            if (index > 0) { // Assuming 'Default' at index 0 is protected
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-layer-btn';
+                removeBtn.textContent = '×';
+                removeBtn.title = 'Quitar layer';
+                removeBtn.addEventListener('click', () => {
+                    if (confirm(`¿Estás seguro de que quieres quitar el layer '${name}'?`)) {
+                        if (type === 'sorting') {
+                            currentProjectConfig.layers.sortingLayers.splice(index, 1);
+                        } else {
+                            currentProjectConfig.layers.collisionLayers.splice(index, 1);
+                        }
+                        populateLayerLists(); // Re-render the lists
+                    }
+                });
+                item.appendChild(removeBtn);
+            }
+            return item;
+        };
+
+        dom.settingsSortingLayerList.innerHTML = '';
+        currentProjectConfig.layers.sortingLayers.forEach((name, index) => {
+            dom.settingsSortingLayerList.appendChild(createLayerItem(name, index, 'sorting'));
+        });
+
+        dom.settingsCollisionLayerList.innerHTML = '';
+        currentProjectConfig.layers.collisionLayers.forEach((name, index) => {
+            dom.settingsCollisionLayerList.appendChild(createLayerItem(name, index, 'collision'));
+        });
+    }
 
     // --- Preferences Logic ---
     function applyPreferences() {
@@ -1296,7 +1352,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateHierarchy = function() { dom.hierarchyContent.innerHTML = ''; const rootMaterias = SceneManager.currentScene.getRootMaterias(); function renderNode(materia, container, depth) { const item = document.createElement('div'); item.className = 'hierarchy-item'; if (!materia.isActive) { item.classList.add('disabled'); } item.dataset.id = materia.id; item.draggable = true; item.style.paddingLeft = `${depth * 18}px`; const nameSpan = document.createElement('span'); nameSpan.textContent = materia.name; item.appendChild(nameSpan); if (selectedMateria && materia.id === selectedMateria.id) { item.classList.add('active'); } container.appendChild(item); if (materia.children && materia.children.length > 0) { materia.children.forEach(child => { renderNode(child, container, depth + 1); }); } } rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0)); };
+    updateHierarchy = function() {
+        dom.hierarchyContent.innerHTML = '';
+        const rootMaterias = SceneManager.currentScene.getRootMaterias();
+
+        if (rootMaterias.length === 0) {
+            dom.hierarchyContent.innerHTML = `<p class="empty-message">La escena está vacía.<br>Click derecho para crear un objeto.</p>`;
+            return;
+        }
+
+        function renderNode(materia, container, depth) {
+            const item = document.createElement('div');
+            item.className = 'hierarchy-item';
+            if (!materia.isActive) {
+                item.classList.add('disabled');
+            }
+            item.dataset.id = materia.id;
+            item.draggable = true;
+            item.style.paddingLeft = `${depth * 18}px`;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = materia.name;
+            item.appendChild(nameSpan);
+            if (selectedMateria && materia.id === selectedMateria.id) {
+                item.classList.add('active');
+            }
+            container.appendChild(item);
+            if (materia.children && materia.children.length > 0) {
+                materia.children.forEach(child => {
+                    renderNode(child, container, depth + 1);
+                });
+            }
+        }
+        rootMaterias.forEach(materia => renderNode(materia, dom.hierarchyContent, 0));
+    };
     updateInspector = async function() {
         if (!dom.inspectorContent) return;
         dom.inspectorContent.innerHTML = '';
@@ -1316,7 +1404,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
                 <input type="text" id="materia-name-input" value="${selectedMateria.name}">
             </div>
+            <div class="inspector-row">
+                <label for="materia-layer-select">Layer</label>
+                <select id="materia-layer-select"></select>
+            </div>
         `;
+
+        const layerSelect = dom.inspectorContent.querySelector('#materia-layer-select');
+        if (layerSelect) {
+            currentProjectConfig.layers.sortingLayers.forEach(layerName => {
+                const option = document.createElement('option');
+                option.value = layerName;
+                option.textContent = layerName;
+                if (selectedMateria.layer === layerName) {
+                    option.selected = true;
+                }
+                layerSelect.appendChild(option);
+            });
+            layerSelect.addEventListener('change', (e) => {
+                if (selectedMateria) {
+                    selectedMateria.layer = e.target.value;
+                    // Note: We might need to trigger a scene resort/redraw here in the future
+                }
+            });
+        }
 
         // Helper para los iconos de componentes
         const componentIcons = {
@@ -1333,6 +1444,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Components
+        const componentsWrapper = document.createElement('div');
+        componentsWrapper.className = 'inspector-components-wrapper';
+
         selectedMateria.leyes.forEach(ley => {
             let componentHTML = '';
             const componentName = ley.constructor.name;
@@ -1342,10 +1456,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (ley instanceof Transform) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Transform</h4></div>
                 <div class="component-grid">
-                    <label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}">
-                    <label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}">
-                    <label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}">
-                    <label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}">
+                    <div class="prop-row">
+                        <div class="prop-cell"><label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
+                        <div class="prop-cell"><label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
+                    </div>
+                    <div class="prop-row">
+                        <div class="prop-cell"><label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}"></div>
+                        <div class="prop-cell"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
+                    </div>
                 </div>`;
             } else if (ley instanceof Rigidbody) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Rigidbody</h4></div>
@@ -1377,6 +1495,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             } else if (ley instanceof UICanvas) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>`;
+            } else if (ley instanceof UIButton) {
+                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
+                <div class="component-grid">
+                    <label>Normal Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="normalColor" value="${ley.normalColor}">
+                    <label>Hover Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="hoverColor" value="${ley.hoverColor}">
+                    <label>Pressed Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="pressedColor" value="${ley.pressedColor}">
+                </div>
+                <div class="component-grid">
+                    <label>On Click()</label>
+                    <p class="field-description">Functionality to add events from the inspector will be implemented in a future update.</p>
+                </div>
+                `;
             } else if (ley instanceof UIText) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>UI Text</h4></div>
                 <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
@@ -1401,6 +1531,83 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
                 <p>Asset de Animación: (Próximamente)</p>
                 <button id="open-animator-btn">Abrir Editor de Animación</button>`;
+            } else if (ley instanceof HorizontalLayoutGroup || ley instanceof VerticalLayoutGroup) {
+                const type = ley.constructor.name;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
+                <div class="component-grid">
+                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
+                    <hr>
+                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
+                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
+                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
+                </div>`;
+            } else if (ley instanceof GridLayoutGroup) {
+                const type = ley.constructor.name;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
+                <div class="component-grid">
+                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
+                    <hr>
+                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
+                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
+                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
+                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
+                    <hr>
+                    <label>Cell Size X</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.x" value="${ley.cellSize.x}">
+                    <label>Cell Size Y</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.y" value="${ley.cellSize.y}">
+                    <label>Constraint</label>
+                    <select class="prop-input" data-component="${type}" data-prop="constraint">
+                        <option value="flexible" ${ley.constraint === 'flexible' ? 'selected' : ''}>Flexible</option>
+                        <option value="fixedColumnCount" ${ley.constraint === 'fixedColumnCount' ? 'selected' : ''}>Fixed Column Count</option>
+                        <option value="fixedRowCount" ${ley.constraint === 'fixedRowCount' ? 'selected' : ''}>Fixed Row Count</option>
+                    </select>
+                    <label>Constraint Count</label><input type="number" class="prop-input" step="1" min="1" data-component="${type}" data-prop="constraintCount" value="${ley.constraintCount}">
+                </div>`;
+            } else if (ley instanceof ContentSizeFitter) {
+                const type = ley.constructor.name;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
+                <div class="component-grid">
+                    <label>Horizontal Fit</label>
+                    <select class="prop-input" data-component="${type}" data-prop="horizontalFit">
+                        <option value="unconstrained" ${ley.horizontalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                        <option value="minSize" ${ley.horizontalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
+                        <option value="preferredSize" ${ley.horizontalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
+                    </select>
+                    <label>Vertical Fit</label>
+                    <select class="prop-input" data-component="${type}" data-prop="verticalFit">
+                        <option value="unconstrained" ${ley.verticalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                        <option value="minSize" ${ley.verticalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
+                        <option value="preferredSize" ${ley.verticalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
+                    </select>
+                </div>`;
+            } else if (ley instanceof LayoutElement) {
+                const type = ley.constructor.name;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
+                <div class="component-grid">
+                    <label for="le-ignore">Ignore Layout</label>
+                    <input type="checkbox" id="le-ignore" class="prop-input" data-component="${type}" data-prop="ignoreLayout" ${ley.ignoreLayout ? 'checked' : ''}>
+                    <hr><hr>
+                    <label>Min Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minWidth" value="${ley.minWidth}">
+                    <label>Min Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minHeight" value="${ley.minHeight}">
+                    <label>Preferred Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredWidth" value="${ley.preferredWidth}">
+                    <label>Preferred Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredHeight" value="${ley.preferredHeight}">
+                    <label>Flexible Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleWidth" value="${ley.flexibleWidth}">
+                    <label>Flexible Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleHeight" value="${ley.flexibleHeight}">
+                </div>`;
+            } else if (ley instanceof AspectRatioFitter) {
+                const type = ley.constructor.name;
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
+                <div class="component-grid">
+                    <label>Aspect Mode</label>
+                    <select class="prop-input" data-component="${type}" data-prop="aspectMode">
+                        <option value="None" ${ley.aspectMode === 'None' ? 'selected' : ''}>None</option>
+                        <option value="WidthControlsHeight" ${ley.aspectMode === 'WidthControlsHeight' ? 'selected' : ''}>Width Controls Height</option>
+                        <option value="HeightControlsWidth" ${ley.aspectMode === 'HeightControlsWidth' ? 'selected' : ''}>Height Controls Width</option>
+                        <option value="FitInParent" ${ley.aspectMode === 'FitInParent' ? 'selected' : ''}>Fit In Parent</option>
+                        <option value="EnvelopeParent" ${ley.aspectMode === 'EnvelopeParent' ? 'selected' : ''}>Envelope Parent</option>
+                    </select>
+                    <label>Aspect Ratio</label><input type="number" class="prop-input" step="0.01" data-component="${type}" data-prop="aspectRatio" value="${ley.aspectRatio}">
+                </div>`;
             } else if (ley instanceof Camera) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
                 <div class="component-grid">
@@ -1408,8 +1615,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="number" class="prop-input" step="10" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}">
                 </div>`;
             }
-            dom.inspectorContent.innerHTML += componentHTML;
+            componentsWrapper.innerHTML += componentHTML;
         });
+        dom.inspectorContent.appendChild(componentsWrapper);
 
         // Add Component Button
         const addComponentBtn = document.createElement('button');
@@ -1417,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addComponentBtn.id = 'add-component-btn';
         addComponentBtn.className = 'add-component-btn';
         addComponentBtn.textContent = 'Añadir Ley';
-        addComponentBtn.addEventListener('click', () => showAddComponentModal()); // Use arrow function to ensure `this` context is correct if needed later
+        addComponentBtn.addEventListener('click', () => showAddComponentModal());
         dom.inspectorContent.appendChild(addComponentBtn);
     };
 
@@ -1450,7 +1658,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Draw Materias
-        SceneManager.currentScene.materias.forEach(materia => {
+        const layerOrder = currentProjectConfig.layers.sortingLayers;
+        const sortedMaterias = [...SceneManager.currentScene.materias].sort((a, b) => {
+            const indexA = layerOrder.indexOf(a.layer);
+            const indexB = layerOrder.indexOf(b.layer);
+            return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+        });
+
+        sortedMaterias.forEach(materia => {
+            // Skip UI elements in the main world render pass
+            if (materia.getComponent(UICanvas) || materia.getComponent(UIImage) || materia.getComponent(UIText)) {
+                // Also need to check if it's a child of a canvas, but this is a good start
+                const isUiElement = materia.leyes.some(c => c instanceof RectTransform);
+                if (isUiElement) return;
+            }
+
             if (isGameView && !materia.isActive) {
                 return; // Don't render inactive objects in the final game view
             }
@@ -1475,12 +1697,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!drawn) {
                     targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
                 }
-            }
-
-            const uiText = materia.getComponent(UIText);
-            if (uiText) {
-                targetRenderer.drawText(uiText.text, transform.x, transform.y, uiText.color, uiText.fontSize, uiText.textTransform);
-                drawn = true;
             }
 
             if (!drawn && !boxCollider) {
@@ -1509,8 +1725,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetRenderer.ctx.globalAlpha = 1.0;
             }
         });
-
         targetRenderer.end();
+
+        // --- UI Rendering Pass ---
+        // This pass draws on top of the scene, ignoring the camera
+        const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(UICanvas));
+
+        uiCanvases.forEach(canvasMateria => {
+            const canvas = canvasMateria.getComponent(UICanvas);
+            if (canvas.renderMode === 'ScreenSpaceOverlay') {
+                targetRenderer.ctx.save();
+                // Reset transform to draw in screen space
+                targetRenderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+                function renderUiRecursive(materia) {
+                    if (!materia.isActive && isGameView) return;
+
+                    const rectTransform = materia.getComponent(RectTransform);
+                    if (!rectTransform) return;
+
+                    const image = materia.getComponent(UIImage);
+                    if (image && image.sprite.complete && image.sprite.naturalHeight !== 0) {
+                        // For now, use x/y as screen coordinates. Anchors/pivots will change this.
+                        targetRenderer.drawImage(image.sprite, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+                    }
+
+                    const text = materia.getComponent(UIText);
+                    if(text) {
+                        targetRenderer.drawText(text.text, rectTransform.x, rectTransform.y, text.color, text.fontSize, text.textTransform);
+                    }
+
+                    const mask = materia.getComponent(UIMask);
+                    if (mask) {
+                        targetRenderer.ctx.save();
+
+                        // Create a clipping path from the RectTransform
+                        const path = new Path2D();
+                        path.rect(
+                            rectTransform.x - (rectTransform.width * rectTransform.pivot.x),
+                            rectTransform.y - (rectTransform.height * rectTransform.pivot.y),
+                            rectTransform.width,
+                            rectTransform.height
+                        );
+                        targetRenderer.ctx.clip(path);
+                    }
+
+                    materia.children.forEach(renderUiRecursive);
+
+                    if (mask) {
+                        targetRenderer.ctx.restore();
+                    }
+                }
+
+                renderUiRecursive(canvasMateria);
+
+                targetRenderer.ctx.restore();
+            }
+        });
     };
 
     selectMateria = function(materiaId) {
@@ -1537,7 +1808,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'Animación': [Animator],
         'Cámara': [Camera],
         'Físicas': [Rigidbody, BoxCollider],
-        'UI': [UICanvas, UIText, UIButton],
+        'UI': [UICanvas, UIPanel, UIImage, UIText, UIButton, UIMask],
+        'Layout': [HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup, ContentSizeFitter, LayoutElement, AspectRatioFitter],
         'Scripting': [CreativeScript]
     };
 
@@ -1691,6 +1963,35 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    runLayoutUpdate = function() {
+        if (!SceneManager.currentScene) return;
+
+        const layoutGroups = [];
+        // First, find all layout groups
+        for (const materia of SceneManager.currentScene.materias) {
+            const hg = materia.getComponent(HorizontalLayoutGroup);
+            if (hg) layoutGroups.push(hg);
+
+            const vg = materia.getComponent(VerticalLayoutGroup);
+            if (vg) layoutGroups.push(vg);
+
+            const gg = materia.getComponent(GridLayoutGroup);
+            if (gg) layoutGroups.push(gg);
+
+            const csf = materia.getComponent(ContentSizeFitter);
+            if (csf) layoutGroups.push(csf);
+
+            const arf = materia.getComponent(AspectRatioFitter);
+            if (arf) layoutGroups.push(arf);
+        }
+
+        // Now, update them. A single pass is sufficient for now.
+        // A more robust system might need multiple passes or a top-down/bottom-up approach.
+        for (const layout of layoutGroups) {
+            layout.update();
+        }
+    };
+
     runGameLoop = function() {
         // Update physics
         if (physicsSystem) {
@@ -1712,7 +2013,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastFrameTime = timestamp;
 
         InputManager.update();
+        if (isGameRunning) {
+            uiEventSystem.update();
+        }
         updateDebugPanel();
+
+        // Update layouts before game logic and rendering
+        runLayoutUpdate();
 
         if (isGameRunning) {
             runGameLoop(); // This handles the logic update
@@ -1748,6 +2055,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
+    let findOrCreateCanvas; // To be defined
+
+    findOrCreateCanvas = function() {
+        // First, try to find an existing canvas in the scene
+        for (const materia of SceneManager.currentScene.materias) {
+            if (materia.getComponent(UICanvas)) {
+                console.log("Canvas encontrado existente.");
+                return materia;
+            }
+        }
+
+        // If no canvas exists, create one
+        console.log("No se encontró canvas. Creando uno nuevo.");
+        const canvasMateria = new Materia('Canvas');
+        // UI elements use RectTransform, so remove the default Transform and add the correct one.
+        canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
+        canvasMateria.addComponent(new RectTransform(canvasMateria));
+        canvasMateria.addComponent(new UICanvas(canvasMateria));
+        canvasMateria.layer = 'UI'; // Assign to UI layer by default
+
+        SceneManager.currentScene.addMateria(canvasMateria);
+        updateHierarchy(); // Update the hierarchy to show the new canvas
+        return canvasMateria;
+    };
 
     function updateWindowMenuUI() {
         for (const panelName in panelVisibility) {
@@ -1766,20 +2097,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateEditorLayout() {
         const mainContent = dom.editorMainContent;
-        mainContent.classList.toggle('no-hierarchy', !panelVisibility.hierarchy);
-        mainContent.classList.toggle('no-inspector', !panelVisibility.inspector);
-        mainContent.classList.toggle('no-assets', !panelVisibility.assets);
+
+        // Set panel and resizer visibility first
+        dom.hierarchyPanel.style.display = panelVisibility.hierarchy ? 'flex' : 'none';
+        dom.resizerLeft.style.display = panelVisibility.hierarchy ? 'block' : 'none';
+        dom.inspectorPanel.style.display = panelVisibility.inspector ? 'flex' : 'none';
+        dom.resizerRight.style.display = panelVisibility.inspector ? 'block' : 'none';
+        dom.assetsPanel.style.display = panelVisibility.assets ? 'flex' : 'none';
+        dom.resizerBottom.style.display = panelVisibility.assets ? 'block' : 'none';
+
+        // Get the current column and row definitions from the inline style, if available.
+        const currentCols = mainContent.style.gridTemplateColumns ? mainContent.style.gridTemplateColumns.split(' ') : [];
+        const currentRows = mainContent.style.gridTemplateRows ? mainContent.style.gridTemplateRows.split(' ') : [];
+
+        // Define default sizes. These should match the initial state in the CSS file.
+        const defaultCols = ['220px', '6px', '1fr', '6px', '320px'];
+        const defaultRows = ['1.5fr', '6px', '1fr'];
+
+        // Use current size if available and valid, otherwise use default.
+        // This preserves user-set sizes unless a panel is hidden.
+        let newCols = defaultCols.map((val, i) => (currentCols[i] && !currentCols[i].endsWith('fr')) ? currentCols[i] : val);
+        let newRows = defaultRows.map((val, i) => (currentRows[i] && !currentRows[i].endsWith('fr')) ? currentRows[i] : val);
+
+        // Now, collapse the tracks for any hidden panels. This overrides any user-set size.
+        if (!panelVisibility.hierarchy) {
+            newCols[0] = '0px';
+            newCols[1] = '0px';
+        }
+        if (!panelVisibility.inspector) {
+            newCols[4] = '0px';
+            newCols[3] = '0px';
+        }
+        if (!panelVisibility.assets) {
+            newRows[2] = '0px';
+            newRows[1] = '0px';
+        }
+
+        mainContent.style.gridTemplateColumns = newCols.join(' ');
+        mainContent.style.gridTemplateRows = newRows.join(' ');
 
         // The renderer needs to be resized after the layout changes
-        if(renderer) {
-            // Delay resize slightly to allow CSS to apply
-            setTimeout(() => renderer.resize(), 50);
+        if (renderer) {
+            setTimeout(() => {
+                renderer.resize();
+                if (gameRenderer) gameRenderer.resize();
+            }, 50);
         }
     }
 
-    function createEmptyMateria(name = 'Objeto Vacío') {
-        const newMateria = new SceneManager.Materia(name);
-        SceneManager.currentScene.addMateria(newMateria);
+    function createEmptyMateria(name = 'Materia Vacio', parent = null) {
+        const newMateria = new Materia(name);
+        if (parent) {
+            parent.addChild(newMateria);
+        } else {
+            SceneManager.currentScene.addMateria(newMateria);
+        }
         updateHierarchy();
         selectMateria(newMateria.id);
     }
@@ -2535,8 +2907,16 @@ function update(deltaTime) {
         });
 
         // Custom Context Menu handler for hierarchy
-        dom.hierarchyContextMenu.addEventListener('contextmenu', (e) => {
+        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
             e.preventDefault();
+            const item = e.target.closest('.hierarchy-item');
+            if (item) {
+                const materiaId = parseInt(item.dataset.id, 10);
+                selectMateria(materiaId);
+            } else {
+                // Clicking on empty space deselects any materia
+                selectMateria(null);
+            }
             showContextMenu(dom.hierarchyContextMenu, e);
         });
 
@@ -2749,64 +3129,109 @@ function update(deltaTime) {
             const action = e.target.dataset.action;
             if (!action) return;
 
+            hideContextMenus(); // Hide menu immediately after a click
+
             switch (action) {
                 case 'create-empty':
-                    createEmptyMateria();
+                    createEmptyMateria(undefined, selectedMateria);
                     break;
-                case 'create-materia':
-                    createEmptyMateria('Materia');
+                case 'create-primitive-square': {
+                    const parent = selectedMateria || findOrCreateCanvas();
+                    const square = new Materia('Cuadrado');
+                    square.leyes = square.leyes.filter(c => !(c instanceof Transform));
+                    square.addComponent(new RectTransform(square));
+                    const image = square.addComponent(new UIImage(square));
+                    image.color = '#FFFFFF';
+                    parent.addChild(square);
+                    updateHierarchy();
+                    selectMateria(square.id);
                     break;
+                }
+                case 'create-ui-panel': {
+                    const canvas = findOrCreateCanvas();
+                    const panelMateria = new Materia('Panel');
+                    panelMateria.leyes = panelMateria.leyes.filter(c => !(c instanceof Transform));
+                    panelMateria.addComponent(new RectTransform(panelMateria));
+                    panelMateria.addComponent(new UIPanel(panelMateria));
+                    panelMateria.layer = 'UI';
+                    canvas.addChild(panelMateria);
+                    updateHierarchy();
+                    selectMateria(panelMateria.id);
+                    break;
+                }
                 case 'create-ui-canvas': {
                     const canvasMateria = new Materia('Canvas');
+                    canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
+                    canvasMateria.addComponent(new RectTransform(canvasMateria));
                     canvasMateria.addComponent(new UICanvas(canvasMateria));
+                    canvasMateria.layer = 'UI';
                     SceneManager.currentScene.addMateria(canvasMateria);
                     updateHierarchy();
                     selectMateria(canvasMateria.id);
                     break;
                 }
                 case 'create-ui-text': {
+                    const canvas = findOrCreateCanvas();
                     const textMateria = new Materia('Texto');
+                    textMateria.leyes = textMateria.leyes.filter(c => !(c instanceof Transform));
+                    textMateria.addComponent(new RectTransform(textMateria));
                     textMateria.addComponent(new UIText(textMateria));
-                    SceneManager.currentScene.addMateria(textMateria);
+                    textMateria.layer = 'UI';
+                    canvas.addChild(textMateria);
                     updateHierarchy();
                     selectMateria(textMateria.id);
                     break;
                 }
                 case 'create-ui-button': {
+                    const canvas = findOrCreateCanvas();
                     const buttonMateria = new Materia('Botón');
+                    buttonMateria.leyes = buttonMateria.leyes.filter(c => !(c instanceof Transform));
+                    buttonMateria.addComponent(new RectTransform(buttonMateria));
                     buttonMateria.addComponent(new UIButton(buttonMateria));
-                    SceneManager.currentScene.addMateria(buttonMateria);
+                    buttonMateria.layer = 'UI';
+                    canvas.addChild(buttonMateria);
                     updateHierarchy();
                     selectMateria(buttonMateria.id);
                     break;
                 }
                 case 'create-ui-image': {
+                    const canvas = findOrCreateCanvas();
                     const imageMateria = new Materia('Imagen');
-                    imageMateria.addComponent(new SpriteRenderer(imageMateria));
-                    SceneManager.currentScene.addMateria(imageMateria);
+                    imageMateria.leyes = imageMateria.leyes.filter(c => !(c instanceof Transform));
+                    imageMateria.addComponent(new RectTransform(imageMateria));
+                    imageMateria.addComponent(new UIImage(imageMateria));
+                    imageMateria.layer = 'UI';
+                    canvas.addChild(imageMateria);
                     updateHierarchy();
                     selectMateria(imageMateria.id);
                     break;
                 }
-                case 'create-animated-materia': {
-                    const animMateria = new Materia('Materia Animada');
-                    animMateria.addComponent(new SpriteRenderer(animMateria));
-                    animMateria.addComponent(new Animator(animMateria));
-                    SceneManager.currentScene.addMateria(animMateria);
-                    updateHierarchy();
-                    selectMateria(animMateria.id);
-                    break;
-                }
                 case 'create-camera': {
-                    const camMateria = new Materia('Cámara');
-                    camMateria.addComponent(new Camera(camMateria));
-                    SceneManager.currentScene.addMateria(camMateria);
-                    updateHierarchy();
-                    selectMateria(camMateria.id);
+                    createEmptyMateria('Cámara', selectedMateria).addComponent(new Camera());
                     break;
                 }
+                case 'rename':
+                    if (selectedMateria) {
+                        const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
+                        if (newName && newName.trim() !== '') {
+                            selectedMateria.name = newName.trim();
+                            updateHierarchy();
+                            updateInspector();
+                        }
+                    }
+                    break;
+                case 'delete':
+                    if (selectedMateria) {
+                        if (confirm(`¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`)) {
+                            const idToDelete = selectedMateria.id;
+                            selectMateria(null); // Deselect first
+                            SceneManager.currentScene.removeMateria(idToDelete);
+                            updateHierarchy();
+                            updateInspector();
+                        }
+                    }
+                    break;
             }
-            hideContextMenus();
         });
 
         // Asset Context Menu Actions
@@ -3261,10 +3686,63 @@ function update(deltaTime) {
             dom.prefsSaveBtn.addEventListener('click', savePreferences);
         }
 
+        if (dom.prefsResetLayoutBtn) {
+            dom.prefsResetLayoutBtn.addEventListener('click', () => {
+                // Remove inline styles that were added by the resizers
+                dom.editorMainContent.style.gridTemplateColumns = '';
+                dom.editorMainContent.style.gridTemplateRows = '';
+
+                // Show all panels
+                panelVisibility.hierarchy = true;
+                panelVisibility.inspector = true;
+                panelVisibility.assets = true;
+
+                // Hide the floating panels
+                dom.animationPanel.classList.add('hidden');
+                dom.animatorControllerPanel.classList.add('hidden');
+
+                // Update the layout and menu checks
+                updateEditorLayout();
+                updateWindowMenuUI();
+
+                alert("El diseño de los paneles ha sido restablecido.");
+            });
+        }
+
         // Keystore Creation Logic
         if (dom.keystoreCreateBtn) {
             dom.keystoreCreateBtn.addEventListener('click', () => {
                 dom.keystoreCreateModal.classList.add('is-open');
+            });
+        }
+
+        // Layer Management Button Listeners
+        if (dom.addSortingLayerBtn) {
+            dom.addSortingLayerBtn.addEventListener('click', () => {
+                const newName = dom.newSortingLayerName.value.trim();
+                if (newName && !currentProjectConfig.layers.sortingLayers.includes(newName)) {
+                    currentProjectConfig.layers.sortingLayers.push(newName);
+                    dom.newSortingLayerName.value = '';
+                    populateLayerLists();
+                } else if (!newName) {
+                    alert("El nombre del layer no puede estar vacío.");
+                } else {
+                    alert(`El layer '${newName}' ya existe.`);
+                }
+            });
+        }
+        if (dom.addCollisionLayerBtn) {
+            dom.addCollisionLayerBtn.addEventListener('click', () => {
+                const newName = dom.newCollisionLayerName.value.trim();
+                if (newName && !currentProjectConfig.layers.collisionLayers.includes(newName)) {
+                    currentProjectConfig.layers.collisionLayers.push(newName);
+                    dom.newCollisionLayerName.value = '';
+                    populateLayerLists();
+                } else if (!newName) {
+                    alert("El nombre del layer no puede estar vacío.");
+                } else {
+                    alert(`El layer '${newName}' ya existe.`);
+                }
             });
         }
 
@@ -3600,6 +4078,77 @@ function update(deltaTime) {
         });
 
 
+        // --- Panel Resizing Logic ---
+        function initResizer(resizer, direction) {
+            resizer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                document.body.style.cursor = direction === 'col' ? 'col-resize' : 'row-resize';
+                document.body.style.userSelect = 'none';
+
+                const onMouseMove = (moveEvent) => {
+                    const mainContent = dom.editorMainContent;
+                    const rect = mainContent.getBoundingClientRect();
+
+                    // Use getComputedStyle to get the real pixel values of the grid tracks
+                    const style = window.getComputedStyle(mainContent);
+                    const columns = style.gridTemplateColumns.split(' ').map(s => parseFloat(s));
+                    const rows = style.gridTemplateRows.split(' ').map(s => parseFloat(s));
+
+                    const MIN_PANEL_WIDTH = 150;
+                    const MIN_CENTER_WIDTH = 200;
+                    const MIN_ASSETS_HEIGHT = 100;
+
+                    if (direction === 'col') {
+                        if (resizer.id === 'resizer-left') {
+                            let newWidth = moveEvent.clientX - rect.left;
+                            // Ensure the center panel doesn't get too small
+                            const maxAllowedWidth = rect.width - MIN_CENTER_WIDTH - columns[4] - (columns[1] + columns[3]);
+                            newWidth = Math.min(newWidth, maxAllowedWidth);
+                            // Ensure the panel itself doesn't get too small
+                            newWidth = Math.max(MIN_PANEL_WIDTH, newWidth);
+                            mainContent.style.gridTemplateColumns = `${newWidth}px ${columns[1]}px 1fr ${columns[3]}px ${columns[4]}px`;
+
+                        } else if (resizer.id === 'resizer-right') {
+                            let newWidth = rect.right - moveEvent.clientX;
+                            // Ensure the center panel doesn't get too small
+                            const maxAllowedWidth = rect.width - MIN_CENTER_WIDTH - columns[0] - (columns[1] + columns[3]);
+                            newWidth = Math.min(newWidth, maxAllowedWidth);
+                            // Ensure the panel itself doesn't get too small
+                            newWidth = Math.max(MIN_PANEL_WIDTH, newWidth);
+                            mainContent.style.gridTemplateColumns = `${columns[0]}px ${columns[1]}px 1fr ${columns[3]}px ${newWidth}px`;
+                        }
+                    } else { // 'row'
+                        let newHeight = rect.bottom - moveEvent.clientY;
+                        // Ensure the scene panel doesn't get too small
+                        const maxAllowedHeight = rect.height - MIN_CENTER_WIDTH - rows[1];
+                        newHeight = Math.min(newHeight, maxAllowedHeight);
+                        // Ensure the panel itself doesn't get too small
+                        newHeight = Math.max(MIN_ASSETS_HEIGHT, newHeight);
+                        mainContent.style.gridTemplateRows = `1fr ${rows[1]}px ${newHeight}px`;
+                    }
+
+                    // Resize canvas in real-time
+                    if (renderer) renderer.resize();
+                    if (gameRenderer) gameRenderer.resize();
+                };
+
+                const onMouseUp = () => {
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                };
+
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        initResizer(dom.resizerLeft, 'col');
+        initResizer(dom.resizerRight, 'col');
+        initResizer(dom.resizerBottom, 'row');
+
+
         // --- Floating Panel Dragging & Resizing (Generic) ---
         document.body.addEventListener('mousedown', (e) => {
             const handle = e.target.closest('.floating-panel .resize-handle');
@@ -3829,10 +4378,15 @@ function update(deltaTime) {
             'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename', 'ks-storepass', 'ks-command-output',
             'ks-command-textarea', 'ks-generate-btn',
 
+            // Layer Management UI
+            'settings-sorting-layer-list', 'new-sorting-layer-name', 'add-sorting-layer-btn',
+            'settings-collision-layer-list', 'new-collision-layer-name', 'add-collision-layer-btn',
+
             // Preferences Modal elements
             'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header', 'prefs-color-accent',
             'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval', 'prefs-save-btn',
             'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group', 'prefs-snapping-grid-size',
+            'prefs-reset-layout-btn',
 
             // Music Player elements
             'toolbar-music-btn', 'music-player-panel', 'now-playing-bar', 'now-playing-title', 'playlist-container',
@@ -3841,7 +4395,8 @@ function update(deltaTime) {
             // Export Modals
             'export-description-modal', 'export-description-text', 'export-description-next-btn',
             'package-file-tree-modal', 'package-modal-title', 'package-modal-description', 'package-file-tree-container',
-            'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn'
+            'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn',
+            'resizer-left', 'resizer-right', 'resizer-bottom'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -3851,9 +4406,11 @@ function update(deltaTime) {
         dom.sceneCanvas = document.getElementById('scene-canvas');
         dom.gameCanvas = document.getElementById('game-canvas');
 
-        console.log("Initializing Creative Engine Editor...");
+        console.log("--- Creative Engine Editor ---");
+        console.log("1. Iniciando el editor...");
         try {
             await openDB();
+            console.log("2. Base de datos abierta.");
             projectsDirHandle = await getDirHandle();
             if (!projectsDirHandle) {
                 console.error("No project directory handle found. Please go back to the launcher and select a directory.");
@@ -3863,27 +4420,39 @@ function update(deltaTime) {
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
             // Initialize Core Systems
+            console.log("3. Inicializando sistemas del motor...");
             renderer = new Renderer(dom.sceneCanvas, true); // This is the editor renderer
             gameRenderer = new Renderer(dom.gameCanvas); // This is the game renderer
+            console.log("   - Renderers creados.");
             const sceneData = await SceneManager.initialize(projectsDirHandle);
             if (sceneData) {
                 SceneManager.setCurrentScene(sceneData.scene);
                 SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
                 dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
                 SceneManager.setSceneDirty(false);
+                console.log(`   - Escena '${sceneData.fileHandle.name}' cargada.`);
+            } else {
+                console.error("¡Fallo crítico! No se pudo cargar o crear una escena.");
+                alert("¡Fallo crítico! No se pudo cargar o crear una escena. Revisa la consola para más detalles.");
+                return;
             }
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             InputManager.initialize(dom.sceneCanvas); // Pass canvas for correct mouse coords
+            console.log("   - Sistema de físicas e Input Manager listos.");
 
             // Initial UI updates
+            console.log("4. Actualizando interfaz del editor...");
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
             await loadProjectConfig();
             loadPreferences(); // Load user preferences
+            console.log("   - UI actualizada y preferencias cargadas.");
 
             setupEventListeners();
+            console.log("5. Event Listeners configurados.");
+
 
             // Start the main editor loop
             editorLoopId = requestAnimationFrame(editorLoop);
@@ -3899,7 +4468,7 @@ function update(deltaTime) {
             startGame = runChecksAndPlay; // Reassign startGame to our new function
 
 
-            console.log("Editor Initialized Successfully.");
+            console.log("✅ Editor inicializado con éxito.");
 
         } catch (error) {
             console.error("Failed to initialize editor:", error);
