@@ -6,7 +6,58 @@ import { Leyes } from './Leyes.js';
 import { Transform, SpriteRenderer, CreativeScript, UICanvas, Camera } from './Components.js';
 import { Materia } from './Materia.js';
 
-export class Scene { constructor() { this.materias = []; } addMateria(materia) { if (materia instanceof Materia) { this.materias.push(materia); } } findMateriaById(id) { return this.materias.find(m => m.id === id); } getRootMaterias() { return this.materias.filter(m => m.parent === null); } findFirstCanvas() { return this.materias.find(m => m.getComponent(UICanvas)); } findFirstCamera() { return this.materias.find(m => m.getComponent(Camera)); } }
+export class Scene {
+    constructor() {
+        this.materias = [];
+    }
+
+    addMateria(materia) {
+        if (materia instanceof Materia) {
+            this.materias.push(materia);
+        }
+    }
+
+    findMateriaById(id) {
+        return this.materias.find(m => m.id === id);
+    }
+
+    getRootMaterias() {
+        return this.materias.filter(m => m.parent === null);
+    }
+
+    findFirstCanvas() {
+        return this.materias.find(m => m.getComponent(UICanvas));
+    }
+
+    findFirstCamera() {
+        return this.materias.find(m => m.getComponent(Camera));
+    }
+
+    removeMateria(materiaId) {
+        const materiaToRemove = this.findMateriaById(materiaId);
+        if (!materiaToRemove) {
+            console.warn(`Materia with id ${materiaId} not found for removal.`);
+            return;
+        }
+
+        // Recursively remove all children first
+        const childrenClone = [...materiaToRemove.children];
+        for (const child of childrenClone) {
+            this.removeMateria(child.id);
+        }
+
+        // Remove from parent's children array
+        if (materiaToRemove.parent) {
+            materiaToRemove.parent.removeChild(materiaToRemove);
+        }
+
+        // Remove from the scene's main list
+        const index = this.materias.findIndex(m => m.id === materiaId);
+        if (index > -1) {
+            this.materias.splice(index, 1);
+        }
+    }
+}
 
 export let currentScene = new Scene();
 export let currentSceneFileHandle = null;
@@ -146,27 +197,37 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
 
 export async function initialize(projectsDirHandle) {
     const defaultSceneName = 'default.ceScene';
-    const assetsHandle = await projectsDirHandle.getDirectoryHandle('assets', { create: true });
-    try {
-        const fileHandle = await assetsHandle.getFileHandle(defaultSceneName);
-        return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
-    } catch (error) {
-        // If the file doesn't exist, create it
-        if (error.name === 'NotFoundError') {
-            try {
-                const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
-                const writable = await fileHandle.createWritable();
-                const defaultContent = {
-                    materias: [] // An empty scene
-                };
-                await writable.write(JSON.stringify(defaultContent, null, 2));
-                await writable.close();
-                return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
-            } catch (createError) {
-                console.error(`Error al crear la escena por defecto:`, createError);
-            }
-        } else {
-            console.error(`Error al inicializar el SceneManager:`, error);
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+    // Check if any scene file exists
+    let sceneFileToLoad = null;
+    for await (const entry of assetsHandle.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+            sceneFileToLoad = entry.name;
+            break; // Found one, load it
+        }
+    }
+
+    if (sceneFileToLoad) {
+        console.log(`Encontrada escena existente: ${sceneFileToLoad}. Cargando...`);
+        return await loadScene(sceneFileToLoad, assetsHandle, projectsDirHandle);
+    } else {
+        // If no scene files exist, create a default one
+        console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto.");
+        try {
+            const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
+            const writable = await fileHandle.createWritable();
+            const defaultContent = {
+                materias: [] // An empty scene
+            };
+            await writable.write(JSON.stringify(defaultContent, null, 2));
+            await writable.close();
+            console.log(`Escena '${defaultSceneName}' creada con éxito.`);
+            return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
+        } catch (createError) {
+            console.error(`Error al crear la escena por defecto:`, createError);
         }
     }
 }
