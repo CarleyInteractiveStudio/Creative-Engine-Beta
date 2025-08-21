@@ -14,10 +14,11 @@
             <div class="menu-item">
                 <button class="menu-btn">Archivo</button>
                 <div class="menu-content">
-                    <a href="#" id="menu-import-project">Importar Proyecto</a>
-                    <a href="#" id="menu-export-project">Exportar Proyecto</a>
+                    <a href="#" id="menu-import-project">Importar Proyecto...</a>
+                    <a href="#" id="menu-export-project">Exportar Proyecto...</a>
                     <hr>
-                    <a href="#" id="menu-import-asset">Importar Asset</a>
+                    <a href="#" id="menu-import-asset">Importar Asset...</a>
+                    <a href="#" id="menu-export-asset" class="disabled">Exportar Asset...</a>
                     <hr>
                     <a href="#" id="menu-build">Build</a>
                 </div>
@@ -39,7 +40,7 @@
                     <a href="#" id="menu-window-console">Consola</a>
                     <hr>
                     <a href="#" id="menu-window-animation">Editor de Animación</a>
-                    <a href="#" id="menu-window-animator" class="disabled">Controlador de Animación</a>
+                    <a href="#" id="menu-window-animator">Controlador de Animación</a>
                 </div>
             </div>
             <div class="menu-item">
@@ -58,6 +59,7 @@
                 <span id="project-name-display"></span>
             </div>
             <div class="toolbar-actions">
+                <button id="toolbar-music-btn" class="toolbar-btn" title="Reproductor de Música">🎵</button>
                 <div class="theme-switcher">
                     <button data-theme-set="dark-modern" class="theme-btn active" title="Tema Oscuro Moderno"></button>
                     <button data-theme-set="dark-white" class="theme-btn" title="Tema Claro"></button>
@@ -199,6 +201,35 @@
                 <div class="resize-handle" data-direction="both"></div>
                 </div>
             </div>
+            <div id="animator-controller-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span>Controlador de Animación</span>
+                    <div id="animator-controller-toolbar">
+                        <button id="anim-ctrl-new-btn">Nuevo</button>
+                        <button id="anim-ctrl-save-btn">Guardar</button>
+                        <span id="current-anim-ctrl-name">Ninguno</span>
+                    </div>
+                    <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
+                </div>
+                <div class="panel-content no-padding">
+                    <div id="animator-assets-list">
+                        <div class="list-header">Animaciones (.cea)</div>
+                        <input type="search" placeholder="Buscar animaciones...">
+                        <div class="list-content"></div>
+                    </div>
+                    <div id="animator-graph-view">
+                        <!-- The visual state machine graph will be rendered here -->
+                    </div>
+                    <div id="animator-controllers-list">
+                        <div class="list-header">Controladores (.ceanim)</div>
+                        <input type="search" placeholder="Buscar controladores...">
+                        <div class="list-content"></div>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="right"></div>
+                <div class="resize-handle" data-direction="bottom"></div>
+                <div class="resize-handle" data-direction="both"></div>
+            </div>
         </main>
     </div>
     <div id="context-menu" class="context-menu" style="display: none;">
@@ -219,6 +250,14 @@
             <li data-action="delete" class="danger">Borrar</li>
             <hr class="folder-only-divider" style="display: none;">
             <li data-action="export-package" class="folder-only" style="display: none;">Exportar Paquete (.cep)</li>
+        </ul>
+    </div>
+    <div id="anim-node-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="create-transition">Crear Transición</li>
+            <li data-action="set-as-entry">Marcar como Estado de Entrada</li>
+            <hr>
+            <li data-action="delete-state" class="danger">Borrar Estado</li>
         </ul>
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
@@ -258,36 +297,250 @@
             <span class="close-button">&times;</span>
             <h2>Configuración del Proyecto</h2>
             <div class="settings-form">
-                <label for="settings-app-name">Nombre de la App</label>
-                <input type="text" id="settings-app-name" value="MiJuego">
-                <label for="settings-app-version">Versión</label>
-                <input type="text" id="settings-app-version" value="0.1.0">
-                <label for="settings-author">Autor</label>
-                <input type="text" id="settings-author" value="Un Creador">
-                <div>
-                    <input type="checkbox" id="settings-mod-support">
-                    <label for="settings-mod-support">Admite Mods</label>
+                <fieldset class="settings-section">
+                    <legend>General</legend>
+                    <label for="settings-app-name">Nombre del Proyecto</label>
+                    <input type="text" id="settings-app-name" placeholder="Mi Juego Increíble">
+                    <label for="settings-author-name">Nombre del Autor</label>
+                    <input type="text" id="settings-author-name" placeholder="Un Creador de Mundos">
+                    <label for="settings-app-version">Versión del Juego</label>
+                    <input type="text" id="settings-app-version" placeholder="1.0.0">
+                    <label>Versión del Motor</label>
+                    <input type="text" id="settings-engine-version" value="0.1.0-beta" readonly>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Visual</legend>
+                    <label>Icono del Ejecutable</label>
+                    <div class="image-picker">
+                        <img id="settings-icon-preview" src="image/Paquete.png" alt="Vista previa del icono" style="display:none;">
+                        <button id="settings-icon-picker-btn">Seleccionar Icono...</button>
+                    </div>
+                    <p class="field-description">Selecciona una imagen (.png o .ico) para el ejecutable de tu juego.</p>
+                    <hr>
+                    <label>Logos de Inicio (Splash Screen)</label>
+                    <div class="logo-list" id="settings-logo-list">
+                        <!-- Logos añadidos por el usuario irán aquí -->
+                    </div>
+                    <button id="settings-add-logo-btn">Añadir Logo</button>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-show-engine-logo" checked>
+                        <label for="settings-show-engine-logo">Mostrar logo de Creative Engine</label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Build</legend>
+                    <h4>Firma de Android (Keystore)</h4>
+                    <p class="field-description">Configuración para firmar builds de Android.</p>
+                    <label for="settings-keystore-path">Ruta al Keystore</label>
+                    <div class="file-picker">
+                        <input type="text" id="settings-keystore-path" readonly placeholder="Ninguno seleccionado">
+                        <button id="settings-keystore-picker-btn">...</button>
+                    </div>
+                    <label for="settings-keystore-pass">Contraseña del Keystore</label>
+                    <input type="password" id="settings-keystore-pass">
+                    <label for="settings-key-alias">Alias de la Clave</label>
+                    <input type="text" id="settings-key-alias">
+                    <label for="settings-key-pass">Contraseña de la Clave</label>
+                    <input type="password" id="settings-key-pass">
+                    <button id="keystore-create-btn">Crear Nuevo Keystore...</button>
+                    <hr>
+                    <h4>Acciones de Exportación</h4>
+                    <button id="settings-export-project-btn">Exportar Assets (.cep)</button>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="settings-save-btn" class="primary-btn">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+    <div id="keystore-create-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Crear Nuevo Keystore</h2>
+            <div class="settings-form">
+                <fieldset class="settings-section">
+                    <legend>Información de la Clave</legend>
+                    <label for="ks-alias">Alias</label>
+                    <input type="text" id="ks-alias" placeholder="my-key-alias">
+                    <label for="ks-password">Contraseña de la Clave (mínimo 6 caracteres)</label>
+                    <input type="password" id="ks-password">
+                    <label for="ks-validity">Validez (años)</label>
+                    <input type="number" id="ks-validity" value="30">
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Información del Certificado (Dueño)</legend>
+                    <label for="ks-cn">Nombre y Apellido</label>
+                    <input type="text" id="ks-cn" placeholder="Juan Pérez">
+                    <label for="ks-ou">Unidad Organizativa</label>
+                    <input type="text" id="ks-ou" placeholder="Desarrollo de Juegos">
+                    <label for="ks-o">Organización</label>
+                    <input type="text" id="ks-o" placeholder="Mi Estudio">
+                    <label for="ks-l">Ciudad o Localidad</label>
+                    <input type="text" id="ks-l" placeholder="Madrid">
+                    <label for="ks-st">Estado o Provincia</label>
+                    <input type="text" id="ks-st" placeholder="Madrid">
+                    <label for="ks-c">Código de País (2 letras)</label>
+                    <input type="text" id="ks-c" placeholder="ES" maxlength="2">
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Archivo de Salida</legend>
+                    <label for="ks-filename">Nombre del Archivo Keystore</label>
+                    <input type="text" id="ks-filename" value="my-release-key.keystore">
+                    <label for="ks-storepass">Contraseña del Archivo Keystore</label>
+                    <input type="password" id="ks-storepass">
+                </fieldset>
+                <div id="ks-command-output" class="hidden">
+                    <h4>Comando `keytool` Generado:</h4>
+                    <textarea id="ks-command-textarea" readonly rows="5"></textarea>
+                    <p class="field-description">Copia y ejecuta este comando en una terminal con JDK instalado si la creación automática falla.</p>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button id="ks-generate-btn" class="primary-btn">Generar</button>
+            </div>
+        </div>
+    </div>
+    <div id="engine-logo-confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>¿Desactivar el logo?</h2>
+            <p>Respetamos tu decisión, y puedes desactivar esta opción en cualquier momento.</p>
+            <p>Sin embargo, nos alegraría mucho que la mantuvieras activa: ayuda a que más personas descubran Creative Engine, fortalece nuestra comunidad y acelera su crecimiento.</p>
+            <p><strong>¿Estás seguro de que deseas desactivarla?</strong></p>
+            <div class="modal-footer">
+                <button id="confirm-disable-logo-btn" class="danger-btn">Sí, desactivar</button>
+                <button id="cancel-disable-logo-btn" class="primary-btn">Cancelar</button>
             </div>
         </div>
     </div>
     <div id="preferences-modal" class="modal">
         <div class="modal-content large">
             <span class="close-button">&times;</span>
-            <h2>Preferencias</h2>
+            <h2>Preferencias del Editor</h2>
             <div class="settings-form">
-                <label for="prefs-theme">Tema del Editor</label>
-                <select id="prefs-theme">
-                    <option value="dark-modern">Oscuro Moderno</option>
-                    <option value="dark-white">Claro</option>
-                    <option value="dark-blue">Azul Marino</option>
-                </select>
-                <label for="prefs-language">Idioma</label>
-                <p>(Funcionalidad de idioma próximamente)</p>
+                <fieldset class="settings-section">
+                    <legend>Apariencia</legend>
+                    <label for="prefs-theme">Tema del Editor</label>
+                    <select id="prefs-theme">
+                        <option value="dark-modern">Oscuro Moderno</option>
+                        <option value="dark-white">Claro</option>
+                        <option value="dark-blue">Azul Marino</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                    <div id="prefs-custom-theme-picker" class="hidden">
+                        <h4>Colores Personalizados</h4>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-bg">Fondo Paneles</label>
+                            <input type="color" id="prefs-color-bg" value="#2d2d30">
+                        </div>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-header">Fondo Cabeceras</label>
+                            <input type="color" id="prefs-color-header" value="#3f3f46">
+                        </div>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-accent">Botones y Acentos</label>
+                            <input type="color" id="prefs-color-accent" value="#0e639c">
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Editor de Código</legend>
+                    <label for="prefs-script-lang">Lenguaje de Scripting Preferido</label>
+                    <select id="prefs-script-lang">
+                        <option value="ces">Creative Engine Script (.ces)</option>
+                        <option value="js">JavaScript (.js)</option>
+                    </select>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-autosave-toggle">
+                        <label for="prefs-autosave-toggle">Guardado automático de scripts</label>
+                    </div>
+                    <div id="prefs-autosave-interval-group" class="hidden">
+                        <label for="prefs-autosave-interval">Intervalo de guardado (segundos)</label>
+                        <input type="number" id="prefs-autosave-interval" min="5" value="30">
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Editor de Escena</legend>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-snapping-toggle">
+                        <label for="prefs-snapping-toggle">Activar "Snapping" a la rejilla</label>
+                    </div>
+                    <div id="prefs-snapping-grid-size-group" class="hidden">
+                        <label for="prefs-snapping-grid-size">Tamaño de la rejilla (píxeles)</label>
+                        <input type="number" id="prefs-snapping-grid-size" min="1" value="25">
+                    </div>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="prefs-save-btn" class="primary-btn">Guardar Preferencias</button>
             </div>
         </div>
     </div>
     <div id="debug-display"></div>
+
+    <div id="export-description-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Descripción del Paquete</h2>
+            <div class="settings-form">
+                <label for="export-description-text">Añade una breve descripción para tu paquete .cep:</label>
+                <textarea id="export-description-text" rows="4" placeholder="Ej: Contiene el personaje principal y sus animaciones."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="export-description-next-btn" class="primary-btn">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="package-file-tree-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2 id="package-modal-title">Seleccionar Archivos</h2>
+            <div id="package-modal-description">
+                <!-- La descripción del paquete irá aquí -->
+            </div>
+            <div id="package-file-tree-container">
+                <!-- El árbol de archivos se renderizará aquí -->
+            </div>
+            <div id="package-export-controls" class="modal-footer">
+                <label for="export-filename">Nombre del Paquete:</label>
+                <input type="text" id="export-filename" placeholder="MiPaquete.cep">
+                <button id="export-confirm-btn" class="primary-btn">Exportar</button>
+            </div>
+            <div id="package-import-controls" class="modal-footer" style="display: none;">
+                <button id="import-confirm-btn" class="primary-btn">Importar Seleccionados</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="music-player-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span>Reproductor de Música</span>
+            <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="now-playing-bar">
+                <span id="now-playing-title">Nada en reproducción</span>
+            </div>
+            <div id="playlist-container">
+                <!-- La lista de canciones irá aquí -->
+            </div>
+            <div id="music-controls">
+                <button id="music-add-btn">Añadir</button>
+                <button id="music-prev-btn">⏮️</button>
+                <button id="music-play-pause-btn">▶️</button>
+                <button id="music-next-btn">⏭️</button>
+                <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="right"></div>
+        <div class="resize-handle" data-direction="bottom"></div>
+        <div class="resize-handle" data-direction="both"></div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="js/editor.js"></script>

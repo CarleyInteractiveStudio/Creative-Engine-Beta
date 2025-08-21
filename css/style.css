@@ -55,6 +55,19 @@ header {
 #header-logo { width: 40px; height: 40px; }
 header h1 { color: var(--highlight-color); font-size: 2.5em; margin: 0; font-weight: 600; flex-grow: 1; text-align: left; padding-left: 15px;}
 
+#header-controls {
+    margin-left: auto; /* Pushes auth button to the right */
+}
+
+#btn-mute-music {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: var(--primary-text-color);
+    padding: 0 15px;
+}
+
 #auth-status-container { text-align: right; }
 #btn-auth-action {
     background-color: transparent;
@@ -176,6 +189,16 @@ main { padding: 20px 0; }
     border-color: #002e54;
 }
 
+#btn-discord {
+    background-color: #5865F2; /* Discord Blurple */
+    border-color: #5865F2;
+    color: #ffffff;
+}
+#btn-discord:hover {
+    background-color: #4f5bda;
+    border-color: #4f5bda;
+}
+
 #actions button#btn-start {
     background-color: var(--button-bg-color);
     border-color: var(--button-bg-color);
@@ -199,16 +222,21 @@ footer {
     display: none;
 }
 .modal.is-open {
-    display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-    overflow: auto; background-color: rgba(0, 0, 0, 0.8); animation: fadeIn 0.3s ease;
+    display: flex; /* Use Flexbox for centering */
+    align-items: center;
+    justify-content: center;
+    position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); animation: fadeIn 0.3s ease;
 }
 .modal-content {
-    background: #161b22; /* Use explicit solid background to prevent transparency issues in some renderers */
-    margin: 8% auto; padding: 30px; border: 1px solid var(--border-color);
-    width: 90%; max-width: 550px; border-radius: 10px;
+    background: #161b22;
+    padding: 30px; border: 1px solid var(--border-color);
+    width: 90%; max-width: 500px; /* Slightly smaller for alerts */
+    border-radius: 10px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); animation: slideIn 0.4s ease;
-    position: relative; /* Ensure it's a stacking context */
+    position: relative;
     z-index: 1001;
+    text-align: center; /* Center text for dialogs */
 }
 .close-button {
     color: #8b949e; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 0.8;
@@ -254,6 +282,39 @@ footer {
 }
 .modal-btn:hover { background-color: #6ab0ff; }
 .modal-btn:disabled { background-color: #30363d; cursor: not-allowed; }
+
+.dialog-buttons {
+    margin-top: 25px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.dialog-buttons button {
+    padding: 10px 25px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dialog-buttons .btn-primary {
+    background-color: var(--accent-color);
+    color: var(--button-text-color);
+}
+.dialog-buttons .btn-primary:hover {
+    background-color: #6ab0ff;
+}
+
+.dialog-buttons .btn-secondary {
+    background-color: #30363d;
+    color: var(--primary-text-color);
+    border-color: var(--border-color);
+}
+.dialog-buttons .btn-secondary:hover {
+    background-color: #484f58;
+}
 
 /* PayPal Button Container */
 #donate-button-container {
@@ -369,6 +430,133 @@ footer {
 }
 
 
+/* --- License Button Link Style --- */
+.license-container {
+    margin-top: 20px;
+}
+#btn-license {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent-color);
+    font-size: 0.9em;
+    cursor: pointer;
+    text-decoration: none;
+}
+#btn-license:hover {
+    text-decoration: underline;
+}
+
+
 /* --- Keyframe Animations --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* --- Cool Animations --- */
+@keyframes rainbow-bar-ping-pong {
+    0% {
+        left: 0%;
+        background-position: 0% 50%;
+    }
+    50% {
+        left: 100%;
+        background-position: 100% 50%;
+    }
+    100% {
+        left: 0%;
+        background-position: 0% 50%;
+    }
+}
+
+#actions .button-link, #actions button {
+    position: relative;
+    overflow: hidden;
+}
+
+.rainbow-animated-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+    background-size: 200% 100%;
+    animation: rainbow-bar-ping-pong 3s linear infinite;
+    transform: translateX(-100%);
+}
+
+#actions .button-link:hover::after, #actions button:hover::after {
+    transform: translateX(0%);
+    transition: transform 0.4s ease-out;
+}
+
+
+/* --- Context Menu Styles --- */
+.context-menu {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    background-color: #21262d;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    padding: 5px 0;
+    min-width: 150px;
+}
+
+.context-menu.visible {
+    display: block;
+}
+
+.context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context-menu ul li {
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    color: var(--primary-text-color);
+}
+
+.context-menu ul li:hover {
+    background-color: var(--accent-color);
+    color: var(--secondary-bg-color);
+}
+
+#ctx-delete {
+    color: #f85149; /* GitHub red */
+}
+
+#ctx-delete:hover {
+    color: #ffffff;
+    background-color: #da3633;
+}
+
+/* Add a class to highlight the selected project item */
+.project-item.selected {
+    border-color: var(--accent-color);
+    background-color: #21262d;
+}
+
+.project-item {
+    position: relative; /* Needed for positioning the button */
+}
+
+.open-folder-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 5px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.open-folder-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

@@ -17,6 +17,7 @@ function transpile(code) {
     const lines = code.split(/\r?\n/);
     const errors = [];
     let jsCode = '';
+    const privateVars = []; // To store private variables to be declared in start()
     const imports = new Set();
     let inBlock = false; // Usamos un 'inBlock' más genérico en lugar de 'inFunctionBody'
 
@@ -48,9 +49,18 @@ function transpile(code) {
                 return;
             }
 
-            const varMatch = trimmedLine.match(/^public\s+(?:materia\/gameObject)\s+([^;]+);/);
-            if (varMatch) {
-                jsCode += `let ${varMatch[1]};\n`;
+            // Public variables (materia/gameObject, sprite, SpriteAnimacion)
+            const publicVarMatch = trimmedLine.match(/^public\s+(?:materia\/gameObject|sprite|SpriteAnimacion)\s+([^;]+);/);
+            if (publicVarMatch) {
+                jsCode += `let ${publicVarMatch[1]};\n`;
+                return;
+            }
+
+            // Private variables
+            const privateVarMatch = trimmedLine.match(/^private\s+\w+\s+([^;]+);/);
+            if(privateVarMatch) {
+                // We store them to inject them into the start function later
+                privateVars.push(privateVarMatch[1]);
                 return;
             }
         }
@@ -58,7 +68,11 @@ function transpile(code) {
         // 2. Declaraciones de funciones (que inician un bloque)
         const starMatch = trimmedLine.match(/^public\s+star\s*\(\)\s*{/);
         if (starMatch) {
-            jsCode += 'Engine.start = function() {\n';
+            let privateDeclarations = '';
+            if (privateVars.length > 0) {
+                privateDeclarations = `    let ${privateVars.join(', ')};\n`;
+            }
+            jsCode += `Engine.start = function() {\n${privateDeclarations}`;
             return;
         }
 
@@ -94,7 +108,10 @@ function transpile(code) {
 
             // Reemplazar comandos específicos del motor
             let originalLine = trimmedLine;
-            let processedLine = trimmedLine.replace(/materia\s+crear\s+([^,]+),"([^"]+)";/g, 'Assets.loadModel("$1", "$2");');
+            let processedLine = trimmedLine.replace(/crear\s+sprite\s+([^,]+)\s+con\s+"([^"]+)";/g, '$1 = SceneManager.createSprite("$1", "$2");');
+            processedLine = processedLine.replace(/reproducir\s+animacion\s+"([^"]+)"\s+en\s+([^;]+);/g, '$2.getComponent(Animator).play("$1");');
+            processedLine = processedLine.replace(/cambiar\s+estado\s+en\s+([^,]+)\s+a\s+"([^"]+)";/g, '$1.getComponent(Animator).play("$2");');
+            processedLine = processedLine.replace(/materia\s+crear\s+([^,]+),"([^"]+)";/g, 'Assets.loadModel("$1", "$2");');
             processedLine = processedLine.replace(/ley\s+gravedad\s+activar;/g, 'Physics.enableGravity(true);');
             processedLine = processedLine.replace(/ley\s+gravedad\s+desactivar;/g, 'Physics.enableGravity(false);');
 
@@ -115,7 +132,8 @@ function transpile(code) {
         return { errors };
     }
 
-    const finalImports = Array.from(imports).join('\n');
+    // Add the SceneManager import, as it's crucial for creating objects.
+    const finalImports = `import * as SceneManager from './modules/SceneManager.js';\n` + Array.from(imports).join('\n');
     return { jsCode: `${finalImports}\n\n${jsCode}` };
 }
 
