@@ -2414,6 +2414,13 @@ function getUiGizmoHandleAt(screenPos, materia) {
             }
         });
 
+        // Hide context menus on any click outside of them
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideContextMenus();
+            }
+        });
+
         // Tab switching for the bottom panel (Assets/Console/Debug)
         const tabBar = dom.assetsPanel.querySelector('.tab-bar');
         const contentContainer = dom.assetsPanel.querySelector('.panel-content-container');
@@ -2806,6 +2813,17 @@ function getUiGizmoHandleAt(screenPos, materia) {
             }
 
             showContextMenu(dom.contextMenu, e);
+        });
+
+        // Custom Context Menu handler for hierarchy
+        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const item = e.target.closest('.hierarchy-item');
+            if (item) {
+                const materiaId = parseInt(item.dataset.id, 10);
+                selectMateria(materiaId);
+            }
+            showContextMenu(dom.hierarchyContextMenu, e);
         });
 
         // Custom Context Menu handler for hierarchy
