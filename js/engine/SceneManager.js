@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, UICanvas, Camera } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
 import { Materia } from './Materia.js';
 
 export class Scene {
@@ -25,12 +25,20 @@ export class Scene {
         return this.materias.filter(m => m.parent === null);
     }
 
-    findFirstCanvas() {
-        return this.materias.find(m => m.getComponent(UICanvas));
-    }
-
     findFirstCamera() {
         return this.materias.find(m => m.getComponent(Camera));
+    }
+
+    findNodeByFlag(key, value) {
+        return this.materias.find(m => m.getFlag(key) === value);
+    }
+
+    getMateriasRecursive(materia) {
+        let materias = [materia];
+        for (const child of materia.children) {
+            materias = materias.concat(this.getMateriasRecursive(child));
+        }
+        return materias;
     }
 
     removeMateria(materiaId) {
@@ -83,6 +91,7 @@ export function serializeScene(scene) {
         const materiaData = {
             id: materia.id,
             name: materia.name,
+            parentId: materia.parent ? materia.parent.id : null,
             leyes: []
         };
         for (const ley of materia.leyes) {
@@ -107,6 +116,9 @@ import { getComponent } from './ComponentRegistry.js';
 
 export async function deserializeScene(sceneData, projectsDirHandle) {
     const newScene = new Scene();
+    const materiaMap = new Map();
+
+    // Pass 1: Create all materias and map them by ID
     for (const materiaData of sceneData.materias) {
         const newMateria = new Materia(materiaData.name);
         newMateria.id = materiaData.id;
@@ -119,22 +131,33 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 Object.assign(newLey, leyData.properties);
                 newMateria.addComponent(newLey);
 
-                // If the component is a SpriteRenderer, load its sprite.
+                // Post-creation loading for specific components
                 if (newLey instanceof SpriteRenderer) {
                     await newLey.loadSprite(projectsDirHandle);
                 }
-                // Also handle CreativeScript loading here
                 if (newLey instanceof CreativeScript) {
                     await newLey.load(projectsDirHandle);
                 }
-                // Also handle Animator loading here
                 if (newLey instanceof Animator) {
                     await newLey.loadController(projectsDirHandle);
                 }
             }
         }
         newScene.addMateria(newMateria);
+        materiaMap.set(newMateria.id, newMateria);
     }
+
+    // Pass 2: Re-establish parent-child relationships
+    for (const materiaData of sceneData.materias) {
+        if (materiaData.parentId !== null) {
+            const child = materiaMap.get(materiaData.id);
+            const parent = materiaMap.get(materiaData.parentId);
+            if (child && parent) {
+                parent.addChild(child);
+            }
+        }
+    }
+
     return newScene;
 }
 
@@ -172,27 +195,23 @@ export function createSprite(name, imagePath) {
     return newMateria;
 }
 
-export async function getURLForAssetPath(path, projectsDirHandle) {
-    if (!projectsDirHandle || !path) return null;
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
-        let currentHandle = projectHandle;
-        const parts = path.split('/').filter(p => p); // Filter out empty strings from path
-        const fileName = parts.pop();
+function createDefaultScene() {
+    const scene = new Scene();
 
-        for (const part of parts) {
-            currentHandle = await currentHandle.getDirectoryHandle(part);
-        }
+    // Create the root node
+    const rootNode = new Materia('Scene');
+    scene.addMateria(rootNode);
 
-        const fileHandle = await currentHandle.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
-        return URL.createObjectURL(file);
-    } catch (error) {
-        console.error(`Could not create URL for asset path: ${path}`, error);
-        return null;
-    }
+    // Create the camera
+    const cameraNode = new Materia('Main Camera');
+    const cameraComponent = new Camera(cameraNode);
+    cameraNode.addComponent(cameraComponent);
+
+    rootNode.addChild(cameraNode);
+    scene.addMateria(cameraNode);
+
+    return scene;
 }
 
 export async function initialize(projectsDirHandle) {
@@ -214,17 +233,19 @@ export async function initialize(projectsDirHandle) {
         console.log(`Encontrada escena existente: ${sceneFileToLoad}. Cargando...`);
         return await loadScene(sceneFileToLoad, assetsHandle, projectsDirHandle);
     } else {
-        // If no scene files exist, create a default one
-        console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto.");
+        // If no scene files exist, create a default one with a camera
+        console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
         try {
             const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
             const writable = await fileHandle.createWritable();
-            const defaultContent = {
-                materias: [] // An empty scene
-            };
-            await writable.write(JSON.stringify(defaultContent, null, 2));
+
+            const defaultScene = createDefaultScene();
+            const sceneData = serializeScene(defaultScene);
+
+            await writable.write(JSON.stringify(sceneData, null, 2));
             await writable.close();
-            console.log(`Escena '${defaultSceneName}' creada con éxito.`);
+
+            console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
             return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
         } catch (createError) {
             console.error(`Error al crear la escena por defecto:`, createError);

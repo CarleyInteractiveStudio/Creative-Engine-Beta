@@ -1,0 +1,15 @@
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /editor.html?project=TestProject HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /image/Paquete.png HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /css/debug.css HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /css/editor.css HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /js/editor.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:05] "GET /image/Creative_Engine_beta.png HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Components.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/SceneManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Renderer.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Input.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Materia.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Physics.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/AssetUtils.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/Leyes.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Aug/2025 19:18:06] "GET /js/engine/ComponentRegistry.js HTTP/1.1" 200 -

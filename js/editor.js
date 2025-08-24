@@ -1,14 +1,17 @@
+// Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
-import { uiEventSystem } from './engine/UIEventSystem.js';
+import { Renderer } from './engine/Renderer.js';
+import { PhysicsSystem } from './engine/Physics.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { CreativeScript, RectTransform, UICanvas, UIImage, UIPanel, UIMask, UIText, UIButton, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform, HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup } from './engine/Components.js';
+import { CreativeScript, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform } from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 import {autocompletion} from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { getURLForAssetPath } from './engine/AssetUtils.js';
 
 // --- Autocomplete Logic for Creative Engine Script ---
 const cesKeywords = [
@@ -41,137 +44,6 @@ function cesCompletions(context) {
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
-
-    // --- Engine Core Classes ---
-
-    class Renderer {
-        constructor(canvas, isEditor = false) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.camera = null; // Will be assigned from the scene
-            this.isEditor = isEditor;
-            this.resize();
-        }
-
-        resize() {
-            this.canvas.width = this.canvas.clientWidth;
-            this.canvas.height = this.canvas.clientHeight;
-        }
-
-        begin() {
-            const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
-            let cameraComponent;
-            let cameraTransform;
-
-            if (sceneCameraMateria) {
-                cameraComponent = sceneCameraMateria.getComponent(Camera);
-                cameraTransform = sceneCameraMateria.getComponent(Transform);
-            }
-
-            // The editor renderer creates a default camera if none exists.
-            // The game renderer will have a null camera and won't render.
-            if (!cameraComponent && this.isEditor) {
-                cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
-                cameraTransform = { x: 0, y: 0 };
-            }
-
-            this.camera = cameraComponent ? {
-                ...cameraComponent,
-                x: cameraTransform.x,
-                y: cameraTransform.y,
-                // Game view zoom is determined by ortho size, editor can have its own zoom
-                effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
-            } : null;
-
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.save();
-
-            if (!this.camera) return;
-
-            this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-            this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
-            this.ctx.translate(-this.camera.x, -this.camera.y);
-        }
-
-        end() {
-            this.ctx.restore();
-        }
-
-        drawRect(x, y, width, height, color) {
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
-        }
-
-        // Placeholder for now
-        drawImage(image, x, y, width, height) {
-            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-        }
-
-        drawText(text, x, y, color, fontSize, textTransform) {
-            this.ctx.fillStyle = color;
-            this.ctx.font = `${fontSize}px sans-serif`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-
-            let transformedText = text;
-            if (textTransform === 'uppercase') {
-                transformedText = text.toUpperCase();
-            } else if (textTransform === 'lowercase') {
-                transformedText = text.toLowerCase();
-            }
-
-            this.ctx.fillText(transformedText, x, y);
-        }
-    }
-
-    class PhysicsSystem {
-        constructor(scene) {
-            this.scene = scene;
-            this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
-        }
-
-        update(deltaTime) {
-            // Update positions based on velocity
-            for (const materia of this.scene.materias) {
-                const rigidbody = materia.getComponent(Rigidbody);
-                const transform = materia.getComponent(Transform);
-
-                if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
-                    rigidbody.velocity.y += this.gravity.y * deltaTime;
-                    transform.x += rigidbody.velocity.x * deltaTime;
-                    transform.y += rigidbody.velocity.y * deltaTime;
-                }
-            }
-
-            // Collision detection
-            const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
-            for (let i = 0; i < collidables.length; i++) {
-                for (let j = i + 1; j < collidables.length; j++) {
-                    const materiaA = collidables[i];
-                    const materiaB = collidables[j];
-
-                    const transformA = materiaA.getComponent(Transform);
-                    const colliderA = materiaA.getComponent(BoxCollider);
-                    const transformB = materiaB.getComponent(Transform);
-                    const colliderB = materiaB.getComponent(BoxCollider);
-
-                    const leftA = transformA.x - colliderA.width / 2;
-                    const rightA = transformA.x + colliderA.width / 2;
-                    const topA = transformA.y - colliderA.height / 2;
-                    const bottomA = transformA.y + colliderA.height / 2;
-
-                    const leftB = transformB.x - colliderB.width / 2;
-                    const rightB = transformB.x + colliderB.width / 2;
-                    const topB = transformB.y - colliderB.height / 2;
-                    const bottomB = transformB.y + colliderB.height / 2;
-
-                    if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
-                        console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
-                    }
-                }
-            }
-        }
-    }
 
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
@@ -245,11 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. DOM Elements ---
     const dom = {};
 
-    // --- 3. IndexedDB Logic & 4. Console Override ---
+    // --- 3. IndexedDB Logic ---
     const dbName = 'CreativeEngineDB'; let db; function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
-    const originalLog = console.log, originalWarn = console.warn, originalError = console.error; function logToUIConsole(message, type = 'log') { if (!dom.consoleContent) return; const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; dom.consoleContent.appendChild(msgEl); dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight; }
-    console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
     var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate;
@@ -673,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    openSpriteSelector = async function() {
+    openSpriteSelector = async function(componentName) {
         const grid = dom.spriteSelectorGrid;
         grid.innerHTML = '';
         dom.spriteSelectorModal.classList.add('is-open');
@@ -696,13 +566,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         imageFiles.forEach(imgPath => {
             const img = document.createElement('img');
-            SceneManager.getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
+            getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
             img.addEventListener('click', async () => {
                 if (selectedMateria) {
-                    const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
-                    if (spriteRenderer) {
-                        spriteRenderer.setSourcePath(imgPath);
-                        await spriteRenderer.loadSprite(projectsDirHandle);
+                    const ComponentClass = window[componentName] || eval(componentName);
+                    if (!ComponentClass) return;
+
+                    const component = selectedMateria.getComponent(ComponentClass);
+                    if (component) {
+                        component.setSourcePath(imgPath);
+                        await component.loadSprite(projectsDirHandle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -1493,37 +1366,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
                 </div>`;
-            } else if (ley instanceof UICanvas) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>`;
-            } else if (ley instanceof UIButton) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
-                <div class="component-grid">
-                    <label>Normal Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="normalColor" value="${ley.normalColor}">
-                    <label>Hover Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="hoverColor" value="${ley.hoverColor}">
-                    <label>Pressed Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="pressedColor" value="${ley.pressedColor}">
-                </div>
-                <div class="component-grid">
-                    <label>On Click()</label>
-                    <p class="field-description">Functionality to add events from the inspector will be implemented in a future update.</p>
-                </div>
-                `;
-            } else if (ley instanceof UIText) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Text</h4></div>
-                <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
-                <div class="text-transform-controls">
-                    <button class="prop-btn ${ley.textTransform === 'none' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="none">aA</button>
-                    <button class="prop-btn ${ley.textTransform === 'uppercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="uppercase">AA</button>
-                    <button class="prop-btn ${ley.textTransform === 'lowercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="lowercase">aa</button>
-                </div>
-                <div class="component-grid">
-                    <label>Font Size</label><input type="number" class="prop-input" step="1" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">
-                    <label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
-                </div>
-                `;
-            } else if (ley instanceof UIButton) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
-                <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
-                <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
             } else if (ley instanceof CreativeScript) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
             } else if (ley instanceof Animator) {
@@ -1531,83 +1373,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
                 <p>Asset de Animación: (Próximamente)</p>
                 <button id="open-animator-btn">Abrir Editor de Animación</button>`;
-            } else if (ley instanceof HorizontalLayoutGroup || ley instanceof VerticalLayoutGroup) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
-                    <hr>
-                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
-                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
-                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
-                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
-                </div>`;
-            } else if (ley instanceof GridLayoutGroup) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
-                    <hr>
-                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
-                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
-                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
-                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
-                    <hr>
-                    <label>Cell Size X</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.x" value="${ley.cellSize.x}">
-                    <label>Cell Size Y</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.y" value="${ley.cellSize.y}">
-                    <label>Constraint</label>
-                    <select class="prop-input" data-component="${type}" data-prop="constraint">
-                        <option value="flexible" ${ley.constraint === 'flexible' ? 'selected' : ''}>Flexible</option>
-                        <option value="fixedColumnCount" ${ley.constraint === 'fixedColumnCount' ? 'selected' : ''}>Fixed Column Count</option>
-                        <option value="fixedRowCount" ${ley.constraint === 'fixedRowCount' ? 'selected' : ''}>Fixed Row Count</option>
-                    </select>
-                    <label>Constraint Count</label><input type="number" class="prop-input" step="1" min="1" data-component="${type}" data-prop="constraintCount" value="${ley.constraintCount}">
-                </div>`;
-            } else if (ley instanceof ContentSizeFitter) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Horizontal Fit</label>
-                    <select class="prop-input" data-component="${type}" data-prop="horizontalFit">
-                        <option value="unconstrained" ${ley.horizontalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
-                        <option value="minSize" ${ley.horizontalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
-                        <option value="preferredSize" ${ley.horizontalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
-                    </select>
-                    <label>Vertical Fit</label>
-                    <select class="prop-input" data-component="${type}" data-prop="verticalFit">
-                        <option value="unconstrained" ${ley.verticalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
-                        <option value="minSize" ${ley.verticalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
-                        <option value="preferredSize" ${ley.verticalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
-                    </select>
-                </div>`;
-            } else if (ley instanceof LayoutElement) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label for="le-ignore">Ignore Layout</label>
-                    <input type="checkbox" id="le-ignore" class="prop-input" data-component="${type}" data-prop="ignoreLayout" ${ley.ignoreLayout ? 'checked' : ''}>
-                    <hr><hr>
-                    <label>Min Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minWidth" value="${ley.minWidth}">
-                    <label>Min Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minHeight" value="${ley.minHeight}">
-                    <label>Preferred Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredWidth" value="${ley.preferredWidth}">
-                    <label>Preferred Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredHeight" value="${ley.preferredHeight}">
-                    <label>Flexible Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleWidth" value="${ley.flexibleWidth}">
-                    <label>Flexible Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleHeight" value="${ley.flexibleHeight}">
-                </div>`;
-            } else if (ley instanceof AspectRatioFitter) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Aspect Mode</label>
-                    <select class="prop-input" data-component="${type}" data-prop="aspectMode">
-                        <option value="None" ${ley.aspectMode === 'None' ? 'selected' : ''}>None</option>
-                        <option value="WidthControlsHeight" ${ley.aspectMode === 'WidthControlsHeight' ? 'selected' : ''}>Width Controls Height</option>
-                        <option value="HeightControlsWidth" ${ley.aspectMode === 'HeightControlsWidth' ? 'selected' : ''}>Height Controls Width</option>
-                        <option value="FitInParent" ${ley.aspectMode === 'FitInParent' ? 'selected' : ''}>Fit In Parent</option>
-                        <option value="EnvelopeParent" ${ley.aspectMode === 'EnvelopeParent' ? 'selected' : ''}>Envelope Parent</option>
-                    </select>
-                    <label>Aspect Ratio</label><input type="number" class="prop-input" step="0.01" data-component="${type}" data-prop="aspectRatio" value="${ley.aspectRatio}">
-                </div>`;
             } else if (ley instanceof Camera) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
                 <div class="component-grid">
@@ -1666,13 +1431,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         sortedMaterias.forEach(materia => {
-            // Skip UI elements in the main world render pass
-            if (materia.getComponent(UICanvas) || materia.getComponent(UIImage) || materia.getComponent(UIText)) {
-                // Also need to check if it's a child of a canvas, but this is a good start
-                const isUiElement = materia.leyes.some(c => c instanceof RectTransform);
-                if (isUiElement) return;
-            }
-
             if (isGameView && !materia.isActive) {
                 return; // Don't render inactive objects in the final game view
             }
@@ -1708,13 +1466,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedMateria && selectedMateria.id === materia.id) {
                     targetRenderer.ctx.strokeStyle = 'yellow';
                     targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.effectiveZoom;
-                    let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
-                    let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
 
-                    selectionWidth *= transform.scale.x;
-                    selectionHeight *= transform.scale.y;
+                    const rectTransform = materia.getComponent(RectTransform);
+                    let selectionWidth, selectionHeight, pivot;
 
-                    targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
+                    if (rectTransform) {
+                        selectionWidth = rectTransform.width;
+                        selectionHeight = rectTransform.height;
+                        pivot = rectTransform.pivot;
+                    } else {
+                        selectionWidth = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
+                        selectionHeight = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
+                        pivot = { x: 0.5, y: 0.5 };
+                    }
+
+                    targetRenderer.ctx.strokeRect(transform.x - (selectionWidth * pivot.x), transform.y - (selectionHeight * pivot.y), selectionWidth, selectionHeight);
                 }
                 // Draw gizmos for all materias in the scene view
                 drawGizmos(targetRenderer, materia);
@@ -1726,62 +1492,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         targetRenderer.end();
-
-        // --- UI Rendering Pass ---
-        // This pass draws on top of the scene, ignoring the camera
-        const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(UICanvas));
-
-        uiCanvases.forEach(canvasMateria => {
-            const canvas = canvasMateria.getComponent(UICanvas);
-            if (canvas.renderMode === 'ScreenSpaceOverlay') {
-                targetRenderer.ctx.save();
-                // Reset transform to draw in screen space
-                targetRenderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-                function renderUiRecursive(materia) {
-                    if (!materia.isActive && isGameView) return;
-
-                    const rectTransform = materia.getComponent(RectTransform);
-                    if (!rectTransform) return;
-
-                    const image = materia.getComponent(UIImage);
-                    if (image && image.sprite.complete && image.sprite.naturalHeight !== 0) {
-                        // For now, use x/y as screen coordinates. Anchors/pivots will change this.
-                        targetRenderer.drawImage(image.sprite, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
-                    }
-
-                    const text = materia.getComponent(UIText);
-                    if(text) {
-                        targetRenderer.drawText(text.text, rectTransform.x, rectTransform.y, text.color, text.fontSize, text.textTransform);
-                    }
-
-                    const mask = materia.getComponent(UIMask);
-                    if (mask) {
-                        targetRenderer.ctx.save();
-
-                        // Create a clipping path from the RectTransform
-                        const path = new Path2D();
-                        path.rect(
-                            rectTransform.x - (rectTransform.width * rectTransform.pivot.x),
-                            rectTransform.y - (rectTransform.height * rectTransform.pivot.y),
-                            rectTransform.width,
-                            rectTransform.height
-                        );
-                        targetRenderer.ctx.clip(path);
-                    }
-
-                    materia.children.forEach(renderUiRecursive);
-
-                    if (mask) {
-                        targetRenderer.ctx.restore();
-                    }
-                }
-
-                renderUiRecursive(canvasMateria);
-
-                targetRenderer.ctx.restore();
-            }
-        });
     };
 
     selectMateria = function(materiaId) {
@@ -1808,8 +1518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Animación': [Animator],
         'Cámara': [Camera],
         'Físicas': [Rigidbody, BoxCollider],
-        'UI': [UICanvas, UIPanel, UIImage, UIText, UIButton, UIMask],
-        'Layout': [HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup, ContentSizeFitter, LayoutElement, AspectRatioFitter],
         'Scripting': [CreativeScript]
     };
 
@@ -2014,7 +1722,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         if (isGameRunning) {
-            uiEventSystem.update();
         }
         updateDebugPanel();
 
@@ -2055,30 +1762,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
-    let findOrCreateCanvas; // To be defined
-
-    findOrCreateCanvas = function() {
-        // First, try to find an existing canvas in the scene
-        for (const materia of SceneManager.currentScene.materias) {
-            if (materia.getComponent(UICanvas)) {
-                console.log("Canvas encontrado existente.");
-                return materia;
-            }
-        }
-
-        // If no canvas exists, create one
-        console.log("No se encontró canvas. Creando uno nuevo.");
-        const canvasMateria = new Materia('Canvas');
-        // UI elements use RectTransform, so remove the default Transform and add the correct one.
-        canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
-        canvasMateria.addComponent(new RectTransform(canvasMateria));
-        canvasMateria.addComponent(new UICanvas(canvasMateria));
-        canvasMateria.layer = 'UI'; // Assign to UI layer by default
-
-        SceneManager.currentScene.addMateria(canvasMateria);
-        updateHierarchy(); // Update the hierarchy to show the new canvas
-        return canvasMateria;
-    };
 
     function updateWindowMenuUI() {
         for (const panelName in panelVisibility) {
@@ -2147,13 +1830,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createEmptyMateria(name = 'Materia Vacio', parent = null) {
         const newMateria = new Materia(name);
+        newMateria.addComponent(new Transform(newMateria)); // Manually add Transform
+        SceneManager.currentScene.addMateria(newMateria); // Always add to scene
         if (parent) {
             parent.addChild(newMateria);
-        } else {
-            SceneManager.currentScene.addMateria(newMateria);
         }
         updateHierarchy();
         selectMateria(newMateria.id);
+        return newMateria; // Return the new materia for chaining
     }
 
     function showContextMenu(menu, e) {
@@ -2317,7 +2001,7 @@ function update(deltaTime) {
     const GIZMO_HANDLE_SIZE = 10; // In screen pixels
 
     function drawGizmos(renderer, materia) {
-        const transform = materia.getComponent(Transform);
+        const transform = materia.getComponent(Transform) || materia.getComponent(RectTransform);
         if (!transform) return;
 
         // Draw camera gizmo for any materia with a Camera component, if not selected
@@ -2331,6 +2015,11 @@ function update(deltaTime) {
             return; // Only draw manipulation gizmos for the selected materia
         }
 
+        // Do not draw world-space gizmos for UI elements, they will be handled by drawUiGizmos
+        if (selectedMateria.getComponent(RectTransform)) {
+            return;
+        }
+
         const ctx = renderer.ctx;
         const camera = renderer.camera;
 
@@ -2338,8 +2027,18 @@ function update(deltaTime) {
         const handleScreenSize = GIZMO_HANDLE_SIZE / camera.zoom;
         const halfHandleSize = handleScreenSize / 2;
 
-        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
-        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
+        const rectTransform = selectedMateria.getComponent(RectTransform);
+        const boxCollider = selectedMateria.getComponent(BoxCollider);
+
+        let w, h;
+        if(rectTransform) {
+            w = rectTransform.width;
+            h = rectTransform.height;
+        } else {
+            w = (boxCollider?.width ?? 100) * transform.scale.x;
+            h = (boxCollider?.height ?? 100) * transform.scale.y;
+        }
+
         const x = transform.x;
         const y = transform.y;
 
@@ -2373,19 +2072,127 @@ function update(deltaTime) {
             ctx.closePath();
             ctx.fill();
         } else if (activeTool === 'scale') {
-            ctx.fillStyle = 'blue';
-            // Top-left
-            ctx.fillRect(x - w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Top-right
-            ctx.fillRect(x + w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Bottom-left
-            ctx.fillRect(x - w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Bottom-right
-            ctx.fillRect(x + w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 3 / camera.zoom;
+            const cornerSize = handleScreenSize * 1.5;
+
+            // Top-left corner
+            ctx.beginPath();
+            ctx.moveTo(x - w/2 + cornerSize, y - h/2);
+            ctx.lineTo(x - w/2, y - h/2);
+            ctx.lineTo(x - w/2, y - h/2 + cornerSize);
+            ctx.stroke();
+
+            // Top-right corner
+            ctx.beginPath();
+            ctx.moveTo(x + w/2 - cornerSize, y - h/2);
+            ctx.lineTo(x + w/2, y - h/2);
+            ctx.lineTo(x + w/2, y - h/2 + cornerSize);
+            ctx.stroke();
+
+            // Bottom-left corner
+            ctx.beginPath();
+            ctx.moveTo(x - w/2 + cornerSize, y + h/2);
+            ctx.lineTo(x - w/2, y + h/2);
+            ctx.lineTo(x - w/2, y + h/2 - cornerSize);
+            ctx.stroke();
+
+            // Bottom-right corner
+            ctx.beginPath();
+            ctx.moveTo(x + w/2 - cornerSize, y + h/2);
+            ctx.lineTo(x + w/2, y + h/2);
+            ctx.lineTo(x + w/2, y + h/2 - cornerSize);
+            ctx.stroke();
         }
 
         ctx.restore();
     }
+
+function drawUiGizmos(renderer, materia) {
+    const rectTransform = materia.getComponent(RectTransform);
+    if (!rectTransform) return;
+
+    const ctx = renderer.ctx;
+
+    // Gizmo handles are constant screen size
+    const handleScreenSize = GIZMO_HANDLE_SIZE;
+
+    // Get the element's screen-space properties
+    const w = rectTransform.width;
+    const h = rectTransform.height;
+    // The center of the RectTransform is its position
+    const x = rectTransform.x;
+    const y = rectTransform.y;
+
+    ctx.save();
+    ctx.fillStyle = 'red';
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2; // Constant line width in screen space
+
+    if (activeTool === 'move') {
+        ctx.fillStyle = 'green';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - h / 2 - handleScreenSize * 2);
+        ctx.stroke();
+        ctx.moveTo(x, y - h / 2 - handleScreenSize * 2);
+        ctx.lineTo(x - handleScreenSize, y - h / 2 - handleScreenSize);
+        ctx.lineTo(x + handleScreenSize, y - h / 2 - handleScreenSize);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w / 2 + handleScreenSize * 2, y);
+        ctx.stroke();
+        ctx.moveTo(x + w / 2 + handleScreenSize * 2, y);
+        ctx.lineTo(x + w / 2 + handleScreenSize, y - handleScreenSize);
+        ctx.lineTo(x + w / 2 + handleScreenSize, y + handleScreenSize);
+        ctx.closePath();
+        ctx.fill();
+    } else if (activeTool === 'scale') {
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 3;
+        const cornerSize = handleScreenSize * 1.5;
+
+        // The position (x,y) of a RectTransform is its center, so we need to find the top-left corner
+        const left = x - w / 2;
+        const top = y - h / 2;
+        const right = x + w / 2;
+        const bottom = y + h / 2;
+
+        // Top-left corner
+        ctx.beginPath();
+        ctx.moveTo(left + cornerSize, top);
+        ctx.lineTo(left, top);
+        ctx.lineTo(left, top + cornerSize);
+        ctx.stroke();
+
+        // Top-right corner
+        ctx.beginPath();
+        ctx.moveTo(right - cornerSize, top);
+        ctx.lineTo(right, top);
+        ctx.lineTo(right, top + cornerSize);
+        ctx.stroke();
+
+        // Bottom-left corner
+        ctx.beginPath();
+        ctx.moveTo(left + cornerSize, bottom);
+        ctx.lineTo(left, bottom);
+        ctx.lineTo(left, bottom - cornerSize);
+        ctx.stroke();
+
+        // Bottom-right corner
+        ctx.beginPath();
+        ctx.moveTo(right - cornerSize, bottom);
+        ctx.lineTo(right, bottom);
+        ctx.lineTo(right, bottom - cornerSize);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
 
     function getGizmoHandleAt(worldPos, materia, renderer) {
         const transform = materia.getComponent(Transform);
@@ -2423,6 +2230,47 @@ function update(deltaTime) {
         return null;
     }
 
+function getUiGizmoHandleAt(screenPos, materia) {
+    const rectTransform = materia.getComponent(RectTransform);
+    if (!rectTransform) return null;
+
+    const handleScreenSize = GIZMO_HANDLE_SIZE;
+    const w = rectTransform.width;
+    const h = rectTransform.height;
+    const x = rectTransform.x;
+    const y = rectTransform.y;
+
+    const checkRect = (px, py) => {
+        return screenPos.x >= px - handleScreenSize / 2 && screenPos.x <= px + handleScreenSize / 2 &&
+               screenPos.y >= py - handleScreenSize / 2 && screenPos.y <= py + handleScreenSize / 2;
+    };
+
+    const left = x - w / 2;
+    const top = y - h / 2;
+    const right = x + w / 2;
+    const bottom = y + h / 2;
+
+    if (activeTool === 'scale') {
+        if (checkRect(left, top)) return 'scale-tl';
+        if (checkRect(right, top)) return 'scale-tr';
+        if (checkRect(left, bottom)) return 'scale-bl';
+        if (checkRect(right, bottom)) return 'scale-br';
+    } else if (activeTool === 'move') {
+        // A larger hit area for the arrows
+        const arrowLength = h / 2 + handleScreenSize * 2;
+        const arrowWidth = w / 2 + handleScreenSize * 2;
+        if (screenPos.x > x && screenPos.x < x + arrowWidth && Math.abs(screenPos.y - y) < handleScreenSize) return 'move-x';
+        if (screenPos.y < y && screenPos.y > y - arrowLength && Math.abs(screenPos.x - x) < handleScreenSize) return 'move-y';
+    }
+
+    // Check if clicking the object itself for a move action
+    if (screenPos.x >= left && screenPos.x <= right && screenPos.y >= top && screenPos.y <= bottom) {
+        return 'move-body';
+    }
+
+    return null;
+}
+
     function setupEventListeners() {
         // --- Hierarchy Drag and Drop ---
         const hierarchyContent = dom.hierarchyContent;
@@ -2444,6 +2292,7 @@ function update(deltaTime) {
 
             if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
                 const newMateria = new Materia(data.name.split('.')[0]);
+                newMateria.addComponent(new Transform(newMateria)); // Manually add Transform
                 const spriteRenderer = new SpriteRenderer(newMateria);
 
                 spriteRenderer.setSourcePath(data.path);
@@ -2726,9 +2575,6 @@ function update(deltaTime) {
         // --- Scene Canvas Mouse Listeners for Tools ---
         dom.sceneCanvas.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return; // Only handle left-clicks
-            if (!renderer.camera) return;
-
-            const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
 
             if (activeTool === 'pan') {
                 isPanning = true;
@@ -2738,32 +2584,64 @@ function update(deltaTime) {
             }
 
             let handle = null;
+            const screenPos = InputManager.getMousePositionInCanvas();
+            let worldPos = null;
+
+
             if (selectedMateria) {
-                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+                if (selectedMateria.getComponent(RectTransform)) {
+                    handle = getUiGizmoHandleAt(screenPos, selectedMateria);
+                } else if (renderer.camera) {
+                    worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+                    handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+                }
             }
 
             if (handle) {
                 isDragging = true;
-                const transform = selectedMateria.getComponent(Transform);
+                const transform = selectedMateria.getComponent(Transform); // This works for RectTransform too
                 dragState = {
                     handle,
                     materia: selectedMateria,
                     initialX: transform.x,
                     initialY: transform.y,
+                    initialWidth: transform.width, // For UI scale
+                    initialHeight: transform.height, // For UI scale
                     initialScaleX: transform.scale.x,
                     initialScaleY: transform.scale.y,
-                    startMouseX: worldPos.x,
-                    startMouseY: worldPos.y,
+                    startMouseScreenX: screenPos.x,
+                    startMouseScreenY: screenPos.y,
+                    startMouseWorldX: worldPos ? worldPos.x : 0,
+                    startMouseWorldY: worldPos ? worldPos.y : 0,
                 };
             } else {
-                // If not clicking a handle, we might be starting a pan or selecting a new materia
+                // If not clicking a handle, check for selecting a new materia
                 let clickedMateria = null;
-                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                    if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
-                        clickedMateria = materia;
-                        break;
+                 // First check UI elements in screen space
+                const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(UICanvas));
+                for (const canvas of uiCanvases) {
+                    // This is a simplified check; a full recursive check would be better
+                    for (const child of SceneManager.currentScene.getMateriasRecursive(canvas)) {
+                         if (getUiGizmoHandleAt(screenPos, child) === 'move-body') {
+                            clickedMateria = child;
+                            break;
+                        }
+                    }
+                    if(clickedMateria) break;
+                }
+
+                // If no UI element was clicked, check world-space elements
+                if (!clickedMateria && renderer.camera) {
+                    worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+                    for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+                        if (materia.getComponent(RectTransform)) continue; // Skip UI elements
+                        if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
+                            clickedMateria = materia;
+                            break;
+                        }
                     }
                 }
+
 
                 if (clickedMateria) {
                     selectMateria(clickedMateria.id);
@@ -2792,17 +2670,27 @@ function update(deltaTime) {
             }
 
             if (isDragging) {
-                if (!renderer.camera) return;
-                const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-                const dx = worldPos.x - dragState.startMouseX;
-                const dy = worldPos.y - dragState.startMouseY;
-                const transform = dragState.materia.getComponent(Transform);
+                const isUiElement = !!dragState.materia.getComponent(RectTransform);
+                const transform = dragState.materia.getComponent(Transform); // Works for both
+                let dx, dy;
+
+                if (isUiElement) {
+                    const screenPos = InputManager.getMousePositionInCanvas();
+                    dx = screenPos.x - dragState.startMouseScreenX;
+                    dy = screenPos.y - dragState.startMouseScreenY;
+                } else {
+                    if (!renderer.camera) return;
+                    const worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+                    dx = worldPos.x - dragState.startMouseWorldX;
+                    dy = worldPos.y - dragState.startMouseWorldY;
+                }
+
 
                 if (dragState.handle.startsWith('move')) {
                     let newX = dragState.initialX + dx;
                     let newY = dragState.initialY + dy;
 
-                    if (currentPreferences.snapping) {
+                    if (currentPreferences.snapping && !isUiElement) {
                         const gridSize = parseInt(currentPreferences.gridSize, 10) || 25;
                         newX = Math.round(newX / gridSize) * gridSize;
                         newY = Math.round(newY / gridSize) * gridSize;
@@ -2815,11 +2703,17 @@ function update(deltaTime) {
                         transform.y = newY;
                      }
                 } else if (dragState.handle.startsWith('scale')) {
-                    // This scaling logic is simplified and might not feel perfect with pivots.
-                    const newScaleX = dragState.initialScaleX + (dx / 100);
-                    const newScaleY = dragState.initialScaleY - (dy / 100); // Invert Y
-                    transform.scale.x = Math.max(0.1, newScaleX);
-                    transform.scale.y = Math.max(0.1, newScaleY);
+                     if (isUiElement) {
+                        // UI elements scale by changing width/height
+                        transform.width = Math.max(20, dragState.initialWidth + dx);
+                        transform.height = Math.max(20, dragState.initialHeight + dy);
+                     } else {
+                        // World-space elements scale by changing scale factor
+                        const newScaleX = dragState.initialScaleX + (dx / 100);
+                        const newScaleY = dragState.initialScaleY - (dy / 100); // Invert Y
+                        transform.scale.x = Math.max(0.1, newScaleX);
+                        transform.scale.y = Math.max(0.1, newScaleY);
+                     }
                 }
 
                 updateInspector();
@@ -2847,6 +2741,14 @@ function update(deltaTime) {
         window.addEventListener('resize', () => {
             if (renderer) renderer.resize();
             if (gameRenderer) gameRenderer.resize();
+
+            const rootCanvas = SceneManager.currentScene.findNodeByFlag('isRootCanvas', true);
+            if (rootCanvas) {
+                const canvasComponent = rootCanvas.getComponent(UICanvas);
+                if (canvasComponent) {
+                    canvasComponent._onResize();
+                }
+            }
         });
 
         // Single-click to select asset
@@ -2907,224 +2809,6 @@ function update(deltaTime) {
         });
 
         // Custom Context Menu handler for hierarchy
-        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const item = e.target.closest('.hierarchy-item');
-            if (item) {
-                const materiaId = parseInt(item.dataset.id, 10);
-                selectMateria(materiaId);
-            } else {
-                // Clicking on empty space deselects any materia
-                selectMateria(null);
-            }
-            showContextMenu(dom.hierarchyContextMenu, e);
-        });
-
-        // Animator Node Context Menu Actions
-        dom.animNodeContextMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            const fromState = graphView.dataset.contextNode;
-            hideContextMenus();
-
-            if (action === 'create-transition') {
-                if (fromState) {
-                    graphView.classList.add('is-connecting');
-                    graphView.dataset.fromState = fromState;
-                }
-            }
-            // Other actions like delete-state would be handled here
-        });
-
-        // --- Animator Graph Dragging ---
-        if (graphView) { // Ensure graphView is assigned before adding listeners
-            graphView.addEventListener('mousedown', (e) => {
-                const node = e.target.closest('.graph-node');
-                if (node) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    isDraggingNode = true;
-                    const rect = node.getBoundingClientRect();
-                    const graphRect = graphView.getBoundingClientRect();
-                    dragNodeInfo = {
-                        node: node,
-                        offsetX: e.clientX - rect.left,
-                        offsetY: e.clientY - rect.top,
-                    };
-                    graphView.classList.add('is-dragging');
-                }
-            });
-        }
-        window.addEventListener('mousemove', (e) => {
-            if (isDraggingNode) {
-                e.preventDefault();
-                const graphRect = graphView.getBoundingClientRect();
-                let newX = e.clientX - graphRect.left - dragNodeInfo.offsetX;
-                let newY = e.clientY - graphRect.top - dragNodeInfo.offsetY;
-
-                // Clamp position within the graph view
-                newX = Math.max(0, Math.min(newX, graphRect.width - dragNodeInfo.node.offsetWidth));
-                newY = Math.max(0, Math.min(newY, graphRect.height - dragNodeInfo.node.offsetHeight));
-
-                dragNodeInfo.node.style.left = `${newX}px`;
-                dragNodeInfo.node.style.top = `${newY}px`;
-
-                // Update the data model
-                const nodeName = dragNodeInfo.node.dataset.name;
-                const state = currentControllerData.states.find(s => s.name === nodeName);
-                if (state) {
-                    state.position.x = newX;
-                    state.position.y = newY;
-                    updateGraphData(); // Keep the JSON data fresh for saving
-                }
-            }
-        });
-        window.addEventListener('mouseup', (e) => {
-            if (isDraggingNode) {
-                isDraggingNode = false;
-                dragNodeInfo = {};
-                graphView.classList.remove('is-dragging');
-            }
-        });
-
-
-        // Inspector button delegation & Drag/Drop
-        dom.inspectorPanel.addEventListener('click', (e) => {
-            if (e.target.id === 'open-animator-btn') {
-                dom.animationPanel.classList.remove('hidden');
-            } else if (e.target.matches('.sprite-select-btn')) {
-                openSpriteSelector();
-            } else if (e.target.matches('.prop-btn')) {
-                 if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                const value = e.target.dataset.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    component[propName] = value;
-                    updateInspector(); // Re-render inspector to update active state
-                    updateScene(renderer, false);
-                }
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('change', e => {
-            if (!selectedMateria) {
-                // Handle asset inspector changes if no materia is selected
-                const target = e.target;
-                if (target.id === 'texture-type') {
-                     const assetName = target.dataset.assetName;
-                     const newType = target.value;
-                     saveAssetMeta(assetName, { textureType: newType });
-                }
-                return;
-            }
-
-            const target = e.target;
-            if (target.id === 'materia-active-toggle') {
-                if (selectedMateria) {
-                    selectedMateria.isActive = target.checked;
-                    updateHierarchy(); // Update hierarchy to show disabled state
-                }
-            } else if (target.id === 'materia-name-input') {
-                 if (selectedMateria) {
-                    selectedMateria.name = target.value;
-                    updateHierarchy();
-                 }
-            } else if (target.matches('.prop-input')) {
-                const componentName = target.dataset.component;
-                const propName = target.dataset.prop;
-                let value = target.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    if (target.type === 'number') {
-                        value = parseFloat(value) || 0;
-                    }
-
-                    if (component instanceof SpriteRenderer && propName === 'source') {
-                        // Handled by drop
-                    } else if (propName.includes('.')) {
-                        const props = propName.split('.');
-                        let obj = component;
-                        for (let i = 0; i < props.length - 1; i++) {
-                            obj = obj[props[i]];
-                        }
-                        obj[props[props.length - 1]] = value;
-                    } else {
-                        component[propName] = value;
-                    }
-                    updateScene(renderer, false);
-                }
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragover', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-                dropTarget.classList.add('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragleave', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('change', (e) => {
-            if(e.target.id === 'texture-type') {
-                const assetName = e.target.dataset.assetName;
-                const newType = e.target.value;
-                saveAssetMeta(assetName, { textureType: newType });
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
-                    if (selectedMateria) {
-                        const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
-                        if (spriteRenderer) {
-                            spriteRenderer.setSourcePath(data.path);
-                            await spriteRenderer.loadSprite(projectsDirHandle);
-                            updateInspector();
-                            updateScene(renderer, false);
-                        }
-                    }
-                } else {
-                    alert("Solo se pueden asignar archivos .png o .jpg como sprites.");
-                }
-            }
-        });
-
-        // Disable default context menus on other panels
-        dom.scenePanel.addEventListener('contextmenu', e => e.preventDefault());
-        dom.inspectorPanel.addEventListener('contextmenu', e => e.preventDefault());
-
-        // Hide context menu on left-click
-        window.addEventListener('click', (e) => {
-            if (!e.target.closest('.context-menu') && !e.target.closest('.menu-btn')) {
-                hideContextMenus();
-                dom.menubar.querySelectorAll('.menu-content').forEach(mc => mc.classList.remove('visible'));
-            }
-        });
-
-        // Hierarchy Context Menu Actions
         dom.hierarchyContextMenu.addEventListener('click', (e) => {
             const action = e.target.dataset.action;
             if (!action) return;
@@ -3133,77 +2817,46 @@ function update(deltaTime) {
 
             switch (action) {
                 case 'create-empty':
-                    createEmptyMateria(undefined, selectedMateria);
+                    createEmptyMateria('Materia Vacio', selectedMateria);
                     break;
                 case 'create-primitive-square': {
-                    const parent = selectedMateria || findOrCreateCanvas();
-                    const square = new Materia('Cuadrado');
-                    square.leyes = square.leyes.filter(c => !(c instanceof Transform));
-                    square.addComponent(new RectTransform(square));
-                    const image = square.addComponent(new UIImage(square));
-                    image.color = '#FFFFFF';
-                    parent.addChild(square);
-                    updateHierarchy();
-                    selectMateria(square.id);
-                    break;
-                }
-                case 'create-ui-panel': {
-                    const canvas = findOrCreateCanvas();
-                    const panelMateria = new Materia('Panel');
-                    panelMateria.leyes = panelMateria.leyes.filter(c => !(c instanceof Transform));
-                    panelMateria.addComponent(new RectTransform(panelMateria));
-                    panelMateria.addComponent(new UIPanel(panelMateria));
-                    panelMateria.layer = 'UI';
-                    canvas.addChild(panelMateria);
-                    updateHierarchy();
-                    selectMateria(panelMateria.id);
+                    // This will need to be updated later to use the new canvas system
+                    const square = createEmptyMateria('Cuadrado', selectedMateria);
+                    square.addComponent(new SpriteRenderer(square));
                     break;
                 }
                 case 'create-ui-canvas': {
-                    const canvasMateria = new Materia('Canvas');
-                    canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
-                    canvasMateria.addComponent(new RectTransform(canvasMateria));
-                    canvasMateria.addComponent(new UICanvas(canvasMateria));
-                    canvasMateria.layer = 'UI';
-                    SceneManager.currentScene.addMateria(canvasMateria);
+                    const existingRoot = SceneManager.currentScene.findNodeByFlag('isRootCanvas', true);
+                    if (existingRoot) {
+                        alert("A root canvas already exists. Selecting it.");
+                        selectMateria(existingRoot.id);
+                        return;
+                    }
+
+                    console.log("Creating a new root canvas manually.");
+                    const newCanvasMateria = new Materia('Canvas');
+
+                    // Manually construct the component list
+                    const rectTransform = new RectTransform(newCanvasMateria);
+                    const canvasComponent = new UICanvas(newCanvasMateria);
+                    newCanvasMateria.addComponent(rectTransform);
+                    newCanvasMateria.addComponent(canvasComponent);
+
+                    newCanvasMateria.setFlag('isRootCanvas', true);
+                    newCanvasMateria.layer = 'UI';
+
+                    const activeRenderer = activeView === 'game-content' ? gameRenderer : renderer;
+                    if (activeRenderer && activeRenderer.canvas) {
+                        rectTransform.width = activeRenderer.canvas.clientWidth;
+                        rectTransform.height = activeRenderer.canvas.clientHeight;
+                        rectTransform.x = rectTransform.width / 2;
+                        rectTransform.y = rectTransform.height / 2;
+                        canvasComponent.initialize(activeRenderer);
+                    }
+
+                    SceneManager.currentScene.addMateria(newCanvasMateria);
                     updateHierarchy();
-                    selectMateria(canvasMateria.id);
-                    break;
-                }
-                case 'create-ui-text': {
-                    const canvas = findOrCreateCanvas();
-                    const textMateria = new Materia('Texto');
-                    textMateria.leyes = textMateria.leyes.filter(c => !(c instanceof Transform));
-                    textMateria.addComponent(new RectTransform(textMateria));
-                    textMateria.addComponent(new UIText(textMateria));
-                    textMateria.layer = 'UI';
-                    canvas.addChild(textMateria);
-                    updateHierarchy();
-                    selectMateria(textMateria.id);
-                    break;
-                }
-                case 'create-ui-button': {
-                    const canvas = findOrCreateCanvas();
-                    const buttonMateria = new Materia('Botón');
-                    buttonMateria.leyes = buttonMateria.leyes.filter(c => !(c instanceof Transform));
-                    buttonMateria.addComponent(new RectTransform(buttonMateria));
-                    buttonMateria.addComponent(new UIButton(buttonMateria));
-                    buttonMateria.layer = 'UI';
-                    canvas.addChild(buttonMateria);
-                    updateHierarchy();
-                    selectMateria(buttonMateria.id);
-                    break;
-                }
-                case 'create-ui-image': {
-                    const canvas = findOrCreateCanvas();
-                    const imageMateria = new Materia('Imagen');
-                    imageMateria.leyes = imageMateria.leyes.filter(c => !(c instanceof Transform));
-                    imageMateria.addComponent(new RectTransform(imageMateria));
-                    imageMateria.addComponent(new UIImage(imageMateria));
-                    imageMateria.layer = 'UI';
-                    canvas.addChild(imageMateria);
-                    updateHierarchy();
-                    selectMateria(imageMateria.id);
+                    selectMateria(newCanvasMateria.id);
                     break;
                 }
                 case 'create-camera': {
@@ -4356,13 +4009,13 @@ function update(deltaTime) {
         const ids = [
             'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
-            'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu',
+            'project-name-display', 'debug-content', 'context-menu',
             'hierarchy-context-menu', 'anim-node-context-menu', 'preferences-modal', 'code-editor-content',
+            'add-component-modal', 'component-list', 'sprite-selector-modal', 'sprite-selector-grid',
             'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas',
             'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline',
             'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas',
-            'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal',
-            'sprite-selector-grid', 'animator-controller-panel',
+            'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'animator-controller-panel',
 
             // Project Settings Modal elements
             'project-settings-modal', 'settings-app-name', 'settings-author-name', 'settings-app-version', 'settings-engine-version',
@@ -4405,6 +4058,9 @@ function update(deltaTime) {
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
         dom.sceneCanvas = document.getElementById('scene-canvas');
         dom.gameCanvas = document.getElementById('game-canvas');
+
+        const originalLog = console.log, originalWarn = console.warn, originalError = console.error; function logToUIConsole(message, type = 'log') { if (!dom.consoleContent) return; const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; dom.consoleContent.appendChild(msgEl); dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight; }
+        console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
         console.log("--- Creative Engine Editor ---");
         console.log("1. Iniciando el editor...");
