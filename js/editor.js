@@ -2288,6 +2288,53 @@ function getUiGizmoHandleAt(screenPos, materia) {
     return null;
 }
 
+    function drawAnimEditorGrid() {
+        if (!dom.animGridCanvas) return;
+        const ctx = dom.animGridCanvas.getContext('2d');
+        ctx.clearRect(0, 0, dom.animGridCanvas.width, dom.animGridCanvas.height);
+
+        if (animEditorSettings.grid) {
+            ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+            ctx.lineWidth = 1;
+            const gridSize = 16;
+
+            for (let x = 0; x <= dom.animGridCanvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, dom.animGridCanvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= dom.animGridCanvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(dom.animGridCanvas.width, y);
+                ctx.stroke();
+            }
+        }
+    }
+
+    function drawOnionSkin() {
+        if (!dom.animOnionSkinCanvas || !currentAnimationAsset || !animEditorSettings.onionSkin) {
+            if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
+            return;
+        }
+
+        const ctx = dom.animOnionSkinCanvas.getContext('2d');
+        ctx.clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
+
+        const anim = currentAnimationAsset.animations[0];
+        if (currentFrameIndex > 0 && anim.frames[currentFrameIndex - 1]) {
+            const prevFrameData = anim.frames[currentFrameIndex - 1];
+            const img = new Image();
+            img.onload = () => {
+                ctx.globalAlpha = 0.3;
+                ctx.drawImage(img, 0, 0);
+                ctx.globalAlpha = 1.0;
+            };
+            img.src = prevFrameData;
+        }
+    }
+
     function setupEventListeners() {
         // --- Hierarchy Drag and Drop ---
         const hierarchyContent = dom.hierarchyContent;
@@ -3884,53 +3931,6 @@ function getUiGizmoHandleAt(screenPos, materia) {
         });
 
         // --- Animation Panel Toggles ---
-        function drawAnimEditorGrid() {
-            if (!dom.animGridCanvas) return;
-            const ctx = dom.animGridCanvas.getContext('2d');
-            ctx.clearRect(0, 0, dom.animGridCanvas.width, dom.animGridCanvas.height);
-
-            if (animEditorSettings.grid) {
-                ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
-                ctx.lineWidth = 1;
-                const gridSize = 16;
-
-                for (let x = 0; x <= dom.animGridCanvas.width; x += gridSize) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, dom.animGridCanvas.height);
-                    ctx.stroke();
-                }
-                for (let y = 0; y <= dom.animGridCanvas.height; y += gridSize) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(dom.animGridCanvas.width, y);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        function drawOnionSkin() {
-            if (!dom.animOnionSkinCanvas || !currentAnimationAsset || !animEditorSettings.onionSkin) {
-                if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
-                return;
-            }
-
-            const ctx = dom.animOnionSkinCanvas.getContext('2d');
-            ctx.clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
-
-            const anim = currentAnimationAsset.animations[0];
-            if (currentFrameIndex > 0 && anim.frames[currentFrameIndex - 1]) {
-                const prevFrameData = anim.frames[currentFrameIndex - 1];
-                const img = new Image();
-                img.onload = () => {
-                    ctx.globalAlpha = 0.3;
-                    ctx.drawImage(img, 0, 0);
-                    ctx.globalAlpha = 1.0;
-                };
-                img.src = prevFrameData;
-            }
-        }
-
         if (dom.animBgToggleBtn) {
             dom.animBgToggleBtn.addEventListener('click', () => {
                 dom.drawingCanvasContainer.classList.toggle('bg-white');
