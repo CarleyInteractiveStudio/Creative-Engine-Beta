@@ -1153,6 +1153,38 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
+#drawing-canvas-container.bg-white {
+    background-image: none;
+    background-color: #ffffff;
+}
+
+#drawing-canvas-container canvas {
+    grid-column: 1;
+    grid-row: 1;
+    position: absolute; /* Position them on top of each other */
+}
+
+#anim-onion-skin-canvas {
+    z-index: 1;
+    pointer-events: none;
+}
+#drawing-canvas {
+    z-index: 2;
+}
+#anim-grid-canvas {
+    z-index: 3;
+    pointer-events: none;
+}
+
+#drawing-tools .canvas-view-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
 .inspector-anim-preview {
     display: flex;
     flex-direction: column;

@@ -4000,6 +4000,31 @@ function getUiGizmoHandleAt(screenPos, materia) {
             drawOnionSkin();
         });
 
+        // --- Animation Panel Toggles ---
+        if (dom.animBgToggleBtn) {
+            dom.animBgToggleBtn.addEventListener('click', () => {
+                animEditorSettings.bg = (animEditorSettings.bg === 'transparent') ? 'white' : 'transparent';
+                dom.drawingCanvasContainer.classList.toggle('bg-white', animEditorSettings.bg === 'white');
+                dom.animBgToggleBtn.classList.toggle('active', animEditorSettings.bg === 'white');
+            });
+        }
+
+        if (dom.animGridToggleBtn) {
+            dom.animGridToggleBtn.addEventListener('click', () => {
+                animEditorSettings.grid = !animEditorSettings.grid;
+                dom.animGridToggleBtn.classList.toggle('active', animEditorSettings.grid);
+                drawAnimEditorGrid();
+            });
+        }
+
+        if (dom.animOnionToggleBtn) {
+            dom.animOnionToggleBtn.addEventListener('click', () => {
+                animEditorSettings.onionSkin = !animEditorSettings.onionSkin;
+                dom.animOnionToggleBtn.classList.toggle('active', animEditorSettings.onionSkin);
+                drawOnionSkin();
+            });
+        }
+
         // Animator Controller Toolbar Logic
         const newAnimCtrlBtn = document.getElementById('anim-ctrl-new-btn');
         const saveAnimCtrlBtn = document.getElementById('anim-ctrl-save-btn');
