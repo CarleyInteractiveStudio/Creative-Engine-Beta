@@ -152,6 +152,7 @@ main { padding: 20px 0; }
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
+    animation: led-glow 5s ease-in-out infinite;
 }
 #actions button:hover {
     background-color: #30363d;
@@ -172,6 +173,7 @@ main { padding: 20px 0; }
     text-decoration: none;
     text-align: center;
     transition: all 0.2s ease-in-out;
+    animation: led-glow 5s ease-in-out infinite;
 }
 .button-link:hover {
     background-color: #30363d;
@@ -451,6 +453,15 @@ footer {
 /* --- Keyframe Animations --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@keyframes led-glow {
+    0% { box-shadow: 0 0 15px 5px rgba(255, 82, 82, 0.8); }
+    20% { box-shadow: 0 0 20px 7px rgba(255, 177, 82, 0.8); }
+    40% { box-shadow: 0 0 25px 10px rgba(82, 255, 139, 0.8); }
+    60% { box-shadow: 0 0 25px 10px rgba(82, 219, 255, 0.8); }
+    80% { box-shadow: 0 0 20px 7px rgba(189, 82, 255, 0.8); }
+    100% { box-shadow: 0 0 15px 5px rgba(255, 82, 82, 0.8); }
+}
 
 
 
