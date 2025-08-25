@@ -3933,8 +3933,9 @@ function getUiGizmoHandleAt(screenPos, materia) {
         // --- Animation Panel Toggles ---
         if (dom.animBgToggleBtn) {
             dom.animBgToggleBtn.addEventListener('click', () => {
-                dom.drawingCanvasContainer.classList.toggle('bg-white');
-                dom.animBgToggleBtn.classList.toggle('active');
+                animEditorSettings.bg = (animEditorSettings.bg === 'transparent') ? 'white' : 'transparent';
+                dom.drawingCanvasContainer.classList.toggle('bg-white', animEditorSettings.bg === 'white');
+                dom.animBgToggleBtn.classList.toggle('active', animEditorSettings.bg === 'white');
             });
         }
 
