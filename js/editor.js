@@ -78,6 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let panelMoveState = {};
     let isResizingPanel = false;
     let panelResizeState = {};
+    let animEditorSettings = {
+        bg: 'transparent', // 'transparent' or 'white'
+        grid: true,
+        onionSkin: true
+    };
 
 
     let isGameRunning = false;
@@ -720,14 +725,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Assume we're editing the first animation state for now
         if (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) {
             currentAnimationAsset.animations[0].frames.push(dataUrl);
+            // Select the newly created frame
+            currentFrameIndex = currentAnimationAsset.animations[0].frames.length - 1;
             populateTimeline();
         } else {
             alert("El asset de animación no tiene un estado de animación válido.");
+            return; // Exit if no valid state
         }
 
-        // Clear canvas for next frame
+        // Handle canvas content for the next frame
         const ctx = dom.drawingCanvas.getContext('2d');
-        ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
+        if (animEditorSettings.onionSkin) {
+            // If onion skin is on, the new frame becomes the onion skin
+            drawOnionSkin(); // This will now draw the frame we just saved
+            ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
+        } else {
+            // If onion skin is off, the drawing persists for editing.
+            // We still need to clear the onion skin canvas in case it was on before.
+            if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
+        }
     };
 
     function populateTimeline() {
@@ -780,6 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Abierto ${fileName}:`, currentAnimationAsset);
 
             populateTimeline();
+            drawOnionSkin();
 
         } catch(error) {
             console.error(`Error al abrir el asset de animación '${fileName}':`, error);
@@ -3867,6 +3884,76 @@ function getUiGizmoHandleAt(screenPos, materia) {
         });
 
         // --- Animation Panel Toggles ---
+        function drawAnimEditorGrid() {
+            if (!dom.animGridCanvas) return;
+            const ctx = dom.animGridCanvas.getContext('2d');
+            ctx.clearRect(0, 0, dom.animGridCanvas.width, dom.animGridCanvas.height);
+
+            if (animEditorSettings.grid) {
+                ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+                ctx.lineWidth = 1;
+                const gridSize = 16;
+
+                for (let x = 0; x <= dom.animGridCanvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, dom.animGridCanvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y <= dom.animGridCanvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(dom.animGridCanvas.width, y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawOnionSkin() {
+            if (!dom.animOnionSkinCanvas || !currentAnimationAsset || !animEditorSettings.onionSkin) {
+                if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
+                return;
+            }
+
+            const ctx = dom.animOnionSkinCanvas.getContext('2d');
+            ctx.clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
+
+            const anim = currentAnimationAsset.animations[0];
+            if (currentFrameIndex > 0 && anim.frames[currentFrameIndex - 1]) {
+                const prevFrameData = anim.frames[currentFrameIndex - 1];
+                const img = new Image();
+                img.onload = () => {
+                    ctx.globalAlpha = 0.3;
+                    ctx.drawImage(img, 0, 0);
+                    ctx.globalAlpha = 1.0;
+                };
+                img.src = prevFrameData;
+            }
+        }
+
+        if (dom.animBgToggleBtn) {
+            dom.animBgToggleBtn.addEventListener('click', () => {
+                dom.drawingCanvasContainer.classList.toggle('bg-white');
+                dom.animBgToggleBtn.classList.toggle('active');
+            });
+        }
+
+        if (dom.animGridToggleBtn) {
+            dom.animGridToggleBtn.addEventListener('click', () => {
+                animEditorSettings.grid = !animEditorSettings.grid;
+                dom.animGridToggleBtn.classList.toggle('active', animEditorSettings.grid);
+                drawAnimEditorGrid();
+            });
+        }
+
+        if (dom.animOnionToggleBtn) {
+            dom.animOnionToggleBtn.addEventListener('click', () => {
+                animEditorSettings.onionSkin = !animEditorSettings.onionSkin;
+                dom.animOnionToggleBtn.classList.toggle('active', animEditorSettings.onionSkin);
+                drawOnionSkin();
+            });
+        }
+
         const timelineToggleBtn = document.getElementById('timeline-toggle-btn');
         timelineToggleBtn.addEventListener('click', () => {
             const isCollapsed = dom.animationPanel.classList.toggle('timeline-collapsed');
@@ -3893,6 +3980,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
 
                 populateTimeline();
+                drawOnionSkin();
             }
         });
 
@@ -3908,6 +3996,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
             ctx.drawImage(frame, 0, 0);
 
             populateTimeline(); // Re-render to show active state
+            drawOnionSkin();
         });
 
         // Animator Controller Toolbar Logic
@@ -4016,6 +4105,8 @@ function getUiGizmoHandleAt(screenPos, materia) {
             'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline',
             'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas',
             'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'animator-controller-panel',
+            'drawing-canvas-container', 'anim-onion-skin-canvas', 'anim-grid-canvas',
+            'anim-bg-toggle-btn', 'anim-grid-toggle-btn', 'anim-onion-toggle-btn',
 
             // Project Settings Modal elements
             'project-settings-modal', 'settings-app-name', 'settings-author-name', 'settings-app-version', 'settings-engine-version',
@@ -4109,6 +4200,22 @@ function getUiGizmoHandleAt(screenPos, materia) {
             setupEventListeners();
             console.log("5. Event Listeners configurados.");
 
+            // Draw initial animation editor elements
+            drawAnimEditorGrid();
+
+            // --- TEMPORARY TEST SETUP ---
+            if (dom.animationPanel) {
+                dom.animationPanelOverlay.classList.add('hidden');
+                const dummyFrame1_red_dot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIAAQMAAADOtka5AAAABlBMVEUAAAD/AAAAAACw23x3AAAACXBIWXMAAAsTAAALEwEAmpwYAAABPUlEQVR42u3MMQ0AAAgEMcC/gDbOVnCgAAAAAAB403w95gEAAAAAAAAAAAAA8Fl/agEAAAAAAAAAAAAAwAv2pBMAAAAAAAAAAAAAAOBV/5oFAAAAAAAAAAAAAMB79qUTAQAAAAAAAAAAAADwVf+aBwAAAAAAAAAAAADAW/akEwEAAAAAAAAAAAAA8Cr/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/2gMAAAAAAAAAAAAAgH8B1gAB5lAyplIAAAAASUVORK5CYII=';
+                const dummyFrame2_blue_dot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIAAQMAAADOtka5AAAABlBMVEUAAAAA/wDh4B8lAAAACXBIWXMAAAsTAAALEwEAmpwYAAABPUlEQVR42u3MMQ0AAAgEMcC/gDbOVnCgAAAAAAB403w95gEAAAAAAAAAAAAA8Fl/agEAAAAAAAAAAAAAwAv2pBMAAAAAAAAAAAAAAOBV/5oFAAAAAAAAAAAAAMB79qUTAQAAAAAAAAAAAADwVf+aBwAAAAAAAAAAAADAW/akEwEAAAAAAAAAAAAA8Cr/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C110okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/mgUAAAAAAAAAAAAA8B596UQAAAAAAAAAAAAAwFf9aw4AAAAAAAAAAAAA4C170okAAAAAAAAAAAAA4FX/2gMAAAAAAAAAAAAAgH8B1gAB5lAyplIAAAAASUVORK5CYII=';
+                currentAnimationAsset = {
+                    animations: [{ name: 'default', speed: 10, loop: true, frames: [dummyFrame1_red_dot, dummyFrame2_blue_dot] }]
+                };
+                currentFrameIndex = 1; // Select the second frame
+                populateTimeline();
+                drawOnionSkin();
+            }
+            // --- END TEST SETUP ---
 
             // Start the main editor loop
             editorLoopId = requestAnimationFrame(editorLoop);

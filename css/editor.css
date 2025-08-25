@@ -541,46 +541,6 @@ body {
     color: white;
 }
 
-#animation-toolbar .toolbar-group {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    margin: 0 10px;
-    padding: 0;
-}
-
-#animation-toolbar .toolbar-group button {
-    border-radius: 0;
-    border: none;
-    border-left: 1px solid var(--border-color);
-    margin: 0;
-    padding: 6px 8px;
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-}
-
-#animation-toolbar .toolbar-group button:first-child {
-    border-left: none;
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
-}
-
-#animation-toolbar .toolbar-group button:last-child {
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
-}
-
-#animation-toolbar .toolbar-group button:hover {
-    background-color: #4f4f56;
-}
-
-#animation-toolbar .toolbar-group button.active {
-    background-color: var(--accent-color);
-    color: var(--button-text-color, white);
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
-}
-
 /* --- Animation Editor Canvas Stacking & Toolbar --- */
 #drawing-canvas-container {
     flex-grow: 1;
@@ -1144,31 +1104,22 @@ body {
     flex-grow: 1;
     display: grid;
     place-items: center;
-    position: relative;
-    overflow: auto;
+    overflow: auto; /* Allow scrolling/panning if canvas is larger */
     background-image:
-        linear-gradient(45deg, #333 25%, transparent 25%),
-        linear-gradient(-45deg, #333 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #333 75%),
-        linear-gradient(-45deg, transparent 75%, #333 75%);
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
-#drawing-canvas-container.bg-white {
-    background-image: none;
-    background-color: #ffffff;
-}
-
-#drawing-canvas-container canvas {
-    position: absolute;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+#drawing-canvas {
+    /* The container provides the checkered background */
+    background-color: transparent;
     cursor: crosshair;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
 }
-
-#anim-onion-skin-canvas { z-index: 1; pointer-events: none; }
-#drawing-canvas { z-index: 2; }
-#anim-grid-canvas { z-index: 3; pointer-events: none; }
 
 .inspector-anim-preview {
     display: flex;

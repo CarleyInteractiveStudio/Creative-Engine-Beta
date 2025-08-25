@@ -10,18 +10,9 @@ def run():
         animation_panel = page.locator("#animation-panel")
         animation_panel.wait_for(state="visible", timeout=5000)
 
-        # Wait for JS to initialize
         page.wait_for_timeout(1000)
 
-        # Forcefully REMOVE the overlay from the DOM
-        page.evaluate("document.getElementById('animation-panel-overlay').remove()")
-
-        # Click the background toggle button to switch to white
-        page.locator("#anim-bg-toggle-btn").click()
-
-        page.wait_for_timeout(500)
-
-        animation_panel.screenshot(path="jules-scratch/verification/final_anim_editor.png")
+        animation_panel.screenshot(path="jules-scratch/verification/css_load_test.png")
 
         browser.close()
 
