@@ -452,44 +452,6 @@ footer {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-/* --- Cool Animations --- */
-@keyframes rainbow-bar-ping-pong {
-    0% {
-        left: 0%;
-        background-position: 0% 50%;
-    }
-    50% {
-        left: 100%;
-        background-position: 100% 50%;
-    }
-    100% {
-        left: 0%;
-        background-position: 0% 50%;
-    }
-}
-
-#actions .button-link, #actions button {
-    position: relative;
-    overflow: hidden;
-}
-
-.rainbow-animated-btn::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
-    background-size: 200% 100%;
-    animation: rainbow-bar-ping-pong 3s linear infinite;
-    transform: translateX(-100%);
-}
-
-#actions .button-link:hover::after, #actions button:hover::after {
-    transform: translateX(0%);
-    transition: transform 0.4s ease-out;
-}
 
 
 /* --- Context Menu Styles --- */
