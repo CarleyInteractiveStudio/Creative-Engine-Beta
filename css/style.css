@@ -155,8 +155,9 @@ main { padding: 20px 0; }
     animation: led-glow 5s ease-in-out infinite;
 }
 #actions button:hover {
-    background-color: #30363d;
-    border-color: #8b949e;
+    background-color: #484f58;
+    border-color: var(--accent-color);
+    transform: scale(1.05);
 }
 
 /* Style for <a> tags that should look like buttons */
@@ -176,8 +177,9 @@ main { padding: 20px 0; }
     animation: led-glow 5s ease-in-out infinite;
 }
 .button-link:hover {
-    background-color: #30363d;
-    border-color: #8b949e;
+    background-color: #484f58;
+    border-color: var(--accent-color);
+    transform: scale(1.05);
 }
 
 #btn-donate {
