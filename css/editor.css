@@ -1591,9 +1591,42 @@ body {
 
 .transform-grid {
     display: grid;
-    grid-template-columns: 20px 1fr;
+    grid-template-columns: auto 1fr;
     gap: 5px 8px;
     align-items: center;
+}
+
+.rect-transform-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.anchor-preset-grid {
+    width: 100px;
+    height: 100px;
+    border: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    background-color: var(--bg-primary);
+}
+
+.anchor-preset-cell {
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.anchor-preset-cell:hover {
+    background-color: var(--accent-color);
+    opacity: 0.7;
+}
+
+.anchor-preset-cell.active {
+    background-color: var(--accent-color);
+    border-color: #fff;
 }
 
 .text-transform-controls {

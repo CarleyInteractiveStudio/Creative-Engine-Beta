@@ -6,8 +6,7 @@ import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { CreativeScript, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform } from './engine/Components.js';
-import { RectTransform, UICanvas, UIImage } from './engine/Components.js';
+import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
@@ -576,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
             img.addEventListener('click', async () => {
                 if (selectedMateria) {
-                    const ComponentClass = window[componentName] || eval(componentName);
+                    const ComponentClass = Components[componentName];
                     if (!ComponentClass) return;
 
                     const component = selectedMateria.getComponent(ComponentClass);
@@ -1393,15 +1392,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const icon = componentIcons[componentName] || '⚙️';
             const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
 
-            if (ley instanceof RectTransform) {
-                 componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
-                 <div class="component-grid">
-                    <div class="prop-row"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
-                    <div class="prop-row"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
-                    <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
-                    <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
-                 </div>`;
-            } else if (ley instanceof UIImage) {
+            if (ley instanceof Components.RectTransform) {
+                const anchorsTogether = ley.anchorMin.x === ley.anchorMax.x && ley.anchorMin.y === ley.anchorMax.y;
+                const posOrOffsetFields = anchorsTogether
+                    ? `
+                        <div class="prop-row"><label>Pos X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
+                        <div class="prop-row"><label>Pos Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
+                        <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
+                        <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+                    `
+                    : `
+                        <div class="prop-row"><label>Left</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
+                        <div class="prop-row"><label>Right</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
+                        <div class="prop-row"><label>Top</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+                        <div class="prop-row"><label>Bottom</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
+                    `;
+
+                componentHTML = `
+                    <div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
+                    <div class="rect-transform-editor">
+                        <div id="anchor-preset-widget" class="anchor-preset-grid">
+                            ${[...Array(9)].map((_, i) => `<div class="anchor-preset-cell" data-preset="${i}"></div>`).join('')}
+                        </div>
+                        <div class="component-grid">
+                            ${posOrOffsetFields}
+                        </div>
+                    </div>
+                    <div class="component-grid">
+                         <div class="prop-row"><label>Pivot X</label><input type="number" class="prop-input" step="0.1" data-component="RectTransform" data-prop="pivot.x" value="${ley.pivot.x}"></div>
+                         <div class="prop-row"><label>Pivot Y</label><input type="number" class="prop-input" step="0.1" data-component="RectTransform" data-prop="pivot.y" value="${ley.pivot.y}"></div>
+                    </div>
+                `;
+            } else if (ley instanceof Components.UIImage) {
                  const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
                  componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
                  <div class="component-grid">
@@ -1412,13 +1434,13 @@ document.addEventListener('DOMContentLoaded', () => {
                      </div>
                      <label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}">
                  </div>`;
-            } else if (ley instanceof UICanvas) {
+            } else if (ley instanceof Components.UICanvas) {
                  componentHTML = `<div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>
                  <div class="component-grid">
                     <label>Render Mode</label>
                     <input type="text" value="${ley.renderMode}" readonly>
                  </div>`;
-            } else if (ley instanceof Transform) {
+            } else if (ley instanceof Components.Transform) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Transform</h4></div>
                 <div class="component-grid">
                     <div class="prop-row"><label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
@@ -1426,7 +1448,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="prop-row"><label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}"></div>
                     <div class="prop-row"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
                 </div>`;
-            } else if (ley instanceof SpriteRenderer) {
+            } else if (ley instanceof Components.SpriteRenderer) {
                 const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
                 <div class="component-grid">
@@ -1439,11 +1461,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
             }
             // ... (keep other component renderers)
-            else if (ley instanceof CreativeScript) {
+            else if (ley instanceof Components.CreativeScript) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
-            } else if (ley instanceof Animator) {
+            } else if (ley instanceof Components.Animator) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><p>Controller: ${ley.controllerPath || 'None'}</p>`;
-            } else if (ley instanceof Camera) {
+            } else if (ley instanceof Components.Camera) {
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
                 <div class="component-grid"><label>Size</label><input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}"></div>`;
             }
@@ -1496,13 +1518,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
         });
 
-        const worldMaterias = sortedMaterias.filter(m => !m.getComponent("UICanvas") && !m.getComponent("RectTransform"));
+        const worldMaterias = sortedMaterias.filter(m => !m.getComponent(Components.UICanvas) && !m.getComponent(Components.RectTransform));
         worldMaterias.forEach(materia => {
             if (isGameView && !materia.isActive) {
                 return; // Don't render inactive objects in the final game view
             }
 
-            const transform = materia.getComponent(Transform);
+            const transform = materia.getComponent(Components.Transform);
             if (!transform) return;
 
             const isInactiveInEditor = !isGameView && !materia.isActive;
@@ -1511,13 +1533,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let drawn = false;
-            const spriteRenderer = materia.getComponent(SpriteRenderer);
+            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
             if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
                 targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100 * transform.scale.x, 100 * transform.scale.y);
                 drawn = true;
             }
 
-            const boxCollider = materia.getComponent(BoxCollider);
+            const boxCollider = materia.getComponent(Components.BoxCollider);
             if (boxCollider) {
                 if (!drawn) {
                     targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
@@ -1550,13 +1572,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- UI Rendering Pass ---
         // This pass renders UI on top of the world space, using a separate orthographic projection.
-        const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent("UICanvas"));
+        const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(Components.UICanvas));
         if (uiCanvases.length > 0) {
             targetRenderer.begin(true); // Begin UI rendering mode (orthographic)
 
             uiCanvases.forEach(canvasMateria => {
-                const canvas = canvasMateria.getComponent("UICanvas");
-                const canvasRect = canvasMateria.getComponent("RectTransform");
+                const canvas = canvasMateria.getComponent(Components.UICanvas);
+                const canvasRect = canvasMateria.getComponent(Components.RectTransform);
 
                 if (canvas.renderMode === 'ScreenSpaceOverlay') {
                     // Match canvas size to the renderer's output size
@@ -1574,63 +1596,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function drawUiElement(renderer, materia, parentRect) {
-        const rectTransform = materia.getComponent("RectTransform");
-        const image = materia.getComponent("UIImage"); // Assuming UIImage component exists
-
-        if (!rectTransform) {
-            // If a child of a UI object doesn't have a RectTransform, we can't render it.
-            // We also stop recursing down this branch.
-            return;
-        }
-
-        // Calculate the parent's dimensions
+    function getUiScreenRect(rectTransform, parentRect) {
         const parentWidth = parentRect.width;
         const parentHeight = parentRect.height;
 
-        // Calculate the anchor positions in pixels, relative to the parent's bottom-left
         const anchorMinPx = { x: parentWidth * rectTransform.anchorMin.x, y: parentHeight * rectTransform.anchorMin.y };
         const anchorMaxPx = { x: parentWidth * rectTransform.anchorMax.x, y: parentHeight * rectTransform.anchorMax.y };
 
-        // Calculate the final position and size of the rectangle
-        const finalPos = {
-            x: anchorMinPx.x + rectTransform.x - (rectTransform.width * rectTransform.pivot.x),
-            y: anchorMinPx.y + rectTransform.y - (rectTransform.height * rectTransform.pivot.y),
-        };
-        const finalSize = {
-            width: rectTransform.width,
-            height: rectTransform.height
-        };
+        const anchorsAreTogether = (rectTransform.anchorMin.x === rectTransform.anchorMax.x) && (rectTransform.anchorMin.y === rectTransform.anchorMax.y);
 
-        // Handle stretching
-        if (rectTransform.anchorMin.x !== rectTransform.anchorMax.x) {
-            finalPos.x = anchorMinPx.x;
-            finalSize.width = (anchorMaxPx.x - anchorMinPx.x);
-        }
-        if (rectTransform.anchorMin.y !== rectTransform.anchorMax.y) {
-            finalPos.y = anchorMinPx.y;
-            finalSize.height = (anchorMaxPx.y - anchorMinPx.y);
-        }
+        let x, y, width, height;
 
-        // Draw the element if it has a visible component
-        if (image && image.sprite.complete && image.sprite.naturalHeight !== 0) {
-            renderer.ctx.globalAlpha = 1.0; // Ensure UI is fully opaque
-            renderer.ctx.fillStyle = image.color; // Apply tint
-            // Simple tinting: draw color rect then image on top
-            renderer.ctx.fillRect(finalPos.x, finalPos.y, finalSize.width, finalSize.height);
-            renderer.ctx.drawImage(image.sprite, finalPos.x, finalPos.y, finalSize.width, finalSize.height);
+        if (anchorsAreTogether) {
+            width = rectTransform.width;
+            height = rectTransform.height;
+            const pivotOffset = { x: width * rectTransform.pivot.x, y: height * rectTransform.pivot.y };
+            x = anchorMinPx.x + rectTransform.x - pivotOffset.x;
+            y = anchorMinPx.y + rectTransform.y - pivotOffset.y;
         } else {
-            // Draw a placeholder for UI elements without a visible component (for editor only)
-            renderer.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            renderer.ctx.lineWidth = 1;
-            renderer.ctx.strokeRect(finalPos.x, finalPos.y, finalSize.width, finalSize.height);
+            const left = rectTransform.x;
+            const right = rectTransform.width;
+            const bottom = rectTransform.y;
+            const top = rectTransform.height;
+            x = anchorMinPx.x + left;
+            y = anchorMinPx.y + bottom;
+            width = (anchorMaxPx.x - anchorMinPx.x) - left - right;
+            height = (anchorMaxPx.y - anchorMinPx.y) - bottom - top;
+        }
+        return { x, y, width, height };
+    }
+
+    function drawUiElement(renderer, materia, parentRect) {
+        const rectTransform = materia.getComponent(Components.RectTransform);
+        const image = materia.getComponent(Components.UIImage);
+
+        if (!rectTransform) return;
+
+        const screenRect = getUiScreenRect(rectTransform, parentRect);
+
+        // Draw the element
+        if (image && image.sprite.complete && image.sprite.naturalHeight !== 0) {
+            renderer.ctx.globalAlpha = 1.0;
+            renderer.ctx.fillStyle = image.color;
+            renderer.ctx.fillRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+            renderer.ctx.drawImage(image.sprite, screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+        } else {
+            // Draw a placeholder for UI elements without a visible component in the editor
+            if (renderer.isEditor) {
+                renderer.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                renderer.ctx.lineWidth = 1;
+                renderer.ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+            }
         }
 
         // Recursively draw children
         materia.children.forEach(child => {
-            // The new parent for the children is this element's calculated rect
-            const thisRect = { x: finalPos.x, y: finalPos.y, width: finalSize.width, height: finalSize.height };
-            drawUiElement(renderer, child, thisRect);
+            drawUiElement(renderer, child, screenRect);
         });
     }
 
@@ -1654,11 +1675,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const availableComponents = {
-        'Renderizado': [SpriteRenderer],
-        'Animación': [Animator],
-        'Cámara': [Camera],
-        'Físicas': [Rigidbody, BoxCollider],
-        'Scripting': [CreativeScript]
+        'Renderizado': [Components.SpriteRenderer],
+        'Animación': [Components.Animator],
+        'Cámara': [Components.Camera],
+        'Físicas': [Components.Rigidbody, Components.BoxCollider],
+        'Scripting': [Components.CreativeScript]
     };
 
     showAddComponentModal = async function() {
@@ -1666,7 +1687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.componentList.innerHTML = '';
         const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
-        const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof CreativeScript).map(ley => ley.scriptName));
+        const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
 
         // --- 1. Render Built-in Components ---
         for (const category in availableComponents) {
@@ -1752,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     componentItem.className = 'component-item';
                     componentItem.textContent = fileHandle.name;
                     componentItem.addEventListener('click', () => {
-                        const newScript = new CreativeScript(selectedMateria, fileHandle.name);
+                        const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
                         selectedMateria.addComponent(newScript);
                         dom.addComponentModal.classList.remove('is-open');
                         updateInspector();
@@ -1970,7 +1991,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createEmptyMateria(name = 'Materia Vacio', parent = null) {
         const newMateria = new Materia(name);
-        newMateria.addComponent(new Transform(newMateria)); // Manually add Transform
+        newMateria.addComponent(new Components.Transform(newMateria)); // Manually add Transform
         SceneManager.currentScene.addMateria(newMateria); // Always add to scene
         if (parent) {
             parent.addChild(newMateria);
@@ -2141,11 +2162,11 @@ function update(deltaTime) {
     const GIZMO_HANDLE_SIZE = 10; // In screen pixels
 
     function drawGizmos(renderer, materia) {
-        const transform = materia.getComponent(Transform) || materia.getComponent(RectTransform);
+        const transform = materia.getComponent(Components.Transform) || materia.getComponent(Components.RectTransform);
         if (!transform) return;
 
         // Draw camera gizmo for any materia with a Camera component, if not selected
-        if (materia.getComponent(Camera) && (!selectedMateria || selectedMateria.id !== materia.id)) {
+        if (materia.getComponent(Components.Camera) && (!selectedMateria || selectedMateria.id !== materia.id)) {
             renderer.ctx.font = `${40 / renderer.camera.effectiveZoom}px sans-serif`;
             renderer.ctx.textAlign = 'center';
             renderer.ctx.fillText('📷', transform.x, transform.y);
@@ -2156,7 +2177,8 @@ function update(deltaTime) {
         }
 
         // Do not draw world-space gizmos for UI elements, they will be handled by drawUiGizmos
-        if (selectedMateria.getComponent(RectTransform)) {
+        if (selectedMateria.getComponent(Components.RectTransform)) {
+            drawUiGizmos(renderer, selectedMateria);
             return;
         }
 
@@ -2167,8 +2189,8 @@ function update(deltaTime) {
         const handleScreenSize = GIZMO_HANDLE_SIZE / camera.zoom;
         const halfHandleSize = handleScreenSize / 2;
 
-        const rectTransform = selectedMateria.getComponent(RectTransform);
-        const boxCollider = selectedMateria.getComponent(BoxCollider);
+        const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+        const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
 
         let w, h;
         if(rectTransform) {
@@ -2249,98 +2271,40 @@ function update(deltaTime) {
     }
 
 function drawUiGizmos(renderer, materia) {
-    const rectTransform = materia.getComponent(RectTransform);
-    if (!rectTransform) return;
+    const rectTransform = materia.getComponent(Components.RectTransform);
+    if (!rectTransform || !selectedMateria || selectedMateria.id !== materia.id) return;
 
-    const ctx = renderer.ctx;
+    // Since UI is drawn in a separate pass without camera transforms,
+    // the coordinates from drawUiElement are already in screen space.
+    // We need to find the calculated screen rect of this element.
+    const parent = materia.parent;
+    let parentRect = { x: 0, y: 0, width: renderer.canvas.width, height: renderer.canvas.height };
 
-    // Gizmo handles are constant screen size
-    const handleScreenSize = GIZMO_HANDLE_SIZE;
-
-    // Get the element's screen-space properties
-    const w = rectTransform.width;
-    const h = rectTransform.height;
-    // The center of the RectTransform is its position
-    const x = rectTransform.x;
-    const y = rectTransform.y;
-
-    ctx.save();
-    ctx.fillStyle = 'red';
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2; // Constant line width in screen space
-
-    if (activeTool === 'move') {
-        ctx.fillStyle = 'green';
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y - h / 2 - handleScreenSize * 2);
-        ctx.stroke();
-        ctx.moveTo(x, y - h / 2 - handleScreenSize * 2);
-        ctx.lineTo(x - handleScreenSize, y - h / 2 - handleScreenSize);
-        ctx.lineTo(x + handleScreenSize, y - h / 2 - handleScreenSize);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + w / 2 + handleScreenSize * 2, y);
-        ctx.stroke();
-        ctx.moveTo(x + w / 2 + handleScreenSize * 2, y);
-        ctx.lineTo(x + w / 2 + handleScreenSize, y - handleScreenSize);
-        ctx.lineTo(x + w / 2 + handleScreenSize, y + handleScreenSize);
-        ctx.closePath();
-        ctx.fill();
-    } else if (activeTool === 'scale') {
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 3;
-        const cornerSize = handleScreenSize * 1.5;
-
-        // The position (x,y) of a RectTransform is its center, so we need to find the top-left corner
-        const left = x - w / 2;
-        const top = y - h / 2;
-        const right = x + w / 2;
-        const bottom = y + h / 2;
-
-        // Top-left corner
-        ctx.beginPath();
-        ctx.moveTo(left + cornerSize, top);
-        ctx.lineTo(left, top);
-        ctx.lineTo(left, top + cornerSize);
-        ctx.stroke();
-
-        // Top-right corner
-        ctx.beginPath();
-        ctx.moveTo(right - cornerSize, top);
-        ctx.lineTo(right, top);
-        ctx.lineTo(right, top + cornerSize);
-        ctx.stroke();
-
-        // Bottom-left corner
-        ctx.beginPath();
-        ctx.moveTo(left + cornerSize, bottom);
-        ctx.lineTo(left, bottom);
-        ctx.lineTo(left, bottom - cornerSize);
-        ctx.stroke();
-
-        // Bottom-right corner
-        ctx.beginPath();
-        ctx.moveTo(right - cornerSize, bottom);
-        ctx.lineTo(right, bottom);
-        ctx.lineTo(right, bottom - cornerSize);
-        ctx.stroke();
+    if (parent && parent.getComponent(Components.RectTransform)) {
+        // This is a simplified calculation. A real implementation would need to
+        // cache the calculated rects from the main UI drawing pass.
+        // For now, we just recalculate it for the gizmo.
+        // This is inefficient but will work for drawing.
+        // TODO: Cache calculated rects during the UI draw pass.
     }
 
-    ctx.restore();
+    // Recalculate the final screen rect for the gizmo
+    const screenRect = getUiScreenRect(rectTransform, parentRect);
+
+    renderer.ctx.strokeStyle = 'yellow';
+    renderer.ctx.lineWidth = 2;
+    renderer.ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+
+    // TODO: Add handles for move and scale tools
 }
 
     function getGizmoHandleAt(worldPos, materia, renderer) {
-        const transform = materia.getComponent(Transform);
+        const transform = materia.getComponent(Components.Transform);
         if (!transform) return null;
 
         const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.zoom;
-        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
-        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
+        const w = (selectedMateria.getComponent(Components.BoxCollider)?.width ?? 100) * transform.scale.x;
+        const h = (selectedMateria.getComponent(Components.BoxCollider)?.height ?? 100) * transform.scale.y;
         const x = transform.x;
         const y = transform.y;
 
@@ -2371,7 +2335,7 @@ function drawUiGizmos(renderer, materia) {
     }
 
 function getUiGizmoHandleAt(screenPos, materia) {
-    const rectTransform = materia.getComponent(RectTransform);
+    const rectTransform = materia.getComponent(Components.RectTransform);
     if (!rectTransform) return null;
 
     const handleScreenSize = GIZMO_HANDLE_SIZE;
@@ -2499,8 +2463,8 @@ function getUiGizmoHandleAt(screenPos, materia) {
 
             if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
                 const newMateria = new Materia(data.name.split('.')[0]);
-                newMateria.addComponent(new Transform(newMateria)); // Manually add Transform
-                const spriteRenderer = new SpriteRenderer(newMateria);
+                newMateria.addComponent(new Components.Transform(newMateria)); // Manually add Transform
+                const spriteRenderer = new Components.SpriteRenderer(newMateria);
 
                 spriteRenderer.setSourcePath(data.path);
                 await spriteRenderer.loadSprite(projectsDirHandle);
@@ -2811,7 +2775,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
 
 
             if (selectedMateria) {
-                if (selectedMateria.getComponent(RectTransform)) {
+                if (selectedMateria.getComponent(Components.RectTransform)) {
                     handle = getUiGizmoHandleAt(screenPos, selectedMateria);
                 } else if (renderer.camera) {
                     worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
@@ -2821,7 +2785,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
 
             if (handle) {
                 isDragging = true;
-                const transform = selectedMateria.getComponent(Transform); // This works for RectTransform too
+                const transform = selectedMateria.getComponent(Components.Transform); // This works for RectTransform too
                 dragState = {
                     handle,
                     materia: selectedMateria,
@@ -2840,7 +2804,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 // If not clicking a handle, check for selecting a new materia
                 let clickedMateria = null;
                  // First check UI elements in screen space
-                const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(UICanvas));
+                const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(Components.UICanvas));
                 for (const canvas of uiCanvases) {
                     // This is a simplified check; a full recursive check would be better
                     for (const child of SceneManager.currentScene.getMateriasRecursive(canvas)) {
@@ -2856,7 +2820,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 if (!clickedMateria && renderer.camera) {
                     worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
                     for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                        if (materia.getComponent(RectTransform)) continue; // Skip UI elements
+                        if (materia.getComponent(Components.RectTransform)) continue; // Skip UI elements
                         if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
                             clickedMateria = materia;
                             break;
@@ -2883,7 +2847,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 const dy = (e.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
                 const camMateria = SceneManager.currentScene.findFirstCamera();
                 if(camMateria) {
-                    const camTransform = camMateria.getComponent(Transform);
+                    const camTransform = camMateria.getComponent(Components.Transform);
                     camTransform.x -= dx;
                     camTransform.y -= dy;
                 }
@@ -2892,8 +2856,8 @@ function getUiGizmoHandleAt(screenPos, materia) {
             }
 
             if (isDragging) {
-                const isUiElement = !!dragState.materia.getComponent(RectTransform);
-                const transform = dragState.materia.getComponent(Transform); // Works for both
+                const isUiElement = !!dragState.materia.getComponent(Components.RectTransform);
+                const transform = dragState.materia.getComponent(Components.Transform); // Works for both
                 let dx, dy;
 
                 if (isUiElement) {
@@ -2966,7 +2930,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
 
             const rootCanvas = SceneManager.currentScene.findNodeByFlag('isRootCanvas', true);
             if (rootCanvas) {
-                const canvasComponent = rootCanvas.getComponent(UICanvas);
+                const canvasComponent = rootCanvas.getComponent(Components.UICanvas);
                 if (canvasComponent) {
                     canvasComponent._onResize();
                 }
@@ -3044,8 +3008,8 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 case 'create-ui-canvas': {
                     const canvasMateria = new Materia('Canvas');
                     // UI elements get a RectTransform, not a regular Transform.
-                    canvasMateria.addComponent(new RectTransform(canvasMateria));
-                    canvasMateria.addComponent(new UICanvas(canvasMateria));
+                    canvasMateria.addComponent(new Components.RectTransform(canvasMateria));
+                    canvasMateria.addComponent(new Components.UICanvas(canvasMateria));
                     SceneManager.currentScene.addMateria(canvasMateria);
                     updateHierarchy();
                     selectMateria(canvasMateria.id);
@@ -3054,13 +3018,13 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 case 'create-ui-image': {
                     const imageMateria = new Materia('Image');
                     // UI elements get a RectTransform.
-                    imageMateria.addComponent(new RectTransform(imageMateria));
-                    imageMateria.addComponent(new UIImage(imageMateria));
+                    imageMateria.addComponent(new Components.RectTransform(imageMateria));
+                    imageMateria.addComponent(new Components.UIImage(imageMateria));
 
                     let parent = selectedMateria;
                     // If nothing is selected, or the selected object is not a UI element, parent to the first canvas
-                    if (!parent || !parent.getComponent("RectTransform")) {
-                        parent = SceneManager.currentScene.materias.find(m => m.getComponent("UICanvas"));
+                    if (!parent || !parent.getComponent(Components.RectTransform)) {
+                        parent = SceneManager.currentScene.materias.find(m => m.getComponent(Components.UICanvas));
                     }
 
                     if (!parent) {
@@ -3077,11 +3041,11 @@ function getUiGizmoHandleAt(screenPos, materia) {
                 }
                 case 'create-primitive-square': {
                     const square = createEmptyMateria('Cuadrado', selectedMateria);
-                    square.addComponent(new SpriteRenderer(square));
+                    square.addComponent(new Components.SpriteRenderer(square));
                     break;
                 }
                 case 'create-camera': {
-                    createEmptyMateria('Cámara', selectedMateria).addComponent(new Camera());
+                    createEmptyMateria('Cámara', selectedMateria).addComponent(new Components.Camera());
                     break;
                 }
                 case 'rename':
