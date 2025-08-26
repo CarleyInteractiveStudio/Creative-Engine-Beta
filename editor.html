@@ -187,8 +187,15 @@
                                     <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
                                     <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
                                 </div>
+                                <div id="animation-view-tools">
+                                    <button id="anim-bg-toggle-btn" class="tool-btn" title="Cambiar Fondo (Blanco/Transparente)">⬛</button>
+                                    <button id="anim-grid-toggle-btn" class="tool-btn active" title="Mostrar/Ocultar Rejilla">ızgara</button>
+                                    <button id="anim-onion-toggle-btn" class="tool-btn active" title="Activar/Desactivar Onion Skin">🧅</button>
+                                </div>
                                 <div id="drawing-canvas-container">
-                                    <canvas id="drawing-canvas" width="512" height="512"></canvas>
+                                    <canvas id="anim-grid-canvas" width="512" height="512" style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
+                                    <canvas id="anim-onion-skin-canvas" width="512" height="512" style="position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none;"></canvas>
+                                    <canvas id="drawing-canvas" width="512" height="512" style="position: relative; z-index: 3;"></canvas>
                                 </div>
                             </div>
                         </div>

@@ -1078,13 +1078,18 @@ body {
     overflow: hidden;
 }
 
-#drawing-tools {
+#drawing-tools, #animation-view-tools {
     display: flex;
     flex-direction: column;
     gap: 10px;
     padding: 10px;
     background-color: var(--bg-tertiary);
     border-right: 1px solid var(--border-color);
+}
+
+#animation-view-tools {
+    border-left: 1px solid var(--border-color);
+    border-right: none;
 }
 
 #drawing-tools .tool-btn {
@@ -1104,7 +1109,8 @@ body {
     flex-grow: 1;
     display: grid;
     place-items: center;
-    overflow: auto; /* Allow scrolling/panning if canvas is larger */
+    position: relative; /* Crucial for absolute positioning of children */
+    overflow: auto;
     background-image:
         linear-gradient(45deg, #444 25%, transparent 25%),
         linear-gradient(-45deg, #444 25%, transparent 25%),
@@ -1115,10 +1121,11 @@ body {
 }
 
 #drawing-canvas {
-    /* The container provides the checkered background */
     background-color: transparent;
     cursor: crosshair;
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    position: relative; /* Keep this for z-index stacking context */
+    z-index: 3;
 }
 
 #drawing-canvas-container.bg-white {
@@ -1126,21 +1133,16 @@ body {
     background-color: #ffffff;
 }
 
-#drawing-canvas-container canvas {
-    grid-column: 1;
-    grid-row: 1;
-    position: absolute; /* Position them on top of each other */
-}
-
-#anim-onion-skin-canvas {
+/* Canvases are already positioned via inline styles in the HTML now,
+   but we can keep these as a fallback or for clarity.
+   The z-index is the most important part here. */
+#anim-grid-canvas {
     z-index: 1;
     pointer-events: none;
 }
-#drawing-canvas {
+
+#anim-onion-skin-canvas {
     z-index: 2;
-}
-#anim-grid-canvas {
-    z-index: 3;
     pointer-events: none;
 }
 

@@ -715,12 +715,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    /**
+     * Finds the bounding box of the non-transparent pixels on a canvas.
+     * @param {HTMLCanvasElement} canvas The canvas to scan.
+     * @returns {{x: number, y: number, width: number, height: number}|null} The bounding box or null if empty.
+     */
+    function getDrawingBounds(canvas) {
+        const ctx = canvas.getContext('2d');
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        let minX = width, minY = height, maxX = -1, maxY = -1;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                // The alpha channel is the 4th byte of each pixel
+                const alpha = data[(y * width + x) * 4 + 3];
+                if (alpha > 0) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            return null; // Canvas is empty
+        }
+
+        // Add a 1-pixel padding to avoid cutting off anti-aliased edges
+        minX = Math.max(0, minX - 1);
+        minY = Math.max(0, minY - 1);
+        maxX = Math.min(width, maxX + 1);
+        maxY = Math.min(height, maxY + 1);
+
+        return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+    }
+
+
     addFrameFromCanvas = function() {
         if (!currentAnimationAsset) {
             alert("No hay ningún asset de animación cargado.");
             return;
         }
-        const dataUrl = dom.drawingCanvas.toDataURL();
+
+        const sourceCanvas = dom.drawingCanvas;
+        const bounds = getDrawingBounds(sourceCanvas);
+
+        let dataUrl;
+
+        if (bounds) {
+            // Create a temporary canvas with the exact size of the drawing
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = bounds.width;
+            tempCanvas.height = bounds.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Copy the cropped image data to the temporary canvas
+            tempCtx.drawImage(
+                sourceCanvas,
+                bounds.x, bounds.y, bounds.width, bounds.height, // Source rectangle
+                0, 0, bounds.width, bounds.height // Destination rectangle
+            );
+            dataUrl = tempCanvas.toDataURL();
+        } else {
+            // If the canvas is empty, create a minimal transparent frame (e.g., 1x1 pixel)
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1;
+            tempCanvas.height = 1;
+            dataUrl = tempCanvas.toDataURL();
+        }
+
 
         // Assume we're editing the first animation state for now
         if (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) {
@@ -733,17 +799,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return; // Exit if no valid state
         }
 
-        // Handle canvas content for the next frame
-        const ctx = dom.drawingCanvas.getContext('2d');
-        if (animEditorSettings.onionSkin) {
-            // If onion skin is on, the new frame becomes the onion skin
-            drawOnionSkin(); // This will now draw the frame we just saved
-            ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-        } else {
-            // If onion skin is off, the drawing persists for editing.
-            // We still need to clear the onion skin canvas in case it was on before.
-            if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
-        }
+        // The drawing on the main canvas should always persist for editing.
+        // The onion skin canvas is updated to show the frame we just saved as a guide.
+        drawOnionSkin();
     };
 
     function populateTimeline() {
@@ -2291,26 +2349,46 @@ function getUiGizmoHandleAt(screenPos, materia) {
     function drawAnimEditorGrid() {
         if (!dom.animGridCanvas) return;
         const ctx = dom.animGridCanvas.getContext('2d');
-        ctx.clearRect(0, 0, dom.animGridCanvas.width, dom.animGridCanvas.height);
+        const canvas = dom.animGridCanvas;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Draw grid
         if (animEditorSettings.grid) {
             ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
             ctx.lineWidth = 1;
-            const gridSize = 16;
+            const gridSize = 8; // Smaller grid size as requested
 
-            for (let x = 0; x <= dom.animGridCanvas.width; x += gridSize) {
+            for (let x = 0; x <= canvas.width; x += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
-                ctx.lineTo(x, dom.animGridCanvas.height);
+                ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }
-            for (let y = 0; y <= dom.animGridCanvas.height; y += gridSize) {
+            for (let y = 0; y <= canvas.height; y += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(0, y);
-                ctx.lineTo(dom.animGridCanvas.width, y);
+                ctx.lineTo(canvas.width, y);
                 ctx.stroke();
             }
         }
+
+        // Draw center crosshair
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.75)'; // Red, slightly transparent
+        ctx.lineWidth = 1;
+
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(canvas.width, centerY);
+        ctx.stroke();
+
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, canvas.height);
+        ctx.stroke();
     }
 
     function drawOnionSkin() {
@@ -3267,7 +3345,7 @@ function getUiGizmoHandleAt(screenPos, materia) {
             lastDrawPos = getDrawPos(e);
         });
 
-        const PIXEL_GRID_SIZE = 16;
+        const PIXEL_GRID_SIZE = 8; // Changed from 16 to match the new grid size
 
         drawingCanvas.addEventListener('mousemove', (e) => {
             if (!isDrawing) return;
@@ -3960,6 +4038,32 @@ function getUiGizmoHandleAt(screenPos, materia) {
             const isCollapsed = dom.animationPanel.classList.toggle('timeline-collapsed');
             timelineToggleBtn.textContent = isCollapsed ? '▼' : '▲';
         });
+
+        // --- Animation Panel View Toggles ---
+        if (dom.animBgToggleBtn) {
+            dom.animBgToggleBtn.addEventListener('click', () => {
+                animEditorSettings.bg = (animEditorSettings.bg === 'transparent') ? 'white' : 'transparent';
+                dom.drawingCanvasContainer.classList.toggle('bg-white', animEditorSettings.bg === 'white');
+                dom.animBgToggleBtn.classList.toggle('active', animEditorSettings.bg === 'white');
+            });
+        }
+
+        if (dom.animGridToggleBtn) {
+            dom.animGridToggleBtn.addEventListener('click', () => {
+                animEditorSettings.grid = !animEditorSettings.grid;
+                dom.animGridToggleBtn.classList.toggle('active', animEditorSettings.grid);
+                drawAnimEditorGrid();
+            });
+        }
+
+        if (dom.animOnionToggleBtn) {
+            dom.animOnionToggleBtn.addEventListener('click', () => {
+                animEditorSettings.onionSkin = !animEditorSettings.onionSkin;
+                dom.animOnionToggleBtn.classList.toggle('active', animEditorSettings.onionSkin);
+                drawOnionSkin();
+            });
+        }
+
 
         dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
         dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
