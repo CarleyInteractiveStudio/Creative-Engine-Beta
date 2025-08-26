@@ -1539,7 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
                 }
                 // Draw gizmos for all materias in the scene view
-                drawGizmos(targetRenderer, materia);
+                drawWorldGizmos(targetRenderer, materia);
             }
 
             // Reset alpha if it was changed
@@ -1568,12 +1568,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // In the editor, draw an outline for all UI elements for easy visualization
-            if (!isGameView && typeof rectTransform.getWorldRect === 'function') {
+            if (!isGameView) {
                 const worldRect = rectTransform.getWorldRect(targetRenderer.canvas);
                 targetRenderer.ctx.strokeStyle = 'rgba(0, 150, 255, 0.7)';
                 targetRenderer.ctx.lineWidth = 1;
                 targetRenderer.ctx.strokeRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+
+                // Draw gizmos for UI elements
+                drawUIGizmos(targetRenderer, materia);
             }
+
 
              // Draw selection outline for UI elements
             if (!isGameView && selectedMateria && selectedMateria.id === materia.id && typeof rectTransform.getWorldRect === 'function') {
@@ -2119,7 +2123,7 @@ function update(deltaTime) {
 
     const GIZMO_HANDLE_SIZE = 10; // In screen pixels
 
-    function drawGizmos(renderer, materia) {
+    function drawWorldGizmos(renderer, materia) {
         const transform = materia.getComponent(Components.Transform);
         if (!transform) return;
 
@@ -2138,7 +2142,7 @@ function update(deltaTime) {
         const camera = renderer.camera;
 
         // Gizmo positions are in world space, but their size is constant on screen
-        const handleScreenSize = GIZMO_HANDLE_SIZE / camera.zoom;
+        const handleScreenSize = GIZMO_HANDLE_SIZE / camera.effectiveZoom;
         const halfHandleSize = handleScreenSize / 2;
 
         const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
@@ -2152,7 +2156,7 @@ function update(deltaTime) {
         ctx.save();
         ctx.fillStyle = 'red';
         ctx.strokeStyle = 'red';
-        ctx.lineWidth = 2 / camera.zoom;
+        ctx.lineWidth = 2 / camera.effectiveZoom;
 
         if (activeTool === 'move') {
             // Y-axis arrow
@@ -2180,7 +2184,7 @@ function update(deltaTime) {
             ctx.fill();
         } else if (activeTool === 'scale') {
             ctx.strokeStyle = 'blue';
-            ctx.lineWidth = 3 / camera.zoom;
+            ctx.lineWidth = 3 / camera.effectiveZoom;
             const cornerSize = handleScreenSize * 1.5;
 
             // Top-left corner
@@ -2215,11 +2219,45 @@ function update(deltaTime) {
         ctx.restore();
     }
 
+    function drawUIGizmos(renderer, materia) {
+        if (!selectedMateria || selectedMateria.id !== materia.id) {
+            return; // Only draw for the selected materia
+        }
+
+        const rectTransform = materia.getComponent(Components.RectTransform);
+        if (!rectTransform) return;
+
+        const worldRect = rectTransform.getWorldRect(renderer.canvas);
+        const ctx = renderer.ctx;
+
+        const handleSize = 8;
+        const halfHandle = handleSize / 2;
+
+        // Handle positions, named for the next step (interaction)
+        const positions = {
+            'top-left':     { x: worldRect.x, y: worldRect.y },
+            'top-center':   { x: worldRect.x + worldRect.width / 2, y: worldRect.y },
+            'top-right':    { x: worldRect.x + worldRect.width, y: worldRect.y },
+            'middle-left':  { x: worldRect.x, y: worldRect.y + worldRect.height / 2 },
+            'middle-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height / 2 },
+            'bottom-left':  { x: worldRect.x, y: worldRect.y + worldRect.height },
+            'bottom-center':{ x: worldRect.x + worldRect.width / 2, y: worldRect.y + worldRect.height },
+            'bottom-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height },
+        };
+
+        ctx.fillStyle = '#00aaff'; // A distinct color for UI handles
+
+        for (const key in positions) {
+            const pos = positions[key];
+            ctx.fillRect(pos.x - halfHandle, pos.y - halfHandle, handleSize, handleSize);
+        }
+    }
+
     function getGizmoHandleAt(worldPos, materia, renderer) {
         const transform = materia.getComponent(Components.Transform);
         if (!transform) return null;
 
-        const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.zoom;
+        const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.effectiveZoom;
         const w = (selectedMateria.getComponent(Components.BoxCollider)?.width ?? 100) * transform.scale.x;
         const h = (selectedMateria.getComponent(Components.BoxCollider)?.height ?? 100) * transform.scale.y;
         const x = transform.x;
@@ -2247,6 +2285,53 @@ function update(deltaTime) {
         if (worldPos.x >= x - w/2 && worldPos.x <= x + w/2 && worldPos.y >= y - h/2 && worldPos.y <= y + h/2) {
             return 'move-body';
         }
+
+        return null;
+    }
+
+    function getUIGizmoHandleAt(screenPos, materia, renderer) {
+        if (!materia) return null;
+
+        const rectTransform = materia.getComponent(Components.RectTransform);
+        if (!rectTransform) return null;
+
+        const worldRect = rectTransform.getWorldRect(renderer.canvas);
+        const handleSize = 8; // Use the same size as drawing
+        const halfHandle = handleSize / 2;
+
+        const positions = {
+            'top-left':     { x: worldRect.x, y: worldRect.y },
+            'top-center':   { x: worldRect.x + worldRect.width / 2, y: worldRect.y },
+            'top-right':    { x: worldRect.x + worldRect.width, y: worldRect.y },
+            'middle-left':  { x: worldRect.x, y: worldRect.y + worldRect.height / 2 },
+            'middle-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height / 2 },
+            'bottom-left':  { x: worldRect.x, y: worldRect.y + worldRect.height },
+            'bottom-center':{ x: worldRect.x + worldRect.width / 2, y: worldRect.y + worldRect.height },
+            'bottom-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height },
+        };
+
+        for (const key in positions) {
+            const pos = positions[key];
+            if (
+                screenPos.x >= pos.x - halfHandle &&
+                screenPos.x <= pos.x + halfHandle &&
+                screenPos.y >= pos.y - halfHandle &&
+                screenPos.y <= pos.y + halfHandle
+            ) {
+                return key; // Return the name of the handle
+            }
+        }
+
+        // Also check for the body of the rect for moving
+        if (
+            screenPos.x >= worldRect.x &&
+            screenPos.x <= worldRect.x + worldRect.width &&
+            screenPos.y >= worldRect.y &&
+            screenPos.y <= worldRect.y + worldRect.height
+        ) {
+            return 'body';
+        }
+
 
         return null;
     }
@@ -2636,7 +2721,7 @@ function update(deltaTime) {
 
         // --- Scene Canvas Mouse Listeners for Tools ---
         dom.sceneCanvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Only handle left-clicks
+            if (e.button !== 0) return;
 
             if (activeTool === 'pan') {
                 isPanning = true;
@@ -2645,54 +2730,83 @@ function update(deltaTime) {
                 return;
             }
 
-            let handle = null;
             const screenPos = InputManager.getMousePositionInCanvas();
-            let worldPos = null;
+            let handle = null;
+            let targetMateria = null;
 
-
-            if (selectedMateria) {
-                if (renderer.camera) {
-                    worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-                    handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+            // --- 1. Check for UI Gizmo Interaction First ---
+            if (selectedMateria && selectedMateria.getComponent(Components.RectTransform)) {
+                handle = getUIGizmoHandleAt(screenPos, selectedMateria, renderer);
+                if (handle) {
+                    isDragging = true;
+                    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+                    dragState = {
+                        type: 'ui',
+                        handle,
+                        materia: selectedMateria,
+                        initialX: rectTransform.x,
+                        initialY: rectTransform.y,
+                        initialWidth: rectTransform.width,
+                        initialHeight: rectTransform.height,
+                        startMouseX: screenPos.x,
+                        startMouseY: screenPos.y,
+                    };
+                    return; // Stop further checks
                 }
             }
 
-            if (handle) {
-                isDragging = true;
-                const transform = selectedMateria.getComponent(Components.Transform); // This works for RectTransform too
-                dragState = {
-                    handle,
-                    materia: selectedMateria,
-                    initialX: transform.x,
-                    initialY: transform.y,
-                    initialScaleX: transform.scale.x,
-                    initialScaleY: transform.scale.y,
-                    startMouseWorldX: worldPos ? worldPos.x : 0,
-                    startMouseWorldY: worldPos ? worldPos.y : 0,
-                };
-            } else {
-                // If not clicking a handle, check for selecting a new materia
-                let clickedMateria = null;
-                if (renderer.camera) {
-                    worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-                    for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+            // --- 2. Check for World Gizmo Interaction ---
+            const worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+            if (selectedMateria) {
+                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+                if (handle) {
+                    isDragging = true;
+                    const transform = selectedMateria.getComponent(Components.Transform);
+                    dragState = {
+                        type: 'world',
+                        handle,
+                        materia: selectedMateria,
+                        initialX: transform.x,
+                        initialY: transform.y,
+                        initialScaleX: transform.scale.x,
+                        initialScaleY: transform.scale.y,
+                        startMouseWorldX: worldPos.x,
+                        startMouseWorldY: worldPos.y,
+                    };
+                    return; // Stop further checks
+                }
+            }
+
+            // --- 3. Check for Object Selection ---
+            // Prioritize selecting UI elements if clicking in their rect
+            for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+                if (materia.getComponent(Components.RectTransform)) {
+                    if (getUIGizmoHandleAt(screenPos, materia, renderer) === 'body') {
+                        targetMateria = materia;
+                        break;
+                    }
+                }
+            }
+            // If no UI element was clicked, check for world elements
+            if (!targetMateria) {
+                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+                     if (!materia.getComponent(Components.RectTransform)) {
                         if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
-                            clickedMateria = materia;
+                            targetMateria = materia;
                             break;
                         }
                     }
                 }
+            }
 
-
-                if (clickedMateria) {
-                    selectMateria(clickedMateria.id);
-                } else {
-                    // This is a click on an empty area, start panning
-                    isPanning = true;
-                    dom.sceneCanvas.classList.add('is-panning');
-                    lastMousePosition = { x: e.clientX, y: e.clientY };
-                    selectMateria(null);
-                }
+            if (targetMateria) {
+                selectMateria(targetMateria.id);
+            } else {
+                // --- 4. Fallback to Panning ---
+                isPanning = true;
+                dom.sceneCanvas.classList.add('is-panning');
+                lastMousePosition = { x: e.clientX, y: e.clientY };
+                selectMateria(null);
             }
         });
 
@@ -2707,41 +2821,62 @@ function update(deltaTime) {
                     camTransform.y -= dy;
                 }
                 lastMousePosition = { x: e.clientX, y: e.clientY };
-                updateScene(renderer, false); // Re-render on pan
+                updateScene(renderer, false);
+                return;
             }
 
             if (isDragging) {
-                const transform = dragState.materia.getComponent(Components.Transform); // Works for both
-                let dx, dy;
+                if (dragState.type === 'world') {
+                    const transform = dragState.materia.getComponent(Components.Transform);
+                    const worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
+                    const dx = worldPos.x - dragState.startMouseWorldX;
+                    const dy = worldPos.y - dragState.startMouseWorldY;
 
-                if (!renderer.camera) return;
-                const worldPos = InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-                dx = worldPos.x - dragState.startMouseWorldX;
-                dy = worldPos.y - dragState.startMouseWorldY;
-
-
-                if (dragState.handle.startsWith('move')) {
-                    let newX = dragState.initialX + dx;
-                    let newY = dragState.initialY + dy;
-
-                    if (currentPreferences.snapping) {
-                        const gridSize = parseInt(currentPreferences.gridSize, 10) || 25;
-                        newX = Math.round(newX / gridSize) * gridSize;
-                        newY = Math.round(newY / gridSize) * gridSize;
+                    if (dragState.handle.startsWith('move')) {
+                        let newX = dragState.initialX + dx;
+                        let newY = dragState.initialY + dy;
+                        if (currentPreferences.snapping) {
+                            const gridSize = parseInt(currentPreferences.gridSize, 10) || 25;
+                            newX = Math.round(newX / gridSize) * gridSize;
+                            newY = Math.round(newY / gridSize) * gridSize;
+                        }
+                        if (dragState.handle.includes('x')) transform.x = newX;
+                        if (dragState.handle.includes('y')) transform.y = newY;
+                         if (dragState.handle === 'move-body') {
+                             transform.x = newX;
+                             transform.y = newY;
+                         }
+                    } else if (dragState.handle.startsWith('scale')) {
+                        const newScaleX = dragState.initialScaleX + (dx / 100);
+                        const newScaleY = dragState.initialScaleY - (dy / 100);
+                        transform.scale.x = Math.max(0.1, newScaleX);
+                        transform.scale.y = Math.max(0.1, newScaleY);
                     }
+                } else if (dragState.type === 'ui') {
+                    const rectTransform = dragState.materia.getComponent(Components.RectTransform);
+                    const screenPos = InputManager.getMousePositionInCanvas();
+                    const dx = screenPos.x - dragState.startMouseX;
+                    const dy = screenPos.y - dragState.startMouseY;
 
-                     if (dragState.handle === 'move-x' || dragState.handle === 'move-body') {
-                        transform.x = newX;
-                     }
-                     if (dragState.handle === 'move-y' || dragState.handle === 'move-body') {
-                        transform.y = newY;
-                     }
-                } else if (dragState.handle.startsWith('scale')) {
-                     // World-space elements scale by changing scale factor
-                    const newScaleX = dragState.initialScaleX + (dx / 100);
-                    const newScaleY = dragState.initialScaleY - (dy / 100); // Invert Y
-                    transform.scale.x = Math.max(0.1, newScaleX);
-                    transform.scale.y = Math.max(0.1, newScaleY);
+                    if (dragState.handle === 'body') {
+                        rectTransform.x = dragState.initialX + dx;
+                        rectTransform.y = dragState.initialY + dy;
+                    } else {
+                        if (dragState.handle.includes('left')) {
+                            rectTransform.width = dragState.initialWidth - dx;
+                            rectTransform.x = dragState.initialX + dx;
+                        }
+                        if (dragState.handle.includes('right')) {
+                            rectTransform.width = dragState.initialWidth + dx;
+                        }
+                        if (dragState.handle.includes('top')) {
+                            rectTransform.height = dragState.initialHeight - dy;
+                            rectTransform.y = dragState.initialY + dy;
+                        }
+                        if (dragState.handle.includes('bottom')) {
+                            rectTransform.height = dragState.initialHeight + dy;
+                        }
+                    }
                 }
 
                 updateInspector();
