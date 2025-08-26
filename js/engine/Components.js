@@ -5,7 +5,10 @@ import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 
+// --- Component Class Definitions ---
+
 export class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
+
 export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
@@ -15,6 +18,7 @@ export class Camera extends Leyes {
 }
 
 export class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
+
 export class Rigidbody extends Leyes {
     constructor(materia) {
         super(materia);
@@ -140,10 +144,8 @@ export class Animator extends Leyes {
                     this.currentFrame = 0;
                 } else {
                     this.currentFrame = animation.frames.length - 1; // Stay on last frame
-                    // Here we would check for transitions in the future
                 }
             }
-            // The animation frames are pre-loaded data URLs from the .cea file
             this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
         }
     }
@@ -156,8 +158,8 @@ export class RectTransform extends Leyes {
         this.y = 0;
         this.width = 100;
         this.height = 100;
-        this.pivot = { x: 0.5, y: 0.5 }; // Center pivot
-        this.anchorMin = { x: 0.5, y: 0.5 }; // Center anchor
+        this.pivot = { x: 0.5, y: 0.5 };
+        this.anchorMin = { x: 0.5, y: 0.5 };
         this.anchorMax = { x: 0.5, y: 0.5 };
     }
 }
@@ -165,21 +167,15 @@ export class RectTransform extends Leyes {
 export class UICanvas extends Leyes {
     constructor(materia) {
         super(materia);
-        this.renderMode = 'ScreenSpaceOverlay'; // 'ScreenSpaceOverlay' or 'WorldSpace'
+        this.renderMode = 'ScreenSpaceOverlay';
     }
 }
 
-registerComponent('CreativeScript', CreativeScript);
-registerComponent('Rigidbody', Rigidbody);
-registerComponent('BoxCollider', BoxCollider);
-registerComponent('Transform', Transform);
-registerComponent('Camera', Camera);
-registerComponent('SpriteRenderer', SpriteRenderer);
 export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
-        this.source = ''; // Path to the image, relative to project root
+        this.source = '';
         this.color = '#ffffff';
     }
 
@@ -195,6 +191,14 @@ export class UIImage extends Leyes {
     }
 }
 
+// --- Component Registration ---
+
+registerComponent('CreativeScript', CreativeScript);
+registerComponent('Rigidbody', Rigidbody);
+registerComponent('BoxCollider', BoxCollider);
+registerComponent('Transform', Transform);
+registerComponent('Camera', Camera);
+registerComponent('SpriteRenderer', SpriteRenderer);
 registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
