@@ -2777,6 +2777,21 @@ function getUiGizmoHandleAt(screenPos, materia) {
             }
         });
 
+        // --- Hierarchy Context Menu Activation ---
+        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const item = e.target.closest('.hierarchy-item');
+            if (item) {
+                const materiaId = parseInt(item.dataset.id, 10);
+                if (selectedMateria?.id !== materiaId) {
+                    selectMateria(materiaId);
+                }
+            } else {
+                selectMateria(null);
+            }
+            showContextMenu(dom.hierarchyContextMenu, e);
+        });
+
         // --- Scene Canvas Mouse Listeners for Tools ---
         dom.sceneCanvas.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return; // Only handle left-clicks
