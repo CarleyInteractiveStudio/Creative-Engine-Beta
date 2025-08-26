@@ -15,7 +15,16 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
     }
 
-    begin() {
+    begin(isUiPass = false) {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.save();
+
+        if (isUiPass) {
+            // For UI, we don't use a camera. We draw directly to screen coordinates.
+            // The canvas is already cleared, and the context is saved. Nothing more to do.
+            return;
+        }
+
         const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
         let cameraComponent;
         let cameraTransform;
@@ -39,9 +48,6 @@ export class Renderer {
             // Game view zoom is determined by ortho size, editor can have its own zoom
             effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
         } : null;
-
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save();
 
         if (!this.camera) return;
 

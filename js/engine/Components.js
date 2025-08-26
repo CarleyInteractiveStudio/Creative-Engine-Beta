@@ -149,10 +149,53 @@ export class Animator extends Leyes {
     }
 }
 
+export class RectTransform extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.x = 0;
+        this.y = 0;
+        this.width = 100;
+        this.height = 100;
+        this.pivot = { x: 0.5, y: 0.5 }; // Center pivot
+        this.anchorMin = { x: 0.5, y: 0.5 }; // Center anchor
+        this.anchorMax = { x: 0.5, y: 0.5 };
+    }
+}
+
+export class UICanvas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.renderMode = 'ScreenSpaceOverlay'; // 'ScreenSpaceOverlay' or 'WorldSpace'
+    }
+}
+
 registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody', Rigidbody);
 registerComponent('BoxCollider', BoxCollider);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
+export class UIImage extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sprite = new Image();
+        this.source = ''; // Path to the image, relative to project root
+        this.color = '#ffffff';
+    }
+
+    async loadSprite(projectsDirHandle) {
+        if (this.source) {
+            const url = await getURLForAssetPath(this.source, projectsDirHandle);
+            if (url) {
+                this.sprite.src = url;
+            }
+        } else {
+            this.sprite.src = '';
+        }
+    }
+}
+
 registerComponent('Animator', Animator);
+registerComponent('RectTransform', RectTransform);
+registerComponent('UICanvas', UICanvas);
+registerComponent('UIImage', UIImage);
