@@ -17,15 +17,6 @@ export class Camera extends Leyes {
     }
 }
 
-export class UIButton extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.targetGraphic = null; // A reference to a UIImage component
-        this.onClick = []; // An array of functions to call on click
-        this.currentState = 'normal'; // 'normal', 'hover', 'pressed', 'disabled'
-    }
-}
-
 export class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
 
 export class Rigidbody extends Leyes {
@@ -171,6 +162,32 @@ export class RectTransform extends Leyes {
         this.anchorMin = { x: 0.5, y: 0.5 };
         this.anchorMax = { x: 0.5, y: 0.5 };
     }
+
+    getWorldRect(parentCanvas) {
+        // For now, a simplified version that doesn't handle nesting.
+        // It assumes the parent is the main canvas.
+        const parentWidth = parentCanvas.width;
+        const parentHeight = parentCanvas.height;
+
+        // Calculate anchor positions in pixels
+        const anchorMinX = parentWidth * this.anchorMin.x;
+        const anchorMinY = parentHeight * this.anchorMin.y;
+
+        // Calculate the position of the pivot point relative to the anchors
+        const pivotPosX = anchorMinX + this.x;
+        const pivotPosY = anchorMinY + this.y;
+
+        // Calculate the top-left corner of the rectangle based on the pivot
+        const rectX = pivotPosX - (this.width * this.pivot.x);
+        const rectY = pivotPosY - (this.height * this.pivot.y);
+
+        return {
+            x: rectX,
+            y: rectY,
+            width: this.width,
+            height: this.height
+        };
+    }
 }
 
 export class UICanvas extends Leyes {
@@ -212,4 +229,3 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
-registerComponent('UIButton', UIButton);

@@ -15,15 +15,12 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
     }
 
-    begin(isUiPass = false) {
+    clear() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.save();
+    }
 
-        if (isUiPass) {
-            // For UI, we don't use a camera. We draw directly to screen coordinates.
-            // The canvas is already cleared, and the context is saved. Nothing more to do.
-            return;
-        }
+    beginWorld() {
+        this.ctx.save();
 
         const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
         let cameraComponent;
@@ -49,11 +46,22 @@ export class Renderer {
             effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
         } : null;
 
-        if (!this.camera) return;
+        if (!this.camera) {
+            // If there's no camera, we still need to save the context so end() works
+            // but we don't apply any transformations.
+            return;
+        }
+
 
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
         this.ctx.translate(-this.camera.x, -this.camera.y);
+    }
+
+    beginUI() {
+        this.ctx.save();
+        // Reset transform to identity for screen-space UI rendering
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     end() {
