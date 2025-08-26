@@ -6,7 +6,7 @@ import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { CreativeScript, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform } from './engine/Components.js';
+import { CreativeScript, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform, RectTransform, UICanvas, UIImage } from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let physicsSystem = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move'; // 'move', 'pan', 'scale'
     let isPanning = false;
+    let lastMousePosition = { x: 0, y: 0 };
     let dragState = {}; // To hold info about the current drag operation
 
     // Animation Editor State
@@ -1812,30 +1813,30 @@ document.addEventListener('DOMContentLoaded', () => {
     runLayoutUpdate = function() {
         if (!SceneManager.currentScene) return;
 
-        const layoutGroups = [];
-        // First, find all layout groups
-        for (const materia of SceneManager.currentScene.materias) {
-            const hg = materia.getComponent(HorizontalLayoutGroup);
-            if (hg) layoutGroups.push(hg);
+        // const layoutGroups = [];
+        // // First, find all layout groups
+        // for (const materia of SceneManager.currentScene.materias) {
+        //     const hg = materia.getComponent(HorizontalLayoutGroup);
+        //     if (hg) layoutGroups.push(hg);
 
-            const vg = materia.getComponent(VerticalLayoutGroup);
-            if (vg) layoutGroups.push(vg);
+        //     const vg = materia.getComponent(VerticalLayoutGroup);
+        //     if (vg) layoutGroups.push(vg);
 
-            const gg = materia.getComponent(GridLayoutGroup);
-            if (gg) layoutGroups.push(gg);
+        //     const gg = materia.getComponent(GridLayoutGroup);
+        //     if (gg) layoutGroups.push(gg);
 
-            const csf = materia.getComponent(ContentSizeFitter);
-            if (csf) layoutGroups.push(csf);
+        //     const csf = materia.getComponent(ContentSizeFitter);
+        //     if (csf) layoutGroups.push(csf);
 
-            const arf = materia.getComponent(AspectRatioFitter);
-            if (arf) layoutGroups.push(arf);
-        }
+        //     const arf = materia.getComponent(AspectRatioFitter);
+        //     if (arf) layoutGroups.push(arf);
+        // }
 
-        // Now, update them. A single pass is sufficient for now.
-        // A more robust system might need multiple passes or a top-down/bottom-up approach.
-        for (const layout of layoutGroups) {
-            layout.update();
-        }
+        // // Now, update them. A single pass is sufficient for now.
+        // // A more robust system might need multiple passes or a top-down/bottom-up approach.
+        // for (const layout of layoutGroups) {
+        //     layout.update();
+        // }
     };
 
     runGameLoop = function() {
