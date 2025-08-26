@@ -2256,6 +2256,7 @@ function update(deltaTime) {
     }
 
     function getGizmoHandleAt(worldPos, materia, renderer) {
+        if (!renderer.camera) return null;
         const transform = materia.getComponent(Components.Transform);
         if (!transform) return null;
 

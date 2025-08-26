@@ -271,8 +271,8 @@ class InputManager {
         if (!canvas || !camera) return { x: 0, y: 0 };
         const canvasPos = this._mousePositionInCanvas;
 
-        const worldX = (canvasPos.x - canvas.width / 2) / camera.zoom + camera.x;
-        const worldY = (canvasPos.y - canvas.height / 2) / camera.zoom + camera.y;
+        const worldX = (canvasPos.x - canvas.width / 2) / camera.effectiveZoom + camera.x;
+        const worldY = (canvasPos.y - canvas.height / 2) / camera.effectiveZoom + camera.y;
 
         return { x: worldX, y: worldY };
     }
