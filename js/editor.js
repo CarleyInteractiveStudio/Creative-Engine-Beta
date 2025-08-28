@@ -373,6 +373,169 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    createUiSystemFile = async function(dirHandle) {
+        const fileName = "nuevo-ui.ceui";
+        try {
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            const defaultContent = {
+                name: "Nuevo UI",
+                elements: [
+                    {
+                        id: 'element_' + Date.now(),
+                        name: "Panel Base",
+                        type: "Panel",
+                        props: {
+                            x: 50,
+                            y: 50,
+                            width: 200,
+                            height: 150,
+                            color: "#333333"
+                        }
+                    }
+                ]
+            };
+            await writable.write(JSON.stringify(defaultContent, null, 2));
+            await writable.close();
+            await updateAssetBrowser();
+            console.log(`Creado archivo de UI: ${fileName}`);
+        } catch (err) {
+            console.error("Error al crear el archivo de UI:", err);
+            alert("No se pudo crear el archivo de UI.");
+        }
+    };
+
+    openUiEditor = function() {
+        if (!dom.uiEditorPanel) return;
+        dom.uiEditorPanel.classList.remove('hidden');
+        initUIEditorResizers();
+    };
+
+    openUiAsset = async function(fileHandle) {
+        try {
+            uiEditorFileHandle = fileHandle;
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            currentUiAsset = JSON.parse(content);
+            selectedUiElement = null;
+
+            console.log(`UI Asset cargado: ${fileHandle.name}`, currentUiAsset);
+
+            openUiEditor();
+
+            renderUiHierarchy();
+            renderUiCanvas();
+            renderUiInspector();
+
+        } catch (error) {
+            console.error(`Error al abrir el asset UI '${fileHandle.name}':`, error);
+            alert("No se pudo abrir el asset de UI.");
+        }
+    };
+
+    renderUiHierarchy = function() {
+        if (!dom.uiHierarchyPanel || !currentUiAsset) return;
+        const container = dom.uiHierarchyPanel.querySelector('.panel-content');
+        container.innerHTML = '';
+
+        function renderNode(element, parentElement, depth) {
+            const item = document.createElement('div');
+            item.className = 'hierarchy-item';
+            item.textContent = `${element.name} (${element.type})`;
+            item.dataset.id = element.id;
+            item.style.paddingLeft = `${depth * 15}px`;
+
+            if (selectedUiElement && selectedUiElement.id === element.id) {
+                item.classList.add('active');
+            }
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedUiElement = currentUiAsset.elements.find(el => el.id === element.id);
+                renderUiHierarchy();
+                renderUiInspector();
+                renderUiCanvas();
+            });
+
+            parentElement.appendChild(item);
+        }
+
+        currentUiAsset.elements.forEach(el => renderNode(el, container, 0));
+    };
+
+    renderUiCanvas = function() {
+        if (!dom.uiCanvas || !currentUiAsset) return;
+        const canvas = dom.uiCanvas;
+        const ctx = canvas.getContext('2d');
+
+        const containerRect = dom.uiCanvasContainer.getBoundingClientRect();
+        canvas.width = containerRect.width;
+        canvas.height = containerRect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const TILE_SIZE = 20;
+        ctx.fillStyle = '#444';
+        for (let y = 0; y < canvas.height; y += TILE_SIZE * 2) {
+            for (let x = 0; x < canvas.width; x += TILE_SIZE * 2) {
+                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(x + TILE_SIZE, y + TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+        ctx.fillStyle = '#555';
+        for (let y = 0; y < canvas.height; y += TILE_SIZE * 2) {
+            for (let x = 0; x < canvas.width; x += TILE_SIZE * 2) {
+                ctx.fillRect(x + TILE_SIZE, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(x, y + TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+
+        currentUiAsset.elements.forEach(el => {
+            ctx.fillStyle = el.props.color || '#cccccc';
+            ctx.fillRect(el.props.x, el.props.y, el.props.width, el.props.height);
+
+            if (selectedUiElement && selectedUiElement.id === el.id) {
+                ctx.strokeStyle = 'yellow';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(el.props.x, el.props.y, el.props.width, el.props.height);
+            }
+        });
+    };
+
+    renderUiInspector = function() {
+        if (!dom.uiInspectorPanel) return;
+        const container = dom.uiInspectorPanel.querySelector('.panel-content');
+
+        if (!selectedUiElement) {
+            container.innerHTML = '<p class="inspector-placeholder">Selecciona un elemento UI</p>';
+            return;
+        }
+
+        let propsHtml = '';
+        for (const key in selectedUiElement.props) {
+            const value = selectedUiElement.props[key];
+            let inputType = 'text';
+            if (typeof value === 'number') inputType = 'number';
+            if (key === 'color') inputType = 'color';
+
+            propsHtml += `
+                <div class="prop-row">
+                    <label>${key}</label>
+                    <input type="${inputType}" class="prop-input" data-prop="${key}" value="${value}">
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="inspector-materia-header">
+                 <input type="text" id="ui-element-name-input" value="${selectedUiElement.name}">
+            </div>
+            <div class="component-grid">
+                ${propsHtml}
+            </div>
+        `;
+    };
+
     runChecksAndPlay = async function() {
         if (!projectsDirHandle) {
             alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
@@ -1879,877 +2042,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
-    var createUISystemFile, openUIEditor, openUIEditorPanel, updateUIEditorHierarchy, updateUIInspector, drawUIEditorCanvas;
-
-    drawUIEditorCanvas = function() {
-        if (!dom.uiEditorCanvas || !currentUISystem) return;
-
-        const canvas = dom.uiEditorCanvas;
-        const ctx = canvas.getContext('2d');
-
-        // Clear canvas with the root element's background color
-        ctx.fillStyle = currentUISystem.root.backgroundColor || 'rgba(0,0,0,0)';
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear with transparency first
-        ctx.fillRect(0, 0, canvas.width, canvas.height); // Then fill with color
-
-        function drawElement(element) {
-            // Draw rectangle
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.fillStyle = 'rgba(0, 150, 255, 0.3)';
-
-            // Highlight selected element
-            if (selectedUIElement && selectedUIElement.name === element.name) { // Note: using name as ID for now
-                 ctx.strokeStyle = '#FFFF00'; // Yellow for selection
-                 ctx.lineWidth = 2;
-            } else {
-                 ctx.strokeStyle = '#FFFFFF';
-                 ctx.lineWidth = 1;
-            }
-
-            ctx.fillRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
-            ctx.strokeRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
-
-            // Draw text
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '14px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(element.name, element.rect.x + element.rect.width / 2, element.rect.y + element.rect.height / 2);
-
-            // Recursively draw children
-            if (element.children && element.children.length > 0) {
-                element.children.forEach(drawElement);
-            }
-        }
-
-        drawElement(currentUISystem.root);
-    };
-
-    updateUIInspector = function() {
-        if (!dom.uiEditorInspector) return;
-        const container = dom.uiEditorInspector.querySelector('.inspector-content');
-
-        if (!selectedUIElement) {
-            container.innerHTML = '<p>Selecciona un elemento.</p><button id="add-layer-btn">Agregar Leyes</button>';
-            return;
-        }
-
-        let inspectorHTML = `
-            <div class="inspector-materia-header">
-                <input type="text" value="${selectedUIElement.name}" readonly>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 0.9em;">Type: ${selectedUIElement.type}</p>
-            <fieldset>
-                <legend>Rect Transform</legend>
-                <div class="component-grid">
-                    <div class="prop-row"><label>X</label><input type="number" readonly value="${selectedUIElement.rect.x}"></div>
-                    <div class="prop-row"><label>Y</label><input type="number" readonly value="${selectedUIElement.rect.y}"></div>
-                    <div class="prop-row"><label>Width</label><input type="number" readonly value="${selectedUIElement.rect.width}"></div>
-                    <div class="prop-row"><label>Height</label><input type="number" readonly value="${selectedUIElement.rect.height}"></div>
-                </div>
-            </fieldset>
-        `;
-
-        if (selectedUIElement.type === 'Canvas') {
-            inspectorHTML += `
-            <fieldset>
-                <legend>Canvas</legend>
-                <div class="component-grid">
-                    <label>Background Color</label><input type="color" class="prop-input" data-prop="backgroundColor" value="${selectedUIElement.backgroundColor}">
-                </div>
-            </fieldset>
-            `;
-        }
-
-        inspectorHTML += `<button id="add-layer-btn">Agregar Leyes</button>`;
-
-        container.innerHTML = inspectorHTML;
-
-        // Add event listener for the new color picker
-        const colorInput = container.querySelector('input[data-prop="backgroundColor"]');
-        if (colorInput) {
-            colorInput.addEventListener('input', (e) => {
-                selectedUIElement.backgroundColor = e.target.value;
-                drawUIEditorCanvas();
-            });
-        }
-
-        drawUIEditorCanvas(); // Redraw canvas to show selection highlight
-    };
-
-    updateUIEditorHierarchy = function() {
-        if (!currentUISystem || !dom.uiEditorHierarchy) return;
-
-        const container = dom.uiEditorHierarchy.querySelector('.list-content');
-        container.innerHTML = '';
-        selectedUIElement = null;
-        updateUIInspector();
-
-        function renderNode(uiElement, parentElement, depth) {
-            const item = document.createElement('div');
-            item.className = 'hierarchy-item';
-            item.textContent = uiElement.name;
-            item.style.paddingLeft = `${depth * 18}px`;
-
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                const currentActive = container.querySelector('.hierarchy-item.active');
-                if (currentActive) {
-                    currentActive.classList.remove('active');
-                }
-
-                item.classList.add('active');
-                selectedUIElement = uiElement;
-                updateUIInspector();
-            });
-
-            parentElement.appendChild(item);
-
-            if (uiElement.children && uiElement.children.length > 0) {
-                uiElement.children.forEach(child => {
-                    renderNode(child, parentElement, depth + 1);
-                });
-            }
-        }
-
-        renderNode(currentUISystem.root, container, 0);
-    };
-
-    openUIEditorPanel = function() {
-        if (!uiEditorResizersInitialized) {
-            initUIEditorResizers();
-            uiEditorResizersInitialized = true;
-        }
-
-        // If there's no system loaded at all, create a default one.
-        if (!currentUISystem) {
-            currentUISystem = {
-                version: 1,
-                root: { type: 'Canvas', name: 'Canvas', backgroundColor: 'rgba(0,0,0,0)', rect: { x: 0, y: 0, width: 800, height: 600 }, children: [] }
-            };
-            currentUIFileHandle = null;
-        }
-
-        // Update title based on whether a file is loaded
-        if (currentUIFileHandle) {
-            dom.currentUiAssetName.textContent = currentUIFileHandle.name;
-        } else {
-            dom.currentUiAssetName.textContent = "Unsaved UI System";
-        }
-
-        updateUIEditorHierarchy();
-        drawUIEditorCanvas();
-        dom.uiEditorPanel.classList.remove('hidden');
-    };
-
-    openUIEditor = async function(fileHandle) {
-        try {
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-            currentUISystem = JSON.parse(content);
-            currentUIFileHandle = fileHandle;
-
-            openUIEditorPanel(); // Open panel with the newly loaded data
-
-            console.log(`Abierto ${fileHandle.name} en el Editor de UI.`, currentUISystem);
-        } catch (error) {
-            console.error(`Error al abrir o parsear el archivo UI '${fileHandle.name}':`, error);
-            alert(`No se pudo abrir el archivo UI. ¿Es un formato JSON válido?`);
-            currentUISystem = null; // Reset on failure
-            currentUIFileHandle = null;
-        }
-    };
-
-    createUISystemFile = async function(directoryHandle) {
-        if (!directoryHandle) {
-            alert("No se ha seleccionado ninguna carpeta.");
-            return;
-        }
-        const fileName = prompt("Introduce el nombre del nuevo Sistema UI (ej: MainMenu):");
-        if (!fileName) return;
-
-        const finalName = fileName.endsWith('.ceui') ? fileName : `${fileName}.ceui`;
-
-        const defaultContent = {
-            version: 1,
-            root: {
-                type: 'Canvas',
-                name: 'Canvas',
-                backgroundColor: 'rgba(0,0,0,0)',
-                rect: { x: 0, y: 0, width: 800, height: 600 },
-                children: []
-            }
-        };
-
-        try {
-            const fileHandle = await directoryHandle.getFileHandle(finalName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(JSON.stringify(defaultContent, null, 2));
-            await writable.close();
-
-            console.log(`Sistema UI '${finalName}' creado en ${directoryHandle.name}.`);
-            await updateAssetBrowser(); // Refresh asset browser
-        } catch(err) {
-            console.error(`Error al crear el sistema UI '${finalName}':`, err);
-            alert(`No se pudo crear el archivo. Revisa la consola para más detalles.`);
-        }
-    };
-
-    function updateWindowMenuUI() {
-        for (const panelName in panelVisibility) {
-            const menuItem = document.getElementById(`menu-window-${panelName}`);
-            if (menuItem) {
-                const isVisible = panelVisibility[panelName];
-                if (isVisible) {
-                    menuItem.textContent = `✓ ${menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '')}`;
-                    if(!menuItem.dataset.baseName) menuItem.dataset.baseName = menuItem.textContent.replace('✓ ', '');
-                } else {
-                    menuItem.textContent = menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '');
-                }
-            }
-        }
-    }
-
-    function updateEditorLayout() {
-        const mainContent = dom.editorMainContent;
-
-        // Set panel and resizer visibility first
-        dom.hierarchyPanel.style.display = panelVisibility.hierarchy ? 'flex' : 'none';
-        dom.resizerLeft.style.display = panelVisibility.hierarchy ? 'block' : 'none';
-        dom.inspectorPanel.style.display = panelVisibility.inspector ? 'flex' : 'none';
-        dom.resizerRight.style.display = panelVisibility.inspector ? 'block' : 'none';
-        dom.assetsPanel.style.display = panelVisibility.assets ? 'flex' : 'none';
-        dom.resizerBottom.style.display = panelVisibility.assets ? 'block' : 'none';
-
-        // Get the current column and row definitions from the inline style, if available.
-        const currentCols = mainContent.style.gridTemplateColumns ? mainContent.style.gridTemplateColumns.split(' ') : [];
-        const currentRows = mainContent.style.gridTemplateRows ? mainContent.style.gridTemplateRows.split(' ') : [];
-
-        // Define default sizes. These should match the initial state in the CSS file.
-        const defaultCols = ['220px', '6px', '1fr', '6px', '320px'];
-        const defaultRows = ['1.5fr', '6px', '1fr'];
-
-        // Use current size if available and valid, otherwise use default.
-        // This preserves user-set sizes unless a panel is hidden.
-        let newCols = defaultCols.map((val, i) => (currentCols[i] && !currentCols[i].endsWith('fr')) ? currentCols[i] : val);
-        let newRows = defaultRows.map((val, i) => (currentRows[i] && !currentRows[i].endsWith('fr')) ? currentRows[i] : val);
-
-        // Now, collapse the tracks for any hidden panels. This overrides any user-set size.
-        if (!panelVisibility.hierarchy) {
-            newCols[0] = '0px';
-            newCols[1] = '0px';
-        }
-        if (!panelVisibility.inspector) {
-            newCols[4] = '0px';
-            newCols[3] = '0px';
-        }
-        if (!panelVisibility.assets) {
-            newRows[2] = '0px';
-            newRows[1] = '0px';
-        }
-
-        mainContent.style.gridTemplateColumns = newCols.join(' ');
-        mainContent.style.gridTemplateRows = newRows.join(' ');
-
-        // The renderer needs to be resized after the layout changes
-        if (renderer) {
-            setTimeout(() => {
-                renderer.resize();
-                if (gameRenderer) gameRenderer.resize();
-            }, 50);
-        }
-    }
-
-    function createEmptyMateria(name = 'Materia Vacio', parent = null) {
-        const newMateria = new Materia(name);
-        newMateria.addComponent(new Components.Transform(newMateria)); // Manually add Transform
-        SceneManager.currentScene.addMateria(newMateria); // Always add to scene
-        if (parent) {
-            parent.addChild(newMateria);
-        }
-        updateHierarchy();
-        selectMateria(newMateria.id);
-        return newMateria; // Return the new materia for chaining
-    }
-
-    function createUIEmptyMateria(name = 'UI Materia', parent = null) {
-        const newMateria = new Materia(name);
-        newMateria.addComponent(new Components.RectTransform(newMateria)); // Add RectTransform for UI elements
-        SceneManager.currentScene.addMateria(newMateria);
-        if (parent) {
-            parent.addChild(newMateria);
-        }
-        updateHierarchy();
-        selectMateria(newMateria.id);
-        return newMateria;
-    }
-
-    function showContextMenu(menu, e) {
-        // First, hide any other context menus
-        dom.contextMenu.style.display = 'none';
-        dom.hierarchyContextMenu.style.display = 'none';
-        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
-
-        menu.style.display = 'block';
-        let x = e.clientX;
-        let y = e.clientY;
-
-        const menuWidth = menu.offsetWidth;
-        const menuHeight = menu.offsetHeight;
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-
-        if (x + menuWidth > windowWidth) {
-            x = windowWidth - menuWidth - 5;
-        }
-        if (y + menuHeight > windowHeight) {
-            y = windowHeight - menuHeight - 5;
-        }
-
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-
-        // Check and reposition submenus
-        const submenus = menu.querySelectorAll('.submenu');
-        submenus.forEach(submenu => {
-            const parentItem = submenu.parentElement.getBoundingClientRect();
-            const submenuHeight = submenu.offsetHeight; // This might be 0 if not displayed, need to temporarily show it
-
-            // Temporarily display to measure
-            submenu.style.visibility = 'hidden';
-            submenu.style.display = 'block';
-            const realHeight = submenu.offsetHeight;
-            submenu.style.visibility = '';
-            submenu.style.display = '';
-
-            if (parentItem.top + realHeight > windowHeight) {
-                submenu.classList.add('submenu-up');
-            } else {
-                submenu.classList.remove('submenu-up');
-            }
-        });
-    }
-
-    function hideContextMenus() {
-        dom.contextMenu.style.display = 'none';
-        dom.hierarchyContextMenu.style.display = 'none';
-        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
-    }
-
-    createNewScript = async function(directoryHandle) {
-        if (!directoryHandle) {
-            alert("No se ha seleccionado ninguna carpeta.");
-            return;
-        }
-        const scriptLang = currentPreferences.scriptLang || 'ces';
-        const extension = `.${scriptLang}`;
-        const defaultName = scriptLang === 'ces' ? 'PlayerMovement' : 'main';
-
-        let scriptName = prompt(`Introduce el nombre del nuevo script (ej: ${defaultName}):`);
-        if (!scriptName) return;
-
-        // Sanitize and add extension
-        const sanitizedName = scriptName.replace(/\.ces$|\.js$/, '');
-        scriptName = sanitizedName + extension;
-
-        const scriptTemplate = scriptLang === 'ces'
-            ? `// Script creado en Creative Engine
-function start() {
-    // Se ejecuta una vez al iniciar
-    console.log("¡El script ha comenzado!");
-};
-
-function update(deltaTime) {
-    // Se ejecuta en cada frame
-};`
-            : `// JavaScript file created in Creative Engine
-// This file can be used with a bundler or for more complex logic.
-
-function start() {
-    console.log("JS Script started!");
-}
-
-function update(deltaTime) {
-    // Runs every frame
-}
-`;
-
-        try {
-            const fileHandle = await directoryHandle.getFileHandle(scriptName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(scriptTemplate);
-            await writable.close();
-
-            console.log(`Script '${scriptName}' creado en ${directoryHandle.name}.`);
-            await updateAssetBrowser(); // Refresh asset browser
-        } catch(err) {
-            console.error(`Error al crear el script '${scriptName}':`, err);
-            alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
-        }
-    };
-
-    saveCurrentScript = async function() {
-        if (currentlyOpenFileHandle && codeEditor) {
-            try {
-                const content = codeEditor.state.doc.toString();
-                const writable = await currentlyOpenFileHandle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                console.log(`Script guardado: ${currentlyOpenFileHandle.name}`);
-                // Optional: Add a visual confirmation
-            } catch (error) {
-                console.error(`Error al guardar el archivo ${currentlyOpenFileHandle.name}:`, error);
-            }
-        } else {
-            console.warn("No hay ningún archivo abierto o el editor de código no está activo.");
-        }
-    };
-
-    function handleKeyboardShortcuts(e) {
-        // Ctrl+S or Cmd+S to save
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            if (dom.codeEditorContent.classList.contains('active')) {
-                 saveCurrentScript();
-            }
-        }
-
-        // Ctrl+P or Cmd+P to Play/Stop
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-            e.preventDefault();
-            if (isGameRunning) {
-                stopGame();
-            } else {
-                startGame();
-            }
-        }
-
-        // Tool switching only if not typing in an input
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-            return;
-        }
-
-        switch(e.key.toLowerCase()) {
-            case 'q':
-                setActiveTool('move');
-                break;
-            case 'w':
-                setActiveTool('pan');
-                break;
-            case 'e':
-                setActiveTool('scale');
-                break;
-        }
-    }
-
-    const GIZMO_HANDLE_SIZE = 10; // In screen pixels
-
-    function drawWorldGizmos(renderer, materia) {
-        const transform = materia.getComponent(Components.Transform);
-        if (!transform) return;
-
-        // Draw camera gizmo for any materia with a Camera component, if not selected
-        if (materia.getComponent(Components.Camera) && (!selectedMateria || selectedMateria.id !== materia.id)) {
-            renderer.ctx.font = `${40 / renderer.camera.effectiveZoom}px sans-serif`;
-            renderer.ctx.textAlign = 'center';
-            renderer.ctx.fillText('📷', transform.x, transform.y);
-        }
-
-        if (!selectedMateria || selectedMateria.id !== materia.id) {
-            return; // Only draw manipulation gizmos for the selected materia
-        }
-
-        const ctx = renderer.ctx;
-        const camera = renderer.camera;
-
-        // Gizmo positions are in world space, but their size is constant on screen
-        const handleScreenSize = GIZMO_HANDLE_SIZE / camera.effectiveZoom;
-        const halfHandleSize = handleScreenSize / 2;
-
-        const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
-
-        let w = (boxCollider?.width ?? 100) * transform.scale.x;
-        let h = (boxCollider?.height ?? 100) * transform.scale.y;
-
-        const x = transform.x;
-        const y = transform.y;
-
-        ctx.save();
-        ctx.fillStyle = 'red';
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 2 / camera.effectiveZoom;
-
-        if (activeTool === 'move') {
-            // Y-axis arrow
-            ctx.fillStyle = 'green';
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y - h / 2 - handleScreenSize * 2);
-            ctx.stroke();
-            ctx.moveTo(x, y - h / 2 - handleScreenSize * 2);
-            ctx.lineTo(x - handleScreenSize, y - h/2 - handleScreenSize);
-            ctx.lineTo(x + handleScreenSize, y - h/2 - handleScreenSize);
-            ctx.closePath();
-            ctx.fill();
-
-            // X-axis arrow
-            ctx.fillStyle = 'red';
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + w / 2 + handleScreenSize * 2, y);
-            ctx.stroke();
-            ctx.moveTo(x + w / 2 + handleScreenSize * 2, y);
-            ctx.lineTo(x + w/2 + handleScreenSize, y - handleScreenSize);
-            ctx.lineTo(x + w/2 + handleScreenSize, y + handleScreenSize);
-            ctx.closePath();
-            ctx.fill();
-        } else if (activeTool === 'scale') {
-            ctx.strokeStyle = 'blue';
-            ctx.lineWidth = 3 / camera.effectiveZoom;
-            const cornerSize = handleScreenSize * 1.5;
-
-            // Top-left corner
-            ctx.beginPath();
-            ctx.moveTo(x - w/2 + cornerSize, y - h/2);
-            ctx.lineTo(x - w/2, y - h/2);
-            ctx.lineTo(x - w/2, y - h/2 + cornerSize);
-            ctx.stroke();
-
-            // Top-right corner
-            ctx.beginPath();
-            ctx.moveTo(x + w/2 - cornerSize, y - h/2);
-            ctx.lineTo(x + w/2, y - h/2);
-            ctx.lineTo(x + w/2, y - h/2 + cornerSize);
-            ctx.stroke();
-
-            // Bottom-left corner
-            ctx.beginPath();
-            ctx.moveTo(x - w/2 + cornerSize, y + h/2);
-            ctx.lineTo(x - w/2, y + h/2);
-            ctx.lineTo(x - w/2, y + h/2 - cornerSize);
-            ctx.stroke();
-
-            // Bottom-right corner
-            ctx.beginPath();
-            ctx.moveTo(x + w/2 - cornerSize, y + h/2);
-            ctx.lineTo(x + w/2, y + h/2);
-            ctx.lineTo(x + w/2, y + h/2 - cornerSize);
-            ctx.stroke();
-        }
-
-        ctx.restore();
-    }
-
-    function drawUIGizmos(renderer, materia) {
-        if (!selectedMateria || selectedMateria.id !== materia.id) {
-            return; // Only draw for the selected materia
-        }
-
-        const rectTransform = materia.getComponent(Components.RectTransform);
-        if (!rectTransform) return;
-
-        const worldRect = rectTransform.getWorldRect(renderer.canvas);
-        const ctx = renderer.ctx;
-
-        const handleSize = 8;
-        const halfHandle = handleSize / 2;
-
-        // Handle positions, named for the next step (interaction)
-        const positions = {
-            'top-left':     { x: worldRect.x, y: worldRect.y },
-            'top-center':   { x: worldRect.x + worldRect.width / 2, y: worldRect.y },
-            'top-right':    { x: worldRect.x + worldRect.width, y: worldRect.y },
-            'middle-left':  { x: worldRect.x, y: worldRect.y + worldRect.height / 2 },
-            'middle-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height / 2 },
-            'bottom-left':  { x: worldRect.x, y: worldRect.y + worldRect.height },
-            'bottom-center':{ x: worldRect.x + worldRect.width / 2, y: worldRect.y + worldRect.height },
-            'bottom-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height },
-        };
-
-        ctx.fillStyle = '#00aaff'; // A distinct color for UI handles
-
-        for (const key in positions) {
-            const pos = positions[key];
-            ctx.fillRect(pos.x - halfHandle, pos.y - halfHandle, handleSize, handleSize);
-        }
-    }
-
-    function getGizmoHandleAt(worldPos, materia, renderer) {
-        if (!renderer.camera) return null;
-        const transform = materia.getComponent(Components.Transform);
-        if (!transform) return null;
-
-        const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.effectiveZoom;
-        const w = (selectedMateria.getComponent(Components.BoxCollider)?.width ?? 100) * transform.scale.x;
-        const h = (selectedMateria.getComponent(Components.BoxCollider)?.height ?? 100) * transform.scale.y;
-        const x = transform.x;
-        const y = transform.y;
-
-        const checkRect = (px, py) => {
-            return worldPos.x >= px - handleScreenSize/2 && worldPos.x <= px + handleScreenSize/2 &&
-                   worldPos.y >= py - handleScreenSize/2 && worldPos.y <= py + handleScreenSize/2;
-        };
-
-        if (activeTool === 'scale') {
-            if (checkRect(x - w / 2, y - h / 2)) return 'scale-tl';
-            if (checkRect(x + w / 2, y - h / 2)) return 'scale-tr';
-            if (checkRect(x - w / 2, y + h / 2)) return 'scale-bl';
-            if (checkRect(x + w / 2, y + h / 2)) return 'scale-br';
-        } else if (activeTool === 'move') {
-            // A larger hit area for the arrows
-            const arrowLength = h / 2 + handleScreenSize * 2;
-            const arrowWidth = w / 2 + handleScreenSize * 2;
-            if (worldPos.x > x && worldPos.x < x + arrowWidth && Math.abs(worldPos.y - y) < handleScreenSize) return 'move-x';
-            if (worldPos.y < y && worldPos.y > y - arrowLength && Math.abs(worldPos.x - x) < handleScreenSize) return 'move-y';
-        }
-
-        // Check if clicking the object itself for a move action
-        if (worldPos.x >= x - w/2 && worldPos.x <= x + w/2 && worldPos.y >= y - h/2 && worldPos.y <= y + h/2) {
-            return 'move-body';
-        }
-
-        return null;
-    }
-
-    function getUIGizmoHandleAt(screenPos, materia, renderer) {
-        if (!materia) return null;
-
-        const rectTransform = materia.getComponent(Components.RectTransform);
-        if (!rectTransform) return null;
-
-        const worldRect = rectTransform.getWorldRect(renderer.canvas);
-        const handleSize = 8; // Use the same size as drawing
-        const halfHandle = handleSize / 2;
-
-        const positions = {
-            'top-left':     { x: worldRect.x, y: worldRect.y },
-            'top-center':   { x: worldRect.x + worldRect.width / 2, y: worldRect.y },
-            'top-right':    { x: worldRect.x + worldRect.width, y: worldRect.y },
-            'middle-left':  { x: worldRect.x, y: worldRect.y + worldRect.height / 2 },
-            'middle-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height / 2 },
-            'bottom-left':  { x: worldRect.x, y: worldRect.y + worldRect.height },
-            'bottom-center':{ x: worldRect.x + worldRect.width / 2, y: worldRect.y + worldRect.height },
-            'bottom-right': { x: worldRect.x + worldRect.width, y: worldRect.y + worldRect.height },
-        };
-
-        for (const key in positions) {
-            const pos = positions[key];
-            if (
-                screenPos.x >= pos.x - halfHandle &&
-                screenPos.x <= pos.x + halfHandle &&
-                screenPos.y >= pos.y - halfHandle &&
-                screenPos.y <= pos.y + halfHandle
-            ) {
-                return key; // Return the name of the handle
-            }
-        }
-
-        // Also check for the body of the rect for moving
-        if (
-            screenPos.x >= worldRect.x &&
-            screenPos.x <= worldRect.x + worldRect.width &&
-            screenPos.y >= worldRect.y &&
-            screenPos.y <= worldRect.y + worldRect.height
-        ) {
-            return 'body';
-        }
-
-
-        return null;
-    }
-
-    function drawAnimEditorGrid() {
-        if (!dom.animGridCanvas) return;
-        const ctx = dom.animGridCanvas.getContext('2d');
-        const canvas = dom.animGridCanvas;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw grid
-        if (animEditorSettings.grid) {
-            ctx.strokeStyle = 'rgba(128, 128, 128, 0.5)';
-            ctx.lineWidth = 1;
-            const gridSize = 8; // Smaller grid size as requested
-
-            for (let x = 0; x <= canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y <= canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-        }
-
-        // Draw center crosshair
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.75)'; // Red, slightly transparent
-        ctx.lineWidth = 1;
-
-        // Horizontal line
-        ctx.beginPath();
-        ctx.moveTo(0, centerY);
-        ctx.lineTo(canvas.width, centerY);
-        ctx.stroke();
-
-        // Vertical line
-        ctx.beginPath();
-        ctx.moveTo(centerX, 0);
-        ctx.lineTo(centerX, canvas.height);
-        ctx.stroke();
-    }
-
-    function drawOnionSkin() {
-        if (!dom.animOnionSkinCanvas || !currentAnimationAsset || !animEditorSettings.onionSkin) {
-            if(dom.animOnionSkinCanvas) dom.animOnionSkinCanvas.getContext('2d').clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
-            return;
-        }
-
-        const ctx = dom.animOnionSkinCanvas.getContext('2d');
-        ctx.clearRect(0, 0, dom.animOnionSkinCanvas.width, dom.animOnionSkinCanvas.height);
-
-        const anim = currentAnimationAsset.animations[0];
-        if (currentFrameIndex > 0 && anim.frames[currentFrameIndex - 1]) {
-            const prevFrameData = anim.frames[currentFrameIndex - 1];
-            const img = new Image();
-            img.onload = () => {
-                ctx.globalAlpha = 0.3;
-                ctx.drawImage(img, 0, 0);
-                ctx.globalAlpha = 1.0;
-            };
-            img.src = prevFrameData;
-        }
-    }
-
-    function handleEditorInteractions() {
-        const screenPos = InputManager.getMousePositionInCanvas();
-        const worldPos = renderer ? InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas) : {x:0, y:0};
-
-        // --- Pointer Down Logic (replaces mousedown) ---
-        if (InputManager.getMouseButtonDown(0)) {
-            let handle = null;
-            let targetMateria = null;
-
-            // Check for UI Gizmo interaction first
-            if (selectedMateria && selectedMateria.getComponent(Components.RectTransform)) {
-                handle = getUIGizmoHandleAt(screenPos, selectedMateria, renderer);
-                if (handle) {
-                    isDragging = true;
-                    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
-                    dragState = {
-                        type: 'ui', handle, materia: selectedMateria,
-                        initialX: rectTransform.x, initialY: rectTransform.y,
-                        initialWidth: rectTransform.width, initialHeight: rectTransform.height,
-                        startMouseX: screenPos.x, startMouseY: screenPos.y,
-                    };
-                    return;
-                }
-            }
-
-            // Check for World Gizmo interaction
-            if (selectedMateria && selectedMateria.getComponent(Components.Transform)) {
-                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
-                if (handle) {
-                    isDragging = true;
-                    const transform = selectedMateria.getComponent(Components.Transform);
-                    dragState = {
-                        type: 'world', handle, materia: selectedMateria,
-                        initialX: transform.x, initialY: transform.y,
-                        initialScaleX: transform.scale.x, initialScaleY: transform.scale.y,
-                        startMouseWorldX: worldPos.x, startMouseWorldY: worldPos.y,
-                    };
-                    return;
-                }
-            }
-
-            // Check for Object Selection
-            // Prioritize UI elements
-            for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                if (materia.getComponent(Components.RectTransform) && getUIGizmoHandleAt(screenPos, materia, renderer) === 'body') {
-                    targetMateria = materia;
-                    break;
-                }
-            }
-            if (!targetMateria) {
-                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                    if (!materia.getComponent(Components.RectTransform) && getGizmoHandleAt(worldPos, materia, renderer) === 'body') {
-                        targetMateria = materia;
-                        break;
-                    }
-                }
-            }
-
-            if (targetMateria) {
-                selectMateria(targetMateria.id);
-            } else {
-                // Fallback to Panning
-                isPanning = true;
-                dom.sceneCanvas.classList.add('is-panning');
-                lastMousePosition = { x: InputManager.getMousePosition().x, y: InputManager.getMousePosition().y };
-                selectMateria(null);
-            }
-        }
-
-        // --- Pointer Move Logic (replaces mousemove) ---
-        if (isDragging) {
-            if (dragState.type === 'world') {
-                const transform = dragState.materia.getComponent(Components.Transform);
-                const dx = worldPos.x - dragState.startMouseWorldX;
-                const dy = worldPos.y - dragState.startMouseWorldY;
-                if (dragState.handle.startsWith('move')) {
-                    let newX = dragState.initialX + dx;
-                    let newY = dragState.initialY + dy;
-                    // ... (snapping logic remains the same)
-                    transform.x = newX;
-                    transform.y = newY;
-                } else if (dragState.handle.startsWith('scale')) {
-                    // ... (scaling logic remains the same)
-                }
-            } else if (dragState.type === 'ui') {
-                const rectTransform = dragState.materia.getComponent(Components.RectTransform);
-                const dx = screenPos.x - dragState.startMouseX;
-                const dy = screenPos.y - dragState.startMouseY;
-                if (dragState.handle === 'body') {
-                    rectTransform.x = dragState.initialX + dx;
-                    rectTransform.y = dragState.initialY + dy;
-                } else {
-                    if (dragState.handle.includes('left')) { rectTransform.width = dragState.initialWidth - dx; rectTransform.x = dragState.initialX + dx; }
-                    if (dragState.handle.includes('right')) { rectTransform.width = dragState.initialWidth + dx; }
-                    if (dragState.handle.includes('top')) { rectTransform.height = dragState.initialHeight - dy; rectTransform.y = dragState.initialY + dy; }
-                    if (dragState.handle.includes('bottom')) { rectTransform.height = dragState.initialHeight + dy; }
-                }
-            }
-            updateInspector();
-            updateScene(renderer, false);
-        } else if (isPanning) {
-            const currentMousePos = InputManager.getMousePosition();
-            const dx = (currentMousePos.x - lastMousePosition.x) / renderer.camera.effectiveZoom;
-            const dy = (currentMousePos.y - lastMousePosition.y) / renderer.camera.effectiveZoom;
-            const camMateria = SceneManager.currentScene.findFirstCamera();
-            if(camMateria) {
-                const camTransform = camMateria.getComponent(Components.Transform);
-                camTransform.x -= dx;
-                camTransform.y -= dy;
-            }
-            lastMousePosition = currentMousePos;
-            updateScene(renderer, false);
-        }
-
-        // --- Pointer Up Logic (replaces mouseup) ---
-        if (InputManager.getMouseButtonUp(0)) {
-            if (isPanning) {
-                dom.sceneCanvas.classList.remove('is-panning');
-                isPanning = false;
-            }
-            isDragging = false;
-            dragState = {};
-        }
-    }
 
     function initUIEditorResizers() {
         if (uiResizersInitialized) return;
@@ -2842,6 +2134,50 @@ function update(deltaTime) {
             }
         });
 
+
+        // --- UI Editor Listeners ---
+        if (dom.uiSaveBtn) {
+            dom.uiSaveBtn.addEventListener('click', async () => {
+                if (!uiEditorFileHandle || !currentUiAsset) {
+                    alert("No hay ningún asset de UI abierto para guardar.");
+                    return;
+                }
+                try {
+                    const writable = await uiEditorFileHandle.createWritable();
+                    await writable.write(JSON.stringify(currentUiAsset, null, 2));
+                    await writable.close();
+                    alert(`Asset '${uiEditorFileHandle.name}' guardado.`);
+                } catch (error) {
+                    console.error("Error al guardar el asset de UI:", error);
+                    alert("No se pudo guardar el asset de UI.");
+                }
+            });
+        }
+        if (dom.uiMaximizeBtn) {
+            dom.uiMaximizeBtn.addEventListener('click', () => {
+                const panel = dom.uiEditorPanel;
+                panel.classList.toggle('maximized');
+                setTimeout(renderUiCanvas, 50);
+            });
+        }
+        if (dom.uiInspectorPanel) {
+            dom.uiInspectorPanel.addEventListener('input', (e) => {
+                if (!selectedUiElement) return;
+
+                if (e.target.matches('.prop-input')) {
+                    const prop = e.target.dataset.prop;
+                    let value = e.target.value;
+                    if (e.target.type === 'number') {
+                        value = parseFloat(value) || 0;
+                    }
+                    selectedUiElement.props[prop] = value;
+                    renderUiCanvas();
+                } else if (e.target.matches('#ui-element-name-input')) {
+                    selectedUiElement.name = e.target.value;
+                    renderUiHierarchy();
+                }
+            });
+        }
 
         // --- Asset Browser Listeners ---
         const gridView = dom.assetGridView;
@@ -3445,7 +2781,7 @@ function update(deltaTime) {
         });
 
         // Window Menu Logic
-        dom.menubar.querySelector('.menu-item:nth-child(3) .menu-content').addEventListener('click', async (e) => {
+        document.getElementById('window-menu-content').addEventListener('click', async (e) => {
             e.preventDefault();
             const targetId = e.target.id;
             let panelName = '';
@@ -4163,37 +3499,6 @@ function update(deltaTime) {
         initResizer(dom.resizerLeft, 'col');
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
-
-        if (dom.uiMaximizeBtn) {
-            dom.uiMaximizeBtn.addEventListener('click', () => {
-                dom.uiEditorPanel.classList.toggle('maximized');
-            });
-        }
-        if (dom.uiSaveBtn) {
-            dom.uiSaveBtn.addEventListener('click', async () => {
-                if (!uiEditorFileHandle) {
-                    alert("No hay ningún archivo de UI abierto para guardar. Use 'Guardar Como...' en el futuro.");
-                    // In a future step, we could implement a "Save As" feature here.
-                    return;
-                }
-                if (!currentUiAsset) {
-                    alert("No hay datos de UI para guardar.");
-                    return;
-                }
-
-                try {
-                    const writable = await uiEditorFileHandle.createWritable();
-                    const content = JSON.stringify(currentUiAsset, null, 2);
-                    await writable.write(content);
-                    await writable.close();
-                    console.log(`Sistema UI '${uiEditorFileHandle.name}' guardado.`);
-                    // Optional: Add a visual confirmation, like a temporary message.
-                } catch (error) {
-                    console.error("Error al guardar el Sistema UI:", error);
-                    alert("No se pudo guardar el archivo del Sistema UI.");
-                }
-            });
-        }
 
         // --- Floating Panel Dragging & Resizing (Generic) ---
         document.body.addEventListener('mousedown', (e) => {

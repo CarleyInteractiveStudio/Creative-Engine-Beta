@@ -541,41 +541,63 @@ body {
     color: white;
 }
 
-/* --- New UI Editor Panel Styles --- */
-#ui-editor-layout {
-    display: flex;
-    flex-direction: row;
+/* --- UI Editor Panel --- */
+#ui-editor-main-content {
+    display: grid;
+    grid-template-columns: 250px 6px 1fr 6px 250px;
+    grid-template-rows: 1fr;
+    grid-template-areas: "hierarchy resizer-left canvas resizer-right inspector";
     height: 100%;
-    width: 100%;
+    padding: 0;
+}
+#ui-editor-panel .panel-content {
+    padding: 0; /* Remove padding from the parent container */
 }
 
-#ui-hierarchy-panel, #ui-inspector-panel {
-    width: 250px;
+#ui-editor-hierarchy { grid-area: hierarchy; }
+#ui-resizer-left { grid-area: resizer-left; }
+#ui-editor-canvas-view { grid-area: canvas; }
+#ui-resizer-right { grid-area: resizer-right; }
+#ui-editor-inspector { grid-area: inspector; }
+
+#ui-editor-hierarchy .list-header,
+#ui-editor-inspector .list-header {
+    padding: 8px;
+    font-weight: 600;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-secondary);
     flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
 }
 
-#ui-canvas-panel {
-    flex-grow: 1;
-    border-left: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    min-width: 0; /* Important: Allows the panel to shrink below its content's intrinsic size */
-}
 
-.sub-panel .panel-content {
-    flex-grow: 1;
-    overflow-y: auto;
+#ui-editor-hierarchy .list-content,
+#ui-editor-inspector .inspector-content {
     padding: 10px;
+    overflow-y: auto;
+    flex-grow: 1;
 }
 
-#ui-canvas-container {
-    background-color: #2a2a2e;
+#ui-editor-canvas-view {
+    background-color: #2a2a2e; /* Same as animator graph */
+    display: flex;
+    flex-direction: column;
+}
+
+#ui-canvas-toolbar {
+    padding: 5px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#ui-editor-canvas-container {
+    flex-grow: 1;
+    overflow: auto;
     display: grid;
     place-items: center;
-    overflow: auto;
     padding: 20px;
     background-image:
         linear-gradient(45deg, #444 25%, transparent 25%),
@@ -586,33 +608,29 @@ body {
     background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
-#ui-canvas {
-    background-color: rgba(0,0,0,0.2);
+#ui-editor-canvas {
+    background-color: transparent;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
     width: 800px; /* Default size */
     height: 600px;
 }
 
-#ui-editor-layout .resizer-v {
-    width: 6px;
+#ui-editor-main-content .resizer-v {
     background-color: var(--bg-tertiary);
     cursor: col-resize;
-    flex-shrink: 0;
+    z-index: 1;
 }
 
-#ui-editor-layout .resizer-v:hover {
-    background-color: var(--accent-color);
+#ui-editor-panel.canvas-maximized #ui-editor-hierarchy,
+#ui-editor-panel.canvas-maximized #ui-editor-inspector,
+#ui-editor-panel.canvas-maximized #ui-resizer-left,
+#ui-editor-panel.canvas-maximized #ui-resizer-right {
+    display: none;
 }
 
-#ui-editor-panel.maximized {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    transform: none;
-    z-index: 2000; /* Ensure it's above other panels */
+#ui-editor-panel.canvas-maximized #ui-editor-main-content {
+    grid-template-columns: 1fr;
 }
-
 
 /* --- Animation Editor Canvas Stacking & Toolbar --- */
 #drawing-canvas-container {
@@ -1006,6 +1024,7 @@ body {
 .floating-panel {
     position: absolute;
     width: 70%;
+    max-width: 800px;
     height: 350px;
     top: 50%;
     left: 50%;

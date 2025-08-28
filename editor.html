@@ -32,7 +32,7 @@
             </div>
             <div class="menu-item">
                 <button class="menu-btn">Ventana</button>
-                <div class="menu-content">
+                <div class="menu-content" id="window-menu-content">
                     <a href="#" id="menu-window-scene">Escena</a>
                     <a href="#" id="menu-window-hierarchy">Jerarquía</a>
                     <a href="#" id="menu-window-inspector">Inspector</a>
@@ -248,31 +248,28 @@
             </div>
             <div id="ui-editor-panel" class="editor-panel floating-panel hidden">
                 <div class="panel-header">
-                    <span>Editor de UI</span>
-                    <div id="ui-editor-toolbar">
-                        <button id="ui-save-btn" title="Guardar Asset de UI">💾 Guardar</button>
-                        <button id="ui-maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                    <span id="current-ui-asset-name">Editor de UI</span>
+                    <div id="ui-canvas-toolbar">
+                        <button id="ui-editor-save-btn" title="Guardar Asset UI">💾 Guardar</button>
+                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas">🗖</button>
                     </div>
                     <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
                 </div>
-                <div class="panel-content no-padding">
-                    <div id="ui-editor-layout">
-                        <div id="ui-hierarchy-panel" class="sub-panel">
-                            <div class="panel-header"><span>Jerarquía</span></div>
-                            <div class="panel-content"></div>
+                <div id="ui-editor-main-content">
+                    <div id="ui-editor-hierarchy" class="editor-panel">
+                        <div class="panel-header"><span>Jerarquía UI</span></div>
+                        <div class="list-content"></div>
+                    </div>
+                    <div id="ui-resizer-left" class="resizer-v"></div>
+                    <div id="ui-editor-canvas-view">
+                         <div id="ui-editor-canvas-container">
+                            <canvas id="ui-editor-canvas"></canvas>
                         </div>
-                        <div class="resizer-v" id="ui-resizer-left"></div>
-                        <div id="ui-canvas-panel" class="sub-panel">
-                             <div class="panel-header"><span>Lienzo</span></div>
-                             <div id="ui-canvas-container" class="panel-content">
-                                <canvas id="ui-canvas"></canvas>
-                             </div>
-                        </div>
-                        <div class="resizer-v" id="ui-resizer-right"></div>
-                        <div id="ui-inspector-panel" class="sub-panel">
-                             <div class="panel-header"><span>Inspector</span></div>
-                             <div class="panel-content"></div>
-                        </div>
+                    </div>
+                    <div id="ui-resizer-right" class="resizer-v"></div>
+                    <div id="ui-editor-inspector" class="editor-panel">
+                        <div class="panel-header"><span>Inspector UI</span></div>
+                        <div class="inspector-content"></div>
                     </div>
                 </div>
                 <div class="resize-handle" data-direction="n"></div>
