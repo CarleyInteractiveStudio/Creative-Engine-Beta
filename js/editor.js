@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUISystem = null;
     let currentUIFileHandle = null;
     let selectedUIElement = null;
+    let uiEditorResizersInitialized = false;
 
 
     let isGameRunning = false;
@@ -2018,6 +2019,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     openUIEditor = async function(fileHandle) {
         try {
+            // Initialize resizers on first open
+            if (!uiEditorResizersInitialized) {
+                initUIEditorResizers();
+                uiEditorResizersInitialized = true;
+            }
+
             const file = await fileHandle.getFile();
             const content = await file.text();
             currentUISystem = JSON.parse(content);
@@ -4082,6 +4089,11 @@ function update(deltaTime) {
             const resizerRight = dom.uiResizerRight;
             const mainContent = dom.uiEditorMainContent;
 
+            if (!resizerLeft || !resizerRight || !mainContent) {
+                console.warn("UI Editor resizer elements not found on init. This is expected if the panel is not yet open.");
+                return;
+            }
+
             const onMouseMoveLeft = (e) => {
                 const rect = mainContent.getBoundingClientRect();
                 let newHierarchyWidth = e.clientX - rect.left;
@@ -4126,7 +4138,6 @@ function update(deltaTime) {
                 window.addEventListener('mouseup', onMouseUp);
             });
         }
-        initUIEditorResizers();
 
 
         // --- UI Editor Toolbar Logic ---
