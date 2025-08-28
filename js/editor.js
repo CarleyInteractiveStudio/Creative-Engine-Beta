@@ -2766,20 +2766,32 @@ function update(deltaTime) {
             const rect = mainContent.getBoundingClientRect();
             let newHierarchyWidth = e.clientX - rect.left;
             newHierarchyWidth = Math.max(150, newHierarchyWidth); // Min width
-            const newInspectorWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[4]);
-            const maxHierarchyWidth = rect.width - newInspectorWidth - 150 - 12; // inspector - canvas - resizers
+
+            // Use getComputedStyle to read the actual current style from the CSS file
+            const computedStyle = window.getComputedStyle(mainContent);
+            const currentColumns = computedStyle.gridTemplateColumns.split(' ');
+            const inspectorWidth = currentColumns[4]; // This will be a string like "250px"
+
+            const maxHierarchyWidth = rect.width - parseFloat(inspectorWidth) - 150 - 12; // inspector - canvas - resizers
             newHierarchyWidth = Math.min(newHierarchyWidth, maxHierarchyWidth);
-            mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+
+            mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${inspectorWidth}`;
         };
 
         const onMouseMoveRight = (e) => {
             const rect = mainContent.getBoundingClientRect();
             let newInspectorWidth = rect.right - e.clientX;
             newInspectorWidth = Math.max(150, newInspectorWidth); // Min width
-            const newHierarchyWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[0]);
-             const maxInspectorWidth = rect.width - newHierarchyWidth - 150 - 12; // hierarchy - canvas - resizers
+
+            // Use getComputedStyle to read the actual current style from the CSS file
+            const computedStyle = window.getComputedStyle(mainContent);
+            const currentColumns = computedStyle.gridTemplateColumns.split(' ');
+            const hierarchyWidth = currentColumns[0]; // This will be a string like "250px"
+
+            const maxInspectorWidth = rect.width - parseFloat(hierarchyWidth) - 150 - 12; // hierarchy - canvas - resizers
             newInspectorWidth = Math.min(newInspectorWidth, maxInspectorWidth);
-            mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+
+            mainContent.style.gridTemplateColumns = `${hierarchyWidth} 6px 1fr 6px ${newInspectorWidth}px`;
         };
 
         const onMouseUp = () => {
