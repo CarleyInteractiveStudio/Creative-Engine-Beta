@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUiAsset = null;
     let selectedUiElement = null;
     let uiEditorFileHandle = null;
+    let uiResizersInitialized = false;
 
     // Animation Editor State
     let isDrawing = false;
@@ -1879,8 +1880,62 @@ document.addEventListener('DOMContentLoaded', () => {
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
 
+    function initUiEditorResizers() {
+        const resizerLeft = dom.uiResizerLeft;
+        const resizerRight = dom.uiResizerRight;
+        const hierarchyPanel = dom.uiHierarchyPanel;
+        const inspectorPanel = dom.uiInspectorPanel;
+
+        let startX, startWidth;
+
+        function onMouseMoveLeft(e) {
+            const newWidth = startWidth + e.clientX - startX;
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                hierarchyPanel.style.width = `${newWidth}px`;
+            }
+        }
+
+        function onMouseMoveRight(e) {
+            const newWidth = startWidth - (e.clientX - startX);
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                inspectorPanel.style.width = `${newWidth}px`;
+            }
+        }
+
+        function onMouseUp() {
+            window.removeEventListener('mousemove', onMouseMoveLeft);
+            window.removeEventListener('mousemove', onMouseMoveRight);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+
+        resizerLeft.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = hierarchyPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveLeft);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
+        resizerRight.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = inspectorPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveRight);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
     openUiEditor = function() {
-        // For now, just show the panel. We'll load data later.
+        if (!uiResizersInitialized) {
+            initUiEditorResizers();
+            uiResizersInitialized = true;
+        }
         dom.uiEditorPanel.classList.remove('hidden');
 
         // Initial render with placeholder or empty data
@@ -4158,6 +4213,11 @@ function update(deltaTime) {
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
 
+        if (dom.uiMaximizeBtn) {
+            dom.uiMaximizeBtn.addEventListener('click', () => {
+                dom.uiEditorPanel.classList.toggle('maximized');
+            });
+        }
         if (dom.uiSaveBtn) {
             dom.uiSaveBtn.addEventListener('click', async () => {
                 if (!uiEditorFileHandle) {
@@ -4536,7 +4596,8 @@ function update(deltaTime) {
 
             // New UI Editor elements
             'ui-editor-panel', 'ui-save-btn', 'ui-editor-layout', 'ui-hierarchy-panel',
-            'ui-canvas-panel', 'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel'
+            'ui-canvas-panel', 'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel',
+            'ui-resizer-left', 'ui-resizer-right', 'ui-maximize-btn'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());

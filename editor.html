@@ -251,6 +251,7 @@
                     <span>Editor de UI</span>
                     <div id="ui-editor-toolbar">
                         <button id="ui-save-btn" title="Guardar Asset de UI">💾 Guardar</button>
+                        <button id="ui-maximize-btn" title="Maximizar/Restaurar">🗖</button>
                     </div>
                     <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
                 </div>
@@ -260,12 +261,14 @@
                             <div class="panel-header"><span>Jerarquía</span></div>
                             <div class="panel-content"></div>
                         </div>
+                        <div class="resizer-v" id="ui-resizer-left"></div>
                         <div id="ui-canvas-panel" class="sub-panel">
                              <div class="panel-header"><span>Lienzo</span></div>
                              <div id="ui-canvas-container" class="panel-content">
                                 <canvas id="ui-canvas"></canvas>
                              </div>
                         </div>
+                        <div class="resizer-v" id="ui-resizer-right"></div>
                         <div id="ui-inspector-panel" class="sub-panel">
                              <div class="panel-header"><span>Inspector</span></div>
                              <div class="panel-content"></div>

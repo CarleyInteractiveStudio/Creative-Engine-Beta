@@ -593,6 +593,26 @@ body {
     height: 600px;
 }
 
+#ui-editor-layout .resizer-v {
+    width: 6px;
+    background-color: var(--bg-tertiary);
+    cursor: col-resize;
+    flex-shrink: 0;
+}
+
+#ui-editor-layout .resizer-v:hover {
+    background-color: var(--accent-color);
+}
+
+#ui-editor-panel.maximized {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+    z-index: 2000; /* Ensure it's above other panels */
+}
+
 
 /* --- Animation Editor Canvas Stacking & Toolbar --- */
 #drawing-canvas-container {
