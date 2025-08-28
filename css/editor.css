@@ -610,6 +610,17 @@ body {
     z-index: 1;
 }
 
+#ui-editor-panel.canvas-maximized #ui-editor-hierarchy,
+#ui-editor-panel.canvas-maximized #ui-editor-inspector,
+#ui-editor-panel.canvas-maximized #ui-resizer-left,
+#ui-editor-panel.canvas-maximized #ui-resizer-right {
+    display: none;
+}
+
+#ui-editor-panel.canvas-maximized #ui-editor-main-content {
+    grid-template-columns: 1fr;
+}
+
 /* --- Animation Editor Canvas Stacking & Toolbar --- */
 #drawing-canvas-container {
     flex-grow: 1;

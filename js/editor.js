@@ -4053,8 +4053,64 @@ function update(deltaTime) {
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
 
+        function initUIEditorResizers() {
+            const resizerLeft = dom.uiResizerLeft;
+            const resizerRight = dom.uiResizerRight;
+            const mainContent = dom.uiEditorMainContent;
+
+            const onMouseMoveLeft = (e) => {
+                const rect = mainContent.getBoundingClientRect();
+                let newHierarchyWidth = e.clientX - rect.left;
+                newHierarchyWidth = Math.max(150, newHierarchyWidth); // Min width
+                const newInspectorWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[4]);
+                const maxHierarchyWidth = rect.width - newInspectorWidth - 150 - 12; // inspector - canvas - resizers
+                newHierarchyWidth = Math.min(newHierarchyWidth, maxHierarchyWidth);
+                mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+            };
+
+            const onMouseMoveRight = (e) => {
+                const rect = mainContent.getBoundingClientRect();
+                let newInspectorWidth = rect.right - e.clientX;
+                newInspectorWidth = Math.max(150, newInspectorWidth); // Min width
+                const newHierarchyWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[0]);
+                 const maxInspectorWidth = rect.width - newHierarchyWidth - 150 - 12; // hierarchy - canvas - resizers
+                newInspectorWidth = Math.min(newInspectorWidth, maxInspectorWidth);
+                mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+            };
+
+            const onMouseUp = () => {
+                window.removeEventListener('mousemove', onMouseMoveLeft);
+                window.removeEventListener('mousemove', onMouseMoveRight);
+                window.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            };
+
+            resizerLeft.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                window.addEventListener('mousemove', onMouseMoveLeft);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+
+             resizerRight.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                window.addEventListener('mousemove', onMouseMoveRight);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+        }
+        initUIEditorResizers();
+
 
         // --- UI Editor Toolbar Logic ---
+        if (dom.uiCanvasMaximizeBtn) {
+            dom.uiCanvasMaximizeBtn.addEventListener('click', () => {
+                dom.uiEditorPanel.classList.toggle('canvas-maximized');
+            });
+        }
         if (dom.uiEditorSaveBtn) {
             dom.uiEditorSaveBtn.addEventListener('click', async () => {
                 if (!currentUIFileHandle || !currentUISystem) {
@@ -4407,7 +4463,8 @@ function update(deltaTime) {
             // UI Editor elements
             'ui-editor-panel', 'ui-editor-save-btn', 'current-ui-asset-name', 'ui-editor-main-content',
             'ui-editor-hierarchy', 'ui-resizer-left', 'ui-editor-canvas-view', 'ui-canvas-toolbar',
-            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-resizer-right', 'ui-editor-inspector', 'add-layer-btn'
+            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-resizer-right', 'ui-editor-inspector', 'add-layer-btn',
+            'ui-canvas-maximize-btn'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
