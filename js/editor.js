@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI Editor State
     let currentUISystem = null;
     let currentUIFileHandle = null;
+    let selectedUIElement = null;
 
 
     let isGameRunning = false;
@@ -1878,20 +1879,108 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
-    var createUISystemFile, openUIEditor, updateUIEditorHierarchy;
+    var createUISystemFile, openUIEditor, updateUIEditorHierarchy, updateUIInspector, drawUIEditorCanvas;
+
+    drawUIEditorCanvas = function() {
+        if (!dom.uiEditorCanvas || !currentUISystem) return;
+
+        const canvas = dom.uiEditorCanvas;
+        const ctx = canvas.getContext('2d');
+
+        // Clear canvas
+        ctx.fillStyle = '#555555'; // A neutral dark gray background
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        function drawElement(element) {
+            // Draw rectangle
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.fillStyle = 'rgba(0, 150, 255, 0.3)';
+
+            // Highlight selected element
+            if (selectedUIElement && selectedUIElement.name === element.name) { // Note: using name as ID for now
+                 ctx.strokeStyle = '#FFFF00'; // Yellow for selection
+                 ctx.lineWidth = 2;
+            } else {
+                 ctx.strokeStyle = '#FFFFFF';
+                 ctx.lineWidth = 1;
+            }
+
+            ctx.fillRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
+            ctx.strokeRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
+
+            // Draw text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(element.name, element.rect.x + element.rect.width / 2, element.rect.y + element.rect.height / 2);
+
+            // Recursively draw children
+            if (element.children && element.children.length > 0) {
+                element.children.forEach(drawElement);
+            }
+        }
+
+        drawElement(currentUISystem.root);
+    };
+
+    updateUIInspector = function() {
+        if (!dom.uiEditorInspector) return;
+        const container = dom.uiEditorInspector.querySelector('.inspector-content');
+
+        if (!selectedUIElement) {
+            container.innerHTML = '<p>Selecciona un elemento.</p><button id="add-layer-btn">Agregar Leyes</button>';
+            return;
+        }
+
+        let inspectorHTML = `
+            <div class="inspector-materia-header">
+                <input type="text" value="${selectedUIElement.name}" readonly>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9em;">Type: ${selectedUIElement.type}</p>
+            <fieldset>
+                <legend>Rect Transform</legend>
+                <div class="component-grid">
+                    <div class="prop-row"><label>X</label><input type="number" readonly value="${selectedUIElement.rect.x}"></div>
+                    <div class="prop-row"><label>Y</label><input type="number" readonly value="${selectedUIElement.rect.y}"></div>
+                    <div class="prop-row"><label>Width</label><input type="number" readonly value="${selectedUIElement.rect.width}"></div>
+                    <div class="prop-row"><label>Height</label><input type="number" readonly value="${selectedUIElement.rect.height}"></div>
+                </div>
+            </fieldset>
+            <button id="add-layer-btn">Agregar Leyes</button>
+        `;
+
+        container.innerHTML = inspectorHTML;
+        drawUIEditorCanvas(); // Redraw canvas to show selection highlight
+    };
 
     updateUIEditorHierarchy = function() {
         if (!currentUISystem || !dom.uiEditorHierarchy) return;
 
         const container = dom.uiEditorHierarchy.querySelector('.list-content');
         container.innerHTML = '';
+        selectedUIElement = null;
+        updateUIInspector();
 
         function renderNode(uiElement, parentElement, depth) {
             const item = document.createElement('div');
-            item.className = 'hierarchy-item'; // Re-use the same style
+            item.className = 'hierarchy-item';
             item.textContent = uiElement.name;
             item.style.paddingLeft = `${depth * 18}px`;
-            // Add data-id or similar if we need to select/edit later
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                const currentActive = container.querySelector('.hierarchy-item.active');
+                if (currentActive) {
+                    currentActive.classList.remove('active');
+                }
+
+                item.classList.add('active');
+                selectedUIElement = uiElement;
+                updateUIInspector();
+            });
+
             parentElement.appendChild(item);
 
             if (uiElement.children && uiElement.children.length > 0) {
@@ -1915,6 +2004,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.currentUiAssetName.textContent = fileHandle.name;
 
             updateUIEditorHierarchy();
+            drawUIEditorCanvas();
 
             console.log(`Abierto ${fileHandle.name} en el Editor de UI.`, currentUISystem);
         } catch (error) {
@@ -3963,6 +4053,28 @@ function update(deltaTime) {
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
 
+
+        // --- UI Editor Toolbar Logic ---
+        if (dom.uiEditorSaveBtn) {
+            dom.uiEditorSaveBtn.addEventListener('click', async () => {
+                if (!currentUIFileHandle || !currentUISystem) {
+                    alert("No hay ningún archivo de UI abierto para guardar.");
+                    return;
+                }
+
+                try {
+                    const writable = await currentUIFileHandle.createWritable();
+                    const content = JSON.stringify(currentUISystem, null, 2);
+                    await writable.write(content);
+                    await writable.close();
+                    console.log(`Sistema UI '${currentUIFileHandle.name}' guardado.`);
+                    // Optional: Add a visual confirmation
+                } catch (error) {
+                    console.error("Error al guardar el Sistema UI:", error);
+                    alert("No se pudo guardar el archivo del Sistema UI.");
+                }
+            });
+        }
 
         // --- Floating Panel Dragging & Resizing (Generic) ---
         document.body.addEventListener('mousedown', (e) => {
