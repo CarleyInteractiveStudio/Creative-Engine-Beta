@@ -546,6 +546,7 @@ body {
     display: grid;
     grid-template-columns: 250px 6px 1fr 6px 250px;
     grid-template-rows: 1fr;
+    grid-template-areas: "hierarchy resizer-left canvas resizer-right inspector";
     height: 100%;
     padding: 0;
 }
@@ -553,11 +554,11 @@ body {
     padding: 0; /* Remove padding from the parent container */
 }
 
-#ui-editor-hierarchy { grid-column: 1; }
-#ui-resizer-left { grid-column: 2; }
-#ui-editor-canvas-view { grid-column: 3; }
-#ui-resizer-right { grid-column: 4; }
-#ui-editor-inspector { grid-column: 5; }
+#ui-editor-hierarchy { grid-area: hierarchy; }
+#ui-resizer-left { grid-area: resizer-left; }
+#ui-editor-canvas-view { grid-area: canvas; }
+#ui-resizer-right { grid-area: resizer-right; }
+#ui-editor-inspector { grid-area: inspector; }
 
 #ui-editor-hierarchy .list-header,
 #ui-editor-inspector .list-header {
