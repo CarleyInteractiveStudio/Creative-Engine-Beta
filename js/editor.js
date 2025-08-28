@@ -133,7 +133,67 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, openUiEditor, renderUiHierarchy, renderUiCanvas, renderUiInspector, createUiSystemFile, openUiAsset, updateWindowMenuUI;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, openUiEditor, renderUiHierarchy, renderUiCanvas, renderUiInspector, createUiSystemFile, openUiAsset, updateWindowMenuUI, handleKeyboardShortcuts;
+
+    function handleKeyboardShortcuts(e) {
+        if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
+            return;
+        }
+
+        if (e.ctrlKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            if (activeView === 'code-editor-content' && currentlyOpenFileHandle) {
+                saveCurrentScript();
+                console.log("Script guardado (Ctrl+S).");
+            } else if (currentAnimationAsset && currentAnimationFileHandle) {
+                saveAnimationAsset();
+                console.log("Animación guardada (Ctrl+S).");
+            } else if (currentUiAsset && uiEditorFileHandle) {
+                // This assumes a saveUiAsset function exists
+                // saveUiAsset();
+                console.log("Guardado de UI no implementado aún via shortcut.");
+            } else if (SceneManager.currentScene) {
+                saveScene();
+                console.log("Escena guardada (Ctrl+S).");
+            }
+            return;
+        }
+
+        if (!e.ctrlKey && !e.altKey) {
+            switch (e.key.toLowerCase()) {
+                case 'q':
+                    setActiveTool('move');
+                    break;
+                case 'w':
+                    setActiveTool('pan');
+                    break;
+                case 'e':
+                    setActiveTool('scale');
+                    break;
+                case 'delete':
+                case 'backspace':
+                    if (selectedMateria) {
+                        const idToDelete = selectedMateria.id;
+                        selectMateria(null); // Deselect first
+                        SceneManager.currentScene.removeMateria(idToDelete);
+                        updateHierarchy();
+                        updateInspector();
+                    }
+                    break;
+            }
+        }
+
+        if (activeView === 'code-editor-content' && codeEditor) {
+            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo(codeEditor);
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo(codeEditor);
+            }
+        }
+    }
 
     function updateWindowMenuUI() {
         const menuItems = {
