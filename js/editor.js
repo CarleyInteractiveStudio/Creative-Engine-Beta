@@ -2608,6 +2608,131 @@ function update(deltaTime) {
         }
     }
 
+    function handleEditorInteractions() {
+        const screenPos = InputManager.getMousePositionInCanvas();
+        const worldPos = renderer ? InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas) : {x:0, y:0};
+
+        // --- Pointer Down Logic (replaces mousedown) ---
+        if (InputManager.getMouseButtonDown(0)) {
+            let handle = null;
+            let targetMateria = null;
+
+            // Check for UI Gizmo interaction first
+            if (selectedMateria && selectedMateria.getComponent(Components.RectTransform)) {
+                handle = getUIGizmoHandleAt(screenPos, selectedMateria, renderer);
+                if (handle) {
+                    isDragging = true;
+                    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+                    dragState = {
+                        type: 'ui', handle, materia: selectedMateria,
+                        initialX: rectTransform.x, initialY: rectTransform.y,
+                        initialWidth: rectTransform.width, initialHeight: rectTransform.height,
+                        startMouseX: screenPos.x, startMouseY: screenPos.y,
+                    };
+                    return;
+                }
+            }
+
+            // Check for World Gizmo interaction
+            if (selectedMateria && selectedMateria.getComponent(Components.Transform)) {
+                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
+                if (handle) {
+                    isDragging = true;
+                    const transform = selectedMateria.getComponent(Components.Transform);
+                    dragState = {
+                        type: 'world', handle, materia: selectedMateria,
+                        initialX: transform.x, initialY: transform.y,
+                        initialScaleX: transform.scale.x, initialScaleY: transform.scale.y,
+                        startMouseWorldX: worldPos.x, startMouseWorldY: worldPos.y,
+                    };
+                    return;
+                }
+            }
+
+            // Check for Object Selection
+            // Prioritize UI elements
+            for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+                if (materia.getComponent(Components.RectTransform) && getUIGizmoHandleAt(screenPos, materia, renderer) === 'body') {
+                    targetMateria = materia;
+                    break;
+                }
+            }
+            if (!targetMateria) {
+                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
+                    if (!materia.getComponent(Components.RectTransform) && getGizmoHandleAt(worldPos, materia, renderer) === 'body') {
+                        targetMateria = materia;
+                        break;
+                    }
+                }
+            }
+
+            if (targetMateria) {
+                selectMateria(targetMateria.id);
+            } else {
+                // Fallback to Panning
+                isPanning = true;
+                dom.sceneCanvas.classList.add('is-panning');
+                lastMousePosition = { x: InputManager.getMousePosition().x, y: InputManager.getMousePosition().y };
+                selectMateria(null);
+            }
+        }
+
+        // --- Pointer Move Logic (replaces mousemove) ---
+        if (isDragging) {
+            if (dragState.type === 'world') {
+                const transform = dragState.materia.getComponent(Components.Transform);
+                const dx = worldPos.x - dragState.startMouseWorldX;
+                const dy = worldPos.y - dragState.startMouseWorldY;
+                if (dragState.handle.startsWith('move')) {
+                    let newX = dragState.initialX + dx;
+                    let newY = dragState.initialY + dy;
+                    // ... (snapping logic remains the same)
+                    transform.x = newX;
+                    transform.y = newY;
+                } else if (dragState.handle.startsWith('scale')) {
+                    // ... (scaling logic remains the same)
+                }
+            } else if (dragState.type === 'ui') {
+                const rectTransform = dragState.materia.getComponent(Components.RectTransform);
+                const dx = screenPos.x - dragState.startMouseX;
+                const dy = screenPos.y - dragState.startMouseY;
+                if (dragState.handle === 'body') {
+                    rectTransform.x = dragState.initialX + dx;
+                    rectTransform.y = dragState.initialY + dy;
+                } else {
+                    if (dragState.handle.includes('left')) { rectTransform.width = dragState.initialWidth - dx; rectTransform.x = dragState.initialX + dx; }
+                    if (dragState.handle.includes('right')) { rectTransform.width = dragState.initialWidth + dx; }
+                    if (dragState.handle.includes('top')) { rectTransform.height = dragState.initialHeight - dy; rectTransform.y = dragState.initialY + dy; }
+                    if (dragState.handle.includes('bottom')) { rectTransform.height = dragState.initialHeight + dy; }
+                }
+            }
+            updateInspector();
+            updateScene(renderer, false);
+        } else if (isPanning) {
+            const currentMousePos = InputManager.getMousePosition();
+            const dx = (currentMousePos.x - lastMousePosition.x) / renderer.camera.effectiveZoom;
+            const dy = (currentMousePos.y - lastMousePosition.y) / renderer.camera.effectiveZoom;
+            const camMateria = SceneManager.currentScene.findFirstCamera();
+            if(camMateria) {
+                const camTransform = camMateria.getComponent(Components.Transform);
+                camTransform.x -= dx;
+                camTransform.y -= dy;
+            }
+            lastMousePosition = currentMousePos;
+            updateScene(renderer, false);
+        }
+
+        // --- Pointer Up Logic (replaces mouseup) ---
+        if (InputManager.getMouseButtonUp(0)) {
+            if (isPanning) {
+                dom.sceneCanvas.classList.remove('is-panning');
+                isPanning = false;
+            }
+            isDragging = false;
+            dragState = {};
+        }
+    }
+
     function initUIEditorResizers() {
         const resizerLeft = dom.uiResizerLeft;
         const resizerRight = dom.uiResizerRight;
@@ -2982,131 +3107,6 @@ function update(deltaTime) {
             showContextMenu(dom.hierarchyContextMenu, e);
         });
 
-    function handleEditorInteractions() {
-        const screenPos = InputManager.getMousePositionInCanvas();
-        const worldPos = renderer ? InputManager.getMouseWorldPosition(renderer.camera, dom.sceneCanvas) : {x:0, y:0};
-
-        // --- Pointer Down Logic (replaces mousedown) ---
-        if (InputManager.getMouseButtonDown(0)) {
-            let handle = null;
-            let targetMateria = null;
-
-            // Check for UI Gizmo interaction first
-            if (selectedMateria && selectedMateria.getComponent(Components.RectTransform)) {
-                handle = getUIGizmoHandleAt(screenPos, selectedMateria, renderer);
-                if (handle) {
-                    isDragging = true;
-                    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
-                    dragState = {
-                        type: 'ui', handle, materia: selectedMateria,
-                        initialX: rectTransform.x, initialY: rectTransform.y,
-                        initialWidth: rectTransform.width, initialHeight: rectTransform.height,
-                        startMouseX: screenPos.x, startMouseY: screenPos.y,
-                    };
-                    return;
-                }
-            }
-
-            // Check for World Gizmo interaction
-            if (selectedMateria && selectedMateria.getComponent(Components.Transform)) {
-                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
-                if (handle) {
-                    isDragging = true;
-                    const transform = selectedMateria.getComponent(Components.Transform);
-                    dragState = {
-                        type: 'world', handle, materia: selectedMateria,
-                        initialX: transform.x, initialY: transform.y,
-                        initialScaleX: transform.scale.x, initialScaleY: transform.scale.y,
-                        startMouseWorldX: worldPos.x, startMouseWorldY: worldPos.y,
-                    };
-                    return;
-                }
-            }
-
-            // Check for Object Selection
-            // Prioritize UI elements
-            for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                if (materia.getComponent(Components.RectTransform) && getUIGizmoHandleAt(screenPos, materia, renderer) === 'body') {
-                    targetMateria = materia;
-                    break;
-                }
-            }
-            if (!targetMateria) {
-                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                    if (!materia.getComponent(Components.RectTransform) && getGizmoHandleAt(worldPos, materia, renderer) === 'body') {
-                        targetMateria = materia;
-                        break;
-                    }
-                }
-            }
-
-            if (targetMateria) {
-                selectMateria(targetMateria.id);
-            } else {
-                // Fallback to Panning
-                isPanning = true;
-                dom.sceneCanvas.classList.add('is-panning');
-                lastMousePosition = { x: InputManager.getMousePosition().x, y: InputManager.getMousePosition().y };
-                selectMateria(null);
-            }
-        }
-
-        // --- Pointer Move Logic (replaces mousemove) ---
-        if (isDragging) {
-            if (dragState.type === 'world') {
-                const transform = dragState.materia.getComponent(Components.Transform);
-                const dx = worldPos.x - dragState.startMouseWorldX;
-                const dy = worldPos.y - dragState.startMouseWorldY;
-                if (dragState.handle.startsWith('move')) {
-                    let newX = dragState.initialX + dx;
-                    let newY = dragState.initialY + dy;
-                    // ... (snapping logic remains the same)
-                    transform.x = newX;
-                    transform.y = newY;
-                } else if (dragState.handle.startsWith('scale')) {
-                    // ... (scaling logic remains the same)
-                }
-            } else if (dragState.type === 'ui') {
-                const rectTransform = dragState.materia.getComponent(Components.RectTransform);
-                const dx = screenPos.x - dragState.startMouseX;
-                const dy = screenPos.y - dragState.startMouseY;
-                if (dragState.handle === 'body') {
-                    rectTransform.x = dragState.initialX + dx;
-                    rectTransform.y = dragState.initialY + dy;
-                } else {
-                    if (dragState.handle.includes('left')) { rectTransform.width = dragState.initialWidth - dx; rectTransform.x = dragState.initialX + dx; }
-                    if (dragState.handle.includes('right')) { rectTransform.width = dragState.initialWidth + dx; }
-                    if (dragState.handle.includes('top')) { rectTransform.height = dragState.initialHeight - dy; rectTransform.y = dragState.initialY + dy; }
-                    if (dragState.handle.includes('bottom')) { rectTransform.height = dragState.initialHeight + dy; }
-                }
-            }
-            updateInspector();
-            updateScene(renderer, false);
-        } else if (isPanning) {
-            const currentMousePos = InputManager.getMousePosition();
-            const dx = (currentMousePos.x - lastMousePosition.x) / renderer.camera.effectiveZoom;
-            const dy = (currentMousePos.y - lastMousePosition.y) / renderer.camera.effectiveZoom;
-            const camMateria = SceneManager.currentScene.findFirstCamera();
-            if(camMateria) {
-                const camTransform = camMateria.getComponent(Components.Transform);
-                camTransform.x -= dx;
-                camTransform.y -= dy;
-            }
-            lastMousePosition = currentMousePos;
-            updateScene(renderer, false);
-        }
-
-        // --- Pointer Up Logic (replaces mouseup) ---
-        if (InputManager.getMouseButtonUp(0)) {
-            if (isPanning) {
-                dom.sceneCanvas.classList.remove('is-panning');
-                isPanning = false;
-            }
-            isDragging = false;
-            dragState = {};
-        }
-    }
-
         // Modal close buttons
         document.querySelectorAll('.modal .close-button').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -3405,17 +3405,25 @@ function update(deltaTime) {
             button.addEventListener('click', (e) => {
                 const panelId = e.target.dataset.panel;
                 const panel = document.getElementById(panelId);
-                if (panel) {
-                    panel.classList.add('hidden');
-                    if (panelId === 'animation-panel') {
-                        resetAnimationPanel();
-                    } else {
-                        const panelName = panelId.replace('-panel', '');
-                        panelVisibility[panelName] = false;
-                        updateEditorLayout();
-                        updateWindowMenuUI();
-                    }
+                if (!panel) return;
+
+                panel.classList.add('hidden');
+                const panelName = panelId.replace('-panel', '');
+
+                // Handle special cleanup for specific panels
+                if (panelId === 'animation-panel') {
+                    resetAnimationPanel();
                 }
+
+                // Only update the main grid layout if a DOCKED panel is closed
+                const dockedPanelNames = ['hierarchy', 'inspector', 'assets'];
+                if (dockedPanelNames.includes(panelName)) {
+                    panelVisibility[panelName] = false;
+                    updateEditorLayout();
+                }
+
+                // Always try to update the window menu checkmark
+                updateWindowMenuUI();
             });
         });
 
