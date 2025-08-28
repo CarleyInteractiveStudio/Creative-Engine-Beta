@@ -562,6 +562,7 @@ body {
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+    min-width: 0; /* Important: Allows the panel to shrink below its content's intrinsic size */
 }
 
 .sub-panel .panel-content {
