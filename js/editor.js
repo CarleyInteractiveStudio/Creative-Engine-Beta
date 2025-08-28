@@ -1880,7 +1880,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
-    var createUISystemFile, openUIEditor, updateUIEditorHierarchy, updateUIInspector, drawUIEditorCanvas;
+    var createUISystemFile, openUIEditor, openUIEditorPanel, updateUIEditorHierarchy, updateUIInspector, drawUIEditorCanvas;
 
     drawUIEditorCanvas = function() {
         if (!dom.uiEditorCanvas || !currentUISystem) return;
@@ -2017,29 +2017,48 @@ document.addEventListener('DOMContentLoaded', () => {
         renderNode(currentUISystem.root, container, 0);
     };
 
+    openUIEditorPanel = function() {
+        if (!uiEditorResizersInitialized) {
+            initUIEditorResizers();
+            uiEditorResizersInitialized = true;
+        }
+
+        // If there's no system loaded at all, create a default one.
+        if (!currentUISystem) {
+            currentUISystem = {
+                version: 1,
+                root: { type: 'Canvas', name: 'Canvas', backgroundColor: 'rgba(0,0,0,0)', rect: { x: 0, y: 0, width: 800, height: 600 }, children: [] }
+            };
+            currentUIFileHandle = null;
+        }
+
+        // Update title based on whether a file is loaded
+        if (currentUIFileHandle) {
+            dom.currentUiAssetName.textContent = currentUIFileHandle.name;
+        } else {
+            dom.currentUiAssetName.textContent = "Unsaved UI System";
+        }
+
+        updateUIEditorHierarchy();
+        drawUIEditorCanvas();
+        dom.uiEditorPanel.classList.remove('hidden');
+    };
+
     openUIEditor = async function(fileHandle) {
         try {
-            // Initialize resizers on first open
-            if (!uiEditorResizersInitialized) {
-                initUIEditorResizers();
-                uiEditorResizersInitialized = true;
-            }
-
             const file = await fileHandle.getFile();
             const content = await file.text();
             currentUISystem = JSON.parse(content);
             currentUIFileHandle = fileHandle;
 
-            dom.uiEditorPanel.classList.remove('hidden');
-            dom.currentUiAssetName.textContent = fileHandle.name;
-
-            updateUIEditorHierarchy();
-            drawUIEditorCanvas();
+            openUIEditorPanel(); // Open panel with the newly loaded data
 
             console.log(`Abierto ${fileHandle.name} en el Editor de UI.`, currentUISystem);
         } catch (error) {
             console.error(`Error al abrir o parsear el archivo UI '${fileHandle.name}':`, error);
             alert(`No se pudo abrir el archivo UI. ¿Es un formato JSON válido?`);
+            currentUISystem = null; // Reset on failure
+            currentUIFileHandle = null;
         }
     };
 
@@ -3452,7 +3471,11 @@ function update(deltaTime) {
             } else if (panelName === 'animation') {
                 dom.animationPanel.classList.toggle('hidden');
             } else if (panelName === 'ui-editor') {
-                dom.uiEditorPanel.classList.toggle('hidden');
+                if (dom.uiEditorPanel.classList.contains('hidden')) {
+                    openUIEditorPanel();
+                } else {
+                    dom.uiEditorPanel.classList.add('hidden');
+                }
             } else if (panelName === 'animator') {
                 const panel = dom.animatorControllerPanel;
                 const isHiding = panel.classList.toggle('hidden');
