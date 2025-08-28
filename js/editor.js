@@ -85,6 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
         onionSkin: true
     };
 
+    // UI Editor State
+    let currentUISystem = null;
+    let currentUIFileHandle = null;
+
 
     let isGameRunning = false;
     let lastFrameTime = 0;
@@ -1614,7 +1618,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Animación': [Components.Animator],
         'Cámara': [Components.Camera],
         'Físicas': [Components.Rigidbody, Components.BoxCollider],
-        'UI': [Components.UICanvas, Components.UIImage],
         'Scripting': [Components.CreativeScript]
     };
 
@@ -1875,6 +1878,84 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
+    var createUISystemFile, openUIEditor, updateUIEditorHierarchy;
+
+    updateUIEditorHierarchy = function() {
+        if (!currentUISystem || !dom.uiEditorHierarchy) return;
+
+        const container = dom.uiEditorHierarchy.querySelector('.list-content');
+        container.innerHTML = '';
+
+        function renderNode(uiElement, parentElement, depth) {
+            const item = document.createElement('div');
+            item.className = 'hierarchy-item'; // Re-use the same style
+            item.textContent = uiElement.name;
+            item.style.paddingLeft = `${depth * 18}px`;
+            // Add data-id or similar if we need to select/edit later
+            parentElement.appendChild(item);
+
+            if (uiElement.children && uiElement.children.length > 0) {
+                uiElement.children.forEach(child => {
+                    renderNode(child, parentElement, depth + 1);
+                });
+            }
+        }
+
+        renderNode(currentUISystem.root, container, 0);
+    };
+
+    openUIEditor = async function(fileHandle) {
+        try {
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            currentUISystem = JSON.parse(content);
+            currentUIFileHandle = fileHandle;
+
+            dom.uiEditorPanel.classList.remove('hidden');
+            dom.currentUiAssetName.textContent = fileHandle.name;
+
+            updateUIEditorHierarchy();
+
+            console.log(`Abierto ${fileHandle.name} en el Editor de UI.`, currentUISystem);
+        } catch (error) {
+            console.error(`Error al abrir o parsear el archivo UI '${fileHandle.name}':`, error);
+            alert(`No se pudo abrir el archivo UI. ¿Es un formato JSON válido?`);
+        }
+    };
+
+    createUISystemFile = async function(directoryHandle) {
+        if (!directoryHandle) {
+            alert("No se ha seleccionado ninguna carpeta.");
+            return;
+        }
+        const fileName = prompt("Introduce el nombre del nuevo Sistema UI (ej: MainMenu):");
+        if (!fileName) return;
+
+        const finalName = fileName.endsWith('.ceui') ? fileName : `${fileName}.ceui`;
+
+        const defaultContent = {
+            version: 1,
+            root: {
+                type: 'Canvas',
+                name: 'Canvas',
+                rect: { x: 0, y: 0, width: 800, height: 600 },
+                children: []
+            }
+        };
+
+        try {
+            const fileHandle = await directoryHandle.getFileHandle(finalName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(defaultContent, null, 2));
+            await writable.close();
+
+            console.log(`Sistema UI '${finalName}' creado en ${directoryHandle.name}.`);
+            await updateAssetBrowser(); // Refresh asset browser
+        } catch(err) {
+            console.error(`Error al crear el sistema UI '${finalName}':`, err);
+            alert(`No se pudo crear el archivo. Revisa la consola para más detalles.`);
+        }
+    };
 
     function updateWindowMenuUI() {
         for (const panelName in panelVisibility) {
@@ -2520,6 +2601,9 @@ function update(deltaTime) {
             } else if (name.endsWith('.cep')) {
                 const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
                 await importPackage(fileHandle);
+            } else if (name.endsWith('.ceui')) {
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+                await openUIEditor(fileHandle);
             } else if (name.endsWith('.cmel')) {
                 await updateInspectorForAsset(name, path);
             }
@@ -2928,17 +3012,6 @@ function update(deltaTime) {
                 case 'create-empty':
                     createEmptyMateria('Materia Vacio', selectedMateria);
                     break;
-                case 'create-ui-canvas': {
-                    const canvasMateria = createUIEmptyMateria('Canvas', selectedMateria);
-                    canvasMateria.addComponent(new Components.UICanvas(canvasMateria));
-                    // A canvas is a good parent for other UI elements, so we might select it.
-                    break;
-                }
-                case 'create-ui-image': {
-                    const imageMateria = createUIEmptyMateria('Image', selectedMateria);
-                    imageMateria.addComponent(new Components.UIImage(imageMateria));
-                    break;
-                }
                 case 'create-primitive-square': {
                     const square = createEmptyMateria('Cuadrado', selectedMateria);
                     square.addComponent(new Components.SpriteRenderer(square));
@@ -2982,6 +3055,8 @@ function update(deltaTime) {
 
             if (action === 'create-script') {
                 await createNewScript(currentDirectoryHandle.handle);
+            } else if (action === 'create-ui-system') {
+                await createUISystemFile(currentDirectoryHandle.handle);
             } else if (action === 'create-folder') {
                 const folderName = prompt("Nombre de la nueva carpeta:");
                 if (folderName) {
@@ -3192,6 +3267,8 @@ function update(deltaTime) {
                 }
             } else if (panelName === 'animation') {
                 dom.animationPanel.classList.toggle('hidden');
+            } else if (panelName === 'ui-editor') {
+                dom.uiEditorPanel.classList.toggle('hidden');
             } else if (panelName === 'animator') {
                 const panel = dom.animatorControllerPanel;
                 const isHiding = panel.classList.toggle('hidden');
@@ -4213,7 +4290,12 @@ function update(deltaTime) {
             'export-description-modal', 'export-description-text', 'export-description-next-btn',
             'package-file-tree-modal', 'package-modal-title', 'package-modal-description', 'package-file-tree-container',
             'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn',
-            'resizer-left', 'resizer-right', 'resizer-bottom'
+            'resizer-left', 'resizer-right', 'resizer-bottom',
+
+            // UI Editor elements
+            'ui-editor-panel', 'ui-editor-save-btn', 'current-ui-asset-name', 'ui-editor-main-content',
+            'ui-editor-hierarchy', 'ui-resizer-left', 'ui-editor-canvas-view', 'ui-canvas-toolbar',
+            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-resizer-right', 'ui-editor-inspector', 'add-layer-btn'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());

@@ -541,6 +541,75 @@ body {
     color: white;
 }
 
+/* --- UI Editor Panel --- */
+#ui-editor-panel .panel-content {
+    display: grid;
+    grid-template-columns: 250px 6px 1fr 6px 250px;
+    grid-template-rows: 1fr;
+    padding: 0;
+}
+
+.ui-editor-column {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--bg-primary);
+}
+
+#ui-editor-hierarchy .list-header,
+#ui-editor-inspector .list-header {
+    padding: 8px;
+    font-weight: 600;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+
+#ui-editor-hierarchy .list-content,
+#ui-editor-inspector .inspector-content {
+    padding: 10px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+#ui-editor-canvas-view {
+    background-color: #2a2a2e; /* Same as animator graph */
+    display: flex;
+    flex-direction: column;
+}
+
+#ui-canvas-toolbar {
+    padding: 5px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#ui-editor-canvas-container {
+    flex-grow: 1;
+    overflow: auto;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+#ui-editor-canvas {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    width: 800px; /* Default size */
+    height: 600px;
+}
+
+#ui-editor-main-content .resizer-v {
+    background-color: var(--bg-tertiary);
+    cursor: col-resize;
+    z-index: 1;
+}
+
 /* --- Animation Editor Canvas Stacking & Toolbar --- */
 #drawing-canvas-container {
     flex-grow: 1;
