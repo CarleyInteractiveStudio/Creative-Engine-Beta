@@ -1879,113 +1879,129 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
+    var createUISystemFile, openUIEditor, openUIEditorPanel, updateUIEditorHierarchy, updateUIInspector, drawUIEditorCanvas;
 
-    function initUiEditorResizers() {
-        const resizerLeft = dom.uiResizerLeft;
-        const resizerRight = dom.uiResizerRight;
-        const hierarchyPanel = dom.uiHierarchyPanel;
-        const inspectorPanel = dom.uiInspectorPanel;
+    drawUIEditorCanvas = function() {
+        if (!dom.uiEditorCanvas || !currentUISystem) return;
 
-        let startX, startWidth;
+        const canvas = dom.uiEditorCanvas;
+        const ctx = canvas.getContext('2d');
 
-        function onMouseMoveLeft(e) {
-            const newWidth = startWidth + e.clientX - startX;
-            if (newWidth > 150 && newWidth < 500) { // Add some constraints
-                hierarchyPanel.style.width = `${newWidth}px`;
+        // Clear canvas with the root element's background color
+        ctx.fillStyle = currentUISystem.root.backgroundColor || 'rgba(0,0,0,0)';
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear with transparency first
+        ctx.fillRect(0, 0, canvas.width, canvas.height); // Then fill with color
+
+        function drawElement(element) {
+            // Draw rectangle
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.fillStyle = 'rgba(0, 150, 255, 0.3)';
+
+            // Highlight selected element
+            if (selectedUIElement && selectedUIElement.name === element.name) { // Note: using name as ID for now
+                 ctx.strokeStyle = '#FFFF00'; // Yellow for selection
+                 ctx.lineWidth = 2;
+            } else {
+                 ctx.strokeStyle = '#FFFFFF';
+                 ctx.lineWidth = 1;
+            }
+
+            ctx.fillRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
+            ctx.strokeRect(element.rect.x, element.rect.y, element.rect.width, element.rect.height);
+
+            // Draw text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(element.name, element.rect.x + element.rect.width / 2, element.rect.y + element.rect.height / 2);
+
+            // Recursively draw children
+            if (element.children && element.children.length > 0) {
+                element.children.forEach(drawElement);
             }
         }
 
-        function onMouseMoveRight(e) {
-            const newWidth = startWidth - (e.clientX - startX);
-            if (newWidth > 150 && newWidth < 500) { // Add some constraints
-                inspectorPanel.style.width = `${newWidth}px`;
-            }
-        }
-
-        function onMouseUp() {
-            window.removeEventListener('mousemove', onMouseMoveLeft);
-            window.removeEventListener('mousemove', onMouseMoveRight);
-            window.removeEventListener('mouseup', onMouseUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-        }
-
-        resizerLeft.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startX = e.clientX;
-            startWidth = hierarchyPanel.offsetWidth;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            window.addEventListener('mousemove', onMouseMoveLeft);
-            window.addEventListener('mouseup', onMouseUp);
-        });
-
-        resizerRight.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startX = e.clientX;
-            startWidth = inspectorPanel.offsetWidth;
-            document.body.style.cursor = 'col-resize';
-            document.body.style.userSelect = 'none';
-            window.addEventListener('mousemove', onMouseMoveRight);
-            window.addEventListener('mouseup', onMouseUp);
-        });
-    }
-
-    openUiEditor = function() {
-        if (!uiResizersInitialized) {
-            initUiEditorResizers();
-            uiResizersInitialized = true;
-        }
-        dom.uiEditorPanel.classList.remove('hidden');
-
-        // Initial render with placeholder or empty data
-        if (!currentUiAsset) {
-            // Create a default structure if nothing is loaded
-            currentUiAsset = {
-                name: 'New UI Asset',
-                root: {
-                    name: 'Canvas',
-                    type: 'Canvas',
-                    children: []
-                }
-            };
-        }
-        renderUiHierarchy();
-        renderUiCanvas();
-        renderUiInspector();
+        drawElement(currentUISystem.root);
     };
 
-    renderUiHierarchy = function() {
-        const container = dom.uiHierarchyPanel.querySelector('.panel-content');
-        container.innerHTML = ''; // Clear previous content
+    updateUIInspector = function() {
+        if (!dom.uiEditorInspector) return;
+        const container = dom.uiEditorInspector.querySelector('.inspector-content');
+
+        if (!selectedUIElement) {
+            container.innerHTML = '<p>Selecciona un elemento.</p><button id="add-layer-btn">Agregar Leyes</button>';
+            return;
+        }
+
+        let inspectorHTML = `
+            <div class="inspector-materia-header">
+                <input type="text" value="${selectedUIElement.name}" readonly>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9em;">Type: ${selectedUIElement.type}</p>
+            <fieldset>
+                <legend>Rect Transform</legend>
+                <div class="component-grid">
+                    <div class="prop-row"><label>X</label><input type="number" readonly value="${selectedUIElement.rect.x}"></div>
+                    <div class="prop-row"><label>Y</label><input type="number" readonly value="${selectedUIElement.rect.y}"></div>
+                    <div class="prop-row"><label>Width</label><input type="number" readonly value="${selectedUIElement.rect.width}"></div>
+                    <div class="prop-row"><label>Height</label><input type="number" readonly value="${selectedUIElement.rect.height}"></div>
+                </div>
+            </fieldset>
+        `;
+
+        if (selectedUIElement.type === 'Canvas') {
+            inspectorHTML += `
+            <fieldset>
+                <legend>Canvas</legend>
+                <div class="component-grid">
+                    <label>Background Color</label><input type="color" class="prop-input" data-prop="backgroundColor" value="${selectedUIElement.backgroundColor}">
+                </div>
+            </fieldset>
+            `;
+        }
+
+        inspectorHTML += `<button id="add-layer-btn">Agregar Leyes</button>`;
+
+        container.innerHTML = inspectorHTML;
+
+        // Add event listener for the new color picker
+        const colorInput = container.querySelector('input[data-prop="backgroundColor"]');
+        if (colorInput) {
+            colorInput.addEventListener('input', (e) => {
+                selectedUIElement.backgroundColor = e.target.value;
+                drawUIEditorCanvas();
+            });
+        }
+
+        drawUIEditorCanvas(); // Redraw canvas to show selection highlight
+    };
+
+    updateUIEditorHierarchy = function() {
+        if (!currentUISystem || !dom.uiEditorHierarchy) return;
+
+        const container = dom.uiEditorHierarchy.querySelector('.list-content');
+        container.innerHTML = '';
+        selectedUIElement = null;
+        updateUIInspector();
 
         function renderNode(uiElement, parentElement, depth) {
             const item = document.createElement('div');
             item.className = 'hierarchy-item';
             item.textContent = uiElement.name;
             item.style.paddingLeft = `${depth * 18}px`;
-            item.dataset.name = uiElement.name; // Use name as a simple ID for now
-
-            if (selectedUiElement && selectedUiElement.name === uiElement.name) {
-                item.classList.add('active');
-            }
 
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
 
-                // Deselect previous
                 const currentActive = container.querySelector('.hierarchy-item.active');
                 if (currentActive) {
                     currentActive.classList.remove('active');
                 }
 
-                // Select new
                 item.classList.add('active');
-                selectedUiElement = uiElement;
-
-                // Update other panels
-                renderUiInspector();
-                renderUiCanvas();
+                selectedUIElement = uiElement;
+                updateUIInspector();
             });
 
             parentElement.appendChild(item);
@@ -1997,155 +2013,55 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (currentUiAsset && currentUiAsset.root) {
-            renderNode(currentUiAsset.root, container, 0);
+        renderNode(currentUISystem.root, container, 0);
+    };
+
+    openUIEditorPanel = function() {
+        if (!uiEditorResizersInitialized) {
+            initUIEditorResizers();
+            uiEditorResizersInitialized = true;
+        }
+
+        // If there's no system loaded at all, create a default one.
+        if (!currentUISystem) {
+            currentUISystem = {
+                version: 1,
+                root: { type: 'Canvas', name: 'Canvas', backgroundColor: 'rgba(0,0,0,0)', rect: { x: 0, y: 0, width: 800, height: 600 }, children: [] }
+            };
+            currentUIFileHandle = null;
+        }
+
+        // Update title based on whether a file is loaded
+        if (currentUIFileHandle) {
+            dom.currentUiAssetName.textContent = currentUIFileHandle.name;
         } else {
-            container.innerHTML = '<p>No UI Asset loaded.</p>';
+            dom.currentUiAssetName.textContent = "Unsaved UI System";
+        }
+
+        updateUIEditorHierarchy();
+        drawUIEditorCanvas();
+        dom.uiEditorPanel.classList.remove('hidden');
+    };
+
+    openUIEditor = async function(fileHandle) {
+        try {
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            currentUISystem = JSON.parse(content);
+            currentUIFileHandle = fileHandle;
+
+            openUIEditorPanel(); // Open panel with the newly loaded data
+
+            console.log(`Abierto ${fileHandle.name} en el Editor de UI.`, currentUISystem);
+        } catch (error) {
+            console.error(`Error al abrir o parsear el archivo UI '${fileHandle.name}':`, error);
+            alert(`No se pudo abrir el archivo UI. ¿Es un formato JSON válido?`);
+            currentUISystem = null; // Reset on failure
+            currentUIFileHandle = null;
         }
     };
 
-    renderUiCanvas = function() {
-        const canvas = dom.uiCanvas;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (!currentUiAsset || !currentUiAsset.root) {
-            return;
-        }
-
-        // This function will draw an element and its children recursively
-        function drawElement(element) {
-            if (!element || !element.rect) return;
-
-            const { x, y, width, height } = element.rect;
-
-            // Default style
-            ctx.fillStyle = element.color || 'rgba(150, 150, 150, 0.5)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.lineWidth = 1;
-
-            ctx.fillRect(x, y, width, height);
-            ctx.strokeRect(x, y, width, height);
-
-            // Draw text content if it's a Text element
-            if (element.type === 'Text' && element.text) {
-                ctx.fillStyle = element.color || '#FFFFFF';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(element.text, x + width / 2, y + height / 2);
-            }
-
-            // Draw selection outline
-            if (selectedUiElement && selectedUiElement.name === element.name) {
-                ctx.strokeStyle = '#FFFF00'; // Yellow
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x - 1, y - 1, width + 2, height + 2);
-            }
-
-            // Draw children
-            if (element.children && element.children.length > 0) {
-                // To properly handle relative positions, we'd need to pass down parent coords
-                // For now, we assume all rects are in absolute canvas coordinates.
-                element.children.forEach(child => drawElement(child));
-            }
-        }
-
-        drawElement(currentUiAsset.root);
-    };
-
-    renderUiInspector = function() {
-        const container = dom.uiInspectorPanel.querySelector('.panel-content');
-        container.innerHTML = ''; // Clear it
-
-        if (!selectedUiElement) {
-            container.innerHTML = '<p class="inspector-placeholder">Selecciona un elemento de la jerarquía.</p>';
-            return;
-        }
-
-        let inspectorHTML = `
-            <div class="inspector-materia-header">
-                <input type="text" data-prop="name" value="${selectedUiElement.name}">
-            </div>
-            <p style="color: var(--text-secondary); font-size: 0.9em; margin-top:0; margin-bottom: 15px;">Tipo: ${selectedUiElement.type}</p>
-        `;
-
-        // Add RectTransform properties (all elements should have this)
-        if (selectedUiElement.rect) {
-            inspectorHTML += `
-            <fieldset>
-                <legend>Rect Transform</legend>
-                <div class="component-grid">
-                    <div class="prop-row"><label>X</label><input type="number" class="prop-input" data-prop="rect.x" value="${selectedUiElement.rect.x}"></div>
-                    <div class="prop-row"><label>Y</label><input type="number" class="prop-input" data-prop="rect.y" value="${selectedUiElement.rect.y}"></div>
-                    <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-prop="rect.width" value="${selectedUiElement.rect.width}"></div>
-                    <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-prop="rect.height" value="${selectedUiElement.rect.height}"></div>
-                </div>
-            </fieldset>
-            `;
-        }
-
-        // Add specific properties based on type
-        if (selectedUiElement.type === 'Panel' || selectedUiElement.type === 'Canvas') {
-            inspectorHTML += `
-            <fieldset>
-                <legend>${selectedUiElement.type}</legend>
-                <div class="component-grid">
-                    <label>Color</label><input type="color" class="prop-input" data-prop="color" value="${selectedUiElement.color || '#ffffff'}">
-                </div>
-            </fieldset>
-            `;
-        }
-
-        if (selectedUiElement.type === 'Text') {
-            inspectorHTML += `
-            <fieldset>
-                <legend>Text</legend>
-                <div class="component-grid">
-                    <label>Content</label><textarea data-prop="text" rows="3">${selectedUiElement.text || ''}</textarea>
-                    <label>Color</label><input type="color" class="prop-input" data-prop="color" value="${selectedUiElement.color || '#ffffff'}">
-                </div>
-            </fieldset>
-            `;
-        }
-
-        container.innerHTML = inspectorHTML;
-
-        // Add event listener for real-time updates
-        container.addEventListener('input', (e) => {
-            if (!selectedUiElement) return;
-
-            const target = e.target;
-            const propPath = target.dataset.prop;
-            if (!propPath) return;
-
-            let value = target.value;
-            if (target.type === 'number') {
-                value = parseFloat(value);
-                if (isNaN(value)) value = 0; // Prevent NaN from breaking things
-            }
-
-            // Set nested property e.g., "rect.x"
-            const keys = propPath.split('.');
-            let obj = selectedUiElement;
-            for (let i = 0; i < keys.length - 1; i++) {
-                if (!obj[keys[i]]) obj[keys[i]] = {}; // Create nested object if it doesn't exist
-                obj = obj[keys[i]];
-            }
-            obj[keys[keys.length - 1]] = value;
-
-            // If name changed, we need to re-render hierarchy to show the new name
-            if (propPath === 'name') {
-                renderUiHierarchy();
-            }
-
-            // Always re-render the canvas to show the visual change
-            renderUiCanvas();
-        });
-    };
-
-    createUiSystemFile = async function(directoryHandle) {
+    createUISystemFile = async function(directoryHandle) {
         if (!directoryHandle) {
             alert("No se ha seleccionado ninguna carpeta.");
             return;
@@ -2156,12 +2072,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const finalName = fileName.endsWith('.ceui') ? fileName : `${fileName}.ceui`;
 
         const defaultContent = {
-            name: finalName,
+            version: 1,
             root: {
-                name: 'Canvas',
                 type: 'Canvas',
+                name: 'Canvas',
+                backgroundColor: 'rgba(0,0,0,0)',
                 rect: { x: 0, y: 0, width: 800, height: 600 },
-                color: 'rgba(0,0,0,0)',
                 children: []
             }
         };
@@ -2177,24 +2093,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(err) {
             console.error(`Error al crear el sistema UI '${finalName}':`, err);
             alert(`No se pudo crear el archivo. Revisa la consola para más detalles.`);
-        }
-    };
-
-    openUiAsset = async function(fileHandle) {
-        if (!fileHandle) return;
-        try {
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-            currentUiAsset = JSON.parse(content);
-            uiEditorFileHandle = fileHandle; // IMPORTANT: store handle for saving
-
-            console.log(`Abierto asset de UI: ${fileHandle.name}`);
-            openUiEditor(); // This will now open the panel and render the loaded data
-        } catch (error) {
-            console.error(`Error al abrir o parsear el asset de UI '${fileHandle.name}':`, error);
-            alert(`No se pudo abrir el archivo de UI. ¿Es un formato JSON válido?`);
-            currentUiAsset = null;
-            uiEditorFileHandle = null;
         }
     };
 
@@ -2853,6 +2751,59 @@ function update(deltaTime) {
         }
     }
 
+    function initUIEditorResizers() {
+        if (uiResizersInitialized) return;
+
+        const resizerLeft = dom.uiResizerLeft;
+        const resizerRight = dom.uiResizerRight;
+        const hierarchyPanel = dom.uiHierarchyPanel;
+        const inspectorPanel = dom.uiInspectorPanel;
+
+        let startX, startWidth;
+
+        function onMouseMoveLeft(e) {
+            const newWidth = startWidth + e.clientX - startX;
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                hierarchyPanel.style.width = `${newWidth}px`;
+            }
+        }
+
+        function onMouseMoveRight(e) {
+            const newWidth = startWidth - (e.clientX - startX);
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                inspectorPanel.style.width = `${newWidth}px`;
+            }
+        }
+
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMoveLeft);
+            window.removeEventListener('mousemove', onMouseMoveRight);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        resizerLeft.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = hierarchyPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveLeft);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
+         resizerRight.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = inspectorPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveRight);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+        uiResizersInitialized = true;
+    }
 
     function setupEventListeners() {
         // --- Hierarchy Drag and Drop ---
@@ -4594,10 +4545,10 @@ function update(deltaTime) {
             'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn',
             'resizer-left', 'resizer-right', 'resizer-bottom',
 
-            // New UI Editor elements
-            'ui-editor-panel', 'ui-save-btn', 'ui-editor-layout', 'ui-hierarchy-panel',
+            // UI Editor elements
+            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel',
             'ui-canvas-panel', 'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel',
-            'ui-resizer-left', 'ui-resizer-right', 'ui-maximize-btn'
+            'ui-resizer-left', 'ui-resizer-right'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
