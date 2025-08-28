@@ -542,19 +542,22 @@ body {
 }
 
 /* --- UI Editor Panel --- */
-#ui-editor-panel .panel-content {
+#ui-editor-main-content {
     display: grid;
     grid-template-columns: 250px 6px 1fr 6px 250px;
     grid-template-rows: 1fr;
+    height: 100%;
     padding: 0;
 }
-
-.ui-editor-column {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background-color: var(--bg-primary);
+#ui-editor-panel .panel-content {
+    padding: 0; /* Remove padding from the parent container */
 }
+
+#ui-editor-hierarchy { grid-column: 1; }
+#ui-resizer-left { grid-column: 2; }
+#ui-editor-canvas-view { grid-column: 3; }
+#ui-resizer-right { grid-column: 4; }
+#ui-editor-inspector { grid-column: 5; }
 
 #ui-editor-hierarchy .list-header,
 #ui-editor-inspector .list-header {
