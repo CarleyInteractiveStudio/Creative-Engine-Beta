@@ -2608,6 +2608,61 @@ function update(deltaTime) {
         }
     }
 
+    function initUIEditorResizers() {
+        const resizerLeft = dom.uiResizerLeft;
+        const resizerRight = dom.uiResizerRight;
+        const mainContent = dom.uiEditorMainContent;
+
+        if (!resizerLeft || !resizerRight || !mainContent) {
+            console.warn("UI Editor resizer elements not found on init. This is expected if the panel is not yet open.");
+            return;
+        }
+
+        const onMouseMoveLeft = (e) => {
+            const rect = mainContent.getBoundingClientRect();
+            let newHierarchyWidth = e.clientX - rect.left;
+            newHierarchyWidth = Math.max(150, newHierarchyWidth); // Min width
+            const newInspectorWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[4]);
+            const maxHierarchyWidth = rect.width - newInspectorWidth - 150 - 12; // inspector - canvas - resizers
+            newHierarchyWidth = Math.min(newHierarchyWidth, maxHierarchyWidth);
+            mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+        };
+
+        const onMouseMoveRight = (e) => {
+            const rect = mainContent.getBoundingClientRect();
+            let newInspectorWidth = rect.right - e.clientX;
+            newInspectorWidth = Math.max(150, newInspectorWidth); // Min width
+            const newHierarchyWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[0]);
+             const maxInspectorWidth = rect.width - newHierarchyWidth - 150 - 12; // hierarchy - canvas - resizers
+            newInspectorWidth = Math.min(newInspectorWidth, maxInspectorWidth);
+            mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
+        };
+
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMoveLeft);
+            window.removeEventListener('mousemove', onMouseMoveRight);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        resizerLeft.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveLeft);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
+         resizerRight.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveRight);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
     function setupEventListeners() {
         // --- Hierarchy Drag and Drop ---
         const hierarchyContent = dom.hierarchyContent;
@@ -4083,62 +4138,6 @@ function update(deltaTime) {
         initResizer(dom.resizerLeft, 'col');
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
-
-        function initUIEditorResizers() {
-            const resizerLeft = dom.uiResizerLeft;
-            const resizerRight = dom.uiResizerRight;
-            const mainContent = dom.uiEditorMainContent;
-
-            if (!resizerLeft || !resizerRight || !mainContent) {
-                console.warn("UI Editor resizer elements not found on init. This is expected if the panel is not yet open.");
-                return;
-            }
-
-            const onMouseMoveLeft = (e) => {
-                const rect = mainContent.getBoundingClientRect();
-                let newHierarchyWidth = e.clientX - rect.left;
-                newHierarchyWidth = Math.max(150, newHierarchyWidth); // Min width
-                const newInspectorWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[4]);
-                const maxHierarchyWidth = rect.width - newInspectorWidth - 150 - 12; // inspector - canvas - resizers
-                newHierarchyWidth = Math.min(newHierarchyWidth, maxHierarchyWidth);
-                mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
-            };
-
-            const onMouseMoveRight = (e) => {
-                const rect = mainContent.getBoundingClientRect();
-                let newInspectorWidth = rect.right - e.clientX;
-                newInspectorWidth = Math.max(150, newInspectorWidth); // Min width
-                const newHierarchyWidth = parseFloat(mainContent.style.gridTemplateColumns.split(' ')[0]);
-                 const maxInspectorWidth = rect.width - newHierarchyWidth - 150 - 12; // hierarchy - canvas - resizers
-                newInspectorWidth = Math.min(newInspectorWidth, maxInspectorWidth);
-                mainContent.style.gridTemplateColumns = `${newHierarchyWidth}px 6px 1fr 6px ${newInspectorWidth}px`;
-            };
-
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMoveLeft);
-                window.removeEventListener('mousemove', onMouseMoveRight);
-                window.removeEventListener('mouseup', onMouseUp);
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-            };
-
-            resizerLeft.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-                window.addEventListener('mousemove', onMouseMoveLeft);
-                window.addEventListener('mouseup', onMouseUp);
-            });
-
-             resizerRight.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-                window.addEventListener('mousemove', onMouseMoveRight);
-                window.addEventListener('mouseup', onMouseUp);
-            });
-        }
-
 
         // --- UI Editor Toolbar Logic ---
         if (dom.uiCanvasMaximizeBtn) {
