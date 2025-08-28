@@ -133,7 +133,34 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, openUiEditor, renderUiHierarchy, renderUiCanvas, renderUiInspector, createUiSystemFile, openUiAsset;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, openUiEditor, renderUiHierarchy, renderUiCanvas, renderUiInspector, createUiSystemFile, openUiAsset, updateWindowMenuUI;
+
+    function updateWindowMenuUI() {
+        const menuItems = {
+            'hierarchy-panel': 'menu-window-hierarchy',
+            'inspector-panel': 'menu-window-inspector',
+            'assets-panel': 'menu-window-assets',
+            'animation-panel': 'menu-window-animation',
+            'animator-controller-panel': 'menu-window-animator',
+            'ui-editor-panel': 'menu-window-ui-editor'
+        };
+        const checkmark = '✅ ';
+
+        for (const [panelId, menuId] of Object.entries(menuItems)) {
+            const panel = document.getElementById(panelId);
+            const menuItem = document.getElementById(menuId);
+
+            if (panel && menuItem) {
+                // Always clean the text first to avoid multiple checkmarks
+                menuItem.textContent = menuItem.textContent.replace(checkmark, '');
+
+                // Add checkmark if panel is visible (does not have the 'hidden' class)
+                if (!panel.classList.contains('hidden')) {
+                    menuItem.textContent = checkmark + menuItem.textContent;
+                }
+            }
+        }
+    }
 
     loadProjectConfig = async function() {
         try {
