@@ -595,10 +595,17 @@ body {
     display: grid;
     place-items: center;
     padding: 20px;
+    background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
 #ui-editor-canvas {
-    background-color: white;
+    background-color: transparent;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
     width: 800px; /* Default size */
     height: 600px;
@@ -1026,28 +1033,16 @@ body {
 .resize-handle {
     position: absolute;
     z-index: 1501;
+    background: transparent; /* Make them invisible, only cursor changes */
 }
-.resize-handle[data-direction="right"] {
-    cursor: e-resize;
-    right: 0;
-    top: 0;
-    width: 5px;
-    height: 100%;
-}
-.resize-handle[data-direction="bottom"] {
-    cursor: s-resize;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 5px;
-}
-.resize-handle[data-direction="both"] {
-    cursor: se-resize;
-    bottom: 0;
-    right: 0;
-    width: 10px;
-    height: 10px;
-}
+.resize-handle[data-direction="n"] { top: 0; left: 5px; right: 5px; height: 5px; cursor: n-resize; }
+.resize-handle[data-direction="ne"] { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.resize-handle[data-direction="e"] { top: 5px; right: 0; bottom: 5px; width: 5px; cursor: e-resize; }
+.resize-handle[data-direction="se"] { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+.resize-handle[data-direction="s"] { bottom: 0; left: 5px; right: 5px; height: 5px; cursor: s-resize; }
+.resize-handle[data-direction="sw"] { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+.resize-handle[data-direction="w"] { top: 5px; left: 0; bottom: 5px; width: 5px; cursor: w-resize; }
+.resize-handle[data-direction="nw"] { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
 
 
 #animation-panel .panel-header {

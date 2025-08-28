@@ -1887,9 +1887,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = dom.uiEditorCanvas;
         const ctx = canvas.getContext('2d');
 
-        // Clear canvas
-        ctx.fillStyle = '#555555'; // A neutral dark gray background
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas with the root element's background color
+        ctx.fillStyle = currentUISystem.root.backgroundColor || 'rgba(0,0,0,0)';
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear with transparency first
+        ctx.fillRect(0, 0, canvas.width, canvas.height); // Then fill with color
 
         function drawElement(element) {
             // Draw rectangle
@@ -1947,10 +1948,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="prop-row"><label>Height</label><input type="number" readonly value="${selectedUIElement.rect.height}"></div>
                 </div>
             </fieldset>
-            <button id="add-layer-btn">Agregar Leyes</button>
         `;
 
+        if (selectedUIElement.type === 'Canvas') {
+            inspectorHTML += `
+            <fieldset>
+                <legend>Canvas</legend>
+                <div class="component-grid">
+                    <label>Background Color</label><input type="color" class="prop-input" data-prop="backgroundColor" value="${selectedUIElement.backgroundColor}">
+                </div>
+            </fieldset>
+            `;
+        }
+
+        inspectorHTML += `<button id="add-layer-btn">Agregar Leyes</button>`;
+
         container.innerHTML = inspectorHTML;
+
+        // Add event listener for the new color picker
+        const colorInput = container.querySelector('input[data-prop="backgroundColor"]');
+        if (colorInput) {
+            colorInput.addEventListener('input', (e) => {
+                selectedUIElement.backgroundColor = e.target.value;
+                drawUIEditorCanvas();
+            });
+        }
+
         drawUIEditorCanvas(); // Redraw canvas to show selection highlight
     };
 
@@ -2028,6 +2051,7 @@ document.addEventListener('DOMContentLoaded', () => {
             root: {
                 type: 'Canvas',
                 name: 'Canvas',
+                backgroundColor: 'rgba(0,0,0,0)',
                 rect: { x: 0, y: 0, width: 800, height: 600 },
                 children: []
             }
@@ -4147,7 +4171,9 @@ function update(deltaTime) {
                     initialX: e.clientX,
                     initialY: e.clientY,
                     initialWidth: rect.width,
-                    initialHeight: rect.height
+                    initialHeight: rect.height,
+                    initialLeft: rect.left,
+                    initialTop: rect.top
                 };
                 document.body.classList.add('is-dragging-panel');
                 e.preventDefault();
@@ -4176,14 +4202,34 @@ function update(deltaTime) {
             } else if (isResizingPanel && panelResizeState.panel) {
                 const dx = e.clientX - panelResizeState.initialX;
                 const dy = e.clientY - panelResizeState.initialY;
+                const MIN_WIDTH = 300;
+                const MIN_HEIGHT = 200;
 
-                if (panelResizeState.direction === 'right' || panelResizeState.direction === 'both') {
+                // Right-side resizing
+                if (panelResizeState.direction.includes('e')) {
                     const newWidth = panelResizeState.initialWidth + dx;
-                    panelResizeState.panel.style.width = `${Math.max(400, newWidth)}px`;
+                    panelResizeState.panel.style.width = `${Math.max(MIN_WIDTH, newWidth)}px`;
                 }
-                if (panelResizeState.direction === 'bottom' || panelResizeState.direction === 'both') {
+                // Left-side resizing
+                if (panelResizeState.direction.includes('w')) {
+                    const newWidth = panelResizeState.initialWidth - dx;
+                    if (newWidth > MIN_WIDTH) {
+                        panelResizeState.panel.style.width = `${newWidth}px`;
+                        panelResizeState.panel.style.left = `${panelResizeState.initialLeft + dx}px`;
+                    }
+                }
+                // Bottom-side resizing
+                if (panelResizeState.direction.includes('s')) {
                     const newHeight = panelResizeState.initialHeight + dy;
-                    panelResizeState.panel.style.height = `${Math.max(300, newHeight)}px`;
+                    panelResizeState.panel.style.height = `${Math.max(MIN_HEIGHT, newHeight)}px`;
+                }
+                // Top-side resizing
+                if (panelResizeState.direction.includes('n')) {
+                     const newHeight = panelResizeState.initialHeight - dy;
+                     if (newHeight > MIN_HEIGHT) {
+                        panelResizeState.panel.style.height = `${newHeight}px`;
+                        panelResizeState.panel.style.top = `${panelResizeState.initialTop + dy}px`;
+                     }
                 }
             }
         });
