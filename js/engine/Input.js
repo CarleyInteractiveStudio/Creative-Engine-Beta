@@ -15,6 +15,13 @@ class InputManager {
     static _mousePosition = { x: 0, y: 0 };
     static _mousePositionInCanvas = { x: 0, y: 0 };
     static _canvasRect = null;
+    static _scrollDelta = 0;
+
+    // Long Press State
+    static _longPressTimeoutId = null;
+    static _longPressStartPosition = { x: 0, y: 0 };
+    static LONG_PRESS_DURATION = 750; // ms
+    static LONG_PRESS_TOLERANCE = 10; // pixels
 
     /**
      * Initializes the InputManager. Attaches listeners to the window.
@@ -23,18 +30,30 @@ class InputManager {
     static initialize(canvas = null) {
         if (this.initialized) return;
 
+        // Keyboard
         window.addEventListener('keydown', this._onKeyDown.bind(this));
         window.addEventListener('keyup', this._onKeyUp.bind(this));
+
+        // Mouse
         window.addEventListener('mousemove', this._onMouseMove.bind(this));
         window.addEventListener('mousedown', this._onMouseDown.bind(this));
         window.addEventListener('mouseup', this._onMouseUp.bind(this));
+        window.addEventListener('wheel', this._onWheel.bind(this));
+
+        // Touch
+        window.addEventListener('touchstart', this._onTouchStart.bind(this), { passive: false });
+        window.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
+        window.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
+        window.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
+
 
         if (canvas) {
+            this._canvas = canvas; // Store canvas reference
             this._canvasRect = canvas.getBoundingClientRect();
         }
 
         this.initialized = true;
-        console.log("InputManager Initialized.");
+        console.log("InputManager Initialized for Mouse and Touch.");
     }
 
     /**
@@ -46,6 +65,7 @@ class InputManager {
         this._keysUp.clear();
         this._buttonsDown.clear();
         this._buttonsUp.clear();
+        this._scrollDelta = 0;
 
         if (this._canvas) {
              this._canvasRect = this._canvas.getBoundingClientRect();
@@ -104,29 +124,99 @@ class InputManager {
         return pressed;
     }
 
-    // Mouse Methods
-    static _onMouseMove(event) {
-        this._mousePosition.x = event.clientX;
-        this._mousePosition.y = event.clientY;
+    // --- Pointer (Mouse + Touch) Methods ---
 
-        if (this._canvasRect) {
-            this._mousePositionInCanvas.x = event.clientX - this._canvasRect.left;
-            this._mousePositionInCanvas.y = event.clientY - this._canvasRect.top;
-        }
+    static _onMouseMove(event) {
+        this._updatePointerPosition(event.clientX, event.clientY);
     }
 
     static _onMouseDown(event) {
-        const button = event.button;
+        this._onPointerDown(event.button);
+    }
+
+    static _onMouseUp(event) {
+        this._onPointerUp(event.button);
+    }
+
+    static _onTouchStart(event) {
+        event.preventDefault();
+        if (event.touches.length > 0) {
+            const touch = event.touches[0];
+            this._updatePointerPosition(touch.clientX, touch.clientY);
+            this._onPointerDown(0); // Treat all touches as left-click
+
+            // Start long-press timer
+            this._longPressStartPosition = { x: touch.clientX, y: touch.clientY };
+            this._clearLongPressTimer();
+            this._longPressTimeoutId = setTimeout(() => {
+                this._handleLongPress(event.target);
+            }, this.LONG_PRESS_DURATION);
+        }
+    }
+
+    static _onTouchMove(event) {
+        event.preventDefault();
+        if (event.touches.length > 0) {
+            const touch = event.touches[0];
+            this._updatePointerPosition(touch.clientX, touch.clientY);
+
+            // Cancel long press if finger moves too far
+            const dx = Math.abs(touch.clientX - this._longPressStartPosition.x);
+            const dy = Math.abs(touch.clientY - this._longPressStartPosition.y);
+            if (dx > this.LONG_PRESS_TOLERANCE || dy > this.LONG_PRESS_TOLERANCE) {
+                this._clearLongPressTimer();
+            }
+        }
+    }
+
+    static _onTouchEnd(event) {
+        event.preventDefault();
+        this._clearLongPressTimer();
+        this._onPointerUp(0); // Treat all touches as left-click
+    }
+
+    static _clearLongPressTimer() {
+        if (this._longPressTimeoutId) {
+            clearTimeout(this._longPressTimeoutId);
+            this._longPressTimeoutId = null;
+        }
+    }
+
+    static _handleLongPress(targetElement) {
+        console.log("Long press detected!");
+        this._longPressTimeoutId = null;
+        // Create a new MouseEvent to simulate a right-click (contextmenu)
+        const contextMenuEvent = new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            button: 2,
+            buttons: 0,
+            clientX: this._mousePosition.x,
+            clientY: this._mousePosition.y
+        });
+        targetElement.dispatchEvent(contextMenuEvent);
+    }
+
+    // Unified handlers
+    static _updatePointerPosition(clientX, clientY) {
+        this._mousePosition.x = clientX;
+        this._mousePosition.y = clientY;
+
+        if (this._canvasRect) {
+            this._mousePositionInCanvas.x = clientX - this._canvasRect.left;
+            this._mousePositionInCanvas.y = clientY - this._canvasRect.top;
+        }
+    }
+
+    static _onPointerDown(button) {
         if (!this._mouseButtons.get(button)) {
             this._buttonsDown.add(button);
         }
         this._mouseButtons.set(button, true);
     }
 
-
-
-    static _onMouseUp(event) {
-        const button = event.button;
+    static _onPointerUp(button) {
         this._mouseButtons.set(button, false);
         this._buttonsUp.add(button);
     }
@@ -174,6 +264,18 @@ class InputManager {
         return this._mousePositionInCanvas;
     }
 
+    static _onWheel(event) {
+        this._scrollDelta = event.deltaY;
+    }
+
+    /**
+     * Gets the scroll wheel delta for the current frame.
+     * @returns {number} The vertical scroll amount.
+     */
+    static getScrollDelta() {
+        return this._scrollDelta;
+    }
+
     /**
      * Converts a screen (canvas) position to world coordinates.
      * @param {Camera} camera The scene camera.
@@ -184,8 +286,8 @@ class InputManager {
         if (!canvas || !camera) return { x: 0, y: 0 };
         const canvasPos = this._mousePositionInCanvas;
 
-        const worldX = (canvasPos.x - canvas.width / 2) / camera.zoom + camera.x;
-        const worldY = (canvasPos.y - canvas.height / 2) / camera.zoom + camera.y;
+        const worldX = (canvasPos.x - canvas.width / 2) / camera.effectiveZoom + camera.x;
+        const worldY = (canvasPos.y - canvas.height / 2) / camera.effectiveZoom + camera.y;
 
         return { x: worldX, y: worldY };
     }

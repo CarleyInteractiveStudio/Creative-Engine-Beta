@@ -164,54 +164,6 @@ body {
     gap: 8px;
 }
 
-/* --- Layer Manager Styles --- */
-.layer-manager {
-    display: flex;
-    gap: 20px;
-}
-.layer-column {
-    flex: 1;
-}
-.layer-list {
-    min-height: 150px;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 5px;
-    margin-bottom: 10px;
-}
-.layer-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 8px;
-    border-radius: 3px;
-}
-.layer-item:nth-child(odd) {
-    background-color: rgba(0,0,0,0.1);
-}
-.layer-item .remove-layer-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-weight: bold;
-}
-.layer-item .remove-layer-btn:hover {
-    color: #c0392b;
-}
-.layer-add-row {
-    display: flex;
-    gap: 5px;
-}
-.layer-add-row input {
-    flex-grow: 1;
-    margin: 0 !important; /* Override default margin */
-}
-.layer-add-row button {
-    flex-shrink: 0;
-}
-
 #export-file-tree-container {
     height: 400px;
     overflow-y: auto;
@@ -436,39 +388,48 @@ body {
 #editor-main-content {
     display: grid;
     height: calc(100vh - 42px); /* 100% viewport height minus toolbar */
-    /* Define tracks for panels and resizers */
-    grid-template-columns: 220px 6px 1fr 6px 320px;
-    grid-template-rows: 1.5fr 6px 1fr;
+    grid-template-columns: 220px 1fr 320px; /* Hierarchy | Scene | Inspector */
+    grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); /* Scene / Assets */
+    grid-template-areas:
+        "hierarchy scene inspector"
+        "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
+    gap: 6px;
     padding: 6px;
-    gap: 6px; /* Keep the visual gap, but resizers will be placed over it */
-}
-
-/* --- Resizer Styles --- */
-.resizer-v, .resizer-h {
-    background: transparent; /* Initially transparent */
-    z-index: 100;
-    transition: background-color 0.2s ease;
-}
-.resizer-v:hover, .resizer-h:hover {
-    background-color: var(--accent-color);
-}
-.resizer-v {
-    cursor: col-resize;
-}
-.resizer-h {
-    cursor: row-resize;
 }
 
 /* --- Panel Assignments & Styles --- */
-#hierarchy-panel { grid-column: 1; grid-row: 1 / 4; }
-#resizer-left { grid-column: 2; grid-row: 1 / 4; }
-#scene-panel { grid-column: 3; grid-row: 1; }
-#resizer-bottom { grid-column: 3; grid-row: 2; }
-#assets-panel { grid-column: 3; grid-row: 3; }
-#resizer-right { grid-column: 4; grid-row: 1 / 4; }
-#inspector-panel { grid-column: 5; grid-row: 1 / 4; }
+#hierarchy-panel { grid-area: hierarchy; }
+#scene-panel { grid-area: scene; }
+#inspector-panel { grid-area: inspector; }
+#assets-panel {
+    grid-area: assets;
+}
 
-/* Dynamic layout is now handled by JS */
+/* --- Dynamic Layout States --- */
+#editor-main-content.no-hierarchy {
+    grid-template-columns: 1fr 320px;
+    grid-template-areas:
+        "scene inspector"
+        "assets inspector";
+}
+#editor-main-content.no-inspector {
+    grid-template-columns: 260px 1fr;
+    grid-template-areas:
+        "hierarchy scene"
+        "hierarchy assets";
+}
+#editor-main-content.no-assets {
+    grid-template-rows: 1fr;
+    grid-template-areas:
+        "hierarchy scene inspector";
+}
+#editor-main-content.no-hierarchy.no-inspector {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "scene"
+        "assets";
+}
+/* Add other combinations as needed */
 
 
 .editor-panel {
@@ -578,6 +539,181 @@ body {
 .view-toggle-btn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+/* --- UI Editor Panel --- */
+#ui-editor-main-content {
+    display: grid;
+    grid-template-columns: 250px 6px 1fr 6px 250px;
+    grid-template-rows: 1fr;
+    grid-template-areas: "hierarchy resizer-left canvas resizer-right inspector";
+    height: 100%;
+    padding: 0;
+}
+#ui-editor-panel .panel-content {
+    padding: 0; /* Remove padding from the parent container */
+}
+
+#ui-editor-hierarchy { grid-area: hierarchy; }
+#ui-resizer-left { grid-area: resizer-left; }
+#ui-editor-canvas-view { grid-area: canvas; }
+#ui-resizer-right { grid-area: resizer-right; }
+#ui-editor-inspector { grid-area: inspector; }
+
+#ui-editor-hierarchy .list-header,
+#ui-editor-inspector .list-header {
+    padding: 8px;
+    font-weight: 600;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+
+#ui-editor-hierarchy .list-content,
+#ui-editor-inspector .inspector-content {
+    padding: 10px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+#ui-editor-canvas-view {
+    background-color: #2a2a2e; /* Same as animator graph */
+    display: flex;
+    flex-direction: column;
+}
+
+#ui-canvas-toolbar {
+    padding: 5px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#ui-editor-canvas-container {
+    flex-grow: 1;
+    overflow: auto;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+#ui-editor-canvas {
+    background-color: transparent;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    width: 800px; /* Default size */
+    height: 600px;
+}
+
+#ui-editor-main-content .resizer-v {
+    background-color: var(--bg-tertiary);
+    cursor: col-resize;
+    z-index: 1;
+}
+
+#ui-editor-panel.canvas-maximized #ui-editor-hierarchy,
+#ui-editor-panel.canvas-maximized #ui-editor-inspector,
+#ui-editor-panel.canvas-maximized #ui-resizer-left,
+#ui-editor-panel.canvas-maximized #ui-resizer-right {
+    display: none;
+}
+
+#ui-editor-panel.canvas-maximized #ui-editor-main-content {
+    grid-template-columns: 1fr;
+}
+
+/* --- Animation Editor Canvas Stacking & Toolbar --- */
+#drawing-canvas-container {
+    flex-grow: 1;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+#drawing-canvas-container.bg-white {
+    background-image: none;
+    background-color: #ffffff;
+}
+
+/* This rule ensures all canvases inside the container stack perfectly by placing them in the same grid cell. */
+#drawing-canvas-container > canvas {
+    grid-column: 1;
+    grid-row: 1;
+    background: transparent;
+}
+
+#anim-grid-canvas {
+    z-index: 1; /* Grid is at the bottom */
+    pointer-events: none;
+}
+
+#drawing-canvas {
+    cursor: crosshair;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    z-index: 2; /* The main drawing canvas is in the middle */
+}
+
+#anim-onion-skin-canvas {
+    z-index: 3; /* Onion skin appears over the drawing canvas but doesn't block it */
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+#animation-toolbar .toolbar-group {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin: 0 10px;
+    padding: 0;
+}
+
+#animation-toolbar .toolbar-group button {
+    border-radius: 0;
+    border: none;
+    border-left: 1px solid var(--border-color);
+    margin: 0;
+    padding: 6px 8px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+#animation-toolbar .toolbar-group button:first-child {
+    border-left: none;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+#animation-toolbar .toolbar-group button:last-child {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+#animation-toolbar .toolbar-group button:hover {
+    background-color: #4f4f56;
+}
+
+#animation-toolbar .toolbar-group button.active {
+    background-color: var(--accent-color);
+    color: var(--button-text-color, white);
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
 }
 
 /* --- Project Settings Modal --- */
@@ -909,42 +1045,68 @@ body {
 /* --- Animation Panel Styles --- */
 .floating-panel {
     position: absolute;
-    width: 70%;
-    max-width: 800px;
-    height: 350px;
+    width: 60vw; /* Initial width */
+    height: 70vh; /* Initial height */
+    min-width: 400px; /* Prevent it from being too small */
+    min-height: 300px; /* Prevent it from being too small */
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 1500;
     box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    /* resize: both; <-- This will be handled manually */
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease-in-out;
+}
+
+.floating-panel.maximized {
+    top: 42px !important; /* Below menubar */
+    left: 6px !important;
+    width: calc(100vw - 12px) !important;
+    height: calc(100vh - 48px) !important;
+    transform: none !important;
+}
+
+.floating-panel.maximized .resize-handle {
+    display: none;
+}
+
+.floating-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.panel-tool-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1em;
+    cursor: pointer;
+    padding: 0 5px;
+}
+.panel-tool-btn:hover {
+    color: var(--text-primary);
 }
 
 .resize-handle {
     position: absolute;
     z-index: 1501;
+    background: transparent; /* Make them invisible, only cursor changes */
 }
-.resize-handle[data-direction="right"] {
-    cursor: e-resize;
-    right: 0;
-    top: 0;
-    width: 5px;
-    height: 100%;
-}
-.resize-handle[data-direction="bottom"] {
-    cursor: s-resize;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 5px;
-}
-.resize-handle[data-direction="both"] {
-    cursor: se-resize;
-    bottom: 0;
-    right: 0;
-    width: 10px;
-    height: 10px;
-}
+.resize-handle[data-direction="n"] { top: 0; left: 5px; right: 5px; height: 5px; cursor: n-resize; }
+.resize-handle[data-direction="ne"] { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.resize-handle[data-direction="e"] { top: 5px; right: 0; bottom: 5px; width: 5px; cursor: e-resize; }
+.resize-handle[data-direction="se"] { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+.resize-handle[data-direction="s"] { bottom: 0; left: 5px; right: 5px; height: 5px; cursor: s-resize; }
+.resize-handle[data-direction="sw"] { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+.resize-handle[data-direction="w"] { top: 5px; left: 0; bottom: 5px; width: 5px; cursor: w-resize; }
+.resize-handle[data-direction="nw"] { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
 
 
 #animation-panel .panel-header {
@@ -1055,13 +1217,18 @@ body {
     overflow: hidden;
 }
 
-#drawing-tools {
+#drawing-tools, #animation-view-tools {
     display: flex;
     flex-direction: column;
     gap: 10px;
     padding: 10px;
     background-color: var(--bg-tertiary);
     border-right: 1px solid var(--border-color);
+}
+
+#animation-view-tools {
+    border-left: 1px solid var(--border-color);
+    border-right: none;
 }
 
 #drawing-tools .tool-btn {
@@ -1077,25 +1244,14 @@ body {
     background-color: var(--accent-color);
 }
 
-#drawing-canvas-container {
-    flex-grow: 1;
-    display: grid;
-    place-items: center;
-    overflow: auto; /* Allow scrolling/panning if canvas is larger */
-    background-image:
-        linear-gradient(45deg, #444 25%, transparent 25%),
-        linear-gradient(-45deg, #444 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #444 75%),
-        linear-gradient(-45deg, transparent 75%, #444 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-}
 
-#drawing-canvas {
-    /* The container provides the checkered background */
-    background-color: transparent;
-    cursor: crosshair;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+#drawing-tools .canvas-view-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
 }
 
 .inspector-anim-preview {
@@ -1428,13 +1584,6 @@ body {
     opacity: 0.7;
 }
 
-.empty-message {
-    text-align: center;
-    color: var(--text-secondary);
-    padding: 20px;
-    font-style: italic;
-}
-
 #hierarchy-content.drag-over {
     outline: 2px dashed var(--accent-color);
     outline-offset: -4px;
@@ -1460,28 +1609,6 @@ body {
 #materia-name-input {
     flex-grow: 1;
     font-size: 1.1em;
-}
-
-.inspector-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.inspector-row label {
-    margin-top: 0;
-    font-weight: 600;
-}
-
-.inspector-row select {
-    flex-grow: 1;
-    padding: 6px;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: 4px;
-}
     font-weight: bold;
     padding: 6px;
     background-color: var(--bg-primary);
@@ -1499,22 +1626,10 @@ body {
 #inspector-panel .panel-content {
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    /* Ensure the container itself doesn't overflow but lets its children handle it */
-    height: 100%;
-    box-sizing: border-box;
-}
-
-.inspector-components-wrapper {
+    gap: 5px;
+    padding: 15px;
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0; /* This is the key fix to allow shrinking */
-    padding-right: 5px; /* Space for scrollbar */
-}
-
-#add-component-btn {
-    flex-shrink: 0; /* Prevent button from shrinking */
-    margin-top: 10px; /* Give it some space from the scrolling area */
 }
 
 #inspector-panel label {
@@ -1543,32 +1658,42 @@ body {
 
 .transform-grid {
     display: grid;
-    grid-template-columns: 20px 1fr;
+    grid-template-columns: auto 1fr;
     gap: 5px 8px;
     align-items: center;
 }
 
-.prop-row {
-    display: flex;
+.rect-transform-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    width: 100%;
 }
 
-.prop-cell {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex: 1; /* Each cell takes equal space */
+.anchor-preset-grid {
+    width: 100px;
+    height: 100px;
+    border: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    background-color: var(--bg-primary);
 }
 
-.prop-cell label {
-    margin: 0; /* Remove default margins */
-    font-size: 0.9em;
-    color: var(--text-secondary);
+.anchor-preset-cell {
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+    border: 2px solid transparent;
 }
 
-.prop-cell input {
-    width: 100%; /* Make input fill the cell */
+.anchor-preset-cell:hover {
+    background-color: var(--accent-color);
+    opacity: 0.7;
+}
+
+.anchor-preset-cell.active {
+    background-color: var(--accent-color);
+    border-color: #fff;
 }
 
 .text-transform-controls {

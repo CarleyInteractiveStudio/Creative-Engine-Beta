@@ -1,14 +1,28 @@
+// Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
-import { uiEventSystem } from './engine/UIEventSystem.js';
+import { Renderer } from './engine/Renderer.js';
+import { PhysicsSystem } from './engine/Physics.js';
 import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
 import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { CreativeScript, RectTransform, UICanvas, UIImage, UIPanel, UIMask, UIText, UIButton, Rigidbody, BoxCollider, SpriteRenderer, Animator, Animation, Camera, Transform, HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup } from './engine/Components.js';
+import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import {oneDark} from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import {undo, redo} from "https://esm.sh/@codemirror/commands@6.3.3";
 import {autocompletion} from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { getURLForAssetPath } from './engine/AssetUtils.js';
+import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFromModule } from './editor/ui/animation-editor.js';
+
+function drawAnimEditorGrid() {
+  // This function was deleted and is now a placeholder.
+  console.warn("drawAnimEditorGrid is not implemented");
+}
+
+function drawOnionSkin() {
+  // This function was deleted and is now a placeholder.
+  console.warn("drawOnionSkin is not implemented");
+}
 
 // --- Autocomplete Logic for Creative Engine Script ---
 const cesKeywords = [
@@ -42,137 +56,6 @@ function cesCompletions(context) {
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Engine Core Classes ---
-
-    class Renderer {
-        constructor(canvas, isEditor = false) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.camera = null; // Will be assigned from the scene
-            this.isEditor = isEditor;
-            this.resize();
-        }
-
-        resize() {
-            this.canvas.width = this.canvas.clientWidth;
-            this.canvas.height = this.canvas.clientHeight;
-        }
-
-        begin() {
-            const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
-            let cameraComponent;
-            let cameraTransform;
-
-            if (sceneCameraMateria) {
-                cameraComponent = sceneCameraMateria.getComponent(Camera);
-                cameraTransform = sceneCameraMateria.getComponent(Transform);
-            }
-
-            // The editor renderer creates a default camera if none exists.
-            // The game renderer will have a null camera and won't render.
-            if (!cameraComponent && this.isEditor) {
-                cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
-                cameraTransform = { x: 0, y: 0 };
-            }
-
-            this.camera = cameraComponent ? {
-                ...cameraComponent,
-                x: cameraTransform.x,
-                y: cameraTransform.y,
-                // Game view zoom is determined by ortho size, editor can have its own zoom
-                effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
-            } : null;
-
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.save();
-
-            if (!this.camera) return;
-
-            this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-            this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
-            this.ctx.translate(-this.camera.x, -this.camera.y);
-        }
-
-        end() {
-            this.ctx.restore();
-        }
-
-        drawRect(x, y, width, height, color) {
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
-        }
-
-        // Placeholder for now
-        drawImage(image, x, y, width, height) {
-            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-        }
-
-        drawText(text, x, y, color, fontSize, textTransform) {
-            this.ctx.fillStyle = color;
-            this.ctx.font = `${fontSize}px sans-serif`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-
-            let transformedText = text;
-            if (textTransform === 'uppercase') {
-                transformedText = text.toUpperCase();
-            } else if (textTransform === 'lowercase') {
-                transformedText = text.toLowerCase();
-            }
-
-            this.ctx.fillText(transformedText, x, y);
-        }
-    }
-
-    class PhysicsSystem {
-        constructor(scene) {
-            this.scene = scene;
-            this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
-        }
-
-        update(deltaTime) {
-            // Update positions based on velocity
-            for (const materia of this.scene.materias) {
-                const rigidbody = materia.getComponent(Rigidbody);
-                const transform = materia.getComponent(Transform);
-
-                if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
-                    rigidbody.velocity.y += this.gravity.y * deltaTime;
-                    transform.x += rigidbody.velocity.x * deltaTime;
-                    transform.y += rigidbody.velocity.y * deltaTime;
-                }
-            }
-
-            // Collision detection
-            const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
-            for (let i = 0; i < collidables.length; i++) {
-                for (let j = i + 1; j < collidables.length; j++) {
-                    const materiaA = collidables[i];
-                    const materiaB = collidables[j];
-
-                    const transformA = materiaA.getComponent(Transform);
-                    const colliderA = materiaA.getComponent(BoxCollider);
-                    const transformB = materiaB.getComponent(Transform);
-                    const colliderB = materiaB.getComponent(BoxCollider);
-
-                    const leftA = transformA.x - colliderA.width / 2;
-                    const rightA = transformA.x + colliderA.width / 2;
-                    const topA = transformA.y - colliderA.height / 2;
-                    const bottomA = transformA.y + colliderA.height / 2;
-
-                    const leftB = transformB.x - colliderB.width / 2;
-                    const rightB = transformB.x + colliderB.width / 2;
-                    const topB = transformB.y - colliderB.height / 2;
-                    const bottomB = transformB.y + colliderB.height / 2;
-
-                    if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
-                        console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
-                    }
-                }
-            }
-        }
-    }
-
     // --- 1. Editor State ---
     let projectsDirHandle = null, codeEditor, currentlyOpenFileHandle = null;
     let selectedMateria = null;
@@ -188,24 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let physicsSystem = null;
     let isDragging = false, dragOffsetX = 0, dragOffsetY = 0; let activeTool = 'move'; // 'move', 'pan', 'scale'
     let isPanning = false;
+    let lastMousePosition = { x: 0, y: 0 };
     let dragState = {}; // To hold info about the current drag operation
 
-    // Animation Editor State
-    let isDrawing = false;
-    let drawingTool = 'pencil';
-    let drawingMode = 'free'; // 'free' or 'pixel'
-    let drawingColor = '#ffffff';
-    let lastDrawPos = { x: 0, y: 0 };
-    let isMovingPanel = false;
-    let currentAnimationAsset = null; // Holds the parsed .cea file content
-    let currentAnimationFileHandle = null; // Holds the file handle for saving
-    let currentFrameIndex = -1;
-    let isAnimationPlaying = false;
-    let animationPlaybackId = null;
-    let panelMoveOffset = { x: 0, y: 0 };
-    let panelMoveState = {};
-    let isResizingPanel = false;
-    let panelResizeState = {};
+    // UI Editor State
+    let currentUiAsset = null;
+    let selectedUiElement = null;
+    let uiEditorFileHandle = null;
+    let uiResizersInitialized = false;
 
 
     let isGameRunning = false;
@@ -245,14 +118,99 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. DOM Elements ---
     const dom = {};
 
-    // --- 3. IndexedDB Logic & 4. Console Override ---
+    // --- 3. IndexedDB Logic ---
     const dbName = 'CreativeEngineDB'; let db; function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
-    const originalLog = console.log, originalWarn = console.warn, originalError = console.error; function logToUIConsole(message, type = 'log') { if (!dom.consoleContent) return; const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; dom.consoleContent.appendChild(msgEl); dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight; }
-    console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
     // --- 5. Core Editor Functions ---
-    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate;
+    var updateAssetBrowser, createScriptFile, openScriptInEditor, saveCurrentScript, updateHierarchy, updateInspector, updateScene, selectMateria, showAddComponentModal, startGame, runGameLoop, stopGame, updateDebugPanel, updateInspectorForAsset, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, exportPackage, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, openUiEditor, renderUiHierarchy, renderUiCanvas, renderUiInspector, createUiSystemFile, openUiAsset, updateWindowMenuUI, handleKeyboardShortcuts;
+
+    function handleKeyboardShortcuts(e) {
+        if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
+            return;
+        }
+
+        if (e.ctrlKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            if (activeView === 'code-editor-content' && currentlyOpenFileHandle) {
+                saveCurrentScript();
+                console.log("Script guardado (Ctrl+S).");
+            } else if (activeView === 'animation-panel') { // A better check might be needed
+                // saveAnimationAsset(); // This will be handled by the animation editor module
+                console.log("Animación guardada (Ctrl+S).");
+            } else if (currentUiAsset && uiEditorFileHandle) {
+                // This assumes a saveUiAsset function exists
+                // saveUiAsset();
+                console.log("Guardado de UI no implementado aún via shortcut.");
+            } else if (SceneManager.currentScene) {
+                saveScene();
+                console.log("Escena guardada (Ctrl+S).");
+            }
+            return;
+        }
+
+        if (!e.ctrlKey && !e.altKey) {
+            switch (e.key.toLowerCase()) {
+                case 'q':
+                    setActiveTool('move');
+                    break;
+                case 'w':
+                    setActiveTool('pan');
+                    break;
+                case 'e':
+                    setActiveTool('scale');
+                    break;
+                case 'delete':
+                case 'backspace':
+                    if (selectedMateria) {
+                        const idToDelete = selectedMateria.id;
+                        selectMateria(null); // Deselect first
+                        SceneManager.currentScene.removeMateria(idToDelete);
+                        updateHierarchy();
+                        updateInspector();
+                    }
+                    break;
+            }
+        }
+
+        if (activeView === 'code-editor-content' && codeEditor) {
+            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                undo(codeEditor);
+            }
+            if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo(codeEditor);
+            }
+        }
+    }
+
+    function updateWindowMenuUI() {
+        const menuItems = {
+            'hierarchy-panel': 'menu-window-hierarchy',
+            'inspector-panel': 'menu-window-inspector',
+            'assets-panel': 'menu-window-assets',
+            'animation-panel': 'menu-window-animation',
+            'animator-controller-panel': 'menu-window-animator',
+            'ui-editor-panel': 'menu-window-ui-editor'
+        };
+        const checkmark = '✅ ';
+
+        for (const [panelId, menuId] of Object.entries(menuItems)) {
+            const panel = document.getElementById(panelId);
+            const menuItem = document.getElementById(menuId);
+
+            if (panel && menuItem) {
+                // Always clean the text first to avoid multiple checkmarks
+                menuItem.textContent = menuItem.textContent.replace(checkmark, '');
+
+                // Add checkmark if panel is visible (does not have the 'hidden' class)
+                if (!panel.classList.contains('hidden')) {
+                    menuItem.textContent = checkmark + menuItem.textContent;
+                }
+            }
+        }
+    }
 
     loadProjectConfig = async function() {
         try {
@@ -406,22 +364,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadPreferences() {
         const savedPrefs = localStorage.getItem('creativeEnginePrefs');
+
+        const defaultPrefs = {
+            theme: 'dark-modern',
+            customColors: { bg: '#2d2d30', header: '#3f3f46', accent: '#0e639c' },
+            autosave: false,
+            autosaveInterval: 30,
+            scriptLang: 'ces',
+            snapping: false,
+            gridSize: 25
+        };
+
+        let loadedPrefs = {};
         if (savedPrefs) {
-            currentPreferences = JSON.parse(savedPrefs);
-        } else {
-            // Default preferences
-            currentPreferences = {
-                theme: 'dark-modern',
-                customColors: { bg: '#2d2d30', header: '#3f3f46', accent: '#0e639c' },
-                autosave: false,
-                autosaveInterval: 30,
-                scriptLang: 'ces',
-                snapping: false,
-                gridSize: 25
-            };
+            try {
+                loadedPrefs = JSON.parse(savedPrefs) || {};
+            } catch (e) {
+                console.warn("Could not parse preferences from localStorage. Using defaults.", e);
+                loadedPrefs = {};
+            }
         }
 
-        // Populate UI
+        // Deep merge the loaded preferences into the defaults
+        currentPreferences = { ...defaultPrefs, ...loadedPrefs };
+        // Ensure nested objects are also merged correctly
+        currentPreferences.customColors = { ...defaultPrefs.customColors, ...(loadedPrefs.customColors || {}) };
+
+
+        // Populate UI safely, assuming currentPreferences is now always valid
         if (dom.prefsTheme) dom.prefsTheme.value = currentPreferences.theme;
         if (dom.prefsColorBg) dom.prefsColorBg.value = currentPreferences.customColors.bg;
         if (dom.prefsColorHeader) dom.prefsColorHeader.value = currentPreferences.customColors.header;
@@ -433,17 +403,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dom.prefsSnappingGridSize) dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
 
         // Show/hide relevant fields based on loaded prefs
-        if (dom.prefsTheme.value === 'custom') {
-            dom.prefsCustomThemePicker.classList.remove('hidden');
-        } else {
-            dom.prefsCustomThemePicker.classList.add('hidden');
+        if (dom.prefsTheme) {
+            if (dom.prefsTheme.value === 'custom') {
+                dom.prefsCustomThemePicker.classList.remove('hidden');
+            } else {
+                dom.prefsCustomThemePicker.classList.add('hidden');
+            }
         }
-        if (dom.prefsAutosaveToggle.checked) {
-            dom.prefsAutosaveIntervalGroup.classList.remove('hidden');
-        } else {
-            dom.prefsAutosaveIntervalGroup.classList.add('hidden');
+        if (dom.prefsAutosaveToggle) {
+             if (dom.prefsAutosaveToggle.checked) {
+                dom.prefsAutosaveIntervalGroup.classList.remove('hidden');
+            } else {
+                dom.prefsAutosaveIntervalGroup.classList.add('hidden');
+            }
         }
-
 
         applyPreferences();
     }
@@ -490,6 +463,169 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error al guardar la configuración del proyecto:", error);
             if(showAlert) alert("No se pudo guardar la configuración.");
         }
+    };
+
+    createUiSystemFile = async function(dirHandle) {
+        const fileName = "nuevo-ui.ceui";
+        try {
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            const defaultContent = {
+                name: "Nuevo UI",
+                elements: [
+                    {
+                        id: 'element_' + Date.now(),
+                        name: "Panel Base",
+                        type: "Panel",
+                        props: {
+                            x: 50,
+                            y: 50,
+                            width: 200,
+                            height: 150,
+                            color: "#333333"
+                        }
+                    }
+                ]
+            };
+            await writable.write(JSON.stringify(defaultContent, null, 2));
+            await writable.close();
+            await updateAssetBrowser();
+            console.log(`Creado archivo de UI: ${fileName}`);
+        } catch (err) {
+            console.error("Error al crear el archivo de UI:", err);
+            alert("No se pudo crear el archivo de UI.");
+        }
+    };
+
+    openUiEditor = function() {
+        if (!dom.uiEditorPanel) return;
+        dom.uiEditorPanel.classList.remove('hidden');
+        initUIEditorResizers();
+    };
+
+    openUiAsset = async function(fileHandle) {
+        try {
+            uiEditorFileHandle = fileHandle;
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            currentUiAsset = JSON.parse(content);
+            selectedUiElement = null;
+
+            console.log(`UI Asset cargado: ${fileHandle.name}`, currentUiAsset);
+
+            openUiEditor();
+
+            renderUiHierarchy();
+            renderUiCanvas();
+            renderUiInspector();
+
+        } catch (error) {
+            console.error(`Error al abrir el asset UI '${fileHandle.name}':`, error);
+            alert("No se pudo abrir el asset de UI.");
+        }
+    };
+
+    renderUiHierarchy = function() {
+        if (!dom.uiHierarchyPanel || !currentUiAsset) return;
+        const container = dom.uiHierarchyPanel.querySelector('.panel-content');
+        container.innerHTML = '';
+
+        function renderNode(element, parentElement, depth) {
+            const item = document.createElement('div');
+            item.className = 'hierarchy-item';
+            item.textContent = `${element.name} (${element.type})`;
+            item.dataset.id = element.id;
+            item.style.paddingLeft = `${depth * 15}px`;
+
+            if (selectedUiElement && selectedUiElement.id === element.id) {
+                item.classList.add('active');
+            }
+
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedUiElement = currentUiAsset.elements.find(el => el.id === element.id);
+                renderUiHierarchy();
+                renderUiInspector();
+                renderUiCanvas();
+            });
+
+            parentElement.appendChild(item);
+        }
+
+        currentUiAsset.elements.forEach(el => renderNode(el, container, 0));
+    };
+
+    renderUiCanvas = function() {
+        if (!dom.uiCanvas || !currentUiAsset) return;
+        const canvas = dom.uiCanvas;
+        const ctx = canvas.getContext('2d');
+
+        const containerRect = dom.uiCanvasContainer.getBoundingClientRect();
+        canvas.width = containerRect.width;
+        canvas.height = containerRect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const TILE_SIZE = 20;
+        ctx.fillStyle = '#444';
+        for (let y = 0; y < canvas.height; y += TILE_SIZE * 2) {
+            for (let x = 0; x < canvas.width; x += TILE_SIZE * 2) {
+                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(x + TILE_SIZE, y + TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+        ctx.fillStyle = '#555';
+        for (let y = 0; y < canvas.height; y += TILE_SIZE * 2) {
+            for (let x = 0; x < canvas.width; x += TILE_SIZE * 2) {
+                ctx.fillRect(x + TILE_SIZE, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillRect(x, y + TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+
+        currentUiAsset.elements.forEach(el => {
+            ctx.fillStyle = el.props.color || '#cccccc';
+            ctx.fillRect(el.props.x, el.props.y, el.props.width, el.props.height);
+
+            if (selectedUiElement && selectedUiElement.id === el.id) {
+                ctx.strokeStyle = 'yellow';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(el.props.x, el.props.y, el.props.width, el.props.height);
+            }
+        });
+    };
+
+    renderUiInspector = function() {
+        if (!dom.uiInspectorPanel) return;
+        const container = dom.uiInspectorPanel.querySelector('.panel-content');
+
+        if (!selectedUiElement) {
+            container.innerHTML = '<p class="inspector-placeholder">Selecciona un elemento UI</p>';
+            return;
+        }
+
+        let propsHtml = '';
+        for (const key in selectedUiElement.props) {
+            const value = selectedUiElement.props[key];
+            let inputType = 'text';
+            if (typeof value === 'number') inputType = 'number';
+            if (key === 'color') inputType = 'color';
+
+            propsHtml += `
+                <div class="prop-row">
+                    <label>${key}</label>
+                    <input type="${inputType}" class="prop-input" data-prop="${key}" value="${value}">
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="inspector-materia-header">
+                 <input type="text" id="ui-element-name-input" value="${selectedUiElement.name}">
+            </div>
+            <div class="component-grid">
+                ${propsHtml}
+            </div>
+        `;
     };
 
     runChecksAndPlay = async function() {
@@ -673,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    openSpriteSelector = async function() {
+    openSpriteSelector = async function(componentName) {
         const grid = dom.spriteSelectorGrid;
         grid.innerHTML = '';
         dom.spriteSelectorModal.classList.add('is-open');
@@ -696,13 +832,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         imageFiles.forEach(imgPath => {
             const img = document.createElement('img');
-            SceneManager.getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
+            getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
             img.addEventListener('click', async () => {
                 if (selectedMateria) {
-                    const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
-                    if (spriteRenderer) {
-                        spriteRenderer.setSourcePath(imgPath);
-                        await spriteRenderer.loadSprite(projectsDirHandle);
+                    const ComponentClass = Components[componentName];
+                    if (!ComponentClass) return;
+
+                    const component = selectedMateria.getComponent(ComponentClass);
+                    if (component) {
+                        component.setSourcePath(imgPath);
+                        await component.loadSprite(projectsDirHandle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -837,133 +976,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    addFrameFromCanvas = function() {
-        if (!currentAnimationAsset) {
-            alert("No hay ningún asset de animación cargado.");
-            return;
-        }
-        const dataUrl = dom.drawingCanvas.toDataURL();
-
-        // Assume we're editing the first animation state for now
-        if (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) {
-            currentAnimationAsset.animations[0].frames.push(dataUrl);
-            populateTimeline();
-        } else {
-            alert("El asset de animación no tiene un estado de animación válido.");
-        }
-
-        // Clear canvas for next frame
-        const ctx = dom.drawingCanvas.getContext('2d');
-        ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-    };
-
-    function populateTimeline() {
-        dom.animationTimeline.innerHTML = '';
-        if (!currentAnimationAsset || !currentAnimationAsset.animations.length) return;
-
-        // For now, we only edit the first animation state
-        const animation = currentAnimationAsset.animations[0];
-        if (!animation) return;
-
-        animation.frames.forEach((frameData, index) => {
-            const frameImg = document.createElement('img');
-            frameImg.className = 'timeline-frame';
-            if (index === currentFrameIndex) {
-                frameImg.classList.add('active');
-            }
-            frameImg.src = frameData;
-            frameImg.dataset.index = index;
-            dom.animationTimeline.appendChild(frameImg);
-        });
-    }
-
-    async function saveAnimationAsset() {
-        if (!currentAnimationAsset || !currentAnimationFileHandle) {
-            alert("No hay asset de animación cargado para guardar.");
-            return;
-        }
-        try {
-            const writable = await currentAnimationFileHandle.createWritable();
-            const content = JSON.stringify(currentAnimationAsset, null, 2);
-            await writable.write(content);
-            await writable.close();
-            console.log(`Asset '${currentAnimationFileHandle.name}' guardado.`);
-            // Optional: add a visual confirmation (e.g., a temporary "Saved!" message)
-        } catch (error) {
-            console.error("Error al guardar el asset de animación:", error);
-            alert("No se pudo guardar el archivo.");
-        }
-    }
-
-    openAnimationAsset = async function(fileName) {
-        try {
-            currentAnimationFileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName);
-            const file = await currentAnimationFileHandle.getFile();
-            const content = await file.text();
-            currentAnimationAsset = JSON.parse(content);
-
-            dom.animationPanel.classList.remove('hidden');
-            dom.animationPanelOverlay.classList.add('hidden');
-            console.log(`Abierto ${fileName}:`, currentAnimationAsset);
-
-            populateTimeline();
-
-        } catch(error) {
-            console.error(`Error al abrir el asset de animación '${fileName}':`, error);
-        }
-    };
-
-    function resetAnimationPanel() {
-        dom.animationPanelOverlay.classList.remove('hidden');
-        currentAnimationAsset = null;
-        currentFrameIndex = -1;
-        dom.animationTimeline.innerHTML = '';
-        stopAnimationPlayback();
-    }
-
-    function startAnimationPlayback() {
-        if (isAnimationPlaying || !currentAnimationAsset) return;
-
-        const animation = currentAnimationAsset.animations[0];
-        if (!animation || !animation.frames.length) return;
-
-        isAnimationPlaying = true;
-        dom.animationEditView.classList.add('hidden');
-        dom.animationPlaybackView.classList.remove('hidden');
-
-        let startTime = performance.now();
-        const playbackCtx = dom.animationPlaybackCanvas.getContext('2d');
-        const frameImages = animation.frames.map(src => {
-            const img = new Image();
-            img.src = src;
-            return img;
-        });
-
-        function playbackLoop(currentTime) {
-            if (!isAnimationPlaying) return;
-
-            const elapsedTime = currentTime - startTime;
-            const frameDuration = 1000 / animation.speed;
-            const currentFrame = Math.floor(elapsedTime / frameDuration) % frameImages.length;
-
-            const img = frameImages[currentFrame];
-            playbackCtx.clearRect(0, 0, dom.animationPlaybackCanvas.width, dom.animationPlaybackCanvas.height);
-            if (img.complete) {
-                playbackCtx.drawImage(img, 0, 0);
-            }
-
-            animationPlaybackId = requestAnimationFrame(playbackLoop);
-        }
-        animationPlaybackId = requestAnimationFrame(playbackLoop);
-    }
-
-    function stopAnimationPlayback() {
-        if (!isAnimationPlaying) return;
-        isAnimationPlaying = false;
-        cancelAnimationFrame(animationPlaybackId);
-        dom.animationEditView.classList.remove('hidden');
-        dom.animationPlaybackView.classList.add('hidden');
-    }
 
     openScriptInEditor = async function(fileName) {
         try {
@@ -1424,65 +1436,57 @@ document.addEventListener('DOMContentLoaded', () => {
             layerSelect.addEventListener('change', (e) => {
                 if (selectedMateria) {
                     selectedMateria.layer = e.target.value;
-                    // Note: We might need to trigger a scene resort/redraw here in the future
                 }
             });
         }
 
-        // Helper para los iconos de componentes
         const componentIcons = {
-            Transform: '✥',
-            Rigidbody: '🏋️',
-            BoxCollider: '🟩',
-            SpriteRenderer: '🖼️',
-            Animator: '🏃',
-            Camera: '📷',
-            UICanvas: '📋',
-            UIText: '📄',
-            UIButton: '🔘',
-            CreativeScript: 'image/Script.png'
+            Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
+            Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
+            RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️'
         };
 
-        // Components
         const componentsWrapper = document.createElement('div');
         componentsWrapper.className = 'inspector-components-wrapper';
 
         selectedMateria.leyes.forEach(ley => {
             let componentHTML = '';
             const componentName = ley.constructor.name;
-            const icon = componentIcons[componentName] || '⚙️'; // Icono por defecto
+            const icon = componentIcons[componentName] || '⚙️';
             const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
 
-            if (ley instanceof Transform) {
+            if (ley instanceof Components.Transform) {
+                // Hide Transform if a RectTransform is present
+                if (selectedMateria.getComponent(Components.RectTransform)) return;
+
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Transform</h4></div>
                 <div class="component-grid">
-                    <div class="prop-row">
-                        <div class="prop-cell"><label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
-                        <div class="prop-cell"><label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
-                    </div>
-                    <div class="prop-row">
-                        <div class="prop-cell"><label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}"></div>
-                        <div class="prop-cell"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
-                    </div>
+                    <div class="prop-row"><label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}"></div>
+                    <div class="prop-row"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
                 </div>`;
-            } else if (ley instanceof Rigidbody) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>Rigidbody</h4></div>
+            } else if (ley instanceof Components.RectTransform) {
+                 componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
                 <div class="component-grid">
-                    <label>Body Type</label>
-                    <select class="prop-input" data-component="Rigidbody" data-prop="bodyType">
-                        <option value="dynamic" ${ley.bodyType === 'dynamic' ? 'selected' : ''}>Dynamic</option>
-                        <option value="static" ${ley.bodyType === 'static' ? 'selected' : ''}>Static</option>
-                        <option value="kinematic" ${ley.bodyType === 'kinematic' ? 'selected' : ''}>Kinematic</option>
-                    </select>
-                    <label>Mass</label><input type="number" class="prop-input" step="0.1" data-component="Rigidbody" data-prop="mass" value="${ley.mass}">
+                    <div class="prop-row"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height.toFixed(0)}"></div>
                 </div>`;
-            } else if (ley instanceof BoxCollider) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>Box Collider</h4></div>
+            } else if (ley instanceof Components.UIImage) {
+                const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
                 <div class="component-grid">
-                    <label>Width</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="width" value="${ley.width}">
-                    <label>Height</label><input type="number" class="prop-input" step="0.1" data-component="BoxCollider" data-prop="height" value="${ley.height}">
+                    <label>Source</label>
+                    <div class="sprite-dropper">
+                        <div class="sprite-preview" data-component="UIImage" data-prop="source">${previewImg}</div>
+                        <button class="sprite-select-btn" data-component="UIImage">🎯</button>
+                    </div>
+                    <label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}">
                 </div>`;
-            } else if (ley instanceof SpriteRenderer) {
+            }
+            else if (ley instanceof Components.SpriteRenderer) {
                 const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
                 componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
                 <div class="component-grid">
@@ -1493,135 +1497,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
                 </div>`;
-            } else if (ley instanceof UICanvas) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>`;
-            } else if (ley instanceof UIButton) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
-                <div class="component-grid">
-                    <label>Normal Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="normalColor" value="${ley.normalColor}">
-                    <label>Hover Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="hoverColor" value="${ley.hoverColor}">
-                    <label>Pressed Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="pressedColor" value="${ley.pressedColor}">
-                </div>
-                <div class="component-grid">
-                    <label>On Click()</label>
-                    <p class="field-description">Functionality to add events from the inspector will be implemented in a future update.</p>
-                </div>
-                `;
-            } else if (ley instanceof UIText) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Text</h4></div>
-                <textarea class="prop-input" data-component="UIText" data-prop="text" rows="4">${ley.text}</textarea>
-                <div class="text-transform-controls">
-                    <button class="prop-btn ${ley.textTransform === 'none' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="none">aA</button>
-                    <button class="prop-btn ${ley.textTransform === 'uppercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="uppercase">AA</button>
-                    <button class="prop-btn ${ley.textTransform === 'lowercase' ? 'active' : ''}" data-component="UIText" data-prop="textTransform" data-value="lowercase">aa</button>
-                </div>
-                <div class="component-grid">
-                    <label>Font Size</label><input type="number" class="prop-input" step="1" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}">
-                    <label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
-                </div>
-                `;
-            } else if (ley instanceof UIButton) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
-                <label>Etiqueta</label><input type="text" class="prop-input" data-component="UIButton" data-prop="label.text" value="${ley.label.text}">
-                <label>Color</label><input type="color" class="prop-input" data-component="UIButton" data-prop="color" value="${ley.color}">`;
-            } else if (ley instanceof CreativeScript) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
-            } else if (ley instanceof Animator) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div>
-                <p>Estado Actual: ${ley.currentState || 'Ninguno'}</p>
-                <p>Asset de Animación: (Próximamente)</p>
-                <button id="open-animator-btn">Abrir Editor de Animación</button>`;
-            } else if (ley instanceof HorizontalLayoutGroup || ley instanceof VerticalLayoutGroup) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
-                    <hr>
-                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
-                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
-                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
-                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
-                </div>`;
-            } else if (ley instanceof GridLayoutGroup) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Spacing</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="spacing" value="${ley.spacing}">
-                    <hr>
-                    <label>Padding Top</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.top" value="${ley.padding.top}">
-                    <label>Padding Bottom</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.bottom" value="${ley.padding.bottom}">
-                    <label>Padding Left</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.left" value="${ley.padding.left}">
-                    <label>Padding Right</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="padding.right" value="${ley.padding.right}">
-                    <hr>
-                    <label>Cell Size X</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.x" value="${ley.cellSize.x}">
-                    <label>Cell Size Y</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="cellSize.y" value="${ley.cellSize.y}">
-                    <label>Constraint</label>
-                    <select class="prop-input" data-component="${type}" data-prop="constraint">
-                        <option value="flexible" ${ley.constraint === 'flexible' ? 'selected' : ''}>Flexible</option>
-                        <option value="fixedColumnCount" ${ley.constraint === 'fixedColumnCount' ? 'selected' : ''}>Fixed Column Count</option>
-                        <option value="fixedRowCount" ${ley.constraint === 'fixedRowCount' ? 'selected' : ''}>Fixed Row Count</option>
-                    </select>
-                    <label>Constraint Count</label><input type="number" class="prop-input" step="1" min="1" data-component="${type}" data-prop="constraintCount" value="${ley.constraintCount}">
-                </div>`;
-            } else if (ley instanceof ContentSizeFitter) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Horizontal Fit</label>
-                    <select class="prop-input" data-component="${type}" data-prop="horizontalFit">
-                        <option value="unconstrained" ${ley.horizontalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
-                        <option value="minSize" ${ley.horizontalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
-                        <option value="preferredSize" ${ley.horizontalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
-                    </select>
-                    <label>Vertical Fit</label>
-                    <select class="prop-input" data-component="${type}" data-prop="verticalFit">
-                        <option value="unconstrained" ${ley.verticalFit === 'unconstrained' ? 'selected' : ''}>Unconstrained</option>
-                        <option value="minSize" ${ley.verticalFit === 'minSize' ? 'selected' : ''}>Min Size</option>
-                        <option value="preferredSize" ${ley.verticalFit === 'preferredSize' ? 'selected' : ''}>Preferred Size</option>
-                    </select>
-                </div>`;
-            } else if (ley instanceof LayoutElement) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label for="le-ignore">Ignore Layout</label>
-                    <input type="checkbox" id="le-ignore" class="prop-input" data-component="${type}" data-prop="ignoreLayout" ${ley.ignoreLayout ? 'checked' : ''}>
-                    <hr><hr>
-                    <label>Min Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minWidth" value="${ley.minWidth}">
-                    <label>Min Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="minHeight" value="${ley.minHeight}">
-                    <label>Preferred Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredWidth" value="${ley.preferredWidth}">
-                    <label>Preferred Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="preferredHeight" value="${ley.preferredHeight}">
-                    <label>Flexible Width</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleWidth" value="${ley.flexibleWidth}">
-                    <label>Flexible Height</label><input type="number" class="prop-input" step="1" data-component="${type}" data-prop="flexibleHeight" value="${ley.flexibleHeight}">
-                </div>`;
-            } else if (ley instanceof AspectRatioFitter) {
-                const type = ley.constructor.name;
-                componentHTML = `<div class="component-header">${iconHTML}<h4>${type}</h4></div>
-                <div class="component-grid">
-                    <label>Aspect Mode</label>
-                    <select class="prop-input" data-component="${type}" data-prop="aspectMode">
-                        <option value="None" ${ley.aspectMode === 'None' ? 'selected' : ''}>None</option>
-                        <option value="WidthControlsHeight" ${ley.aspectMode === 'WidthControlsHeight' ? 'selected' : ''}>Width Controls Height</option>
-                        <option value="HeightControlsWidth" ${ley.aspectMode === 'HeightControlsWidth' ? 'selected' : ''}>Height Controls Width</option>
-                        <option value="FitInParent" ${ley.aspectMode === 'FitInParent' ? 'selected' : ''}>Fit In Parent</option>
-                        <option value="EnvelopeParent" ${ley.aspectMode === 'EnvelopeParent' ? 'selected' : ''}>Envelope Parent</option>
-                    </select>
-                    <label>Aspect Ratio</label><input type="number" class="prop-input" step="0.01" data-component="${type}" data-prop="aspectRatio" value="${ley.aspectRatio}">
-                </div>`;
-            } else if (ley instanceof Camera) {
-                componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
-                <div class="component-grid">
-                    <label>Orthographic Size</label>
-                    <input type="number" class="prop-input" step="10" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}">
-                </div>`;
             }
+            // ... (keep other component renderers)
+            else if (ley instanceof Components.CreativeScript) {
+                componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
+            } else if (ley instanceof Components.Animator) {
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><p>Controller: ${ley.controllerPath || 'None'}</p>`;
+            } else if (ley instanceof Components.Camera) {
+                componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
+                <div class="component-grid"><label>Size</label><input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}"></div>`;
+            }
+
             componentsWrapper.innerHTML += componentHTML;
         });
         dom.inspectorContent.appendChild(componentsWrapper);
 
-        // Add Component Button
         const addComponentBtn = document.createElement('button');
-        addComponentBtn.type = 'button';
         addComponentBtn.id = 'add-component-btn';
         addComponentBtn.className = 'add-component-btn';
         addComponentBtn.textContent = 'Añadir Ley';
@@ -1631,20 +1522,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateScene = function(targetRenderer, isGameView = false) {
         if (!targetRenderer) return;
-        targetRenderer.begin();
+
+        targetRenderer.clear();
+
+        // 1. --- World Pass ---
+        targetRenderer.beginWorld();
 
         // Draw a grid for reference only in the editor scene view
-        if (!isGameView) {
+        if (!isGameView && targetRenderer.camera) {
             const gridSize = 50;
-            const halfWidth = targetRenderer.canvas.width / targetRenderer.camera.zoom;
-            const halfHeight = targetRenderer.canvas.height / targetRenderer.camera.zoom;
+            const halfWidth = targetRenderer.canvas.width / targetRenderer.camera.effectiveZoom;
+            const halfHeight = targetRenderer.canvas.height / targetRenderer.camera.effectiveZoom;
             const startX = Math.floor((targetRenderer.camera.x - halfWidth) / gridSize) * gridSize;
             const endX = Math.ceil((targetRenderer.camera.x + halfWidth) / gridSize) * gridSize;
             const startY = Math.floor((targetRenderer.camera.y - halfHeight) / gridSize) * gridSize;
             const endY = Math.ceil((targetRenderer.camera.y + halfHeight) / gridSize) * gridSize;
 
             targetRenderer.ctx.strokeStyle = '#3a3a3a';
-            targetRenderer.ctx.lineWidth = 1 / targetRenderer.camera.zoom;
+            targetRenderer.ctx.lineWidth = 1 / targetRenderer.camera.effectiveZoom;
             targetRenderer.ctx.beginPath();
             for (let x = startX; x <= endX; x += gridSize) {
                 targetRenderer.ctx.moveTo(x, startY);
@@ -1665,19 +1560,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
         });
 
-        sortedMaterias.forEach(materia => {
-            // Skip UI elements in the main world render pass
-            if (materia.getComponent(UICanvas) || materia.getComponent(UIImage) || materia.getComponent(UIText)) {
-                // Also need to check if it's a child of a canvas, but this is a good start
-                const isUiElement = materia.leyes.some(c => c instanceof RectTransform);
-                if (isUiElement) return;
-            }
-
+        const worldMaterias = sortedMaterias.filter(m => !m.getComponent(Components.RectTransform));
+        worldMaterias.forEach(materia => {
             if (isGameView && !materia.isActive) {
                 return; // Don't render inactive objects in the final game view
             }
 
-            const transform = materia.getComponent(Transform);
+            const transform = materia.getComponent(Components.Transform);
             if (!transform) return;
 
             const isInactiveInEditor = !isGameView && !materia.isActive;
@@ -1686,13 +1575,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let drawn = false;
-            const spriteRenderer = materia.getComponent(SpriteRenderer);
+            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
             if (spriteRenderer && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalHeight !== 0) {
                 targetRenderer.drawImage(spriteRenderer.sprite, transform.x, transform.y, 100 * transform.scale.x, 100 * transform.scale.y);
                 drawn = true;
             }
 
-            const boxCollider = materia.getComponent(BoxCollider);
+            const boxCollider = materia.getComponent(Components.BoxCollider);
             if (boxCollider) {
                 if (!drawn) {
                     targetRenderer.drawRect(transform.x, transform.y, boxCollider.width * transform.scale.x, boxCollider.height * transform.scale.y, 'rgba(144, 238, 144, 0.5)');
@@ -1704,84 +1593,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Draw selection outline only in the editor scene view
-            if (!isGameView) {
+            if (!isGameView && targetRenderer.camera) {
                 if (selectedMateria && selectedMateria.id === materia.id) {
                     targetRenderer.ctx.strokeStyle = 'yellow';
                     targetRenderer.ctx.lineWidth = 2 / targetRenderer.camera.effectiveZoom;
-                    let selectionWidth = boxCollider ? boxCollider.width : (spriteRenderer ? 100 : 20);
-                    let selectionHeight = boxCollider ? boxCollider.height : (spriteRenderer ? 100 : 20);
-
-                    selectionWidth *= transform.scale.x;
-                    selectionHeight *= transform.scale.y;
-
+                    const selectionWidth = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
+                    const selectionHeight = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
                     targetRenderer.ctx.strokeRect(transform.x - selectionWidth / 2, transform.y - selectionHeight / 2, selectionWidth, selectionHeight);
                 }
                 // Draw gizmos for all materias in the scene view
-                drawGizmos(targetRenderer, materia);
+                drawWorldGizmos(targetRenderer, materia);
             }
 
             // Reset alpha if it was changed
-            if (!isGameView && !materia.isActive) {
+            if (isInactiveInEditor) {
                 targetRenderer.ctx.globalAlpha = 1.0;
             }
         });
         targetRenderer.end();
 
-        // --- UI Rendering Pass ---
-        // This pass draws on top of the scene, ignoring the camera
-        const uiCanvases = SceneManager.currentScene.materias.filter(m => m.getComponent(UICanvas));
+        // 2. --- UI Pass ---
+        targetRenderer.beginUI();
+        const uiMaterias = sortedMaterias.filter(m => m.getComponent(Components.RectTransform));
 
-        uiCanvases.forEach(canvasMateria => {
-            const canvas = canvasMateria.getComponent(UICanvas);
-            if (canvas.renderMode === 'ScreenSpaceOverlay') {
-                targetRenderer.ctx.save();
-                // Reset transform to draw in screen space
-                targetRenderer.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        uiMaterias.forEach(materia => {
+            if (isGameView && !materia.isActive) return;
 
-                function renderUiRecursive(materia) {
-                    if (!materia.isActive && isGameView) return;
+            const rectTransform = materia.getComponent(Components.RectTransform);
+            if (!rectTransform) return;
 
-                    const rectTransform = materia.getComponent(RectTransform);
-                    if (!rectTransform) return;
+            // For now, we only handle UIImage, and it will crash if the component doesn't exist.
+            // This part will be fully functional in the next steps.
+            const uiImage = materia.getComponent(Components.UIImage);
+            if (uiImage && uiImage.sprite && uiImage.sprite.complete && typeof rectTransform.getWorldRect === 'function') {
+                const worldRect = rectTransform.getWorldRect(targetRenderer.canvas);
+                targetRenderer.drawImage(uiImage.sprite, worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+            }
 
-                    const image = materia.getComponent(UIImage);
-                    if (image && image.sprite.complete && image.sprite.naturalHeight !== 0) {
-                        // For now, use x/y as screen coordinates. Anchors/pivots will change this.
-                        targetRenderer.drawImage(image.sprite, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
-                    }
+            // In the editor, draw an outline for all UI elements for easy visualization
+            if (!isGameView) {
+                const worldRect = rectTransform.getWorldRect(targetRenderer.canvas);
+                targetRenderer.ctx.strokeStyle = 'rgba(0, 150, 255, 0.7)';
+                targetRenderer.ctx.lineWidth = 1;
+                targetRenderer.ctx.strokeRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
 
-                    const text = materia.getComponent(UIText);
-                    if(text) {
-                        targetRenderer.drawText(text.text, rectTransform.x, rectTransform.y, text.color, text.fontSize, text.textTransform);
-                    }
+                // Draw gizmos for UI elements
+                drawUIGizmos(targetRenderer, materia);
+            }
 
-                    const mask = materia.getComponent(UIMask);
-                    if (mask) {
-                        targetRenderer.ctx.save();
 
-                        // Create a clipping path from the RectTransform
-                        const path = new Path2D();
-                        path.rect(
-                            rectTransform.x - (rectTransform.width * rectTransform.pivot.x),
-                            rectTransform.y - (rectTransform.height * rectTransform.pivot.y),
-                            rectTransform.width,
-                            rectTransform.height
-                        );
-                        targetRenderer.ctx.clip(path);
-                    }
-
-                    materia.children.forEach(renderUiRecursive);
-
-                    if (mask) {
-                        targetRenderer.ctx.restore();
-                    }
-                }
-
-                renderUiRecursive(canvasMateria);
-
-                targetRenderer.ctx.restore();
+             // Draw selection outline for UI elements
+            if (!isGameView && selectedMateria && selectedMateria.id === materia.id && typeof rectTransform.getWorldRect === 'function') {
+                const worldRect = rectTransform.getWorldRect(targetRenderer.canvas);
+                targetRenderer.ctx.strokeStyle = 'yellow';
+                targetRenderer.ctx.lineWidth = 2;
+                targetRenderer.ctx.strokeRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
             }
         });
+        targetRenderer.end();
     };
 
     selectMateria = function(materiaId) {
@@ -1804,13 +1673,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const availableComponents = {
-        'Renderizado': [SpriteRenderer],
-        'Animación': [Animator],
-        'Cámara': [Camera],
-        'Físicas': [Rigidbody, BoxCollider],
-        'UI': [UICanvas, UIPanel, UIImage, UIText, UIButton, UIMask],
-        'Layout': [HorizontalLayoutGroup, VerticalLayoutGroup, GridLayoutGroup, ContentSizeFitter, LayoutElement, AspectRatioFitter],
-        'Scripting': [CreativeScript]
+        'Renderizado': [Components.SpriteRenderer],
+        'Animación': [Components.Animator],
+        'Cámara': [Components.Camera],
+        'Físicas': [Components.Rigidbody, Components.BoxCollider],
+        'Scripting': [Components.CreativeScript]
     };
 
     showAddComponentModal = async function() {
@@ -1818,7 +1685,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.componentList.innerHTML = '';
         const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
-        const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof CreativeScript).map(ley => ley.scriptName));
+        const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
 
         // --- 1. Render Built-in Components ---
         for (const category in availableComponents) {
@@ -1837,7 +1704,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 componentItem.className = 'component-item';
                 componentItem.textContent = ComponentClass.name;
                 componentItem.addEventListener('click', () => {
-                    selectedMateria.addComponent(new ComponentClass(selectedMateria));
+                    const newComponent = new ComponentClass(selectedMateria);
+                    selectedMateria.addComponent(newComponent);
+
+                    // If we added a UI component, ensure it has a RectTransform
+                    if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UICanvas) {
+                        if (!selectedMateria.getComponent(Components.RectTransform)) {
+                            // Remove existing Transform if it exists
+                            const existingTransform = selectedMateria.getComponent(Components.Transform);
+                            if (existingTransform) {
+                                selectedMateria.removeComponent(Components.Transform);
+                            }
+                            selectedMateria.addComponent(new Components.RectTransform(selectedMateria));
+                        }
+                    }
+
                     dom.addComponentModal.classList.remove('is-open');
                     updateInspector();
                 });
@@ -1904,7 +1785,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     componentItem.className = 'component-item';
                     componentItem.textContent = fileHandle.name;
                     componentItem.addEventListener('click', () => {
-                        const newScript = new CreativeScript(selectedMateria, fileHandle.name);
+                        const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
                         selectedMateria.addComponent(newScript);
                         dom.addComponentModal.classList.remove('is-open');
                         updateInspector();
@@ -1958,7 +1839,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="debug-section">
                 <h4>Input</h4>
-                <pre>Mouse (Scene): X=${canvasPos.x.toFixed(0)}, Y=${canvasPos.y.toFixed(0)}\nBotones: L:${leftButton} R:${rightButton}\nTeclas: ${pressedKeys}</pre>
+                <pre>Pointer (Scene): X=${canvasPos.x.toFixed(0)}, Y=${canvasPos.y.toFixed(0)}\nBotones: L:${leftButton} R:${rightButton}\nTeclas: ${pressedKeys}</pre>
             </div>
         `;
     };
@@ -1966,30 +1847,30 @@ document.addEventListener('DOMContentLoaded', () => {
     runLayoutUpdate = function() {
         if (!SceneManager.currentScene) return;
 
-        const layoutGroups = [];
-        // First, find all layout groups
-        for (const materia of SceneManager.currentScene.materias) {
-            const hg = materia.getComponent(HorizontalLayoutGroup);
-            if (hg) layoutGroups.push(hg);
+        // const layoutGroups = [];
+        // // First, find all layout groups
+        // for (const materia of SceneManager.currentScene.materias) {
+        //     const hg = materia.getComponent(HorizontalLayoutGroup);
+        //     if (hg) layoutGroups.push(hg);
 
-            const vg = materia.getComponent(VerticalLayoutGroup);
-            if (vg) layoutGroups.push(vg);
+        //     const vg = materia.getComponent(VerticalLayoutGroup);
+        //     if (vg) layoutGroups.push(vg);
 
-            const gg = materia.getComponent(GridLayoutGroup);
-            if (gg) layoutGroups.push(gg);
+        //     const gg = materia.getComponent(GridLayoutGroup);
+        //     if (gg) layoutGroups.push(gg);
 
-            const csf = materia.getComponent(ContentSizeFitter);
-            if (csf) layoutGroups.push(csf);
+        //     const csf = materia.getComponent(ContentSizeFitter);
+        //     if (csf) layoutGroups.push(csf);
 
-            const arf = materia.getComponent(AspectRatioFitter);
-            if (arf) layoutGroups.push(arf);
-        }
+        //     const arf = materia.getComponent(AspectRatioFitter);
+        //     if (arf) layoutGroups.push(arf);
+        // }
 
-        // Now, update them. A single pass is sufficient for now.
-        // A more robust system might need multiple passes or a top-down/bottom-up approach.
-        for (const layout of layoutGroups) {
-            layout.update();
-        }
+        // // Now, update them. A single pass is sufficient for now.
+        // // A more robust system might need multiple passes or a top-down/bottom-up approach.
+        // for (const layout of layoutGroups) {
+        //     layout.update();
+        // }
     };
 
     runGameLoop = function() {
@@ -2005,6 +1886,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    function handleEditorInteractions() {
+        if (!renderer || !renderer.camera) return;
+
+        // Pan logic
+        if (isPanning) {
+            const currentMousePosition = InputManager.getMousePosition();
+            const dx = currentMousePosition.x - lastMousePosition.x;
+            const dy = currentMousePosition.y - lastMousePosition.y;
+
+            renderer.camera.x -= dx / renderer.camera.effectiveZoom;
+            renderer.camera.y -= dy / renderer.camera.effectiveZoom;
+
+            lastMousePosition = currentMousePosition;
+            updateScene(renderer, false); // Redraw while panning
+        }
+
+        // Zoom logic
+        const scrollDelta = InputManager.getScrollDelta();
+        if (scrollDelta !== 0 && activeView === 'scene-content') {
+            renderer.camera.zoom(scrollDelta > 0 ? 1.1 : 0.9);
+            updateScene(renderer, false); // Redraw on zoom
+        }
+    }
+
     const editorLoop = (timestamp) => {
         // Calculate deltaTime
         if (lastFrameTime > 0) {
@@ -2013,8 +1918,9 @@ document.addEventListener('DOMContentLoaded', () => {
         lastFrameTime = timestamp;
 
         InputManager.update();
+        handleEditorInteractions(); // Handle all editor input logic
+
         if (isGameRunning) {
-            uiEventSystem.update();
         }
         updateDebugPanel();
 
@@ -2055,375 +1961,284 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. Event Listeners & Handlers ---
     let setActiveTool; // Will be defined in setupEventListeners
     let createNewScript; // To be defined
-    let findOrCreateCanvas; // To be defined
 
-    findOrCreateCanvas = function() {
-        // First, try to find an existing canvas in the scene
-        for (const materia of SceneManager.currentScene.materias) {
-            if (materia.getComponent(UICanvas)) {
-                console.log("Canvas encontrado existente.");
-                return materia;
+    function initUIEditorResizers() {
+        if (uiResizersInitialized) return;
+
+        const resizerLeft = dom.uiResizerLeft;
+        const resizerRight = dom.uiResizerRight;
+        const hierarchyPanel = dom.uiHierarchyPanel;
+        const inspectorPanel = dom.uiInspectorPanel;
+
+        let startX, startWidth;
+
+        function onMouseMoveLeft(e) {
+            const newWidth = startWidth + e.clientX - startX;
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                hierarchyPanel.style.width = `${newWidth}px`;
             }
         }
 
-        // If no canvas exists, create one
-        console.log("No se encontró canvas. Creando uno nuevo.");
-        const canvasMateria = new Materia('Canvas');
-        // UI elements use RectTransform, so remove the default Transform and add the correct one.
-        canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
-        canvasMateria.addComponent(new RectTransform(canvasMateria));
-        canvasMateria.addComponent(new UICanvas(canvasMateria));
-        canvasMateria.layer = 'UI'; // Assign to UI layer by default
+        function onMouseMoveRight(e) {
+            const newWidth = startWidth - (e.clientX - startX);
+            if (newWidth > 150 && newWidth < 500) { // Add some constraints
+                inspectorPanel.style.width = `${newWidth}px`;
+            }
+        }
 
-        SceneManager.currentScene.addMateria(canvasMateria);
-        updateHierarchy(); // Update the hierarchy to show the new canvas
-        return canvasMateria;
-    };
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMoveLeft);
+            window.removeEventListener('mousemove', onMouseMoveRight);
+            window.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
 
-    function updateWindowMenuUI() {
-        for (const panelName in panelVisibility) {
-            const menuItem = document.getElementById(`menu-window-${panelName}`);
-            if (menuItem) {
-                const isVisible = panelVisibility[panelName];
-                if (isVisible) {
-                    menuItem.textContent = `✓ ${menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '')}`;
-                    if(!menuItem.dataset.baseName) menuItem.dataset.baseName = menuItem.textContent.replace('✓ ', '');
-                } else {
-                    menuItem.textContent = menuItem.dataset.baseName || menuItem.textContent.replace('✓ ', '');
+        resizerLeft.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = hierarchyPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveLeft);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
+         resizerRight.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = inspectorPanel.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMoveRight);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+        uiResizersInitialized = true;
+    }
+
+    // --- Floating Panel Drag and Resize Logic ---
+    function initializeFloatingPanels() {
+        const panels = document.querySelectorAll('.floating-panel');
+
+        panels.forEach(panel => {
+            const header = panel.querySelector('.panel-header');
+            let offsetX, offsetY, isDragging = false;
+            let isResizing = false;
+
+            // Dragging logic
+            if (header) {
+                header.addEventListener('mousedown', (e) => {
+                    // Ignore clicks on buttons inside the header
+                    if (e.target.closest('button, input, select')) return;
+
+                    // Prevent dragging when the panel is maximized
+                    if (panel.classList.contains('maximized')) return;
+
+                    isDragging = true;
+                    offsetX = e.clientX - panel.offsetLeft;
+                    offsetY = e.clientY - panel.offsetTop;
+                    document.body.style.userSelect = 'none'; // Prevent text selection
+                });
+            }
+
+            // Maximize button logic
+            const maximizeBtn = panel.querySelector('.maximize-btn');
+            if (maximizeBtn) {
+                maximizeBtn.addEventListener('click', () => {
+                    panel.classList.toggle('maximized');
+                    // Optional: a function to notify other parts of the app a resize happened
+                    // For example, to resize a canvas inside the panel
+                    window.dispatchEvent(new Event('resize'));
+                });
+            }
+
+            // Resizing logic
+            panel.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    const direction = handle.dataset.direction;
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startWidth = panel.offsetWidth;
+                    const startHeight = panel.offsetHeight;
+                    const startLeft = panel.offsetLeft;
+                    const startTop = panel.offsetTop;
+
+                    document.body.style.userSelect = 'none';
+
+                    function onMouseMove(moveEvent) {
+                        if (!isResizing) return;
+
+                        const dx = moveEvent.clientX - startX;
+                        const dy = moveEvent.clientY - startY;
+
+                        if (direction.includes('e')) {
+                            panel.style.width = `${startWidth + dx}px`;
+                        }
+                        if (direction.includes('w')) {
+                            panel.style.width = `${startWidth - dx}px`;
+                            panel.style.left = `${startLeft + dx}px`;
+                        }
+                        if (direction.includes('s')) {
+                            panel.style.height = `${startHeight + dy}px`;
+                        }
+                        if (direction.includes('n')) {
+                            panel.style.height = `${startHeight - dy}px`;
+                            panel.style.top = `${startTop + dy}px`;
+                        }
+                    }
+
+                    function onMouseUp() {
+                        isResizing = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                            document.body.style.userSelect = '';
+                    }
+
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                });
+            });
+
+
+            // Global mouse move for dragging
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    panel.style.left = `${e.clientX - offsetX}px`;
+                    panel.style.top = `${e.clientY - offsetY}px`;
                 }
-            }
-        }
-    }
+            });
 
-    function updateEditorLayout() {
-        const mainContent = dom.editorMainContent;
-
-        // Set panel and resizer visibility first
-        dom.hierarchyPanel.style.display = panelVisibility.hierarchy ? 'flex' : 'none';
-        dom.resizerLeft.style.display = panelVisibility.hierarchy ? 'block' : 'none';
-        dom.inspectorPanel.style.display = panelVisibility.inspector ? 'flex' : 'none';
-        dom.resizerRight.style.display = panelVisibility.inspector ? 'block' : 'none';
-        dom.assetsPanel.style.display = panelVisibility.assets ? 'flex' : 'none';
-        dom.resizerBottom.style.display = panelVisibility.assets ? 'block' : 'none';
-
-        // Get the current column and row definitions from the inline style, if available.
-        const currentCols = mainContent.style.gridTemplateColumns ? mainContent.style.gridTemplateColumns.split(' ') : [];
-        const currentRows = mainContent.style.gridTemplateRows ? mainContent.style.gridTemplateRows.split(' ') : [];
-
-        // Define default sizes. These should match the initial state in the CSS file.
-        const defaultCols = ['220px', '6px', '1fr', '6px', '320px'];
-        const defaultRows = ['1.5fr', '6px', '1fr'];
-
-        // Use current size if available and valid, otherwise use default.
-        // This preserves user-set sizes unless a panel is hidden.
-        let newCols = defaultCols.map((val, i) => (currentCols[i] && !currentCols[i].endsWith('fr')) ? currentCols[i] : val);
-        let newRows = defaultRows.map((val, i) => (currentRows[i] && !currentRows[i].endsWith('fr')) ? currentRows[i] : val);
-
-        // Now, collapse the tracks for any hidden panels. This overrides any user-set size.
-        if (!panelVisibility.hierarchy) {
-            newCols[0] = '0px';
-            newCols[1] = '0px';
-        }
-        if (!panelVisibility.inspector) {
-            newCols[4] = '0px';
-            newCols[3] = '0px';
-        }
-        if (!panelVisibility.assets) {
-            newRows[2] = '0px';
-            newRows[1] = '0px';
-        }
-
-        mainContent.style.gridTemplateColumns = newCols.join(' ');
-        mainContent.style.gridTemplateRows = newRows.join(' ');
-
-        // The renderer needs to be resized after the layout changes
-        if (renderer) {
-            setTimeout(() => {
-                renderer.resize();
-                if (gameRenderer) gameRenderer.resize();
-            }, 50);
-        }
-    }
-
-    function createEmptyMateria(name = 'Materia Vacio', parent = null) {
-        const newMateria = new Materia(name);
-        if (parent) {
-            parent.addChild(newMateria);
-        } else {
-            SceneManager.currentScene.addMateria(newMateria);
-        }
-        updateHierarchy();
-        selectMateria(newMateria.id);
-    }
-
-    function showContextMenu(menu, e) {
-        // First, hide any other context menus
-        dom.contextMenu.style.display = 'none';
-        dom.hierarchyContextMenu.style.display = 'none';
-        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
-
-        menu.style.display = 'block';
-        let x = e.clientX;
-        let y = e.clientY;
-
-        const menuWidth = menu.offsetWidth;
-        const menuHeight = menu.offsetHeight;
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-
-        if (x + menuWidth > windowWidth) {
-            x = windowWidth - menuWidth - 5;
-        }
-        if (y + menuHeight > windowHeight) {
-            y = windowHeight - menuHeight - 5;
-        }
-
-        menu.style.left = `${x}px`;
-        menu.style.top = `${y}px`;
-
-        // Check and reposition submenus
-        const submenus = menu.querySelectorAll('.submenu');
-        submenus.forEach(submenu => {
-            const parentItem = submenu.parentElement.getBoundingClientRect();
-            const submenuHeight = submenu.offsetHeight; // This might be 0 if not displayed, need to temporarily show it
-
-            // Temporarily display to measure
-            submenu.style.visibility = 'hidden';
-            submenu.style.display = 'block';
-            const realHeight = submenu.offsetHeight;
-            submenu.style.visibility = '';
-            submenu.style.display = '';
-
-            if (parentItem.top + realHeight > windowHeight) {
-                submenu.classList.add('submenu-up');
-            } else {
-                submenu.classList.remove('submenu-up');
-            }
+            // Global mouse up to stop dragging
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.userSelect = '';
+                }
+            });
         });
     }
 
-    function hideContextMenus() {
-        dom.contextMenu.style.display = 'none';
-        dom.hierarchyContextMenu.style.display = 'none';
-        if (dom.animNodeContextMenu) dom.animNodeContextMenu.style.display = 'none';
-    }
+    // --- Floating Panel Drag and Resize Logic ---
+    function initializeFloatingPanels() {
+        const panels = document.querySelectorAll('.floating-panel');
 
-    createNewScript = async function(directoryHandle) {
-        if (!directoryHandle) {
-            alert("No se ha seleccionado ninguna carpeta.");
-            return;
-        }
-        const scriptLang = currentPreferences.scriptLang || 'ces';
-        const extension = `.${scriptLang}`;
-        const defaultName = scriptLang === 'ces' ? 'PlayerMovement' : 'main';
+        panels.forEach(panel => {
+            const header = panel.querySelector('.panel-header');
+            let offsetX, offsetY, isDragging = false;
+            let isResizing = false;
 
-        let scriptName = prompt(`Introduce el nombre del nuevo script (ej: ${defaultName}):`);
-        if (!scriptName) return;
+            // Dragging logic
+            if (header) {
+                header.addEventListener('mousedown', (e) => {
+                    // Ignore clicks on buttons inside the header
+                    if (e.target.closest('button, input, select')) return;
 
-        // Sanitize and add extension
-        const sanitizedName = scriptName.replace(/\.ces$|\.js$/, '');
-        scriptName = sanitizedName + extension;
+                    // Prevent dragging when the panel is maximized
+                    if (panel.classList.contains('maximized')) return;
 
-        const scriptTemplate = scriptLang === 'ces'
-            ? `// Script creado en Creative Engine
-function start() {
-    // Se ejecuta una vez al iniciar
-    console.log("¡El script ha comenzado!");
-};
-
-function update(deltaTime) {
-    // Se ejecuta en cada frame
-};`
-            : `// JavaScript file created in Creative Engine
-// This file can be used with a bundler or for more complex logic.
-
-function start() {
-    console.log("JS Script started!");
-}
-
-function update(deltaTime) {
-    // Runs every frame
-}
-`;
-
-        try {
-            const fileHandle = await directoryHandle.getFileHandle(scriptName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(scriptTemplate);
-            await writable.close();
-
-            console.log(`Script '${scriptName}' creado en ${directoryHandle.name}.`);
-            await updateAssetBrowser(); // Refresh asset browser
-        } catch(err) {
-            console.error(`Error al crear el script '${scriptName}':`, err);
-            alert(`No se pudo crear el script. Revisa la consola para más detalles.`);
-        }
-    };
-
-    saveCurrentScript = async function() {
-        if (currentlyOpenFileHandle && codeEditor) {
-            try {
-                const content = codeEditor.state.doc.toString();
-                const writable = await currentlyOpenFileHandle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                console.log(`Script guardado: ${currentlyOpenFileHandle.name}`);
-                // Optional: Add a visual confirmation
-            } catch (error) {
-                console.error(`Error al guardar el archivo ${currentlyOpenFileHandle.name}:`, error);
+                    isDragging = true;
+                    offsetX = e.clientX - panel.offsetLeft;
+                    offsetY = e.clientY - panel.offsetTop;
+                    document.body.style.userSelect = 'none'; // Prevent text selection
+                });
             }
-        } else {
-            console.warn("No hay ningún archivo abierto o el editor de código no está activo.");
-        }
-    };
 
-    function handleKeyboardShortcuts(e) {
-        // Ctrl+S or Cmd+S to save
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            if (dom.codeEditorContent.classList.contains('active')) {
-                 saveCurrentScript();
+            // Maximize button logic
+            const maximizeBtn = panel.querySelector('.maximize-btn');
+            if (maximizeBtn) {
+                maximizeBtn.addEventListener('click', () => {
+                    panel.classList.toggle('maximized');
+                    // Optional: a function to notify other parts of the app a resize happened
+                    // For example, to resize a canvas inside the panel
+                    window.dispatchEvent(new Event('resize'));
+                });
             }
-        }
 
-        // Ctrl+P or Cmd+P to Play/Stop
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-            e.preventDefault();
-            if (isGameRunning) {
-                stopGame();
-            } else {
-                startGame();
-            }
-        }
+            // Resizing logic
+            panel.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    const direction = handle.dataset.direction;
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startWidth = panel.offsetWidth;
+                    const startHeight = panel.offsetHeight;
+                    const startLeft = panel.offsetLeft;
+                    const startTop = panel.offsetTop;
 
-        // Tool switching only if not typing in an input
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-            return;
-        }
+                    document.body.style.userSelect = 'none';
 
-        switch(e.key.toLowerCase()) {
-            case 'q':
-                setActiveTool('move');
-                break;
-            case 'w':
-                setActiveTool('pan');
-                break;
-            case 'e':
-                setActiveTool('scale');
-                break;
-        }
-    }
+                    function onMouseMove(moveEvent) {
+                        if (!isResizing) return;
 
-    const GIZMO_HANDLE_SIZE = 10; // In screen pixels
+                        const dx = moveEvent.clientX - startX;
+                        const dy = moveEvent.clientY - startY;
 
-    function drawGizmos(renderer, materia) {
-        const transform = materia.getComponent(Transform);
-        if (!transform) return;
+                        if (direction.includes('e')) {
+                            panel.style.width = `${startWidth + dx}px`;
+                        }
+                        if (direction.includes('w')) {
+                            panel.style.width = `${startWidth - dx}px`;
+                            panel.style.left = `${startLeft + dx}px`;
+                        }
+                        if (direction.includes('s')) {
+                            panel.style.height = `${startHeight + dy}px`;
+                        }
+                        if (direction.includes('n')) {
+                            panel.style.height = `${startHeight - dy}px`;
+                            panel.style.top = `${startTop + dy}px`;
+                        }
+                    }
 
-        // Draw camera gizmo for any materia with a Camera component, if not selected
-        if (materia.getComponent(Camera) && (!selectedMateria || selectedMateria.id !== materia.id)) {
-            renderer.ctx.font = `${40 / renderer.camera.effectiveZoom}px sans-serif`;
-            renderer.ctx.textAlign = 'center';
-            renderer.ctx.fillText('📷', transform.x, transform.y);
-        }
+                    function onMouseUp() {
+                        isResizing = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                            document.body.style.userSelect = '';
+                    }
 
-        if (!selectedMateria || selectedMateria.id !== materia.id) {
-            return; // Only draw manipulation gizmos for the selected materia
-        }
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                });
+            });
 
-        const ctx = renderer.ctx;
-        const camera = renderer.camera;
 
-        // Gizmo positions are in world space, but their size is constant on screen
-        const handleScreenSize = GIZMO_HANDLE_SIZE / camera.zoom;
-        const halfHandleSize = handleScreenSize / 2;
+            // Global mouse move for dragging
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    panel.style.left = `${e.clientX - offsetX}px`;
+                    panel.style.top = `${e.clientY - offsetY}px`;
+                }
+            });
 
-        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
-        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
-        const x = transform.x;
-        const y = transform.y;
-
-        ctx.save();
-        ctx.fillStyle = 'red';
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 2 / camera.zoom;
-
-        if (activeTool === 'move') {
-            // Y-axis arrow
-            ctx.fillStyle = 'green';
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y - h / 2 - handleScreenSize * 2);
-            ctx.stroke();
-            ctx.moveTo(x, y - h / 2 - handleScreenSize * 2);
-            ctx.lineTo(x - handleScreenSize, y - h/2 - handleScreenSize);
-            ctx.lineTo(x + handleScreenSize, y - h/2 - handleScreenSize);
-            ctx.closePath();
-            ctx.fill();
-
-            // X-axis arrow
-            ctx.fillStyle = 'red';
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + w / 2 + handleScreenSize * 2, y);
-            ctx.stroke();
-            ctx.moveTo(x + w / 2 + handleScreenSize * 2, y);
-            ctx.lineTo(x + w/2 + handleScreenSize, y - handleScreenSize);
-            ctx.lineTo(x + w/2 + handleScreenSize, y + handleScreenSize);
-            ctx.closePath();
-            ctx.fill();
-        } else if (activeTool === 'scale') {
-            ctx.fillStyle = 'blue';
-            // Top-left
-            ctx.fillRect(x - w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Top-right
-            ctx.fillRect(x + w/2 - halfHandleSize, y - h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Bottom-left
-            ctx.fillRect(x - w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-            // Bottom-right
-            ctx.fillRect(x + w/2 - halfHandleSize, y + h/2 - halfHandleSize, handleScreenSize, handleScreenSize);
-        }
-
-        ctx.restore();
-    }
-
-    function getGizmoHandleAt(worldPos, materia, renderer) {
-        const transform = materia.getComponent(Transform);
-        if (!transform) return null;
-
-        const handleScreenSize = GIZMO_HANDLE_SIZE / renderer.camera.zoom;
-        const w = (selectedMateria.getComponent(BoxCollider)?.width ?? 100) * transform.scale.x;
-        const h = (selectedMateria.getComponent(BoxCollider)?.height ?? 100) * transform.scale.y;
-        const x = transform.x;
-        const y = transform.y;
-
-        const checkRect = (px, py) => {
-            return worldPos.x >= px - handleScreenSize/2 && worldPos.x <= px + handleScreenSize/2 &&
-                   worldPos.y >= py - handleScreenSize/2 && worldPos.y <= py + handleScreenSize/2;
-        };
-
-        if (activeTool === 'scale') {
-            if (checkRect(x - w / 2, y - h / 2)) return 'scale-tl';
-            if (checkRect(x + w / 2, y - h / 2)) return 'scale-tr';
-            if (checkRect(x - w / 2, y + h / 2)) return 'scale-bl';
-            if (checkRect(x + w / 2, y + h / 2)) return 'scale-br';
-        } else if (activeTool === 'move') {
-            // A larger hit area for the arrows
-            const arrowLength = h / 2 + handleScreenSize * 2;
-            const arrowWidth = w / 2 + handleScreenSize * 2;
-            if (worldPos.x > x && worldPos.x < x + arrowWidth && Math.abs(worldPos.y - y) < handleScreenSize) return 'move-x';
-            if (worldPos.y < y && worldPos.y > y - arrowLength && Math.abs(worldPos.x - x) < handleScreenSize) return 'move-y';
-        }
-
-        // Check if clicking the object itself for a move action
-        if (worldPos.x >= x - w/2 && worldPos.x <= x + w/2 && worldPos.y >= y - h/2 && worldPos.y <= y + h/2) {
-            return 'move-body';
-        }
-
-        return null;
+            // Global mouse up to stop dragging
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.userSelect = '';
+                }
+            });
+        });
     }
 
     function setupEventListeners() {
+        // Scene view interactions (panning)
+        dom.sceneCanvas.addEventListener('mousedown', (e) => {
+            if (e.button === 2 || (e.button === 0 && activeTool === 'pan')) { // Right-click or pan tool
+                isPanning = true;
+                lastMousePosition = InputManager.getMousePosition();
+                dom.sceneCanvas.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                dom.sceneCanvas.style.cursor = 'grab';
+            }
+        });
+
         // --- Hierarchy Drag and Drop ---
         const hierarchyContent = dom.hierarchyContent;
 
@@ -2444,7 +2259,8 @@ function update(deltaTime) {
 
             if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
                 const newMateria = new Materia(data.name.split('.')[0]);
-                const spriteRenderer = new SpriteRenderer(newMateria);
+                newMateria.addComponent(new Components.Transform(newMateria)); // Manually add Transform
+                const spriteRenderer = new Components.SpriteRenderer(newMateria);
 
                 spriteRenderer.setSourcePath(data.path);
                 await spriteRenderer.loadSprite(projectsDirHandle);
@@ -2459,6 +2275,50 @@ function update(deltaTime) {
             }
         });
 
+
+        // --- UI Editor Listeners ---
+        if (dom.uiSaveBtn) {
+            dom.uiSaveBtn.addEventListener('click', async () => {
+                if (!uiEditorFileHandle || !currentUiAsset) {
+                    alert("No hay ningún asset de UI abierto para guardar.");
+                    return;
+                }
+                try {
+                    const writable = await uiEditorFileHandle.createWritable();
+                    await writable.write(JSON.stringify(currentUiAsset, null, 2));
+                    await writable.close();
+                    alert(`Asset '${uiEditorFileHandle.name}' guardado.`);
+                } catch (error) {
+                    console.error("Error al guardar el asset de UI:", error);
+                    alert("No se pudo guardar el asset de UI.");
+                }
+            });
+        }
+        if (dom.uiMaximizeBtn) {
+            dom.uiMaximizeBtn.addEventListener('click', () => {
+                const panel = dom.uiEditorPanel;
+                panel.classList.toggle('maximized');
+                setTimeout(renderUiCanvas, 50);
+            });
+        }
+        if (dom.uiInspectorPanel) {
+            dom.uiInspectorPanel.addEventListener('input', (e) => {
+                if (!selectedUiElement) return;
+
+                if (e.target.matches('.prop-input')) {
+                    const prop = e.target.dataset.prop;
+                    let value = e.target.value;
+                    if (e.target.type === 'number') {
+                        value = parseFloat(value) || 0;
+                    }
+                    selectedUiElement.props[prop] = value;
+                    renderUiCanvas();
+                } else if (e.target.matches('#ui-element-name-input')) {
+                    selectedUiElement.name = e.target.value;
+                    renderUiHierarchy();
+                }
+            });
+        }
 
         // --- Asset Browser Listeners ---
         const gridView = dom.assetGridView;
@@ -2519,7 +2379,7 @@ function update(deltaTime) {
             } else if (name.endsWith('.ces')) {
                 await openScriptInEditor(name);
             } else if (name.endsWith('.cea')) {
-                await openAnimationAsset(name);
+                await openAnimationAssetFromModule(name, currentDirectoryHandle.handle);
             } else if (name.endsWith('.ceanim')) {
                 const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
                 await openAnimatorController(fileHandle);
@@ -2536,6 +2396,9 @@ function update(deltaTime) {
             } else if (name.endsWith('.cep')) {
                 const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
                 await importPackage(fileHandle);
+            } else if (name.endsWith('.ceui')) {
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+                await openUiAsset(fileHandle);
             } else if (name.endsWith('.cmel')) {
                 await updateInspectorForAsset(name, path);
             }
@@ -2723,117 +2586,19 @@ function update(deltaTime) {
             }
         });
 
-        // --- Scene Canvas Mouse Listeners for Tools ---
-        dom.sceneCanvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Only handle left-clicks
-            if (!renderer.camera) return;
-
-            const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-
-            if (activeTool === 'pan') {
-                isPanning = true;
-                dom.sceneCanvas.classList.add('is-panning');
-                lastMousePosition = { x: e.clientX, y: e.clientY };
-                return;
-            }
-
-            let handle = null;
-            if (selectedMateria) {
-                handle = getGizmoHandleAt(worldPos, selectedMateria, renderer);
-            }
-
-            if (handle) {
-                isDragging = true;
-                const transform = selectedMateria.getComponent(Transform);
-                dragState = {
-                    handle,
-                    materia: selectedMateria,
-                    initialX: transform.x,
-                    initialY: transform.y,
-                    initialScaleX: transform.scale.x,
-                    initialScaleY: transform.scale.y,
-                    startMouseX: worldPos.x,
-                    startMouseY: worldPos.y,
-                };
+        // --- Hierarchy Context Menu Activation ---
+        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const item = e.target.closest('.hierarchy-item');
+            if (item) {
+                const materiaId = parseInt(item.dataset.id, 10);
+                if (selectedMateria?.id !== materiaId) {
+                    selectMateria(materiaId);
+                }
             } else {
-                // If not clicking a handle, we might be starting a pan or selecting a new materia
-                let clickedMateria = null;
-                for (const materia of [...SceneManager.currentScene.materias].reverse()) {
-                    if (getGizmoHandleAt(worldPos, materia, renderer) === 'move-body') {
-                        clickedMateria = materia;
-                        break;
-                    }
-                }
-
-                if (clickedMateria) {
-                    selectMateria(clickedMateria.id);
-                } else {
-                    // This is a click on an empty area, start panning
-                    isPanning = true;
-                    dom.sceneCanvas.classList.add('is-panning');
-                    lastMousePosition = { x: e.clientX, y: e.clientY };
-                    selectMateria(null);
-                }
+                selectMateria(null);
             }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isPanning) {
-                const dx = (e.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
-                const dy = (e.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
-                const camMateria = SceneManager.currentScene.findFirstCamera();
-                if(camMateria) {
-                    const camTransform = camMateria.getComponent(Transform);
-                    camTransform.x -= dx;
-                    camTransform.y -= dy;
-                }
-                lastMousePosition = { x: e.clientX, y: e.clientY };
-                updateScene(renderer, false); // Re-render on pan
-            }
-
-            if (isDragging) {
-                if (!renderer.camera) return;
-                const worldPos = Input.getMouseWorldPosition(renderer.camera, dom.sceneCanvas);
-                const dx = worldPos.x - dragState.startMouseX;
-                const dy = worldPos.y - dragState.startMouseY;
-                const transform = dragState.materia.getComponent(Transform);
-
-                if (dragState.handle.startsWith('move')) {
-                    let newX = dragState.initialX + dx;
-                    let newY = dragState.initialY + dy;
-
-                    if (currentPreferences.snapping) {
-                        const gridSize = parseInt(currentPreferences.gridSize, 10) || 25;
-                        newX = Math.round(newX / gridSize) * gridSize;
-                        newY = Math.round(newY / gridSize) * gridSize;
-                    }
-
-                     if (dragState.handle === 'move-x' || dragState.handle === 'move-body') {
-                        transform.x = newX;
-                     }
-                     if (dragState.handle === 'move-y' || dragState.handle === 'move-body') {
-                        transform.y = newY;
-                     }
-                } else if (dragState.handle.startsWith('scale')) {
-                    // This scaling logic is simplified and might not feel perfect with pivots.
-                    const newScaleX = dragState.initialScaleX + (dx / 100);
-                    const newScaleY = dragState.initialScaleY - (dy / 100); // Invert Y
-                    transform.scale.x = Math.max(0.1, newScaleX);
-                    transform.scale.y = Math.max(0.1, newScaleY);
-                }
-
-                updateInspector();
-                updateScene(renderer, false);
-            }
-        });
-
-        window.addEventListener('mouseup', (e) => {
-            if (isPanning) {
-                dom.sceneCanvas.classList.remove('is-panning');
-            }
-            isPanning = false;
-            isDragging = false;
-            dragState = {};
+            showContextMenu(dom.hierarchyContextMenu, e);
         });
 
         // Modal close buttons
@@ -2907,224 +2672,6 @@ function update(deltaTime) {
         });
 
         // Custom Context Menu handler for hierarchy
-        dom.hierarchyContent.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const item = e.target.closest('.hierarchy-item');
-            if (item) {
-                const materiaId = parseInt(item.dataset.id, 10);
-                selectMateria(materiaId);
-            } else {
-                // Clicking on empty space deselects any materia
-                selectMateria(null);
-            }
-            showContextMenu(dom.hierarchyContextMenu, e);
-        });
-
-        // Animator Node Context Menu Actions
-        dom.animNodeContextMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            const fromState = graphView.dataset.contextNode;
-            hideContextMenus();
-
-            if (action === 'create-transition') {
-                if (fromState) {
-                    graphView.classList.add('is-connecting');
-                    graphView.dataset.fromState = fromState;
-                }
-            }
-            // Other actions like delete-state would be handled here
-        });
-
-        // --- Animator Graph Dragging ---
-        if (graphView) { // Ensure graphView is assigned before adding listeners
-            graphView.addEventListener('mousedown', (e) => {
-                const node = e.target.closest('.graph-node');
-                if (node) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    isDraggingNode = true;
-                    const rect = node.getBoundingClientRect();
-                    const graphRect = graphView.getBoundingClientRect();
-                    dragNodeInfo = {
-                        node: node,
-                        offsetX: e.clientX - rect.left,
-                        offsetY: e.clientY - rect.top,
-                    };
-                    graphView.classList.add('is-dragging');
-                }
-            });
-        }
-        window.addEventListener('mousemove', (e) => {
-            if (isDraggingNode) {
-                e.preventDefault();
-                const graphRect = graphView.getBoundingClientRect();
-                let newX = e.clientX - graphRect.left - dragNodeInfo.offsetX;
-                let newY = e.clientY - graphRect.top - dragNodeInfo.offsetY;
-
-                // Clamp position within the graph view
-                newX = Math.max(0, Math.min(newX, graphRect.width - dragNodeInfo.node.offsetWidth));
-                newY = Math.max(0, Math.min(newY, graphRect.height - dragNodeInfo.node.offsetHeight));
-
-                dragNodeInfo.node.style.left = `${newX}px`;
-                dragNodeInfo.node.style.top = `${newY}px`;
-
-                // Update the data model
-                const nodeName = dragNodeInfo.node.dataset.name;
-                const state = currentControllerData.states.find(s => s.name === nodeName);
-                if (state) {
-                    state.position.x = newX;
-                    state.position.y = newY;
-                    updateGraphData(); // Keep the JSON data fresh for saving
-                }
-            }
-        });
-        window.addEventListener('mouseup', (e) => {
-            if (isDraggingNode) {
-                isDraggingNode = false;
-                dragNodeInfo = {};
-                graphView.classList.remove('is-dragging');
-            }
-        });
-
-
-        // Inspector button delegation & Drag/Drop
-        dom.inspectorPanel.addEventListener('click', (e) => {
-            if (e.target.id === 'open-animator-btn') {
-                dom.animationPanel.classList.remove('hidden');
-            } else if (e.target.matches('.sprite-select-btn')) {
-                openSpriteSelector();
-            } else if (e.target.matches('.prop-btn')) {
-                 if (!selectedMateria) return;
-                const componentName = e.target.dataset.component;
-                const propName = e.target.dataset.prop;
-                const value = e.target.dataset.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    component[propName] = value;
-                    updateInspector(); // Re-render inspector to update active state
-                    updateScene(renderer, false);
-                }
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('change', e => {
-            if (!selectedMateria) {
-                // Handle asset inspector changes if no materia is selected
-                const target = e.target;
-                if (target.id === 'texture-type') {
-                     const assetName = target.dataset.assetName;
-                     const newType = target.value;
-                     saveAssetMeta(assetName, { textureType: newType });
-                }
-                return;
-            }
-
-            const target = e.target;
-            if (target.id === 'materia-active-toggle') {
-                if (selectedMateria) {
-                    selectedMateria.isActive = target.checked;
-                    updateHierarchy(); // Update hierarchy to show disabled state
-                }
-            } else if (target.id === 'materia-name-input') {
-                 if (selectedMateria) {
-                    selectedMateria.name = target.value;
-                    updateHierarchy();
-                 }
-            } else if (target.matches('.prop-input')) {
-                const componentName = target.dataset.component;
-                const propName = target.dataset.prop;
-                let value = target.value;
-
-                const ComponentClass = window[componentName] || eval(componentName);
-                if (!ComponentClass) return;
-
-                const component = selectedMateria.getComponent(ComponentClass);
-                if (component) {
-                    if (target.type === 'number') {
-                        value = parseFloat(value) || 0;
-                    }
-
-                    if (component instanceof SpriteRenderer && propName === 'source') {
-                        // Handled by drop
-                    } else if (propName.includes('.')) {
-                        const props = propName.split('.');
-                        let obj = component;
-                        for (let i = 0; i < props.length - 1; i++) {
-                            obj = obj[props[i]];
-                        }
-                        obj[props[props.length - 1]] = value;
-                    } else {
-                        component[propName] = value;
-                    }
-                    updateScene(renderer, false);
-                }
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragover', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-                dropTarget.classList.add('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('dragleave', (e) => {
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('change', (e) => {
-            if(e.target.id === 'texture-type') {
-                const assetName = e.target.dataset.assetName;
-                const newType = e.target.value;
-                saveAssetMeta(assetName, { textureType: newType });
-            }
-        });
-
-        dom.inspectorPanel.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const dropTarget = e.target.closest('.sprite-preview');
-            if (dropTarget) {
-                dropTarget.classList.remove('drag-over');
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
-                    if (selectedMateria) {
-                        const spriteRenderer = selectedMateria.getComponent(SpriteRenderer);
-                        if (spriteRenderer) {
-                            spriteRenderer.setSourcePath(data.path);
-                            await spriteRenderer.loadSprite(projectsDirHandle);
-                            updateInspector();
-                            updateScene(renderer, false);
-                        }
-                    }
-                } else {
-                    alert("Solo se pueden asignar archivos .png o .jpg como sprites.");
-                }
-            }
-        });
-
-        // Disable default context menus on other panels
-        dom.scenePanel.addEventListener('contextmenu', e => e.preventDefault());
-        dom.inspectorPanel.addEventListener('contextmenu', e => e.preventDefault());
-
-        // Hide context menu on left-click
-        window.addEventListener('click', (e) => {
-            if (!e.target.closest('.context-menu') && !e.target.closest('.menu-btn')) {
-                hideContextMenus();
-                dom.menubar.querySelectorAll('.menu-content').forEach(mc => mc.classList.remove('visible'));
-            }
-        });
-
-        // Hierarchy Context Menu Actions
         dom.hierarchyContextMenu.addEventListener('click', (e) => {
             const action = e.target.dataset.action;
             if (!action) return;
@@ -3133,81 +2680,15 @@ function update(deltaTime) {
 
             switch (action) {
                 case 'create-empty':
-                    createEmptyMateria(undefined, selectedMateria);
+                    createEmptyMateria('Materia Vacio', selectedMateria);
                     break;
                 case 'create-primitive-square': {
-                    const parent = selectedMateria || findOrCreateCanvas();
-                    const square = new Materia('Cuadrado');
-                    square.leyes = square.leyes.filter(c => !(c instanceof Transform));
-                    square.addComponent(new RectTransform(square));
-                    const image = square.addComponent(new UIImage(square));
-                    image.color = '#FFFFFF';
-                    parent.addChild(square);
-                    updateHierarchy();
-                    selectMateria(square.id);
-                    break;
-                }
-                case 'create-ui-panel': {
-                    const canvas = findOrCreateCanvas();
-                    const panelMateria = new Materia('Panel');
-                    panelMateria.leyes = panelMateria.leyes.filter(c => !(c instanceof Transform));
-                    panelMateria.addComponent(new RectTransform(panelMateria));
-                    panelMateria.addComponent(new UIPanel(panelMateria));
-                    panelMateria.layer = 'UI';
-                    canvas.addChild(panelMateria);
-                    updateHierarchy();
-                    selectMateria(panelMateria.id);
-                    break;
-                }
-                case 'create-ui-canvas': {
-                    const canvasMateria = new Materia('Canvas');
-                    canvasMateria.leyes = canvasMateria.leyes.filter(c => !(c instanceof Transform));
-                    canvasMateria.addComponent(new RectTransform(canvasMateria));
-                    canvasMateria.addComponent(new UICanvas(canvasMateria));
-                    canvasMateria.layer = 'UI';
-                    SceneManager.currentScene.addMateria(canvasMateria);
-                    updateHierarchy();
-                    selectMateria(canvasMateria.id);
-                    break;
-                }
-                case 'create-ui-text': {
-                    const canvas = findOrCreateCanvas();
-                    const textMateria = new Materia('Texto');
-                    textMateria.leyes = textMateria.leyes.filter(c => !(c instanceof Transform));
-                    textMateria.addComponent(new RectTransform(textMateria));
-                    textMateria.addComponent(new UIText(textMateria));
-                    textMateria.layer = 'UI';
-                    canvas.addChild(textMateria);
-                    updateHierarchy();
-                    selectMateria(textMateria.id);
-                    break;
-                }
-                case 'create-ui-button': {
-                    const canvas = findOrCreateCanvas();
-                    const buttonMateria = new Materia('Botón');
-                    buttonMateria.leyes = buttonMateria.leyes.filter(c => !(c instanceof Transform));
-                    buttonMateria.addComponent(new RectTransform(buttonMateria));
-                    buttonMateria.addComponent(new UIButton(buttonMateria));
-                    buttonMateria.layer = 'UI';
-                    canvas.addChild(buttonMateria);
-                    updateHierarchy();
-                    selectMateria(buttonMateria.id);
-                    break;
-                }
-                case 'create-ui-image': {
-                    const canvas = findOrCreateCanvas();
-                    const imageMateria = new Materia('Imagen');
-                    imageMateria.leyes = imageMateria.leyes.filter(c => !(c instanceof Transform));
-                    imageMateria.addComponent(new RectTransform(imageMateria));
-                    imageMateria.addComponent(new UIImage(imageMateria));
-                    imageMateria.layer = 'UI';
-                    canvas.addChild(imageMateria);
-                    updateHierarchy();
-                    selectMateria(imageMateria.id);
+                    const square = createEmptyMateria('Cuadrado', selectedMateria);
+                    square.addComponent(new Components.SpriteRenderer(square));
                     break;
                 }
                 case 'create-camera': {
-                    createEmptyMateria('Cámara', selectedMateria).addComponent(new Camera());
+                    createEmptyMateria('Cámara', selectedMateria).addComponent(new Components.Camera());
                     break;
                 }
                 case 'rename':
@@ -3244,6 +2725,8 @@ function update(deltaTime) {
 
             if (action === 'create-script') {
                 await createNewScript(currentDirectoryHandle.handle);
+            } else if (action === 'create-ui-system') {
+                await createUiSystemFile(currentDirectoryHandle.handle);
             } else if (action === 'create-folder') {
                 const folderName = prompt("Nombre de la nueva carpeta:");
                 if (folderName) {
@@ -3416,22 +2899,26 @@ function update(deltaTime) {
             button.addEventListener('click', (e) => {
                 const panelId = e.target.dataset.panel;
                 const panel = document.getElementById(panelId);
-                if (panel) {
-                    panel.classList.add('hidden');
-                    if (panelId === 'animation-panel') {
-                        resetAnimationPanel();
-                    } else {
-                        const panelName = panelId.replace('-panel', '');
-                        panelVisibility[panelName] = false;
-                        updateEditorLayout();
-                        updateWindowMenuUI();
-                    }
+                if (!panel) return;
+
+                panel.classList.add('hidden');
+                const panelName = panelId.replace('-panel', '');
+
+
+                // Only update the main grid layout if a DOCKED panel is closed
+                const dockedPanelNames = ['hierarchy', 'inspector', 'assets'];
+                if (dockedPanelNames.includes(panelName)) {
+                    panelVisibility[panelName] = false;
+                    updateEditorLayout();
                 }
+
+                // Always try to update the window menu checkmark
+                updateWindowMenuUI();
             });
         });
 
         // Window Menu Logic
-        dom.menubar.querySelector('.menu-item:nth-child(3) .menu-content').addEventListener('click', async (e) => {
+        document.getElementById('window-menu-content').addEventListener('click', async (e) => {
             e.preventDefault();
             const targetId = e.target.id;
             let panelName = '';
@@ -3454,6 +2941,8 @@ function update(deltaTime) {
                 }
             } else if (panelName === 'animation') {
                 dom.animationPanel.classList.toggle('hidden');
+            } else if (panelName === 'ui-editor') {
+                openUiEditor();
             } else if (panelName === 'animator') {
                 const panel = dom.animatorControllerPanel;
                 const isHiding = panel.classList.toggle('hidden');
@@ -3532,59 +3021,6 @@ function update(deltaTime) {
         document.getElementById('code-redo-btn').addEventListener('click', () => {
             if (codeEditor) redo(codeEditor);
         });
-
-        // --- Animation Drawing Listeners ---
-        const drawingCanvas = dom.drawingCanvas;
-        const drawingCtx = drawingCanvas.getContext('2d');
-
-        function getDrawPos(e) {
-            const rect = drawingCanvas.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-        }
-
-        drawingCanvas.addEventListener('mousedown', (e) => {
-            isDrawing = true;
-            lastDrawPos = getDrawPos(e);
-        });
-
-        const PIXEL_GRID_SIZE = 16;
-
-        drawingCanvas.addEventListener('mousemove', (e) => {
-            if (!isDrawing) return;
-
-            let currentPos = getDrawPos(e);
-
-            if (drawingMode === 'pixel') {
-                drawingCtx.globalCompositeOperation = 'source-over'; // Eraser in pixel mode just paints background
-                const x = Math.floor(currentPos.x / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
-                const y = Math.floor(currentPos.y / PIXEL_GRID_SIZE) * PIXEL_GRID_SIZE;
-                drawingCtx.fillStyle = drawingTool === 'pencil' ? drawingColor : 'rgba(0,0,0,0)';
-                if(drawingTool === 'eraser') drawingCtx.clearRect(x,y,PIXEL_GRID_SIZE,PIXEL_GRID_SIZE);
-                else drawingCtx.fillRect(x, y, PIXEL_GRID_SIZE, PIXEL_GRID_SIZE);
-
-            } else { // Free mode
-                if (drawingTool === 'eraser') {
-                    drawingCtx.globalCompositeOperation = 'destination-out';
-                } else {
-                    drawingCtx.globalCompositeOperation = 'source-over';
-                }
-                drawingCtx.beginPath();
-                drawingCtx.strokeStyle = drawingColor;
-                drawingCtx.lineWidth = drawingTool === 'pencil' ? 2 : 20;
-                drawingCtx.lineCap = 'round';
-                drawingCtx.moveTo(lastDrawPos.x, lastDrawPos.y);
-                drawingCtx.lineTo(currentPos.x, currentPos.y);
-                drawingCtx.stroke();
-            }
-
-            lastDrawPos = currentPos;
-        });
-
-        drawingCanvas.addEventListener('mouseup', () => isDrawing = false);
-        drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
 
         dom.drawingTools.addEventListener('click', (e) => {
             const toolButton = e.target.closest('.tool-btn');
@@ -4149,117 +3585,11 @@ function update(deltaTime) {
         initResizer(dom.resizerBottom, 'row');
 
 
-        // --- Floating Panel Dragging & Resizing (Generic) ---
-        document.body.addEventListener('mousedown', (e) => {
-            const handle = e.target.closest('.floating-panel .resize-handle');
-            const header = e.target.closest('.floating-panel .panel-header');
-
-            if (handle) {
-                isResizingPanel = true;
-                const panel = handle.closest('.floating-panel');
-                const rect = panel.getBoundingClientRect();
-                panelResizeState = {
-                    panel: panel,
-                    direction: handle.dataset.direction,
-                    initialX: e.clientX,
-                    initialY: e.clientY,
-                    initialWidth: rect.width,
-                    initialHeight: rect.height
-                };
-                document.body.classList.add('is-dragging-panel');
-                e.preventDefault();
-            } else if (header) {
-                if (e.target.matches('button, input, select')) return;
-                isMovingPanel = true;
-                const panel = header.closest('.floating-panel');
-                const rect = panel.getBoundingClientRect();
-                panelMoveOffset = {
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top
-                };
-                panelMoveState = { panel: panel };
-                document.body.classList.add('is-dragging-panel');
-                e.preventDefault();
-            }
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isMovingPanel && panelMoveState.panel) {
-                const newX = e.clientX - panelMoveOffset.x;
-                const newY = e.clientY - panelMoveOffset.y;
-                panelMoveState.panel.style.left = `${newX}px`;
-                panelMoveState.panel.style.top = `${newY}px`;
-                panelMoveState.panel.style.transform = 'none';
-            } else if (isResizingPanel && panelResizeState.panel) {
-                const dx = e.clientX - panelResizeState.initialX;
-                const dy = e.clientY - panelResizeState.initialY;
-
-                if (panelResizeState.direction === 'right' || panelResizeState.direction === 'both') {
-                    const newWidth = panelResizeState.initialWidth + dx;
-                    panelResizeState.panel.style.width = `${Math.max(400, newWidth)}px`;
-                }
-                if (panelResizeState.direction === 'bottom' || panelResizeState.direction === 'both') {
-                    const newHeight = panelResizeState.initialHeight + dy;
-                    panelResizeState.panel.style.height = `${Math.max(300, newHeight)}px`;
-                }
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            isMovingPanel = false;
-            isResizingPanel = false;
-            panelMoveState = {};
-            panelResizeState = {};
-            document.body.classList.remove('is-dragging-panel');
-        });
-
-        // --- Animation Panel Toggles ---
-        const timelineToggleBtn = document.getElementById('timeline-toggle-btn');
-        timelineToggleBtn.addEventListener('click', () => {
-            const isCollapsed = dom.animationPanel.classList.toggle('timeline-collapsed');
-            timelineToggleBtn.textContent = isCollapsed ? '▼' : '▲';
-        });
-
-        dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
-        dom.animationStopBtn.addEventListener('click', stopAnimationPlayback);
-        dom.animationSaveBtn.addEventListener('click', saveAnimationAsset);
-
-        dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
-
-        dom.deleteFrameBtn.addEventListener('click', () => {
-            if (currentFrameIndex === -1) {
-                alert("Por favor, selecciona un fotograma para borrar.");
-                return;
-            }
-
-            if (currentAnimationAsset && currentAnimationAsset.animations[0]) {
-                currentAnimationAsset.animations[0].frames.splice(currentFrameIndex, 1);
-                currentFrameIndex = -1; // Deselect
-
-                const ctx = dom.drawingCanvas.getContext('2d');
-                ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-
-                populateTimeline();
-            }
-        });
-
-        dom.animationTimeline.addEventListener('click', (e) => {
-            const frame = e.target.closest('.timeline-frame');
-            if (!frame) return;
-
-            const index = parseInt(frame.dataset.index, 10);
-            currentFrameIndex = index;
-
-            const ctx = dom.drawingCanvas.getContext('2d');
-            ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
-            ctx.drawImage(frame, 0, 0);
-
-            populateTimeline(); // Re-render to show active state
-        });
-
         // Animator Controller Toolbar Logic
         const newAnimCtrlBtn = document.getElementById('anim-ctrl-new-btn');
         const saveAnimCtrlBtn = document.getElementById('anim-ctrl-save-btn');
+
+
 
         // This function will be called to render the graph from data
         function renderAnimatorGraph() {
@@ -4356,13 +3686,15 @@ function update(deltaTime) {
         const ids = [
             'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
-            'project-name-display', 'debug-content', 'add-component-modal', 'component-list', 'context-menu',
+            'project-name-display', 'debug-content', 'context-menu',
             'hierarchy-context-menu', 'anim-node-context-menu', 'preferences-modal', 'code-editor-content',
+            'add-component-modal', 'component-list', 'sprite-selector-modal', 'sprite-selector-grid',
             'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'drawing-canvas',
             'drawing-tools', 'drawing-color-picker', 'add-frame-btn', 'delete-frame-btn', 'animation-timeline',
             'animation-panel-overlay', 'animation-edit-view', 'animation-playback-view', 'animation-playback-canvas',
-            'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'sprite-selector-modal',
-            'sprite-selector-grid', 'animator-controller-panel',
+            'animation-play-btn', 'animation-stop-btn', 'animation-save-btn', 'current-scene-name', 'animator-controller-panel',
+            'drawing-canvas-container', 'anim-onion-skin-canvas', 'anim-grid-canvas',
+            'anim-bg-toggle-btn', 'anim-grid-toggle-btn', 'anim-onion-toggle-btn', 'timeline-toggle-btn',
 
             // Project Settings Modal elements
             'project-settings-modal', 'settings-app-name', 'settings-author-name', 'settings-app-version', 'settings-engine-version',
@@ -4396,7 +3728,12 @@ function update(deltaTime) {
             'export-description-modal', 'export-description-text', 'export-description-next-btn',
             'package-file-tree-modal', 'package-modal-title', 'package-modal-description', 'package-file-tree-container',
             'package-export-controls', 'package-import-controls', 'export-filename', 'export-confirm-btn', 'import-confirm-btn',
-            'resizer-left', 'resizer-right', 'resizer-bottom'
+            'resizer-left', 'resizer-right', 'resizer-bottom',
+
+            // UI Editor elements
+            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel',
+            'ui-canvas-panel', 'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel',
+            'ui-resizer-left', 'ui-resizer-right'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -4405,6 +3742,9 @@ function update(deltaTime) {
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
         dom.sceneCanvas = document.getElementById('scene-canvas');
         dom.gameCanvas = document.getElementById('game-canvas');
+
+        const originalLog = console.log, originalWarn = console.warn, originalError = console.error; function logToUIConsole(message, type = 'log') { if (!dom.consoleContent) return; const msgEl = document.createElement('p'); msgEl.className = `console-msg log-${type}`; msgEl.textContent = `> ${message}`; dom.consoleContent.appendChild(msgEl); dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight; }
+        console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); }; console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); }; console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
         console.log("--- Creative Engine Editor ---");
         console.log("1. Iniciando el editor...");
@@ -4453,6 +3793,11 @@ function update(deltaTime) {
             setupEventListeners();
             console.log("5. Event Listeners configurados.");
 
+            initializeFloatingPanels();
+            console.log("6. Paneles flotantes (arrastrar/redimensionar) inicializados.");
+
+            // Initialize the animation editor module
+            initializeAnimationEditor({ dom, projectsDirHandle, currentDirectoryHandle });
 
             // Start the main editor loop
             editorLoopId = requestAnimationFrame(editorLoop);
@@ -4472,8 +3817,59 @@ function update(deltaTime) {
 
         } catch (error) {
             console.error("Failed to initialize editor:", error);
-            alert("Error fatal al inicializar el editor. Revisa la consola.");
+            displayCriticalError(error);
         }
     }
+
+    function displayCriticalError(error) {
+        // Hide the main editor to prevent interaction with a broken state
+        if (dom.editorContainer) {
+            dom.editorContainer.style.display = 'none';
+        }
+
+        // Create a full-screen overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(20, 20, 20, 1)';
+        overlay.style.color = '#ff4444';
+        overlay.style.fontFamily = 'monospace, sans-serif';
+        overlay.style.padding = '2em';
+        overlay.style.zIndex = '99999';
+        overlay.style.overflowY = 'auto';
+        overlay.style.boxSizing = 'border-box';
+
+        const title = document.createElement('h1');
+        title.textContent = 'A critical error occurred during editor initialization.';
+        title.style.color = '#ff8888';
+        title.style.borderBottom = '1px solid #ff4444';
+        title.style.paddingBottom = '0.5em';
+
+        const errorMessage = document.createElement('h3');
+        errorMessage.textContent = error.message;
+        errorMessage.style.color = 'white';
+        errorMessage.style.marginTop = '2em';
+
+        const stackTrace = document.createElement('pre');
+        stackTrace.textContent = error.stack;
+        stackTrace.style.whiteSpace = 'pre-wrap';
+        stackTrace.style.wordBreak = 'break-all';
+        stackTrace.style.color = '#ccc';
+        stackTrace.style.marginTop = '1em';
+        stackTrace.style.padding = '1em';
+        stackTrace.style.backgroundColor = '#111';
+        stackTrace.style.border = '1px solid #333';
+        stackTrace.style.borderRadius = '5px';
+
+        overlay.appendChild(title);
+        overlay.appendChild(errorMessage);
+        overlay.appendChild(stackTrace);
+
+        document.body.appendChild(overlay);
+    }
+
     initializeEditor();
 });

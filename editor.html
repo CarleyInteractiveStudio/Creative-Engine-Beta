@@ -32,7 +32,7 @@
             </div>
             <div class="menu-item">
                 <button class="menu-btn">Ventana</button>
-                <div class="menu-content">
+                <div class="menu-content" id="window-menu-content">
                     <a href="#" id="menu-window-scene">Escena</a>
                     <a href="#" id="menu-window-hierarchy">Jerarquía</a>
                     <a href="#" id="menu-window-inspector">Inspector</a>
@@ -41,6 +41,7 @@
                     <hr>
                     <a href="#" id="menu-window-animation">Editor de Animación</a>
                     <a href="#" id="menu-window-animator">Controlador de Animación</a>
+                    <a href="#" id="menu-window-ui-editor">Editor de UI</a>
                 </div>
             </div>
             <div class="menu-item">
@@ -155,7 +156,10 @@
              <div id="animation-panel" class="editor-panel floating-panel hidden">
                 <div class="panel-header">
                     <span>Editor de Animación</span>
-                    <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
+                    <div class="panel-header-controls">
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                        <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
+                    </div>
                 </div>
                 <div class="panel-content">
                     <div id="animation-toolbar">
@@ -187,7 +191,14 @@
                                     <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
                                     <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
                                 </div>
+                                <div id="animation-view-tools">
+                                    <button id="anim-bg-toggle-btn" class="tool-btn" title="Cambiar Fondo (Blanco/Transparente)">⬛</button>
+                                    <button id="anim-grid-toggle-btn" class="tool-btn active" title="Mostrar/Ocultar Rejilla">ızgara</button>
+                                    <button id="anim-onion-toggle-btn" class="tool-btn active" title="Activar/Desactivar Onion Skin">🧅</button>
+                                </div>
                                 <div id="drawing-canvas-container">
+                                    <canvas id="anim-grid-canvas" width="512" height="512"></canvas>
+                                    <canvas id="anim-onion-skin-canvas" width="512" height="512"></canvas>
                                     <canvas id="drawing-canvas" width="512" height="512"></canvas>
                                 </div>
                             </div>
@@ -199,9 +210,14 @@
                     <div id="animation-panel-overlay">
                         <p>Selecciona un asset de animación (.cea) para empezar.</p>
                     </div>
-                <div class="resize-handle" data-direction="right"></div>
-                <div class="resize-handle" data-direction="bottom"></div>
-                <div class="resize-handle" data-direction="both"></div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
                 </div>
             </div>
             <div id="animator-controller-panel" class="editor-panel floating-panel hidden">
@@ -233,6 +249,41 @@
                 <div class="resize-handle" data-direction="bottom"></div>
                 <div class="resize-handle" data-direction="both"></div>
             </div>
+            <div id="ui-editor-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span id="current-ui-asset-name">Editor de UI</span>
+                    <div id="ui-canvas-toolbar">
+                        <button id="ui-editor-save-btn" title="Guardar Asset UI">💾 Guardar</button>
+                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas">🗖</button>
+                    </div>
+                    <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
+                </div>
+                <div id="ui-editor-main-content">
+                    <div id="ui-editor-hierarchy" class="editor-panel">
+                        <div class="panel-header"><span>Jerarquía UI</span></div>
+                        <div class="list-content"></div>
+                    </div>
+                    <div id="ui-resizer-left" class="resizer-v"></div>
+                    <div id="ui-editor-canvas-view">
+                         <div id="ui-editor-canvas-container">
+                            <canvas id="ui-editor-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div id="ui-resizer-right" class="resizer-v"></div>
+                    <div id="ui-editor-inspector" class="editor-panel">
+                        <div class="panel-header"><span>Inspector UI</span></div>
+                        <div class="inspector-content"></div>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
         </main>
     </div>
     <div id="context-menu" class="context-menu" style="display: none;">
@@ -243,6 +294,7 @@
                     <li data-action="create-folder">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-readme">Archivo Léame (.md)</li>
+                    <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
@@ -266,16 +318,6 @@
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
             <li data-action="create-empty">Crear Materia Vacio</li>
-            <li class="has-submenu">
-                UI <span class="arrow">▶</span>
-                <ul class="submenu">
-                    <li data-action="create-ui-canvas">Canvas</li>
-                    <li data-action="create-ui-panel">Panel</li>
-                    <li data-action="create-ui-text">Texto</li>
-                    <li data-action="create-ui-button">Botón</li>
-                    <li data-action="create-ui-image">Imagen</li>
-                </ul>
-            </li>
             <li class="has-submenu">
                 Objeto Primitivo <span class="arrow">▶</span>
                 <ul class="submenu">
@@ -575,13 +617,18 @@
                 <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
             </div>
         </div>
-        <div class="resize-handle" data-direction="right"></div>
-        <div class="resize-handle" data-direction="bottom"></div>
-        <div class="resize-handle" data-direction="both"></div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script type="module" src="js/editor.js"></script>
+    <script type="module" src="js/editor.js?v=1.0"></script>
 </body>
 </html>
