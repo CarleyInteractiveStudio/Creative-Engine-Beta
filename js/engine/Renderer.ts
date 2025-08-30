@@ -1,30 +1,43 @@
-import * as SceneManager from './SceneManager.js';
-import { Camera, Transform } from './Components.js';
+import * as SceneManager from './SceneManager.ts';
+import { Camera, Transform } from './Components.ts';
+
+interface ICamera {
+    orthographicSize: number;
+    zoom: number;
+    x: number;
+    y: number;
+    effectiveZoom: number;
+}
 
 export class Renderer {
-    constructor(canvas, isEditor = false) {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    camera: ICamera | null;
+    isEditor: boolean;
+
+    constructor(canvas: HTMLCanvasElement, isEditor: boolean = false) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
+        this.ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
         this.camera = null; // Will be assigned from the scene
         this.isEditor = isEditor;
         this.resize();
     }
 
-    resize() {
+    resize(): void {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
     }
 
-    clear() {
+    clear(): void {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    beginWorld() {
+    beginWorld(): void {
         this.ctx.save();
 
         const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
-        let cameraComponent;
-        let cameraTransform;
+        let cameraComponent: any;
+        let cameraTransform: any;
 
         if (sceneCameraMateria) {
             cameraComponent = sceneCameraMateria.getComponent(Camera);
@@ -58,27 +71,26 @@ export class Renderer {
         this.ctx.translate(-this.camera.x, -this.camera.y);
     }
 
-    beginUI() {
+    beginUI(): void {
         this.ctx.save();
         // Reset transform to identity for screen-space UI rendering
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    end() {
+    end(): void {
         this.ctx.restore();
     }
 
-    drawRect(x, y, width, height, color) {
+    drawRect(x: number, y: number, width: number, height: number, color: string): void {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
     }
 
-    // Placeholder for now
-    drawImage(image, x, y, width, height) {
+    drawImage(image: HTMLImageElement, x: number, y: number, width: number, height: number): void {
         this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
     }
 
-    drawText(text, x, y, color, fontSize, textTransform) {
+    drawText(text: string, x: number, y: number, color: string, fontSize: number, textTransform: string): void {
         this.ctx.fillStyle = color;
         this.ctx.font = `${fontSize}px sans-serif`;
         this.ctx.textAlign = 'center';

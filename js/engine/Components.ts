@@ -1,26 +1,98 @@
 // Components.js
 // This file contains all the component classes.
 
-import { Leyes } from './Leyes.js';
-import { registerComponent } from './ComponentRegistry.js';
+import { Leyes } from './Leyes.ts';
+import { registerComponent } from './ComponentRegistry.ts';
 import { getURLForAssetPath } from './AssetUtils.js';
 
 // --- Component Class Definitions ---
 
-export class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
+export class Transform extends Leyes {
+    x: number;
+    y: number;
+    rotation: number;
+    scale: { x: number, y: number };
+
+    constructor(materia: any) {
+        super(materia);
+        this.x = 0;
+        this.y = 0;
+        this.rotation = 0;
+        this.scale = { x: 1, y: 1 };
+    }
+}
 
 export class Camera extends Leyes {
-    constructor(materia) {
+    orthographicSize: number;
+    zoom: number;
+
+    constructor(materia: any) {
         super(materia);
         this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
         this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
     }
 }
 
-export class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
+export class CreativeScript extends Leyes {
+    scriptName: string;
+    instance: any | null;
+    publicVars: any[];
+    publicVarReferences: { [key: string]: any };
+
+    constructor(materia: any, scriptName: string) {
+        super(materia);
+        this.scriptName = scriptName;
+        this.instance = null;
+        this.publicVars = [];
+        this.publicVarReferences = {};
+    }
+
+    parsePublicVars(code: string): void {
+        this.publicVars = [];
+        const regex = /public\s+(\w+)\s+(\w+);/g;
+        let match;
+        while ((match = regex.exec(code)) !== null) {
+            this.publicVars.push({ type: match[1], name: match[2] });
+        }
+    }
+
+    async load(projectsDirHandle: FileSystemDirectoryHandle): Promise<void> {
+        if (!this.scriptName) return;
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            if (!projectName) return;
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            let currentHandle: FileSystemDirectoryHandle = projectHandle;
+            const parts = this.scriptName.split('/').filter(p => p);
+            const fileName = parts.pop();
+            if (!fileName) return;
+            for (const part of parts) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+            const fileHandle = await currentHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const code = await file.text();
+            this.parsePublicVars(code);
+            const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia);
+            this.instance = {
+                start: scriptModule.start || (() => {}),
+                update: scriptModule.update || (() => {}),
+            };
+            for (const key in this.publicVarReferences) {
+                this.instance[key] = this.publicVarReferences[key];
+            }
+        } catch (error) {
+            console.error(`Error loading script '${this.scriptName}':`, error);
+        }
+    }
+}
 
 export class Rigidbody extends Leyes {
-    constructor(materia) {
+    bodyType: string;
+    mass: number;
+    velocity: { x: number, y: number };
+
+    constructor(materia: any) {
         super(materia);
         this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
         this.mass = 1.0;
@@ -29,7 +101,10 @@ export class Rigidbody extends Leyes {
 }
 
 export class BoxCollider extends Leyes {
-    constructor(materia) {
+    width: number;
+    height: number;
+
+    constructor(materia: any) {
         super(materia);
         this.width = 1.0;
         this.height = 1.0;
@@ -37,18 +112,22 @@ export class BoxCollider extends Leyes {
 }
 
 export class SpriteRenderer extends Leyes {
-    constructor(materia) {
+    sprite: HTMLImageElement;
+    source: string;
+    color: string;
+
+    constructor(materia: any) {
         super(materia);
         this.sprite = new Image();
         this.source = ''; // Path to the image, relative to project root
         this.color = '#ffffff'; // Tint color
     }
 
-    setSourcePath(path) {
+    setSourcePath(path: string): void {
         this.source = path;
     }
 
-    async loadSprite(projectsDirHandle) {
+    async loadSprite(projectsDirHandle: FileSystemDirectoryHandle): Promise<void> {
         if (this.source) {
             const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {
@@ -61,7 +140,12 @@ export class SpriteRenderer extends Leyes {
 }
 
 export class Animation {
-    constructor(name = 'New Animation') {
+    name: string;
+    frames: string[];
+    speed: number;
+    loop: boolean;
+
+    constructor(name: string = 'New Animation') {
         this.name = name;
         this.frames = []; // Array of image source paths
         this.speed = 10; // Frames per second
@@ -70,7 +154,16 @@ export class Animation {
 }
 
 export class Animator extends Leyes {
-    constructor(materia) {
+    controllerPath: string;
+    controller: any | null;
+    states: Map<string, any>;
+    parameters: Map<string, any>;
+    currentState: any | null;
+    currentFrame: number;
+    frameTimer: number;
+    spriteRenderer: SpriteRenderer | undefined;
+
+    constructor(materia: any) {
         super(materia);
         this.controllerPath = ''; // Path to the .ceanim asset
         this.controller = null; // The loaded controller data
@@ -83,7 +176,7 @@ export class Animator extends Leyes {
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
     }
 
-    async loadController(projectsDirHandle) {
+    async loadController(projectsDirHandle: FileSystemDirectoryHandle): Promise<void> {
         if (!this.controllerPath) return;
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer); // Ensure we have the renderer
 
@@ -115,7 +208,7 @@ export class Animator extends Leyes {
         }
     }
 
-    play(stateName) {
+    play(stateName: string): void {
         if (this.currentState?.name !== stateName && this.states.has(stateName)) {
             this.currentState = this.states.get(stateName);
             this.currentFrame = 0;
@@ -124,7 +217,7 @@ export class Animator extends Leyes {
         }
     }
 
-    update(deltaTime) {
+    update(deltaTime: number): void {
         if (!this.currentState || !this.spriteRenderer) {
             return;
         }
@@ -152,7 +245,15 @@ export class Animator extends Leyes {
 }
 
 export class RectTransform extends Leyes {
-    constructor(materia) {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    pivot: { x: number, y: number };
+    anchorMin: { x: number, y: number };
+    anchorMax: { x: number, y: number };
+
+    constructor(materia: any) {
         super(materia);
         this.x = 0;
         this.y = 0;
@@ -163,7 +264,7 @@ export class RectTransform extends Leyes {
         this.anchorMax = { x: 0.5, y: 0.5 };
     }
 
-    getWorldRect(parentCanvas) {
+    getWorldRect(parentCanvas: HTMLCanvasElement): { x: number, y: number, width: number, height: number } {
         // For now, a simplified version that doesn't handle nesting.
         // It assumes the parent is the main canvas.
         const parentWidth = parentCanvas.width;
@@ -191,21 +292,27 @@ export class RectTransform extends Leyes {
 }
 
 export class UICanvas extends Leyes {
-    constructor(materia) {
+    renderMode: string;
+
+    constructor(materia: any) {
         super(materia);
         this.renderMode = 'ScreenSpaceOverlay';
     }
 }
 
 export class UIImage extends Leyes {
-    constructor(materia) {
+    sprite: HTMLImageElement;
+    source: string;
+    color: string;
+
+    constructor(materia: any) {
         super(materia);
         this.sprite = new Image();
         this.source = '';
         this.color = '#ffffff';
     }
 
-    async loadSprite(projectsDirHandle) {
+    async loadSprite(projectsDirHandle: FileSystemDirectoryHandle): Promise<void> {
         if (this.source) {
             const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {

@@ -1,12 +1,15 @@
-import { Rigidbody, BoxCollider, Transform } from './Components.js';
+import { Rigidbody, BoxCollider, Transform } from './Components.ts';
 
 export class PhysicsSystem {
-    constructor(scene) {
+    scene: any;
+    gravity: { x: number, y: number };
+
+    constructor(scene: any) {
         this.scene = scene;
         this.gravity = { x: 0, y: 98.1 }; // A bit exaggerated for visible effect
     }
 
-    update(deltaTime) {
+    update(deltaTime: number): void {
         // Update positions based on velocity
         for (const materia of this.scene.materias) {
             const rigidbody = materia.getComponent(Rigidbody);

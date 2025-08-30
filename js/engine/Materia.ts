@@ -1,11 +1,21 @@
-// Materia.js
+// Materia.ts
 // This file contains the Materia class.
 
-import { Transform } from './Components.js';
+import { Leyes } from './Leyes.ts';
 
-let MATERIA_ID_COUNTER = 0;
+let MATERIA_ID_COUNTER: number = 0;
+
 export class Materia {
-    constructor(name = 'Materia') {
+    id: number;
+    name: string;
+    isActive: boolean;
+    layer: string;
+    flags: { [key: string]: any };
+    leyes: Leyes[];
+    parent: Materia | null;
+    children: Materia[];
+
+    constructor(name: string = 'Materia') {
         this.id = MATERIA_ID_COUNTER++;
         this.name = `${name}`;
         this.isActive = true;
@@ -16,31 +26,31 @@ export class Materia {
         this.children = [];
     }
 
-    setFlag(key, value) {
+    setFlag(key: string, value: any): void {
         this.flags[key] = value;
     }
 
-    getFlag(key) {
+    getFlag(key: string): any {
         return this.flags[key];
     }
 
-    addComponent(component) {
+    addComponent(component: Leyes): void {
         this.leyes.push(component);
         component.materia = this;
     }
 
-    getComponent(componentClass) {
-        return this.leyes.find(ley => ley instanceof componentClass);
+    getComponent<T extends Leyes>(componentClass: new (...args: any[]) => T): T | undefined {
+        return this.leyes.find(ley => ley instanceof componentClass) as T | undefined;
     }
 
-    removeComponent(ComponentClass) {
+    removeComponent(ComponentClass: any): void {
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {
             this.leyes.splice(index, 1);
         }
     }
 
-    addChild(child) {
+    addChild(child: Materia): void {
         if (child.parent) {
             child.parent.removeChild(child);
         }
@@ -48,7 +58,7 @@ export class Materia {
         this.children.push(child);
     }
 
-    removeChild(child) {
+    removeChild(child: Materia): void {
         const index = this.children.indexOf(child);
         if (index > -1) {
             this.children.splice(index, 1);
@@ -56,7 +66,7 @@ export class Materia {
         }
     }
 
-    update() {
+    update(): void {
         for (const ley of this.leyes) {
             if(typeof ley.update === 'function') {
                 ley.update();

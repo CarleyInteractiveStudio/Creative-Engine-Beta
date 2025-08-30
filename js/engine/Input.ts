@@ -4,30 +4,33 @@
  */
 
 class InputManager {
-    static _keys = new Map();
-    static _keysDown = new Set();
-    static _keysUp = new Set();
+    static _keys: Map<string, boolean> = new Map();
+    static _keysDown: Set<string> = new Set();
+    static _keysUp: Set<string> = new Set();
 
-    static _mouseButtons = new Map();
-    static _buttonsDown = new Set();
-    static _buttonsUp = new Set();
+    static _mouseButtons: Map<number, boolean> = new Map();
+    static _buttonsDown: Set<number> = new Set();
+    static _buttonsUp: Set<number> = new Set();
 
-    static _mousePosition = { x: 0, y: 0 };
-    static _mousePositionInCanvas = { x: 0, y: 0 };
-    static _canvasRect = null;
-    static _scrollDelta = 0;
+    static _mousePosition: { x: number, y: number } = { x: 0, y: 0 };
+    static _mousePositionInCanvas: { x: number, y: number } = { x: 0, y: 0 };
+    static _canvasRect: DOMRect | null = null;
+    static _scrollDelta: number = 0;
+    static _canvas: HTMLCanvasElement | null = null;
 
     // Long Press State
-    static _longPressTimeoutId = null;
-    static _longPressStartPosition = { x: 0, y: 0 };
-    static LONG_PRESS_DURATION = 750; // ms
-    static LONG_PRESS_TOLERANCE = 10; // pixels
+    static _longPressTimeoutId: number | null = null;
+    static _longPressStartPosition: { x: number, y: number } = { x: 0, y: 0 };
+    static LONG_PRESS_DURATION: number = 750; // ms
+    static LONG_PRESS_TOLERANCE: number = 10; // pixels
+
+    static initialized: boolean = false;
 
     /**
      * Initializes the InputManager. Attaches listeners to the window.
      * @param {HTMLCanvasElement} [canvas=null] Optional canvas element to calculate relative mouse positions.
      */
-    static initialize(canvas = null) {
+    static initialize(canvas: HTMLCanvasElement | null = null) {
         if (this.initialized) return;
 
         // Keyboard
@@ -73,7 +76,7 @@ class InputManager {
     }
 
     // Keyboard Methods
-    static _onKeyDown(event) {
+    static _onKeyDown(event: KeyboardEvent) {
         const key = event.key;
         if (!this._keys.get(key)) {
             this._keysDown.add(key);
@@ -81,7 +84,7 @@ class InputManager {
         this._keys.set(key, true);
     }
 
-    static _onKeyUp(event) {
+    static _onKeyUp(event: KeyboardEvent) {
         const key = event.key;
         this._keys.set(key, false);
         this._keysUp.add(key);
@@ -92,7 +95,7 @@ class InputManager {
      * @param {string} key The key to check (e.g., 'w', 'a', 'Space').
      * @returns {boolean} True if the key is pressed.
      */
-    static getKey(key) {
+    static getKey(key: string): boolean {
         return !!this._keys.get(key);
     }
 
@@ -101,7 +104,7 @@ class InputManager {
      * @param {string} key The key to check.
      * @returns {boolean} True if the key was just pressed.
      */
-    static getKeyDown(key) {
+    static getKeyDown(key: string): boolean {
         return this._keysDown.has(key);
     }
 
@@ -110,12 +113,12 @@ class InputManager {
      * @param {string} key The key to check.
      * @returns {boolean} True if the key was just released.
      */
-    static getKeyUp(key) {
+    static getKeyUp(key: string): boolean {
         return this._keysUp.has(key);
     }
 
-    static getPressedKeys() {
-        const pressed = [];
+    static getPressedKeys(): string[] {
+        const pressed: string[] = [];
         for (const [key, isPressed] of this._keys.entries()) {
             if (isPressed) {
                 pressed.push(key);
@@ -126,19 +129,19 @@ class InputManager {
 
     // --- Pointer (Mouse + Touch) Methods ---
 
-    static _onMouseMove(event) {
+    static _onMouseMove(event: MouseEvent) {
         this._updatePointerPosition(event.clientX, event.clientY);
     }
 
-    static _onMouseDown(event) {
+    static _onMouseDown(event: MouseEvent) {
         this._onPointerDown(event.button);
     }
 
-    static _onMouseUp(event) {
+    static _onMouseUp(event: MouseEvent) {
         this._onPointerUp(event.button);
     }
 
-    static _onTouchStart(event) {
+    static _onTouchStart(event: TouchEvent) {
         event.preventDefault();
         if (event.touches.length > 0) {
             const touch = event.touches[0];
@@ -148,13 +151,13 @@ class InputManager {
             // Start long-press timer
             this._longPressStartPosition = { x: touch.clientX, y: touch.clientY };
             this._clearLongPressTimer();
-            this._longPressTimeoutId = setTimeout(() => {
+            this._longPressTimeoutId = window.setTimeout(() => {
                 this._handleLongPress(event.target);
             }, this.LONG_PRESS_DURATION);
         }
     }
 
-    static _onTouchMove(event) {
+    static _onTouchMove(event: TouchEvent) {
         event.preventDefault();
         if (event.touches.length > 0) {
             const touch = event.touches[0];
@@ -169,7 +172,7 @@ class InputManager {
         }
     }
 
-    static _onTouchEnd(event) {
+    static _onTouchEnd(event: TouchEvent) {
         event.preventDefault();
         this._clearLongPressTimer();
         this._onPointerUp(0); // Treat all touches as left-click
@@ -182,24 +185,26 @@ class InputManager {
         }
     }
 
-    static _handleLongPress(targetElement) {
+    static _handleLongPress(targetElement: EventTarget | null) {
         console.log("Long press detected!");
         this._longPressTimeoutId = null;
-        // Create a new MouseEvent to simulate a right-click (contextmenu)
-        const contextMenuEvent = new MouseEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            view: window,
-            button: 2,
-            buttons: 0,
-            clientX: this._mousePosition.x,
-            clientY: this._mousePosition.y
-        });
-        targetElement.dispatchEvent(contextMenuEvent);
+
+        if (targetElement instanceof HTMLElement) {
+            const contextMenuEvent = new MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                button: 2,
+                buttons: 0,
+                clientX: this._mousePosition.x,
+                clientY: this._mousePosition.y
+            });
+            targetElement.dispatchEvent(contextMenuEvent);
+        }
     }
 
     // Unified handlers
-    static _updatePointerPosition(clientX, clientY) {
+    static _updatePointerPosition(clientX: number, clientY: number) {
         this._mousePosition.x = clientX;
         this._mousePosition.y = clientY;
 
@@ -209,14 +214,14 @@ class InputManager {
         }
     }
 
-    static _onPointerDown(button) {
+    static _onPointerDown(button: number) {
         if (!this._mouseButtons.get(button)) {
             this._buttonsDown.add(button);
         }
         this._mouseButtons.set(button, true);
     }
 
-    static _onPointerUp(button) {
+    static _onPointerUp(button: number) {
         this._mouseButtons.set(button, false);
         this._buttonsUp.add(button);
     }
@@ -226,7 +231,7 @@ class InputManager {
      * @param {number} button The button to check (0: Left, 1: Middle, 2: Right).
      * @returns {boolean} True if the button is pressed.
      */
-    static getMouseButton(button) {
+    static getMouseButton(button: number): boolean {
         return !!this._mouseButtons.get(button);
     }
 
@@ -235,7 +240,7 @@ class InputManager {
      * @param {number} button The button to check.
      * @returns {boolean} True if the button was just pressed.
      */
-    static getMouseButtonDown(button) {
+    static getMouseButtonDown(button: number): boolean {
         return this._buttonsDown.has(button);
     }
 
@@ -244,7 +249,7 @@ class InputManager {
      * @param {number} button The button to check.
      * @returns {boolean} True if the button was just released.
      */
-    static getMouseButtonUp(button) {
+    static getMouseButtonUp(button: number): boolean {
         return this._buttonsUp.has(button);
     }
 
@@ -252,7 +257,7 @@ class InputManager {
      * Gets the mouse position relative to the viewport.
      * @returns {{x: number, y: number}}
      */
-    static getMousePosition() {
+    static getMousePosition(): { x: number, y: number } {
         return this._mousePosition;
     }
 
@@ -260,11 +265,11 @@ class InputManager {
      * Gets the mouse position relative to the scene canvas.
      * @returns {{x: number, y: number}}
      */
-    static getMousePositionInCanvas() {
+    static getMousePositionInCanvas(): { x: number, y: number } {
         return this._mousePositionInCanvas;
     }
 
-    static _onWheel(event) {
+    static _onWheel(event: WheelEvent) {
         this._scrollDelta = event.deltaY;
     }
 
@@ -272,17 +277,17 @@ class InputManager {
      * Gets the scroll wheel delta for the current frame.
      * @returns {number} The vertical scroll amount.
      */
-    static getScrollDelta() {
+    static getScrollDelta(): number {
         return this._scrollDelta;
     }
 
     /**
      * Converts a screen (canvas) position to world coordinates.
-     * @param {Camera} camera The scene camera.
+     * @param {any} camera The scene camera.
      * @param {HTMLCanvasElement} canvas The scene canvas.
      * @returns {{x: number, y: number}}
      */
-    static getMouseWorldPosition(camera, canvas) {
+    static getMouseWorldPosition(camera: any, canvas: HTMLCanvasElement): { x: number, y: number } {
         if (!canvas || !camera) return { x: 0, y: 0 };
         const canvasPos = this._mousePositionInCanvas;
 
@@ -293,9 +298,6 @@ class InputManager {
     }
 }
 
-// Ensure it's a singleton-like static class
-InputManager.initialized = false;
-
 // Make it available as a global for scripts, and export for modules
-window.Input = InputManager;
+(window as any).Input = InputManager;
 export { InputManager };

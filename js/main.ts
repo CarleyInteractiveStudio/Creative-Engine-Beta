@@ -1,35 +1,42 @@
+// --- Type Augmentation for the Window object ---
+declare global {
+    interface Window {
+        showDirectoryPicker: (options?: any) => Promise<FileSystemDirectoryHandle>;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const welcomeView = document.getElementById('welcome-view');
-    const launcherView = document.getElementById('launcher-view');
+    const welcomeView = document.getElementById('welcome-view') as HTMLElement;
+    const launcherView = document.getElementById('launcher-view') as HTMLElement;
 
     // Intro Sequence Elements
-    const introStep1 = document.getElementById('intro-step-1');
-    const introStep2 = document.getElementById('intro-step-2');
-    const mainContent = document.getElementById('main-content');
+    const introStep1 = document.getElementById('intro-step-1') as HTMLElement;
+    const introStep2 = document.getElementById('intro-step-2') as HTMLElement;
+    const mainContent = document.getElementById('main-content') as HTMLElement;
 
     // Buttons
-    const startButton = document.getElementById('btn-start');
-    const licenseButton = document.getElementById('btn-license');
-    const supportButton = document.getElementById('btn-support');
-    const createProjectBtn = document.getElementById('btn-create-project');
+    const startButton = document.getElementById('btn-start') as HTMLButtonElement;
+    const licenseButton = document.getElementById('btn-license') as HTMLButtonElement;
+    const supportButton = document.getElementById('btn-support') as HTMLButtonElement;
+    const createProjectBtn = document.getElementById('btn-create-project') as HTMLButtonElement;
 
     // Modals & Forms
-    const supportModal = document.getElementById('support-modal');
-    const licenseModal = document.getElementById('license-modal');
-    const createProjectModal = document.getElementById('create-project-modal');
-    const closeSupport = document.getElementById('close-support');
-    const closeLicense = document.getElementById('close-license');
-    const closeCreateProject = document.getElementById('close-create-project');
-    const contactForm = document.getElementById('contact-form');
-    const createProjectForm = document.getElementById('create-project-form');
+    const supportModal = document.getElementById('support-modal') as HTMLElement;
+    const licenseModal = document.getElementById('license-modal') as HTMLElement;
+    const createProjectModal = document.getElementById('create-project-modal') as HTMLElement;
+    const closeSupport = document.getElementById('close-support') as HTMLElement;
+    const closeLicense = document.getElementById('close-license') as HTMLElement;
+    const closeCreateProject = document.getElementById('close-create-project') as HTMLElement;
+    const contactForm = document.getElementById('contact-form') as HTMLFormElement;
+    const createProjectForm = document.getElementById('create-project-form') as HTMLFormElement;
 
     // Dynamic Content
-    const motivationalQuoteEl = document.getElementById('motivational-quote');
-    const projectList = document.getElementById('project-list');
+    const motivationalQuoteEl = document.getElementById('motivational-quote') as HTMLElement;
+    const projectList = document.getElementById('project-list') as HTMLElement;
 
     // --- Motivational Quotes ---
-    const quotes = [
+    const quotes: string[] = [
         "Tu juego empieza aquí. Lo que imagines, lo construyes. 🚀🧠",
         "No necesitas experiencia, solo visión. Creative Engine hace el resto. 👁️✨",
         "Cada escena que creas es una ventana a tu mundo. Ábrela. 🖼️🌍",
@@ -52,10 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
         "Creative Engine no te guía. Te sigue. 🧭🤝"
     ];
 
-    function startQuoteCarousel() {
+    function startQuoteCarousel(): void {
         if (!motivationalQuoteEl) return;
         setInterval(() => {
-            let newQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            let newQuote: string = quotes[Math.floor(Math.random() * quotes.length)];
             while (newQuote === motivationalQuoteEl.textContent) {
                 newQuote = quotes[Math.floor(Math.random() * quotes.length)];
             }
@@ -68,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Intro Animation ---
-    function handleIntroAnimation() {
+    function handleIntroAnimation(): void {
         setTimeout(() => { if(introStep1) introStep1.classList.add('visible'); }, 500);
         setTimeout(() => { if(introStep2) introStep2.classList.add('visible'); }, 1500);
         setTimeout(() => {
@@ -79,30 +86,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- IndexedDB Logic ---
     const dbName = 'CreativeEngineDB';
-    let db;
-    function openDB() {
+    let db: IDBDatabase;
+    function openDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(dbName, 1);
-            request.onerror = (event) => reject('Error opening IndexedDB');
-            request.onsuccess = (event) => {
-                db = event.target.result;
+            request.onerror = () => reject('Error opening IndexedDB');
+            request.onsuccess = (event: Event) => {
+                db = (event.target as IDBOpenDBRequest).result;
                 resolve(db);
             };
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
+            request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+                const db = (event.target as IDBOpenDBRequest).result;
                 db.createObjectStore('settings', { keyPath: 'id' });
             };
         });
     }
 
-    function saveDirHandle(handle) {
+    function saveDirHandle(handle: FileSystemDirectoryHandle): void {
         if (!db) return;
         const transaction = db.transaction(['settings'], 'readwrite');
         const store = transaction.objectStore('settings');
         store.put({ id: 'projectsDirHandle', handle: handle });
     }
 
-    function getDirHandle() {
+    function getDirHandle(): Promise<FileSystemDirectoryHandle | null> {
         if (!db) return Promise.resolve(null);
         return new Promise((resolve) => {
             const transaction = db.transaction(['settings'], 'readonly');
@@ -114,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Project Loading Logic ---
-    const getProjectTimestamps = () => {
+    const getProjectTimestamps = (): { [key: string]: number } => {
         try {
             const timestamps = localStorage.getItem('projectTimestamps');
             return timestamps ? JSON.parse(timestamps) : {};
@@ -124,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const saveProjectTimestamp = (projectName) => {
+    const saveProjectTimestamp = (projectName: string): void => {
         try {
             const timestamps = getProjectTimestamps();
             timestamps[projectName] = Date.now();
@@ -134,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    async function loadProjects() {
+    async function loadProjects(): Promise<void> {
         const dirHandle = await getDirHandle();
         if (!dirHandle) {
             projectList.innerHTML = '<p class="no-projects-message">Elige una carpeta para tus proyectos al crear el primero.</p>';
@@ -149,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             projectList.innerHTML = '';
 
-            const projects = [];
+            const projects: FileSystemDirectoryHandle[] = [];
             for await (const entry of dirHandle.values()) {
                 if (entry.kind === 'directory') {
                     projects.push(entry);
@@ -193,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Modal Logic ---
-    const openModal = (modal) => { if (modal) modal.style.display = 'block'; };
-    const closeModal = () => {
+    const openModal = (modal: HTMLElement | null): void => { if (modal) modal.style.display = 'block'; };
+    const closeModal = (): void => {
         if (supportModal) supportModal.style.display = 'none';
         if (licenseModal) licenseModal.style.display = 'none';
         if (createProjectModal) createProjectModal.style.display = 'none';
@@ -208,18 +215,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if(closeLicense) closeLicense.addEventListener('click', closeModal);
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
-    window.addEventListener('click', (event) => {
+    window.addEventListener('click', (event: MouseEvent) => {
         if (event.target == supportModal || event.target == licenseModal || event.target == createProjectModal) {
             closeModal();
         }
     });
 
     // --- Form Submission with Fetch ---
-    function handleFormSubmit(form) {
-        form.addEventListener('submit', (e) => {
+    function handleFormSubmit(form: HTMLFormElement): void {
+        form.addEventListener('submit', (e: Event) => {
             e.preventDefault();
             const formData = new FormData(form);
-            const button = form.querySelector('button[type="submit"]');
+            const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
             const originalButtonText = button.textContent;
             button.textContent = 'Enviando...';
             button.disabled = true;
@@ -237,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     response.json().then(data => {
                         if (Object.hasOwn(data, 'errors')) {
-                            alert(data["errors"].map(error => error["message"]).join(", "));
+                            alert((data as any).errors.map((error: any) => error.message).join(", "));
                         } else {
                             alert('Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
                         }
@@ -274,13 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(createProjectForm) createProjectForm.addEventListener('submit', async (e) => {
+    if(createProjectForm) createProjectForm.addEventListener('submit', async (e: Event) => {
         e.preventDefault();
         if (!window.showDirectoryPicker) {
             await showCustomAlert('Error de Compatibilidad', 'Tu navegador no es compatible con la API de Acceso al Sistema de Archivos.');
             return;
         }
-        const projectNameInput = document.getElementById('project-name');
+        const projectNameInput = document.getElementById('project-name') as HTMLInputElement;
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
 
         if (!projectName) {
@@ -295,27 +302,27 @@ document.addEventListener('DOMContentLoaded', () => {
                  saveDirHandle(dirHandle);
             }
 
-            // Verificar si el proyecto ya existe
+            // Check if the project already exists
             try {
                 await dirHandle.getDirectoryHandle(projectName, { create: false });
                 await showCustomAlert('Error', `El proyecto "${projectName}" ya existe. Por favor, elige otro nombre.`);
                 return;
             } catch (e) {
-                // Si da error es porque no existe, lo cual es bueno. Continuamos.
+                // If it errors, it means it doesn't exist, which is good. We continue.
             }
 
-            // Crear el directorio del proyecto y las carpetas necesarias
+            // Create the project directory and necessary folders
             const projectDirHandle = await dirHandle.getDirectoryHandle(projectName, { create: true });
             const assetsDirHandle = await projectDirHandle.getDirectoryHandle('assets', { create: true });
             const tutorialDirHandle = await assetsDirHandle.getDirectoryHandle('tutorial', { create: true });
 
-            // Crear el archivo de escena por defecto
+            // Create the default scene file
             const sceneFileHandle = await assetsDirHandle.getFileHandle('default.ceScene', { create: true });
             let writable = await sceneFileHandle.createWritable();
             await writable.write(JSON.stringify({ materias: [] }, null, 2));
             await writable.close();
 
-            // Cargar y escribir los archivos de documentación
+            // Load and write documentation files
             try {
                 // Tutorial
                 const tutResponse = await fetch('ces-transpiler/template/TUTORIAL.md');
@@ -337,8 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     await writable.close();
                 }
             } catch (docsError) {
-                console.warn("No se pudieron crear los archivos de documentación:", docsError);
-                // No mostramos un error al usuario por esto, es un extra.
+                console.warn("Could not create documentation files:", docsError);
+                // We don't show an error to the user for this, it's an extra.
             }
 
             projectNameInput.value = '';
@@ -346,17 +353,18 @@ document.addEventListener('DOMContentLoaded', () => {
             await showCustomAlert('¡Éxito!', `Proyecto "${projectName}" creado con éxito.`);
             loadProjects();
 
-        } catch (error) {
+        } catch (error: any) {
             if (error.name !== 'AbortError') {
-                console.error('Error creando el proyecto:', error);
+                console.error('Error creating project:', error);
                 await showCustomAlert('Error', 'Ocurrió un error al crear el proyecto.');
             }
         }
     });
 
-    if(projectList) projectList.addEventListener('click', (event) => {
-        const openFolderBtn = event.target.closest('.open-folder-btn');
-        const projectItem = event.target.closest('.project-item');
+    if(projectList) projectList.addEventListener('click', (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const openFolderBtn = target.closest('.open-folder-btn');
+        const projectItem = target.closest('.project-item') as HTMLElement;
 
         if (openFolderBtn && projectItem) {
             event.stopPropagation(); // Prevent opening the project
@@ -375,16 +383,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Context Menu Logic ---
-    const contextMenu = document.getElementById('context-menu');
-    let currentProjectName = null;
+    const contextMenu = document.getElementById('context-menu') as HTMLElement;
+    let currentProjectName: string | null = null;
 
-    const hideContextMenu = () => {
+    const hideContextMenu = (): void => {
         if (contextMenu) contextMenu.classList.remove('visible');
         document.querySelectorAll('.project-item.selected').forEach(item => item.classList.remove('selected'));
     };
 
-    projectList.addEventListener('contextmenu', (e) => {
-        const projectItem = e.target.closest('.project-item');
+    projectList.addEventListener('contextmenu', (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const projectItem = target.closest('.project-item') as HTMLElement;
         if (!projectItem) {
             hideContextMenu();
             return;
@@ -394,20 +403,20 @@ document.addEventListener('DOMContentLoaded', () => {
         hideContextMenu(); // Hide any previous menu
         projectItem.classList.add('selected');
 
-        currentProjectName = projectItem.dataset.projectName;
+        currentProjectName = projectItem.dataset.projectName || null;
 
         contextMenu.style.left = `${e.pageX}px`;
         contextMenu.style.top = `${e.pageY}px`;
         contextMenu.classList.add('visible');
     });
 
-    window.addEventListener('click', (e) => {
-        if (!contextMenu.contains(e.target)) {
+    window.addEventListener('click', (e: MouseEvent) => {
+        if (!contextMenu.contains(e.target as Node)) {
             hideContextMenu();
         }
     });
 
-    document.getElementById('ctx-delete').addEventListener('click', async () => {
+    (document.getElementById('ctx-delete') as HTMLElement).addEventListener('click', async () => {
         hideContextMenu();
         if (!currentProjectName) return;
 
@@ -419,9 +428,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirmed) {
             try {
                 const dirHandle = await getDirHandle();
-                await dirHandle.removeEntry(currentProjectName, { recursive: true });
-                await showCustomAlert('Éxito', `Proyecto "${currentProjectName}" eliminado.`);
-                loadProjects();
+                if (dirHandle) {
+                    await dirHandle.removeEntry(currentProjectName, { recursive: true });
+                    await showCustomAlert('Éxito', `Proyecto "${currentProjectName}" eliminado.`);
+                    loadProjects();
+                }
             } catch (err) {
                 console.error('Error deleting project:', err);
                 await showCustomAlert('Error', 'No se pudo eliminar el proyecto.');
@@ -429,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('ctx-rename').addEventListener('click', async () => {
+    (document.getElementById('ctx-rename') as HTMLElement).addEventListener('click', async () => {
         hideContextMenu();
         if (!currentProjectName) return;
 
@@ -443,19 +454,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Music Logic ---
-    const music = document.getElementById('background-music');
-    const muteBtn = document.getElementById('btn-mute-music');
+    const music = document.getElementById('background-music') as HTMLAudioElement;
+    const muteBtn = document.getElementById('btn-mute-music') as HTMLButtonElement;
     let musicStarted = false;
 
-    function toggleMusic() {
+    function toggleMusic(): void {
         music.muted = !music.muted;
         muteBtn.textContent = music.muted ? '🔇' : '🔊';
-        localStorage.setItem('musicMuted', music.muted);
+        localStorage.setItem('musicMuted', String(music.muted));
     }
 
-    // Browsers require a user interaction to start audio.
-    // We'll start it on the first click anywhere, then let the user control it.
-    function startMusic() {
+    function startMusic(): void {
         if (musicStarted) return;
         music.play().then(() => {
             musicStarted = true;
@@ -479,12 +488,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Custom Dialog Logic ---
-    const dialogModal = document.getElementById('custom-dialog-modal');
-    const dialogTitle = document.getElementById('custom-dialog-title');
-    const dialogMessage = document.getElementById('custom-dialog-message');
-    const dialogButtons = document.getElementById('custom-dialog-buttons');
+    const dialogModal = document.getElementById('custom-dialog-modal') as HTMLElement;
+    const dialogTitle = document.getElementById('custom-dialog-title') as HTMLElement;
+    const dialogMessage = document.getElementById('custom-dialog-message') as HTMLElement;
+    const dialogButtons = document.getElementById('custom-dialog-buttons') as HTMLElement;
 
-    function showCustomAlert(title, message) {
+    function showCustomAlert(title: string, message: string): Promise<void> {
         dialogTitle.textContent = title;
         dialogMessage.textContent = message;
         dialogButtons.innerHTML = '<button class="btn-primary">Aceptar</button>';
@@ -492,14 +501,14 @@ document.addEventListener('DOMContentLoaded', () => {
         dialogModal.classList.add('is-open');
 
         return new Promise(resolve => {
-            dialogButtons.querySelector('button').addEventListener('click', () => {
+            (dialogButtons.querySelector('button') as HTMLButtonElement).addEventListener('click', () => {
                 dialogModal.classList.remove('is-open');
                 resolve();
             }, { once: true });
         });
     }
 
-    function showCustomConfirm(title, message) {
+    function showCustomConfirm(title: string, message: string): Promise<boolean> {
         dialogTitle.textContent = title;
         dialogMessage.textContent = message;
         dialogButtons.innerHTML = `
@@ -509,13 +518,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dialogModal.classList.add('is-open');
 
-        return new Promise((resolve, reject) => {
-            dialogButtons.querySelector('.btn-primary').addEventListener('click', () => {
+        return new Promise((resolve) => {
+            (dialogButtons.querySelector('.btn-primary') as HTMLButtonElement).addEventListener('click', () => {
                 dialogModal.classList.remove('is-open');
                 resolve(true);
             }, { once: true });
 
-            dialogButtons.querySelector('.btn-secondary').addEventListener('click', () => {
+            (dialogButtons.querySelector('.btn-secondary') as HTMLButtonElement).addEventListener('click', () => {
                 dialogModal.classList.remove('is-open');
                 resolve(false); // Resolve with false for "Cancel"
             }, { once: true });

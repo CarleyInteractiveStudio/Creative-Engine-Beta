@@ -1,0 +1,27 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "acesible para todos los dispositivos solo nesesitas un navegador web y internet crea tu primer video juego con Creative engine",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CarleyInteractiveStudio/Creative-Engine-Beta.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CarleyInteractiveStudio/Creative-Engine-Beta/issues"
+  },
+  "homepage": "https://github.com/CarleyInteractiveStudio/Creative-Engine-Beta#readme",
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.56.1"
+  }
+}

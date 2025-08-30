@@ -1,39 +1,41 @@
 // SceneManager.js
 // This file will contain all the logic for managing scenes.
 
-import { Leyes } from './Leyes.js';
+import { Leyes } from './Leyes.ts';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
-import { Materia } from './Materia.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.ts';
+import { Materia } from './Materia.ts';
 
 export class Scene {
+    materias: Materia[];
+
     constructor() {
         this.materias = [];
     }
 
-    addMateria(materia) {
+    addMateria(materia: Materia): void {
         if (materia instanceof Materia) {
             this.materias.push(materia);
         }
     }
 
-    findMateriaById(id) {
+    findMateriaById(id: number): Materia | undefined {
         return this.materias.find(m => m.id === id);
     }
 
-    getRootMaterias() {
+    getRootMaterias(): Materia[] {
         return this.materias.filter(m => m.parent === null);
     }
 
-    findFirstCamera() {
+    findFirstCamera(): Materia | undefined {
         return this.materias.find(m => m.getComponent(Camera));
     }
 
-    findNodeByFlag(key, value) {
+    findNodeByFlag(key: string, value: any): Materia | undefined {
         return this.materias.find(m => m.getFlag(key) === value);
     }
 
-    getMateriasRecursive(materia) {
+    getMateriasRecursive(materia: Materia): Materia[] {
         let materias = [materia];
         for (const child of materia.children) {
             materias = materias.concat(this.getMateriasRecursive(child));
@@ -41,7 +43,7 @@ export class Scene {
         return materias;
     }
 
-    removeMateria(materiaId) {
+    removeMateria(materiaId: number): void {
         const materiaToRemove = this.findMateriaById(materiaId);
         if (!materiaToRemove) {
             console.warn(`Materia with id ${materiaId} not found for removal.`);
@@ -67,23 +69,23 @@ export class Scene {
     }
 }
 
-export let currentScene = new Scene();
-export let currentSceneFileHandle = null;
-export let isSceneDirty = false;
+export let currentScene: Scene = new Scene();
+export let currentSceneFileHandle: FileSystemFileHandle | null = null;
+export let isSceneDirty: boolean = false;
 
-export function setCurrentScene(scene) {
+export function setCurrentScene(scene: Scene): void {
     currentScene = scene;
 }
 
-export function setCurrentSceneFileHandle(fileHandle) {
+export function setCurrentSceneFileHandle(fileHandle: FileSystemFileHandle): void {
     currentSceneFileHandle = fileHandle;
 }
 
-export function setSceneDirty(dirty) {
+export function setSceneDirty(dirty: boolean): void {
     isSceneDirty = dirty;
 }
 
-export function serializeScene(scene) {
+export function serializeScene(scene: Scene): any {
     const sceneData = {
         materias: []
     };
@@ -112,11 +114,11 @@ export function serializeScene(scene) {
     return sceneData;
 }
 
-import { getComponent } from './ComponentRegistry.js';
+import { getComponent } from './ComponentRegistry.ts';
 
-export async function deserializeScene(sceneData, projectsDirHandle) {
+export async function deserializeScene(sceneData: any, projectsDirHandle: FileSystemDirectoryHandle): Promise<Scene> {
     const newScene = new Scene();
-    const materiaMap = new Map();
+    const materiaMap: Map<number, Materia> = new Map();
 
     // Pass 1: Create all materias and map them by ID
     for (const materiaData of sceneData.materias) {
@@ -161,7 +163,7 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
     return newScene;
 }
 
-export async function loadScene(fileName, directoryHandle, projectsDirHandle) {
+export async function loadScene(fileName: string, directoryHandle: FileSystemDirectoryHandle, projectsDirHandle: FileSystemDirectoryHandle): Promise<{ scene: Scene, fileHandle: FileSystemFileHandle } | undefined> {
     if(isSceneDirty) {
         if(!confirm("Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.")) {
             return;
@@ -185,7 +187,7 @@ export async function loadScene(fileName, directoryHandle, projectsDirHandle) {
     }
 }
 
-export function createSprite(name, imagePath) {
+export function createSprite(name: string, imagePath: string): Materia {
     const newMateria = new Materia(name);
     const spriteRenderer = new SpriteRenderer(newMateria);
     spriteRenderer.setSourcePath(imagePath);
@@ -196,7 +198,7 @@ export function createSprite(name, imagePath) {
 }
 
 
-function createDefaultScene() {
+function createDefaultScene(): Scene {
     const scene = new Scene();
 
     // Create the root node
@@ -214,14 +216,18 @@ function createDefaultScene() {
     return scene;
 }
 
-export async function initialize(projectsDirHandle) {
+export async function initialize(projectsDirHandle: FileSystemDirectoryHandle): Promise<any> {
     const defaultSceneName = 'default.ceScene';
     const projectName = new URLSearchParams(window.location.search).get('project');
+    if (!projectName) {
+        console.error("Project name not found in URL.");
+        return;
+    }
     const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
     const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
     // Check if any scene file exists
-    let sceneFileToLoad = null;
+    let sceneFileToLoad: string | null = null;
     for await (const entry of assetsHandle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
             sceneFileToLoad = entry.name;

@@ -1,10 +1,15 @@
-// UIEventSystem.js
+// UIEventSystem.ts
 
-import { InputManager } from './Input.js';
-import * as SceneManager from './SceneManager.js';
-import { RectTransform, UIButton } from './Components.js';
+import { InputManager } from './Input.ts';
+import * as SceneManager from './SceneManager.ts';
+import { RectTransform, UIButton } from './Components.ts';
+import { Materia } from './Materia.ts';
 
 class UIEventSystem {
+    static instance: UIEventSystem | null = null;
+    hoveredElement: Materia | null;
+    pressedElement: Materia | null;
+
     constructor() {
         if (UIEventSystem.instance) {
             return UIEventSystem.instance;
@@ -14,12 +19,12 @@ class UIEventSystem {
         UIEventSystem.instance = this;
     }
 
-    update() {
+    update(): void {
         const mousePos = InputManager.getMousePosition();
         const isMouseDown = InputManager.getMouseButtonDown(0);
         const isMouseUp = InputManager.getMouseButtonUp(0);
 
-        let currentHover = null;
+        let currentHover: Materia | null = null;
         const interactableElements = this.getInteractableElements();
 
         // Iterate backwards to check top-most elements first
@@ -62,9 +67,9 @@ class UIEventSystem {
         }
     }
 
-    getInteractableElements() {
+    getInteractableElements(): Materia[] {
         // This is a simplified version. A real implementation would be more optimized.
-        const interactables = [];
+        const interactables: Materia[] = [];
         SceneManager.currentScene.materias.forEach(materia => {
             if (materia.isActive && materia.getComponent(UIButton)) {
                 interactables.push(materia);
@@ -76,7 +81,7 @@ class UIEventSystem {
         return interactables;
     }
 
-    isPointerOver(materia, mousePos) {
+    isPointerOver(materia: Materia, mousePos: { x: number, y: number }): boolean {
         const rectTransform = materia.getComponent(RectTransform);
         if (!rectTransform) return false;
 
@@ -90,7 +95,7 @@ class UIEventSystem {
         return mousePos.x >= left && mousePos.x <= right && mousePos.y >= top && mousePos.y <= bottom;
     }
 
-    dispatch(materia, eventType) {
+    dispatch(materia: Materia, eventType: string): void {
         const button = materia.getComponent(UIButton);
         if (!button) return;
 
@@ -108,7 +113,7 @@ class UIEventSystem {
                 button.currentState = this.hoveredElement === materia ? 'hover' : 'normal';
                 break;
             case 'click':
-                button.onClick.forEach(callback => callback());
+                button.onClick.forEach((callback: () => void) => callback());
                 break;
         }
     }

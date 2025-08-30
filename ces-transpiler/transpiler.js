@@ -133,7 +133,7 @@ function transpile(code) {
     }
 
     // Add the SceneManager import, as it's crucial for creating objects.
-    const finalImports = `import * as SceneManager from './modules/SceneManager.js';\n` + Array.from(imports).join('\n');
+    const finalImports = `import * as SceneManager from './modules/SceneManager.ts';\n` + Array.from(imports).join('\n');
     return { jsCode: `${finalImports}\n\n${jsCode}` };
 }
 

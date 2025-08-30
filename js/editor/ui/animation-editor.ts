@@ -1,35 +1,87 @@
 // --- Animation Editor Module ---
 
-// State variables will be encapsulated here
-let dom = {};
-let projectsDirHandle = null;
-let currentDirectoryHandle = null;
+// Interfaces and Type Aliases
+interface Position {
+    x: number;
+    y: number;
+}
 
-let isDrawing = false;
-let drawingTool = 'pencil';
-let drawingMode = 'free'; // 'free' or 'pixel'
-let drawingColor = '#ffffff';
-let lastDrawPos = { x: 0, y: 0 };
+interface Animation {
+    name: string;
+    speed: number;
+    frames: string[]; // Array of base64 data URLs
+}
 
-let currentAnimationAsset = null; // Holds the parsed .cea file content
-let currentAnimationFileHandle = null; // Holds the file handle for saving
-let currentFrameIndex = -1;
-let isAnimationPlaying = false;
-let animationPlaybackId = null;
+interface AnimationAsset {
+    animations: Animation[];
+}
 
-let animEditorSettings = {
-    bg: 'transparent', // 'transparent' or 'white'
+interface AnimationEditorSettings {
+    bg: 'transparent' | 'white';
+    grid: boolean;
+    onionSkin: boolean;
+}
+
+interface DomElements {
+    drawingCanvas: HTMLCanvasElement;
+    animationTimeline: HTMLElement;
+    animationPanel: HTMLElement;
+    animationPanelOverlay: HTMLElement;
+    animationEditView: HTMLElement;
+    animationPlaybackView: HTMLElement;
+    animationPlaybackCanvas: HTMLCanvasElement;
+    drawingTools: HTMLElement;
+    drawingColorPicker: HTMLInputElement;
+    animBgToggleBtn: HTMLElement;
+    drawingCanvasContainer: HTMLElement;
+    animGridCanvas: HTMLCanvasElement;
+    animGridToggleBtn: HTMLElement;
+    animOnionSkinCanvas: HTMLCanvasElement;
+    animOnionToggleBtn: HTMLElement;
+    timelineToggleBtn: HTMLElement;
+    animationPlayBtn: HTMLElement;
+    animationStopBtn: HTMLElement;
+    animationSaveBtn: HTMLElement;
+    addFrameBtn: HTMLElement;
+    deleteFrameBtn: HTMLElement;
+}
+
+interface AnimationEditorDependencies {
+    dom: DomElements;
+    projectsDirHandle: FileSystemDirectoryHandle;
+    currentDirectoryHandle: { handle: FileSystemDirectoryHandle | null; path: string };
+}
+
+// State variables
+let dom: DomElements;
+let projectsDirHandle: FileSystemDirectoryHandle | null = null;
+let currentDirectoryHandle: { handle: FileSystemDirectoryHandle | null; path: string };
+
+let isDrawing: boolean = false;
+let drawingTool: 'pencil' | 'eraser' = 'pencil';
+let drawingMode: 'free' | 'pixel' = 'free';
+let drawingColor: string = '#ffffff';
+let lastDrawPos: Position = { x: 0, y: 0 };
+
+let currentAnimationAsset: AnimationAsset | null = null;
+let currentAnimationFileHandle: FileSystemFileHandle | null = null;
+let currentFrameIndex: number = -1;
+let isAnimationPlaying: boolean = false;
+let animationPlaybackId: number | null = null;
+
+let animEditorSettings: AnimationEditorSettings = {
+    bg: 'transparent',
     grid: true,
     onionSkin: true
 };
 
 /**
  * Finds the bounding box of the non-transparent pixels on a canvas.
- * @param {HTMLCanvasElement} canvas The canvas to scan.
- * @returns {{x: number, y: number, width: number, height: number}|null} The bounding box or null if empty.
+ * @param canvas The canvas to scan.
+ * @returns The bounding box or null if empty.
  */
-function getDrawingBounds(canvas) {
-    const ctx = canvas.getContext('2d');
+function getDrawingBounds(canvas: HTMLCanvasElement): { x: number; y: number; width: number; height: number } | null {
+    const ctx = canvas.getContext('2d')!;
     const { width, height } = canvas;
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
@@ -59,7 +111,7 @@ function getDrawingBounds(canvas) {
     return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
-export function addFrameFromCanvas() {
+export function addFrameFromCanvas(): void {
     if (!currentAnimationAsset) {
         alert("No hay ningún asset de animación cargado.");
         return;
@@ -67,13 +119,13 @@ export function addFrameFromCanvas() {
 
     const sourceCanvas = dom.drawingCanvas;
     const bounds = getDrawingBounds(sourceCanvas);
-    let dataUrl;
+    let dataUrl: string;
 
     if (bounds) {
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = bounds.width;
         tempCanvas.height = bounds.height;
-        const tempCtx = tempCanvas.getContext('2d');
+        const tempCtx = tempCanvas.getContext('2d')!;
         tempCtx.drawImage(
             sourceCanvas,
             bounds.x, bounds.y, bounds.width, bounds.height,
@@ -98,7 +150,7 @@ export function addFrameFromCanvas() {
     drawOnionSkin();
 }
 
-export function populateTimeline() {
+export function populateTimeline(): void {
     dom.animationTimeline.innerHTML = '';
     if (!currentAnimationAsset || !currentAnimationAsset.animations.length) return;
 
@@ -112,12 +164,12 @@ export function populateTimeline() {
             frameImg.classList.add('active');
         }
         frameImg.src = frameData;
-        frameImg.dataset.index = index;
+        frameImg.dataset.index = String(index);
         dom.animationTimeline.appendChild(frameImg);
     });
 }
 
-export async function saveAnimationAsset() {
+export async function saveAnimationAsset(): Promise<void> {
     if (!currentAnimationAsset || !currentAnimationFileHandle) {
         alert("No hay asset de animación cargado para guardar.");
         return;
@@ -134,7 +186,7 @@ export async function saveAnimationAsset() {
     }
 }
 
-export async function openAnimationAsset(fileName, dirHandle) {
+export async function openAnimationAsset(fileName: string, dirHandle: FileSystemDirectoryHandle): Promise<void> {
     try {
         currentAnimationFileHandle = await dirHandle.getFileHandle(fileName);
         const file = await currentAnimationFileHandle.getFile();
@@ -146,13 +198,13 @@ export async function openAnimationAsset(fileName, dirHandle) {
         console.log(`Abierto ${fileName}:`, currentAnimationAsset);
 
         populateTimeline();
-        // drawOnionSkin();
+        drawOnionSkin();
     } catch(error) {
         console.error(`Error al abrir el asset de animación '${fileName}':`, error);
     }
 };
 
-export function resetAnimationPanel() {
+export function resetAnimationPanel(): void {
     dom.animationPanelOverlay.classList.remove('hidden');
     currentAnimationAsset = null;
     currentFrameIndex = -1;
@@ -160,7 +212,7 @@ export function resetAnimationPanel() {
     stopAnimationPlayback();
 }
 
-export function startAnimationPlayback() {
+export function startAnimationPlayback(): void {
     if (isAnimationPlaying || !currentAnimationAsset) return;
 
     const animation = currentAnimationAsset.animations[0];
@@ -171,14 +223,14 @@ export function startAnimationPlayback() {
     dom.animationPlaybackView.classList.remove('hidden');
 
     let startTime = performance.now();
-    const playbackCtx = dom.animationPlaybackCanvas.getContext('2d');
+    const playbackCtx = dom.animationPlaybackCanvas.getContext('2d')!;
     const frameImages = animation.frames.map(src => {
         const img = new Image();
         img.src = src;
         return img;
     });
 
-    function playbackLoop(currentTime) {
+    function playbackLoop(currentTime: number) {
         if (!isAnimationPlaying) return;
 
         const elapsedTime = currentTime - startTime;
@@ -196,16 +248,17 @@ export function startAnimationPlayback() {
     animationPlaybackId = requestAnimationFrame(playbackLoop);
 }
 
-export function stopAnimationPlayback() {
-    if (!isAnimationPlaying) return;
+export function stopAnimationPlayback(): void {
+    if (!isAnimationPlaying || !animationPlaybackId) return;
     isAnimationPlaying = false;
     cancelAnimationFrame(animationPlaybackId);
+    animationPlaybackId = null;
     dom.animationEditView.classList.remove('hidden');
     dom.animationPlaybackView.classList.add('hidden');
 }
 
 
-export function initializeAnimationEditor(dependencies) {
+export function initializeAnimationEditor(dependencies: AnimationEditorDependencies): void {
     dom = dependencies.dom;
     projectsDirHandle = dependencies.projectsDirHandle;
     currentDirectoryHandle = dependencies.currentDirectoryHandle;
@@ -214,9 +267,9 @@ export function initializeAnimationEditor(dependencies) {
 
     // --- Animation Drawing Listeners ---
     const drawingCanvas = dom.drawingCanvas;
-    const drawingCtx = drawingCanvas.getContext('2d');
+    const drawingCtx = drawingCanvas.getContext('2d')!;
 
-    function getDrawPos(e) {
+    function getDrawPos(e: MouseEvent): Position {
         const rect = drawingCanvas.getBoundingClientRect();
         return {
             x: e.clientX - rect.left,
@@ -224,14 +277,14 @@ export function initializeAnimationEditor(dependencies) {
         };
     }
 
-    drawingCanvas.addEventListener('mousedown', (e) => {
+    drawingCanvas.addEventListener('mousedown', (e: MouseEvent) => {
         isDrawing = true;
         lastDrawPos = getDrawPos(e);
     });
 
     const PIXEL_GRID_SIZE = 8;
 
-    drawingCanvas.addEventListener('mousemove', (e) => {
+    drawingCanvas.addEventListener('mousemove', (e: MouseEvent) => {
         if (!isDrawing) return;
         let currentPos = getDrawPos(e);
         if (drawingMode === 'pixel') {
@@ -261,23 +314,23 @@ export function initializeAnimationEditor(dependencies) {
     drawingCanvas.addEventListener('mouseup', () => isDrawing = false);
     drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
 
-    dom.drawingTools.addEventListener('click', (e) => {
-        const toolButton = e.target.closest('.tool-btn');
+    dom.drawingTools.addEventListener('click', (e: MouseEvent) => {
+        const toolButton = (e.target as HTMLElement).closest('.tool-btn') as HTMLElement;
         if (toolButton) {
             if (toolButton.dataset.tool) {
                 dom.drawingTools.querySelectorAll('[data-tool]').forEach(btn => btn.classList.remove('active'));
                 toolButton.classList.add('active');
-                drawingTool = toolButton.dataset.tool;
+                drawingTool = toolButton.dataset.tool as 'pencil' | 'eraser';
             } else if (toolButton.dataset.drawMode) {
                 dom.drawingTools.querySelectorAll('[data-draw-mode]').forEach(btn => btn.classList.remove('active'));
                 toolButton.classList.add('active');
-                drawingMode = toolButton.dataset.drawMode;
+                drawingMode = toolButton.dataset.drawMode as 'free' | 'pixel';
             }
         }
     });
 
-    dom.drawingColorPicker.addEventListener('change', (e) => {
-        drawingColor = e.target.value;
+    dom.drawingColorPicker.addEventListener('change', (e: Event) => {
+        drawingColor = (e.target as HTMLInputElement).value;
     });
 
     // --- Panel Toggles & Buttons ---
@@ -287,33 +340,33 @@ export function initializeAnimationEditor(dependencies) {
         dom.animBgToggleBtn.classList.toggle('active', animEditorSettings.bg === 'white');
     });
 
-function drawAnimEditorGrid() {
-    if (!dom.animGridCanvas) return;
-    const canvas = dom.animGridCanvas;
-    const ctx = canvas.getContext('2d');
-    const gridSize = 16;
+    function drawAnimEditorGrid() {
+        if (!dom.animGridCanvas) return;
+        const canvas = dom.animGridCanvas;
+        const ctx = canvas.getContext('2d')!;
+        const gridSize = 16;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!animEditorSettings.grid) {
-        return; // Don't draw if the grid is turned off
+        if (!animEditorSettings.grid) {
+            return; // Don't draw if the grid is turned off
+        }
+
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        for (let x = 0; x <= canvas.width; x += gridSize) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+        }
+
+        for (let y = 0; y <= canvas.height; y += gridSize) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+        }
+        ctx.stroke();
     }
-
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-
-    for (let x = 0; x <= canvas.width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-    }
-
-    for (let y = 0; y <= canvas.height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-    }
-    ctx.stroke();
-}
 
     dom.animGridToggleBtn.addEventListener('click', () => {
         animEditorSettings.grid = !animEditorSettings.grid;
@@ -321,27 +374,27 @@ function drawAnimEditorGrid() {
         drawAnimEditorGrid();
     });
 
-function drawOnionSkin() {
-    if (!dom.animOnionSkinCanvas) return;
-    const canvas = dom.animOnionSkinCanvas;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function drawOnionSkin() {
+        if (!dom.animOnionSkinCanvas) return;
+        const canvas = dom.animOnionSkinCanvas;
+        const ctx = canvas.getContext('2d')!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!animEditorSettings.onionSkin || currentFrameIndex < 1) {
-        return; // Don't draw if turned off or if it's the first frame
-    }
+        if (!animEditorSettings.onionSkin || currentFrameIndex < 1 || !currentAnimationAsset) {
+            return; // Don't draw if turned off or if it's the first frame
+        }
 
-    const prevFrameData = currentAnimationAsset.animations[0].frames[currentFrameIndex - 1];
-    if (prevFrameData) {
-        const img = new Image();
-        img.onload = () => {
-            ctx.globalAlpha = 0.3;
-            ctx.drawImage(img, 0, 0);
-            ctx.globalAlpha = 1.0; // Reset alpha
-        };
-        img.src = prevFrameData;
+        const prevFrameData = currentAnimationAsset.animations[0].frames[currentFrameIndex - 1];
+        if (prevFrameData) {
+            const img = new Image();
+            img.onload = () => {
+                ctx.globalAlpha = 0.3;
+                ctx.drawImage(img, 0, 0);
+                ctx.globalAlpha = 1.0; // Reset alpha
+            };
+            img.src = prevFrameData;
+        }
     }
-}
 
     dom.animOnionToggleBtn.addEventListener('click', () => {
         animEditorSettings.onionSkin = !animEditorSettings.onionSkin;
@@ -349,10 +402,10 @@ function drawOnionSkin() {
         drawOnionSkin();
     });
 
-    dom.timelineToggleBtn.addEventListener('click', (e) => {
+    dom.timelineToggleBtn.addEventListener('click', (e: MouseEvent) => {
         const panel = dom.animationPanel;
         panel.classList.toggle('timeline-collapsed');
-        e.target.textContent = panel.classList.contains('timeline-collapsed') ? '▼' : '▲';
+        (e.target as HTMLElement).textContent = panel.classList.contains('timeline-collapsed') ? '▼' : '▲';
     });
 
     dom.animationPlayBtn.addEventListener('click', startAnimationPlayback);
@@ -371,7 +424,7 @@ function drawOnionSkin() {
             currentAnimationAsset.animations[0].frames.splice(currentFrameIndex, 1);
             currentFrameIndex = -1; // Deselect
 
-            const ctx = dom.drawingCanvas.getContext('2d');
+            const ctx = dom.drawingCanvas.getContext('2d')!;
             ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
 
             populateTimeline();
@@ -379,14 +432,14 @@ function drawOnionSkin() {
         }
     });
 
-    dom.animationTimeline.addEventListener('click', (e) => {
-        const frame = e.target.closest('.timeline-frame');
+    dom.animationTimeline.addEventListener('click', (e: MouseEvent) => {
+        const frame = (e.target as HTMLElement).closest('.timeline-frame') as HTMLImageElement;
         if (!frame) return;
 
-        const index = parseInt(frame.dataset.index, 10);
+        const index = parseInt(frame.dataset.index!, 10);
         currentFrameIndex = index;
 
-        const ctx = dom.drawingCanvas.getContext('2d');
+        const ctx = dom.drawingCanvas.getContext('2d')!;
         ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
         ctx.drawImage(frame, 0, 0);
 
