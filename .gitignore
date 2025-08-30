@@ -1,1 +1,4 @@
 node_modules/
+/ces-transpiler/node_modules/
+/ces-transpiler/dist/
+/ces-transpiler/transpiled-output.js
