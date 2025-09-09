@@ -49,14 +49,25 @@ export class SpriteRenderer extends Leyes {
     }
 
     async loadSprite(projectsDirHandle) {
-        if (this.source) {
-            const url = await getURLForAssetPath(this.source, projectsDirHandle);
-            if (url) {
-                this.sprite.src = url;
+        return new Promise(async (resolve, reject) => {
+            if (this.source) {
+                const url = await getURLForAssetPath(this.source, projectsDirHandle);
+                if (url) {
+                    this.sprite.onload = () => resolve();
+                    this.sprite.onerror = () => {
+                        console.error(`Failed to load sprite at: ${this.source}`);
+                        reject(new Error(`Failed to load sprite at: ${this.source}`));
+                    };
+                    this.sprite.src = url;
+                } else {
+                    this.sprite.src = '';
+                    resolve(); // Resolve immediately if there's no URL
+                }
+            } else {
+                this.sprite.src = '';
+                resolve(); // Resolve immediately if there's no source
             }
-        } else {
-            this.sprite.src = ''; // Clear the image if source is empty
-        }
+        });
     }
 }
 

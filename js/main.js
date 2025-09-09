@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Buttons
     const startButton = document.getElementById('btn-start');
+    console.log("Attempting to find #btn-start. Found element:", startButton); // Debugging line
     const licenseButton = document.getElementById('btn-license');
     const supportButton = document.getElementById('btn-support');
     const createProjectBtn = document.getElementById('btn-create-project');
@@ -258,21 +259,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if(contactForm) handleFormSubmit(contactForm);
 
     // --- View Switching & Project Creation ---
-    if(startButton) startButton.addEventListener('click', async () => {
-        if (window.auth) {
-            const user = await window.auth.getUser();
-            if (user) {
-                if(welcomeView) welcomeView.style.display = 'none';
-                if(launcherView) launcherView.style.display = 'block';
-                loadProjects();
-            } else {
-                window.auth.openAuthModal();
+    if (startButton) {
+        startButton.addEventListener('click', async () => {
+            console.log("Start button clicked.");
+            try {
+                if (window.auth) {
+                    console.log("window.auth object found. Calling getUser().");
+                    const user = await window.auth.getUser();
+                    console.log("getUser() call completed. User object:", user);
+
+                    if (user) {
+                        console.log("User is logged in. Switching to launcher view.");
+                        if(welcomeView) welcomeView.style.display = 'none';
+                        if(launcherView) launcherView.style.display = 'block';
+                        loadProjects();
+                    } else {
+                        console.log("User is not logged in. Opening auth modal.");
+                        window.auth.openAuthModal();
+                    }
+                } else {
+                    console.error("Auth script not loaded yet or window.auth is not defined.");
+                    await showCustomAlert("Sistema Ocupado", "El sistema de autenticación no está listo. Por favor, espera un momento y vuelve a intentarlo.");
+                }
+            } catch (error) {
+                console.error("An error occurred in the start button click handler:", error);
+                await showCustomAlert("Error Inesperado", `Ocurrió un error: ${error.message}`);
             }
-        } else {
-            console.error("Auth script not loaded yet.");
-            await showCustomAlert("Sistema Ocupado", "El sistema de autenticación no está listo. Por favor, espera un momento y vuelve a intentarlo.");
-        }
-    });
+        });
+    } else {
+        console.error("#btn-start element was not found in the DOM. The event listener cannot be attached.");
+    }
 
     if(createProjectForm) createProjectForm.addEventListener('submit', async (e) => {
         e.preventDefault();

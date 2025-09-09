@@ -2,43 +2,55 @@
 const SUPABASE_URL = 'https://tladrluezsmmhjbhupgb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsYWRybHVlenNtbWhqYmh1cGdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MjY5NjQsImV4cCI6MjA3MTAwMjk2NH0.p7x3MPizmNdX57KzX5T4c15ytuH1oznjFqyp14HD-QU';
 
-let _supabase;
-
-if (window.supabase) {
-  const { createClient } = window.supabase;
-  _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log('Supabase client initialized.');
-} else {
-  console.error("Supabase client not loaded.");
-}
-
-// --- Global Auth Object ---
-window.auth = {
-  _supabase,
-  getUser: async () => {
-    const { data: { user } } = await _supabase.auth.getUser();
-    return user;
-  },
-  openAuthModal: () => {
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) {
-      document.getElementById('login-view').style.display   = 'block';
-      document.getElementById('signup-view').style.display  = 'none';
-      document.getElementById('reset-password-view').style.display = 'none';
-      authModal.style.display = 'block';
-    }
-  }
-};
-
+// Wrap all logic in DOMContentLoaded to prevent race conditions with the Supabase CDN script.
 document.addEventListener('DOMContentLoaded', () => {
-  if (!_supabase) return;
 
+  // First, check if the Supabase client library has loaded.
+  if (!window.supabase) {
+    console.error("Supabase client not loaded. Auth functionality will be disabled.");
+    // Optionally, display a visible warning to the user on the page.
+    const warningDiv = document.getElementById('supabase-config-warning');
+    if (warningDiv) {
+        warningDiv.style.display = 'block';
+        warningDiv.innerHTML = `
+          <h2>Error de Conexión</h2>
+          <p>No se pudo cargar el cliente de Supabase. La autenticación y el guardado en la nube no funcionarán.</p>
+          <p>Por favor, revisa tu conexión a internet y recarga la página.</p>
+        `;
+    }
+    return; // Stop execution of this script
+  }
+
+  // --- Initialize Supabase Client ---
+  const { createClient } = window.supabase;
+  const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log('Supabase client initialized successfully.');
+
+  // --- Create Global Auth Object ---
+  // This is now safely created after _supabase is guaranteed to be initialized.
+  window.auth = {
+    _supabase,
+    getUser: async () => {
+      const { data: { user } } = await _supabase.auth.getUser();
+      return user;
+    },
+    openAuthModal: () => {
+      const authModal = document.getElementById('auth-modal');
+      if (authModal) {
+        document.getElementById('login-view').style.display   = 'block';
+        document.getElementById('signup-view').style.display  = 'none';
+        document.getElementById('reset-password-view').style.display = 'none';
+        authModal.style.display = 'block';
+      }
+    }
+  };
+
+  // --- DOM Elements ---
   const verifyingOverlay = document.getElementById('verifying-overlay');
   if (window.location.hash.includes('access_token')) {
     verifyingOverlay.style.display = 'flex';
   }
 
-  // --- DOM Elements ---
   const authModal           = document.getElementById('auth-modal');
   const closeAuthBtn        = document.getElementById('close-auth');
   const loginView           = document.getElementById('login-view');
@@ -83,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
     button.disabled   = true;
     button.textContent = 'Registrando...';
 
-    // v2.x: inyecta emailRedirectTo dentro de options
     const { data, error } = await _supabase.auth.signUp({
       email,
       password,
@@ -92,14 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
         data: { full_name: name }
       }
     });
-
-    /* 
-    // Si estás en supabase-js v1.x, comenta el bloque anterior y usa este:
-    const { data, error } = await _supabase.auth.signUp(
-      { email, password, data: { full_name: name } },
-      { redirectTo: 'https://carleyinteractivestudio.github.io/Creative-Engine-Beta/#' }
-    );
-    */
 
     if (error) {
       alert(`Error en el registro: ${error.message}`);
@@ -126,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (error) {
       alert(`Error al iniciar sesión: ${error.message}`);
     } else {
-      closeAuthModal(); // onAuthStateChange maneja el resto
+      closeAuthModal(); // onAuthStateChange handles the rest
     }
 
     button.disabled   = false;

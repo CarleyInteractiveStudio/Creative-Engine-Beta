@@ -541,6 +541,148 @@ body {
     color: white;
 }
 
+/* --- Loading Overlay Styles --- */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(30, 30, 30, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    color: var(--text-primary);
+    flex-direction: column;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.loading-logo {
+    width: 120px;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+#loading-status-message {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.progress-bar-container {
+    width: 400px;
+    max-width: 80vw;
+    height: 20px;
+    background-color: var(--bg-tertiary);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background-color: var(--accent-color);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+#loading-error-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(192, 57, 43, 0.2);
+    border: 1px solid #c0392b;
+    border-radius: 8px;
+    max-width: 400px;
+}
+
+#loading-error-message {
+    color: #ff8a8a;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.error-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.error-buttons button {
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+}
+
+.error-buttons button#btn-retry-loading {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.error-buttons button#btn-back-to-launcher {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+}
+
+/* --- Gizmo Tool Dropdown --- */
+.tool-dropdown {
+    position: relative;
+}
+
+.tool-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-width: 120px;
+    z-index: 3000;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.tool-dropdown:hover .tool-dropdown-content {
+    display: block;
+}
+
+.tool-dropdown-content button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+}
+
 /* --- UI Editor Panel --- */
 #ui-editor-main-content {
     display: grid;
@@ -1042,6 +1184,11 @@ body {
     word-break: break-all;
 }
 
+#assets-content.drag-over-fs {
+    outline: 2px dashed var(--accent-color);
+    background-color: rgba(14, 99, 156, 0.1);
+}
+
 /* --- Animation Panel Styles --- */
 .floating-panel {
     position: absolute;
@@ -1364,10 +1511,13 @@ body {
     display: grid;
     place-items: center;
     padding: 10px;
+    overflow: auto; /* Add scrollbars if content overflows, as a fallback */
 }
 .asset-settings .preview-container img {
-    max-width: 100%;
-    max-height: 100%;
+    width: auto;
+    height: auto;
+    max-width: 95%;
+    max-height: 95%;
     object-fit: contain;
 }
 
@@ -1957,6 +2107,22 @@ body {
     justify-content: center;
     border-radius: 4px;
     color: var(--text-primary);
+}
+.sub-settings {
+    margin-top: 15px;
+    padding-left: 10px;
+    border-left: 3px solid var(--border-color);
+}
+.sub-settings h4 {
+    margin-top: 0;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+.prop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
 }
 
 /* --- Context Menu --- */
