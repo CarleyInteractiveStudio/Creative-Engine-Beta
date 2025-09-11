@@ -59,7 +59,6 @@
                     <hr>
                     <a href="#" id="menu-window-animation">Editor de Animación</a>
                     <a href="#" id="menu-window-animator">Controlador de Animación</a>
-                    <a href="#" id="menu-window-ui-editor">Editor de UI</a>
                 </div>
             </div>
             <div class="menu-item">
@@ -273,41 +272,6 @@
                 <div class="resize-handle" data-direction="bottom"></div>
                 <div class="resize-handle" data-direction="both"></div>
             </div>
-            <div id="ui-editor-panel" class="editor-panel floating-panel hidden">
-                <div class="panel-header">
-                    <span id="current-ui-asset-name">Editor de UI</span>
-                    <div id="ui-canvas-toolbar">
-                        <button id="ui-editor-save-btn" title="Guardar Asset UI">💾 Guardar</button>
-                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas">🗖</button>
-                    </div>
-                    <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
-                </div>
-                <div id="ui-editor-main-content">
-                    <div id="ui-editor-hierarchy" class="editor-panel">
-                        <div class="panel-header"><span>Jerarquía UI</span></div>
-                        <div class="list-content"></div>
-                    </div>
-                    <div id="ui-resizer-left" class="resizer-v"></div>
-                    <div id="ui-editor-canvas-view">
-                         <div id="ui-editor-canvas-container">
-                            <canvas id="ui-editor-canvas"></canvas>
-                        </div>
-                    </div>
-                    <div id="ui-resizer-right" class="resizer-v"></div>
-                    <div id="ui-editor-inspector" class="editor-panel">
-                        <div class="panel-header"><span>Inspector UI</span></div>
-                        <div class="inspector-content"></div>
-                    </div>
-                </div>
-                <div class="resize-handle" data-direction="n"></div>
-                <div class="resize-handle" data-direction="ne"></div>
-                <div class="resize-handle" data-direction="e"></div>
-                <div class="resize-handle" data-direction="se"></div>
-                <div class="resize-handle" data-direction="s"></div>
-                <div class="resize-handle" data-direction="sw"></div>
-                <div class="resize-handle" data-direction="w"></div>
-                <div class="resize-handle" data-direction="nw"></div>
-            </div>
         </main>
     </div>
     <div id="context-menu" class="context-menu" style="display: none;">
@@ -318,7 +282,6 @@
                     <li data-action="create-folder">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
                     <li data-action="create-readme">Archivo Léame (.md)</li>
-                    <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
@@ -346,6 +309,15 @@
                 Objeto Primitivo <span class="arrow">▶</span>
                 <ul class="submenu">
                     <li data-action="create-primitive-square">Cuadrado</li>
+                </ul>
+            </li>
+            <li class="has-submenu">
+                UI <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-ui-canvas">Canvas</li>
+                    <li data-action="create-ui-image">Image</li>
+                    <li data-action="create-ui-button">Button</li>
+                    <li data-action="create-ui-text">Text</li>
                 </ul>
             </li>
             <hr>

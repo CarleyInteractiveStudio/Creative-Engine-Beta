@@ -228,6 +228,31 @@ export class UIImage extends Leyes {
     }
 }
 
+export class UIText extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.text = 'New Text';
+        this.font = '30px Arial';
+        this.color = '#ffffff';
+        this.align = 'left'; // 'left', 'center', 'right'
+        this.verticalAlign = 'top'; // 'top', 'middle', 'bottom'
+    }
+}
+
+export class UIButton extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.targetImage = null; // Reference to a UIImage component
+        this.interactable = true;
+        this.normalColor = '#ffffff';
+        this.hoverColor = '#f0f0f0';
+        this.pressedColor = '#c0c0c0';
+        this.disabledColor = '#a0a0a0';
+        // onClick event would be handled by the event system
+    }
+}
+
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -240,3 +265,5 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
+registerComponent('UIText', UIText);
+registerComponent('UIButton', UIButton);

@@ -1815,8 +1815,67 @@ body {
 
 .rect-transform-editor {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: auto 1fr;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 10px 0;
+}
+
+.anchor-preset-grid-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+}
+
+.anchor-preset-grid {
+    width: 90px;
+    height: 90px;
+    border: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    background-color: var(--bg-primary);
+}
+
+.anchor-preset-cell {
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.anchor-preset-cell:hover {
+    background-color: var(--accent-color);
+    opacity: 0.7;
+}
+
+.anchor-preset-cell.active {
+    background-color: var(--accent-color);
+    border-color: #fff;
+}
+
+.pivot-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.vector-input {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px;
+    align-items: center;
+}
+
+.vector-input span {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    text-align: right;
+}
+
+.rect-transform-editor .vector-input {
+     grid-template-columns: auto 1fr auto 1fr;
 }
 
 .anchor-preset-grid {

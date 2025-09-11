@@ -88,6 +88,70 @@ function createPrimitiveSquare(parent = null) {
     return square;
 }
 
+// --- UI Creation Functions ---
+
+function findOrCreateCanvas() {
+    const Components = SceneManager.Components;
+    // Prioritize selected canvas if available
+    const selected = getSelectedMateria();
+    if (selected && selected.getComponent(Components.UICanvas)) {
+        return selected;
+    }
+    if (selected && selected.parent) {
+         const parentCanvas = selected.findParentWithComponent(Components.UICanvas);
+         if(parentCanvas) return parentCanvas;
+    }
+
+
+    let canvasMateria = SceneManager.currentScene.materias.find(m => m.getComponent(Components.UICanvas) && !m.parent);
+    if (canvasMateria) {
+        return canvasMateria;
+    }
+
+    const newCanvas = createBaseMateria('Canvas');
+    newCanvas.removeComponent('Transform');
+    newCanvas.addComponent(new Components.RectTransform(newCanvas));
+    newCanvas.addComponent(new Components.UICanvas(newCanvas));
+    return newCanvas;
+}
+
+function createUICanvas() {
+    const Components = SceneManager.Components;
+    const newCanvas = createBaseMateria('Canvas');
+    newCanvas.removeComponent('Transform'); // UI elements use RectTransform
+    newCanvas.addComponent(new Components.RectTransform(newCanvas));
+    newCanvas.addComponent(new Components.UICanvas(newCanvas));
+    return newCanvas;
+}
+
+function createUIImage(parent) {
+    const Components = SceneManager.Components;
+    const image = createBaseMateria('Image', parent);
+    image.removeComponent('Transform');
+    image.addComponent(new Components.RectTransform(image));
+    image.addComponent(new Components.UIImage(image));
+    return image;
+}
+
+function createUIButton(parent) {
+    const Components = SceneManager.Components;
+    const button = createBaseMateria('Button', parent);
+    button.removeComponent('Transform');
+    button.addComponent(new Components.RectTransform(button));
+    button.addComponent(new Components.UIImage(button));
+    button.addComponent(new Components.UIButton(button));
+    return button;
+}
+
+function createUIText(parent) {
+    const Components = SceneManager.Components;
+    const text = createBaseMateria('Text', parent);
+    text.removeComponent('Transform');
+    text.addComponent(new Components.RectTransform(text));
+    text.addComponent(new Components.UIText(text));
+    return text;
+}
+
 
 // Initialization function, called from editor.js
 export function initialize(dependencies) {
@@ -206,6 +270,24 @@ function setupEventListeners() {
             case 'create-primitive-square':
                 createPrimitiveSquare(selectedMateria);
                 break;
+            case 'create-ui-canvas':
+                createUICanvas();
+                break;
+            case 'create-ui-image': {
+                const parentCanvas = findOrCreateCanvas();
+                createUIImage(parentCanvas);
+                break;
+            }
+            case 'create-ui-button': {
+                const parentCanvas = findOrCreateCanvas();
+                createUIButton(parentCanvas);
+                break;
+            }
+            case 'create-ui-text': {
+                const parentCanvas = findOrCreateCanvas();
+                createUIText(parentCanvas);
+                break;
+            }
             case 'create-camera': {
                 const Components = SceneManager.Components;
                 createBaseMateria('Cámara', selectedMateria).addComponent(new Components.Camera());

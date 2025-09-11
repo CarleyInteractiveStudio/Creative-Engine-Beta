@@ -22,7 +22,7 @@ const availableComponents = {
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody, Components.BoxCollider],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas, Components.UIText, Components.UIButton],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -94,12 +94,41 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('#add-component-btn')) {
         showAddComponentModal();
+        return;
     }
 
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
         if (componentName && openSpriteSelectorCallback) {
             openSpriteSelectorCallback(componentName);
+        }
+        return;
+    }
+
+    if (e.target.matches('.anchor-preset-cell')) {
+        const preset = parseInt(e.target.dataset.preset, 10);
+        const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+        if (!rectTransform) return;
+
+        const presets = [
+            { anchorMin: { x: 0, y: 1 }, anchorMax: { x: 0, y: 1 }, pivot: { x: 0, y: 1 } }, // Top-left
+            { anchorMin: { x: 0.5, y: 1 }, anchorMax: { x: 0.5, y: 1 }, pivot: { x: 0.5, y: 1 } }, // Top-center
+            { anchorMin: { x: 1, y: 1 }, anchorMax: { x: 1, y: 1 }, pivot: { x: 1, y: 1 } }, // Top-right
+            { anchorMin: { x: 0, y: 0.5 }, anchorMax: { x: 0, y: 0.5 }, pivot: { x: 0, y: 0.5 } }, // Middle-left
+            { anchorMin: { x: 0.5, y: 0.5 }, anchorMax: { x: 0.5, y: 0.5 }, pivot: { x: 0.5, y: 0.5 } }, // Middle-center
+            { anchorMin: { x: 1, y: 0.5 }, anchorMax: { x: 1, y: 0.5 }, pivot: { x: 1, y: 0.5 } }, // Middle-right
+            { anchorMin: { x: 0, y: 0 }, anchorMax: { x: 0, y: 0 }, pivot: { x: 0, y: 0 } }, // Bottom-left
+            { anchorMin: { x: 0.5, y: 0 }, anchorMax: { x: 0.5, y: 0 }, pivot: { x: 0.5, y: 0 } }, // Bottom-center
+            { anchorMin: { x: 1, y: 0 }, anchorMax: { x: 1, y: 0 }, pivot: { x: 1, y: 0 } }  // Bottom-right
+        ];
+
+        const selectedPreset = presets[preset];
+        if (selectedPreset) {
+            rectTransform.anchorMin = { ...selectedPreset.anchorMin };
+            rectTransform.anchorMax = { ...selectedPreset.anchorMax };
+            rectTransform.pivot = { ...selectedPreset.pivot };
+            updateInspector();
+            updateSceneCallback();
         }
     }
 }
@@ -174,13 +203,41 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
             </div>`;
         } else if (ley instanceof Components.RectTransform) {
-             componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
-            <div class="component-grid">
-                <div class="prop-row"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
-                <div class="prop-row"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
-                <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width.toFixed(0)}"></div>
-                <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height.toFixed(0)}"></div>
-            </div>`;
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
+                <div class="rect-transform-editor">
+                    <div class="anchor-preset-grid-container">
+                        <label>Anchor Presets</label>
+                        <div class="anchor-preset-grid">
+                            ${[...Array(9)].map((_, i) => `<div class="anchor-preset-cell" data-preset="${i}"></div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pivot-editor">
+                         <label>Pivot</label>
+                         <div class="vector-input">
+                            <span>X</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="pivot.x" value="${ley.pivot.x.toFixed(1)}">
+                            <span>Y</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="pivot.y" value="${ley.pivot.y.toFixed(1)}">
+                         </div>
+                    </div>
+                </div>
+                <div class="component-grid">
+                    <div class="prop-row"><label>Left</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Top</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width.toFixed(0)}"></div>
+                    <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height.toFixed(0)}"></div>
+                </div>
+                <div class="component-grid">
+                    <label>Anchors</label>
+                    <div class="vector-input">
+                        <span>Min X</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="anchorMin.x" value="${ley.anchorMin.x.toFixed(1)}">
+                        <span>Min Y</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="anchorMin.y" value="${ley.anchorMin.y.toFixed(1)}">
+                    </div>
+                    <div class="vector-input">
+                        <span>Max X</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="anchorMax.x" value="${ley.anchorMax.x.toFixed(1)}">
+                        <span>Max Y</span><input type="number" step="0.1" class="prop-input" data-component="RectTransform" data-prop="anchorMax.y" value="${ley.anchorMax.y.toFixed(1)}">
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
@@ -192,6 +249,27 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
                 <label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}">
             </div>`;
+        } else if (ley instanceof Components.UIText) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>UI Text</h4></div>
+                <div class="component-grid">
+                    <label>Text</label><textarea class="prop-input" data-component="UIText" data-prop="text">${ley.text}</textarea>
+                    <div class="prop-row"><label>Font</label><input type="text" class="prop-input" data-component="UIText" data-prop="font" value="${ley.font}"></div>
+                    <div class="prop-row"><label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}"></div>
+                </div>
+            `;
+        } else if (ley instanceof Components.UIButton) {
+             componentHTML = `
+                <div class="component-header">${iconHTML}<h4>UI Button</h4></div>
+                <div class="component-grid">
+                    <div class="prop-row"><label>Interactable</label><input type="checkbox" class="prop-input" data-component="UIButton" data-prop="interactable" ${ley.interactable ? 'checked' : ''}></div>
+                    <label>Colors</label>
+                    <div class="prop-row"><label>Normal</label><input type="color" class="prop-input" data-component="UIButton" data-prop="normalColor" value="${ley.normalColor}"></div>
+                    <div class="prop-row"><label>Hover</label><input type="color" class="prop-input" data-component="UIButton" data-prop="hoverColor" value="${ley.hoverColor}"></div>
+                    <div class="prop-row"><label>Pressed</label><input type="color" class="prop-input" data-component="UIButton" data-prop="pressedColor" value="${ley.pressedColor}"></div>
+                    <div class="prop-row"><label>Disabled</label><input type="color" class="prop-input" data-component="UIButton" data-prop="disabledColor" value="${ley.disabledColor}"></div>
+                </div>
+             `;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';

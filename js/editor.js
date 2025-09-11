@@ -14,7 +14,6 @@ import { initialize as initializeAnimatorController, openAnimatorController } fr
 import { initialize as initializeHierarchy, updateHierarchy } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
-import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -134,8 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'inspector-panel': 'menu-window-inspector',
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
-            'animator-controller-panel': 'menu-window-animator',
-            'ui-editor-panel': 'menu-window-ui-editor'
+            'animator-controller-panel': 'menu-window-animator'
         };
         const checkmark = '✅ ';
 
@@ -421,6 +419,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         rendererInstance.end();
+
+        // --- UI Rendering Pass ---
+        renderUI(rendererInstance);
+    }
+
+    function renderUI(rendererInstance) {
+        if (!rendererInstance || !SceneManager.currentScene) return;
+
+        const canvases = SceneManager.currentScene.materias.filter(m => m.getComponent(Components.UICanvas));
+
+        for (const canvasMateria of canvases) {
+            rendererInstance.beginUI();
+
+            const allChildren = canvasMateria.getChildrenRecursive();
+
+            for (const materia of allChildren) {
+                if (!materia.isActive) continue;
+
+                const rectTransform = materia.getComponent(Components.RectTransform);
+                if (!rectTransform) continue;
+
+                const worldRect = rectTransform.getWorldRect(rendererInstance.canvas);
+
+                const uiImage = materia.getComponent(Components.UIImage);
+                if (uiImage && uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
+                    rendererInstance.ctx.globalAlpha = uiImage.color.a || 1;
+                    rendererInstance.ctx.fillStyle = uiImage.color;
+                    rendererInstance.ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+                    rendererInstance.ctx.drawImage(uiImage.sprite, worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+                     rendererInstance.ctx.globalAlpha = 1;
+                }
+
+                const uiText = materia.getComponent(Components.UIText);
+                if (uiText) {
+                    rendererInstance.ctx.fillStyle = uiText.color;
+                    rendererInstance.ctx.font = uiText.font;
+                    rendererInstance.ctx.textAlign = uiText.align;
+                    rendererInstance.ctx.textBaseline = uiText.verticalAlign;
+
+                    let x = worldRect.x;
+                    if (uiText.align === 'center') {
+                        x += worldRect.width / 2;
+                    } else if (uiText.align === 'right') {
+                        x += worldRect.width;
+                    }
+
+                    let y = worldRect.y;
+                    if (uiText.verticalAlign === 'middle') {
+                        y += worldRect.height / 2;
+                    } else if (uiText.verticalAlign === 'bottom') {
+                        y += worldRect.height;
+                    }
+
+                    rendererInstance.ctx.fillText(uiText.text, x, y);
+                }
+            }
+
+            rendererInstance.end();
+        }
     }
 
     const editorLoop = (timestamp) => {
@@ -742,8 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'ui-editor') {
-                openUiEditorFromModule();
             }
         });
 
@@ -928,8 +983,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
             'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
-            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
-            'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
@@ -1009,7 +1062,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(50, "Configurando módulos del editor...");
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
-            initializeUIEditor(dom);
             initializeMusicPlayer(dom);
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
@@ -1025,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
-            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, createUiSystemFile, updateAssetBrowser });
+            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, updateAssetBrowser });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();
