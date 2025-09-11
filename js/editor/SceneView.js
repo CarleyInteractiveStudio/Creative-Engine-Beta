@@ -1,4 +1,5 @@
 // --- Module for Scene View Interactions and Gizmos ---
+import * as SceneManager from '../engine/SceneManager.js';
 
 // Dependencies from editor.js
 let dom;
