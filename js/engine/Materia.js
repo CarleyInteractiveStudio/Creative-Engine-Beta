@@ -63,4 +63,24 @@ export class Materia {
             }
         }
     }
+
+    getChildrenRecursive() {
+        let children = [];
+        for (const child of this.children) {
+            children.push(child);
+            children = children.concat(child.getChildrenRecursive());
+        }
+        return children;
+    }
+
+    findParentWithComponent(componentClass) {
+        let current = this.parent;
+        while (current) {
+            if (current.getComponent(componentClass)) {
+                return current;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
 }
