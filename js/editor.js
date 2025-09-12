@@ -1054,6 +1054,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 dom.loadingOverlay.classList.add('hidden');
                 dom.editorContainer.style.display = 'flex';
+                // Force a resize and redraw after the UI is visible
+                if (renderer) renderer.resize();
+                if (gameRenderer) gameRenderer.resize();
+                if (renderer) updateScene(renderer, false);
             }, 500);
 
         } catch (error) {
