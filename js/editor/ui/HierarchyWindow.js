@@ -107,7 +107,7 @@ function findOrCreateCanvas() {
     }
 
     const newCanvas = createBaseMateria('Canvas');
-    newCanvas.removeComponent('Transform');
+    newCanvas.removeComponent(Components.Transform);
     newCanvas.addComponent(new Components.RectTransform(newCanvas));
     newCanvas.addComponent(new Components.UICanvas(newCanvas));
     return newCanvas;
@@ -115,7 +115,7 @@ function findOrCreateCanvas() {
 
 function createUICanvas() {
     const newCanvas = createBaseMateria('Canvas');
-    newCanvas.removeComponent('Transform'); // UI elements use RectTransform
+    newCanvas.removeComponent(Components.Transform); // UI elements use RectTransform
     newCanvas.addComponent(new Components.RectTransform(newCanvas));
     newCanvas.addComponent(new Components.UICanvas(newCanvas));
     return newCanvas;
@@ -123,7 +123,7 @@ function createUICanvas() {
 
 function createUIImage(parent) {
     const image = createBaseMateria('Image', parent);
-    image.removeComponent('Transform');
+    image.removeComponent(Components.Transform);
     image.addComponent(new Components.RectTransform(image));
     image.addComponent(new Components.UIImage(image));
     return image;
@@ -131,7 +131,7 @@ function createUIImage(parent) {
 
 function createUIButton(parent) {
     const button = createBaseMateria('Button', parent);
-    button.removeComponent('Transform');
+    button.removeComponent(Components.Transform);
     button.addComponent(new Components.RectTransform(button));
     button.addComponent(new Components.UIImage(button));
     button.addComponent(new Components.UIButton(button));
@@ -140,7 +140,7 @@ function createUIButton(parent) {
 
 function createUIText(parent) {
     const text = createBaseMateria('Text', parent);
-    text.removeComponent('Transform');
+    text.removeComponent(Components.Transform);
     text.addComponent(new Components.RectTransform(text));
     text.addComponent(new Components.UIText(text));
     return text;
