@@ -8,6 +8,7 @@
  * - Handling user interactions like selection, drag-and-drop re-parenting,
  *   and the right-click context menu.
  */
+import { Materia } from '../../engine/Materia.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -64,7 +65,6 @@ export function updateHierarchy() {
 
 // --- Hierarchy Creation Functions ---
 function createBaseMateria(name, parent = null) {
-    const Materia = SceneManager.Materia; // Accessing Materia class via SceneManager
     const Components = SceneManager.Components;
     const newMateria = new Materia(name);
     newMateria.addComponent(new Components.Transform(newMateria));
