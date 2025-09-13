@@ -403,40 +403,60 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const materia of materiasToRender) {
             if (!materia.isActive) continue;
 
-            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
             const transform = materia.getComponent(Components.Transform);
+            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+            let hasBeenDrawn = false;
 
-            if (transform && spriteRenderer) {
-                if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                    const img = spriteRenderer.sprite;
-                    const width = img.naturalWidth * transform.scale.x;
-                    const height = img.naturalHeight * transform.scale.y;
+            // 1. Attempt to draw the sprite
+            if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+                const img = spriteRenderer.sprite;
+                const width = img.naturalWidth * transform.scale.x;
+                const height = img.naturalHeight * transform.scale.y;
 
-                    const ctx = rendererInstance.ctx;
-                    ctx.save();
-                    ctx.translate(transform.x, transform.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.drawImage(img, -width / 2, -height / 2, width, height);
-                    ctx.restore();
-                } else if (!isGameView) { // Only draw placeholders in the editor view
-                    const boxCollider = materia.getComponent(Components.BoxCollider);
-                    const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                    const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
+                const ctx = rendererInstance.ctx;
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.rotate(transform.rotation * Math.PI / 180);
+                ctx.drawImage(img, -width / 2, -height / 2, width, height);
+                ctx.restore();
+                hasBeenDrawn = true;
+            }
 
-                    const ctx = rendererInstance.ctx;
-                    ctx.save();
-                    ctx.translate(transform.x, transform.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
+            // 2. If nothing was drawn and we're in the editor, draw a placeholder
+            if (!hasBeenDrawn && !isGameView) {
+                const ctx = rendererInstance.ctx;
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.rotate(transform.rotation * Math.PI / 180);
 
+                const boxCollider = materia.getComponent(Components.BoxCollider);
+                if (boxCollider) {
+                    // Draw a placeholder box for primitives
+                    const width = boxCollider.width * transform.scale.x;
+                    const height = boxCollider.height * transform.scale.y;
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
                     ctx.fillRect(-width / 2, -height / 2, width, height);
-
                     ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 1; // Stroke width in world units
+                    ctx.lineWidth = 1;
                     ctx.strokeRect(-width / 2, -height / 2, width, height);
-
-                    ctx.restore();
+                } else if (materia.getComponent(Components.Camera)) {
+                    // Draw a camera icon
+                    const iconSize = 32 / rendererInstance.camera.effectiveZoom;
+                    ctx.font = `${iconSize}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillText('📷', 0, 0);
+                } else {
+                    // Draw a simple dot for empty objects
+                    const gizmoSize = 5 / rendererInstance.camera.effectiveZoom;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, gizmoSize, 0, 2 * Math.PI);
+                    ctx.fill();
                 }
+
+                ctx.restore();
             }
         }
 
