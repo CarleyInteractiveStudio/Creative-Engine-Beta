@@ -63,8 +63,8 @@ function checkGizmoHit(canvasPos) {
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
     const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
     const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-    const centerX = transform.x + width / 2;
-    const centerY = transform.y - height / 2;
+    const centerX = transform.x;
+    const centerY = transform.y;
 
     const zoom = renderer.camera.effectiveZoom;
     const gizmoSize = 60 / zoom;
@@ -207,8 +207,6 @@ function handleGizmoDrag() {
         case 'scale-bl':
             {
                 const boxCollider = dragState.materia.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100);
-                const height = (boxCollider ? boxCollider.height : 100);
                 const centerX = transform.x;
                 const centerY = transform.y;
 
