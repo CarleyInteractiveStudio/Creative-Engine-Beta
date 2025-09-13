@@ -406,18 +406,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
             const transform = materia.getComponent(Components.Transform);
 
-            if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0 && transform) {
-                const img = spriteRenderer.sprite;
-                const width = img.naturalWidth * transform.scale.x;
-                const height = img.naturalHeight * transform.scale.y;
+            if (transform && spriteRenderer) {
+                if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+                    const img = spriteRenderer.sprite;
+                    const width = img.naturalWidth * transform.scale.x;
+                    const height = img.naturalHeight * transform.scale.y;
 
-                const ctx = rendererInstance.ctx;
-                ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.rotate(transform.rotation * Math.PI / 180);
-                // The drawImage in Renderer.js draws from the center, so we adjust.
-                ctx.drawImage(img, -width / 2, -height / 2, width, height);
-                ctx.restore();
+                    const ctx = rendererInstance.ctx;
+                    ctx.save();
+                    ctx.translate(transform.x, transform.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+                    ctx.restore();
+                } else if (!isGameView) { // Only draw placeholders in the editor view
+                    const boxCollider = materia.getComponent(Components.BoxCollider);
+                    const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
+                    const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
+
+                    const ctx = rendererInstance.ctx;
+                    ctx.save();
+                    ctx.translate(transform.x, transform.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.fillRect(-width / 2, -height / 2, width, height);
+
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 1; // Stroke width in world units
+                    ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+                    ctx.restore();
+                }
             }
         }
 

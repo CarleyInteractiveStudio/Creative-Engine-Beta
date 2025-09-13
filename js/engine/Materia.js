@@ -4,6 +4,9 @@
 import { Transform } from './Components.js';
 
 let MATERIA_ID_COUNTER = 0;
+export function setMateriaIdCounter(value) {
+    MATERIA_ID_COUNTER = value;
+}
 export class Materia {
     constructor(name = 'Materia') {
         this.id = MATERIA_ID_COUNTER++;

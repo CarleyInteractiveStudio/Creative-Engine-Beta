@@ -31,8 +31,8 @@ export class Rigidbody extends Leyes {
 export class BoxCollider extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 1.0;
-        this.height = 1.0;
+        this.width = 100;
+        this.height = 100;
     }
 }
 
