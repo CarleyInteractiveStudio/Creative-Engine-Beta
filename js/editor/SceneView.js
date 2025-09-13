@@ -77,20 +77,31 @@ function checkGizmoHit(canvasPos) {
 
     switch (activeTool) {
         case 'move':
-            const planeOffset = gizmoSize * 0.2;
-            const planeSize = gizmoSize * 0.3;
-            if (worldMouse.x > centerX + planeOffset && worldMouse.x < centerX + planeOffset + planeSize &&
-                worldMouse.y > centerY + planeOffset && worldMouse.y < centerY + planeOffset + planeSize) {
-                return 'move-xy';
-            }
+            {
+                // Un-rotate the mouse position to check against axis-aligned handles
+                const rad = -transform.rotation * Math.PI / 180;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
+                const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
+                const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
 
-            if (checkHit(centerX, centerY)) return 'move-xy';
-            if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize + handleHitboxSize) return 'move-x';
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize + handleHitboxSize) return 'move-y';
+                // Y-axis handle check
+                if (localMouseX > -handleHitboxSize/2 && localMouseX < handleHitboxSize/2 && localMouseY < 0 && localMouseY > -gizmoSize) {
+                    return 'move-y';
+                }
+                // X-axis handle check
+                if (localMouseY > -handleHitboxSize/2 && localMouseY < handleHitboxSize/2 && localMouseX > 0 && localMouseX < gizmoSize) {
+                    return 'move-x';
+                }
+                // Center handle check
+                if (localMouseX > -handleHitboxSize && localMouseX < handleHitboxSize && localMouseY > -handleHitboxSize && localMouseY < handleHitboxSize) {
+                    return 'move-xy';
+                }
+            }
             break;
         case 'rotate':
             const radius = gizmoSize * 0.6;
-            const dist = Math.sqrt(Math.pow(worldMouse.x - centerX, 2) + Math.pow(worldMouse.y - centerY, 2));
+            const dist = Math.sqrt(Math.pow(worldMouse.x - transform.x, 2) + Math.pow(worldMouse.y - transform.y, 2));
             if (Math.abs(dist - radius) < handleHitboxSize / 2) return 'rotate';
             break;
         case 'scale':
@@ -98,8 +109,8 @@ function checkGizmoHit(canvasPos) {
                 const rad = transform.rotation * Math.PI / 180;
                 const cos = Math.cos(-rad);
                 const sin = Math.sin(-rad);
-                const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
-                const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
+                const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
 
                 const hx = width / 2;
                 const hy = height / 2;
@@ -159,23 +170,31 @@ function handleGizmoDrag() {
     const dy = (currentMousePos.y - lastMousePosition.y) / -renderer.camera.effectiveZoom;
 
     switch (dragState.handle) {
-        case 'move-x':
-            transform.x += dx;
+        case 'move-x': {
+            const rad = transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            transform.x += dx * cos;
+            transform.y += dx * sin;
             break;
-        case 'move-y':
-            transform.y += dy;
+        }
+        case 'move-y': {
+            const rad = transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            // Move along the local Y axis (which is (-sin, cos) in world space)
+            transform.x += dy * -sin;
+            transform.y += dy * cos;
             break;
+        }
         case 'move-xy':
             transform.x += dx;
             transform.y += dy;
             break;
         case 'rotate':
             {
-                const boxCollider = dragState.materia.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-                const centerX = transform.x + width / 2;
-                const centerY = transform.y - height / 2;
+                const centerX = transform.x;
+                const centerY = transform.y;
 
                 const worldMouse = screenToWorld(currentMousePos.x, currentMousePos.y);
                 const angle = Math.atan2(worldMouse.y - centerY, worldMouse.x - centerX) * 180 / Math.PI;
@@ -188,10 +207,10 @@ function handleGizmoDrag() {
         case 'scale-bl':
             {
                 const boxCollider = dragState.materia.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-                const centerX = transform.x + width / 2;
-                const centerY = transform.y - height / 2;
+                const width = (boxCollider ? boxCollider.width : 100);
+                const height = (boxCollider ? boxCollider.height : 100);
+                const centerX = transform.x;
+                const centerY = transform.y;
 
                 const worldMouse = screenToWorld(currentMousePos.x, currentMousePos.y);
                 const rad = -transform.rotation * Math.PI / 180;
@@ -319,7 +338,97 @@ function drawGizmos(selectedMateria) {
 
         ctx.restore();
     } else if (transform) {
-        // Existing gizmo logic for Transform component can go here
+        const ctx = renderer.ctx;
+        const zoom = renderer.camera.effectiveZoom;
+        const gizmoSize = 60 / zoom;
+        const handleSize = 8 / zoom;
+        const lineWidth = 2 / zoom;
+
+        // Save the state before any transformations
+        ctx.save();
+
+        // These transformations are for the renderer to draw the scene correctly.
+        // We need to apply our own for the gizmos.
+        // The context is already centered and zoomed by beginWorld().
+
+        // Move to the object's position
+        ctx.translate(transform.x, transform.y);
+
+        // Draw the rotation gizmo first, as it's a world-aligned circle
+        if (activeTool === 'rotate') {
+            ctx.beginPath();
+            ctx.arc(0, 0, gizmoSize * 0.8, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#00aaff';
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+
+        // Now, rotate the context for the other gizmos
+        ctx.rotate(transform.rotation * Math.PI / 180);
+
+        // Draw the move and scale gizmos
+        switch (activeTool) {
+            case 'move':
+                // Y-axis (Green)
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, -gizmoSize);
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+                // Arrowhead Y
+                ctx.beginPath();
+                ctx.moveTo(0, -gizmoSize);
+                ctx.lineTo(-handleSize / 2, -gizmoSize + handleSize);
+                ctx.lineTo(handleSize / 2, -gizmoSize + handleSize);
+                ctx.closePath();
+                ctx.fillStyle = '#00ff00';
+                ctx.fill();
+
+                // X-axis (Red)
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(gizmoSize, 0);
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+                // Arrowhead X
+                ctx.beginPath();
+                ctx.moveTo(gizmoSize, 0);
+                ctx.lineTo(gizmoSize - handleSize, -handleSize / 2);
+                ctx.lineTo(gizmoSize - handleSize, handleSize / 2);
+                ctx.closePath();
+                ctx.fillStyle = '#ff0000';
+                ctx.fill();
+
+                break;
+
+            case 'scale':
+                const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
+                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
+                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
+                const halfW = width / 2;
+                const halfH = height / 2;
+
+                // Bounding box
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+                ctx.lineWidth = lineWidth / 2;
+                ctx.strokeRect(-halfW, -halfH, width, height);
+
+                // Handles
+                const handles = [
+                    { x: -halfW, y: -halfH }, { x: halfW, y: -halfH },
+                    { x: -halfW, y: halfH }, { x: halfW, y: halfH }
+                ];
+                ctx.fillStyle = '#ffff00';
+                handles.forEach(handle => {
+                    ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+                });
+                break;
+        }
+
+        // Restore the context to its state before our gizmo drawing
+        ctx.restore();
     }
 }
 
