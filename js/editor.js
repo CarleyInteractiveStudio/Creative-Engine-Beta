@@ -61,16 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
 
-    selectMateria = function(materiaOrId) {
-        let materiaToSelect = null;
-        if (typeof materiaOrId === 'number') {
-            materiaToSelect = SceneManager.currentScene.findMateriaById(materiaOrId);
-        } else {
-            materiaToSelect = materiaOrId; // Handles both Materia objects and null
-        }
-
-        if (selectedMateria === materiaToSelect) return;
-        selectedMateria = materiaToSelect;
+    selectMateria = function(materia) {
+        if (selectedMateria === materia) return;
+        selectedMateria = materia;
 
         // Update UI that depends on selection
         updateHierarchy();
@@ -168,11 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: false });
             const file = await configFileHandle.getFile();
             const content = await file.text();
-            Object.assign(currentProjectConfig, JSON.parse(content));
+            currentProjectConfig = JSON.parse(content);
             console.log("Configuración del proyecto cargada:", currentProjectConfig);
         } catch (error) {
             console.warn("No se encontró 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
-            Object.assign(currentProjectConfig, {
+            currentProjectConfig = {
                 appName: 'MiJuego',
                 authorName: 'Un Creador',
                 appVersion: '1.0.0',
@@ -185,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sortingLayers: ['Default', 'UI'],
                     collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
                 }
-            });
+            };
             // Automatically save the default config file if it doesn't exist
             // This now needs to be handled carefully as saveProjectConfig is in another module
             // For now, we'll just create the object in memory. The first save from the UI will create the file.
