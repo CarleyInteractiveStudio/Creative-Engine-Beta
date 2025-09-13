@@ -69,10 +69,11 @@ function createBaseMateria(name, parent = null) {
     const newMateria = new Materia(name);
     newMateria.addComponent(new Components.Transform(newMateria));
 
+    // Always add the new materia to the scene's master list
+    SceneManager.currentScene.addMateria(newMateria);
+
     if (parent) {
         parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
     }
 
     updateHierarchy();
