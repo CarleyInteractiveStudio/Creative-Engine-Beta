@@ -61,9 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
 
-    selectMateria = function(materia) {
-        if (selectedMateria === materia) return;
-        selectedMateria = materia;
+    selectMateria = function(materiaOrId) {
+        let materiaToSelect = null;
+        if (typeof materiaOrId === 'number') {
+            materiaToSelect = SceneManager.currentScene.findMateriaById(materiaOrId);
+        } else {
+            materiaToSelect = materiaOrId; // Handles both Materia objects and null
+        }
+
+        if (selectedMateria === materiaToSelect) return;
+        selectedMateria = materiaToSelect;
 
         // Update UI that depends on selection
         updateHierarchy();
