@@ -4,7 +4,7 @@
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
-import { Materia } from './Materia.js';
+import { Materia, setMateriaIdCounter } from './Materia.js';
 
 export class Scene {
     constructor() {
@@ -146,6 +146,10 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
         newScene.addMateria(newMateria);
         materiaMap.set(newMateria.id, newMateria);
     }
+
+    // After creating all materias, find the highest ID and reset the counter
+    const maxId = sceneData.materias.reduce((max, m) => Math.max(max, m.id), -1);
+    setMateriaIdCounter(maxId + 1);
 
     // Pass 2: Re-establish parent-child relationships
     for (const materiaData of sceneData.materias) {
