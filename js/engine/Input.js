@@ -38,7 +38,7 @@ class InputManager {
         window.addEventListener('mousemove', this._onMouseMove.bind(this));
         window.addEventListener('mousedown', this._onMouseDown.bind(this));
         window.addEventListener('mouseup', this._onMouseUp.bind(this));
-        window.addEventListener('wheel', this._onWheel.bind(this));
+        window.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
 
         // Touch
         window.addEventListener('touchstart', this._onTouchStart.bind(this), { passive: false });
@@ -265,6 +265,10 @@ class InputManager {
     }
 
     static _onWheel(event) {
+        // Prevent the default browser action (e.g., page scrolling)
+        // This is now more aggressive to prevent issues where the event target
+        // is not the canvas itself but a child element.
+        event.preventDefault();
         this._scrollDelta = event.deltaY;
     }
 

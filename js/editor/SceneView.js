@@ -8,13 +8,16 @@ let getSelectedMateria;
 let selectMateria;
 let updateInspector;
 let Components;
+let updateScene;
+let getActiveView;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan'
 let isDragging = false;
-let isPanning = false;
+// isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
 let dragState = {}; // To hold info about the current drag operation
+// debugDeltas is no longer needed
 
 // --- Core Functions ---
 
@@ -168,27 +171,21 @@ function handleEditorInteractions() {
         handleGizmoDrag();
     }
 
-    // Pan logic
-    if (isPanning) {
-        const currentMousePosition = InputManager.getMousePosition();
-        const dx = currentMousePosition.x - lastMousePosition.x;
-        const dy = currentMousePosition.y - lastMousePosition.y;
-
-        renderer.camera.x -= dx / renderer.camera.effectiveZoom;
-        renderer.camera.y -= dy / renderer.camera.effectiveZoom;
-
-        lastMousePosition = currentMousePosition;
-        // The main loop will call updateScene, so this immediate call might be redundant
-        // but can provide smoother feedback.
-        if (typeof updateScene === 'function') {
-            updateScene(renderer, false);
-        }
-    }
+    // Pan logic has been moved to a direct event handler on mousedown.
 
     // Zoom logic
     const scrollDelta = InputManager.getScrollDelta();
     if (scrollDelta !== 0 && getActiveView() === 'scene-content') {
-        renderer.camera.zoom(scrollDelta > 0 ? 1.1 : 0.9);
+        const zoomFactor = 1.1;
+        if (scrollDelta > 0) {
+            renderer.camera.zoom /= zoomFactor;
+        } else {
+            renderer.camera.zoom *= zoomFactor;
+        }
+
+        // Clamp zoom to avoid issues
+        renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
+
         if (typeof updateScene === 'function') {
             updateScene(renderer, false);
         }
@@ -234,8 +231,96 @@ function drawEditorGrid() {
     ctx.restore();
 }
 
-function drawGizmos() {
-    // Logic to draw transform gizmos for the selected materia
+function drawGizmos(renderer, materia) {
+    if (!materia || !renderer) return;
+
+    const transform = materia.getComponent(Components.Transform);
+    if (!transform) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    // --- Gizmo settings ---
+    const GIZMO_SIZE = 60 / zoom; // Size in world units, adjusted for zoom
+    const HANDLE_THICKNESS = 2 / zoom;
+    const ARROW_HEAD_SIZE = 8 / zoom;
+    const ROTATE_RADIUS = GIZMO_SIZE * 0.8;
+    const SCALE_BOX_SIZE = 8 / zoom;
+
+
+    // Center of the object in world space
+    const centerX = transform.x;
+    const centerY = transform.y;
+
+    ctx.save();
+    // No need to translate the whole context, we'll draw using world coords.
+
+    // --- Draw based on active tool ---
+    switch (activeTool) {
+        case 'move':
+            ctx.lineWidth = HANDLE_THICKNESS;
+
+            // Y-Axis (Green)
+            ctx.strokeStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
+            ctx.stroke();
+            // Arrow head for Y
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.closePath();
+            ctx.fillStyle = '#00ff00';
+            ctx.fill();
+
+
+            // X-Axis (Red)
+            ctx.strokeStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + GIZMO_SIZE, centerY);
+            ctx.stroke();
+            // Arrow head for X
+            ctx.beginPath();
+            ctx.moveTo(centerX + GIZMO_SIZE, centerY);
+            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY - ARROW_HEAD_SIZE / 2);
+            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY + ARROW_HEAD_SIZE / 2);
+            ctx.closePath();
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+            break;
+
+        case 'rotate':
+            ctx.lineWidth = HANDLE_THICKNESS;
+            ctx.strokeStyle = '#0000ff'; // Blue for rotation
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, ROTATE_RADIUS, 0, 2 * Math.PI);
+            ctx.stroke();
+            break;
+
+        case 'scale':
+             ctx.lineWidth = HANDLE_THICKNESS;
+             ctx.strokeStyle = '#ffffff'; // White for scale handles
+             const halfBox = SCALE_BOX_SIZE / 2;
+             // Draw 4 boxes at the corners relative to the object's center
+             const corners = [
+                 { x: centerX - halfBox, y: centerY - halfBox },
+                 { x: centerX + GIZMO_SIZE - halfBox, y: centerY - halfBox },
+                 { x: centerX - halfBox, y: centerY + GIZMO_SIZE - halfBox },
+                 { x: centerX + GIZMO_SIZE, y: centerY + GIZMO_SIZE }
+             ];
+            // This is a simplified version. A real implementation would rotate with the object.
+            // For now, axis-aligned boxes.
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeRect(centerX - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Center handle
+            ctx.strokeRect(centerX + GIZMO_SIZE - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Right
+            ctx.strokeRect(centerX - halfBox, centerY + GIZMO_SIZE - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Top
+            break;
+    }
+
+    ctx.restore();
 }
 
 
@@ -270,11 +355,45 @@ export function initialize(dependencies) {
     selectMateria = dependencies.selectMateria;
     updateInspector = dependencies.updateInspector;
     Components = dependencies.Components;
-    const updateScene = dependencies.updateScene;
-    const getActiveView = dependencies.getActiveView;
+    updateScene = dependencies.updateScene;
+    getActiveView = dependencies.getActiveView;
 
     // Setup event listeners
+    dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        // --- Panning Logic (Middle or Right-click) ---
+        // This uses a self-contained set of event listeners for the drag operation.
+        if (e.button === 1 || e.button === 2) {
+            e.preventDefault(); // Prevent default middle-click/context-menu actions
+            dom.sceneCanvas.style.cursor = 'grabbing';
+            let lastPos = { x: e.clientX, y: e.clientY };
+
+            const onPanMove = (moveEvent) => {
+                moveEvent.preventDefault();
+                const dx = moveEvent.clientX - lastPos.x;
+                const dy = moveEvent.clientY - lastPos.y;
+
+                if (renderer && renderer.camera) {
+                    renderer.camera.x -= dx / renderer.camera.effectiveZoom;
+                    renderer.camera.y -= dy / renderer.camera.effectiveZoom;
+                }
+                lastPos = { x: moveEvent.clientX, y: moveEvent.clientY };
+            };
+
+            const onPanEnd = (upEvent) => {
+                upEvent.preventDefault();
+                dom.sceneCanvas.style.cursor = 'grab';
+                window.removeEventListener('mousemove', onPanMove);
+                window.removeEventListener('mouseup', onPanEnd);
+            };
+
+            window.addEventListener('mousemove', onPanMove);
+            window.addEventListener('mouseup', onPanEnd);
+            return; // Stop processing to avoid conflicts
+        }
+
+        // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
             const selectedMateria = getSelectedMateria();
             if (selectedMateria && activeTool !== 'pan') {
@@ -292,25 +411,16 @@ export function initialize(dependencies) {
                         dragState.unscaledHeight = (boxCollider ? boxCollider.height : 100);
                     }
                     e.stopPropagation();
-                    return;
                 }
             }
         }
-        if (e.button === 2 || (e.button === 0 && activeTool === 'pan')) {
-            isPanning = true;
-            lastMousePosition = InputManager.getMousePosition();
-            dom.sceneCanvas.style.cursor = 'grabbing';
-        }
     });
 
-    window.addEventListener('mouseup', () => {
+    // This listener only needs to handle the end of a gizmo drag now.
+    window.addEventListener('mouseup', (e) => {
         if (isDragging) {
             isDragging = false;
             dragState = {};
-        }
-        if (isPanning) {
-            isPanning = false;
-            dom.sceneCanvas.style.cursor = 'grab';
         }
     });
 
@@ -330,6 +440,6 @@ export function drawOverlay() {
     if (!renderer) return;
     drawEditorGrid();
     if (getSelectedMateria()) {
-        // drawGizmos(renderer, getSelectedMateria());
+        drawGizmos(renderer, getSelectedMateria());
     }
 }

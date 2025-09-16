@@ -9,6 +9,9 @@
  *   and the right-click context menu.
  */
 
+import { Materia } from '../../engine/Materia.js';
+import { Transform } from '../../engine/Components.js';
+
 // Module-level state and dependencies
 let dom = {};
 let SceneManager = null;
@@ -64,10 +67,8 @@ export function updateHierarchy() {
 
 // --- Hierarchy Creation Functions ---
 function createBaseMateria(name, parent = null) {
-    const Materia = SceneManager.Materia; // Accessing Materia class via SceneManager
-    const Components = SceneManager.Components;
     const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new Transform(newMateria));
 
     if (parent) {
         parent.addChild(newMateria);
@@ -78,14 +79,6 @@ function createBaseMateria(name, parent = null) {
     updateHierarchy();
     selectMateriaCallback(newMateria.id);
     return newMateria;
-}
-
-function createPrimitiveSquare(parent = null) {
-    const Components = SceneManager.Components;
-    const square = createBaseMateria('Cuadrado Primitivo', parent);
-    square.addComponent(new Components.SpriteRenderer(square));
-    square.addComponent(new Components.BoxCollider(square));
-    return square;
 }
 
 
@@ -124,20 +117,15 @@ function setupEventListeners() {
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
         if (data.path && (data.path.endsWith('.png') || data.path.endsWith('.jpg'))) {
-            const Materia = SceneManager.Materia;
-            const Components = SceneManager.Components;
             const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Components.Transform(newMateria));
-            const spriteRenderer = new Components.SpriteRenderer(newMateria);
+            newMateria.addComponent(new Transform(newMateria));
+            // A 'SpriteRenderer' component would be added here, but we are keeping this minimal for now.
+            // The user can add it manually via the inspector.
 
-            spriteRenderer.setSourcePath(data.path);
-            await spriteRenderer.loadSprite(projectsDirHandle);
-
-            newMateria.addComponent(spriteRenderer);
             SceneManager.currentScene.addMateria(newMateria);
             updateHierarchy();
             selectMateriaCallback(newMateria.id);
-            console.log(`Creada nueva Materia '${newMateria.name}' desde el sprite '${data.name}'.`);
+            console.log(`Creada nueva Materia '${newMateria.name}' desde el asset '${data.name}'.`);
         }
     });
 
@@ -189,49 +177,49 @@ function setupEventListeners() {
         } else {
             selectMateriaCallback(null);
         }
-        showContextMenuCallback(dom.hierarchyContextMenu, e);
+        // Look up the menu just-in-time to avoid race conditions on startup
+        const menu = document.getElementById('hierarchy-context-menu');
+        showContextMenuCallback(menu, e);
     });
 
-    dom.hierarchyContextMenu.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
-        if (!action) return;
+    // We need to check if the menu exists before adding a listener to it
+    const hierarchyMenu = document.getElementById('hierarchy-context-menu');
+    if (hierarchyMenu) {
+        hierarchyMenu.addEventListener('click', (e) => {
+            const action = e.target.dataset.action;
+            if (!action) return;
 
-        showContextMenuCallback(null); // Hide menu
-        const selectedMateria = getSelectedMateria();
+            // Pass null to the callback to hide all context menus
+            showContextMenuCallback(null);
 
-        switch (action) {
-            case 'create-empty':
-                createBaseMateria('Materia Vacio', selectedMateria);
-                break;
-            case 'create-primitive-square':
-                createPrimitiveSquare(selectedMateria);
-                break;
-            case 'create-camera': {
-                const Components = SceneManager.Components;
-                createBaseMateria('Cámara', selectedMateria).addComponent(new Components.Camera());
-                break;
+            const selectedMateria = getSelectedMateria();
+
+            switch (action) {
+                case 'create-empty':
+                    createBaseMateria('Materia Vacio', selectedMateria);
+                    break;
+                case 'rename':
+                    if (selectedMateria) {
+                        const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
+                        if (newName && newName.trim() !== '') {
+                            selectedMateria.name = newName.trim();
+                            updateHierarchy();
+                            updateInspector();
+                        }
+                    }
+                    break;
+                case 'delete':
+                    if (selectedMateria) {
+                        if (confirm(`¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`)) {
+                            const idToDelete = selectedMateria.id;
+                            selectMateriaCallback(null); // Deselect first
+                            SceneManager.currentScene.removeMateria(idToDelete);
+                            updateHierarchy();
+                            updateInspector();
+                        }
+                    }
+                    break;
             }
-            case 'rename':
-                if (selectedMateria) {
-                    const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
-                    if (newName && newName.trim() !== '') {
-                        selectedMateria.name = newName.trim();
-                        updateHierarchy();
-                        updateInspector();
-                    }
-                }
-                break;
-            case 'delete':
-                if (selectedMateria) {
-                    if (confirm(`¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`)) {
-                        const idToDelete = selectedMateria.id;
-                        selectMateriaCallback(null); // Deselect first
-                        SceneManager.currentScene.removeMateria(idToDelete);
-                        updateHierarchy();
-                        updateInspector();
-                    }
-                }
-                break;
-        }
-    });
+        });
+    }
 }

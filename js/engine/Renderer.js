@@ -5,8 +5,21 @@ export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.camera = null; // Will be assigned from the scene
         this.isEditor = isEditor;
+
+        // The editor renderer gets its own persistent camera for navigation.
+        // The game renderer will still get its camera from the scene.
+        if (this.isEditor) {
+            this.camera = {
+                x: 0,
+                y: 0,
+                zoom: 1.0,
+                effectiveZoom: 1.0 // Start with a 1:1 zoom
+            };
+        } else {
+            this.camera = null; // Game camera is set per-frame
+        }
+
         this.resize();
     }
 
@@ -22,36 +35,32 @@ export class Renderer {
     beginWorld() {
         this.ctx.save();
 
-        const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
-        let cameraComponent;
-        let cameraTransform;
-
-        if (sceneCameraMateria) {
-            cameraComponent = sceneCameraMateria.getComponent(Camera);
-            cameraTransform = sceneCameraMateria.getComponent(Transform);
+        if (this.isEditor) {
+            // The editor uses its own persistent camera. We just need to update its effectiveZoom.
+            // This is a simple zoom model. A more advanced one might be logarithmic.
+            this.camera.effectiveZoom = this.camera.zoom;
+        } else {
+            // The game view renderer still finds the camera from the scene.
+            const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
+            if (sceneCameraMateria) {
+                const cameraComponent = sceneCameraMateria.getComponent(Camera);
+                const cameraTransform = sceneCameraMateria.getComponent(Transform);
+                this.camera = {
+                    ...cameraComponent,
+                    x: cameraTransform.x,
+                    y: cameraTransform.y,
+                    effectiveZoom: (this.canvas.height / (cameraComponent.orthographicSize * 2))
+                };
+            } else {
+                this.camera = null; // No camera in scene, game view is blank.
+            }
         }
-
-        // The editor renderer creates a default camera if none exists.
-        // The game renderer will have a null camera and won't render.
-        if (!cameraComponent && this.isEditor) {
-            cameraComponent = { orthographicSize: 500, zoom: 1.0 }; // A dummy for default view
-            cameraTransform = { x: 0, y: 0 };
-        }
-
-        this.camera = cameraComponent ? {
-            ...cameraComponent,
-            x: cameraTransform.x,
-            y: cameraTransform.y,
-            // Game view zoom is determined by ortho size, editor can have its own zoom
-            effectiveZoom: this.isEditor ? cameraComponent.zoom : (this.canvas.height / (cameraComponent.orthographicSize * 2))
-        } : null;
 
         if (!this.camera) {
             // If there's no camera, we still need to save the context so end() works
             // but we don't apply any transformations.
             return;
         }
-
 
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);

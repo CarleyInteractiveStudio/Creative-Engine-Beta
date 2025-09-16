@@ -1055,6 +1055,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 dom.loadingOverlay.classList.add('hidden');
                 dom.editorContainer.style.display = 'flex';
+
+                // Force a resize of the renderers now that the canvas is visible
+                if (renderer) renderer.resize();
+                if (gameRenderer) gameRenderer.resize();
             }, 500);
 
         } catch (error) {
