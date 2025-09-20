@@ -24,6 +24,7 @@ import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
+import * as CameraPreviewWindow from './editor/ui/CameraPreviewWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -475,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
+        CameraPreviewWindow.update();
 
         if (isGameRunning) {
         }
@@ -948,6 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ids = [
             'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
+            'camera-preview-btn', 'camera-preview-panel', 'camera-preview-canvas',
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
@@ -1061,6 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
+        CameraPreviewWindow.initialize({ dom, getSelectedMateriaCallback: () => selectedMateria });
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
