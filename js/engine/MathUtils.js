@@ -108,6 +108,39 @@ export function getCameraViewBox(cameraMateria, aspect) {
     return worldCorners;
 }
 
+export function getBoxColliderVertices(materia) {
+    const transform = materia.getComponent(Transform);
+    const collider = materia.getComponent(BoxCollider);
+
+    if (!transform || !collider) {
+        return null;
+    }
+
+    const halfWidth = (collider.width * transform.scale.x) / 2;
+    const halfHeight = (collider.height * transform.scale.y) / 2;
+    const localCorners = [
+        { x: -halfWidth, y: -halfHeight },
+        { x:  halfWidth, y: -halfHeight },
+        { x:  halfWidth, y:  halfHeight },
+        { x: -halfWidth, y:  halfHeight }
+    ];
+
+    const angleRad = transform.rotation * Math.PI / 180;
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+
+    const worldCorners = localCorners.map(corner => {
+        const rotatedX = corner.x * cosA - corner.y * sinA;
+        const rotatedY = corner.x * sinA + corner.y * cosA;
+        return {
+            x: rotatedX + transform.x,
+            y: rotatedY + transform.y
+        };
+    });
+
+    return worldCorners;
+}
+
 // --- Separating Axis Theorem (SAT) ---
 
 /**
@@ -175,4 +208,48 @@ export function checkIntersection(polyA, polyB) {
 
     // If no separating axis was found, the polygons are colliding.
     return true;
+}
+
+/**
+ * Calculates the vertices of a polygon that represents the shadow cast by an object from a light source.
+ * @param {{x: number, y: number}} lightPosition The world position of the light.
+ * @param {Array<{x: number, y: number}>} objectVertices The world-space vertices of the shadow casting object.
+ * @param {number} shadowLength The distance to project the shadow.
+ * @returns {Array<{x: number, y: number}>} The vertices of the shadow polygon.
+ */
+export function calculateShadowPolygon(lightPosition, objectVertices, shadowLength = 1000) {
+    const shadowPoints = [];
+    const angles = [];
+
+    // 1. For each vertex, calculate its angle relative to the light source.
+    for (const vertex of objectVertices) {
+        const angle = Math.atan2(vertex.y - lightPosition.y, vertex.x - lightPosition.x);
+        angles.push({ angle, vertex });
+    }
+
+    // 2. Sort angles to find the two "outer" vertices.
+    angles.sort((a, b) => a.angle - b.angle);
+
+    // 3. The shadow will be cast from the first and last vertex in the sorted list.
+    const firstPoint = angles[0].vertex;
+    const lastPoint = angles[angles.length - 1].vertex;
+
+    // 4. Project these two vertices far away from the light source.
+    const project = (vertex) => {
+        const dx = vertex.x - lightPosition.x;
+        const dy = vertex.y - lightPosition.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist === 0) return { ...vertex };
+        return {
+            x: lightPosition.x + (dx / dist) * shadowLength,
+            y: lightPosition.y + (dy / dist) * shadowLength
+        };
+    };
+
+    const firstProjected = project(firstPoint);
+    const lastProjected = project(lastPoint);
+
+    // 5. The shadow polygon is formed by the two outer vertices and their projections.
+    // The order is important for correct rendering.
+    return [firstPoint, lastPoint, lastProjected, firstProjected];
 }

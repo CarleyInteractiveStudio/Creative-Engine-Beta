@@ -401,9 +401,12 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        const materiasToRender = SceneManager.currentScene.getAllMaterias()
+        const allMaterias = SceneManager.currentScene.getAllMaterias();
+        const materiasToRender = allMaterias
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
+
+        const lights = allMaterias.filter(m => m.getComponent(Components.Light));
 
         const drawObjects = (ctx, cameraForCulling) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
@@ -454,15 +457,31 @@ document.addEventListener('DOMContentLoaded', () => {
             cameras.forEach(cameraMateria => {
                 rendererInstance.beginWorld(cameraMateria);
                 drawObjects(rendererInstance.ctx, cameraMateria);
-                rendererInstance.end();
+                rendererInstance.end(); // Finish drawing the main pass
+
+                // Now, apply lighting on top
+                const cameraComponent = cameraMateria.getComponent(Components.Camera);
+                const transform = cameraMateria.getComponent(Components.Transform);
+                let activeCamera = null;
+                if(cameraComponent && transform) {
+                    const effectiveZoom = rendererInstance.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
+                    activeCamera = { x: transform.x, y: transform.y, effectiveZoom: effectiveZoom };
+                }
+
+                rendererInstance.drawLights(lights, allMaterias, activeCamera);
+                rendererInstance.applyLighting(currentProjectConfig);
             });
 
         } else { // Editor Scene View
-            rendererInstance.beginWorld(); // Use internal editor camera
-            // Culling is disabled in editor view to see all objects
+            rendererInstance.beginWorld();
             drawObjects(rendererInstance.ctx, null);
-            SceneView.drawOverlay(); // Draw grid and gizmos on top
-            rendererInstance.end();
+            // Draw gizmos BEFORE lighting is applied
+            SceneView.drawOverlay();
+            rendererInstance.end(); // Finish the main drawing pass
+
+            // Now, apply lighting as a final overlay
+            rendererInstance.drawLights(lights, allMaterias, rendererInstance.camera);
+            rendererInstance.applyLighting(currentProjectConfig);
         }
     }
 

@@ -22,6 +22,9 @@ async function saveProjectConfig(showAlert = true) {
 
     // Gather data from UI if the modal is open
     if (dom.projectSettingsModal.classList.contains('is-open')) {
+        currentProjectConfig.graphics = currentProjectConfig.graphics || {};
+        currentProjectConfig.graphics.shadowQuality = document.getElementById('settings-shadow-quality').value;
+
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
@@ -307,6 +310,11 @@ function setupEventListeners() {
 export function populateUI(config) {
     currentProjectConfig = config;
 
+    // Set default for new graphics settings if not present
+    if (!currentProjectConfig.graphics) {
+        currentProjectConfig.graphics = { shadowQuality: 'hard' };
+    }
+
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
@@ -326,4 +334,9 @@ export function populateUI(config) {
     }
 
     populateTagsAndLayers();
+
+    const shadowQualitySelect = document.getElementById('settings-shadow-quality');
+    if (shadowQualitySelect) {
+        shadowQualitySelect.value = currentProjectConfig.graphics.shadowQuality || 'hard';
+    }
 }

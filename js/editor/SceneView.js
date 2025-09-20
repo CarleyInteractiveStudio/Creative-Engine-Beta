@@ -48,6 +48,26 @@ function checkGizmoHit(canvasPos) {
         return Math.abs(worldMouse.x - targetX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - targetY) < handleHitboxSize / 2;
     };
 
+    const selectedLight = selectedMateria.getComponent(Components.Light);
+    if (selectedLight && selectedLight.type === 'Area' && selectedLight.shape === 'Custom') {
+        const lightTransform = selectedMateria.getComponent(Components.Transform);
+        const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+        const handleHitboxSize = 12 / zoom;
+        const size = selectedLight.range || 1;
+
+        for (let i = 0; i < selectedLight.vertices.length; i++) {
+            const vert = selectedLight.vertices[i];
+            // Vertex position in world space
+            const worldVertX = lightTransform.x + vert.x * size;
+            const worldVertY = lightTransform.y + vert.y * size;
+
+            if (Math.abs(worldMouse.x - worldVertX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - worldVertY) < handleHitboxSize / 2) {
+                return `light-vertex-${i}`;
+            }
+        }
+    }
+
+
     switch (activeTool) {
         case 'move':
             // Central square hit detection
@@ -106,6 +126,19 @@ function handleGizmoDrag() {
     const currentMousePos = InputManager.getMousePosition();
     const dx = (currentMousePos.x - lastMousePosition.x) / renderer.camera.effectiveZoom;
     const dy = (currentMousePos.y - lastMousePosition.y) / renderer.camera.effectiveZoom;
+
+    if (dragState.handle.startsWith('light-vertex-')) {
+        const light = dragState.materia.getComponent(Components.Light);
+        if (light) {
+            const index = parseInt(dragState.handle.split('-')[2], 10);
+            const size = light.range || 1;
+            if (light.vertices[index]) {
+                // We divide by size to keep the vertex position relative/normalized
+                light.vertices[index].x += dx / size;
+                light.vertices[index].y += dy / size;
+            }
+        }
+    }
 
     switch (dragState.handle) {
         case 'move-x':
@@ -523,6 +556,87 @@ function drawCameraGizmos(renderer) {
     });
 }
 
+function drawLightGizmos(renderer) {
+    if (!SceneManager || !renderer) return;
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
+
+    const { ctx } = renderer;
+    const allLights = scene.getAllMaterias().filter(m => m.getComponent(Components.Light));
+
+    allLights.forEach(materia => {
+        const light = materia.getComponent(Components.Light);
+        const transform = materia.getComponent(Components.Transform);
+        if (!light || !transform) return;
+
+        ctx.save();
+        ctx.strokeStyle = light.color || '#ffff00';
+        ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
+
+        switch (light.type) {
+            case 'Point':
+                // Draw a circle for the range
+                ctx.beginPath();
+                ctx.arc(transform.x, transform.y, light.range, 0, Math.PI * 2);
+                ctx.stroke();
+                // Draw icon
+                ctx.font = `${24 / renderer.camera.effectiveZoom}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💡', transform.x, transform.y);
+                break;
+            case 'Directional':
+                // Draw a sun icon and arrows
+                ctx.font = `${24 / renderer.camera.effectiveZoom}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('☀️', transform.x, transform.y);
+                for (let i = 0; i < 4; i++) {
+                    ctx.save();
+                    ctx.translate(transform.x, transform.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.translate(30 / renderer.camera.effectiveZoom * (i+1), 0);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-10 / renderer.camera.effectiveZoom, 0);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                break;
+            case 'Area':
+                const size = light.range || 1;
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.rotate(transform.rotation * Math.PI / 180);
+
+                ctx.beginPath();
+                if (light.shape === 'Box') {
+                    ctx.rect(-size / 2, -size / 2, size, size);
+                } else if (light.shape === 'Circle') {
+                    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+                } else if (light.shape === 'Custom' && light.vertices && light.vertices.length > 0) {
+                    const verts = light.vertices;
+                    ctx.moveTo(verts[0].x * size, verts[0].y * size);
+                    for (let i = 1; i < verts.length; i++) {
+                        ctx.lineTo(verts[i].x * size, verts[i].y * size);
+                    }
+                    ctx.closePath();
+
+                    // Draw handles for custom shape
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+                    const handleSize = 8 / renderer.camera.effectiveZoom;
+                    for (let i = 0; i < verts.length; i++) {
+                        ctx.fillRect(verts[i].x * size - handleSize / 2, verts[i].y * size - handleSize / 2, handleSize, handleSize);
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+                break;
+        }
+        ctx.restore();
+    });
+}
+
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
@@ -535,4 +649,7 @@ export function drawOverlay() {
 
     // Draw gizmos for all cameras in the scene
     drawCameraGizmos(renderer);
+
+    // Draw gizmos for all lights in the scene
+    drawLightGizmos(renderer);
 }
