@@ -28,43 +28,66 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
     }
 
-    clear() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    clear(cameraComponent) {
+        if (cameraComponent && cameraComponent.clearFlags === 'DontClear') {
+            return; // Do nothing
+        }
+        if (cameraComponent && cameraComponent.clearFlags === 'SolidColor') {
+            this.ctx.fillStyle = cameraComponent.backgroundColor;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        } else {
+            // Default clear for skybox (not implemented) or no camera
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     }
 
-    beginWorld() {
+    beginWorld(cameraMateria = null) {
         this.ctx.save();
 
-        if (this.isEditor) {
-            // The editor uses its own persistent camera. We just need to update its effectiveZoom.
-            // This is a simple zoom model. A more advanced one might be logarithmic.
-            this.camera.effectiveZoom = this.camera.zoom;
-        } else {
-            // The game view renderer still finds the camera from the scene.
-            const sceneCameraMateria = SceneManager.currentScene.findFirstCamera();
-            if (sceneCameraMateria) {
-                const cameraComponent = sceneCameraMateria.getComponent(Camera);
-                const cameraTransform = sceneCameraMateria.getComponent(Transform);
-                this.camera = {
-                    ...cameraComponent,
-                    x: cameraTransform.x,
-                    y: cameraTransform.y,
-                    effectiveZoom: (this.canvas.height / (cameraComponent.orthographicSize * 2))
-                };
-            } else {
-                this.camera = null; // No camera in scene, game view is blank.
-            }
-        }
+        let activeCamera, transform;
 
-        if (!this.camera) {
-            // If there's no camera, we still need to save the context so end() works
-            // but we don't apply any transformations.
+        if (cameraMateria) { // Game view rendering with a specific scene camera
+            const cameraComponent = cameraMateria.getComponent(Camera);
+            const cameraTransform = cameraMateria.getComponent(Transform);
+
+            this.clear(cameraComponent); // Clear based on this camera's flags
+
+            let effectiveZoom = 1.0;
+            if (cameraComponent.projection === 'Orthographic') {
+                effectiveZoom = this.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
+            } else { // Perspective
+                effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
+            }
+
+            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom };
+            transform = cameraTransform;
+
+        } else if (this.isEditor) { // Editor view rendering with its own navigation camera
+            this.clear(null); // Always do a default clear for editor background
+            this.camera.effectiveZoom = this.camera.zoom;
+            activeCamera = this.camera;
+            transform = { rotation: 0 }; // Editor camera doesn't rotate
+        } else {
+            // Fallback for game view with no camera found - clear and do nothing.
+            this.clear(null);
+            this.ctx.restore(); // balance the save()
             return;
         }
 
+        if (!activeCamera) {
+            this.ctx.restore();
+            return;
+        }
+
+        // Apply transformations
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
-        this.ctx.scale(this.camera.effectiveZoom, this.camera.effectiveZoom);
-        this.ctx.translate(-this.camera.x, -this.camera.y);
+        this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
+
+        const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
+        this.ctx.rotate(-rotationInRadians); // Negative to rotate the world opposite to camera
+
+        this.ctx.translate(-activeCamera.x, -activeCamera.y);
+
     }
 
     beginUI() {

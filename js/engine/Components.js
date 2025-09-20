@@ -7,17 +7,58 @@ import { getURLForAssetPath } from './AssetUtils.js';
 
 // --- Component Class Definitions ---
 
-export class Transform extends Leyes { constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; } }
+export class Transform extends Leyes {
+    constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; }
+    clone() {
+        const newTransform = new Transform(null);
+        newTransform.x = this.x;
+        newTransform.y = this.y;
+        newTransform.rotation = this.rotation;
+        newTransform.scale = { ...this.scale };
+        return newTransform;
+    }
+}
 
 export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
-        this.orthographicSize = 500; // Represents half of the vertical viewing volume height.
+        this.depth = 0; // Rendering order. Higher is drawn on top.
+        this.projection = 'Perspective'; // 'Perspective' or 'Orthographic'
+        this.fov = 60; // Field of View for Perspective
+        this.orthographicSize = 5; // Size for Orthographic
+        this.nearClipPlane = 0.1;
+        this.farClipPlane = 1000;
+        this.clearFlags = 'SolidColor'; // 'SolidColor', 'Skybox', or 'DontClear'
+        this.backgroundColor = '#1e293b'; // Default solid color
+        this.cullingMask = -1; // Bitmask, -1 means 'Everything'
         this.zoom = 1.0; // Editor-only zoom, not part of the component's data.
+    }
+    clone() {
+        const newCamera = new Camera(null);
+        newCamera.depth = this.depth;
+        newCamera.projection = this.projection;
+        newCamera.fov = this.fov;
+        newCamera.orthographicSize = this.orthographicSize;
+        newCamera.nearClipPlane = this.nearClipPlane;
+        newCamera.farClipPlane = this.farClipPlane;
+        newCamera.clearFlags = this.clearFlags;
+        newCamera.backgroundColor = this.backgroundColor;
+        newCamera.cullingMask = this.cullingMask;
+        return newCamera;
     }
 }
 
-export class CreativeScript extends Leyes { constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; } parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } } async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } } }
+export class CreativeScript extends Leyes {
+    constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; }
+    parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } }
+    async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } }
+    clone() {
+        const newScript = new CreativeScript(null, this.scriptName);
+        // Deep copy public var references
+        newScript.publicVarReferences = JSON.parse(JSON.stringify(this.publicVarReferences));
+        return newScript;
+    }
+}
 
 export class Rigidbody extends Leyes {
     constructor(materia) {
@@ -26,6 +67,13 @@ export class Rigidbody extends Leyes {
         this.mass = 1.0;
         this.velocity = { x: 0, y: 0 };
     }
+    clone() {
+        const newRigidbody = new Rigidbody(null);
+        newRigidbody.bodyType = this.bodyType;
+        newRigidbody.mass = this.mass;
+        newRigidbody.velocity = { ...this.velocity };
+        return newRigidbody;
+    }
 }
 
 export class BoxCollider extends Leyes {
@@ -33,6 +81,12 @@ export class BoxCollider extends Leyes {
         super(materia);
         this.width = 1.0;
         this.height = 1.0;
+    }
+    clone() {
+        const newBoxCollider = new BoxCollider(null);
+        newBoxCollider.width = this.width;
+        newBoxCollider.height = this.height;
+        return newBoxCollider;
     }
 }
 
@@ -68,6 +122,13 @@ export class SpriteRenderer extends Leyes {
                 resolve(); // Resolve immediately if there's no source
             }
         });
+    }
+    clone() {
+        const newRenderer = new SpriteRenderer(null);
+        newRenderer.source = this.source;
+        newRenderer.color = this.color;
+        // The sprite will be loaded automatically when added to a materia in the scene
+        return newRenderer;
     }
 }
 
@@ -160,6 +221,13 @@ export class Animator extends Leyes {
             this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
         }
     }
+    clone() {
+        const newAnimator = new Animator(null);
+        newAnimator.controllerPath = this.controllerPath;
+        // Parameters could be deep copied if they are simple JSON objects
+        newAnimator.parameters = new Map(JSON.parse(JSON.stringify(Array.from(this.parameters))));
+        return newAnimator;
+    }
 }
 
 export class RectTransform extends Leyes {
@@ -199,12 +267,28 @@ export class RectTransform extends Leyes {
             height: this.height
         };
     }
+    clone() {
+        const newRectTransform = new RectTransform(null);
+        newRectTransform.x = this.x;
+        newRectTransform.y = this.y;
+        newRectTransform.width = this.width;
+        newRectTransform.height = this.height;
+        newRectTransform.pivot = { ...this.pivot };
+        newRectTransform.anchorMin = { ...this.anchorMin };
+        newRectTransform.anchorMax = { ...this.anchorMax };
+        return newRectTransform;
+    }
 }
 
 export class UICanvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'ScreenSpaceOverlay';
+    }
+    clone() {
+        const newCanvas = new UICanvas(null);
+        newCanvas.renderMode = this.renderMode;
+        return newCanvas;
     }
 }
 
@@ -225,6 +309,12 @@ export class UIImage extends Leyes {
         } else {
             this.sprite.src = '';
         }
+    }
+    clone() {
+        const newImage = new UIImage(null);
+        newImage.source = this.source;
+        newImage.color = this.color;
+        return newImage;
     }
 }
 
