@@ -103,7 +103,6 @@
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
                                 </div>
                             </div>
-                            <button id="camera-preview-btn" class="toolbar-btn" title="Vista Previa de Cámara" style="display: none;">📷</button>
                         </div>
                         <div class="view-toggle">
                             <button class="view-toggle-btn active" data-view="scene-content">Escena</button>
@@ -120,23 +119,7 @@
                 <div class="panel-content-container">
                     <div id="scene-content" class="panel-content view-content active">
                         <canvas id="scene-canvas"></canvas>
-                        <div id="camera-preview-panel" class="editor-panel floating-panel in-scene hidden">
-                            <div class="panel-header">
-                                <span>Vista de Juego</span>
-                                <button class="close-panel-btn" data-panel="camera-preview-panel">&times;</button>
-                            </div>
-                            <div class="panel-content no-padding">
-                                <canvas id="camera-preview-canvas"></canvas>
-                            </div>
-                            <div class="resize-handle" data-direction="n"></div>
-                            <div class="resize-handle" data-direction="ne"></div>
-                            <div class="resize-handle" data-direction="e"></div>
-                            <div class="resize-handle" data-direction="se"></div>
-                            <div class="resize-handle" data-direction="s"></div>
-                            <div class="resize-handle" data-direction="sw"></div>
-                            <div class="resize-handle" data-direction="w"></div>
-                            <div class="resize-handle" data-direction="nw"></div>
-                        </div>
+                        <canvas id="gizmo-canvas"></canvas>
                     </div>
                     <div id="game-content" class="panel-content view-content">
                         <canvas id="game-canvas"></canvas>
@@ -360,6 +343,12 @@
                     <li data-action="create-camera">Cámara</li>
                 </ul>
             </li>
+            <li class="has-submenu">
+                Luz <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-light">Luz</li>
+                </ul>
+            </li>
             <hr>
             <li data-action="rename">Renombrar</li>
             <li data-action="duplicate">Duplicar</li>
@@ -418,6 +407,15 @@
                         <input type="checkbox" id="settings-show-engine-logo" checked>
                         <label for="settings-show-engine-logo">Mostrar logo de Creative Engine</label>
                     </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Gráficos</legend>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-enable-shadows">
+                        <label for="settings-enable-shadows">Activar Sombras Dinámicas</label>
+                    </div>
+                    <p class="field-description">Activa o desactiva el renderizado de sombras en todo el proyecto. Puede impactar el rendimiento.</p>
                 </fieldset>
 
                 <fieldset class="settings-section">

@@ -24,7 +24,6 @@ import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
-import * as CameraPreviewWindow from './editor/ui/CameraPreviewWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -214,6 +213,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig.tags = ['Untagged'];
         }
 
+        // Ensure graphics config exists
+        if (!currentProjectConfig.graphics) {
+            currentProjectConfig.graphics = { enableShadows: false };
+        }
+
         // The UI population is now handled by the module
         populateProjectSettingsUI(currentProjectConfig, projectsDirHandle);
     };
@@ -314,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    openSpriteSelector = async function(componentName) {
+    openSpriteSelector = async function(componentName, isNormalMap = false) {
         const grid = dom.spriteSelectorGrid;
         grid.innerHTML = '';
         dom.spriteSelectorModal.classList.add('is-open');
@@ -345,8 +349,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const component = selectedMateria.getComponent(ComponentClass);
                     if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
+                        if (isNormalMap) {
+                            component.setNormalMapSourcePath(imgPath);
+                            await component.loadNormalMap(projectsDirHandle);
+                        } else {
+                            component.setSourcePath(imgPath);
+                            await component.loadSprite(projectsDirHandle);
+                        }
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -400,70 +409,41 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     updateScene = function(rendererInstance, isGameView) {
-        if (!rendererInstance || !SceneManager.currentScene) return;
+        if (!rendererInstance || !rendererInstance.gl || !SceneManager.currentScene) return;
 
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
-            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
-
-        const drawObjects = (ctx, cameraForCulling) => {
-            const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
-
-            for (const materia of materiasToRender) {
-                if (!materia.isActive) continue;
-
-                // --- Culling Checks ---
-                if (cameraForCulling) {
-                    // 1. Frustum Culling
-                    const objectBounds = MathUtils.getOOB(materia);
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) {
-                        continue; // Skip rendering if not in view
-                    }
-                    // 2. Culling Mask (Layer-based)
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) {
-                        continue; // Skip rendering if layer is masked off
-                    }
-                }
-
-                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-                const transform = materia.getComponent(Components.Transform);
-                if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                    const img = spriteRenderer.sprite;
-                    const width = img.naturalWidth * transform.scale.x;
-                    const height = img.naturalHeight * transform.scale.y;
-                    ctx.save();
-                    ctx.translate(transform.x, transform.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.drawImage(img, -width / 2, -height / 2, width, height);
-                    ctx.restore();
-                }
-            }
-        };
-
-        if (isGameView) {
-            const cameras = SceneManager.currentScene.findAllCameras()
-                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
-
-            if (cameras.length === 0) {
-                rendererInstance.clear();
-                return;
-            }
-
-            cameras.forEach(cameraMateria => {
-                rendererInstance.beginWorld(cameraMateria);
-                drawObjects(rendererInstance.ctx, cameraMateria);
-                rendererInstance.end();
+            .sort((a, b) => {
+                const transformA = a.getComponent(Components.Transform);
+                const transformB = b.getComponent(Components.Transform);
+                return (transformA.z || 0) - (transformB.z || 0);
             });
 
+        if (isGameView) {
+            const cameras = SceneManager.currentScene.findAllCameras().sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
+            if (cameras.length === 0) {
+                rendererInstance.clear(null);
+                return;
+            }
+            const mainCamera = cameras[0];
+            rendererInstance.beginWorld(mainCamera);
         } else { // Editor Scene View
-            rendererInstance.beginWorld(); // Use internal editor camera
-            // Culling is disabled in editor view to see all objects
-            drawObjects(rendererInstance.ctx, null);
-            SceneView.drawOverlay(); // Draw grid and gizmos on top
-            rendererInstance.end();
+            rendererInstance.beginWorld(null);
+        }
+
+        for (const materia of materiasToRender) {
+            if (!materia.isActive) continue;
+            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+            const transform = materia.getComponent(Components.Transform);
+            if (spriteRenderer && spriteRenderer.sprite) {
+                rendererInstance.drawSprite(spriteRenderer.sprite, transform);
+            }
+        }
+
+        if (!isGameView) {
+            const gizmoCtx = dom.gizmoCanvas.getContext('2d');
+            gizmoCtx.clearRect(0, 0, dom.gizmoCanvas.width, dom.gizmoCanvas.height);
+            SceneView.drawOverlay(gizmoCtx, rendererInstance.camera);
         }
     }
 
@@ -476,7 +456,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
-        CameraPreviewWindow.update();
 
         if (isGameRunning) {
         }
@@ -712,6 +691,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('resize', () => {
             if (renderer) renderer.resize();
             if (gameRenderer) gameRenderer.resize();
+            if (dom.gizmoCanvas) {
+                dom.gizmoCanvas.width = dom.gizmoCanvas.clientWidth;
+                dom.gizmoCanvas.height = dom.gizmoCanvas.clientHeight;
+            }
         });
 
         // Scene/Game/Code View Toggle Logic
@@ -967,7 +950,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename',
             'ks-storepass', 'ks-command-output', 'ks-command-textarea', 'ks-generate-btn', 'settings-sorting-layer-list',
             'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
-            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
+            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list',
+            'settings-enable-shadows', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-reset-layout-btn', 'toolbar-music-btn', 'music-player-panel',
@@ -978,8 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
             'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
-            // Camera Preview IDs
-            'camera-preview-btn', 'camera-preview-panel', 'camera-preview-canvas', 'camera-preview-title', 'camera-preview-selector',
+            'gizmo-canvas',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
@@ -1067,8 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
-        CameraPreviewWindow.initialize({ dom });
+            const gizmoCtx = dom.gizmoCanvas.getContext('2d');
+            SceneView.initialize({ dom, gizmoContext: gizmoCtx, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);

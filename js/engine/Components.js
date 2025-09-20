@@ -8,11 +8,12 @@ import { getURLForAssetPath } from './AssetUtils.js';
 // --- Component Class Definitions ---
 
 export class Transform extends Leyes {
-    constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; }
+    constructor(materia) { super(materia); this.x = 0; this.y = 0; this.z = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; }
     clone() {
         const newTransform = new Transform(null);
         newTransform.x = this.x;
         newTransform.y = this.y;
+        newTransform.z = this.z;
         newTransform.rotation = this.rotation;
         newTransform.scale = { ...this.scale };
         return newTransform;
@@ -95,11 +96,17 @@ export class SpriteRenderer extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.source = ''; // Path to the image, relative to project root
+        this.normalMap = new Image();
+        this.normalMapSource = '';
         this.color = '#ffffff'; // Tint color
     }
 
     setSourcePath(path) {
         this.source = path;
+    }
+
+    setNormalMapSourcePath(path) {
+        this.normalMapSource = path;
     }
 
     async loadSprite(projectsDirHandle) {
@@ -123,9 +130,30 @@ export class SpriteRenderer extends Leyes {
             }
         });
     }
+
+    async loadNormalMap(projectsDirHandle) {
+        return new Promise(async (resolve, reject) => {
+            if (this.normalMapSource) {
+                const url = await getURLForAssetPath(this.normalMapSource, projectsDirHandle);
+                if (url) {
+                    this.normalMap.onload = () => resolve();
+                    this.normalMap.onerror = () => reject(new Error(`Failed to load normal map at: ${this.normalMapSource}`));
+                    this.normalMap.src = url;
+                } else {
+                    this.normalMap.src = '';
+                    resolve();
+                }
+            } else {
+                this.normalMap.src = '';
+                resolve();
+            }
+        });
+    }
+
     clone() {
         const newRenderer = new SpriteRenderer(null);
         newRenderer.source = this.source;
+        newRenderer.normalMapSource = this.normalMapSource;
         newRenderer.color = this.color;
         // The sprite will be loaded automatically when added to a materia in the scene
         return newRenderer;
@@ -318,6 +346,32 @@ export class UIImage extends Leyes {
     }
 }
 
+export class Light extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.type = 'Point'; // Point, Directional, Polygon
+        this.color = '#ffffff';
+        this.intensity = 1.0;
+        this.range = 10.0;
+        this.direction = 0; // Angle in degrees for Directional light
+        this.angle = 45; // Cone angle for Spot light
+        this.shadowType = 'Hard'; // Hard, Soft, None
+        this.vertices = []; // For Polygon light
+    }
+    clone() {
+        const newLight = new Light(null);
+        newLight.type = this.type;
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        newLight.range = this.range;
+        newLight.direction = this.direction;
+        newLight.angle = this.angle;
+        newLight.shadowType = this.shadowType;
+        newLight.vertices = JSON.parse(JSON.stringify(this.vertices)); // Deep copy
+        return newLight;
+    }
+}
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -326,6 +380,7 @@ registerComponent('BoxCollider', BoxCollider);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
+registerComponent('Light', Light);
 registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);

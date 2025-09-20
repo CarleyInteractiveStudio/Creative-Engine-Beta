@@ -94,6 +94,22 @@ function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
+function createLightObject(parent = null) {
+    const newMateria = new Materia('Luz');
+    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new Components.Light(newMateria));
+
+    if (parent) {
+        parent.addChild(newMateria);
+    } else {
+        SceneManager.currentScene.addMateria(newMateria);
+    }
+
+    updateHierarchy();
+    selectMateriaCallback(newMateria.id);
+    return newMateria;
+}
+
 function createCameraObject(parent = null) {
     const newMateria = new Materia('Cámara');
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -291,6 +307,9 @@ function setupEventListeners() {
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);
+                    break;
+                case 'create-light':
+                    createLightObject(selectedMateria);
                     break;
                 case 'rename':
                     if (selectedMateria) {

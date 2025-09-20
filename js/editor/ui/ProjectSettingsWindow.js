@@ -48,6 +48,10 @@ async function saveProjectConfig(showAlert = true) {
         const newLayers = Array.from(layerInputs).map(input => input.value);
         // We only update sorting layers for now as it's the main one used for rendering logic
         currentProjectConfig.layers.sortingLayers = newLayers;
+
+        // Save Graphics Settings
+        if (!currentProjectConfig.graphics) currentProjectConfig.graphics = {};
+        currentProjectConfig.graphics.enableShadows = dom.settingsEnableShadows.checked;
     }
 
     try {
@@ -326,4 +330,8 @@ export function populateUI(config) {
     }
 
     populateTagsAndLayers();
+
+    if (dom.settingsEnableShadows && currentProjectConfig.graphics) {
+        dom.settingsEnableShadows.checked = currentProjectConfig.graphics.enableShadows;
+    }
 }

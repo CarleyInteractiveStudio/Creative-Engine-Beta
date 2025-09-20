@@ -19,6 +19,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
+    'Iluminación': [Components.Light],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody, Components.BoxCollider],
@@ -128,8 +129,9 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
+        const isNormalMap = e.target.dataset.normal === 'true';
         if (componentName && openSpriteSelectorCallback) {
-            openSpriteSelectorCallback(componentName);
+            openSpriteSelectorCallback(componentName, isNormalMap);
         }
     }
 
@@ -294,7 +296,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', Light: '💡'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -359,9 +361,11 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            const normalMapPreviewImg = ley.normalMap.src ? `<img src="${ley.normalMap.src}" alt="Normal Map Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
              <div class="component-content">
                 <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Normal Map</label><div class="sprite-dropper"><div class="sprite-preview">${normalMapPreviewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer" data-normal="true">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}"></div>
             </div>`;
         }
@@ -369,6 +373,41 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
+        else if (ley instanceof Components.Light) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Light</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Type</label>
+                        <select class="prop-input inspector-re-render" data-component="Light" data-prop="type">
+                            <option value="Point" ${ley.type === 'Point' ? 'selected' : ''}>Point</option>
+                            <option value="Directional" ${ley.type === 'Directional' ? 'selected' : ''}>Directional</option>
+                            <option value="Polygon" ${ley.type === 'Polygon' ? 'selected' : ''}>Polygon</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="Light" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="Light" data-prop="intensity" value="${ley.intensity}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Range</label>
+                        <input type="number" class="prop-input" step="0.5" data-component="Light" data-prop="range" value="${ley.range}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Shadows</label>
+                        <select class="prop-input" data-component="Light" data-prop="shadowType">
+                            <option value="None" ${ley.shadowType === 'None' ? 'selected' : ''}>None</option>
+                            <option value="Hard" ${ley.shadowType === 'Hard' ? 'selected' : ''}>Hard</option>
+                            <option value="Soft" ${ley.shadowType === 'Soft' ? 'selected' : ''}>Soft</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
         } else if (ley instanceof Components.Camera) {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';
