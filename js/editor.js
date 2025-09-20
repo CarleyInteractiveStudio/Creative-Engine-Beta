@@ -950,7 +950,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const ids = [
             'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
-            'camera-preview-btn', 'camera-preview-panel', 'camera-preview-canvas',
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
@@ -979,13 +978,18 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
             'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
+            // Camera Preview IDs
+            'camera-preview-btn', 'camera-preview-panel', 'camera-preview-canvas', 'camera-preview-title', 'camera-preview-selector',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
         ];
         ids.forEach(id => {
-            const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
-            dom[camelCaseId] = document.getElementById(id);
+            const element = document.getElementById(id);
+            if (element) {
+                const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+                dom[camelCaseId] = element;
+            }
         });
         dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
         dom.sceneCanvas = document.getElementById('scene-canvas');
@@ -1064,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
-        CameraPreviewWindow.initialize({ dom, getSelectedMateriaCallback: () => selectedMateria });
+        CameraPreviewWindow.initialize({ dom });
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);

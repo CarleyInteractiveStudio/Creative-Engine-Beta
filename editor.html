@@ -103,7 +103,7 @@
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
                                 </div>
                             </div>
-                            <button id="camera-preview-btn" class="toolbar-btn" title="Vista Previa de Cámara">📷</button>
+                            <button id="camera-preview-btn" class="toolbar-btn" title="Vista Previa de Cámara" style="display: none;">📷</button>
                         </div>
                         <div class="view-toggle">
                             <button class="view-toggle-btn active" data-view="scene-content">Escena</button>
@@ -638,8 +638,11 @@
 
     <div id="camera-preview-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
-            <span>Vista Previa de Cámara</span>
-            <button class="close-panel-btn" data-panel="camera-preview-panel">&times;</button>
+            <span id="camera-preview-title">Vista Previa</span>
+            <div class="panel-header-controls">
+                <select id="camera-preview-selector" style="display: none;"></select>
+                <button class="close-panel-btn" data-panel="camera-preview-panel">&times;</button>
+            </div>
         </div>
         <div class="panel-content no-padding">
             <canvas id="camera-preview-canvas"></canvas>

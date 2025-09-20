@@ -4,18 +4,24 @@ import * as SceneManager from '../../engine/SceneManager.js';
 import * as MathUtils from '../../engine/MathUtils.js';
 
 let dom;
-let getSelectedMateria;
 let previewRenderer;
-let isVisible = false;
+let isPanelVisible = false;
+let sceneCameras = [];
+let activePreviewCameraId = null;
+let lastKnownCameraIds = '';
 
+// --- Core Rendering Logic ---
 function renderPreview() {
-    if (!isVisible || !previewRenderer) return;
+    if (!isPanelVisible || !previewRenderer) return;
 
-    const selected = getSelectedMateria();
-    const cameraMateria = selected && selected.hasComponent(Components.Camera) ? selected : null;
+    if (!activePreviewCameraId) {
+        clearPreview('No hay cámaras disponibles');
+        return;
+    }
+
+    const cameraMateria = SceneManager.currentScene.findMateriaById(activePreviewCameraId);
 
     if (cameraMateria) {
-        // Similar to updateScene in editor.js, but for the preview
         const cameraComponent = cameraMateria.getComponent(Components.Camera);
         previewRenderer.clear(cameraComponent.backgroundColor);
 
@@ -25,20 +31,23 @@ function renderPreview() {
 
         const drawObjects = (ctx, cameraForCulling) => {
             const aspect = previewRenderer.canvas.width / previewRenderer.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
+            const cameraViewBox = MathUtils.getCameraViewBox(cameraForCulling, aspect);
 
             for (const materia of materiasToRender) {
                 if (!materia.isActive) continue;
-                if (cameraForCulling) {
+
+                if(cameraForCulling) {
                     const objectBounds = MathUtils.getOOB(materia);
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) {
                         continue;
                     }
+
                     const objectLayerBit = 1 << materia.layer;
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) {
                         continue;
                     }
                 }
+
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const transform = materia.getComponent(Components.Transform);
                 if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
@@ -57,53 +66,103 @@ function renderPreview() {
         previewRenderer.beginWorld(cameraMateria);
         drawObjects(previewRenderer.ctx, cameraMateria);
         previewRenderer.end();
-
     } else {
-        // Display "No camera selected" message
-        previewRenderer.clear('#222');
-        const ctx = previewRenderer.ctx;
-        ctx.save();
-        ctx.fillStyle = '#888';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '16px Arial';
-        ctx.fillText('Ninguna cámara seleccionada', previewRenderer.canvas.width / 2, previewRenderer.canvas.height / 2);
-        ctx.restore();
+        clearPreview('Cámara no encontrada');
+        activePreviewCameraId = null; // The camera was likely deleted
     }
 }
 
+function clearPreview(message) {
+    if (!previewRenderer) return;
+    previewRenderer.clear('#222');
+    const ctx = previewRenderer.ctx;
+    ctx.save();
+    ctx.fillStyle = '#888';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '14px Arial';
+    ctx.fillText(message, previewRenderer.canvas.width / 2, previewRenderer.canvas.height / 2);
+    ctx.restore();
+}
+
+// --- UI and State Management ---
+function updateCameraList() {
+    if (!SceneManager.currentScene) return;
+    sceneCameras = SceneManager.currentScene.findAllCameras();
+
+    const currentCameraIds = sceneCameras.map(c => c.id).join(',');
+    if (currentCameraIds === lastKnownCameraIds) {
+        return;
+    }
+    lastKnownCameraIds = currentCameraIds;
+
+    dom.cameraPreviewSelector.innerHTML = '';
+
+    if (sceneCameras.length > 0) {
+        dom.cameraPreviewBtn.style.display = 'block';
+        dom.cameraPreviewSelector.style.display = 'block';
+
+        sceneCameras.forEach(camMateria => {
+            const option = document.createElement('option');
+            option.value = camMateria.id;
+            option.textContent = camMateria.name || `Cámara (ID: ${camMateria.id})`;
+            dom.cameraPreviewSelector.appendChild(option);
+        });
+
+        const activeIdExists = sceneCameras.some(c => c.id === activePreviewCameraId);
+        if (!activeIdExists) {
+            activePreviewCameraId = sceneCameras[0].id;
+        }
+
+        dom.cameraPreviewSelector.value = activePreviewCameraId;
+
+    } else {
+        dom.cameraPreviewBtn.style.display = 'none';
+        dom.cameraPreviewSelector.style.display = 'none';
+        activePreviewCameraId = null;
+        if (isPanelVisible) {
+            isPanelVisible = false;
+            dom.cameraPreviewPanel.classList.add('hidden');
+        }
+    }
+}
+
+
+// --- Public API ---
 export function initialize(dependencies) {
     dom = dependencies.dom;
-    getSelectedMateria = dependencies.getSelectedMateriaCallback;
 
     if (!dom.cameraPreviewCanvas) {
-        console.error("Camera Preview Window: Canvas element not found!");
+        console.error("Camera Preview Window: Elements not found!");
         return;
     }
 
     previewRenderer = new Renderer(dom.cameraPreviewCanvas);
 
     dom.cameraPreviewBtn.addEventListener('click', () => {
-        isVisible = !isVisible;
-        dom.cameraPreviewPanel.classList.toggle('hidden', !isVisible);
-        if (isVisible) {
+        isPanelVisible = !isPanelVisible;
+        dom.cameraPreviewPanel.classList.toggle('hidden', !isPanelVisible);
+        if (isPanelVisible) {
             previewRenderer.resize();
             renderPreview();
         }
     });
 
-    // Also handle the close button on the panel
     const closeBtn = dom.cameraPreviewPanel.querySelector('.close-panel-btn');
-    if(closeBtn) {
+    if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            isVisible = false;
+            isPanelVisible = false;
             dom.cameraPreviewPanel.classList.add('hidden');
         });
     }
 
-    // Resize the canvas when the panel is resized
+    dom.cameraPreviewSelector.addEventListener('change', (e) => {
+        activePreviewCameraId = parseInt(e.target.value, 10);
+        renderPreview();
+    });
+
     const resizeObserver = new ResizeObserver(() => {
-        if(previewRenderer) {
+        if (previewRenderer && isPanelVisible) {
             previewRenderer.resize();
             renderPreview();
         }
@@ -112,5 +171,9 @@ export function initialize(dependencies) {
 }
 
 export function update() {
-    renderPreview();
+    updateCameraList();
+
+    if (isPanelVisible) {
+        renderPreview();
+    }
 }
