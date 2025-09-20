@@ -95,20 +95,51 @@ export class SpriteRenderer extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.source = ''; // Path to the image, relative to project root
-        this.normalMap = new Image();
-        this.normalSource = ''; // Path to the normal map
         this.color = '#ffffff'; // Tint color
+
+        this.normalMap = new Image();
+        this.normalSource = '';
     }
 
-    setSourcePath(path, isNormal = false) {
-        if (isNormal) {
-            this.normalSource = path;
-        } else {
-            this.source = path;
-        }
+    setSourcePath(path) {
+        this.source = path;
+    }
+
+    setNormalSourcePath(path) {
+        this.normalSource = path;
     }
 
     async loadSprite(projectsDirHandle) {
+        // This now needs to load both the diffuse and the normal map.
+        const loadPromise = (imgPath, imageObj) => {
+            return new Promise(async (resolve, reject) => {
+                if (imgPath) {
+                    const url = await getURLForAssetPath(imgPath, projectsDirHandle);
+                    if (url) {
+                        imageObj.onload = () => resolve();
+                        imageObj.onerror = () => {
+                            console.error(`Failed to load image at: ${imgPath}`);
+                            reject(new Error(`Failed to load image at: ${imgPath}`));
+                        };
+                        imageObj.src = url;
+                    } else {
+                        imageObj.src = '';
+                        resolve();
+                    }
+                } else {
+                    imageObj.src = '';
+                    resolve();
+                }
+            });
+        };
+
+        await Promise.all([
+            loadPromise(this.source, this.sprite),
+            loadPromise(this.normalSource, this.normalMap)
+        ]);
+    }
+
+    async _legacy_loadSprite(projectsDirHandle) {
         return new Promise(async (resolve, reject) => {
             if (this.source) {
                 const url = await getURLForAssetPath(this.source, projectsDirHandle);
@@ -128,19 +159,10 @@ export class SpriteRenderer extends Leyes {
                 resolve(); // Resolve immediately if there's no source
             }
         });
-
-        if (this.normalSource) {
-             getURLForAssetPath(this.normalSource, projectsDirHandle).then(url => {
-                if (url) this.normalMap.src = url;
-            });
-        } else {
-            this.normalMap.src = '';
-        }
     }
     clone() {
         const newRenderer = new SpriteRenderer(null);
         newRenderer.source = this.source;
-        newRenderer.normalSource = this.normalSource;
         newRenderer.color = this.color;
         // The sprite will be loaded automatically when added to a materia in the scene
         return newRenderer;
@@ -333,39 +355,6 @@ export class UIImage extends Leyes {
     }
 }
 
-export class Light extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.type = 'Point'; // 'Point', 'Directional', 'Area'
-        this.color = '#ffffff';
-        this.intensity = 1.0;
-        this.range = 10;
-        this.castShadows = true;
-
-        // For Area lights
-        this.shape = 'Circle'; // 'Circle', 'Box', 'Custom'
-        this.vertices = [ // Default square shape for 'Custom'
-            { x: -0.5, y: -0.5 },
-            { x: 0.5, y: -0.5 },
-            { x: 0.5, y: 0.5 },
-            { x: -0.5, y: 0.5 }
-        ];
-    }
-
-    clone() {
-        const newLight = new Light(null);
-        newLight.type = this.type;
-        newLight.color = this.color;
-        newLight.intensity = this.intensity;
-        newLight.range = this.range;
-        newLight.castShadows = this.castShadows;
-        newLight.shape = this.shape;
-        newLight.vertices = JSON.parse(JSON.stringify(this.vertices));
-        return newLight;
-    }
-}
-
-
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -378,4 +367,3 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
-registerComponent('Light', Light);

@@ -22,13 +22,10 @@ async function saveProjectConfig(showAlert = true) {
 
     // Gather data from UI if the modal is open
     if (dom.projectSettingsModal.classList.contains('is-open')) {
-        currentProjectConfig.graphics = currentProjectConfig.graphics || {};
-        currentProjectConfig.graphics.shadowQuality = document.getElementById('settings-shadow-quality').value;
-        currentProjectConfig.graphics.renderer = document.getElementById('settings-renderer-type').value;
-
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
+        currentProjectConfig.renderingEngine = dom.renderingEngineSelect.value;
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
         currentProjectConfig.keystore.pass = dom.settingsKeystorePass.value;
         currentProjectConfig.keystore.alias = dom.settingsKeyAlias.value;
@@ -311,17 +308,10 @@ function setupEventListeners() {
 export function populateUI(config) {
     currentProjectConfig = config;
 
-    // Set default for new graphics settings if not present
-    if (!currentProjectConfig.graphics) {
-        currentProjectConfig.graphics = { shadowQuality: 'hard', renderer: 'canvas2d' };
-    }
-    if (!currentProjectConfig.graphics.renderer) {
-        currentProjectConfig.graphics.renderer = 'canvas2d'; // Default for older projects
-    }
-
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
+    if (dom.renderingEngineSelect) dom.renderingEngineSelect.value = currentProjectConfig.renderingEngine || 'canvas2d';
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
 
@@ -338,14 +328,4 @@ export function populateUI(config) {
     }
 
     populateTagsAndLayers();
-
-    const shadowQualitySelect = document.getElementById('settings-shadow-quality');
-    if (shadowQualitySelect) {
-        shadowQualitySelect.value = currentProjectConfig.graphics.shadowQuality || 'hard';
-    }
-
-    const rendererTypeSelect = document.getElementById('settings-renderer-type');
-    if (rendererTypeSelect) {
-        rendererTypeSelect.value = currentProjectConfig.graphics.renderer || 'canvas2d';
-    }
 }

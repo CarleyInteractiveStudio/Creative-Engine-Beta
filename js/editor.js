@@ -1,9 +1,9 @@
 // Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
+import { WebGLRenderer } from './engine/WebGLRenderer.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
-import { WebGLRenderer } from './engine/WebGLRenderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    openSpriteSelector = async function(componentName) {
+    openSpriteSelector = async function(componentName, propertyName) {
         const grid = dom.spriteSelectorGrid;
         grid.innerHTML = '';
         dom.spriteSelectorModal.classList.add('is-open');
@@ -345,10 +345,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const component = selectedMateria.getComponent(ComponentClass);
                     if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
+                        if (propertyName === 'source' && typeof component.setSourcePath === 'function') {
+                            component.setSourcePath(imgPath);
+                        } else if (propertyName === 'normalSource' && typeof component.setNormalSourcePath === 'function') {
+                            component.setNormalSourcePath(imgPath);
+                        }
+
+                        // Reload sprites after changing path
+                        if(typeof component.loadSprite === 'function') {
+                            await component.loadSprite(projectsDirHandle);
+                        }
+
                         updateInspector();
-                        updateScene(renderer, false);
+                        // Determine active renderer and update scene
+                        const activeRenderer = activeView === 'game-content' ? gameRenderer : renderer;
+                        updateScene(activeRenderer, activeView === 'game-content');
                     }
                 }
                 dom.spriteSelectorModal.classList.remove('is-open');
@@ -402,29 +413,37 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        const allMaterias = SceneManager.currentScene.getAllMaterias();
-        const materiasToRender = allMaterias
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
-            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
-
-        // --- WebGL Path ---
+        // Check which renderer is being used
         if (rendererInstance.gl) {
-            const camera = isGameView ? SceneManager.currentScene.findAllCameras()[0] : rendererInstance.camera;
-            const lights = allMaterias.filter(m => m.getComponent(Components.Light));
-            if (camera) {
-                rendererInstance.drawScene(materiasToRender, lights, camera, currentProjectConfig);
-            } else {
-                rendererInstance.clear();
+            // WebGL Path
+            const materiasToRender = SceneManager.currentScene.getAllMaterias()
+                .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer));
+
+            const lightsToRender = SceneManager.currentScene.getAllMaterias()
+                .filter(m => m.getComponent(Components.Light));
+
+            let camera = isGameView ? SceneManager.currentScene.findMainCamera() : rendererInstance.camera;
+            if (isGameView && !camera) {
+                 // If no camera in game view, find any camera or use a default
+                const cameras = SceneManager.currentScene.findAllCameras();
+                camera = cameras.length > 0 ? cameras[0] : { x: 0, y: 0, zoom: 1.0, effectiveZoom: 1.0 };
             }
-            // Re-enable overlay for WebGL
+
+            rendererInstance.drawScene(materiasToRender, lightsToRender, camera, {}); // Pass actual lights
+
+            // Gizmos are drawn on top in WebGL mode
             if (!isGameView) {
+                // This call needs to be adapted or implemented for WebGL
+                // For now, we'll assume SceneView handles the check.
                 SceneView.drawOverlay();
             }
-            return;
+            return; // End execution for WebGL path
         }
 
-        // --- Canvas 2D Path ---
-        const lights = allMaterias.filter(m => m.getComponent(Components.Light));
+        // Canvas 2D Path
+        const materiasToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
+            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
         const drawObjects = (ctx, cameraForCulling) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
@@ -475,31 +494,15 @@ document.addEventListener('DOMContentLoaded', () => {
             cameras.forEach(cameraMateria => {
                 rendererInstance.beginWorld(cameraMateria);
                 drawObjects(rendererInstance.ctx, cameraMateria);
-                rendererInstance.end(); // Finish drawing the main pass
-
-                // Now, apply lighting on top
-                const cameraComponent = cameraMateria.getComponent(Components.Camera);
-                const transform = cameraMateria.getComponent(Components.Transform);
-                let activeCamera = null;
-                if(cameraComponent && transform) {
-                    const effectiveZoom = rendererInstance.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
-                    activeCamera = { x: transform.x, y: transform.y, effectiveZoom: effectiveZoom };
-                }
-
-                rendererInstance.drawLights(lights, allMaterias, activeCamera);
-                rendererInstance.applyLighting(currentProjectConfig);
+                rendererInstance.end();
             });
 
         } else { // Editor Scene View
-            rendererInstance.beginWorld();
+            rendererInstance.beginWorld(); // Use internal editor camera
+            // Culling is disabled in editor view to see all objects
             drawObjects(rendererInstance.ctx, null);
-            // Draw gizmos BEFORE lighting is applied
-            SceneView.drawOverlay();
-            rendererInstance.end(); // Finish the main drawing pass
-
-            // Now, apply lighting as a final overlay
-            rendererInstance.drawLights(lights, allMaterias, rendererInstance.camera);
-            rendererInstance.applyLighting(currentProjectConfig);
+            SceneView.drawOverlay(); // Draw grid and gizmos on top
+            rendererInstance.end();
         }
     }
 
@@ -994,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'project-settings-rendering-engine', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -1060,13 +1063,19 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
             updateLoadingProgress(20, "Cargando configuración del proyecto...");
-            await loadProjectConfig();
+            await loadProjectConfig(); // Load config first to know which renderer to use
 
             updateLoadingProgress(25, "Inicializando renderizadores...");
-            const RendererClass = currentProjectConfig?.graphics?.renderer === 'webgl' ? WebGLRenderer : Renderer;
-            console.log(`Usando renderizador: ${RendererClass.name}`);
-            renderer = new RendererClass(dom.sceneCanvas, true);
-            gameRenderer = new RendererClass(dom.gameCanvas);
+            const rendererType = currentProjectConfig.renderingEngine || 'canvas2d';
+            console.log(`Usando motor de renderizado: ${rendererType}`);
+
+            if (rendererType === 'webgl') {
+                renderer = new WebGLRenderer(dom.sceneCanvas, true);
+                gameRenderer = new WebGLRenderer(dom.gameCanvas);
+            } else {
+                renderer = new Renderer(dom.sceneCanvas, true);
+                gameRenderer = new Renderer(dom.gameCanvas);
+            }
 
             updateLoadingProgress(30, "Cargando escena principal...");
             const sceneData = await SceneManager.initialize(projectsDirHandle);
@@ -1115,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, createUiSystemFile, updateAssetBrowser });
 
-            updateLoadingProgress(85, "Actualizando paneles...");
+            updateLoadingProgress(80, "Actualizando paneles...");
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();

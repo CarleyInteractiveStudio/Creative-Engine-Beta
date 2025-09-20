@@ -19,7 +19,6 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
-    'Iluminación': [Components.Light],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody, Components.BoxCollider],
@@ -129,9 +128,9 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
-        const isNormal = e.target.dataset.normal === 'true';
-        if (componentName && openSpriteSelectorCallback) {
-            openSpriteSelectorCallback(componentName, isNormal);
+        const propertyName = e.target.dataset.property;
+        if (componentName && propertyName && openSpriteSelectorCallback) {
+            openSpriteSelectorCallback(componentName, propertyName);
         }
     }
 
@@ -296,7 +295,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', Light: '💡'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -361,59 +360,35 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-            const normalPreviewImg = ley.normalMap.src ? `<img src="${ley.normalMap.src}" alt="Normal Map Preview">` : 'None';
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
-             <div class="component-content">
-                <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer" data-normal="false">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Normal Map</label><div class="sprite-dropper"><div class="sprite-preview">${normalPreviewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer" data-normal="true">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}"></div>
+            const normalPreviewImg = ley.normalMap && ley.normalMap.src ? `<img src="${ley.normalMap.src}" alt="Normal Preview">` : 'None';
+
+            componentHTML = `
+            <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
+            <div class="component-content">
+                <div class="prop-row-multi">
+                    <label>Sprite</label>
+                    <div class="sprite-dropper">
+                        <div class="sprite-preview">${previewImg}</div>
+                        <button class="sprite-select-btn" data-component="SpriteRenderer" data-property="source">🎯</button>
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Normal Map</label>
+                    <div class="sprite-dropper">
+                        <div class="sprite-preview">${normalPreviewImg}</div>
+                        <button class="sprite-select-btn" data-component="SpriteRenderer" data-property="normalSource">🎯</button>
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Color</label>
+                    <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                </div>
             </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
-        } else if (ley instanceof Components.Light) {
-            const lightType = ley.type || 'Point';
-            const shapeType = ley.shape || 'Circle';
-
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Luz</h4></div>
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Tipo</label>
-                        <select class="prop-input inspector-re-render" data-component="Light" data-prop="type">
-                            <option value="Point" ${lightType === 'Point' ? 'selected' : ''}>Punto</option>
-                            <option value="Directional" ${lightType === 'Directional' ? 'selected' : ''}>Direccional</option>
-                            <option value="Area" ${lightType === 'Area' ? 'selected' : ''}>Área</option>
-                        </select>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Color</label>
-                        <input type="color" class="prop-input" data-component="Light" data-prop="color" value="${ley.color || '#ffffff'}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Intensidad</label>
-                        <input type="number" class="prop-input" data-component="Light" data-prop="intensity" value="${ley.intensity || 1.0}" min="0" step="0.1">
-                    </div>
-                    <div class="prop-row-multi" style="display: ${lightType !== 'Directional' ? 'flex' : 'none'};">
-                        <label>Rango</label>
-                        <input type="number" class="prop-input" data-component="Light" data-prop="range" value="${ley.range || 10}" min="0">
-                    </div>
-                    <div class="prop-row-multi" style="display: ${lightType === 'Area' ? 'flex' : 'none'};">
-                        <label>Forma</label>
-                        <select class="prop-input inspector-re-render" data-component="Light" data-prop="shape">
-                            <option value="Circle" ${shapeType === 'Circle' ? 'selected' : ''}>Círculo</option>
-                            <option value="Box" ${shapeType === 'Box' ? 'selected' : ''}>Caja</option>
-                            <option value="Custom" ${shapeType === 'Custom' ? 'selected' : ''}>Personalizada</option>
-                        </select>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label for="light-cast-shadows">Proyecta Sombras</label>
-                        <input type="checkbox" id="light-cast-shadows" class="prop-input" data-component="Light" data-prop="castShadows" ${ley.castShadows ? 'checked' : ''}>
-                    </div>
-                </div>
-            `;
         } else if (ley instanceof Components.Camera) {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';

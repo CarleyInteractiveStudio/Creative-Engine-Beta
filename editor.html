@@ -342,14 +342,6 @@
                     <li data-action="create-camera">Cámara</li>
                 </ul>
             </li>
-            <li class="has-submenu">
-                Iluminación <span class="arrow">▶</span>
-                <ul class="submenu">
-                    <li data-action="create-light-point">Luz de Punto</li>
-                    <li data-action="create-light-directional">Luz Direccional</li>
-                    <li data-action="create-light-area">Luz de Área</li>
-                </ul>
-            </li>
             <hr>
             <li data-action="rename">Renombrar</li>
             <li data-action="duplicate">Duplicar</li>
@@ -391,20 +383,14 @@
                 </fieldset>
 
                 <fieldset class="settings-section">
-                    <legend>Gráficos</legend>
-                    <label for="settings-shadow-quality">Calidad de las Sombras</label>
-                    <select id="settings-shadow-quality">
-                        <option value="hard">Duras (Rendimiento Alto)</option>
-                        <option value="soft">Suaves (Coste Medio)</option>
-                    </select>
-                    <p class="field-description">Controla si las sombras dinámicas tienen bordes duros o suaves (difuminados).</p>
-                    <hr>
-                    <label for="settings-renderer-type">Motor de Renderizado</label>
-                    <select id="settings-renderer-type">
-                        <option value="canvas2d">Canvas 2D (Estable)</option>
-                        <option value="webgl">WebGL (Experimental)</option>
-                    </select>
-                    <p class="field-description">Elige el motor de renderizado. WebGL es necesario para efectos avanzados pero puede no ser compatible con todos los navegadores.</p>
+                    <legend>Motor</legend>
+                    <div class="component-row">
+                        <label for="project-settings-rendering-engine">Motor de Renderizado</label>
+                        <select id="project-settings-rendering-engine" class="component-field">
+                            <option value="canvas2d">Canvas 2D (Estable)</option>
+                            <option value="webgl">WebGL (Experimental)</option>
+                        </select>
+                    </div>
                 </fieldset>
 
                 <fieldset class="settings-section">
