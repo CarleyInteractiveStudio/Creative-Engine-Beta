@@ -95,11 +95,17 @@ export class SpriteRenderer extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.source = ''; // Path to the image, relative to project root
+        this.normalMap = new Image();
+        this.normalSource = ''; // Path to the normal map
         this.color = '#ffffff'; // Tint color
     }
 
-    setSourcePath(path) {
-        this.source = path;
+    setSourcePath(path, isNormal = false) {
+        if (isNormal) {
+            this.normalSource = path;
+        } else {
+            this.source = path;
+        }
     }
 
     async loadSprite(projectsDirHandle) {
@@ -122,10 +128,19 @@ export class SpriteRenderer extends Leyes {
                 resolve(); // Resolve immediately if there's no source
             }
         });
+
+        if (this.normalSource) {
+             getURLForAssetPath(this.normalSource, projectsDirHandle).then(url => {
+                if (url) this.normalMap.src = url;
+            });
+        } else {
+            this.normalMap.src = '';
+        }
     }
     clone() {
         const newRenderer = new SpriteRenderer(null);
         newRenderer.source = this.source;
+        newRenderer.normalSource = this.normalSource;
         newRenderer.color = this.color;
         // The sprite will be loaded automatically when added to a materia in the scene
         return newRenderer;

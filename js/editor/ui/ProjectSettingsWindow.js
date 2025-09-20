@@ -24,6 +24,7 @@ async function saveProjectConfig(showAlert = true) {
     if (dom.projectSettingsModal.classList.contains('is-open')) {
         currentProjectConfig.graphics = currentProjectConfig.graphics || {};
         currentProjectConfig.graphics.shadowQuality = document.getElementById('settings-shadow-quality').value;
+        currentProjectConfig.graphics.renderer = document.getElementById('settings-renderer-type').value;
 
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
@@ -312,7 +313,10 @@ export function populateUI(config) {
 
     // Set default for new graphics settings if not present
     if (!currentProjectConfig.graphics) {
-        currentProjectConfig.graphics = { shadowQuality: 'hard' };
+        currentProjectConfig.graphics = { shadowQuality: 'hard', renderer: 'canvas2d' };
+    }
+    if (!currentProjectConfig.graphics.renderer) {
+        currentProjectConfig.graphics.renderer = 'canvas2d'; // Default for older projects
     }
 
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
@@ -338,5 +342,10 @@ export function populateUI(config) {
     const shadowQualitySelect = document.getElementById('settings-shadow-quality');
     if (shadowQualitySelect) {
         shadowQualitySelect.value = currentProjectConfig.graphics.shadowQuality || 'hard';
+    }
+
+    const rendererTypeSelect = document.getElementById('settings-renderer-type');
+    if (rendererTypeSelect) {
+        rendererTypeSelect.value = currentProjectConfig.graphics.renderer || 'canvas2d';
     }
 }

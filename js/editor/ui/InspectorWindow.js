@@ -129,8 +129,9 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
+        const isNormal = e.target.dataset.normal === 'true';
         if (componentName && openSpriteSelectorCallback) {
-            openSpriteSelectorCallback(componentName);
+            openSpriteSelectorCallback(componentName, isNormal);
         }
     }
 
@@ -360,9 +361,11 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            const normalPreviewImg = ley.normalMap.src ? `<img src="${ley.normalMap.src}" alt="Normal Map Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
              <div class="component-content">
-                <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer" data-normal="false">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Normal Map</label><div class="sprite-dropper"><div class="sprite-preview">${normalPreviewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer" data-normal="true">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}"></div>
             </div>`;
         }

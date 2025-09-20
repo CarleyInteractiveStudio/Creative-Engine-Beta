@@ -228,20 +228,13 @@ function handleEditorInteractions() {
 
 function drawEditorGrid() {
     const GRID_SIZE = 50;
-    const { ctx, camera, canvas } = renderer;
-    if (!camera) return;
+    if (!renderer.gl || !renderer.camera) return;
 
+    const { camera, canvas } = renderer;
     const zoom = camera.effectiveZoom;
     const scaledGridSize = GRID_SIZE * zoom;
-
-    // Don't draw if grid lines are too close or too far
     if (scaledGridSize < 10) return;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1 / zoom;
-
-    // Calculate world coordinates of the view boundaries
     const viewLeft = camera.x - (canvas.width / 2 / zoom);
     const viewRight = camera.x + (canvas.width / 2 / zoom);
     const viewTop = camera.y - (canvas.height / 2 / zoom);
@@ -252,116 +245,65 @@ function drawEditorGrid() {
     const startY = Math.floor(viewTop / GRID_SIZE) * GRID_SIZE;
     const endY = Math.ceil(viewBottom / GRID_SIZE) * GRID_SIZE;
 
-    ctx.beginPath();
+    const vertices = [];
     for (let x = startX; x <= endX; x += GRID_SIZE) {
-        ctx.moveTo(x, viewTop);
-        ctx.lineTo(x, viewBottom);
+        vertices.push(x, viewTop, x, viewBottom);
     }
     for (let y = startY; y <= endY; y += GRID_SIZE) {
-        ctx.moveTo(viewLeft, y);
-        ctx.lineTo(viewRight, y);
+        vertices.push(viewLeft, y, viewRight, y);
     }
-    ctx.stroke();
-    ctx.restore();
+
+    const projectionMatrix = MathUtils.createMat4();
+    const halfW = (canvas.width / 2) / zoom;
+    const halfH = (canvas.height / 2) / zoom;
+    MathUtils.ortho(projectionMatrix, -halfW, halfW, -halfH, halfH, -1, 100);
+    MathUtils.translateMat4(projectionMatrix, projectionMatrix, [-camera.x, -camera.y, 0]);
+
+    const modelViewMatrix = MathUtils.createMat4(); // Identity for grid
+
+    renderer.drawLines(vertices, [0.2, 0.2, 0.2, 1.0], projectionMatrix, modelViewMatrix);
 }
 
 function drawGizmos(renderer, materia) {
-    if (!materia || !renderer) return;
+    if (!materia || !renderer.gl) return;
 
     const transform = materia.getComponent(Components.Transform);
     if (!transform) return;
 
-    const { ctx, camera } = renderer;
+    const { camera, canvas } = renderer;
     const zoom = camera.effectiveZoom;
 
-    // --- Gizmo settings ---
-    const GIZMO_SIZE = 60 / zoom; // Size in world units, adjusted for zoom
-    const HANDLE_THICKNESS = 2 / zoom;
+    const projectionMatrix = MathUtils.createMat4();
+    const halfW = (canvas.width / 2) / zoom;
+    const halfH = (canvas.height / 2) / zoom;
+    MathUtils.ortho(projectionMatrix, -halfW, halfH, -halfH, halfH, -1, 100);
+    MathUtils.translateMat4(projectionMatrix, projectionMatrix, [-camera.x, -camera.y, 0]);
+
+    const modelViewMatrix = MathUtils.createMat4();
+    MathUtils.translateMat4(modelViewMatrix, modelViewMatrix, [transform.x, transform.y, 0]);
+
+    const GIZMO_SIZE = 60 / zoom;
     const ARROW_HEAD_SIZE = 8 / zoom;
-    const ROTATE_RADIUS = GIZMO_SIZE * 0.8;
-    const SCALE_BOX_SIZE = 8 / zoom;
 
-
-    // Center of the object in world space
-    const centerX = transform.x;
-    const centerY = transform.y;
-
-    ctx.save();
-    // No need to translate the whole context, we'll draw using world coords.
-
-    // --- Draw based on active tool ---
     switch (activeTool) {
         case 'move':
-            ctx.lineWidth = HANDLE_THICKNESS;
-
-            // Y-Axis (Green)
-            ctx.strokeStyle = '#00ff00';
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
-            ctx.stroke();
-            // Arrow head for Y
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.closePath();
-            ctx.fillStyle = '#00ff00';
-            ctx.fill();
-
-
-            // X-Axis (Red)
-            ctx.strokeStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE, centerY);
-            ctx.stroke();
-            // Arrow head for X
-            ctx.beginPath();
-            ctx.moveTo(centerX + GIZMO_SIZE, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY - ARROW_HEAD_SIZE / 2);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY + ARROW_HEAD_SIZE / 2);
-            ctx.closePath();
-            ctx.fillStyle = '#ff0000';
-            ctx.fill();
-
-            // XY-Plane Handle (Central Square)
-            const SQUARE_SIZE = 10 / zoom;
-            ctx.fillStyle = 'rgba(0, 100, 255, 0.7)'; // Semi-transparent blue
-            ctx.fillRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
-            ctx.strokeStyle = '#ffffff';
-            ctx.strokeRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
+            const x_axis = [0, 0, GIZMO_SIZE, 0];
+            const y_axis = [0, 0, 0, GIZMO_SIZE];
+            // For now, arrows will be simple lines. A full implementation would use triangles.
+            renderer.drawLines(x_axis, [1, 0, 0, 1], projectionMatrix, modelViewMatrix);
+            renderer.drawLines(y_axis, [0, 1, 0, 1], projectionMatrix, modelViewMatrix);
             break;
-
         case 'rotate':
-            ctx.lineWidth = HANDLE_THICKNESS;
-            ctx.strokeStyle = '#0000ff'; // Blue for rotation
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, ROTATE_RADIUS, 0, 2 * Math.PI);
-            ctx.stroke();
-            break;
-
-        case 'scale':
-             ctx.lineWidth = HANDLE_THICKNESS;
-             ctx.strokeStyle = '#ffffff'; // White for scale handles
-             const halfBox = SCALE_BOX_SIZE / 2;
-             // Draw 4 boxes at the corners relative to the object's center
-             const corners = [
-                 { x: centerX - halfBox, y: centerY - halfBox },
-                 { x: centerX + GIZMO_SIZE - halfBox, y: centerY - halfBox },
-                 { x: centerX - halfBox, y: centerY + GIZMO_SIZE - halfBox },
-                 { x: centerX + GIZMO_SIZE, y: centerY + GIZMO_SIZE }
-             ];
-            // This is a simplified version. A real implementation would rotate with the object.
-            // For now, axis-aligned boxes.
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeRect(centerX - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Center handle
-            ctx.strokeRect(centerX + GIZMO_SIZE - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Right
-            ctx.strokeRect(centerX - halfBox, centerY + GIZMO_SIZE - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Top
+            const circle = [];
+            const segments = 32;
+            const radius = GIZMO_SIZE * 0.8;
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                circle.push(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            renderer.drawLineLoop(circle, [0, 0, 1, 1], projectionMatrix, modelViewMatrix);
             break;
     }
-
-    ctx.restore();
 }
 
 
@@ -477,163 +419,77 @@ export function update() {
 }
 
 function drawCameraGizmos(renderer) {
-    if (!SceneManager || !renderer) return;
+    if (!SceneManager || !renderer.gl) return;
+
     const scene = SceneManager.currentScene;
     if (!scene) return;
 
-    const { ctx, canvas } = renderer;
+    const { camera, canvas } = renderer;
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
+
+    const projectionMatrix = MathUtils.createMat4();
+    const halfW = (canvas.width / 2) / camera.effectiveZoom;
+    const halfH = (canvas.height / 2) / camera.effectiveZoom;
+    MathUtils.ortho(projectionMatrix, -halfW, halfH, -halfH, halfH, -1, 100);
+    MathUtils.translateMat4(projectionMatrix, projectionMatrix, [-camera.x, -camera.y, 0]);
 
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
         const cameraComponent = materia.getComponent(Components.Camera);
         if (!cameraComponent) return;
-
         const transform = materia.getComponent(Components.Transform);
         if (!transform) return;
 
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
-
-        // Go to the camera's position and apply its rotation
-        ctx.translate(transform.x, transform.y);
-        ctx.rotate(transform.rotation * Math.PI / 180);
+        const modelViewMatrix = MathUtils.createMat4();
+        MathUtils.translateMat4(modelViewMatrix, modelViewMatrix, [transform.x, transform.y, 0]);
+        MathUtils.rotateMat4(modelViewMatrix, modelViewMatrix, transform.rotation * Math.PI / 180, [0, 0, 1]);
 
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
             const halfHeight = size;
             const halfWidth = size * aspect;
-
-            ctx.beginPath();
-            ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
-            ctx.stroke();
-
-        } else { // Perspective
-            const fovRad = cameraComponent.fov * Math.PI / 180;
-            const near = cameraComponent.nearClipPlane;
-            const far = cameraComponent.farClipPlane;
-
-            const nearHalfHeight = Math.tan(fovRad / 2) * near;
-            const nearHalfWidth = nearHalfHeight * aspect;
-            const farHalfHeight = Math.tan(fovRad / 2) * far;
-            const farHalfWidth = farHalfHeight * aspect;
-
-            ctx.beginPath();
-
-            // Near plane rectangle
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(-nearHalfWidth, nearHalfHeight);
-            ctx.closePath();
-
-            // Far plane rectangle
-            ctx.moveTo(-farHalfWidth, -farHalfHeight);
-            ctx.lineTo(farHalfWidth, -farHalfHeight);
-            ctx.lineTo(farHalfWidth, farHalfHeight);
-            ctx.lineTo(-farHalfWidth, farHalfHeight);
-            ctx.closePath();
-
-            // Lines connecting near and far planes
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(-farHalfWidth, -farHalfHeight);
-
-            ctx.moveTo(nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(farHalfWidth, -farHalfHeight);
-
-            ctx.moveTo(nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(farHalfWidth, farHalfHeight);
-
-            ctx.moveTo(-nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(-farHalfWidth, farHalfHeight);
-
-            ctx.stroke();
+            const vertices = [ -halfWidth, -halfHeight, halfWidth, -halfHeight, halfWidth, halfHeight, -halfWidth, halfHeight ];
+            renderer.drawLineLoop(vertices, [0.8, 0.8, 1, 1], projectionMatrix, modelViewMatrix);
         }
-
-        ctx.restore();
     });
 }
 
 function drawLightGizmos(renderer) {
-    if (!SceneManager || !renderer) return;
+    if (!SceneManager || !renderer.gl) return;
     const scene = SceneManager.currentScene;
     if (!scene) return;
 
-    const { ctx } = renderer;
+    const { camera, canvas } = renderer;
     const allLights = scene.getAllMaterias().filter(m => m.getComponent(Components.Light));
+
+    const projectionMatrix = MathUtils.createMat4();
+    const halfW = (canvas.width / 2) / camera.effectiveZoom;
+    const halfH = (canvas.height / 2) / camera.effectiveZoom;
+    MathUtils.ortho(projectionMatrix, -halfW, halfH, -halfH, halfH, -1, 100);
+    MathUtils.translateMat4(projectionMatrix, projectionMatrix, [-camera.x, -camera.y, 0]);
 
     allLights.forEach(materia => {
         const light = materia.getComponent(Components.Light);
         const transform = materia.getComponent(Components.Transform);
         if (!light || !transform) return;
 
-        ctx.save();
-        ctx.strokeStyle = light.color || '#ffff00';
-        ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
+        const modelViewMatrix = MathUtils.createMat4();
+        MathUtils.translateMat4(modelViewMatrix, modelViewMatrix, [transform.x, transform.y, 0]);
+
+        const color = [1, 1, 0, 1]; // Yellow for gizmos
 
         switch (light.type) {
             case 'Point':
-                // Draw a circle for the range
-                ctx.beginPath();
-                ctx.arc(transform.x, transform.y, light.range, 0, Math.PI * 2);
-                ctx.stroke();
-                // Draw icon
-                ctx.font = `${24 / renderer.camera.effectiveZoom}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('💡', transform.x, transform.y);
-                break;
-            case 'Directional':
-                // Draw a sun icon and arrows
-                ctx.font = `${24 / renderer.camera.effectiveZoom}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('☀️', transform.x, transform.y);
-                for (let i = 0; i < 4; i++) {
-                    ctx.save();
-                    ctx.translate(transform.x, transform.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.translate(30 / renderer.camera.effectiveZoom * (i+1), 0);
-                    ctx.beginPath();
-                    ctx.moveTo(0, 0);
-                    ctx.lineTo(-10 / renderer.camera.effectiveZoom, 0);
-                    ctx.stroke();
-                    ctx.restore();
+                const circle = [];
+                const segments = 32;
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    circle.push(Math.cos(angle) * light.range, Math.sin(angle) * light.range);
                 }
-                break;
-            case 'Area':
-                const size = light.range || 1;
-                ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.rotate(transform.rotation * Math.PI / 180);
-
-                ctx.beginPath();
-                if (light.shape === 'Box') {
-                    ctx.rect(-size / 2, -size / 2, size, size);
-                } else if (light.shape === 'Circle') {
-                    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-                } else if (light.shape === 'Custom' && light.vertices && light.vertices.length > 0) {
-                    const verts = light.vertices;
-                    ctx.moveTo(verts[0].x * size, verts[0].y * size);
-                    for (let i = 1; i < verts.length; i++) {
-                        ctx.lineTo(verts[i].x * size, verts[i].y * size);
-                    }
-                    ctx.closePath();
-
-                    // Draw handles for custom shape
-                    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
-                    const handleSize = 8 / renderer.camera.effectiveZoom;
-                    for (let i = 0; i < verts.length; i++) {
-                        ctx.fillRect(verts[i].x * size - handleSize / 2, verts[i].y * size - handleSize / 2, handleSize, handleSize);
-                    }
-                }
-                ctx.stroke();
-                ctx.restore();
+                renderer.drawLineLoop(circle, color, projectionMatrix, modelViewMatrix);
                 break;
         }
-        ctx.restore();
     });
 }
 

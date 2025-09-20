@@ -3,6 +3,7 @@
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
+import { WebGLRenderer } from './engine/WebGLRenderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
@@ -406,6 +407,23 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
+        // --- WebGL Path ---
+        if (rendererInstance.gl) {
+            const camera = isGameView ? SceneManager.currentScene.findAllCameras()[0] : rendererInstance.camera;
+            const lights = allMaterias.filter(m => m.getComponent(Components.Light));
+            if (camera) {
+                rendererInstance.drawScene(materiasToRender, lights, camera, currentProjectConfig);
+            } else {
+                rendererInstance.clear();
+            }
+            // Re-enable overlay for WebGL
+            if (!isGameView) {
+                SceneView.drawOverlay();
+            }
+            return;
+        }
+
+        // --- Canvas 2D Path ---
         const lights = allMaterias.filter(m => m.getComponent(Components.Light));
 
         const drawObjects = (ctx, cameraForCulling) => {
@@ -1041,9 +1059,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
-            updateLoadingProgress(20, "Inicializando renderizadores...");
-            renderer = new Renderer(dom.sceneCanvas, true);
-            gameRenderer = new Renderer(dom.gameCanvas);
+            updateLoadingProgress(20, "Cargando configuración del proyecto...");
+            await loadProjectConfig();
+
+            updateLoadingProgress(25, "Inicializando renderizadores...");
+            const RendererClass = currentProjectConfig?.graphics?.renderer === 'webgl' ? WebGLRenderer : Renderer;
+            console.log(`Usando renderizador: ${RendererClass.name}`);
+            renderer = new RendererClass(dom.sceneCanvas, true);
+            gameRenderer = new RendererClass(dom.gameCanvas);
 
             updateLoadingProgress(30, "Cargando escena principal...");
             const sceneData = await SceneManager.initialize(projectsDirHandle);
@@ -1091,9 +1114,6 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, createUiSystemFile, updateAssetBrowser });
-
-            updateLoadingProgress(80, "Cargando configuración del proyecto...");
-            await loadProjectConfig();
 
             updateLoadingProgress(85, "Actualizando paneles...");
             updateHierarchy();
