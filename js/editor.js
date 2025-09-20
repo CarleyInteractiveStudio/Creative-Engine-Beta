@@ -11,7 +11,7 @@ import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFrom
 import { initialize as initializePreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
@@ -19,6 +19,7 @@ import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWind
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
+import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
@@ -61,9 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
 
-    selectMateria = function(materia) {
-        if (selectedMateria === materia) return;
-        selectedMateria = materia;
+    selectMateria = function(materiaOrId) {
+        let materiaToSelect = null;
+        if (typeof materiaOrId === 'number') {
+            // Using -1 is a convention I saw in another file, let's use null for consistency
+            materiaToSelect = SceneManager.currentScene.findMateriaById(materiaOrId);
+        } else {
+            materiaToSelect = materiaOrId; // It's an object or null
+        }
+
+        if (selectedMateria === materiaToSelect) return;
+        selectedMateria = materiaToSelect;
 
         // Update UI that depends on selection
         updateHierarchy();
@@ -72,6 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleKeyboardShortcuts(e) {
         if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
+            return;
+        }
+
+        if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            duplicateSelectedMateria();
             return;
         }
 
@@ -191,6 +206,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortingLayers: ['Default', 'UI'],
                 collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
             };
+        }
+
+        // Ensure tags config exists for older projects
+        if (!currentProjectConfig.tags) {
+            currentProjectConfig.tags = ['Untagged'];
         }
 
         // The UI population is now handled by the module
@@ -381,46 +401,69 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        rendererInstance.clear();
-        rendererInstance.beginWorld();
+        const materiasToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
+            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
-        // Draw grid for editor view
-        if (!isGameView) {
-            SceneView.drawOverlay();
-        }
+        const drawObjects = (ctx, cameraForCulling) => {
+            const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
+            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
-        const materiasToRender = SceneManager.currentScene.materias.filter(m => m.getComponent(Components.Transform));
+            for (const materia of materiasToRender) {
+                if (!materia.isActive) continue;
 
-        // Simple sorting by Y for now to simulate depth
-        materiasToRender.sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
+                // --- Culling Checks ---
+                if (cameraForCulling) {
+                    // 1. Frustum Culling
+                    const objectBounds = MathUtils.getOOB(materia);
+                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) {
+                        continue; // Skip rendering if not in view
+                    }
+                    // 2. Culling Mask (Layer-based)
+                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                    const objectLayerBit = 1 << materia.layer;
+                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) {
+                        continue; // Skip rendering if layer is masked off
+                    }
+                }
 
-        for (const materia of materiasToRender) {
-            if (!materia.isActive) continue;
-
-            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-            const transform = materia.getComponent(Components.Transform);
-
-            if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0 && transform) {
-                const img = spriteRenderer.sprite;
-                const width = img.naturalWidth * transform.scale.x;
-                const height = img.naturalHeight * transform.scale.y;
-
-                const ctx = rendererInstance.ctx;
-                ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.rotate(transform.rotation * Math.PI / 180);
-                // The drawImage in Renderer.js draws from the center, so we adjust.
-                ctx.drawImage(img, -width / 2, -height / 2, width, height);
-                ctx.restore();
+                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+                const transform = materia.getComponent(Components.Transform);
+                if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+                    const img = spriteRenderer.sprite;
+                    const width = img.naturalWidth * transform.scale.x;
+                    const height = img.naturalHeight * transform.scale.y;
+                    ctx.save();
+                    ctx.translate(transform.x, transform.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+                    ctx.restore();
+                }
             }
-        }
+        };
 
-        // Draw Gizmos if in editor view and an object is selected
-        if (!isGameView && selectedMateria) {
-            // drawGizmos(rendererInstance, selectedMateria);
-        }
+        if (isGameView) {
+            const cameras = SceneManager.currentScene.findAllCameras()
+                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
 
-        rendererInstance.end();
+            if (cameras.length === 0) {
+                rendererInstance.clear();
+                return;
+            }
+
+            cameras.forEach(cameraMateria => {
+                rendererInstance.beginWorld(cameraMateria);
+                drawObjects(rendererInstance.ctx, cameraMateria);
+                rendererInstance.end();
+            });
+
+        } else { // Editor Scene View
+            rendererInstance.beginWorld(); // Use internal editor camera
+            // Culling is disabled in editor view to see all objects
+            drawObjects(rendererInstance.ctx, null);
+            SceneView.drawOverlay(); // Draw grid and gizmos on top
+            rendererInstance.end();
+        }
     }
 
     const editorLoop = (timestamp) => {
@@ -474,6 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showContextMenu(menu, event) {
         hideContextMenus(); // Hide any other open menus
+        if (!menu) { // If no menu is provided, we just hide all.
+            return;
+        }
         menu.style.display = 'block';
         menu.style.left = `${event.clientX}px`;
         menu.style.top = `${event.clientY}px`;
@@ -919,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename',
             'ks-storepass', 'ks-command-output', 'ks-command-textarea', 'ks-generate-btn', 'settings-sorting-layer-list',
             'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
-            'add-collision-layer-btn', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
+            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-reset-layout-btn', 'toolbar-music-btn', 'music-player-panel',
@@ -1014,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
@@ -1024,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
-            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
+            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, createUiSystemFile, updateAssetBrowser });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

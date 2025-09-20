@@ -13,7 +13,7 @@ let extractFramesFromSheetCallback;
 let updateSceneCallback;
 let updateAssetBrowserCallback;
 let isScanningForComponents = false;
-let currentProjectConfig; // To access layers
+let getCurrentProjectConfig = () => ({}); // To access layers
 
 const markdownConverter = new showdown.Converter();
 
@@ -29,6 +29,7 @@ const availableComponents = {
 // --- Initialization ---
 export function initialize(dependencies) {
     dom = dependencies.dom;
+    dom.cullingMaskDropdown = document.getElementById('culling-mask-dropdown');
     projectsDirHandle = dependencies.projectsDirHandle;
     currentDirectoryHandle = dependencies.currentDirectoryHandle;
     getSelectedMateria = dependencies.getSelectedMateria;
@@ -38,7 +39,7 @@ export function initialize(dependencies) {
     extractFramesFromSheetCallback = dependencies.extractFramesFromSheetCallback;
     updateSceneCallback = dependencies.updateSceneCallback;
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
-    currentProjectConfig = dependencies.currentProjectConfig;
+    getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
     dom.inspectorContent.addEventListener('input', handleInspectorInput);
@@ -76,16 +77,45 @@ function handleInspectorChange(e) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
+    let needsUpdate = false;
+
     if (e.target.matches('#materia-active-toggle')) {
         selectedMateria.isActive = e.target.checked;
-        updateSceneCallback();
+        updateSceneCallback(); // This triggers a visual update in the scene/hierarchy
+        needsUpdate = true;
     } else if (e.target.matches('#materia-name-input')) {
          selectedMateria.name = e.target.value;
-         // We need a way to tell the hierarchy to update itself.
-         // For now, this will be handled by the next full update.
-         // A dedicated callback would be better.
+         // A dedicated callback to update hierarchy would be ideal
+         updateSceneCallback();
+         needsUpdate = true;
     } else if (e.target.matches('#materia-layer-select')) {
-        selectedMateria.layer = e.target.value;
+        selectedMateria.layer = parseInt(e.target.value, 10);
+        needsUpdate = true;
+    } else if (e.target.matches('#materia-tag-select')) {
+        selectedMateria.tag = e.target.value;
+        needsUpdate = true;
+    }
+
+    // Handle component property changes that require a re-render of the inspector
+    if (e.target.matches('.inspector-re-render')) {
+        const componentName = e.target.dataset.component;
+        const propPath = e.target.dataset.prop;
+        const value = e.target.value;
+
+        const ComponentClass = Components[componentName];
+        if (ComponentClass) {
+            const component = selectedMateria.getComponent(ComponentClass);
+            if (component) {
+                // This logic is simple, assuming no nested properties for re-render items
+                component[propPath] = value;
+                needsUpdate = true;
+            }
+        }
+    }
+
+    if (needsUpdate) {
+        // Use a slight delay to allow the value to update before re-rendering
+        setTimeout(updateInspector, 0);
     }
 }
 
@@ -102,6 +132,94 @@ function handleInspectorClick(e) {
             openSpriteSelectorCallback(componentName);
         }
     }
+
+    if (e.target.matches('#culling-mask-btn')) {
+        const camera = selectedMateria.getComponent(Components.Camera);
+        if (camera) {
+            showCullingMaskDropdown(camera, e.target);
+        }
+    }
+}
+
+function getCullingMaskText(mask) {
+    if (mask === -1) return 'Everything';
+    if (mask === 0) return 'Nothing';
+
+    const config = getCurrentProjectConfig();
+    const layers = config.layers.sortingLayers;
+    const selectedLayers = [];
+    layers.forEach((name, index) => {
+        if ((mask & (1 << index)) !== 0) {
+            selectedLayers.push(name);
+        }
+    });
+
+    if (selectedLayers.length <= 3) {
+        return selectedLayers.join(', ');
+    } else {
+        return 'Mixed...';
+    }
+}
+
+function showCullingMaskDropdown(camera, button) {
+    const dropdown = dom.cullingMaskDropdown;
+    dropdown.innerHTML = ''; // Clear previous content
+
+    const config = getCurrentProjectConfig();
+    const layers = config.layers.sortingLayers;
+
+    const createCheckbox = (name, index, isChecked) => {
+        const item = document.createElement('div');
+        item.className = 'culling-mask-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = isChecked;
+        checkbox.id = `layer-checkbox-${index}`;
+        checkbox.dataset.layerIndex = index;
+
+        const label = document.createElement('label');
+        label.htmlFor = `layer-checkbox-${index}`;
+        label.textContent = name;
+
+        item.appendChild(checkbox);
+        item.appendChild(label);
+
+        checkbox.addEventListener('change', () => {
+            const layerBit = 1 << index;
+            if (checkbox.checked) {
+                camera.cullingMask |= layerBit; // Add layer
+            } else {
+                camera.cullingMask &= ~layerBit; // Remove layer
+            }
+            updateInspector(); // Re-render inspector to show updated mask value (optional)
+        });
+        return item;
+    };
+
+    // Add "Everything" and "Nothing" options
+    const everythingItem = document.createElement('div');
+    everythingItem.className = 'culling-mask-item separator';
+    everythingItem.textContent = 'Everything';
+    everythingItem.onclick = () => { camera.cullingMask = -1; updateInspector(); };
+    dropdown.appendChild(everythingItem);
+
+    const nothingItem = document.createElement('div');
+    nothingItem.className = 'culling-mask-item';
+    nothingItem.textContent = 'Nothing';
+    nothingItem.onclick = () => { camera.cullingMask = 0; updateInspector(); };
+    dropdown.appendChild(nothingItem);
+
+
+    layers.forEach((name, index) => {
+        if (!name) return;
+        const isChecked = (camera.cullingMask & (1 << index)) !== 0;
+        dropdown.appendChild(createCheckbox(name, index, isChecked));
+    });
+
+    const rect = button.getBoundingClientRect();
+    dropdown.style.display = 'block';
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom}px`;
 }
 
 
@@ -123,6 +241,11 @@ export async function updateInspector() {
 }
 
 async function updateInspectorForMateria(selectedMateria) {
+    console.log('--- INSPECTOR UPDATE ---');
+    console.log('1. Updating for Materia:', selectedMateria.name, `(ID: ${selectedMateria.id})`);
+
+    const config = getCurrentProjectConfig();
+
     // Name input and active toggle
     dom.inspectorContent.innerHTML = `
         <div class="inspector-materia-header">
@@ -130,18 +253,38 @@ async function updateInspectorForMateria(selectedMateria) {
             <input type="text" id="materia-name-input" value="${selectedMateria.name}">
         </div>
         <div class="inspector-row">
+            <label for="materia-tag-select">Tag</label>
+            <select id="materia-tag-select"></select>
+        </div>
+        <div class="inspector-row">
             <label for="materia-layer-select">Layer</label>
             <select id="materia-layer-select"></select>
         </div>
     `;
 
-    const layerSelect = dom.inspectorContent.querySelector('#materia-layer-select');
-    if (layerSelect) {
-        currentProjectConfig.layers.sortingLayers.forEach(layerName => {
+    // Populate Tags Dropdown
+    const tagSelect = dom.inspectorContent.querySelector('#materia-tag-select');
+    if (tagSelect && config.tags) {
+        config.tags.forEach(tag => {
             const option = document.createElement('option');
-            option.value = layerName;
-            option.textContent = layerName;
-            if (selectedMateria.layer === layerName) {
+            option.value = tag;
+            option.textContent = tag;
+            if (selectedMateria.tag === tag) {
+                option.selected = true;
+            }
+            tagSelect.appendChild(option);
+        });
+    }
+
+    // Populate Layers Dropdown
+    const layerSelect = dom.inspectorContent.querySelector('#materia-layer-select');
+    if (layerSelect && config.layers && config.layers.sortingLayers) {
+        config.layers.sortingLayers.forEach((layerName, index) => {
+            if (!layerName) return; // Skip empty layer names
+            const option = document.createElement('option');
+            option.value = index; // The value is the layer's index
+            option.textContent = `${index}: ${layerName}`;
+            if (selectedMateria.layer === index) {
                 option.selected = true;
             }
             layerSelect.appendChild(option);
@@ -156,66 +299,162 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
+    console.log('2. Created componentsWrapper. Looping through components...');
 
-    selectedMateria.leyes.forEach(ley => {
+    selectedMateria.leyes.forEach((ley, index) => {
+        console.log(`3. Processing component #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
         const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
 
         if (ley instanceof Components.Transform) {
-            if (selectedMateria.getComponent(Components.RectTransform)) return;
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Transform</h4></div>
-            <div class="component-grid">
-                <div class="prop-row"><label>X</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
-                <div class="prop-row"><label>Y</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
-                <div class="prop-row"><label>Rotation</label><input type="number" class="prop-input" step="1" data-component="Transform" data-prop="rotation" value="${(ley.rotation || 0).toFixed(0)}"></div>
-                <div class="prop-row"><label>Scale X</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x.toFixed(1)}"></div>
-                <div class="prop-row"><label>Scale Y</label><input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y.toFixed(1)}"></div>
+            console.log('  - Is Transform component.');
+            if (selectedMateria.getComponent(Components.RectTransform)) {
+                console.log('  - RectTransform also exists, skipping render of Transform.');
+                return;
+            }
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Position</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x}" title="Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y}" title="Position Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Rotation</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="rotation" value="${ley.rotation || 0}" title="Rotation Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Scale</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x}" title="Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y}" title="Scale Y">
+                        </div>
+                    </div>
+                </div>
             </div>`;
         } else if (ley instanceof Components.RectTransform) {
+             console.log('  - Is RectTransform component.');
              componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
-            <div class="component-grid">
-                <div class="prop-row"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x.toFixed(0)}"></div>
-                <div class="prop-row"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y.toFixed(0)}"></div>
-                <div class="prop-row"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width.toFixed(0)}"></div>
-                <div class="prop-row"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height.toFixed(0)}"></div>
+            <div class="component-content">
+                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
+                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
+                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
+                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
-            <div class="component-grid">
-                <label>Source</label>
-                <div class="sprite-dropper">
-                    <div class="sprite-preview" data-component="UIImage" data-prop="source">${previewImg}</div>
-                    <button class="sprite-select-btn" data-component="UIImage">🎯</button>
-                </div>
-                <label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}">
+            <div class="component-content">
+                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
-            <div class="component-grid">
-                <label>Sprite</label>
-                <div class="sprite-dropper">
-                    <div class="sprite-preview" data-component="SpriteRenderer" data-prop="source">${previewImg}</div>
-                    <button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button>
-                </div>
-                <label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+             <div class="component-content">
+                <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}"></div>
             </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
         } else if (ley instanceof Components.Animator) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><p>Controller: ${ley.controllerPath || 'None'}</p>`;
+            componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
         } else if (ley instanceof Components.Camera) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Camera</h4></div>
-            <div class="component-grid"><label>Size</label><input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize}"></div>`;
+            const projection = ley.projection || 'Perspective';
+            const clearFlags = ley.clearFlags || 'SolidColor';
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Camera</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Depth</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Clear Flags</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="clearFlags">
+                                <option value="SolidColor" ${clearFlags === 'SolidColor' ? 'selected' : ''}>Solid Color</option>
+                                <option value="Skybox" ${clearFlags === 'Skybox' ? 'selected' : ''}>Skybox</option>
+                                <option value="DontClear" ${clearFlags === 'DontClear' ? 'selected' : ''}>Don't Clear</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi" style="display: ${clearFlags === 'SolidColor' ? 'flex' : 'none'};">
+                        <label>Background</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Camera" data-prop="backgroundColor" value="${ley.backgroundColor || '#1e293b'}">
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Culling Mask</label>
+                        <div class="prop-inputs">
+                            <button id="culling-mask-btn" class="prop-input-button">${getCullingMaskText(ley.cullingMask)}</button>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Projection</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="projection">
+                                <option value="Perspective" ${projection === 'Perspective' ? 'selected' : ''}>Perspective</option>
+                                <option value="Orthographic" ${projection === 'Orthographic' ? 'selected' : ''}>Orthographic</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
+                        <label>Field of View</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
+                        </div>
+                    </div>
+
+                     <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Clipping Planes</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" placeholder="Near" data-component="Camera" data-prop="nearClipPlane" value="${ley.nearClipPlane || 0.1}" title="Near Clip Plane">
+                            <input type="number" class="prop-input" placeholder="Far" data-component="Camera" data-prop="farClipPlane" value="${ley.farClipPlane || 1000}" title="Far Clip Plane">
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        componentsWrapper.innerHTML += componentHTML;
+        if (componentHTML) {
+            const componentWrapper = document.createElement('div');
+            componentWrapper.className = 'component-inspector';
+            componentWrapper.innerHTML = componentHTML;
+
+            // This is a robust way to append the contents of the wrapper
+            while(componentWrapper.firstChild) {
+                componentsWrapper.appendChild(componentWrapper.firstChild);
+            }
+        }
     });
+
+    console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
 
     const addComponentBtn = document.createElement('button');
@@ -223,6 +462,7 @@ async function updateInspectorForMateria(selectedMateria) {
     addComponentBtn.className = 'add-component-btn';
     addComponentBtn.textContent = 'Añadir Ley';
     dom.inspectorContent.appendChild(addComponentBtn);
+    console.log('7. Inspector update complete.');
 }
 
 

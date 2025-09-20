@@ -265,9 +265,21 @@ class InputManager {
     }
 
     static _onWheel(event) {
-        // Prevent the default browser action (e.g., page scrolling)
-        // This is now more aggressive to prevent issues where the event target
-        // is not the canvas itself but a child element.
+        let target = event.target;
+
+        // Traverse up the DOM to see if we are inside a scrollable element
+        while (target && target !== document.body) {
+            // Check if the element has a vertical scrollbar
+            if (target.scrollHeight > target.clientHeight) {
+                // If so, do not prevent default behavior, just let the element scroll
+                this._scrollDelta = event.deltaY; // Still capture delta for engine use if needed
+                return;
+            }
+            target = target.parentElement;
+        }
+
+        // If we reached the body without finding a scrollable container,
+        // then prevent the default browser action (e.g., page scrolling/zooming).
         event.preventDefault();
         this._scrollDelta = event.deltaY;
     }

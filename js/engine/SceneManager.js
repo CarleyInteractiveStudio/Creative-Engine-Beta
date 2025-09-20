@@ -18,7 +18,23 @@ export class Scene {
     }
 
     findMateriaById(id) {
-        return this.materias.find(m => m.id === id);
+        // Helper function for recursive search
+        const findRecursive = (id, materias) => {
+            for (const materia of materias) {
+                if (materia.id === id) {
+                    return materia;
+                }
+                if (materia.children && materia.children.length > 0) {
+                    const found = findRecursive(id, materia.children);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        };
+
+        return findRecursive(id, this.materias);
     }
 
     getRootMaterias() {
@@ -26,7 +42,20 @@ export class Scene {
     }
 
     findFirstCamera() {
-        return this.materias.find(m => m.getComponent(Camera));
+        // This might still be useful for simple cases or editor preview.
+        return this.getAllMaterias().find(m => m.getComponent(Camera));
+    }
+
+    findAllCameras() {
+        return this.getAllMaterias().filter(m => m.getComponent(Camera));
+    }
+
+    getAllMaterias() {
+        let all = [];
+        for (const root of this.getRootMaterias()) {
+            all = all.concat(this.getMateriasRecursive(root));
+        }
+        return all;
     }
 
     findNodeByFlag(key, value) {
@@ -48,21 +77,16 @@ export class Scene {
             return;
         }
 
-        // Recursively remove all children first
-        const childrenClone = [...materiaToRemove.children];
-        for (const child of childrenClone) {
-            this.removeMateria(child.id);
-        }
-
-        // Remove from parent's children array
+        // If it's a child, simply remove it from its parent's list of children.
+        // The object and its descendants will be garbage collected if not referenced elsewhere.
         if (materiaToRemove.parent) {
             materiaToRemove.parent.removeChild(materiaToRemove);
-        }
-
-        // Remove from the scene's main list
-        const index = this.materias.findIndex(m => m.id === materiaId);
-        if (index > -1) {
-            this.materias.splice(index, 1);
+        } else {
+            // If it's a root object, remove it from the scene's main list.
+            const index = this.materias.findIndex(m => m.id === materiaId);
+            if (index > -1) {
+                this.materias.splice(index, 1);
+            }
         }
     }
 }

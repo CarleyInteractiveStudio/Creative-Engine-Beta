@@ -10,13 +10,27 @@ body.is-dragging-panel {
 /* --- Menubar Styles --- */
 #menubar {
     display: flex;
-    background-color: var(--bg-tertiary);
-    padding: 0 5px;
+    align-items: center;
+    background-color: var(--bg-secondary); /* Match old toolbar color */
+    padding: 5px 15px;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+    gap: 15px; /* Add gap between left, center, and right sections */
 }
 
-.menu-item {
-    position: relative;
+.menubar-left, .menubar-right {
+    display: flex;
+    align-items: center;
+}
+
+.menubar-center {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.menubar-right {
+    justify-content: flex-end;
 }
 
 .menu-btn {
@@ -109,29 +123,7 @@ body.is-dragging-panel {
 }
 
 
-/* --- Theme Switcher Styles --- */
-.theme-switcher {
-    display: flex;
-    gap: 8px;
-}
-.theme-btn {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid var(--text-secondary);
-    cursor: pointer;
-    transition: transform 0.2s ease;
-}
-.theme-btn:hover {
-    transform: scale(1.1);
-}
-.theme-btn.active {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 5px var(--accent-color);
-}
-.theme-btn[data-theme-set="dark-modern"] { background-color: #2d2d30; }
-.theme-btn[data-theme-set="dark-white"] { background-color: #f4f4f4; }
-.theme-btn[data-theme-set="dark-blue"] { background-color: #0a192f; }
+/* Theme switcher styles removed as the element was deleted. */
 
 
 body {
@@ -142,22 +134,14 @@ body {
     overflow: hidden;
 }
 
-/* --- Main Editor Container & Toolbar --- */
+/* --- Main Editor Container --- */
 #editor-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
 }
 
-#editor-toolbar {
-    display: flex;
-    align-items: center;
-    padding: 5px 15px;
-    background-color: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    flex-shrink: 0;
-}
-
+/* Styles for .logo-area are now more generic and part of menubar */
 .logo-area {
     display: flex;
     align-items: center;
@@ -295,12 +279,7 @@ body {
 .logo-area span {
     font-weight: bold;
     font-size: 1.1em;
-}
-
-.project-name-area {
-    margin: 0 auto;
-    font-weight: bold;
-    color: var(--text-secondary);
+    color: var(--text-secondary); /* Match old project name color */
 }
 
 .left-header-controls {
@@ -387,7 +366,7 @@ body {
 /* --- Editor Grid Layout --- */
 #editor-main-content {
     display: grid;
-    height: calc(100vh - 42px); /* 100% viewport height minus toolbar */
+    height: calc(100vh - 44px); /* 100% viewport height minus menubar */
     grid-template-columns: 220px 1fr 320px; /* Hierarchy | Scene | Inspector */
     grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); /* Scene / Assets */
     grid-template-areas:
@@ -539,6 +518,12 @@ body {
 .view-toggle-btn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+.context-menu li.disabled {
+    color: #888;
+    pointer-events: none;
+    background-color: transparent !important;
 }
 
 /* --- Loading Overlay Styles --- */
@@ -1690,14 +1675,16 @@ body {
 
 /* --- Hierarchy Item Styles --- */
 .hierarchy-item {
-    padding: 6px 12px;
+    padding: 6px 8px; /* Adjusted padding */
     cursor: pointer;
-    border-radius: 3px;
-    margin: 2px 0;
+    border-radius: 4px; /* Slightly more rounded */
+    margin: 2px 0; /* Vertical margin only, horizontal is now handled by JS */
     font-size: 0.95em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    border: 1px solid transparent; /* Add border for spacing and hover effect */
+    background-color: var(--bg-primary); /* Background to make it a box */
 }
 
 .hierarchy-item:hover {
@@ -1715,14 +1702,20 @@ body {
 }
 
 .hierarchy-item .toggle {
+    display: inline-block;
     width: 0;
     height: 0;
     border-top: 4px solid transparent;
     border-bottom: 4px solid transparent;
     border-left: 6px solid var(--text-secondary);
     cursor: pointer;
-    transition: transform 0.2s ease;
-    margin-right: 5px;
+    transition: transform 0.15s ease-in-out;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.hierarchy-item .toggle.open {
+    transform: rotate(90deg);
 }
 
 .hierarchy-item .toggle.open {
@@ -1741,6 +1734,62 @@ body {
 }
 
 /* --- Inspector Panel Styles --- */
+.component-inspector {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.component-header {
+    background-color: var(--bg-tertiary);
+    padding: 6px 10px;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.component-icon {
+    font-size: 1.1em;
+}
+
+.component-icon img {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
+.component-content {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.prop-row-multi {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.prop-row-multi label {
+    flex-basis: 30%;
+    margin: 0;
+}
+
+.prop-row-multi .prop-inputs {
+    flex-basis: 70%;
+    display: flex;
+    gap: 5px;
+}
+
+.prop-row-multi .prop-inputs input {
+    width: 100%;
+}
+
+
 .inspector-materia-header {
     display: flex;
     align-items: center;

@@ -38,6 +38,16 @@ async function saveProjectConfig(showAlert = true) {
                 duration: item.querySelector('input[type=range]').value
             });
         });
+
+        // Save Tags
+        const tagItems = dom.settingsTagList.querySelectorAll('.layer-item');
+        currentProjectConfig.tags = Array.from(tagItems).map(item => item.querySelector('span').textContent);
+
+        // Save Layers
+        const layerInputs = dom.settingsLayerList.querySelectorAll('input[type=text]');
+        const newLayers = Array.from(layerInputs).map(input => input.value);
+        // We only update sorting layers for now as it's the main one used for rendering logic
+        currentProjectConfig.layers.sortingLayers = newLayers;
     }
 
     try {
@@ -55,43 +65,69 @@ async function saveProjectConfig(showAlert = true) {
     }
 }
 
-function populateLayerLists() {
-    if (!currentProjectConfig.layers) return;
+function populateTagsAndLayers() {
+    if (!currentProjectConfig.layers || !currentProjectConfig.tags) return;
 
-    const createLayerItem = (name, index, type) => {
+    // --- Populate Tags ---
+    const tagList = dom.settingsTagList;
+    tagList.innerHTML = '';
+    currentProjectConfig.tags.forEach(tag => {
         const item = document.createElement('div');
         item.className = 'layer-item';
-        item.textContent = `${index}: ${name}`;
 
-        if (index > 0) {
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = tag;
+        item.appendChild(nameSpan);
+
+        if (tag !== 'Untagged') {
             const removeBtn = document.createElement('button');
             removeBtn.className = 'remove-layer-btn';
             removeBtn.textContent = '×';
-            removeBtn.title = 'Quitar layer';
+            removeBtn.title = 'Quitar tag';
             removeBtn.addEventListener('click', () => {
-                if (confirm(`¿Estás seguro de que quieres quitar el layer '${name}'?`)) {
-                    if (type === 'sorting') {
-                        currentProjectConfig.layers.sortingLayers.splice(index, 1);
-                    } else {
-                        currentProjectConfig.layers.collisionLayers.splice(index, 1);
-                    }
-                    populateLayerLists();
+                const index = currentProjectConfig.tags.indexOf(tag);
+                if (index > -1) {
+                    currentProjectConfig.tags.splice(index, 1);
+                    populateTagsAndLayers();
                 }
             });
             item.appendChild(removeBtn);
         }
-        return item;
-    };
-
-    dom.settingsSortingLayerList.innerHTML = '';
-    currentProjectConfig.layers.sortingLayers.forEach((name, index) => {
-        dom.settingsSortingLayerList.appendChild(createLayerItem(name, index, 'sorting'));
+        tagList.appendChild(item);
     });
 
-    dom.settingsCollisionLayerList.innerHTML = '';
-    currentProjectConfig.layers.collisionLayers.forEach((name, index) => {
-        dom.settingsCollisionLayerList.appendChild(createLayerItem(name, index, 'collision'));
-    });
+    // --- Populate Layers ---
+    const layerList = dom.settingsLayerList;
+    layerList.innerHTML = '';
+    const totalLayers = 32;
+    const builtInLayers = ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI'];
+
+    for (let i = 0; i < totalLayers; i++) {
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+
+        const label = document.createElement('span');
+        label.textContent = `Layer ${i}:`;
+        item.appendChild(label);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentProjectConfig.layers.sortingLayers[i] || '';
+
+        // Disable editing for built-in layers for safety
+        if (i < builtInLayers.length && builtInLayers[i]) {
+            input.value = builtInLayers[i];
+            input.disabled = true;
+        }
+        // User layers start at index 8 in Unity, good practice
+        else if (i < 8) {
+             input.disabled = true;
+        }
+
+
+        item.appendChild(input);
+        layerList.appendChild(item);
+    }
 }
 
 function addLogoToList(fileOrPath, duration = 5) {
@@ -225,7 +261,7 @@ function setupEventListeners() {
             if (newName && !currentProjectConfig.layers.sortingLayers.includes(newName)) {
                 currentProjectConfig.layers.sortingLayers.push(newName);
                 dom.newSortingLayerName.value = '';
-                populateLayerLists();
+                populateTagsAndLayers();
             }
         });
     }
@@ -236,7 +272,18 @@ function setupEventListeners() {
             if (newName && !currentProjectConfig.layers.collisionLayers.includes(newName)) {
                 currentProjectConfig.layers.collisionLayers.push(newName);
                 dom.newCollisionLayerName.value = '';
-                populateLayerLists();
+                populateTagsAndLayers(); // Rerender the whole list
+            }
+        });
+    }
+
+    if (dom.addTagBtn) {
+        dom.addTagBtn.addEventListener('click', () => {
+            const newTagName = dom.newTagName.value.trim();
+            if (newTagName && !currentProjectConfig.tags.includes(newTagName)) {
+                currentProjectConfig.tags.push(newTagName);
+                dom.newTagName.value = '';
+                populateTagsAndLayers(); // Rerender the tag list
             }
         });
     }
@@ -278,5 +325,5 @@ export function populateUI(config) {
         });
     }
 
-    populateLayerLists();
+    populateTagsAndLayers();
 }
