@@ -120,6 +120,23 @@
                 <div class="panel-content-container">
                     <div id="scene-content" class="panel-content view-content active">
                         <canvas id="scene-canvas"></canvas>
+                        <div id="camera-preview-panel" class="editor-panel floating-panel in-scene hidden">
+                            <div class="panel-header">
+                                <span>Vista de Juego</span>
+                                <button class="close-panel-btn" data-panel="camera-preview-panel">&times;</button>
+                            </div>
+                            <div class="panel-content no-padding">
+                                <canvas id="camera-preview-canvas"></canvas>
+                            </div>
+                            <div class="resize-handle" data-direction="n"></div>
+                            <div class="resize-handle" data-direction="ne"></div>
+                            <div class="resize-handle" data-direction="e"></div>
+                            <div class="resize-handle" data-direction="se"></div>
+                            <div class="resize-handle" data-direction="s"></div>
+                            <div class="resize-handle" data-direction="sw"></div>
+                            <div class="resize-handle" data-direction="w"></div>
+                            <div class="resize-handle" data-direction="nw"></div>
+                        </div>
                     </div>
                     <div id="game-content" class="panel-content view-content">
                         <canvas id="game-canvas"></canvas>
@@ -634,27 +651,6 @@
                 <button id="import-confirm-btn" class="primary-btn">Importar Seleccionados</button>
             </div>
         </div>
-    </div>
-
-    <div id="camera-preview-panel" class="editor-panel floating-panel hidden">
-        <div class="panel-header">
-            <span id="camera-preview-title">Vista Previa</span>
-            <div class="panel-header-controls">
-                <select id="camera-preview-selector" style="display: none;"></select>
-                <button class="close-panel-btn" data-panel="camera-preview-panel">&times;</button>
-            </div>
-        </div>
-        <div class="panel-content no-padding">
-            <canvas id="camera-preview-canvas"></canvas>
-        </div>
-        <div class="resize-handle" data-direction="n"></div>
-        <div class="resize-handle" data-direction="ne"></div>
-        <div class="resize-handle" data-direction="e"></div>
-        <div class="resize-handle" data-direction="se"></div>
-        <div class="resize-handle" data-direction="s"></div>
-        <div class="resize-handle" data-direction="sw"></div>
-        <div class="resize-handle" data-direction="w"></div>
-        <div class="resize-handle" data-direction="nw"></div>
     </div>
 
     <div id="music-player-panel" class="editor-panel floating-panel hidden">

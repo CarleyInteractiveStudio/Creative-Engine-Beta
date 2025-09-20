@@ -520,6 +520,50 @@ body {
     color: white;
 }
 
+/* --- In-Scene Camera Preview --- */
+#scene-content {
+    position: relative;
+    overflow: hidden;
+}
+
+#camera-preview-panel.in-scene {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 250px;
+    height: 150px;
+    z-index: 100;
+    border: 1px solid #555;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    /* Override floating-panel transform */
+    transform: none;
+    top: auto;
+    left: auto;
+}
+
+#camera-preview-panel.in-scene .panel-header {
+    height: 25px;
+    font-size: 12px;
+    line-height: 1; /* Adjust for smaller height */
+    padding: 5px 8px;
+    cursor: move;
+}
+
+#camera-preview-panel.in-scene .panel-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#camera-preview-panel.in-scene #camera-preview-selector {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 2px;
+}
+
 .context-menu li.disabled {
     color: #888;
     pointer-events: none;
