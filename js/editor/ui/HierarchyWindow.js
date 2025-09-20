@@ -94,6 +94,26 @@ function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
+function createLightObject(type = 'Point', parent = null) {
+    const name = `Luz ${type}`;
+    const newMateria = new Materia(name);
+    newMateria.addComponent(new Components.Transform(newMateria));
+
+    const lightComponent = new Components.Light(newMateria);
+    lightComponent.type = type;
+    newMateria.addComponent(lightComponent);
+
+    if (parent) {
+        parent.addChild(newMateria);
+    } else {
+        SceneManager.currentScene.addMateria(newMateria);
+    }
+
+    updateHierarchy();
+    selectMateriaCallback(newMateria.id);
+    return newMateria;
+}
+
 function createCameraObject(parent = null) {
     const newMateria = new Materia('Cámara');
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -291,6 +311,15 @@ function setupEventListeners() {
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);
+                    break;
+                case 'create-point-light':
+                    createLightObject('Point', selectedMateria);
+                    break;
+                case 'create-directional-light':
+                    createLightObject('Directional', selectedMateria);
+                    break;
+                case 'create-area-light':
+                    createLightObject('Area', selectedMateria);
                     break;
                 case 'rename':
                     if (selectedMateria) {

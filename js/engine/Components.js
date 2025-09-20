@@ -355,6 +355,27 @@ export class UIImage extends Leyes {
     }
 }
 
+export class Light extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.type = 'Point'; // Point, Directional, Area
+        this.color = '#ffffff';
+        this.intensity = 1.0;
+        this.range = 100; // For Point and Area lights
+        this.enabled = true;
+    }
+    clone() {
+        const newLight = new Light(null);
+        newLight.type = this.type;
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        newLight.range = this.range;
+        newLight.enabled = this.enabled;
+        return newLight;
+    }
+}
+
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -367,3 +388,4 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
+registerComponent('Light', Light);
