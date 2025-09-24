@@ -14,7 +14,6 @@ import { initialize as initializeAnimatorController, openAnimatorController } fr
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
-import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -24,6 +23,7 @@ import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
+import * as TilemapEditor from './editor/ui/TilemapEditorWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Editor State ---
     let projectsDirHandle = null;
     let selectedMateria = null;
+    let selectedAsset = null; // To hold { name, path, kind }
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
@@ -150,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
-            'ui-editor-panel': 'menu-window-ui-editor'
+            'tilemap-editor-panel': 'menu-window-tilemap',
         };
         const checkmark = '✅ ';
 
@@ -409,6 +410,49 @@ document.addEventListener('DOMContentLoaded', () => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
+            // --- Draw Tilemaps ---
+            const tilemapMaterias = SceneManager.currentScene.getAllMaterias()
+                .filter(m => m.getComponent(Components.TilemapRenderer));
+
+            for (const materia of tilemapMaterias) {
+                if (!materia.isActive) continue;
+                const tilemap = materia.getComponent(Components.TilemapRenderer);
+                const transform = materia.getComponent(Components.Transform);
+
+                if (!tilemap.tilesetImage && tilemap.tilesetPath) {
+                    tilemap.loadTileset(projectsDirHandle);
+                    continue;
+                }
+
+                if (tilemap.tilesetImage && tilemap.tilesetImage.complete) {
+                    const tilesetCols = Math.floor(tilemap.tilesetImage.width / tilemap.tileWidth);
+
+                    // Loop through each layer in the tilemap
+                    for (const layer of tilemap.layers) {
+                        if (!layer || !layer.tiles) continue; // Safety check for malformed data
+                        for (let y = 0; y < tilemap.height; y++) {
+                            for (let x = 0; x < tilemap.width; x++) {
+                                const tileIndex = layer.tiles[y * tilemap.width + x]; // Use layer's tiles
+                                if (tileIndex === -1) continue;
+
+                                const tileX = (tileIndex % tilesetCols) * tilemap.tileWidth;
+                                const tileY = Math.floor(tileIndex / tilesetCols) * tilemap.tileHeight;
+
+                                ctx.drawImage(
+                                    tilemap.tilesetImage,
+                                    tileX, tileY, tilemap.tileWidth, tilemap.tileHeight,
+                                    transform.x + (x * tilemap.tileWidth * transform.scale.x),
+                                    transform.y + (y * tilemap.tileHeight * transform.scale.y),
+                                    tilemap.tileWidth * transform.scale.x,
+                                    tilemap.tileHeight * transform.scale.y
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Draw Sprites ---
             for (const materia of materiasToRender) {
                 if (!materia.isActive) continue;
 
@@ -976,6 +1020,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
             'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
+            // Tilemap Editor
+            'tilemap-editor-panel', 'current-tilemap-name', 'tilemap-save-btn', 'tilemap-load-tileset-btn', 'tilemap-collision-mode-btn', 'tilemap-canvas', 'tilemap-palette-canvas', 'tilemap-layer-list', 'tilemap-add-layer-btn', 'tilemap-remove-layer-btn',
+            'tool-pencil-btn', 'tool-bucket-btn', 'tool-rect-btn',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
@@ -1042,10 +1089,37 @@ document.addEventListener('DOMContentLoaded', () => {
             InputManager.initialize(dom.sceneCanvas);
 
             // --- Define Callbacks & Helpers ---
-            const getSelectedAsset = () => { /* ... (existing code) ... */ return null; };
+            const getSelectedAsset = () => selectedAsset;
             const extractFramesAndCreateAsset = async (assetPath, metaData, animName, dirHandle) => { /* ... (existing code) ... */ };
-            const onAssetSelected = (assetName, assetPath, assetKind) => { /* ... (existing code) ... */ };
-            const onAssetOpened = async (name, fileHandle, dirHandle) => { /* ... (existing code) ... */ };
+            const onAssetSelected = (assetName, assetPath, assetKind) => {
+                selectedMateria = null; // Directly deselect any selected scene object
+                if (assetName) {
+                    selectedAsset = { name: assetName, path: assetPath, kind: assetKind };
+                } else {
+                    selectedAsset = null;
+                }
+                updateHierarchy(); // Update hierarchy to show deselection
+                updateInspector(); // Update inspector with the new selection state
+            };
+            const onAssetOpened = async (name, fileHandle, dirHandle) => {
+                if (name.endsWith('.ces')) {
+                    CodeEditor.openScript(fileHandle);
+                } else if (name.endsWith('.cea')) {
+                    openAnimationAssetFromModule(fileHandle);
+                } else if (name.endsWith('.ceui')) {
+                    openUiAsset(fileHandle);
+                } else if (name.endsWith('.ceMap')) {
+                    try {
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+                        const mapData = JSON.parse(content);
+                        TilemapEditor.openMap(fileHandle, mapData);
+                    } catch (err) {
+                        console.error(`Error al abrir el mapa de tiles: ${name}`, err);
+                        alert(`No se pudo abrir el archivo de mapa: ${name}`);
+                    }
+                }
+            };
             const onExportPackage = async (assetName) => { /* ... (existing code) ... */ };
             const getActiveView = () => activeView;
             const getSelectedMateria = () => selectedMateria;
@@ -1067,6 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
+            TilemapEditor.initialize({ dom, projectsDirHandle });
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });

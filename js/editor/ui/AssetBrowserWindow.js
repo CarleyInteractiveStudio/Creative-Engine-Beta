@@ -387,6 +387,37 @@ async function handleContextMenuClick(e) {
             }
             break;
         }
+        case 'create-tilemap': {
+            const mapName = prompt("Nombre del nuevo Mapa de Tiles (.ceMap):");
+            if (mapName) {
+                const fileName = mapName.endsWith('.ceMap') ? mapName : `${mapName}.ceMap`;
+                const defaultContent = JSON.stringify({
+                    width: 10,
+                    height: 10,
+                    tileWidth: 32,
+                    tileHeight: 32,
+                    tilesetPath: "",
+                    layers: [
+                        {
+                            name: 'Capa Base',
+                            tiles: Array(100).fill(-1)
+                        }
+                    ],
+                    collisionData: Array(100).fill(0)
+                }, null, 2);
+                try {
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(defaultContent);
+                    await writable.close();
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error al crear el mapa de tiles:", err);
+                    alert("No se pudo crear el mapa de tiles.");
+                }
+            }
+            break;
+        }
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
             if (selectedAsset) {

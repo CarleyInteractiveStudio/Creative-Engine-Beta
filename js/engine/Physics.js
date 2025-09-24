@@ -20,31 +20,90 @@ export class PhysicsSystem {
         }
 
         // Collision detection
-        const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
-        for (let i = 0; i < collidables.length; i++) {
-            for (let j = i + 1; j < collidables.length; j++) {
-                const materiaA = collidables[i];
-                const materiaB = collidables[j];
+        const dynamicCollidables = this.scene.materias.filter(m => m.getComponent(BoxCollider) && m.getComponent(Rigidbody)?.bodyType === 'dynamic');
+        const staticCollidables = this.scene.materias.filter(m => m.getComponent(BoxCollider) && m.getComponent(Rigidbody)?.bodyType !== 'dynamic');
+        const tilemaps = this.scene.materias.filter(m => m.getComponent(TilemapRenderer));
 
-                const transformA = materiaA.getComponent(Transform);
-                const colliderA = materiaA.getComponent(BoxCollider);
+        for (const materiaA of dynamicCollidables) {
+            const transformA = materiaA.getComponent(Transform);
+            const colliderA = materiaA.getComponent(BoxCollider);
+            const rbA = materiaA.getComponent(Rigidbody);
+
+            const boundsA = {
+                left: transformA.x - colliderA.width / 2,
+                right: transformA.x + colliderA.width / 2,
+                top: transformA.y - colliderA.height / 2,
+                bottom: transformA.y + colliderA.height / 2
+            };
+
+            // --- Check against static BoxColliders ---
+            for (const materiaB of staticCollidables) {
                 const transformB = materiaB.getComponent(Transform);
                 const colliderB = materiaB.getComponent(BoxCollider);
-
-                const leftA = transformA.x - colliderA.width / 2;
-                const rightA = transformA.x + colliderA.width / 2;
-                const topA = transformA.y - colliderA.height / 2;
-                const bottomA = transformA.y + colliderA.height / 2;
-
-                const leftB = transformB.x - colliderB.width / 2;
-                const rightB = transformB.x + colliderB.width / 2;
-                const topB = transformB.y - colliderB.height / 2;
-                const bottomB = transformB.y + colliderB.height / 2;
-
-                if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
-                    console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);
+                const boundsB = {
+                    left: transformB.x - colliderB.width / 2,
+                    right: transformB.x + colliderB.width / 2,
+                    top: transformB.y - colliderB.height / 2,
+                    bottom: transformB.y + colliderB.height / 2
+                };
+                if (this.checkAABB(boundsA, boundsB)) {
+                    this.resolveCollision(transformA, rbA, boundsA, boundsB);
                 }
             }
+
+            // --- Check against Tilemaps ---
+            for (const tilemapMateria of tilemaps) {
+                const tilemap = tilemapMateria.getComponent(TilemapRenderer);
+                const mapTransform = tilemapMateria.getComponent(Transform);
+
+                for (let y = 0; y < tilemap.height; y++) {
+                    for (let x = 0; x < tilemap.width; x++) {
+                        const tileIndex = y * tilemap.width + x;
+                        if (tilemap.collisionData[tileIndex] === 1) {
+                            const tileBounds = {
+                                left: mapTransform.x + x * tilemap.tileWidth,
+                                right: mapTransform.x + (x + 1) * tilemap.tileWidth,
+                                top: mapTransform.y + y * tilemap.tileHeight,
+                                bottom: mapTransform.y + (y + 1) * tilemap.tileHeight
+                            };
+                            if (this.checkAABB(boundsA, tileBounds)) {
+                                this.resolveCollision(transformA, rbA, boundsA, tileBounds);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    checkAABB(boundsA, boundsB) {
+        return boundsA.right > boundsB.left &&
+               boundsA.left < boundsB.right &&
+               boundsA.bottom > boundsB.top &&
+               boundsA.top < boundsB.bottom;
+    }
+
+    resolveCollision(transformA, rbA, boundsA, boundsB) {
+        // Simple resolution: stop movement. A real system would be more complex.
+        // Calculate overlap on each axis
+        const overlapX = Math.min(boundsA.right, boundsB.right) - Math.max(boundsA.left, boundsB.left);
+        const overlapY = Math.min(boundsA.bottom, boundsB.bottom) - Math.max(boundsA.top, boundsB.top);
+
+        // Resolve collision by pushing the object back along the axis of minimum overlap
+        if (overlapX < overlapY) {
+            if (transformA.x < boundsB.left) { // Came from the left
+                transformA.x -= overlapX;
+            } else { // Came from the right
+                transformA.x += overlapX;
+            }
+            rbA.velocity.x = 0;
+        } else {
+            if (transformA.y < boundsB.top) { // Came from the top
+                transformA.y -= overlapY;
+            } else { // Came from the bottom
+                transformA.y += overlapY;
+            }
+            rbA.velocity.y = 0;
         }
     }
 }

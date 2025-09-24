@@ -66,7 +66,7 @@
                         <hr>
                         <a href="#" id="menu-window-animation">Editor de Animación</a>
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
-                        <a href="#" id="menu-window-ui-editor">Editor de UI</a>
+                        <a href="#" id="menu-window-tilemap">Editor de Tilemap</a>
                     </div>
                 </div>
                 <div class="menu-item">
@@ -314,6 +314,7 @@
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-tilemap">Mapa de Tiles (.ceMap)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
                 </ul>
@@ -633,6 +634,52 @@
                 <button id="import-confirm-btn" class="primary-btn">Importar Seleccionados</button>
             </div>
         </div>
+    </div>
+
+    <div id="tilemap-editor-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="current-tilemap-name">Editor de Mapas de Tiles</span>
+            <div id="tilemap-editor-toolbar">
+                <button id="tilemap-save-btn" title="Guardar Mapa">💾</button>
+                <button id="tilemap-load-tileset-btn" title="Cargar Tileset">🖼️</button>
+                <span class="toolbar-divider"></span>
+                <button id="tool-pencil-btn" class="toolbar-btn active" title="Pincel">✏️</button>
+                <button id="tool-bucket-btn" class="toolbar-btn" title="Cubo de Pintura">💧</button>
+                <button id="tool-rect-btn" class="toolbar-btn" title="Rectángulo">⬜</button>
+                <span class="toolbar-divider"></span>
+                <button id="tilemap-collision-mode-btn" title="Modo de Colisión">🧱</button>
+            </div>
+            <button class="close-panel-btn" data-panel="tilemap-editor-panel">&times;</button>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="tilemap-editor-main">
+                <div id="tilemap-canvas-container">
+                    <canvas id="tilemap-canvas"></canvas>
+                </div>
+                <div id="tilemap-layers-container">
+                    <div class="list-header">
+                        <span>Capas</span>
+                        <div class="header-buttons">
+                            <button id="tilemap-add-layer-btn" title="Añadir Capa">+</button>
+                            <button id="tilemap-remove-layer-btn" title="Eliminar Capa">-</button>
+                        </div>
+                    </div>
+                    <div id="tilemap-layer-list"></div>
+                </div>
+                <div id="tilemap-palette-container">
+                    <div class="list-header">Tileset</div>
+                    <canvas id="tilemap-palette-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
 
     <div id="music-player-panel" class="editor-panel floating-panel hidden">

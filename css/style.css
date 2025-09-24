@@ -435,6 +435,10 @@ footer {
 /* --- License Button Link Style --- */
 .license-container {
     margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
 }
 #btn-license {
     background: none;
@@ -446,6 +450,20 @@ footer {
     text-decoration: none;
 }
 #btn-license:hover {
+    text-decoration: underline;
+}
+
+.know-games-button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent-color);
+    font-size: 0.9em;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.know-games-button:hover {
     text-decoration: underline;
 }
 

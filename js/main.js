@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Intro Sequence Elements
     const introStep1 = document.getElementById('intro-step-1');
     const introStep2 = document.getElementById('intro-step-2');
+    const introStep3 = document.getElementById('intro-step-3');
     const mainContent = document.getElementById('main-content');
 
     // Buttons
@@ -72,10 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleIntroAnimation() {
         setTimeout(() => { if(introStep1) introStep1.classList.add('visible'); }, 500);
         setTimeout(() => { if(introStep2) introStep2.classList.add('visible'); }, 1500);
+        setTimeout(() => { if(introStep3) introStep3.classList.add('visible'); }, 2500);
         setTimeout(() => {
             if(mainContent) mainContent.classList.add('visible');
             startQuoteCarousel();
-        }, 2500);
+        }, 3500);
     }
 
     // --- IndexedDB Logic ---

@@ -318,6 +318,45 @@ export class UIImage extends Leyes {
     }
 }
 
+export class TilemapRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 10; // in tiles
+        this.height = 10; // in tiles
+        this.tileWidth = 32; // in pixels
+        this.tileHeight = 32; // in pixels
+        this.tilesetPath = ''; // path to the tileset image
+        this.layers = []; // Array of layer objects, e.g., { name: 'Suelo', tiles: [...] }
+        this.collisionData = []; // 1D array storing collision data (0 or 1)
+        this.tilesetImage = null; // The loaded Image object for the tileset
+    }
+
+    async loadTileset(projectsDirHandle) {
+        if (this.tilesetPath) {
+            const url = await getURLForAssetPath(this.tilesetPath, projectsDirHandle);
+            if (url) {
+                this.tilesetImage = new Image();
+                this.tilesetImage.src = url;
+                await this.tilesetImage.decode(); // Wait for the image to be fully loaded and decoded
+            }
+        }
+    }
+
+    clone() {
+        const newTilemap = new TilemapRenderer(null);
+        newTilemap.width = this.width;
+        newTilemap.height = this.height;
+        newTilemap.tileWidth = this.tileWidth;
+        newTilemap.tileHeight = this.tileHeight;
+        newTilemap.tilesetPath = this.tilesetPath;
+        // Deep copy layers and their tile data
+        newTilemap.layers = this.layers.map(layer => ({ ...layer, tiles: [...layer.tiles] }));
+        newTilemap.collisionData = [...this.collisionData];
+        // The tilesetImage will be loaded on demand
+        return newTilemap;
+    }
+}
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -330,3 +369,4 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
+registerComponent('TilemapRenderer', TilemapRenderer);
