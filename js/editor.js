@@ -14,7 +14,7 @@ import { initialize as initializeAnimatorController, openAnimatorController } fr
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
-import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
+import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -1504,7 +1504,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 onAssetOpened,
                 onShowContextMenu: showContextMenu,
                 onExportPackage,
-                createUiSystemFile,
                 updateAssetBrowser,
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });

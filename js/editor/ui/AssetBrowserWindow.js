@@ -12,7 +12,6 @@ let onAssetSelected;
 let onAssetOpened;
 let onShowContextMenu;
 let onExportPackage;
-let createUiSystemFile;
 let updateAssetBrowserCallback;
 
 // --- Initialization ---
@@ -379,12 +378,6 @@ async function handleContextMenuClick(e) {
                     console.error("Error al crear el script:", err);
                     alert("No se pudo crear el script.");
                 }
-            }
-            break;
-        }
-        case 'create-ui-system': {
-            if (createUiSystemFile) {
-                createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
             }
             break;
         }
