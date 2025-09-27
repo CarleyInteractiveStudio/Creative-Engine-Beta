@@ -12,10 +12,11 @@ let currentPalette = {
 let currentFileHandle = null;
 let selectedTileId = -1;
 let isDirty = false;
+let openAssetSelectorCallback = null;
 
 // --- Public API ---
 
-export function initialize(editorDom, projDirHandle) {
+export function initialize(editorDom, projDirHandle, assetSelectorCallback) {
     dom = {
         panel: editorDom.tilePalettePanel,
         assetName: editorDom.paletteAssetName,
@@ -31,6 +32,7 @@ export function initialize(editorDom, projDirHandle) {
         overlay: editorDom.palettePanelOverlay,
     };
     projectsDirHandle = projDirHandle;
+    openAssetSelectorCallback = assetSelectorCallback;
 
     setupEventListeners();
 }
@@ -149,23 +151,23 @@ async function saveCurrentPalette() {
 }
 
 async function selectImage() {
+    if (!openAssetSelectorCallback) {
+        console.error("La función para seleccionar assets no ha sido proporcionada.");
+        alert("Error interno: El selector de assets no está disponible.");
+        return;
+    }
+
     try {
-        const [fileHandle] = await window.showOpenFilePicker({
-            types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
-            multiple: false
-        });
-
-        // We need to resolve the path relative to the project root
-        // This is a simplification; a real implementation might need a more robust path resolver.
-        // For now, let's assume assets are in a predictable location.
-        // A better approach would be to get the relative path from the project root handle.
-        const relativePath = `Assets/${fileHandle.name}`; // This is a weak assumption
-        await loadImage(relativePath);
-        currentPalette.imagePath = relativePath;
-        isDirty = true;
-
+        const selectedImagePath = await openAssetSelectorCallback();
+        if (selectedImagePath) {
+            await loadImage(selectedImagePath);
+            currentPalette.imagePath = selectedImagePath;
+            isDirty = true;
+        } else {
+            console.log("Selección de imagen cancelada.");
+        }
     } catch (err) {
-        console.log("User cancelled file picker or an error occurred.", err);
+        console.error("Ocurrió un error durante la selección de assets:", err);
     }
 }
 

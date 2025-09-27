@@ -623,6 +623,52 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function openAssetSelectorForPalette() {
+        return new Promise(async (resolve) => {
+            const grid = dom.spriteSelectorGrid;
+            grid.innerHTML = '';
+            dom.spriteSelectorModal.classList.add('is-open');
+
+            const imageFiles = [];
+            async function findImages(dirHandle, path = '') {
+                for await (const entry of dirHandle.values()) {
+                    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                    if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg'))) {
+                        imageFiles.push(entryPath);
+                    } else if (entry.kind === 'directory') {
+                        // Simple exclusion to avoid heavy node_modules scan
+                        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+                        await findImages(await dirHandle.getDirectoryHandle(entry.name), entryPath);
+                    }
+                }
+            }
+
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+            await findImages(assetsHandle, 'Assets');
+
+            imageFiles.forEach(imgPath => {
+                const img = document.createElement('img');
+                getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
+                img.title = imgPath;
+
+                img.addEventListener('click', () => {
+                    dom.spriteSelectorModal.classList.remove('is-open');
+                    resolve(imgPath);
+                });
+                grid.appendChild(img);
+            });
+
+            const closeModal = () => {
+                dom.spriteSelectorModal.classList.remove('is-open');
+                dom.spriteSelectorModal.querySelector('.close-button').removeEventListener('click', closeModal);
+                resolve(null);
+            };
+            dom.spriteSelectorModal.querySelector('.close-button').addEventListener('click', closeModal, { once: true });
+        });
+    }
+
     async function extractFramesFromSheet(assetPath, metaData) {
         return new Promise(async (resolve, reject) => {
             const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
@@ -1463,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
+            TilePalette.initialize(dom, projectsDirHandle, openAssetSelectorForPalette);
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();
