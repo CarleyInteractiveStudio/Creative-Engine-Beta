@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -133,8 +133,8 @@ export class Renderer {
     }
 
     drawTilemap(tilemapRenderer) {
-        const tilemap = tilemapRenderer.materia.getComponent('Tilemap');
-        const transform = tilemapRenderer.materia.getComponent('Transform');
+        const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
+        const transform = tilemapRenderer.materia.getComponent(Transform);
 
         if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
             return;
