@@ -1583,16 +1583,18 @@ body {
     left: 100%;
     top: -5px; /* Adjust to align with parent */
     background-color: var(--bg-tertiary);
-}
-
-.context-menu .submenu.submenu-up {
-    top: auto;
-    bottom: 0;
+    /* Common styles for all submenus */
     border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 5px 0;
     list-style: none;
     min-width: 150px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.context-menu .submenu.submenu-up {
+    top: auto;
+    bottom: 0;
 }
 
 .context-menu .has-submenu:hover .submenu {
@@ -1863,11 +1865,115 @@ body {
     border-radius: 4px;
 }
 
+.asset-dropper {
+    background-color: var(--bg-primary);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    flex-grow: 1;
+}
+
+.asset-dropper:hover {
+    border-color: var(--accent-color);
+}
+
+.asset-dropper.drag-over {
+    background-color: rgba(14, 99, 156, 0.2);
+    border-color: var(--accent-color);
+    color: var(--text-primary);
+}
+
+.asset-dropper-text {
+    pointer-events: none; /* Make sure the parent div gets the drop event */
+    font-style: italic;
+}
+
 .inspector-placeholder {
     color: var(--text-secondary);
     text-align: center;
     margin-top: 20px;
 }
+
+/* --- Tilemap Layer UI in Inspector --- */
+.layer-manager-ui {
+    margin-top: 10px;
+}
+
+.layer-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.layer-list-header h5 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1em;
+}
+
+.layer-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.layer-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 22px;
+    text-align: center;
+}
+
+.layer-btn.add:hover {
+    background-color: #27ae60;
+}
+
+.layer-btn.remove:hover {
+    background-color: #c0392b;
+}
+
+.layer-list {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.layer-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.layer-item:last-child {
+    border-bottom: none;
+}
+
+.layer-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.layer-item.active {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: bold;
+}
+
 
 #inspector-panel .panel-content {
     display: flex;
@@ -1993,6 +2099,91 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+}
+
+/* --- Tile Palette Editor Panel --- */
+#tile-palette-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+#palette-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 6px;
+    background: var(--color-background-deep);
+    border-bottom: 1px solid var(--color-border-dark);
+    flex-shrink: 0;
+}
+
+#palette-toolbar .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#palette-toolbar label {
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+}
+
+#palette-toolbar input[type="number"] {
+    width: 60px;
+}
+
+#palette-image-name, #palette-selected-tile-id {
+    font-weight: bold;
+    color: var(--color-text-primary);
+    background: var(--color-background-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+    min-width: 20px;
+    text-align: center;
+}
+
+#palette-view-container {
+    flex-grow: 1;
+    position: relative;
+    overflow: auto;
+    background-color: var(--color-background-deep);
+    background-image:
+        linear-gradient(45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--color-background-light) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--color-background-light) 75%);
+    background-size: 20px 20px;
+}
+
+#palette-tileset-image {
+    display: block;
+    image-rendering: pixelated; /* Sharp pixels */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+#palette-grid-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: all; /* Make sure canvas receives mouse events */
+    z-index: 1;
+}
+
+#palette-panel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 10;
 }
 
 #code-editor-toolbar {

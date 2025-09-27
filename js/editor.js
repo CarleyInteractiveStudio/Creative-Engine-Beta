@@ -26,6 +26,7 @@ import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
+import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -153,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
-            'ui-editor-panel': 'menu-window-ui-editor',
+            'tile-palette-panel': 'menu-window-tile-palette',
             'asset-store-panel': 'menu-window-asset-store'
         };
         const checkmark = '✅ ';
@@ -410,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
+        const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
+
         const pointLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
         const spotLights = SceneManager.currentScene.getAllMaterias()
@@ -445,6 +449,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.rotate(transform.rotation * Math.PI / 180);
                     ctx.drawImage(img, -width / 2, -height / 2, width, height);
                     ctx.restore();
+                }
+            }
+
+            // Draw tilemaps
+            for (const materia of tilemapsToRender) {
+                if (!materia.isActive) continue;
+
+                // Culling for tilemaps can be more complex (chunk-based),
+                // for now, we'll do a simple bounds check on the whole map.
+                // A proper implementation would be more performant.
+                if (cameraForCulling) {
+                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
+                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
+                    // Layer culling
+                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                    const objectLayerBit = 1 << materia.layer;
+                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+                }
+
+                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+                if (tilemapRenderer) {
+                    rendererInstance.drawTilemap(tilemapRenderer);
                 }
             }
         };
@@ -564,12 +590,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showContextMenu(menu, event) {
         hideContextMenus(); // Hide any other open menus
-        if (!menu) { // If no menu is provided, we just hide all.
+        if (!menu) {
             return;
         }
         menu.style.display = 'block';
-        menu.style.left = `${event.clientX}px`;
-        menu.style.top = `${event.clientY}px`;
+
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        let left = event.clientX;
+        let top = event.clientY;
+
+        // Adjust horizontal position
+        if (left + menuWidth > windowWidth) {
+            left = windowWidth - menuWidth - 5; // Subtract 5 for some padding
+        }
+
+        // Adjust vertical position
+        if (top + menuHeight > windowHeight) {
+            top = windowHeight - menuHeight - 5; // Subtract 5 for some padding
+        }
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
     }
 
     function hideContextMenus() {
@@ -623,6 +668,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // --- Submenu dynamic positioning ---
+        document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
+            item.addEventListener('mouseenter', e => {
+                const submenu = e.currentTarget.querySelector('.submenu');
+                if (!submenu) return;
+
+                const parentRect = e.currentTarget.getBoundingClientRect();
+                const submenuHeight = submenu.scrollHeight; // Get height even if hidden
+
+                // Check if it would go off-screen
+                if (parentRect.bottom + submenuHeight > window.innerHeight) {
+                    submenu.classList.add('submenu-up');
+                } else {
+                    submenu.classList.remove('submenu-up');
+                }
+            });
+        });
+
         // Global listener to hide context menus
         window.addEventListener('mousedown', (e) => {
             // Hide if the click is not on a context menu itself
@@ -835,8 +898,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'ui-editor') {
-                openUiEditorFromModule();
+            } else if (panelName === 'tile-palette') {
+                const panel = document.getElementById('tile-palette-panel');
+                if (panel) {
+                    panel.classList.toggle('hidden');
+                    updateWindowMenuUI();
+                }
             } else if (panelName === 'asset-store') {
                 const panel = document.getElementById('asset-store-panel');
                 if (panel) {
@@ -1223,6 +1290,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
+            // Tile Palette Elements
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-select-image-btn',
+            'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
+            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
@@ -1321,6 +1392,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log(`Opening animation asset: ${name}`);
                         openAnimationAssetFromModule(fileHandle, dirHandle);
                         break;
+                    case 'cepalette':
+                        console.log(`Opening tile palette: ${name}`);
+                        TilePalette.openPalette(fileHandle);
+                        break;
                     case 'ceanim':
                         console.log(`Opening animation controller: ${name}`);
                         openAnimatorController(fileHandle, dirHandle);
@@ -1367,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -1388,6 +1463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
+            TilePalette.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

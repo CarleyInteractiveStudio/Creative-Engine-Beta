@@ -423,3 +423,221 @@ registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
+
+// --- Tilemap Components ---
+
+export class Tilemap extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.tileWidth = 32;
+        this.tileHeight = 32;
+        this.columns = 20;
+        this.rows = 20;
+        this.palettePath = ''; // Path to the .cepalette asset
+        this.activeLayerIndex = 0;
+
+        // Layers are now objects with a name and data grid.
+        this.layers = [{
+            name: 'Capa 1',
+            data: this.createGridData(this.columns, this.rows)
+        }];
+    }
+
+    createGridData(cols, rows) {
+        return Array(rows).fill(null).map(() => Array(cols).fill(-1)); // -1 means empty tile
+    }
+
+    addLayer(name = `Capa ${this.layers.length + 1}`) {
+        this.layers.push({
+            name: name,
+            data: this.createGridData(this.columns, this.rows)
+        });
+        this.activeLayerIndex = this.layers.length - 1; // Set new layer as active
+    }
+
+    removeLayer(index) {
+        if (this.layers.length > 1 && index >= 0 && index < this.layers.length) {
+            this.layers.splice(index, 1);
+            // Adjust active layer if necessary
+            if (this.activeLayerIndex >= index) {
+                this.activeLayerIndex = Math.max(0, this.activeLayerIndex - 1);
+            }
+        }
+    }
+
+    setTile(layerIndex, x, y, tileId) {
+        const layer = this.layers[layerIndex];
+        if (layer && layer.data[y] && layer.data[y][x] !== undefined) {
+            layer.data[y][x] = tileId;
+        }
+    }
+
+    getTile(layerIndex, x, y) {
+        return this.layers[layerIndex]?.data?.[y]?.[x] ?? -1;
+    }
+
+    resize(newCols, newRows) {
+        this.columns = newCols;
+        this.rows = newRows;
+        // Resize all existing layers
+        this.layers.forEach(layer => {
+            const newGrid = this.createGridData(newCols, newRows);
+            const oldGrid = layer.data;
+            // Copy old data over
+            for (let r = 0; r < Math.min(oldGrid.length, newRows); r++) {
+                for (let c = 0; c < Math.min(oldGrid[r].length, newCols); c++) {
+                    newGrid[r][c] = oldGrid[r][c];
+                }
+            }
+            layer.data = newGrid;
+        });
+    }
+
+    clone() {
+        const newTilemap = new Tilemap(null);
+        newTilemap.tileWidth = this.tileWidth;
+        newTilemap.tileHeight = this.tileHeight;
+        newTilemap.columns = this.columns;
+        newTilemap.rows = this.rows;
+        newTilemap.palettePath = this.palettePath;
+        newTilemap.activeLayerIndex = this.activeLayerIndex;
+        // Deep copy layers
+        newTilemap.layers = JSON.parse(JSON.stringify(this.layers));
+        return newTilemap;
+    }
+}
+
+export class TilemapRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.palette = null; // Loaded palette asset
+        this.tileSheet = null; // The Image object for the tiles
+    }
+
+    async loadPalette(projectsDirHandle) {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap || !tilemap.palettePath) {
+            this.palette = null;
+            this.tileSheet = null;
+            return;
+        }
+
+        try {
+            // Load palette JSON
+            const paletteUrl = await getURLForAssetPath(tilemap.palettePath, projectsDirHandle);
+            if (!paletteUrl) throw new Error(`Could not get URL for palette: ${tilemap.palettePath}`);
+            const response = await fetch(paletteUrl);
+            this.palette = await response.json();
+
+            // Load tile sheet image
+            if (this.palette.imagePath) {
+                const imageUrl = await getURLForAssetPath(this.palette.imagePath, projectsDirHandle);
+                if (imageUrl) {
+                    this.tileSheet = new Image();
+                    await new Promise((resolve, reject) => {
+                        this.tileSheet.onload = resolve;
+                        this.tileSheet.onerror = reject;
+                        this.tileSheet.src = imageUrl;
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to load palette or associated tilesheet for '${tilemap.palettePath}':`, error);
+            this.palette = null;
+            this.tileSheet = null;
+        }
+    }
+
+    clone() {
+        // Renderer doesn't hold much state itself, it's mostly for logic.
+        // The palette will be reloaded based on the Tilemap's path.
+        return new TilemapRenderer(null);
+    }
+}
+
+registerComponent('Tilemap', Tilemap);
+registerComponent('TilemapRenderer', TilemapRenderer);
+
+export class TilemapCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sourceLayerIndex = 0; // Which layer to use for collision
+        this.generatedColliders = []; // Array of {x, y, width, height} objects
+    }
+
+    generate() {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap || !tilemap.layers[this.sourceLayerIndex]) {
+            this.generatedColliders = [];
+            return;
+        }
+
+        const grid = tilemap.layers[this.sourceLayerIndex].data;
+        const { columns, rows, tileWidth, tileHeight } = tilemap;
+
+        const visited = Array(rows).fill(null).map(() => Array(columns).fill(false));
+        const rects = [];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < columns; c++) {
+                if (grid[r][c] !== -1 && !visited[r][c]) {
+                    let currentWidth = 1;
+                    while (c + currentWidth < columns && grid[r][c + currentWidth] !== -1 && !visited[r][c + currentWidth]) {
+                        currentWidth++;
+                    }
+
+                    let currentHeight = 1;
+                    while (r + currentHeight < rows) {
+                        let canExpandDown = true;
+                        for (let i = 0; i < currentWidth; i++) {
+                            if (grid[r + currentHeight][c + i] === -1 || visited[r + currentHeight][c + i]) {
+                                canExpandDown = false;
+                                break;
+                            }
+                        }
+                        if (canExpandDown) {
+                            currentHeight++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    for (let y = 0; y < currentHeight; y++) {
+                        for (let x = 0; x < currentWidth; x++) {
+                            visited[r + y][c + x] = true;
+                        }
+                    }
+
+                    const mapTotalWidth = columns * tileWidth;
+                    const mapTotalHeight = rows * tileHeight;
+                    const rectWidth_pixels = currentWidth * tileWidth;
+                    const rectHeight_pixels = currentHeight * tileHeight;
+                    const rectCenterX = (c * tileWidth) + (rectWidth_pixels / 2);
+                    const rectCenterY = (r * tileHeight) + (rectHeight_pixels / 2);
+
+                    const relativeX = rectCenterX - (mapTotalWidth / 2);
+                    const relativeY = rectCenterY - (mapTotalHeight / 2);
+
+                    rects.push({
+                        x: relativeX,
+                        y: relativeY,
+                        width: rectWidth_pixels,
+                        height: rectHeight_pixels
+                    });
+                }
+            }
+        }
+
+        this.generatedColliders = rects;
+        console.log(`Generados ${rects.length} colisionadores optimizados.`);
+    }
+
+    clone() {
+        const newCollider = new TilemapCollider2D(null);
+        newCollider.sourceLayerIndex = this.sourceLayerIndex;
+        // The colliders themselves are not copied; they should be regenerated.
+        return newCollider;
+    }
+}
+
+registerComponent('TilemapCollider2D', TilemapCollider2D);

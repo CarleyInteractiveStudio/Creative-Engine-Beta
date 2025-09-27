@@ -66,7 +66,7 @@
                         <hr>
                         <a href="#" id="menu-window-animation">Editor de Animación</a>
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
-                        <a href="#" id="menu-window-ui-editor">Editor de UI</a>
+                        <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
                         <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
                     </div>
@@ -106,6 +106,9 @@
                                     <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)">🔄 Rotar</button>
                                     <button id="tool-scale" class="toolbar-btn" title="Escalar (E)">↗️ Escalar</button>
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
+                                    <hr class="tilemap-tool-divider" style="display: none;">
+                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
+                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
                                 </div>
                             </div>
                         </div>
@@ -385,6 +388,7 @@
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
                 </ul>
@@ -411,6 +415,7 @@
                 Objeto 2D <span class="arrow">▶</span>
                 <ul class="submenu">
                     <li data-action="create-camera">Cámara</li>
+                    <li data-action="create-tilemap">Tilemap</li>
                 </ul>
             </li>
             <li class="has-submenu">
@@ -763,6 +768,50 @@
                 <button id="music-next-btn">⏭️</button>
                 <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
             </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="palette-asset-name">Editor de Paleta de Tiles</span>
+            <div class="panel-header-controls">
+                 <button id="palette-save-btn" title="Guardar Paleta">💾 Guardar</button>
+                 <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="palette-toolbar">
+                <div class="toolbar-group">
+                    <label>Tileset:</label>
+                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
+                    <span id="palette-image-name">Ninguna</span>
+                </div>
+                <div class="toolbar-group">
+                    <label for="palette-tile-width">Ancho Tile:</label>
+                    <input type="number" id="palette-tile-width" value="32" min="1">
+                    <label for="palette-tile-height">Alto Tile:</label>
+                    <input type="number" id="palette-tile-height" value="32" min="1">
+                </div>
+                 <div class="toolbar-group">
+                    <label>Tile Seleccionado:</label>
+                    <span id="palette-selected-tile-id">-</span>
+                </div>
+            </div>
+            <div id="palette-view-container">
+                <canvas id="palette-grid-canvas"></canvas>
+                <img id="palette-tileset-image" src="" alt="Tileset">
+            </div>
+        </div>
+        <div id="palette-panel-overlay">
+            <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

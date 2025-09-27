@@ -94,6 +94,23 @@ function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
+function createTilemapObject(parent = null) {
+    const newMateria = new Materia('Tilemap');
+    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new Components.Tilemap(newMateria));
+    newMateria.addComponent(new Components.TilemapRenderer(newMateria));
+
+    if (parent) {
+        parent.addChild(newMateria);
+    } else {
+        SceneManager.currentScene.addMateria(newMateria);
+    }
+
+    updateHierarchy();
+    selectMateriaCallback(newMateria.id);
+    return newMateria;
+}
+
 function createLightObject(name, lightComponent, parent = null) {
     const newMateria = new Materia(name);
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -307,6 +324,9 @@ function setupEventListeners() {
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);
+                    break;
+                case 'create-tilemap':
+                    createTilemapObject(selectedMateria);
                     break;
                 case 'create-point-light':
                     createLightObject('Point Light', Components.PointLight2D, selectedMateria);

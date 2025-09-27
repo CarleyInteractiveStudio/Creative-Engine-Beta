@@ -12,10 +12,13 @@ let updateScene;
 let getActiveView;
 let SceneManager;
 let getPreferences;
+let getSelectedTile;
 
 // Module State
-let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan'
+let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
 let isDragging = false;
+let lastSelectedId = -1;
+let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
 let dragState = {}; // To hold info about the current drag operation
@@ -365,6 +368,7 @@ export function initialize(dependencies) {
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;
     getPreferences = dependencies.getPreferences;
+    getSelectedTile = dependencies.getSelectedTile; // New dependency
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -413,6 +417,26 @@ export function initialize(dependencies) {
             window.addEventListener('mousemove', onPanMove);
             window.addEventListener('mouseup', onPanEnd);
             return;
+        }
+
+        // --- Tile Painting Logic (Left-click) ---
+        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+            e.stopPropagation();
+            paintTile(e); // Paint on the first click
+
+            const onPaintMove = (moveEvent) => {
+                paintTile(moveEvent);
+            };
+
+            const onPaintEnd = () => {
+                lastPaintedCoords = { col: -1, row: -1 }; // Reset for next paint stroke
+                window.removeEventListener('mousemove', onPaintMove);
+                window.removeEventListener('mouseup', onPaintEnd);
+            };
+
+            window.addEventListener('mousemove', onPaintMove);
+            window.addEventListener('mouseup', onPaintEnd);
+            return; // Stop further execution to prevent gizmo logic
         }
 
         // --- Gizmo Dragging Logic (Left-click) ---
@@ -489,11 +513,33 @@ export function initialize(dependencies) {
     document.getElementById('tool-pan').addEventListener('click', () => setActiveTool('pan'));
     document.getElementById('tool-scale').addEventListener('click', () => setActiveTool('scale'));
     document.getElementById('tool-rotate').addEventListener('click', () => setActiveTool('rotate'));
+    document.getElementById('tool-tile-brush').addEventListener('click', () => setActiveTool('tile-brush'));
+    document.getElementById('tool-tile-eraser').addEventListener('click', () => setActiveTool('tile-eraser'));
 }
 
 export function update() {
     // This will be called from the main editorLoop
     handleEditorInteractions();
+
+    const selectedMateria = getSelectedMateria();
+    const currentSelectedId = selectedMateria ? selectedMateria.id : -1;
+
+    // Check if selection has changed
+    if (currentSelectedId !== lastSelectedId) {
+        const hasTilemap = selectedMateria && selectedMateria.getComponent(Components.Tilemap);
+
+        // Show/hide tilemap-specific tools
+        document.querySelectorAll('.tilemap-tool, .tilemap-tool-divider').forEach(el => {
+            el.style.display = hasTilemap ? 'block' : 'none';
+        });
+
+        // If the selected object is not a tilemap, switch back to a default tool
+        if (!hasTilemap && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+            setActiveTool('move');
+        }
+
+        lastSelectedId = currentSelectedId;
+    }
 }
 
 function drawCameraGizmos(renderer) {
@@ -576,6 +622,54 @@ function drawCameraGizmos(renderer) {
     });
 }
 
+function drawTileCursor() {
+    if (activeTool !== 'tile-brush' && activeTool !== 'tile-eraser') return;
+
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
+
+    const { ctx } = renderer;
+    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const mousePos = InputManager.getMousePositionInCanvas();
+    const worldMouse = screenToWorld(mousePos.x, mousePos.y);
+
+    // Calculate mouse position relative to the tilemap's origin (top-left corner)
+    const mapWidth = columns * tileWidth;
+    const mapHeight = rows * tileHeight;
+    const mapTopLeftX = transform.x - mapWidth / 2;
+    const mapTopLeftY = transform.y - mapHeight / 2;
+
+    const mouseInMapX = worldMouse.x - mapTopLeftX;
+    const mouseInMapY = worldMouse.y - mapTopLeftY;
+
+    // Calculate the column and row under the cursor
+    const col = Math.floor(mouseInMapX / tileWidth);
+    const row = Math.floor(mouseInMapY / tileHeight);
+
+    // Check if the cursor is within the tilemap bounds
+    if (col >= 0 && col < columns && row >= 0 && row < rows) {
+        const cursorX = mapTopLeftX + col * tileWidth;
+        const cursorY = mapTopLeftY + row * tileHeight;
+
+        ctx.save();
+        if (activeTool === 'tile-brush') {
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+        } else { // Eraser
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        }
+        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+        ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
+        ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+        ctx.restore();
+    }
+}
+
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
@@ -588,4 +682,82 @@ export function drawOverlay() {
 
     // Draw gizmos for all cameras in the scene
     drawCameraGizmos(renderer);
+
+    // Draw tile painting cursor
+    drawTileCursor();
+
+    // Draw tilemap colliders
+    drawTilemapColliders();
+}
+
+function drawTilemapColliders() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!collider || !transform) return;
+
+    const { ctx } = renderer;
+
+    ctx.save();
+    // Apply the main transform of the tilemap object
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // Bright green for physics shapes
+    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+    ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]); // Dashed line
+
+    collider.generatedColliders.forEach(rect => {
+        // The rect coordinates are already relative to the tilemap's center
+        ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+    });
+
+    ctx.restore();
+}
+
+function paintTile(event) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
+
+    const { tileWidth, tileHeight, columns, rows } = tilemap;
+
+    const rect = dom.sceneCanvas.getBoundingClientRect();
+    const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const mapWidth = columns * tileWidth;
+    const mapHeight = rows * tileHeight;
+    const mapTopLeftX = transform.x - mapWidth / 2;
+    const mapTopLeftY = transform.y - mapHeight / 2;
+
+    const mouseInMapX = worldMouse.x - mapTopLeftX;
+    const mouseInMapY = worldMouse.y - mapTopLeftY;
+
+    const col = Math.floor(mouseInMapX / tileWidth);
+    const row = Math.floor(mouseInMapY / tileHeight);
+
+    // Prevent re-painting the same tile in a single drag motion
+    if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
+        return;
+    }
+
+    if (col >= 0 && col < columns && row >= 0 && row < rows) {
+        const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : -1;
+
+        if (tileIdToPaint === undefined || tileIdToPaint === null) {
+            console.warn("No tile selected in the palette to paint with.");
+            return;
+        }
+
+        // Use the active layer index from the component
+        tilemap.setTile(tilemap.activeLayerIndex, col, row, tileIdToPaint);
+        lastPaintedCoords = { col, row };
+        SceneManager.setSceneDirty(true);
+    }
 }

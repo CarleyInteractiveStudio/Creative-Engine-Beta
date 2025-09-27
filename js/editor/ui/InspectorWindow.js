@@ -19,10 +19,11 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
+    'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody, Components.BoxCollider],
+    'Físicas': [Components.Rigidbody, Components.BoxCollider, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
@@ -123,6 +124,49 @@ function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
 
+    // --- Drag and Drop for Asset Fields ---
+    if (e.target.matches('.asset-dropper, .asset-dropper *')) {
+        const dropper = e.target.closest('.asset-dropper');
+
+        dropper.ondragover = (ev) => {
+            ev.preventDefault();
+            dropper.classList.add('drag-over');
+        };
+        dropper.ondragleave = () => {
+            dropper.classList.remove('drag-over');
+        };
+        dropper.ondrop = async (ev) => {
+            ev.preventDefault();
+            dropper.classList.remove('drag-over');
+            const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            const expectedType = dropper.dataset.assetType;
+
+            if (data.name.endsWith(expectedType)) {
+                if (selectedMateria) {
+                    const componentName = dropper.dataset.component;
+                    const propName = dropper.dataset.prop;
+                    const component = selectedMateria.getComponent(Components[componentName]);
+                    if (component) {
+                        component[propName] = data.path; // Set the asset path
+
+                        // If it's a tilemap, trigger the palette reload
+                        if (component instanceof Components.Tilemap) {
+                            const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
+                            if (renderer) {
+                                await renderer.loadPalette(projectsDirHandle);
+                            }
+                        }
+
+                        updateInspector(); // Redraw the inspector to show the new path
+                    }
+                }
+            } else {
+                alert(`Asset incorrecto. Se esperaba un archivo ${expectedType}.`);
+            }
+        };
+    }
+
+
     if (e.target.matches('#add-component-btn')) {
         showAddComponentModal();
     }
@@ -138,6 +182,44 @@ function handleInspectorClick(e) {
         const camera = selectedMateria.getComponent(Components.Camera);
         if (camera) {
             showCullingMaskDropdown(camera, e.target);
+        }
+    }
+
+    // --- Tilemap Layer Management ---
+    if (e.target.matches('[data-action="add-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            tilemap.addLayer();
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="remove-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            if (tilemap.layers.length > 1) {
+                tilemap.removeLayer(tilemap.activeLayerIndex);
+                updateInspector();
+            } else {
+                alert("No se puede eliminar la última capa.");
+            }
+        }
+    }
+
+    if (e.target.matches('[data-action="select-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (tilemap && !isNaN(index)) {
+            tilemap.activeLayerIndex = index;
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="generate-colliders"]')) {
+        const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+        if (collider) {
+            collider.generate();
+            updateInspector(); // Refresh to show new collider count and for visualizer
         }
     }
 }
@@ -521,6 +603,86 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">La edición de vértices se implementará en una futura actualización.</p>
                 </div>
             </div>`;
+        } else if (ley instanceof Components.Tilemap) {
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">🗺️</span><h4>Tilemap</h4>
+                </div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Palette</label>
+                        <div class="asset-dropper" data-component="Tilemap" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
+                            <span class="asset-dropper-text">${ley.palettePath || 'None'}</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Tile Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileWidth" value="${ley.tileWidth}" title="Tile Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileHeight" value="${ley.tileHeight}" title="Tile Height">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Grid Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="columns" value="${ley.columns}" title="Columns">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="rows" value="${ley.rows}" title="Rows">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="layer-manager-ui">
+                        <div class="layer-list-header">
+                            <h5>Capas</h5>
+                            <div class="layer-controls">
+                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
+                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
+                            </div>
+                        </div>
+                        <div class="layer-list">
+                            ${ley.layers.map((layer, index) => `
+                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
+                                    <span>${layer.name}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.TilemapRenderer) {
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
+                </div>
+                <div class="component-content">
+                    <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.TilemapCollider2D) {
+            const tilemap = selectedMateria.getComponent(Components.Tilemap);
+            let layerOptions = '<option value="-1">Ninguna</option>';
+            if (tilemap) {
+                layerOptions = tilemap.layers.map((layer, index) =>
+                    `<option value="${index}" ${ley.sourceLayerIndex === index ? 'selected' : ''}>${index}: ${layer.name}</option>`
+                ).join('');
+            }
+
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
+                </div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label for="collider-source-layer">Capa de Origen</label>
+                        <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
+                            ${layerOptions}
+                        </select>
+                    </div>
+                    <hr>
+                    <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
+                    <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
+                </div>
+            `;
         } else if (ley instanceof Components.SpriteLight2D) {
             console.log('  - Is SpriteLight2D component.');
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
