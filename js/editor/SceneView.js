@@ -685,6 +685,36 @@ export function drawOverlay() {
 
     // Draw tile painting cursor
     drawTileCursor();
+
+    // Draw tilemap colliders
+    drawTilemapColliders();
+}
+
+function drawTilemapColliders() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!collider || !transform) return;
+
+    const { ctx } = renderer;
+
+    ctx.save();
+    // Apply the main transform of the tilemap object
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // Bright green for physics shapes
+    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+    ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]); // Dashed line
+
+    collider.generatedColliders.forEach(rect => {
+        // The rect coordinates are already relative to the tilemap's center
+        ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+    });
+
+    ctx.restore();
 }
 
 function paintTile(event) {

@@ -557,3 +557,87 @@ export class TilemapRenderer extends Leyes {
 
 registerComponent('Tilemap', Tilemap);
 registerComponent('TilemapRenderer', TilemapRenderer);
+
+export class TilemapCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sourceLayerIndex = 0; // Which layer to use for collision
+        this.generatedColliders = []; // Array of {x, y, width, height} objects
+    }
+
+    generate() {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap || !tilemap.layers[this.sourceLayerIndex]) {
+            this.generatedColliders = [];
+            return;
+        }
+
+        const grid = tilemap.layers[this.sourceLayerIndex].data;
+        const { columns, rows, tileWidth, tileHeight } = tilemap;
+
+        const visited = Array(rows).fill(null).map(() => Array(columns).fill(false));
+        const rects = [];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < columns; c++) {
+                if (grid[r][c] !== -1 && !visited[r][c]) {
+                    let currentWidth = 1;
+                    while (c + currentWidth < columns && grid[r][c + currentWidth] !== -1 && !visited[r][c + currentWidth]) {
+                        currentWidth++;
+                    }
+
+                    let currentHeight = 1;
+                    while (r + currentHeight < rows) {
+                        let canExpandDown = true;
+                        for (let i = 0; i < currentWidth; i++) {
+                            if (grid[r + currentHeight][c + i] === -1 || visited[r + currentHeight][c + i]) {
+                                canExpandDown = false;
+                                break;
+                            }
+                        }
+                        if (canExpandDown) {
+                            currentHeight++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    for (let y = 0; y < currentHeight; y++) {
+                        for (let x = 0; x < currentWidth; x++) {
+                            visited[r + y][c + x] = true;
+                        }
+                    }
+
+                    const mapTotalWidth = columns * tileWidth;
+                    const mapTotalHeight = rows * tileHeight;
+                    const rectWidth_pixels = currentWidth * tileWidth;
+                    const rectHeight_pixels = currentHeight * tileHeight;
+                    const rectCenterX = (c * tileWidth) + (rectWidth_pixels / 2);
+                    const rectCenterY = (r * tileHeight) + (rectHeight_pixels / 2);
+
+                    const relativeX = rectCenterX - (mapTotalWidth / 2);
+                    const relativeY = rectCenterY - (mapTotalHeight / 2);
+
+                    rects.push({
+                        x: relativeX,
+                        y: relativeY,
+                        width: rectWidth_pixels,
+                        height: rectHeight_pixels
+                    });
+                }
+            }
+        }
+
+        this.generatedColliders = rects;
+        console.log(`Generados ${rects.length} colisionadores optimizados.`);
+    }
+
+    clone() {
+        const newCollider = new TilemapCollider2D(null);
+        newCollider.sourceLayerIndex = this.sourceLayerIndex;
+        // The colliders themselves are not copied; they should be regenerated.
+        return newCollider;
+    }
+}
+
+registerComponent('TilemapCollider2D', TilemapCollider2D);

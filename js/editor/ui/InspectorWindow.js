@@ -23,7 +23,7 @@ const availableComponents = {
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody, Components.BoxCollider],
+    'Físicas': [Components.Rigidbody, Components.BoxCollider, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
@@ -212,6 +212,14 @@ function handleInspectorClick(e) {
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
             updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="generate-colliders"]')) {
+        const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+        if (collider) {
+            collider.generate();
+            updateInspector(); // Refresh to show new collider count and for visualizer
         }
     }
 }
@@ -648,6 +656,31 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
                 <div class="component-content">
                     <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.TilemapCollider2D) {
+            const tilemap = selectedMateria.getComponent(Components.Tilemap);
+            let layerOptions = '<option value="-1">Ninguna</option>';
+            if (tilemap) {
+                layerOptions = tilemap.layers.map((layer, index) =>
+                    `<option value="${index}" ${ley.sourceLayerIndex === index ? 'selected' : ''}>${index}: ${layer.name}</option>`
+                ).join('');
+            }
+
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
+                </div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label for="collider-source-layer">Capa de Origen</label>
+                        <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
+                            ${layerOptions}
+                        </select>
+                    </div>
+                    <hr>
+                    <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
+                    <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
                 </div>
             `;
         } else if (ley instanceof Components.SpriteLight2D) {
