@@ -8,12 +8,13 @@ import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFromModule } from './editor/ui/AnimationEditorWindow.js';
-import { initialize as initializePreferences } from './editor/ui/PreferencesWindow.js';
+import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
+import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -23,7 +24,8 @@ import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
-import * as TilemapEditor from './editor/ui/TilemapEditorWindow.js';
+import * as AIHandler from './editor/AIHandler.js';
+import * as Terminal from './editor/Terminal.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. Editor State ---
     let projectsDirHandle = null;
     let selectedMateria = null;
-    let selectedAsset = null; // To hold { name, path, kind }
+    let selectedAsset = null;
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
@@ -151,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
-            'tilemap-editor-panel': 'menu-window-tilemap',
+            'ui-editor-panel': 'menu-window-ui-editor',
+            'asset-store-panel': 'menu-window-asset-store'
         };
         const checkmark = '✅ ';
 
@@ -402,73 +405,33 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
+        // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
+
+        const pointLights = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
+        const spotLights = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
+        const freeformLights = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
+        const spriteLights = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
 
         const drawObjects = (ctx, cameraForCulling) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
-            // --- Draw Tilemaps ---
-            const tilemapMaterias = SceneManager.currentScene.getAllMaterias()
-                .filter(m => m.getComponent(Components.TilemapRenderer));
-
-            for (const materia of tilemapMaterias) {
-                if (!materia.isActive) continue;
-                const tilemap = materia.getComponent(Components.TilemapRenderer);
-                const transform = materia.getComponent(Components.Transform);
-
-                if (!tilemap.tilesetImage && tilemap.tilesetPath) {
-                    tilemap.loadTileset(projectsDirHandle);
-                    continue;
-                }
-
-                if (tilemap.tilesetImage && tilemap.tilesetImage.complete) {
-                    const tilesetCols = Math.floor(tilemap.tilesetImage.width / tilemap.tileWidth);
-
-                    // Loop through each layer in the tilemap
-                    for (const layer of tilemap.layers) {
-                        if (!layer || !layer.tiles) continue; // Safety check for malformed data
-                        for (let y = 0; y < tilemap.height; y++) {
-                            for (let x = 0; x < tilemap.width; x++) {
-                                const tileIndex = layer.tiles[y * tilemap.width + x]; // Use layer's tiles
-                                if (tileIndex === -1) continue;
-
-                                const tileX = (tileIndex % tilesetCols) * tilemap.tileWidth;
-                                const tileY = Math.floor(tileIndex / tilesetCols) * tilemap.tileHeight;
-
-                                ctx.drawImage(
-                                    tilemap.tilesetImage,
-                                    tileX, tileY, tilemap.tileWidth, tilemap.tileHeight,
-                                    transform.x + (x * tilemap.tileWidth * transform.scale.x),
-                                    transform.y + (y * tilemap.tileHeight * transform.scale.y),
-                                    tilemap.tileWidth * transform.scale.x,
-                                    tilemap.tileHeight * transform.scale.y
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            // --- Draw Sprites ---
             for (const materia of materiasToRender) {
                 if (!materia.isActive) continue;
 
-                // --- Culling Checks ---
                 if (cameraForCulling) {
-                    // 1. Frustum Culling
                     const objectBounds = MathUtils.getOOB(materia);
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) {
-                        continue; // Skip rendering if not in view
-                    }
-                    // 2. Culling Mask (Layer-based)
+                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
                     const cameraComponent = cameraForCulling.getComponent(Components.Camera);
                     const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) {
-                        continue; // Skip rendering if layer is masked off
-                    }
+                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
                 }
 
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
@@ -486,6 +449,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const drawLights = () => {
+            rendererInstance.beginLights();
+            for (const lightMateria of pointLights) {
+                if (!lightMateria.isActive) continue;
+                const light = lightMateria.getComponent(Components.PointLight2D);
+                const transform = lightMateria.getComponent(Components.Transform);
+                rendererInstance.drawPointLight(light, transform);
+            }
+            for (const lightMateria of spotLights) {
+                if (!lightMateria.isActive) continue;
+                const light = lightMateria.getComponent(Components.SpotLight2D);
+                const transform = lightMateria.getComponent(Components.Transform);
+                rendererInstance.drawSpotLight(light, transform);
+            }
+            for (const lightMateria of freeformLights) {
+                if (!lightMateria.isActive) continue;
+                const light = lightMateria.getComponent(Components.FreeformLight2D);
+                const transform = lightMateria.getComponent(Components.Transform);
+                rendererInstance.drawFreeformLight(light, transform);
+            }
+            for (const lightMateria of spriteLights) {
+                if (!lightMateria.isActive) continue;
+                const light = lightMateria.getComponent(Components.SpriteLight2D);
+                const transform = lightMateria.getComponent(Components.Transform);
+                rendererInstance.drawSpriteLight(light, transform);
+            }
+            rendererInstance.endLights();
+        };
+
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
                 .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
@@ -496,16 +488,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             cameras.forEach(cameraMateria => {
+                // Pass 1: Draw objects
                 rendererInstance.beginWorld(cameraMateria);
                 drawObjects(rendererInstance.ctx, cameraMateria);
+
+                // Pass 2: Draw lights and composite
+                drawLights();
+
                 rendererInstance.end();
             });
 
         } else { // Editor Scene View
-            rendererInstance.beginWorld(); // Use internal editor camera
-            // Culling is disabled in editor view to see all objects
+            // Pass 1: Draw objects
+            rendererInstance.beginWorld();
             drawObjects(rendererInstance.ctx, null);
-            SceneView.drawOverlay(); // Draw grid and gizmos on top
+
+            // Pass 2: Draw lights and composite
+            drawLights();
+
+            // Pass 3: Draw editor overlays
+            SceneView.drawOverlay();
+
             rendererInstance.end();
         }
     }
@@ -834,6 +837,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (panelName === 'ui-editor') {
                 openUiEditorFromModule();
+            } else if (panelName === 'asset-store') {
+                const panel = document.getElementById('asset-store-panel');
+                if (panel) {
+                    panel.classList.toggle('hidden');
+                    updateWindowMenuUI();
+                }
             }
         });
 
@@ -915,6 +924,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
+        if (dom.btnOpenAssetStoreExt) {
+            dom.btnOpenAssetStoreExt.addEventListener('click', () => {
+                const iframe = dom.assetStorePanel.querySelector('iframe');
+                if (iframe && iframe.src) {
+                    window.open(iframe.src, '_blank');
+                }
+            });
+        }
+
         // --- Panel Resizing Logic ---
         function initResizer(resizer, direction) {
             resizer.addEventListener('mousedown', (e) => {
@@ -984,6 +1002,183 @@ document.addEventListener('DOMContentLoaded', () => {
         initResizer(dom.resizerLeft, 'col');
         initResizer(dom.resizerRight, 'col');
         initResizer(dom.resizerBottom, 'row');
+
+        // --- Carl IA Menubar Button ---
+        if (dom.menubarCarlIaBtn) {
+            dom.menubarCarlIaBtn.addEventListener('click', () => {
+                dom.carlIaPanel.classList.toggle('hidden');
+            });
+        }
+
+        // --- Terminal Logic --- is now handled by the Terminal module
+
+        // --- Carl IA Panel Logic ---
+        if (dom.carlIaPanel) {
+            const brainSelectorMenu = dom.carlIaPanel.querySelector('.menu-content');
+            const brainButton = dom.carlIaBrainSelectorBtn;
+            const messagesDiv = dom.carlIaMessages;
+            const input = dom.carlIaInput;
+            const sendBtn = dom.carlIaSendBtn;
+
+            let selectedProvider = null;
+            let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
+
+            const updateCarlIaBrainMenu = () => {
+                const prefs = getPreferences();
+                brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
+
+                if (prefs.ai && prefs.ai.provider !== 'none') {
+                    const provider = prefs.ai.provider;
+                    const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
+                    if (apiKey) {
+                        const newOption = document.createElement('a');
+                        newOption.href = '#';
+                        newOption.dataset.model = provider;
+                        newOption.dataset.external = true;
+                        const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                        newOption.textContent = `${displayName} (Externo)`;
+                        brainSelectorMenu.appendChild(newOption);
+                    }
+                }
+            };
+
+            dom.menubarCarlIaBtn.addEventListener('click', () => {
+                updateCarlIaBrainMenu();
+            });
+
+            brainSelectorMenu.parentElement.addEventListener('click', (e) => {
+                if (e.target.matches('a')) {
+                    e.preventDefault();
+                    const modelType = e.target.dataset.model;
+                    const modelName = e.target.textContent;
+                    selectedProvider = { type: modelType, name: modelName };
+                    brainButton.textContent = `Cerebro: ${modelName}`;
+                    messagesDiv.innerHTML = `<div style="font-style: italic; color: var(--color-text-secondary); text-align: center; padding: 20px;">Modelo '${modelName}' seleccionado. ¡Hola! ¿En qué puedo ayudarte hoy?</div>`;
+                    brainSelectorMenu.style.display = 'none';
+                    setTimeout(() => brainSelectorMenu.style.display = '', 200);
+                }
+            });
+
+            const addMessage = (text, sender, isError = false) => {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.style.display = 'flex';
+                messageWrapper.style.alignItems = 'flex-end';
+                messageWrapper.style.marginBottom = '12px';
+                messageWrapper.style.maxWidth = '90%';
+
+                const msgDiv = document.createElement('div');
+                msgDiv.textContent = text;
+                msgDiv.style.padding = '10px 14px';
+                msgDiv.style.borderRadius = '18px';
+                msgDiv.style.lineHeight = '1.4';
+
+                if (sender === 'user') {
+                    messageWrapper.style.alignSelf = 'flex-end';
+                    msgDiv.style.backgroundColor = 'var(--color-accent)';
+                    msgDiv.style.color = 'white';
+                    msgDiv.style.borderBottomRightRadius = '4px';
+                    messageWrapper.appendChild(msgDiv);
+                } else { // 'ia'
+                    messageWrapper.style.alignSelf = 'flex-start';
+                    const avatar = document.createElement('img');
+                    avatar.src = 'https://raw.githubusercontent.com/CarleyInteractiveStudio/Carley-Interactive-Studio/main/carley_foto_web/Carl_model.jpeg';
+                    avatar.style.width = '32px';
+                    avatar.style.height = '32px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.marginRight = '10px';
+                    messageWrapper.appendChild(avatar);
+                    msgDiv.style.backgroundColor = isError ? 'var(--color-danger-bg)' : 'var(--color-background-light)';
+                    msgDiv.style.color = isError ? 'var(--color-danger-text)' : 'var(--color-text-primary)';
+                    msgDiv.style.borderBottomLeftRadius = '4px';
+                    messageWrapper.appendChild(msgDiv);
+                }
+                messagesDiv.appendChild(messageWrapper);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            };
+
+            const sendMessage = async () => {
+                const userPrompt = input.value.trim();
+                if (!userPrompt) return;
+
+                if (!selectedProvider) {
+                    alert("Por favor, elige un cerebro antes de enviar un mensaje.");
+                    return;
+                }
+
+                addMessage(userPrompt, 'user');
+                input.value = '';
+                input.focus();
+
+                if (selectedProvider.type === 'carl-v1') {
+                     addMessage("Tengo problemas para conectarme con mi cerebro. Esta funcionalidad aún no está disponible.", 'ia', true);
+                     return;
+                }
+
+                const provider = selectedProvider.type;
+                const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
+
+                if (!apiKey) {
+                    addMessage(`No puedes usar ${selectedProvider.name}. Por favor, configura tu API Key en Preferencias.`, 'ia', true);
+                    return;
+                }
+
+                const executeApiCall = async (model, prompt) => {
+                    addMessage("...", 'ia');
+                    const thinkingMessage = messagesDiv.lastElementChild;
+                    const result = await AIHandler.callGenerativeAI(model, apiKey, prompt);
+                    if (thinkingMessage) thinkingMessage.remove();
+
+                    if (result.success) {
+                        addMessage(result.text, 'ia', false);
+                        knownWorkingModel[provider] = model;
+                        return { status: 'success', error: null, code: 200 };
+                    }
+
+                    addMessage(result.error, 'ia', true);
+                    return { status: 'failed', code: result.code, error: result.error };
+                };
+
+                let modelToUse = knownWorkingModel[provider] || 'models/gemini-1.5-flash';
+                let result = await executeApiCall(modelToUse, userPrompt);
+
+                const isAccessError = (result.code === 404 || result.code === 400 || (result.error && result.error.includes("Quota")));
+                if (result.status === 'failed' && isAccessError) {
+                    console.warn(`El modelo por defecto '${modelToUse}' falló. Buscando un modelo compatible...`);
+                    addMessage(`El modelo por defecto no funcionó. Buscando uno compatible para ti...`, 'ia', true);
+
+                    const modelsResult = await AIHandler.listModels(apiKey);
+                    if (modelsResult.success && modelsResult.models.length > 0) {
+                        const generativeModels = modelsResult.models.filter(m =>
+                            m.supportedGenerationMethods.includes("generateContent") && !m.name.includes('embedding')
+                        );
+
+                        let suitableModel = generativeModels.find(m => m.name.includes('flash'));
+                        if (!suitableModel && generativeModels.length > 0) {
+                            suitableModel = generativeModels[0];
+                        }
+
+                        if (suitableModel) {
+                            console.log(`Modelo compatible encontrado: ${suitableModel.name}. Reintentando...`);
+                            addMessage(`¡Encontré un modelo compatible! Usando '${suitableModel.name.split('/')[1]}'. Reintentando...`, 'ia', false);
+                            await executeApiCall(suitableModel.name, userPrompt);
+                        } else {
+                            addMessage("No pude encontrar un modelo de chat compatible en la lista de tu API key.", 'ia', true);
+                        }
+                    } else {
+                        addMessage("No pude listar los modelos disponibles para tu API key. Revisa la consola.", 'ia', true);
+                        console.error("Error al listar modelos:", modelsResult.error);
+                    }
+                }
+            };
+
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
     }
 
     // --- 7. Initial Setup ---
@@ -1012,7 +1207,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
-            'prefs-snapping-grid-size', 'prefs-reset-layout-btn', 'toolbar-music-btn', 'music-player-panel',
+            'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
+            'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
+            'prefs-show-terminal',
+            'toolbar-music-btn', 'music-player-panel',
             'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
             'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
@@ -1020,9 +1218,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
             'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
-            // Tilemap Editor
-            'tilemap-editor-panel', 'current-tilemap-name', 'tilemap-save-btn', 'tilemap-load-tileset-btn', 'tilemap-collision-mode-btn', 'tilemap-canvas', 'tilemap-palette-canvas', 'tilemap-layer-list', 'tilemap-add-layer-btn', 'tilemap-remove-layer-btn',
-            'tool-pencil-btn', 'tool-bucket-btn', 'tool-rect-btn',
+            'asset-store-panel', 'btn-open-asset-store-ext',
+            // Carl IA Panel Elements
+            'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            // Terminal Elements
+            'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher'
@@ -1092,32 +1292,65 @@ document.addEventListener('DOMContentLoaded', () => {
             const getSelectedAsset = () => selectedAsset;
             const extractFramesAndCreateAsset = async (assetPath, metaData, animName, dirHandle) => { /* ... (existing code) ... */ };
             const onAssetSelected = (assetName, assetPath, assetKind) => {
-                selectedMateria = null; // Directly deselect any selected scene object
                 if (assetName) {
+                    // When an asset is selected, deselect any Materia
+                    selectMateria(null);
                     selectedAsset = { name: assetName, path: assetPath, kind: assetKind };
                 } else {
                     selectedAsset = null;
                 }
-                updateHierarchy(); // Update hierarchy to show deselection
-                updateInspector(); // Update inspector with the new selection state
+                // Always update the inspector to reflect the change (or lack of selection)
+                updateInspector();
             };
             const onAssetOpened = async (name, fileHandle, dirHandle) => {
-                if (name.endsWith('.ces')) {
-                    CodeEditor.openScript(fileHandle);
-                } else if (name.endsWith('.cea')) {
-                    openAnimationAssetFromModule(fileHandle);
-                } else if (name.endsWith('.ceui')) {
-                    openUiAsset(fileHandle);
-                } else if (name.endsWith('.ceMap')) {
-                    try {
-                        const file = await fileHandle.getFile();
-                        const content = await file.text();
-                        const mapData = JSON.parse(content);
-                        TilemapEditor.openMap(fileHandle, mapData);
-                    } catch (err) {
-                        console.error(`Error al abrir el mapa de tiles: ${name}`, err);
-                        alert(`No se pudo abrir el archivo de mapa: ${name}`);
-                    }
+                const lowerName = name.toLowerCase();
+                const extension = lowerName.split('.').pop();
+
+                // Handle text-based files first
+                const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
+                if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
+                    console.log(`Opening text-based asset: ${name}`);
+                    // FIX: Called the correct function name 'openScriptInEditor'
+                    await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
+                    return;
+                }
+
+                // Handle other specific asset types
+                switch (extension) {
+                    case 'cea':
+                        console.log(`Opening animation asset: ${name}`);
+                        openAnimationAssetFromModule(fileHandle, dirHandle);
+                        break;
+                    case 'ceanim':
+                        console.log(`Opening animation controller: ${name}`);
+                        openAnimatorController(fileHandle, dirHandle);
+                        break;
+                    case 'ceui':
+                        console.log(`Opening UI asset: ${name}`);
+                        openUiAsset(fileHandle);
+                        break;
+                    case 'ceScene':
+                        if (SceneManager.isSceneDirty()) {
+                            if (!confirm("Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?")) {
+                                return;
+                            }
+                        }
+                        console.log(`Loading scene: ${name}`);
+                        const newScene = await SceneManager.loadScene(fileHandle);
+                        if (newScene) {
+                            SceneManager.setCurrentScene(newScene);
+                            SceneManager.setCurrentSceneFileHandle(fileHandle);
+                            dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                            SceneManager.setSceneDirty(false);
+                            updateHierarchy();
+                            selectMateria(null);
+                        } else {
+                            alert(`Failed to load scene: ${name}`);
+                        }
+                        break;
+                    default:
+                        console.log(`No double-click action defined for file: ${name}`);
+                        break;
                 }
             };
             const onExportPackage = async (assetName) => { /* ... (existing code) ... */ };
@@ -1134,19 +1367,27 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
+            Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
-            TilemapEditor.initialize({ dom, projectsDirHandle });
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
+            const assetBrowserCallbacks = {
+                onAssetSelected,
+                onAssetOpened,
+                onShowContextMenu: showContextMenu,
+                onExportPackage,
+                createUiSystemFile,
+                updateAssetBrowser,
+            };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
-            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, onAssetSelected, onAssetOpened, onShowContextMenu: showContextMenu, onExportPackage, createUiSystemFile, updateAssetBrowser });
+            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

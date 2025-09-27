@@ -94,6 +94,22 @@ function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
+function createLightObject(name, lightComponent, parent = null) {
+    const newMateria = new Materia(name);
+    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new lightComponent(newMateria));
+
+    if (parent) {
+        parent.addChild(newMateria);
+    } else {
+        SceneManager.currentScene.addMateria(newMateria);
+    }
+
+    updateHierarchy();
+    selectMateriaCallback(newMateria.id);
+    return newMateria;
+}
+
 function createCameraObject(parent = null) {
     const newMateria = new Materia('Cámara');
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -291,6 +307,18 @@ function setupEventListeners() {
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);
+                    break;
+                case 'create-point-light':
+                    createLightObject('Point Light', Components.PointLight2D, selectedMateria);
+                    break;
+                case 'create-spot-light':
+                    createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
+                    break;
+                case 'create-freeform-light':
+                    createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
+                    break;
+                case 'create-sprite-light':
+                    createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
                     break;
                 case 'rename':
                     if (selectedMateria) {

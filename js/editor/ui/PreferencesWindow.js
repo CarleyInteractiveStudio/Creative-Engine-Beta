@@ -18,8 +18,42 @@ const defaultPrefs = {
     autosaveInterval: 30,
     scriptLang: 'ces',
     snapping: false,
-    gridSize: 25
+    gridSize: 25,
+    zoomSpeed: 1.1,
+    ai: {
+        provider: 'none'
+    },
+    showTerminal: false
 };
+
+export function getPreferences() {
+    return currentPreferences;
+}
+
+function updateAiProviderUi() {
+    if (!_dom.prefsAiProvider) return;
+    const provider = _dom.prefsAiProvider.value;
+
+    if (provider === 'none') {
+        _dom.prefsAiApiKeyGroup.classList.add('hidden');
+    } else {
+        _dom.prefsAiApiKeyGroup.classList.remove('hidden');
+        const savedKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
+
+        if (savedKey) {
+            _dom.prefsAiApiKey.value = '****************'; // Mask the key
+            _dom.prefsAiApiKey.disabled = true;
+            _dom.prefsAiSaveKeyBtn.style.display = 'none';
+            _dom.prefsAiDeleteKeyBtn.style.display = 'inline-block';
+        } else {
+            _dom.prefsAiApiKey.value = '';
+            _dom.prefsAiApiKey.placeholder = `Introduce tu clave de API para ${provider}`;
+            _dom.prefsAiApiKey.disabled = false;
+            _dom.prefsAiSaveKeyBtn.style.display = 'inline-block';
+            _dom.prefsAiDeleteKeyBtn.style.display = 'none';
+        }
+    }
+}
 
 function applyPreferences() {
     if (!currentPreferences) return;
@@ -43,6 +77,15 @@ function applyPreferences() {
     } else {
         if (autoSaveIntervalId) clearInterval(autoSaveIntervalId);
     }
+
+    // Apply terminal visibility
+    if (_dom.viewToggleTerminal) {
+        _dom.viewToggleTerminal.style.display = currentPreferences.showTerminal ? 'block' : 'none';
+        // If terminal is hidden and was the active view, switch to a default view
+        if (!currentPreferences.showTerminal && _dom.viewToggleTerminal.classList.contains('active')) {
+             _dom.scenePanel.querySelector('[data-view="scene-content"]').click();
+        }
+    }
 }
 
 function savePreferences() {
@@ -60,6 +103,9 @@ function savePreferences() {
     currentPreferences.scriptLang = _dom.prefsScriptLang.value;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
+    currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
+    currentPreferences.ai.provider = _dom.prefsAiProvider.value;
+    currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
     applyPreferences();
@@ -81,6 +127,7 @@ function loadPreferences() {
 
     currentPreferences = { ...defaultPrefs, ...loadedPrefs };
     currentPreferences.customColors = { ...defaultPrefs.customColors, ...(loadedPrefs.customColors || {}) };
+    currentPreferences.ai = { ...defaultPrefs.ai, ...(loadedPrefs.ai || {}) };
 
     if (_dom.prefsTheme) _dom.prefsTheme.value = currentPreferences.theme;
     if (_dom.prefsColorBg) _dom.prefsColorBg.value = currentPreferences.customColors.bg;
@@ -91,6 +138,10 @@ function loadPreferences() {
     if (_dom.prefsScriptLang) _dom.prefsScriptLang.value = currentPreferences.scriptLang;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
+    if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
+    if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
+    if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
+
 
     if (_dom.prefsTheme) {
         if (_dom.prefsTheme.value === 'custom') {
@@ -107,11 +158,13 @@ function loadPreferences() {
         }
     }
 
+    updateAiProviderUi();
     applyPreferences();
 }
 
 function setupEventListeners() {
     document.getElementById('menu-preferences').addEventListener('click', () => {
+        loadPreferences(); // Recargar las preferencias cada vez que se abre
         _dom.preferencesModal.classList.add('is-open');
     });
 
@@ -131,6 +184,42 @@ function setupEventListeners() {
                 _dom.prefsAutosaveIntervalGroup.classList.remove('hidden');
             } else {
                 _dom.prefsAutosaveIntervalGroup.classList.add('hidden');
+            }
+        });
+    }
+
+    // --- AI Preferences Listeners ---
+    if (_dom.prefsAiProvider) {
+        _dom.prefsAiProvider.addEventListener('change', updateAiProviderUi);
+    }
+
+    if (_dom.prefsAiSaveKeyBtn) {
+        _dom.prefsAiSaveKeyBtn.addEventListener('click', () => {
+            const provider = _dom.prefsAiProvider.value;
+            const apiKey = _dom.prefsAiApiKey.value;
+
+            if (!provider || provider === 'none') {
+                alert("Por favor, selecciona un proveedor de IA válido.");
+                return;
+            }
+            if (!apiKey) {
+                alert("Por favor, introduce una API Key.");
+                return;
+            }
+
+            localStorage.setItem(`creativeEngine_${provider}_apiKey`, apiKey);
+            alert(`API Key para ${provider} guardada.`);
+            updateAiProviderUi();
+        });
+    }
+
+    if (_dom.prefsAiDeleteKeyBtn) {
+        _dom.prefsAiDeleteKeyBtn.addEventListener('click', () => {
+            const provider = _dom.prefsAiProvider.value;
+            if (confirm(`¿Estás seguro de que quieres borrar la API Key para ${provider}?`)) {
+                localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
+                alert(`API Key para ${provider} borrada.`);
+                updateAiProviderUi();
             }
         });
     }

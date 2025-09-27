@@ -520,6 +520,53 @@ body {
     color: white;
 }
 
+/* --- Terminal Styles --- */
+#terminal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+#terminal-output {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+    line-height: 1.4;
+}
+
+#terminal-output div {
+    white-space: pre-wrap; /* Wrap long lines but preserve whitespace */
+}
+
+#terminal-input-line {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    height: 30px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border-top: 1px solid var(--border-color);
+}
+
+.terminal-prompt {
+    color: #50fa7b; /* Bright green for the prompt */
+    margin-right: 8px;
+}
+
+#terminal-input {
+    flex-grow: 1;
+    background: none;
+    border: none;
+    color: #e0e0e0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1em;
+    outline: none;
+}
+
 .context-menu li.disabled {
     color: #888;
     pointer-events: none;

@@ -134,21 +134,22 @@ export async function saveAnimationAsset() {
     }
 }
 
-export async function openAnimationAsset(fileName, dirHandle) {
+export async function openAnimationAsset(fileHandle, dirHandle) {
     try {
-        currentAnimationFileHandle = await dirHandle.getFileHandle(fileName);
+        // FIX: The file handle is now passed directly, no need to look it up again.
+        currentAnimationFileHandle = fileHandle;
         const file = await currentAnimationFileHandle.getFile();
         const content = await file.text();
         currentAnimationAsset = JSON.parse(content);
 
         dom.animationPanel.classList.remove('hidden');
         dom.animationPanelOverlay.classList.add('hidden');
-        console.log(`Abierto ${fileName}:`, currentAnimationAsset);
+        console.log(`Abierto ${currentAnimationFileHandle.name}:`, currentAnimationAsset);
 
         populateTimeline();
-        // drawOnionSkin();
+        drawOnionSkin();
     } catch(error) {
-        console.error(`Error al abrir el asset de animación '${fileName}':`, error);
+        console.error(`Error al abrir el asset de animación '${fileHandle.name}':`, error);
     }
 };
 

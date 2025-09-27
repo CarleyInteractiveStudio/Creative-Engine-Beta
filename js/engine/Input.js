@@ -15,7 +15,6 @@ class InputManager {
     static _mousePosition = { x: 0, y: 0 };
     static _mousePositionInCanvas = { x: 0, y: 0 };
     static _canvasRect = null;
-    static _scrollDelta = 0;
 
     // Long Press State
     static _longPressTimeoutId = null;
@@ -65,7 +64,6 @@ class InputManager {
         this._keysUp.clear();
         this._buttonsDown.clear();
         this._buttonsUp.clear();
-        this._scrollDelta = 0;
 
         if (this._canvas) {
              this._canvasRect = this._canvas.getBoundingClientRect();
@@ -265,32 +263,27 @@ class InputManager {
     }
 
     static _onWheel(event) {
-        let target = event.target;
+        // If the scroll event is on the scene canvas, we do nothing here.
+        // The dedicated listener in `SceneView.js` will handle it, including preventDefault.
+        if (this._canvas && this._canvas.contains(event.target)) {
+            return;
+        }
 
-        // Traverse up the DOM to see if we are inside a scrollable element
+        // For the rest of the UI, we check if the target is a scrollable panel.
+        let target = event.target;
         while (target && target !== document.body) {
-            // Check if the element has a vertical scrollbar
             if (target.scrollHeight > target.clientHeight) {
-                // If so, do not prevent default behavior, just let the element scroll
-                this._scrollDelta = event.deltaY; // Still capture delta for engine use if needed
+                // This is a scrollable UI panel (e.g., Inspector). Let the browser handle the scroll.
                 return;
             }
             target = target.parentElement;
         }
 
-        // If we reached the body without finding a scrollable container,
-        // then prevent the default browser action (e.g., page scrolling/zooming).
+        // If we're here, the scroll happened on a non-scrollable part of the UI.
+        // We prevent the default action (scrolling the whole page).
         event.preventDefault();
-        this._scrollDelta = event.deltaY;
     }
 
-    /**
-     * Gets the scroll wheel delta for the current frame.
-     * @returns {number} The vertical scroll amount.
-     */
-    static getScrollDelta() {
-        return this._scrollDelta;
-    }
 
     /**
      * Converts a screen (canvas) position to world coordinates.

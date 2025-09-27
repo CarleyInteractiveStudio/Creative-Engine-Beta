@@ -11,6 +11,7 @@ let Components;
 let updateScene;
 let getActiveView;
 let SceneManager;
+let getPreferences;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan'
@@ -99,136 +100,133 @@ function checkGizmoHit(canvasPos) {
     return null;
 }
 
-function handleGizmoDrag() {
-    if (!dragState.materia) return;
+function checkCameraGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
 
-    const transform = dragState.materia.getComponent(Components.Transform);
-    const currentMousePos = InputManager.getMousePosition();
-    const dx = (currentMousePos.x - lastMousePosition.x) / renderer.camera.effectiveZoom;
-    const dy = (currentMousePos.y - lastMousePosition.y) / renderer.camera.effectiveZoom;
-
-    switch (dragState.handle) {
-        case 'move-x':
-            transform.x += dx;
-            break;
-        case 'move-y':
-            transform.y += dy;
-            break;
-        case 'move-xy':
-            transform.x += dx;
-            transform.y += dy;
-            break;
-        case 'rotate':
-            {
-                const boxCollider = dragState.materia.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-                const centerX = transform.x + width / 2;
-                const centerY = transform.y - height / 2;
-
-                const worldMouse = screenToWorld(currentMousePos.x, currentMousePos.y);
-                const angle = Math.atan2(worldMouse.y - centerY, worldMouse.x - centerX) * 180 / Math.PI;
-                transform.rotation = angle;
-            }
-            break;
-        case 'scale-tr':
-        case 'scale-tl':
-        case 'scale-br':
-        case 'scale-bl':
-            {
-                const boxCollider = dragState.materia.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-                const centerX = transform.x + width / 2;
-                const centerY = transform.y - height / 2;
-
-                const worldMouse = screenToWorld(currentMousePos.x, currentMousePos.y);
-                const rad = -transform.rotation * Math.PI / 180;
-                const cos = Math.cos(rad);
-                const sin = Math.sin(rad);
-                const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
-                const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
-
-                const unscaledWidth = (dragState.unscaledWidth || 100);
-                const unscaledHeight = (dragState.unscaledHeight || 100);
-
-                let newScaleX = Math.abs(localMouseX / (unscaledWidth / 2)) || 0.01;
-                let newScaleY = Math.abs(localMouseY / (unscaledHeight / 2)) || 0.01;
-
-                transform.scale.x = newScaleX;
-                transform.scale.y = newScaleY;
-            }
-            break;
+    const cameraComponent = selectedMateria.getComponent(Components.Camera);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!cameraComponent || !transform || cameraComponent.projection !== 'Orthographic') {
+        return null;
     }
 
-    lastMousePosition = { ...currentMousePos };
-    updateInspector();
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+    const aspect = renderer.canvas.width / renderer.canvas.height;
+    const size = cameraComponent.orthographicSize;
+    const halfHeight = size;
+    const halfWidth = size * aspect;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: 0, y: 0, name: 'camera-move' },
+        { x: -halfWidth, y: -halfHeight, name: 'camera-resize-tl' },
+        { x: halfWidth, y: -halfHeight, name: 'camera-resize-tr' },
+        { x: -halfWidth, y: halfHeight, name: 'camera-resize-bl' },
+        { x: halfWidth, y: halfHeight, name: 'camera-resize-br' },
+    ];
+
+    for (const handle of handles) {
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+    return null;
 }
 
 function handleEditorInteractions() {
-    if (!renderer || !renderer.camera) return;
-
-    if (isDragging) {
-        handleGizmoDrag();
-    }
-
-    // Pan logic has been moved to a direct event handler on mousedown.
-
-    // Zoom logic
-    const scrollDelta = InputManager.getScrollDelta();
-    if (scrollDelta !== 0 && getActiveView() === 'scene-content') {
-        const zoomFactor = 1.1;
-        if (scrollDelta > 0) {
-            renderer.camera.zoom /= zoomFactor;
-        } else {
-            renderer.camera.zoom *= zoomFactor;
-        }
-
-        // Clamp zoom to avoid issues
-        renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
-
-        if (typeof updateScene === 'function') {
-            updateScene(renderer, false);
-        }
-    }
+    // This function is now largely a placeholder.
+    // Panning, zooming, and gizmo dragging are all handled by direct, dynamic event listeners
+    // to improve performance and reliability.
 }
 
 function drawEditorGrid() {
-    const GRID_SIZE = 50;
     const { ctx, camera, canvas } = renderer;
     if (!camera) return;
 
     const zoom = camera.effectiveZoom;
-    const scaledGridSize = GRID_SIZE * zoom;
 
-    // Don't draw if grid lines are too close or too far
-    if (scaledGridSize < 10) return;
+    // --- Adaptive Grid Algorithm ---
+    const TARGET_SPACING_PX = 80;
+    const SUBDIVISIONS = 10;
+    const MIN_SPACING_PX_MINOR = 8;
 
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1 / zoom;
+    // 1. Calculate ideal world step
+    const idealWorldStep = TARGET_SPACING_PX / zoom;
 
-    // Calculate world coordinates of the view boundaries
+    // 2. Find the "nicest" number
+    const magnitude = Math.pow(10, Math.floor(Math.log10(idealWorldStep)));
+    const normalizedStep = idealWorldStep / magnitude;
+
+    let multiplier = 1;
+    if (normalizedStep < 1.5) multiplier = 1;
+    else if (normalizedStep < 3.5) multiplier = 2;
+    else if (normalizedStep < 7.5) multiplier = 5;
+    else multiplier = 10;
+
+    // 3. Determine final grid spacing
+    const majorGridStep = multiplier * magnitude;
+    const minorGridStep = majorGridStep / SUBDIVISIONS;
+
+    // --- Drawing Logic ---
     const viewLeft = camera.x - (canvas.width / 2 / zoom);
     const viewRight = camera.x + (canvas.width / 2 / zoom);
     const viewTop = camera.y - (canvas.height / 2 / zoom);
     const viewBottom = camera.y + (canvas.height / 2 / zoom);
 
-    const startX = Math.floor(viewLeft / GRID_SIZE) * GRID_SIZE;
-    const endX = Math.ceil(viewRight / GRID_SIZE) * GRID_SIZE;
-    const startY = Math.floor(viewTop / GRID_SIZE) * GRID_SIZE;
-    const endY = Math.ceil(viewBottom / GRID_SIZE) * GRID_SIZE;
+    ctx.save();
+    ctx.lineWidth = 1 / zoom;
 
+    // Function to draw a set of grid lines
+    const drawLines = (step, color) => {
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        const startX = Math.floor(viewLeft / step) * step;
+        const endX = Math.ceil(viewRight / step) * step;
+        for (let x = startX; x <= endX; x += step) {
+            ctx.moveTo(x, viewTop);
+            ctx.lineTo(x, viewBottom);
+        }
+        const startY = Math.floor(viewTop / step) * step;
+        const endY = Math.ceil(viewBottom / step) * step;
+        for (let y = startY; y <= endY; y += step) {
+            ctx.moveTo(viewLeft, y);
+            ctx.lineTo(viewRight, y);
+        }
+        ctx.stroke();
+    };
+
+    // Draw minor grid lines (if they are not too crowded)
+    if (minorGridStep * zoom > MIN_SPACING_PX_MINOR) {
+        drawLines(minorGridStep, 'rgba(255, 255, 255, 0.05)');
+    }
+
+    // Draw major grid lines
+    drawLines(majorGridStep, 'rgba(255, 255, 255, 0.1)');
+
+    // Draw world origin axes (X and Y)
+    ctx.lineWidth = 2 / zoom;
+    // Y-Axis (Green)
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.4)';
     ctx.beginPath();
-    for (let x = startX; x <= endX; x += GRID_SIZE) {
-        ctx.moveTo(x, viewTop);
-        ctx.lineTo(x, viewBottom);
-    }
-    for (let y = startY; y <= endY; y += GRID_SIZE) {
-        ctx.moveTo(viewLeft, y);
-        ctx.lineTo(viewRight, y);
-    }
+    ctx.moveTo(0, viewTop);
+    ctx.lineTo(0, viewBottom);
     ctx.stroke();
+    // X-Axis (Red)
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.4)';
+    ctx.beginPath();
+    ctx.moveTo(viewLeft, 0);
+    ctx.lineTo(viewRight, 0);
+    ctx.stroke();
+
     ctx.restore();
 }
 
@@ -365,15 +363,34 @@ export function initialize(dependencies) {
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
+    SceneManager = dependencies.SceneManager;
+    getPreferences = dependencies.getPreferences;
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+    dom.sceneCanvas.addEventListener('wheel', (event) => {
+        event.preventDefault(); // Stop the browser from scrolling the page
+
+        if (!renderer || !renderer.camera) return;
+
+        const scrollDelta = event.deltaY;
+        const zoomFactor = getPreferences().zoomSpeed || 1.1;
+
+        if (scrollDelta < 0) { // Zoom in
+            renderer.camera.zoom *= zoomFactor;
+        } else { // Zoom out
+            renderer.camera.zoom /= zoomFactor;
+        }
+
+        // Clamp zoom to avoid issues
+        renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
+    }, { passive: false });
+
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
         // --- Panning Logic (Middle or Right-click) ---
-        // This uses a self-contained set of event listeners for the drag operation.
         if (e.button === 1 || e.button === 2) {
-            e.preventDefault(); // Prevent default middle-click/context-menu actions
+            e.preventDefault();
             dom.sceneCanvas.style.cursor = 'grabbing';
             let lastPos = { x: e.clientX, y: e.clientY };
 
@@ -381,54 +398,90 @@ export function initialize(dependencies) {
                 moveEvent.preventDefault();
                 const dx = moveEvent.clientX - lastPos.x;
                 const dy = moveEvent.clientY - lastPos.y;
-
                 if (renderer && renderer.camera) {
                     renderer.camera.x -= dx / renderer.camera.effectiveZoom;
                     renderer.camera.y -= dy / renderer.camera.effectiveZoom;
                 }
                 lastPos = { x: moveEvent.clientX, y: moveEvent.clientY };
             };
-
             const onPanEnd = (upEvent) => {
                 upEvent.preventDefault();
                 dom.sceneCanvas.style.cursor = 'grab';
                 window.removeEventListener('mousemove', onPanMove);
                 window.removeEventListener('mouseup', onPanEnd);
             };
-
             window.addEventListener('mousemove', onPanMove);
             window.addEventListener('mouseup', onPanEnd);
-            return; // Stop processing to avoid conflicts
+            return;
         }
 
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
             const selectedMateria = getSelectedMateria();
-            if (selectedMateria && activeTool !== 'pan') {
-                const canvasPos = InputManager.getMousePositionInCanvas();
-                const hitHandle = checkGizmoHit(canvasPos);
-                if (hitHandle) {
-                    isDragging = true;
-                    dragState = { handle: hitHandle, materia: selectedMateria };
-                    lastMousePosition = { ...InputManager.getMousePosition() };
+            if (!selectedMateria || activeTool === 'pan') return;
 
-                    if (hitHandle.startsWith('scale-')) {
-                        const transform = selectedMateria.getComponent(Components.Transform);
-                        const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
-                        dragState.unscaledWidth = (boxCollider ? boxCollider.width : 100);
-                        dragState.unscaledHeight = (boxCollider ? boxCollider.height : 100);
-                    }
-                    e.stopPropagation();
+            const canvasPos = InputManager.getMousePositionInCanvas();
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos);
+
+            if (hitHandle) {
+                e.stopPropagation();
+                isDragging = true;
+                dragState = { handle: hitHandle, materia: selectedMateria };
+                lastMousePosition = { x: e.clientX, y: e.clientY };
+
+                if (hitHandle.startsWith('scale-')) {
+                    const transform = selectedMateria.getComponent(Components.Transform);
+                    const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
+                    dragState.unscaledWidth = boxCollider ? boxCollider.width : 100;
+                    dragState.unscaledHeight = boxCollider ? boxCollider.height : 100;
                 }
-            }
-        }
-    });
 
-    // This listener only needs to handle the end of a gizmo drag now.
-    window.addEventListener('mouseup', (e) => {
-        if (isDragging) {
-            isDragging = false;
-            dragState = {};
+                const onGizmoDrag = (moveEvent) => {
+                    moveEvent.preventDefault();
+                    if (!dragState.materia) return;
+
+                    const transform = dragState.materia.getComponent(Components.Transform);
+                    const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
+                    const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+
+                    switch (dragState.handle) {
+                        case 'camera-move': transform.x += dx; transform.y += dy; break;
+                        case 'move-x': transform.x += dx; break;
+                        case 'move-y': transform.y += dy; break;
+                        case 'move-xy': transform.x += dx; transform.y += dy; break;
+                        case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
+                            const cam = dragState.materia.getComponent(Components.Camera);
+                            if (!cam) break;
+                            const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                            const rad = -transform.rotation * Math.PI / 180;
+                            const cos = Math.cos(rad), sin = Math.sin(rad);
+                            const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                            const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+                            const aspect = renderer.canvas.width / renderer.canvas.height;
+                            cam.orthographicSize = Math.max(0.1, Math.max(Math.abs(localMouseY), Math.abs(localMouseX) / aspect));
+                            break;
+                        }
+                        case 'rotate': {
+                            const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                            transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
+                            break;
+                        }
+                    }
+
+                    lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
+                    updateInspector();
+                };
+
+                const onGizmoDragEnd = () => {
+                    isDragging = false;
+                    dragState = {};
+                    window.removeEventListener('mousemove', onGizmoDrag);
+                    window.removeEventListener('mouseup', onGizmoDragEnd);
+                };
+
+                window.addEventListener('mousemove', onGizmoDrag);
+                window.addEventListener('mouseup', onGizmoDragEnd);
+            }
         }
     });
 
@@ -451,6 +504,7 @@ function drawCameraGizmos(renderer) {
     const { ctx, canvas } = renderer;
     const allMaterias = scene.getAllMaterias();
     const aspect = canvas.width / canvas.height;
+    const selectedMateria = getSelectedMateria();
 
     allMaterias.forEach(materia => {
         if (!materia.isActive) return;
@@ -460,11 +514,14 @@ function drawCameraGizmos(renderer) {
         const transform = materia.getComponent(Components.Transform);
         if (!transform) return;
 
+        const isSelected = selectedMateria && selectedMateria.id === materia.id;
+
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+
+        // --- Draw Camera Wireframe ---
+        ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
         ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
 
-        // Go to the camera's position and apply its rotation
         ctx.translate(transform.x, transform.y);
         ctx.rotate(transform.rotation * Math.PI / 180);
 
@@ -477,45 +534,41 @@ function drawCameraGizmos(renderer) {
             ctx.rect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
             ctx.stroke();
 
-        } else { // Perspective
+            // --- Draw Interactive Handles (only for selected camera) ---
+            if (isSelected) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                const handleSize = 8 / renderer.camera.effectiveZoom;
+                const halfHandle = handleSize / 2;
+
+                const handles = [
+                    { x: 0, y: 0, name: 'move' },
+                    { x: -halfWidth, y: -halfHeight, name: 'resize-tl' },
+                    { x: halfWidth, y: -halfHeight, name: 'resize-tr' },
+                    { x: -halfWidth, y: halfHeight, name: 'resize-bl' },
+                    { x: halfWidth, y: halfHeight, name: 'resize-br' },
+                ];
+
+                handles.forEach(handle => {
+                    ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+                });
+            }
+
+        } else { // Perspective logic remains the same
             const fovRad = cameraComponent.fov * Math.PI / 180;
             const near = cameraComponent.nearClipPlane;
             const far = cameraComponent.farClipPlane;
-
             const nearHalfHeight = Math.tan(fovRad / 2) * near;
             const nearHalfWidth = nearHalfHeight * aspect;
             const farHalfHeight = Math.tan(fovRad / 2) * far;
             const farHalfWidth = farHalfHeight * aspect;
 
             ctx.beginPath();
-
-            // Near plane rectangle
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(-nearHalfWidth, nearHalfHeight);
-            ctx.closePath();
-
-            // Far plane rectangle
-            ctx.moveTo(-farHalfWidth, -farHalfHeight);
-            ctx.lineTo(farHalfWidth, -farHalfHeight);
-            ctx.lineTo(farHalfWidth, farHalfHeight);
-            ctx.lineTo(-farHalfWidth, farHalfHeight);
-            ctx.closePath();
-
-            // Lines connecting near and far planes
-            ctx.moveTo(-nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(-farHalfWidth, -farHalfHeight);
-
-            ctx.moveTo(nearHalfWidth, -nearHalfHeight);
-            ctx.lineTo(farHalfWidth, -farHalfHeight);
-
-            ctx.moveTo(nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(farHalfWidth, farHalfHeight);
-
-            ctx.moveTo(-nearHalfWidth, nearHalfHeight);
-            ctx.lineTo(-farHalfWidth, farHalfHeight);
-
+            ctx.moveTo(-nearHalfWidth, -nearHalfHeight); ctx.lineTo(nearHalfWidth, -nearHalfHeight); ctx.lineTo(nearHalfWidth, nearHalfHeight); ctx.lineTo(-nearHalfWidth, nearHalfHeight); ctx.closePath();
+            ctx.moveTo(-farHalfWidth, -farHalfHeight); ctx.lineTo(farHalfWidth, -farHalfHeight); ctx.lineTo(farHalfWidth, farHalfHeight); ctx.lineTo(-farHalfWidth, farHalfHeight); ctx.closePath();
+            ctx.moveTo(-nearHalfWidth, -nearHalfHeight); ctx.lineTo(-farHalfWidth, -farHalfHeight);
+            ctx.moveTo(nearHalfWidth, -nearHalfHeight); ctx.lineTo(farHalfWidth, -farHalfHeight);
+            ctx.moveTo(nearHalfWidth, nearHalfHeight); ctx.lineTo(farHalfWidth, farHalfHeight);
+            ctx.moveTo(-nearHalfWidth, nearHalfHeight); ctx.lineTo(-farHalfWidth, farHalfHeight);
             ctx.stroke();
         }
 

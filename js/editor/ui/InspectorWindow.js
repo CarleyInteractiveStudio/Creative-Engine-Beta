@@ -19,6 +19,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
+    'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody, Components.BoxCollider],
@@ -294,7 +295,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -440,6 +441,114 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.PointLight2D) {
+            console.log('  - Is PointLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.SpotLight2D) {
+            console.log('  - Is SpotLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Angle</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.FreeformLight2D) {
+            console.log('  - Is FreeformLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="FreeformLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="field-description">La edición de vértices se implementará en una futura actualización.</p>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.SpriteLight2D) {
+            console.log('  - Is SpriteLight2D component.');
+            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Sprite Light 2D</h4></div>
+                <div class="component-content">
+                     <div class="prop-row-multi">
+                        <label>Sprite</label>
+                        <div class="sprite-dropper">
+                            <div class="sprite-preview">${previewImg}</div>
+                            <button class="sprite-select-btn" data-component="SpriteLight2D">🎯</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="SpriteLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         }
 
         if (componentHTML) {
@@ -651,6 +760,33 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo leer el archivo del paquete.</p>`;
             }
 
+        } else if (assetName.endsWith('.ceui')) {
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview';
+            preview.innerHTML = `
+                <img src="image/Paquete.png" class="asset-preview-icon">
+                <p><strong>UI Asset</strong></p>
+                <p>Doble-click en el Navegador para abrir en el Editor de UI.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
+        } else if (assetName.endsWith('.ceanim')) {
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview';
+            preview.innerHTML = `
+                <img src="image/animacion_controler.svg" class="asset-preview-icon">
+                <p><strong>Animation Controller</strong></p>
+                <p>Doble-click en el Navegador para abrir en el Editor de Animación.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
+        } else if (assetName.endsWith('.ceScene')) {
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview';
+            preview.innerHTML = `
+                <span class="asset-preview-icon" style="font-size: 48px;">🎬</span>
+                <p><strong>Scene</strong></p>
+                <p>Doble-click en el Navegador para abrir la escena.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.cmel')) {
             const materialData = JSON.parse(content);
             const settingsContainer = document.createElement('div');

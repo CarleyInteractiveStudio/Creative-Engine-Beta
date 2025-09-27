@@ -1,11 +1,15 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.isEditor = isEditor;
+
+        this.lightMapCanvas = document.createElement('canvas');
+        this.lightMapCtx = this.lightMapCanvas.getContext('2d');
+        this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
 
         // The editor renderer gets its own persistent camera for navigation.
         // The game renderer will still get its camera from the scene.
@@ -26,6 +30,8 @@ export class Renderer {
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
+        this.lightMapCanvas.width = this.canvas.width;
+        this.lightMapCanvas.height = this.canvas.height;
     }
 
     clear(cameraComponent) {
@@ -124,6 +130,145 @@ export class Renderer {
         }
 
         this.ctx.fillText(transformedText, x, y);
+    }
+
+    // --- Lighting Methods ---
+
+    beginLights() {
+        // Use the same transformation as the world for the lightmap
+        this.lightMapCtx.save();
+        this.lightMapCtx.setTransform(this.ctx.getTransform());
+
+        // Clear the lightmap to the ambient color
+        this.lightMapCtx.fillStyle = this.ambientLight;
+        this.lightMapCtx.fillRect(-99999, -99999, 199998, 199998); // A huge rect to cover the whole transformed space
+    }
+
+    drawPointLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const radius = light.radius;
+        const color = light.color; // Assuming hex format for now
+        const intensity = light.intensity;
+
+        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
+
+        // This creates a standard additive light falloff
+        gradient.addColorStop(0, `${color}FF`); // Full color at center
+        gradient.addColorStop(0.3, `${color}CC`);
+        gradient.addColorStop(0.6, `${color}66`);
+        gradient.addColorStop(1, `${color}00`); // Transparent at edge
+
+        ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = intensity;
+        ctx.fillRect(transform.x - radius, transform.y - radius, radius * 2, radius * 2);
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
+
+    drawSpotLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation } = transform;
+        const { radius, color, intensity, angle } = light;
+
+        // Convert angles to radians for canvas API
+        // The rotation from the transform component needs to be offset by -90 degrees because canvas arc starts from the 3 o'clock position.
+        const directionRad = ((rotation - 90) * Math.PI) / 180;
+        const coneAngleRad = (angle * Math.PI) / 180;
+
+        const startAngle = directionRad - coneAngleRad / 2;
+        const endAngle = directionRad + coneAngleRad / 2;
+
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `${color}FF`);
+        gradient.addColorStop(0.3, `${color}CC`);
+        gradient.addColorStop(0.6, `${color}66`);
+        gradient.addColorStop(1, `${color}00`);
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = intensity;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.arc(x, y, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        ctx.fill();
+
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
+
+    drawFreeformLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation } = transform;
+        const { vertices, color, intensity } = light;
+
+        if (!vertices || vertices.length < 3) return;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation * Math.PI / 180);
+
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        for (let i = 1; i < vertices.length; i++) {
+            ctx.lineTo(vertices[i].x, vertices[i].y);
+        }
+        ctx.closePath();
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = intensity;
+
+        ctx.fill();
+
+        ctx.restore();
+        ctx.globalAlpha = 1.0;
+    }
+
+    drawSpriteLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation, scale } = transform;
+        const { sprite, color, intensity } = light;
+
+        if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
+
+        const width = sprite.naturalWidth * scale.x;
+        const height = sprite.naturalHeight * scale.y;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation * Math.PI / 180);
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = intensity;
+
+        // Draw the sprite
+        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
+
+        // Overlay a color tint
+        ctx.fillStyle = color;
+        ctx.globalCompositeOperation = 'multiply'; // "Multiply" is great for tinting
+        ctx.fillRect(-width / 2, -height / 2, width, height);
+
+        ctx.restore();
+        ctx.globalAlpha = 1.0; // Reset alpha
+    }
+
+    endLights() {
+        this.lightMapCtx.restore(); // Restore transform on lightmap
+
+        // Guard against drawing a 0-size canvas, which causes an error on startup
+        if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) {
+            return;
+        }
+
+        // Composite the lightmap onto the main canvas
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for screen space drawing
+        this.ctx.globalCompositeOperation = 'multiply';
+        this.ctx.drawImage(this.lightMapCanvas, 0, 0);
+        this.ctx.restore(); // Restores composite operation and transform
     }
 }
 

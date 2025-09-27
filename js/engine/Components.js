@@ -318,42 +318,92 @@ export class UIImage extends Leyes {
     }
 }
 
-export class TilemapRenderer extends Leyes {
+export class PointLight2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 10; // in tiles
-        this.height = 10; // in tiles
-        this.tileWidth = 32; // in pixels
-        this.tileHeight = 32; // in pixels
-        this.tilesetPath = ''; // path to the tileset image
-        this.layers = []; // Array of layer objects, e.g., { name: 'Suelo', tiles: [...] }
-        this.collisionData = []; // 1D array storing collision data (0 or 1)
-        this.tilesetImage = null; // The loaded Image object for the tileset
+        this.color = '#FFFFFF';
+        this.intensity = 1.0;
+        this.radius = 200; // Default radius in pixels/world units
+    }
+    clone() {
+        const newLight = new PointLight2D(null);
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        newLight.radius = this.radius;
+        return newLight;
+    }
+}
+
+export class SpotLight2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.color = '#FFFFFF';
+        this.intensity = 1.0;
+        this.radius = 300;
+        this.angle = 45; // The angle of the cone in degrees
+    }
+    clone() {
+        const newLight = new SpotLight2D(null);
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        newLight.radius = this.radius;
+        newLight.angle = this.angle;
+        return newLight;
+    }
+}
+
+export class FreeformLight2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.color = '#FFFFFF';
+        this.intensity = 1.0;
+        // Default to a simple square shape relative to the object's origin
+        this.vertices = [
+            { x: -50, y: -50 },
+            { x: 50, y: -50 },
+            { x: 50, y: 50 },
+            { x: -50, y: 50 }
+        ];
+    }
+    clone() {
+        const newLight = new FreeformLight2D(null);
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        newLight.vertices = JSON.parse(JSON.stringify(this.vertices)); // Deep copy
+        return newLight;
+    }
+}
+
+export class SpriteLight2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sprite = new Image();
+        this.source = ''; // Path to the sprite texture
+        this.color = '#FFFFFF';
+        this.intensity = 1.0;
     }
 
-    async loadTileset(projectsDirHandle) {
-        if (this.tilesetPath) {
-            const url = await getURLForAssetPath(this.tilesetPath, projectsDirHandle);
+    setSourcePath(path) {
+        this.source = path;
+    }
+
+    async loadSprite(projectsDirHandle) {
+        if (this.source) {
+            const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {
-                this.tilesetImage = new Image();
-                this.tilesetImage.src = url;
-                await this.tilesetImage.decode(); // Wait for the image to be fully loaded and decoded
+                this.sprite.src = url;
             }
+        } else {
+            this.sprite.src = '';
         }
     }
 
     clone() {
-        const newTilemap = new TilemapRenderer(null);
-        newTilemap.width = this.width;
-        newTilemap.height = this.height;
-        newTilemap.tileWidth = this.tileWidth;
-        newTilemap.tileHeight = this.tileHeight;
-        newTilemap.tilesetPath = this.tilesetPath;
-        // Deep copy layers and their tile data
-        newTilemap.layers = this.layers.map(layer => ({ ...layer, tiles: [...layer.tiles] }));
-        newTilemap.collisionData = [...this.collisionData];
-        // The tilesetImage will be loaded on demand
-        return newTilemap;
+        const newLight = new SpriteLight2D(null);
+        newLight.source = this.source;
+        newLight.color = this.color;
+        newLight.intensity = this.intensity;
+        return newLight;
     }
 }
 
@@ -369,4 +419,7 @@ registerComponent('Animator', Animator);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
-registerComponent('TilemapRenderer', TilemapRenderer);
+registerComponent('PointLight2D', PointLight2D);
+registerComponent('SpotLight2D', SpotLight2D);
+registerComponent('FreeformLight2D', FreeformLight2D);
+registerComponent('SpriteLight2D', SpriteLight2D);
