@@ -1896,6 +1896,83 @@ body {
     margin-top: 20px;
 }
 
+/* --- Tilemap Layer UI in Inspector --- */
+.layer-manager-ui {
+    margin-top: 10px;
+}
+
+.layer-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.layer-list-header h5 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1em;
+}
+
+.layer-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.layer-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 22px;
+    text-align: center;
+}
+
+.layer-btn.add:hover {
+    background-color: #27ae60;
+}
+
+.layer-btn.remove:hover {
+    background-color: #c0392b;
+}
+
+.layer-list {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.layer-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.layer-item:last-child {
+    border-bottom: none;
+}
+
+.layer-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.layer-item.active {
+    background-color: var(--accent-color);
+    color: white;
+    font-weight: bold;
+}
+
+
 #inspector-panel .panel-content {
     display: flex;
     flex-direction: column;

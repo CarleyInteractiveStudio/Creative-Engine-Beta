@@ -433,39 +433,63 @@ export class Tilemap extends Leyes {
         this.tileHeight = 32;
         this.columns = 20;
         this.rows = 20;
-        // Each layer is a 2D array of tile IDs.
-        // We start with one empty layer.
-        this.layers = [this.createLayer(this.columns, this.rows)];
         this.palettePath = ''; // Path to the .cepalette asset
+        this.activeLayerIndex = 0;
+
+        // Layers are now objects with a name and data grid.
+        this.layers = [{
+            name: 'Capa 1',
+            data: this.createGridData(this.columns, this.rows)
+        }];
     }
 
-    createLayer(cols, rows) {
+    createGridData(cols, rows) {
         return Array(rows).fill(null).map(() => Array(cols).fill(-1)); // -1 means empty tile
     }
 
-    setTile(layer, x, y, tileId) {
-        if (this.layers[layer] && this.layers[layer][y] && this.layers[layer][y][x] !== undefined) {
-            this.layers[layer][y][x] = tileId;
+    addLayer(name = `Capa ${this.layers.length + 1}`) {
+        this.layers.push({
+            name: name,
+            data: this.createGridData(this.columns, this.rows)
+        });
+        this.activeLayerIndex = this.layers.length - 1; // Set new layer as active
+    }
+
+    removeLayer(index) {
+        if (this.layers.length > 1 && index >= 0 && index < this.layers.length) {
+            this.layers.splice(index, 1);
+            // Adjust active layer if necessary
+            if (this.activeLayerIndex >= index) {
+                this.activeLayerIndex = Math.max(0, this.activeLayerIndex - 1);
+            }
         }
     }
 
-    getTile(layer, x, y) {
-        return this.layers[layer]?.[y]?.[x] ?? -1;
+    setTile(layerIndex, x, y, tileId) {
+        const layer = this.layers[layerIndex];
+        if (layer && layer.data[y] && layer.data[y][x] !== undefined) {
+            layer.data[y][x] = tileId;
+        }
+    }
+
+    getTile(layerIndex, x, y) {
+        return this.layers[layerIndex]?.data?.[y]?.[x] ?? -1;
     }
 
     resize(newCols, newRows) {
         this.columns = newCols;
         this.rows = newRows;
         // Resize all existing layers
-        this.layers.forEach((layer, i) => {
-            const newLayer = this.createLayer(newCols, newRows);
+        this.layers.forEach(layer => {
+            const newGrid = this.createGridData(newCols, newRows);
+            const oldGrid = layer.data;
             // Copy old data over
-            for (let r = 0; r < Math.min(layer.length, newRows); r++) {
-                for (let c = 0; c < Math.min(layer[r].length, newCols); c++) {
-                    newLayer[r][c] = layer[r][c];
+            for (let r = 0; r < Math.min(oldGrid.length, newRows); r++) {
+                for (let c = 0; c < Math.min(oldGrid[r].length, newCols); c++) {
+                    newGrid[r][c] = oldGrid[r][c];
                 }
             }
-            this.layers[i] = newLayer;
+            layer.data = newGrid;
         });
     }
 
@@ -476,6 +500,7 @@ export class Tilemap extends Leyes {
         newTilemap.columns = this.columns;
         newTilemap.rows = this.rows;
         newTilemap.palettePath = this.palettePath;
+        newTilemap.activeLayerIndex = this.activeLayerIndex;
         // Deep copy layers
         newTilemap.layers = JSON.parse(JSON.stringify(this.layers));
         return newTilemap;

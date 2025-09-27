@@ -184,6 +184,36 @@ function handleInspectorClick(e) {
             showCullingMaskDropdown(camera, e.target);
         }
     }
+
+    // --- Tilemap Layer Management ---
+    if (e.target.matches('[data-action="add-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            tilemap.addLayer();
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="remove-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            if (tilemap.layers.length > 1) {
+                tilemap.removeLayer(tilemap.activeLayerIndex);
+                updateInspector();
+            } else {
+                alert("No se puede eliminar la última capa.");
+            }
+        }
+    }
+
+    if (e.target.matches('[data-action="select-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (tilemap && !isNaN(index)) {
+            tilemap.activeLayerIndex = index;
+            updateInspector();
+        }
+    }
 }
 
 function getCullingMaskText(mask) {
@@ -590,6 +620,23 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="columns" value="${ley.columns}" title="Columns">
                             <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="rows" value="${ley.rows}" title="Rows">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="layer-manager-ui">
+                        <div class="layer-list-header">
+                            <h5>Capas</h5>
+                            <div class="layer-controls">
+                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
+                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
+                            </div>
+                        </div>
+                        <div class="layer-list">
+                            ${ley.layers.map((layer, index) => `
+                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
+                                    <span>${layer.name}</span>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 </div>

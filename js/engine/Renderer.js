@@ -162,10 +162,12 @@ export class Renderer {
         // Offset by half the map size so the transform's (x,y) is the center, like other objects
         this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
 
+        // Iterate through each layer object and draw its data grid
         for (const layer of layers) {
+            const gridData = layer.data;
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < columns; c++) {
-                    const tileId = layer[r][c];
+                    const tileId = gridData[r][c];
 
                     if (tileId === -1) {
                         continue; // Skip empty tiles

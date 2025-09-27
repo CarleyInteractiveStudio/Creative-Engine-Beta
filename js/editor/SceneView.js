@@ -725,8 +725,8 @@ function paintTile(event) {
             return;
         }
 
-        // We assume painting on layer 0 for now.
-        tilemap.setTile(0, col, row, tileIdToPaint);
+        // Use the active layer index from the component
+        tilemap.setTile(tilemap.activeLayerIndex, col, row, tileIdToPaint);
         lastPaintedCoords = { col, row };
         SceneManager.setSceneDirty(true);
     }
