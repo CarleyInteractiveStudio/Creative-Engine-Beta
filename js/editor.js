@@ -14,7 +14,6 @@ import { initialize as initializeAnimatorController, openAnimatorController } fr
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
-import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -1329,8 +1328,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
             'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
-            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
-            'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
@@ -1446,10 +1443,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log(`Opening animation controller: ${name}`);
                         openAnimatorController(fileHandle, dirHandle);
                         break;
-                    case 'ceui':
-                        console.log(`Opening UI asset: ${name}`);
-                        openUiAsset(fileHandle);
-                        break;
                     case 'ceScene':
                         if (SceneManager.isSceneDirty()) {
                             if (!confirm("Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?")) {
@@ -1483,7 +1476,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(50, "Configurando módulos del editor...");
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
-            initializeUIEditor(dom);
             initializeMusicPlayer(dom);
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
