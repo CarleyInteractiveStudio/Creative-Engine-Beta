@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
-            'ui-editor-panel': 'menu-window-ui-editor',
+            'tile-palette-panel': 'menu-window-tile-palette',
             'asset-store-panel': 'menu-window-asset-store'
         };
         const checkmark = '✅ ';
@@ -861,8 +861,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'ui-editor') {
-                openUiEditorFromModule();
+            } else if (panelName === 'tile-palette') {
+                const panel = document.getElementById('tile-palette-panel');
+                if (panel) {
+                    panel.classList.toggle('hidden');
+                    updateWindowMenuUI();
+                }
             } else if (panelName === 'asset-store') {
                 const panel = document.getElementById('asset-store-panel');
                 if (panel) {
