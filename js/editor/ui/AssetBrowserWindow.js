@@ -23,7 +23,6 @@ export function initialize(dependencies) {
     onShowContextMenu = dependencies.onShowContextMenu;
     onExportPackage = dependencies.onExportPackage;
     exportContext = dependencies.exportContext; // Share the context object
-    createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
 
     // Setup event listeners
