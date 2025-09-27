@@ -590,12 +590,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showContextMenu(menu, event) {
         hideContextMenus(); // Hide any other open menus
-        if (!menu) { // If no menu is provided, we just hide all.
+        if (!menu) {
             return;
         }
         menu.style.display = 'block';
-        menu.style.left = `${event.clientX}px`;
-        menu.style.top = `${event.clientY}px`;
+
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        let left = event.clientX;
+        let top = event.clientY;
+
+        // Adjust horizontal position
+        if (left + menuWidth > windowWidth) {
+            left = windowWidth - menuWidth - 5; // Subtract 5 for some padding
+        }
+
+        // Adjust vertical position
+        if (top + menuHeight > windowHeight) {
+            top = windowHeight - menuHeight - 5; // Subtract 5 for some padding
+        }
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
     }
 
     function hideContextMenus() {
@@ -649,6 +668,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // --- Submenu dynamic positioning ---
+        document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
+            item.addEventListener('mouseenter', e => {
+                const submenu = e.currentTarget.querySelector('.submenu');
+                if (!submenu) return;
+
+                const parentRect = e.currentTarget.getBoundingClientRect();
+                const submenuHeight = submenu.scrollHeight; // Get height even if hidden
+
+                // Check if it would go off-screen
+                if (parentRect.bottom + submenuHeight > window.innerHeight) {
+                    submenu.classList.add('submenu-up');
+                } else {
+                    submenu.classList.remove('submenu-up');
+                }
+            });
+        });
+
         // Global listener to hide context menus
         window.addEventListener('mousedown', (e) => {
             // Hide if the click is not on a context menu itself

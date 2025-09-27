@@ -1583,16 +1583,18 @@ body {
     left: 100%;
     top: -5px; /* Adjust to align with parent */
     background-color: var(--bg-tertiary);
-}
-
-.context-menu .submenu.submenu-up {
-    top: auto;
-    bottom: 0;
+    /* Common styles for all submenus */
     border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 5px 0;
     list-style: none;
     min-width: 150px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.context-menu .submenu.submenu-up {
+    top: auto;
+    bottom: 0;
 }
 
 .context-menu .has-submenu:hover .submenu {
