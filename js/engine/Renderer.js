@@ -132,6 +132,68 @@ export class Renderer {
         this.ctx.fillText(transformedText, x, y);
     }
 
+    drawTilemap(tilemapRenderer) {
+        const tilemap = tilemapRenderer.materia.getComponent('Tilemap');
+        const transform = tilemapRenderer.materia.getComponent('Transform');
+
+        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
+            return;
+        }
+
+        const { tileWidth, tileHeight, columns, rows, layers } = tilemap;
+        const { tileSheet } = tilemapRenderer;
+        // Get the number of columns in the source tilesheet from the palette info
+        const paletteCols = tilemapRenderer.palette.columns;
+
+        if (!paletteCols) return;
+
+        // Save context state before applying tilemap-specific transform
+        this.ctx.save();
+
+        // Position the tilemap based on its transform component
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        // Note: Tilemap scale is not directly supported for performance reasons.
+        // It would require scaling the context or each tile individually.
+
+        const mapWidth = columns * tileWidth;
+        const mapHeight = rows * tileHeight;
+
+        // Offset by half the map size so the transform's (x,y) is the center, like other objects
+        this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
+
+        for (const layer of layers) {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < columns; c++) {
+                    const tileId = layer[r][c];
+
+                    if (tileId === -1) {
+                        continue; // Skip empty tiles
+                    }
+
+                    // Calculate the source x/y on the tilesheet based on the tile ID
+                    const sx = (tileId % paletteCols) * tileWidth;
+                    const sy = Math.floor(tileId / paletteCols) * tileHeight;
+
+                    // Calculate the destination x/y on the canvas
+                    const dx = c * tileWidth;
+                    const dy = r * tileHeight;
+
+                    this.ctx.drawImage(
+                        tileSheet,
+                        sx, sy,           // Source x, y on the tilesheet
+                        tileWidth, tileHeight, // Source width, height
+                        dx, dy,           // Destination x, y on the canvas
+                        tileWidth, tileHeight  // Destination width, height
+                    );
+                }
+            }
+        }
+
+        // Restore context state
+        this.ctx.restore();
+    }
+
     // --- Lighting Methods ---
 
     beginLights() {

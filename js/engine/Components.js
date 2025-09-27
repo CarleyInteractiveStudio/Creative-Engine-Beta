@@ -423,3 +423,112 @@ registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
+
+// --- Tilemap Components ---
+
+export class Tilemap extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.tileWidth = 32;
+        this.tileHeight = 32;
+        this.columns = 20;
+        this.rows = 20;
+        // Each layer is a 2D array of tile IDs.
+        // We start with one empty layer.
+        this.layers = [this.createLayer(this.columns, this.rows)];
+        this.palettePath = ''; // Path to the .cepalette asset
+    }
+
+    createLayer(cols, rows) {
+        return Array(rows).fill(null).map(() => Array(cols).fill(-1)); // -1 means empty tile
+    }
+
+    setTile(layer, x, y, tileId) {
+        if (this.layers[layer] && this.layers[layer][y] && this.layers[layer][y][x] !== undefined) {
+            this.layers[layer][y][x] = tileId;
+        }
+    }
+
+    getTile(layer, x, y) {
+        return this.layers[layer]?.[y]?.[x] ?? -1;
+    }
+
+    resize(newCols, newRows) {
+        this.columns = newCols;
+        this.rows = newRows;
+        // Resize all existing layers
+        this.layers.forEach((layer, i) => {
+            const newLayer = this.createLayer(newCols, newRows);
+            // Copy old data over
+            for (let r = 0; r < Math.min(layer.length, newRows); r++) {
+                for (let c = 0; c < Math.min(layer[r].length, newCols); c++) {
+                    newLayer[r][c] = layer[r][c];
+                }
+            }
+            this.layers[i] = newLayer;
+        });
+    }
+
+    clone() {
+        const newTilemap = new Tilemap(null);
+        newTilemap.tileWidth = this.tileWidth;
+        newTilemap.tileHeight = this.tileHeight;
+        newTilemap.columns = this.columns;
+        newTilemap.rows = this.rows;
+        newTilemap.palettePath = this.palettePath;
+        // Deep copy layers
+        newTilemap.layers = JSON.parse(JSON.stringify(this.layers));
+        return newTilemap;
+    }
+}
+
+export class TilemapRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.palette = null; // Loaded palette asset
+        this.tileSheet = null; // The Image object for the tiles
+    }
+
+    async loadPalette(projectsDirHandle) {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap || !tilemap.palettePath) {
+            this.palette = null;
+            this.tileSheet = null;
+            return;
+        }
+
+        try {
+            // Load palette JSON
+            const paletteUrl = await getURLForAssetPath(tilemap.palettePath, projectsDirHandle);
+            if (!paletteUrl) throw new Error(`Could not get URL for palette: ${tilemap.palettePath}`);
+            const response = await fetch(paletteUrl);
+            this.palette = await response.json();
+
+            // Load tile sheet image
+            if (this.palette.imagePath) {
+                const imageUrl = await getURLForAssetPath(this.palette.imagePath, projectsDirHandle);
+                if (imageUrl) {
+                    this.tileSheet = new Image();
+                    await new Promise((resolve, reject) => {
+                        this.tileSheet.onload = resolve;
+                        this.tileSheet.onerror = reject;
+                        this.tileSheet.src = imageUrl;
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to load palette or associated tilesheet for '${tilemap.palettePath}':`, error);
+            this.palette = null;
+            this.tileSheet = null;
+        }
+    }
+
+    clone() {
+        // Renderer doesn't hold much state itself, it's mostly for logic.
+        // The palette will be reloaded based on the Tilemap's path.
+        return new TilemapRenderer(null);
+    }
+}
+
+registerComponent('Tilemap', Tilemap);
+registerComponent('TilemapRenderer', TilemapRenderer);
