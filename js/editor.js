@@ -27,6 +27,7 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
+import * as TabManager from './editor/ui/TabManager.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -703,30 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Tab switching for the bottom panel (Assets/Console/Debug)
-        const tabBar = dom.assetsPanel.querySelector('.tab-bar');
-        const contentContainer = dom.assetsPanel.querySelector('.panel-content-container');
-
-        if (tabBar && contentContainer) {
-            tabBar.addEventListener('click', (e) => {
-                if (e.target.matches('.tab-btn')) {
-                    const tabId = e.target.dataset.tab;
-
-                    // Deactivate all buttons and content panels first
-                    tabBar.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                    contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-                    // Activate the clicked button
-                    e.target.classList.add('active');
-
-                    // Activate the corresponding content panel
-                    const activeContent = contentContainer.querySelector(`#${tabId}`);
-                    if (activeContent) {
-                        activeContent.classList.add('active');
-                    }
-                }
-            });
-        }
+        // The new TabManager now handles all tab switching logic.
 
         if (dom.prefsSnappingToggle) {
             dom.prefsSnappingToggle.addEventListener('change', (e) => {
@@ -1480,6 +1458,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
+            TabManager.initialize(); // Initialize the new tab system
+            TabManager.registerWindow('Tile Palette', TilePalette.createTabbedView);
             initializeFloatingPanels();
             editorLoopId = requestAnimationFrame(editorLoop);
 

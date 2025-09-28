@@ -6,23 +6,26 @@ let setActiveSceneTool = () => {};
 
 let currentPalette = {
     imagePath: '',
-    tiles: [] // Array of { id, x, y, width, height }
+    tiles: []
 };
 let currentFileHandle = null;
 let isDirty = false;
 
 // --- Slicer State ---
-let slices = []; // Temporary array of slice rectangles {x, y, width, height}
+let slices = [];
 let selectedSliceIndex = -1;
-let isDrawingSlice = false;
-let isDraggingSlice = false;
-let isResizingSlice = false;
+let isDrawingSlice = false, isDraggingSlice = false, isResizingSlice = false;
 let resizeHandle = null;
 let dragStartPos = { x: 0, y: 0 };
-let originalSlice = null; // Store the state of the slice at the start of a drag/resize
+let originalSlice = null;
 
-// --- Palette Grid State ---
+// --- Palette State ---
 let selectedTileId = -1;
+let activePaletteTool = 'brush';
+
+// --- Multi-view Sync State ---
+// This will hold references to all grid views (floating and tabbed) that need to be updated.
+let gridViewInstances = new Set();
 
 // --- Public API ---
 
@@ -31,34 +34,50 @@ export function initialize(dependencies) {
         panel: dependencies.dom.tilePalettePanel,
         assetName: dependencies.dom.paletteAssetName,
         saveBtn: dependencies.dom.paletteSaveBtn,
-        // New UI from editor.html
         selectImageBtn: document.getElementById('palette-select-image-btn'),
         applySlicesBtn: document.getElementById('palette-apply-slices-btn'),
         editorView: document.getElementById('sprite-editor-view'),
         editorCanvas: document.getElementById('sprite-editor-canvas'),
         editorImage: document.getElementById('sprite-editor-image'),
-        gridView: document.getElementById('palette-grid-view'),
+        mainGridView: document.getElementById('palette-grid-view'), // The grid in the floating window
         resizer: document.getElementById('palette-resizer'),
         overlay: dependencies.dom.palettePanelOverlay,
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     setActiveSceneTool = dependencies.setActiveSceneTool;
 
+    // Register the main grid view
+    if (dom.mainGridView) {
+        gridViewInstances.add(dom.mainGridView);
+    }
+
     setupEventListeners();
 }
 
-export async function createNewPalette(name, dirHandle) {
-    const content = { imagePath: "", tiles: [] };
-    try {
-        const fileHandle = await dirHandle.getFileHandle(name, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(content, null, 2));
-        await writable.close();
-        await openPalette(fileHandle);
-    } catch (error) {
-        console.error(`Error creating new palette:`, error);
-    }
+export function createTabbedView() {
+    const container = document.createElement('div');
+    container.className = 'palette-tab-view';
+
+    const gridView = document.createElement('div');
+    gridView.className = 'palette-grid-view-tabbed';
+
+    // Register this new grid view so it gets updated along with the main one
+    gridViewInstances.add(gridView);
+
+    // When this tab is closed, we should unregister its grid view
+    container.addEventListener('destroy', () => {
+        gridViewInstances.delete(gridView);
+    });
+
+    container.appendChild(gridView);
+    updatePaletteGrid(); // Populate it immediately with current tiles
+
+    return {
+        id: `tile-palette-tab-${Date.now()}`,
+        element: container,
+    };
 }
+
 
 export async function openPalette(fileHandle) {
     if (isDirty) {
@@ -79,7 +98,7 @@ export async function openPalette(fileHandle) {
             await loadImage(currentPalette.imagePath);
         } else {
             resetSlicer();
-            updatePaletteGrid();
+            updateAllViews();
         }
     } catch (error) {
         console.error(`Error opening palette:`, error);
@@ -96,9 +115,8 @@ function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.selectImageBtn.addEventListener('click', selectImage);
     dom.applySlicesBtn.addEventListener('click', applySlices);
-
     dom.editorCanvas.addEventListener('mousedown', handleSlicerMouseDown);
-    document.addEventListener('mousemove', handleSlicerMouseMove); // Listen on document for dragging outside canvas
+    document.addEventListener('mousemove', handleSlicerMouseMove);
     document.addEventListener('mouseup', handleSlicerMouseUp);
 }
 
@@ -121,7 +139,7 @@ async function selectImage() {
         const relativePath = await openImagePickerModal();
         if (relativePath) {
             currentPalette.imagePath = relativePath;
-            currentPalette.tiles = []; // Clear old tiles when new image is selected
+            currentPalette.tiles = [];
             slices = [];
             isDirty = true;
             await loadImage(relativePath);
@@ -138,7 +156,7 @@ async function loadImage(imagePath) {
         dom.editorImage.src = imageUrl;
         await new Promise(resolve => { dom.editorImage.onload = resolve; });
         resetSlicer();
-        updatePaletteGrid();
+        updateAllViews();
     } catch (error) {
         console.error(`Error loading tileset image:`, error);
         resetSlicer();
@@ -166,7 +184,7 @@ function applySlices() {
         height: Math.round(s.height)
     }));
     isDirty = true;
-    updatePaletteGrid();
+    updateAllViews();
     alert(`${slices.length} recortes aplicados a la paleta.`);
 }
 
@@ -178,7 +196,7 @@ function drawSlicer() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 1;
     slices.forEach((slice, index) => {
-        if (index === selectedSliceIndex) return; // Skip selected, will be drawn later
+        if (index === selectedSliceIndex) return;
         ctx.strokeRect(slice.x, slice.y, slice.width, slice.height);
     });
 
@@ -213,7 +231,6 @@ function getHandleAtPos(pos, rect) {
         'se': { x: rect.x + rect.width, y: rect.y + rect.height }, 's': { x: rect.x + rect.width / 2, y: rect.y + rect.height },
         'sw': { x: rect.x, y: rect.y + rect.height }, 'w': { x: rect.x, y: rect.y + rect.height / 2 }
     };
-
     for (const name in handles) {
         const handle = handles[name];
         if (Math.abs(pos.x - handle.x) <= halfHandle && Math.abs(pos.y - handle.y) <= halfHandle) {
@@ -260,7 +277,7 @@ function handleSlicerMouseMove(e) {
     let dy = mousePos.y - dragStartPos.y;
 
     if (isDrawingSlice) {
-        drawSlicer(); // Redraw existing slices
+        drawSlicer();
         const ctx = dom.editorCanvas.getContext('2d');
         ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
         ctx.lineWidth = 2;
@@ -284,15 +301,6 @@ function handleSlicerMouseMove(e) {
             slice.height = originalSlice.height - dy;
         }
         drawSlicer();
-    } else {
-        let cursor = 'crosshair';
-        if (selectedSliceIndex !== -1) {
-            const handle = getHandleAtPos(mousePos, slices[selectedSliceIndex]);
-            if (handle) cursor = `${handle}-resize`;
-        }
-        const insideSlice = slices.some(s => mousePos.x >= s.x && mousePos.x <= s.x + s.width && mousePos.y >= s.y && mousePos.y <= s.y + s.height);
-        if (insideSlice && cursor === 'crosshair') cursor = 'move';
-        dom.editorCanvas.style.cursor = cursor;
     }
 }
 
@@ -328,28 +336,46 @@ function handleSlicerMouseUp(e) {
     drawSlicer();
 }
 
-function updatePaletteGrid() {
-    dom.gridView.innerHTML = '';
+function updateAllViews() {
+    gridViewInstances.forEach(grid => updatePaletteGrid(grid));
+}
+
+function updatePaletteGrid(gridViewElement) {
+    if (!gridViewElement) return;
+    gridViewElement.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
     currentPalette.tiles.forEach(tile => {
         const tileContainer = document.createElement('div');
         tileContainer.className = 'palette-grid-tile';
         tileContainer.dataset.tileId = tile.id;
+        if (tile.id === selectedTileId) {
+            tileContainer.classList.add('active');
+        }
 
         const canvas = document.createElement('canvas');
         canvas.width = tile.width;
         canvas.height = tile.height;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(dom.editorImage, tile.x, tile.y, tile.width, tile.height, 0, 0, tile.width, tile.height);
+        if (dom.editorImage && dom.editorImage.complete) {
+            ctx.drawImage(dom.editorImage, tile.x, tile.y, tile.width, tile.height, 0, 0, tile.width, tile.height);
+        }
 
         tileContainer.appendChild(canvas);
         tileContainer.addEventListener('click', () => {
             selectedTileId = tile.id;
-            dom.gridView.querySelectorAll('.palette-grid-tile').forEach(t => t.classList.remove('active'));
-            tileContainer.classList.add('active');
+            // Update selection visuals on all views
+            gridViewInstances.forEach(grid => {
+                grid.querySelectorAll('.palette-grid-tile').forEach(t => {
+                    t.classList.toggle('active', t.dataset.tileId === String(tile.id));
+                });
+            });
+            setActiveSceneTool('tile-brush');
         });
-        dom.gridView.appendChild(tileContainer);
+        fragment.appendChild(tileContainer);
     });
+    gridViewElement.appendChild(fragment);
 }
 
 async function openImagePickerModal() {

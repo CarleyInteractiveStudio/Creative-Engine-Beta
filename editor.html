@@ -157,22 +157,34 @@
             <div class="resizer-h" id="resizer-bottom"></div>
              <div id="inspector-panel" class="editor-panel">
                 <div class="panel-header">
-                    <span>Inspector</span>
-                    <button class="close-panel-btn" data-panel="inspector-panel">&times;</button>
+                    <div class="panel-tab-bar">
+                        <button class="panel-tab-btn active" data-tab-id="inspector-main-content">Inspector</button>
+                    </div>
+                    <div class="panel-header-controls">
+                        <button class="panel-add-tab-btn" data-panel-id="inspector-panel" title="Añadir Pestaña">+</button>
+                        <button class="close-panel-btn" data-panel="inspector-panel">&times;</button>
+                    </div>
                 </div>
-                <div class="panel-content"></div>
+                <div class="panel-content-area">
+                    <div id="inspector-main-content" class="panel-content active">
+                        <!-- Inspector content will be populated by JS -->
+                    </div>
+                </div>
             </div>
              <div id="assets-panel" class="editor-panel">
-                <div class="panel-header tab-bar">
-                    <div class="tab-buttons">
-                        <button class="tab-btn active" data-tab="assets-content">Navegador</button>
-                        <button class="tab-btn" data-tab="console-content">Consola</button>
-                        <button class="tab-btn" data-tab="debug-content">Depurador</button>
+                <div class="panel-header">
+                    <div class="panel-tab-bar">
+                        <button class="panel-tab-btn active" data-tab-id="assets-content">Navegador</button>
+                        <button class="panel-tab-btn" data-tab-id="console-content">Consola</button>
+                        <button class="panel-tab-btn" data-tab-id="debug-content">Depurador</button>
                     </div>
-                    <button class="close-panel-btn" data-panel="assets-panel">&times;</button>
+                    <div class="panel-header-controls">
+                        <button class="panel-add-tab-btn" data-panel-id="assets-panel" title="Añadir Pestaña">+</button>
+                        <button class="close-panel-btn" data-panel="assets-panel">&times;</button>
+                    </div>
                 </div>
-                <div class="panel-content-container">
-                    <div id="assets-content" class="panel-content tab-content active no-padding">
+                <div class="panel-content-area">
+                    <div id="assets-content" class="panel-content active no-padding">
                         <div id="asset-browser-container">
                             <div id="asset-folder-tree">
                                 <!-- Folder tree will be populated by JS -->
@@ -182,10 +194,10 @@
                             </div>
                         </div>
                     </div>
-                    <div id="console-content" class="panel-content tab-content">
+                    <div id="console-content" class="panel-content">
                         <!-- Console messages will go here -->
                     </div>
-                    <div id="debug-content" class="panel-content tab-content">
+                    <div id="debug-content" class="panel-content">
                         <!-- Debug info will be injected here by editor.js -->
                     </div>
                 </div>

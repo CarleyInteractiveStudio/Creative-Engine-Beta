@@ -2068,30 +2068,71 @@ body {
 }
 
 /* --- Tabbed Panel Styles --- */
-#scene-panel .panel-content-container,
-#assets-panel .panel-content-container {
+.panel-tab-bar {
     flex-grow: 1;
-    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.panel-tab-btn {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    padding: 6px 12px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: -1px; /* Overlap the panel header border */
     position: relative;
 }
 
-#scene-panel .view-content,
-#assets-panel .tab-content {
+.panel-tab-btn.active {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--bg-secondary); /* Hide bottom border */
+}
+
+.panel-add-tab-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: bold;
+    line-height: 18px;
+    margin-left: 10px;
+}
+.panel-add-tab-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.panel-content-area {
+    flex-grow: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.panel-content-area > .panel-content {
     display: none;
-    height: 100%;
-    width: 100%;
-    overflow: auto;
     position: absolute;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 10px; /* Default padding */
 }
 
-#scene-panel .view-content.active,
-#assets-panel .tab-content.active {
+.panel-content-area > .panel-content.active {
     display: block;
 }
 
-.no-padding {
+.panel-content.no-padding {
     padding: 0 !important;
 }
 
