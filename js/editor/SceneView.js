@@ -157,37 +157,42 @@ function drawTilemapEditorGrid() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    if (!tilemap) return;
 
-    const { ctx, camera } = renderer;
-    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const { ctx, camera, canvas } = renderer;
+    const { tileWidth, tileHeight } = tilemap;
+
+    if (tileWidth <= 0 || tileHeight <= 0) {
+        return; // Avoid infinite loops or errors with invalid tile sizes
+    }
+
     const zoom = camera.effectiveZoom;
 
-    const totalWidth = columns * tileWidth;
-    const totalHeight = rows * tileHeight;
-    const startX = transform.x - totalWidth / 2;
-    const startY = transform.y - totalHeight / 2;
-    const endX = startX + totalWidth;
-    const endY = startY + totalHeight;
+    // Calculate the visible world-space area
+    const viewLeft = camera.x - (canvas.width / 2 / zoom);
+    const viewRight = camera.x + (canvas.width / 2 / zoom);
+    const viewTop = camera.y - (canvas.height / 2 / zoom);
+    const viewBottom = camera.y + (canvas.height / 2 / zoom);
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
+    ctx.strokeStyle = 'rgba(150, 150, 255, 0.4)'; // Slightly more subtle color
     ctx.lineWidth = 1 / zoom;
     ctx.beginPath();
 
-    // Draw vertical lines
-    for (let i = 0; i <= columns; i++) {
-        const x = startX + i * tileWidth;
-        ctx.moveTo(x, startY);
-        ctx.lineTo(x, endY);
+    // Draw vertical lines across the viewport
+    const startX = Math.floor(viewLeft / tileWidth) * tileWidth;
+    const endX = Math.ceil(viewRight / tileWidth) * tileWidth;
+    for (let x = startX; x <= endX; x += tileWidth) {
+        ctx.moveTo(x, viewTop);
+        ctx.lineTo(x, viewBottom);
     }
 
-    // Draw horizontal lines
-    for (let i = 0; i <= rows; i++) {
-        const y = startY + i * tileHeight;
-        ctx.moveTo(startX, y);
-        ctx.lineTo(endX, y);
+    // Draw horizontal lines across the viewport
+    const startY = Math.floor(viewTop / tileHeight) * tileHeight;
+    const endY = Math.ceil(viewBottom / tileHeight) * tileHeight;
+    for (let y = startY; y <= endY; y += tileHeight) {
+        ctx.moveTo(viewLeft, y);
+        ctx.lineTo(viewRight, y);
     }
 
     ctx.stroke();
