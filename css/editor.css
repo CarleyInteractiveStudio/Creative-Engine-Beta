@@ -2145,6 +2145,35 @@ body {
     background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
 }
 
+.palette-section.vertical {
+    flex-direction: column;
+    padding: 8px;
+    gap: 8px;
+    border-right: 1px solid var(--border-color);
+    border-bottom: none;
+    background-color: var(--bg-primary);
+}
+
+.palette-tool-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2em;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.palette-tool-btn:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.palette-tool-btn.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
 #palette-toolbar .toolbar-group {
     display: flex;
     align-items: center;

@@ -678,7 +678,9 @@ function drawTileCursor() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const rendererComp = selectedMateria.getComponent(Components.TilemapRenderer);
     const transform = selectedMateria.getComponent(Components.Transform);
+
     if (!tilemap || !transform) return;
 
     const { ctx } = renderer;
@@ -686,7 +688,6 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // Calculate mouse position relative to the tilemap's origin (top-left corner)
     const mapWidth = columns * tileWidth;
     const mapHeight = rows * tileHeight;
     const mapTopLeftX = transform.x - mapWidth / 2;
@@ -695,26 +696,40 @@ function drawTileCursor() {
     const mouseInMapX = worldMouse.x - mapTopLeftX;
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
-    // Calculate the column and row under the cursor
     const col = Math.floor(mouseInMapX / tileWidth);
     const row = Math.floor(mouseInMapY / tileHeight);
 
-    // Check if the cursor is within the tilemap bounds
     if (col >= 0 && col < columns && row >= 0 && row < rows) {
         const cursorX = mapTopLeftX + col * tileWidth;
         const cursorY = mapTopLeftY + row * tileHeight;
 
         ctx.save();
-        if (activeTool === 'tile-brush') {
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-        } else { // Eraser
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-        }
         ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-        ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
-        ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+
+        if (activeTool === 'tile-brush') {
+            const selectedTileId = getSelectedTile();
+            if (selectedTileId !== -1 && rendererComp && rendererComp.tileSheet && rendererComp.palette) {
+                const tileData = rendererComp.palette.tiles.find(t => t.id === selectedTileId);
+                if (tileData) {
+                    ctx.globalAlpha = 0.5; // Ghost effect
+                    ctx.drawImage(
+                        rendererComp.tileSheet,
+                        tileData.x, tileData.y, tileData.width, tileData.height,
+                        cursorX, cursorY, tileWidth, tileHeight
+                    );
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+            // Draw border even if no tile is selected
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+            ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+
+        } else { // Eraser
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
+            ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+        }
         ctx.restore();
     }
 }

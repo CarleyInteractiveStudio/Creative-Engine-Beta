@@ -2,28 +2,31 @@ import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 
 let dom = {};
 let projectsDirHandle = null;
+let setActiveSceneTool = () => {}; // Callback to set the main tool in SceneView
+
 let currentPalette = {
     imagePath: '',
     tiles: [] // Array of { id, x, y, width, height }
 };
 let currentFileHandle = null;
 let selectedTileId = -1;
+let activePaletteTool = 'brush';
 let isDirty = false;
 
 // --- Public API ---
 
-export function initialize(editorDom, projDirHandle) {
+export function initialize(dependencies) {
     dom = {
-        panel: editorDom.tilePalettePanel,
-        assetName: editorDom.paletteAssetName,
-        saveBtn: editorDom.paletteSaveBtn,
-        selectImageBtn: editorDom.paletteSelectImageBtn,
-        imageName: editorDom.paletteImageName,
-        selectedTileIdSpan: editorDom.paletteSelectedTileId,
-        viewContainer: editorDom.paletteViewContainer,
-        gridCanvas: editorDom.paletteGridCanvas,
-        tilesetImage: editorDom.paletteTilesetImage,
-        overlay: editorDom.palettePanelOverlay,
+        panel: dependencies.dom.tilePalettePanel,
+        assetName: dependencies.dom.paletteAssetName,
+        saveBtn: dependencies.dom.paletteSaveBtn,
+        selectImageBtn: dependencies.dom.paletteSelectImageBtn,
+        imageName: dependencies.dom.paletteImageName,
+        selectedTileIdSpan: dependencies.dom.paletteSelectedTileId,
+        viewContainer: dependencies.dom.paletteViewContainer,
+        gridCanvas: dependencies.dom.paletteGridCanvas,
+        tilesetImage: dependencies.dom.paletteTilesetImage,
+        overlay: dependencies.dom.palettePanelOverlay,
         previewCanvas: document.getElementById('palette-tile-preview'),
         // Slicer UI
         sliceModeSelect: document.getElementById('palette-slice-mode'),
@@ -31,10 +34,14 @@ export function initialize(editorDom, projDirHandle) {
         sliceHeightInput: document.getElementById('palette-slice-height'),
         sliceGridSettings: document.getElementById('palette-grid-settings'),
         sliceBtn: document.getElementById('palette-slice-btn'),
+        // Tools UI
+        toolContainer: document.getElementById('palette-tools'),
     };
-    projectsDirHandle = projDirHandle;
+    projectsDirHandle = dependencies.projectsDirHandle;
+    setActiveSceneTool = dependencies.setActiveSceneTool;
 
     setupEventListeners();
+    setActivePaletteTool('brush'); // Set brush as default
 }
 
 export async function createNewPalette(name, dirHandle) {
@@ -112,7 +119,36 @@ function setupEventListeners() {
         const isGridMode = e.target.value === 'grid';
         dom.sliceGridSettings.style.display = isGridMode ? 'flex' : 'none';
     });
+
+    dom.toolContainer.addEventListener('click', (e) => {
+        const toolBtn = e.target.closest('.palette-tool-btn');
+        if (toolBtn) {
+            const toolName = toolBtn.dataset.tool;
+            setActivePaletteTool(toolName);
+        }
+    });
 }
+
+function setActivePaletteTool(toolName) {
+    activePaletteTool = toolName;
+
+    // Update UI for palette tools
+    dom.toolContainer.querySelectorAll('.palette-tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === toolName);
+    });
+
+    // Update the main scene tool
+    if (toolName === 'brush') {
+        setActiveSceneTool('tile-brush');
+    } else if (toolName === 'eraser') {
+        setActiveSceneTool('tile-eraser');
+    } else {
+        // For other tools like fill or picker, we might want a different scene tool or behavior
+        // For now, let's default to the move tool if it's not a direct painting tool.
+        setActiveSceneTool('move');
+    }
+}
+
 
 async function saveCurrentPalette() {
     if (!currentFileHandle) {
@@ -120,7 +156,6 @@ async function saveCurrentPalette() {
         return;
     }
 
-    // The new format saves the tiles array
     const dataToSave = {
         imagePath: currentPalette.imagePath,
         tiles: currentPalette.tiles
@@ -167,8 +202,6 @@ async function loadImage(imagePath) {
             dom.tilesetImage.onerror = reject;
         });
 
-        // If a palette already has tile definitions, draw them.
-        // Otherwise, the user needs to slice it.
         if (currentPalette.tiles && currentPalette.tiles.length > 0) {
             drawGrid();
         } else {
@@ -256,7 +289,6 @@ function sliceByTransparency() {
                 continue; // Skip visited or transparent pixels
             }
 
-            // Found a new sprite, start BFS
             const queue = [[x, y]];
             visited[index] = true;
             let minX = x, minY = y, maxX = x, maxY = y;
@@ -264,13 +296,11 @@ function sliceByTransparency() {
             while (queue.length > 0) {
                 const [cx, cy] = queue.shift();
 
-                // Update bounds
                 minX = Math.min(minX, cx);
                 minY = Math.min(minY, cy);
                 maxX = Math.max(maxX, cx);
                 maxY = Math.max(maxY, cy);
 
-                // Check neighbors
                 const neighbors = [[0, 1], [0, -1], [1, 0], [-1, 0]];
                 for (const [dx, dy] of neighbors) {
                     const nx = cx + dx;
@@ -317,14 +347,10 @@ function drawGrid() {
     ctx.font = '10px sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
 
-    // Draw each tile's bounding box
     currentPalette.tiles.forEach(tile => {
         ctx.strokeRect(tile.x, tile.y, tile.width, tile.height);
-        // Optionally draw tile ID
-        // ctx.fillText(tile.id, tile.x + 2, tile.y + 10);
     });
 
-    // Highlight selected tile
     const selectedTile = currentPalette.tiles.find(t => t.id === selectedTileId);
     if (selectedTile) {
         ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold color
@@ -371,7 +397,6 @@ function handleCanvasClick(event) {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Find which tile was clicked by checking bounds
     const clickedTile = currentPalette.tiles.find(tile =>
         x >= tile.x && x <= tile.x + tile.width &&
         y >= tile.y && y <= tile.y + tile.height
@@ -381,12 +406,11 @@ function handleCanvasClick(event) {
         selectedTileId = clickedTile.id;
         dom.selectedTileIdSpan.textContent = selectedTileId;
         console.log(`Selected tile ID: ${selectedTileId}`);
-        drawGrid(); // Redraw to show selection
-        drawPreview(); // Update the preview
+        drawGrid();
+        drawPreview();
     }
 }
 
-// --- Project-aware Image Picker (Modal) ---
 async function openImagePickerModal() {
     return new Promise(async (resolve) => {
         const modal = document.getElementById('sprite-selector-modal');
