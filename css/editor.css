@@ -2199,32 +2199,77 @@ body {
     text-align: center;
 }
 
-#palette-view-container {
+#palette-editor-body {
+    display: flex;
     flex-grow: 1;
+    height: calc(100% - 41px); /* Full height minus toolbar */
+}
+
+.palette-view-container {
+    flex: 1;
     position: relative;
     overflow: auto;
-    background-color: var(--color-background-deep);
+    background-color: var(--bg-primary);
     background-image:
-        linear-gradient(45deg, var(--color-background-light) 25%, transparent 25%),
-        linear-gradient(-45deg, var(--color-background-light) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, var(--color-background-light) 75%),
-        linear-gradient(-45deg, transparent 75%, var(--color-background-light) 75%);
+        linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%);
     background-size: 20px 20px;
 }
 
-#palette-tileset-image {
+#sprite-editor-image {
     display: block;
-    image-rendering: pixelated; /* Sharp pixels */
+    image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
 }
 
-#palette-grid-canvas {
+#sprite-editor-canvas {
     position: absolute;
     top: 0;
     left: 0;
-    pointer-events: all; /* Make sure canvas receives mouse events */
+    cursor: crosshair;
     z-index: 1;
+}
+
+#palette-resizer {
+    width: 6px;
+    background-color: var(--bg-tertiary);
+    cursor: col-resize;
+    flex-shrink: 0;
+}
+
+#palette-grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 10px;
+    padding: 10px;
+    align-content: flex-start;
+}
+
+.palette-grid-tile {
+    width: 100%;
+    padding-bottom: 100%; /* Creates a square aspect ratio */
+    position: relative;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    cursor: pointer;
+}
+
+.palette-grid-tile.active {
+    border: 2px solid var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
+.palette-grid-tile canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
 }
 
 #palette-panel-overlay {

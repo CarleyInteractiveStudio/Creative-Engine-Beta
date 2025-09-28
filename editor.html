@@ -787,50 +787,19 @@
                  <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
             </div>
         </div>
-        <div class="panel-content no-padding" style="display: flex; flex-direction: row;">
-            <div id="palette-tools" class="palette-section vertical">
-                <button class="palette-tool-btn active" data-tool="brush" title="Pincel">🖌️</button>
-                <button class="palette-tool-btn" data-tool="eraser" title="Goma">🧼</button>
-                <button class="palette-tool-btn" data-tool="fill" title="Relleno">💧</button>
-                <button class="palette-tool-btn" data-tool="picker" title="Selector">👁️</button>
+        <div class="panel-content no-padding">
+            <div id="palette-toolbar" class="palette-section">
+                <button id="palette-select-image-btn">Seleccionar Imagen</button>
+                <button id="palette-apply-slices-btn" class="primary-btn">Aplicar Recortes</button>
             </div>
-            <div id="palette-main-view" style="flex-grow: 1; display: flex; flex-direction: column;">
-                <div id="palette-toolbar">
-                    <div class="toolbar-group">
-                        <label>Tileset:</label>
-                        <button id="palette-select-image-btn">Seleccionar Imagen...</button>
-                        <span id="palette-image-name">Ninguna</span>
-                    </div>
-                     <div class="toolbar-group">
-                        <label>Tile Seleccionado:</label>
-                        <span id="palette-selected-tile-id">-</span>
-                    </div>
-                    <div class="toolbar-group">
-                        <label>Vista Previa:</label>
-                        <canvas id="palette-tile-preview" width="32" height="32"></canvas>
-                    </div>
+            <div id="palette-editor-body">
+                <div id="sprite-editor-view" class="palette-view-container">
+                    <canvas id="sprite-editor-canvas"></canvas>
+                    <img id="sprite-editor-image" src="" alt="Tileset para cortar">
                 </div>
-                <div id="palette-slicer" class="palette-section">
-                    <div class="toolbar-group">
-                        <label for="palette-slice-mode">Modo de Corte</label>
-                        <select id="palette-slice-mode">
-                            <option value="automatic">Automático</option>
-                            <option value="grid" selected>Por Rejilla</option>
-                        </select>
-                    </div>
-                    <div id="palette-grid-settings" class="toolbar-group">
-                        <label>Tamaño Celda</label>
-                        <input type="number" id="palette-slice-width" value="32" min="1" title="Ancho de Celda">
-                        <span>&times;</span>
-                        <input type="number" id="palette-slice-height" value="32" min="1" title="Alto de Celda">
-                    </div>
-                    <div class="toolbar-group">
-                        <button id="palette-slice-btn" class="primary-btn">Cortar</button>
-                    </div>
-                </div>
-                <div id="palette-view-container">
-                    <canvas id="palette-grid-canvas"></canvas>
-                    <img id="palette-tileset-image" src="" alt="Tileset">
+                <div id="palette-resizer" class="resizer-v"></div>
+                <div id="palette-grid-view" class="palette-view-container">
+                    <!-- Los tiles recortados aparecerán aquí -->
                 </div>
             </div>
         </div>
