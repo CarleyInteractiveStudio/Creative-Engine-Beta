@@ -29,6 +29,7 @@ export function initialize(editorDom, projDirHandle) {
         gridCanvas: editorDom.paletteGridCanvas,
         tilesetImage: editorDom.paletteTilesetImage,
         overlay: editorDom.palettePanelOverlay,
+        previewCanvas: document.getElementById('palette-tile-preview'),
     };
     projectsDirHandle = projDirHandle;
 
@@ -84,6 +85,7 @@ export async function openPalette(fileHandle) {
         dom.tileWidthInput.value = currentPalette.tileWidth;
         dom.tileHeightInput.value = currentPalette.tileHeight;
         dom.selectedTileIdSpan.textContent = '-';
+        drawPreview(); // Clear preview on open
 
         if (currentPalette.imagePath) {
             await loadImage(currentPalette.imagePath);
@@ -148,24 +150,114 @@ async function saveCurrentPalette() {
     }
 }
 
+async function openImagePickerModal() {
+    return new Promise(async (resolve) => {
+        const modal = document.getElementById('sprite-selector-modal');
+        if (!modal) {
+            console.error("Sprite selector modal not found in DOM.");
+            return resolve(null);
+        }
+        const grid = modal.querySelector('#sprite-selector-grid');
+        const title = modal.querySelector('h2');
+        if (!grid || !title) {
+            console.error("Modal content (grid or title) not found.");
+            return resolve(null);
+        }
+        const originalTitle = title.textContent;
+
+        title.textContent = 'Seleccionar Imagen para Paleta';
+        grid.innerHTML = ''; // Clear previous content
+
+        const imageFiles = [];
+        async function findImages(dirHandle, path = '') {
+            for await (const entry of dirHandle.values()) {
+                const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg'))) {
+                    imageFiles.push({ name: entry.name, path: entryPath });
+                } else if (entry.kind === 'directory') {
+                    // We need to get the directory handle to recurse
+                    const nestedDirHandle = await dirHandle.getDirectoryHandle(entry.name);
+                    await findImages(nestedDirHandle, entryPath);
+                }
+            }
+        }
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            if (!projectName) throw new Error("Could not determine project name from URL.");
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            await findImages(projectHandle, '');
+
+            if (imageFiles.length === 0) {
+                alert("No se encontraron imágenes (.png, .jpg) en el proyecto.");
+                return resolve(null);
+            }
+
+            const closeAndResolve = (result) => {
+                modal.classList.remove('is-open');
+                grid.innerHTML = '';
+                title.textContent = originalTitle;
+                // Clean up the specific click listener for the close button
+                const closeButton = modal.querySelector('.close-button');
+                if (closeButton) {
+                    closeButton.onclick = null;
+                }
+                resolve(result);
+            };
+
+            imageFiles.forEach(imgFile => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'sprite-selector-item';
+                imgContainer.style.textAlign = 'center';
+                imgContainer.style.cursor = 'pointer';
+
+                const img = document.createElement('img');
+                img.style.maxWidth = '100px';
+                img.style.maxHeight = '100px';
+                img.style.display = 'block';
+                img.style.margin = '0 auto 5px';
+                getURLForAssetPath(imgFile.path, projectsDirHandle).then(url => { if (url) img.src = url; });
+
+                const nameLabel = document.createElement('span');
+                nameLabel.textContent = imgFile.name;
+                nameLabel.style.wordBreak = 'break-all';
+
+
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(nameLabel);
+
+                imgContainer.addEventListener('click', () => {
+                    closeAndResolve(imgFile.path);
+                });
+                grid.appendChild(imgContainer);
+            });
+
+            const closeButton = modal.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.onclick = () => closeAndResolve(null);
+            }
+            modal.classList.add('is-open');
+
+        } catch (error) {
+            console.error("Error building image picker:", error);
+            alert(`Could not open image picker: ${error.message}`);
+            resolve(null);
+        }
+    });
+}
+
 async function selectImage() {
     try {
-        const [fileHandle] = await window.showOpenFilePicker({
-            types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
-            multiple: false
-        });
+        const relativePath = await openImagePickerModal();
 
-        // We need to resolve the path relative to the project root
-        // This is a simplification; a real implementation might need a more robust path resolver.
-        // For now, let's assume assets are in a predictable location.
-        // A better approach would be to get the relative path from the project root handle.
-        const relativePath = `Assets/${fileHandle.name}`; // This is a weak assumption
-        await loadImage(relativePath);
-        currentPalette.imagePath = relativePath;
-        isDirty = true;
+        if (relativePath) {
+            await loadImage(relativePath);
+            currentPalette.imagePath = relativePath;
+            isDirty = true;
+        }
 
     } catch (err) {
-        console.log("User cancelled file picker or an error occurred.", err);
+        console.log("Error in the image selection process.", err);
     }
 }
 
@@ -183,7 +275,10 @@ async function loadImage(imagePath) {
             dom.tilesetImage.onerror = reject;
         });
 
+        selectedTileId = -1; // Reset selection on new image
+        dom.selectedTileIdSpan.textContent = '-';
         drawGrid();
+        drawPreview(); // Clear the preview as well
 
     } catch (error) {
         console.error(`Error loading tileset image '${imagePath}':`, error);
@@ -250,6 +345,34 @@ function clearGrid() {
     dom.gridCanvas.height = 0;
 }
 
+function drawPreview() {
+    if (!dom.previewCanvas) return;
+    const pCtx = dom.previewCanvas.getContext('2d');
+    pCtx.clearRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
+
+    if (selectedTileId === -1 || !dom.tilesetImage.src) {
+        pCtx.fillStyle = 'rgba(0,0,0,0.2)';
+        pCtx.fillRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
+        return;
+    }
+
+    const { tileWidth, tileHeight, columns } = currentPalette;
+    const col = selectedTileId % columns;
+    const row = Math.floor(selectedTileId / columns);
+    const sx = col * tileWidth;
+    const sy = row * tileHeight;
+
+    // Ensure the preview canvas is scaled to show the tile clearly
+    const scale = Math.min(dom.previewCanvas.width / tileWidth, dom.previewCanvas.height / tileHeight);
+    const dw = tileWidth * scale;
+    const dh = tileHeight * scale;
+    const dx = (dom.previewCanvas.width - dw) / 2;
+    const dy = (dom.previewCanvas.height - dh) / 2;
+
+    pCtx.imageSmoothingEnabled = false; // Keep pixels sharp
+    pCtx.drawImage(dom.tilesetImage, sx, sy, tileWidth, tileHeight, dx, dy, dw, dh);
+}
+
 function handleCanvasClick(event) {
     if (!currentPalette.columns || !currentPalette.rows) return;
 
@@ -265,5 +388,6 @@ function handleCanvasClick(event) {
         dom.selectedTileIdSpan.textContent = selectedTileId;
         console.log(`Selected tile ID: ${selectedTileId}`);
         drawGrid(); // Redraw to show selection
+        drawPreview(); // Update the preview
     }
 }
