@@ -18,6 +18,7 @@ let getSelectedTile;
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
 let isDragging = false;
 let lastSelectedId = -1;
+let isTilemapModeActive = false;
 let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
@@ -149,6 +150,48 @@ function handleEditorInteractions() {
     // This function is now largely a placeholder.
     // Panning, zooming, and gizmo dragging are all handled by direct, dynamic event listeners
     // to improve performance and reliability.
+}
+
+function drawTilemapEditorGrid() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
+
+    const { ctx, camera } = renderer;
+    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const zoom = camera.effectiveZoom;
+
+    const totalWidth = columns * tileWidth;
+    const totalHeight = rows * tileHeight;
+    const startX = transform.x - totalWidth / 2;
+    const startY = transform.y - totalHeight / 2;
+    const endX = startX + totalWidth;
+    const endY = startY + totalHeight;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
+    ctx.lineWidth = 1 / zoom;
+    ctx.beginPath();
+
+    // Draw vertical lines
+    for (let i = 0; i <= columns; i++) {
+        const x = startX + i * tileWidth;
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+    }
+
+    // Draw horizontal lines
+    for (let i = 0; i <= rows; i++) {
+        const y = startY + i * tileHeight;
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
 }
 
 function drawEditorGrid() {
@@ -527,6 +570,7 @@ export function update() {
     // Check if selection has changed
     if (currentSelectedId !== lastSelectedId) {
         const hasTilemap = selectedMateria && selectedMateria.getComponent(Components.Tilemap);
+        isTilemapModeActive = hasTilemap; // Set the global flag
 
         // Show/hide tilemap-specific tools
         document.querySelectorAll('.tilemap-tool, .tilemap-tool-divider').forEach(el => {
@@ -673,7 +717,12 @@ function drawTileCursor() {
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
-    drawEditorGrid();
+
+    if (isTilemapModeActive) {
+        drawTilemapEditorGrid();
+    } else {
+        drawEditorGrid();
+    }
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
