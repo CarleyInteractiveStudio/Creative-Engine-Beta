@@ -1,5 +1,6 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
-import { createNewPalette } from './TilePaletteWindow.js';
+// createNewPalette is no longer exported from TilePaletteWindow.
+// The logic is now handled directly within this module.
 
 // --- Module State ---
 let dom;
@@ -392,8 +393,17 @@ async function handleContextMenuClick(e) {
             const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
             if (paletteName) {
                 const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                await createNewPalette(fileName, currentDirectoryHandle.handle);
-                await updateAssetBrowserCallback();
+                const defaultContent = JSON.stringify({ imagePath: "", tiles: [] }, null, 2);
+                try {
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(defaultContent);
+                    await writable.close();
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error creating tile palette:", err);
+                    alert("Could not create the tile palette file.");
+                }
             }
             break;
         }

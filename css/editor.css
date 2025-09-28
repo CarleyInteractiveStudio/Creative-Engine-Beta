@@ -2068,71 +2068,30 @@ body {
 }
 
 /* --- Tabbed Panel Styles --- */
-.panel-tab-bar {
+#scene-panel .panel-content-container,
+#assets-panel .panel-content-container {
     flex-grow: 1;
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-}
-
-.panel-tab-btn {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-bottom: none;
-    padding: 6px 12px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-weight: 600;
-    border-radius: 4px 4px 0 0;
-    margin-bottom: -1px; /* Overlap the panel header border */
-    position: relative;
-}
-
-.panel-tab-btn.active {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-bottom: 1px solid var(--bg-secondary); /* Hide bottom border */
-}
-
-.panel-add-tab-btn {
-    background: none;
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-weight: bold;
-    line-height: 18px;
-    margin-left: 10px;
-}
-.panel-add-tab-btn:hover {
-    background-color: var(--accent-color);
-    color: white;
-}
-
-.panel-content-area {
-    flex-grow: 1;
-    position: relative;
     overflow: hidden;
+    position: relative;
 }
 
-.panel-content-area > .panel-content {
+#scene-panel .view-content,
+#assets-panel .tab-content {
     display: none;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    padding: 10px; /* Default padding */
 }
 
-.panel-content-area > .panel-content.active {
+#scene-panel .view-content.active,
+#assets-panel .tab-content.active {
     display: block;
 }
 
-.panel-content.no-padding {
+.no-padding {
     padding: 0 !important;
 }
 
@@ -2152,67 +2111,12 @@ body {
 
 #palette-toolbar {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 15px;
-    padding: 8px;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--bg-tertiary);
-}
-
-.palette-section {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 15px;
-    padding: 8px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-#palette-slicer .toolbar-group input[type="number"] {
-    width: 60px;
-}
-
-#palette-tile-preview {
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-primary);
-    image-rendering: pixelated; /* Ensures sharp pixels */
-    background-image:
-        linear-gradient(45deg, #444 25%, transparent 25%),
-        linear-gradient(-45deg, #444 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #444 75%),
-        linear-gradient(-45deg, transparent 75%, #444 75%);
-    background-size: 10px 10px;
-    background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
-}
-
-.palette-section.vertical {
-    flex-direction: column;
-    padding: 8px;
-    gap: 8px;
-    border-right: 1px solid var(--border-color);
-    border-bottom: none;
-    background-color: var(--bg-primary);
-}
-
-.palette-tool-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 1.2em;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.palette-tool-btn:hover {
-    background-color: var(--bg-tertiary);
-}
-
-.palette-tool-btn.active {
-    background-color: var(--accent-color);
-    border-color: var(--accent-color);
+    gap: 20px;
+    padding: 6px;
+    background: var(--color-background-deep);
+    border-bottom: 1px solid var(--color-border-dark);
+    flex-shrink: 0;
 }
 
 #palette-toolbar .toolbar-group {
@@ -2240,77 +2144,32 @@ body {
     text-align: center;
 }
 
-#palette-editor-body {
-    display: flex;
+#palette-view-container {
     flex-grow: 1;
-    height: calc(100% - 41px); /* Full height minus toolbar */
-}
-
-.palette-view-container {
-    flex: 1;
     position: relative;
     overflow: auto;
-    background-color: var(--bg-primary);
+    background-color: var(--color-background-deep);
     background-image:
-        linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%),
-        linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%),
-        linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%);
+        linear-gradient(45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--color-background-light) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--color-background-light) 75%);
     background-size: 20px 20px;
 }
 
-#sprite-editor-image {
+#palette-tileset-image {
     display: block;
-    image-rendering: pixelated;
+    image-rendering: pixelated; /* Sharp pixels */
     image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
 }
 
-#sprite-editor-canvas {
+#palette-grid-canvas {
     position: absolute;
     top: 0;
     left: 0;
-    cursor: crosshair;
+    pointer-events: all; /* Make sure canvas receives mouse events */
     z-index: 1;
-}
-
-#palette-resizer {
-    width: 6px;
-    background-color: var(--bg-tertiary);
-    cursor: col-resize;
-    flex-shrink: 0;
-}
-
-#palette-grid-view {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-    gap: 10px;
-    padding: 10px;
-    align-content: flex-start;
-}
-
-.palette-grid-tile {
-    width: 100%;
-    padding-bottom: 100%; /* Creates a square aspect ratio */
-    position: relative;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-secondary);
-    cursor: pointer;
-}
-
-.palette-grid-tile.active {
-    border: 2px solid var(--accent-color);
-    box-shadow: 0 0 5px var(--accent-color);
-}
-
-.palette-grid-tile canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    image-rendering: pixelated;
 }
 
 #palette-panel-overlay {

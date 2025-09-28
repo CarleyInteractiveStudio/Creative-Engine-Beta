@@ -136,14 +136,16 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        // The palette now must contain an array of tile definitions
-        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette || !tilemapRenderer.palette.tiles) {
+        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
             return;
         }
 
         const { tileWidth, tileHeight, columns, rows, layers } = tilemap;
         const { tileSheet } = tilemapRenderer;
-        const tiles = tilemapRenderer.palette.tiles;
+        // Get the number of columns in the source tilesheet from the palette info
+        const paletteCols = tilemapRenderer.palette.columns;
+
+        if (!paletteCols) return;
 
         // Save context state before applying tilemap-specific transform
         this.ctx.save();
@@ -151,11 +153,13 @@ export class Renderer {
         // Position the tilemap based on its transform component
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
+        // Note: Tilemap scale is not directly supported for performance reasons.
+        // It would require scaling the context or each tile individually.
 
         const mapWidth = columns * tileWidth;
         const mapHeight = rows * tileHeight;
 
-        // Offset by half the map size so the transform's (x,y) is the center
+        // Offset by half the map size so the transform's (x,y) is the center, like other objects
         this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
 
         // Iterate through each layer object and draw its data grid
@@ -169,30 +173,20 @@ export class Renderer {
                         continue; // Skip empty tiles
                     }
 
-                    // Find the specific tile definition from the palette using its ID.
-                    // A Map would be faster, but for typical palette sizes, this is fine.
-                    const tile = tiles.find(t => t.id === tileId);
+                    // Calculate the source x/y on the tilesheet based on the tile ID
+                    const sx = (tileId % paletteCols) * tileWidth;
+                    const sy = Math.floor(tileId / paletteCols) * tileHeight;
 
-                    if (!tile) {
-                        continue; // Skip if tile definition is missing for this ID
-                    }
-
-                    // Source rectangle from the palette's tile definition
-                    const sx = tile.x;
-                    const sy = tile.y;
-                    const sWidth = tile.width;
-                    const sHeight = tile.height;
-
-                    // Destination x/y on the canvas, based on the uniform grid
+                    // Calculate the destination x/y on the canvas
                     const dx = c * tileWidth;
                     const dy = r * tileHeight;
 
                     this.ctx.drawImage(
                         tileSheet,
-                        sx, sy,           // Source x, y, width, height from palette
-                        sWidth, sHeight,
+                        sx, sy,           // Source x, y on the tilesheet
+                        tileWidth, tileHeight, // Source width, height
                         dx, dy,           // Destination x, y on the canvas
-                        tileWidth, tileHeight  // Destination width, height are uniform grid size
+                        tileWidth, tileHeight  // Destination width, height
                     );
                 }
             }

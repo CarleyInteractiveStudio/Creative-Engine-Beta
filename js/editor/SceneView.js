@@ -18,7 +18,6 @@ let getSelectedTile;
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
 let isDragging = false;
 let lastSelectedId = -1;
-let isTilemapModeActive = false;
 let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
@@ -150,53 +149,6 @@ function handleEditorInteractions() {
     // This function is now largely a placeholder.
     // Panning, zooming, and gizmo dragging are all handled by direct, dynamic event listeners
     // to improve performance and reliability.
-}
-
-function drawTilemapEditorGrid() {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
-
-    const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    if (!tilemap) return;
-
-    const { ctx, camera, canvas } = renderer;
-    const { tileWidth, tileHeight } = tilemap;
-
-    if (tileWidth <= 0 || tileHeight <= 0) {
-        return; // Avoid infinite loops or errors with invalid tile sizes
-    }
-
-    const zoom = camera.effectiveZoom;
-
-    // Calculate the visible world-space area
-    const viewLeft = camera.x - (canvas.width / 2 / zoom);
-    const viewRight = camera.x + (canvas.width / 2 / zoom);
-    const viewTop = camera.y - (canvas.height / 2 / zoom);
-    const viewBottom = camera.y + (canvas.height / 2 / zoom);
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(150, 150, 255, 0.4)'; // Slightly more subtle color
-    ctx.lineWidth = 1 / zoom;
-    ctx.beginPath();
-
-    // Draw vertical lines across the viewport
-    const startX = Math.floor(viewLeft / tileWidth) * tileWidth;
-    const endX = Math.ceil(viewRight / tileWidth) * tileWidth;
-    for (let x = startX; x <= endX; x += tileWidth) {
-        ctx.moveTo(x, viewTop);
-        ctx.lineTo(x, viewBottom);
-    }
-
-    // Draw horizontal lines across the viewport
-    const startY = Math.floor(viewTop / tileHeight) * tileHeight;
-    const endY = Math.ceil(viewBottom / tileHeight) * tileHeight;
-    for (let y = startY; y <= endY; y += tileHeight) {
-        ctx.moveTo(viewLeft, y);
-        ctx.lineTo(viewRight, y);
-    }
-
-    ctx.stroke();
-    ctx.restore();
 }
 
 function drawEditorGrid() {
@@ -436,7 +388,7 @@ export function initialize(dependencies) {
         }
 
         // Clamp zoom to avoid issues
-        // renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
+        renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
@@ -575,7 +527,6 @@ export function update() {
     // Check if selection has changed
     if (currentSelectedId !== lastSelectedId) {
         const hasTilemap = selectedMateria && selectedMateria.getComponent(Components.Tilemap);
-        isTilemapModeActive = hasTilemap; // Set the global flag
 
         // Show/hide tilemap-specific tools
         document.querySelectorAll('.tilemap-tool, .tilemap-tool-divider').forEach(el => {
@@ -678,9 +629,7 @@ function drawTileCursor() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const rendererComp = selectedMateria.getComponent(Components.TilemapRenderer);
     const transform = selectedMateria.getComponent(Components.Transform);
-
     if (!tilemap || !transform) return;
 
     const { ctx } = renderer;
@@ -688,6 +637,7 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
+    // Calculate mouse position relative to the tilemap's origin (top-left corner)
     const mapWidth = columns * tileWidth;
     const mapHeight = rows * tileHeight;
     const mapTopLeftX = transform.x - mapWidth / 2;
@@ -696,40 +646,26 @@ function drawTileCursor() {
     const mouseInMapX = worldMouse.x - mapTopLeftX;
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
+    // Calculate the column and row under the cursor
     const col = Math.floor(mouseInMapX / tileWidth);
     const row = Math.floor(mouseInMapY / tileHeight);
 
+    // Check if the cursor is within the tilemap bounds
     if (col >= 0 && col < columns && row >= 0 && row < rows) {
         const cursorX = mapTopLeftX + col * tileWidth;
         const cursorY = mapTopLeftY + row * tileHeight;
 
         ctx.save();
-        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-
         if (activeTool === 'tile-brush') {
-            const selectedTileId = getSelectedTile();
-            if (selectedTileId !== -1 && rendererComp && rendererComp.tileSheet && rendererComp.palette) {
-                const tileData = rendererComp.palette.tiles.find(t => t.id === selectedTileId);
-                if (tileData) {
-                    ctx.globalAlpha = 0.5; // Ghost effect
-                    ctx.drawImage(
-                        rendererComp.tileSheet,
-                        tileData.x, tileData.y, tileData.width, tileData.height,
-                        cursorX, cursorY, tileWidth, tileHeight
-                    );
-                    ctx.globalAlpha = 1.0;
-                }
-            }
-            // Draw border even if no tile is selected
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
-            ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
-
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
         } else { // Eraser
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
             ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-            ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
-            ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
         }
+        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+        ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
+        ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
         ctx.restore();
     }
 }
@@ -737,12 +673,7 @@ function drawTileCursor() {
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
-
-    if (isTilemapModeActive) {
-        drawTilemapEditorGrid();
-    } else {
-        drawEditorGrid();
-    }
+    drawEditorGrid();
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
