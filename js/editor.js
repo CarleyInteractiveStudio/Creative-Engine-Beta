@@ -14,6 +14,7 @@ import { initialize as initializeAnimatorController, openAnimatorController } fr
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
+import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
 import { transpile } from './editor/CES_Transpiler.js';
@@ -619,52 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideContextMenus() {
         document.querySelectorAll('.context-menu').forEach(menu => {
             menu.style.display = 'none';
-        });
-    }
-
-    function openAssetSelectorForPalette() {
-        return new Promise(async (resolve) => {
-            const grid = dom.spriteSelectorGrid;
-            grid.innerHTML = '';
-            dom.spriteSelectorModal.classList.add('is-open');
-
-            const imageFiles = [];
-            async function findImages(dirHandle, path = '') {
-                for await (const entry of dirHandle.values()) {
-                    const entryPath = path ? `${path}/${entry.name}` : entry.name;
-                    if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg'))) {
-                        imageFiles.push(entryPath);
-                    } else if (entry.kind === 'directory') {
-                        // Simple exclusion to avoid heavy node_modules scan
-                        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-                        await findImages(await dirHandle.getDirectoryHandle(entry.name), entryPath);
-                    }
-                }
-            }
-
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-            await findImages(assetsHandle, 'Assets');
-
-            imageFiles.forEach(imgPath => {
-                const img = document.createElement('img');
-                getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
-                img.title = imgPath;
-
-                img.addEventListener('click', () => {
-                    dom.spriteSelectorModal.classList.remove('is-open');
-                    resolve(imgPath);
-                });
-                grid.appendChild(img);
-            });
-
-            const closeModal = () => {
-                dom.spriteSelectorModal.classList.remove('is-open');
-                dom.spriteSelectorModal.querySelector('.close-button').removeEventListener('click', closeModal);
-                resolve(null);
-            };
-            dom.spriteSelectorModal.querySelector('.close-button').addEventListener('click', closeModal, { once: true });
         });
     }
 
@@ -1328,6 +1283,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
             'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
+            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
+            'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
@@ -1443,6 +1400,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log(`Opening animation controller: ${name}`);
                         openAnimatorController(fileHandle, dirHandle);
                         break;
+                    case 'ceui':
+                        console.log(`Opening UI asset: ${name}`);
+                        openUiAsset(fileHandle);
+                        break;
                     case 'ceScene':
                         if (SceneManager.isSceneDirty()) {
                             if (!confirm("Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?")) {
@@ -1476,6 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(50, "Configurando módulos del editor...");
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
+            initializeUIEditor(dom);
             initializeMusicPlayer(dom);
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
@@ -1496,11 +1458,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 onAssetOpened,
                 onShowContextMenu: showContextMenu,
                 onExportPackage,
+                createUiSystemFile,
                 updateAssetBrowser,
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle, openAssetSelectorForPalette);
+            TilePalette.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

@@ -12,6 +12,7 @@ let onAssetSelected;
 let onAssetOpened;
 let onShowContextMenu;
 let onExportPackage;
+let createUiSystemFile;
 let updateAssetBrowserCallback;
 
 // --- Initialization ---
@@ -23,6 +24,7 @@ export function initialize(dependencies) {
     onShowContextMenu = dependencies.onShowContextMenu;
     onExportPackage = dependencies.onExportPackage;
     exportContext = dependencies.exportContext; // Share the context object
+    createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
 
     // Setup event listeners
@@ -377,6 +379,12 @@ async function handleContextMenuClick(e) {
                     console.error("Error al crear el script:", err);
                     alert("No se pudo crear el script.");
                 }
+            }
+            break;
+        }
+        case 'create-ui-system': {
+            if (createUiSystemFile) {
+                createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
             }
             break;
         }
