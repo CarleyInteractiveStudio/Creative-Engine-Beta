@@ -4,10 +4,7 @@ let dom = {};
 let projectsDirHandle = null;
 let currentPalette = {
     imagePath: '',
-    tileWidth: 32,
-    tileHeight: 32,
-    columns: 0,
-    rows: 0
+    tiles: [] // Array of { id, x, y, width, height }
 };
 let currentFileHandle = null;
 let selectedTileId = -1;
@@ -22,14 +19,18 @@ export function initialize(editorDom, projDirHandle) {
         saveBtn: editorDom.paletteSaveBtn,
         selectImageBtn: editorDom.paletteSelectImageBtn,
         imageName: editorDom.paletteImageName,
-        tileWidthInput: editorDom.paletteTileWidth,
-        tileHeightInput: editorDom.paletteTileHeight,
         selectedTileIdSpan: editorDom.paletteSelectedTileId,
         viewContainer: editorDom.paletteViewContainer,
         gridCanvas: editorDom.paletteGridCanvas,
         tilesetImage: editorDom.paletteTilesetImage,
         overlay: editorDom.palettePanelOverlay,
         previewCanvas: document.getElementById('palette-tile-preview'),
+        // Slicer UI
+        sliceModeSelect: document.getElementById('palette-slice-mode'),
+        sliceWidthInput: document.getElementById('palette-slice-width'),
+        sliceHeightInput: document.getElementById('palette-slice-height'),
+        sliceGridSettings: document.getElementById('palette-grid-settings'),
+        sliceBtn: document.getElementById('palette-slice-btn'),
     };
     projectsDirHandle = projDirHandle;
 
@@ -39,8 +40,7 @@ export function initialize(editorDom, projDirHandle) {
 export async function createNewPalette(name, dirHandle) {
     const content = {
         imagePath: "",
-        tileWidth: 32,
-        tileHeight: 32
+        tiles: []
     };
 
     try {
@@ -71,10 +71,7 @@ export async function openPalette(fileHandle) {
         currentFileHandle = fileHandle;
         currentPalette = {
             imagePath: data.imagePath || '',
-            tileWidth: data.tileWidth || 32,
-            tileHeight: data.tileHeight || 32,
-            columns: 0, // Will be calculated after image loads
-            rows: 0
+            tiles: data.tiles || []
         };
         isDirty = false;
         selectedTileId = -1;
@@ -82,10 +79,8 @@ export async function openPalette(fileHandle) {
         dom.panel.classList.remove('hidden');
         dom.overlay.style.display = 'none';
         dom.assetName.textContent = file.name;
-        dom.tileWidthInput.value = currentPalette.tileWidth;
-        dom.tileHeightInput.value = currentPalette.tileHeight;
         dom.selectedTileIdSpan.textContent = '-';
-        drawPreview(); // Clear preview on open
+        drawPreview();
 
         if (currentPalette.imagePath) {
             await loadImage(currentPalette.imagePath);
@@ -110,19 +105,13 @@ export function getSelectedTile() {
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.selectImageBtn.addEventListener('click', selectImage);
-
-    dom.tileWidthInput.addEventListener('change', () => {
-        currentPalette.tileWidth = parseInt(dom.tileWidthInput.value, 10);
-        isDirty = true;
-        drawGrid();
-    });
-    dom.tileHeightInput.addEventListener('change', () => {
-        currentPalette.tileHeight = parseInt(dom.tileHeightInput.value, 10);
-        isDirty = true;
-        drawGrid();
-    });
-
     dom.gridCanvas.addEventListener('mousedown', handleCanvasClick);
+    dom.sliceBtn.addEventListener('click', sliceTileset);
+
+    dom.sliceModeSelect.addEventListener('change', (e) => {
+        const isGridMode = e.target.value === 'grid';
+        dom.sliceGridSettings.style.display = isGridMode ? 'flex' : 'none';
+    });
 }
 
 async function saveCurrentPalette() {
@@ -131,10 +120,10 @@ async function saveCurrentPalette() {
         return;
     }
 
+    // The new format saves the tiles array
     const dataToSave = {
         imagePath: currentPalette.imagePath,
-        tileWidth: currentPalette.tileWidth,
-        tileHeight: currentPalette.tileHeight
+        tiles: currentPalette.tiles
     };
 
     try {
@@ -150,6 +139,254 @@ async function saveCurrentPalette() {
     }
 }
 
+async function selectImage() {
+    try {
+        const relativePath = await openImagePickerModal();
+
+        if (relativePath) {
+            await loadImage(relativePath);
+            currentPalette.imagePath = relativePath;
+            isDirty = true;
+        }
+
+    } catch (err) {
+        console.log("Error in the image selection process.", err);
+    }
+}
+
+async function loadImage(imagePath) {
+    try {
+        const imageUrl = await getURLForAssetPath(imagePath, projectsDirHandle);
+        if (!imageUrl) throw new Error(`Could not create URL for ${imagePath}`);
+
+        dom.tilesetImage.src = imageUrl;
+        dom.imageName.textContent = imagePath.split('/').pop();
+
+        await new Promise((resolve, reject) => {
+            dom.tilesetImage.onload = resolve;
+            dom.tilesetImage.onerror = reject;
+        });
+
+        // If a palette already has tile definitions, draw them.
+        // Otherwise, the user needs to slice it.
+        if (currentPalette.tiles && currentPalette.tiles.length > 0) {
+            drawGrid();
+        } else {
+            clearGrid();
+        }
+
+        selectedTileId = -1;
+        dom.selectedTileIdSpan.textContent = '-';
+        drawPreview();
+
+    } catch (error) {
+        console.error(`Error loading tileset image '${imagePath}':`, error);
+        alert(`Could not load image: ${error.message}`);
+        dom.tilesetImage.src = '';
+        dom.imageName.textContent = 'Error';
+    }
+}
+
+function sliceTileset() {
+    const img = dom.tilesetImage;
+    if (!img.src || !img.complete || img.naturalWidth === 0) {
+        alert("Por favor, selecciona una imagen de tileset primero.");
+        return;
+    }
+
+    const mode = dom.sliceModeSelect.value;
+    if (mode === 'grid') {
+        sliceByGrid();
+    } else if (mode === 'automatic') {
+        sliceByTransparency();
+    }
+
+    isDirty = true;
+    selectedTileId = -1;
+    dom.selectedTileIdSpan.textContent = '-';
+    drawGrid();
+    drawPreview();
+}
+
+function sliceByGrid() {
+    const img = dom.tilesetImage;
+    const cellWidth = parseInt(dom.sliceWidthInput.value, 10);
+    const cellHeight = parseInt(dom.sliceHeightInput.value, 10);
+
+    if (!cellWidth || !cellHeight || cellWidth <= 0 || cellHeight <= 0) {
+        alert("Por favor, introduce un tamaño de celda válido.");
+        return;
+    }
+
+    currentPalette.tiles = [];
+    let id = 0;
+    for (let y = 0; y < img.naturalHeight; y += cellHeight) {
+        for (let x = 0; x < img.naturalWidth; x += cellWidth) {
+            currentPalette.tiles.push({
+                id: id++,
+                x: x,
+                y: y,
+                width: cellWidth,
+                height: cellHeight
+            });
+        }
+    }
+    console.log(`Sliced into ${id} tiles by grid.`);
+}
+
+function sliceByTransparency() {
+    const img = dom.tilesetImage;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = img.naturalWidth;
+    tempCanvas.height = img.naturalHeight;
+    const ctx = tempCanvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const { data, width, height } = imageData;
+
+    const visited = new Array(width * height).fill(false);
+    currentPalette.tiles = [];
+    let tileId = 0;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x);
+            if (visited[index] || data[index * 4 + 3] === 0) {
+                continue; // Skip visited or transparent pixels
+            }
+
+            // Found a new sprite, start BFS
+            const queue = [[x, y]];
+            visited[index] = true;
+            let minX = x, minY = y, maxX = x, maxY = y;
+
+            while (queue.length > 0) {
+                const [cx, cy] = queue.shift();
+
+                // Update bounds
+                minX = Math.min(minX, cx);
+                minY = Math.min(minY, cy);
+                maxX = Math.max(maxX, cx);
+                maxY = Math.max(maxY, cy);
+
+                // Check neighbors
+                const neighbors = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                for (const [dx, dy] of neighbors) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    const nIndex = ny * width + nx;
+
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height && !visited[nIndex] && data[nIndex * 4 + 3] > 0) {
+                        visited[nIndex] = true;
+                        queue.push([nx, ny]);
+                    }
+                }
+            }
+
+            currentPalette.tiles.push({
+                id: tileId++,
+                x: minX,
+                y: minY,
+                width: maxX - minX + 1,
+                height: maxY - minY + 1
+            });
+        }
+    }
+    console.log(`Found ${tileId} sprites automatically.`);
+}
+
+function drawGrid() {
+    const img = dom.tilesetImage;
+    if (!img.src || !img.complete || img.naturalWidth === 0) {
+        clearGrid();
+        return;
+    }
+
+    const { naturalWidth, naturalHeight } = img;
+    dom.gridCanvas.width = naturalWidth;
+    dom.gridCanvas.height = naturalHeight;
+    dom.gridCanvas.style.width = `${naturalWidth}px`;
+    dom.gridCanvas.style.height = `${naturalHeight}px`;
+
+    const ctx = dom.gridCanvas.getContext('2d');
+    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+
+    // Draw each tile's bounding box
+    currentPalette.tiles.forEach(tile => {
+        ctx.strokeRect(tile.x, tile.y, tile.width, tile.height);
+        // Optionally draw tile ID
+        // ctx.fillText(tile.id, tile.x + 2, tile.y + 10);
+    });
+
+    // Highlight selected tile
+    const selectedTile = currentPalette.tiles.find(t => t.id === selectedTileId);
+    if (selectedTile) {
+        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold color
+        ctx.lineWidth = 3;
+        ctx.strokeRect(selectedTile.x + 1.5, selectedTile.y + 1.5, selectedTile.width - 3, selectedTile.height - 3);
+    }
+}
+
+function clearGrid() {
+    dom.gridCanvas.width = 0;
+    dom.gridCanvas.height = 0;
+    currentPalette.tiles = [];
+}
+
+function drawPreview() {
+    if (!dom.previewCanvas) return;
+    const pCtx = dom.previewCanvas.getContext('2d');
+    pCtx.clearRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
+
+    const selectedTile = currentPalette.tiles.find(t => t.id === selectedTileId);
+
+    if (!selectedTile || !dom.tilesetImage.src) {
+        pCtx.fillStyle = 'rgba(0,0,0,0.2)';
+        pCtx.fillRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
+        return;
+    }
+
+    const { x, y, width, height } = selectedTile;
+
+    const scale = Math.min(dom.previewCanvas.width / width, dom.previewCanvas.height / height);
+    const dw = width * scale;
+    const dh = height * scale;
+    const dx = (dom.previewCanvas.width - dw) / 2;
+    const dy = (dom.previewCanvas.height - dh) / 2;
+
+    pCtx.imageSmoothingEnabled = false;
+    pCtx.drawImage(dom.tilesetImage, x, y, width, height, dx, dy, dw, dh);
+}
+
+function handleCanvasClick(event) {
+    if (!currentPalette.tiles || currentPalette.tiles.length === 0) return;
+
+    const rect = dom.gridCanvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Find which tile was clicked by checking bounds
+    const clickedTile = currentPalette.tiles.find(tile =>
+        x >= tile.x && x <= tile.x + tile.width &&
+        y >= tile.y && y <= tile.y + tile.height
+    );
+
+    if (clickedTile) {
+        selectedTileId = clickedTile.id;
+        dom.selectedTileIdSpan.textContent = selectedTileId;
+        console.log(`Selected tile ID: ${selectedTileId}`);
+        drawGrid(); // Redraw to show selection
+        drawPreview(); // Update the preview
+    }
+}
+
+// --- Project-aware Image Picker (Modal) ---
 async function openImagePickerModal() {
     return new Promise(async (resolve) => {
         const modal = document.getElementById('sprite-selector-modal');
@@ -175,7 +412,6 @@ async function openImagePickerModal() {
                 if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg'))) {
                     imageFiles.push({ name: entry.name, path: entryPath });
                 } else if (entry.kind === 'directory') {
-                    // We need to get the directory handle to recurse
                     const nestedDirHandle = await dirHandle.getDirectoryHandle(entry.name);
                     await findImages(nestedDirHandle, entryPath);
                 }
@@ -197,7 +433,6 @@ async function openImagePickerModal() {
                 modal.classList.remove('is-open');
                 grid.innerHTML = '';
                 title.textContent = originalTitle;
-                // Clean up the specific click listener for the close button
                 const closeButton = modal.querySelector('.close-button');
                 if (closeButton) {
                     closeButton.onclick = null;
@@ -244,150 +479,4 @@ async function openImagePickerModal() {
             resolve(null);
         }
     });
-}
-
-async function selectImage() {
-    try {
-        const relativePath = await openImagePickerModal();
-
-        if (relativePath) {
-            await loadImage(relativePath);
-            currentPalette.imagePath = relativePath;
-            isDirty = true;
-        }
-
-    } catch (err) {
-        console.log("Error in the image selection process.", err);
-    }
-}
-
-async function loadImage(imagePath) {
-    try {
-        const imageUrl = await getURLForAssetPath(imagePath, projectsDirHandle);
-        if (!imageUrl) throw new Error(`Could not create URL for ${imagePath}`);
-
-        dom.tilesetImage.src = imageUrl;
-        dom.imageName.textContent = imagePath.split('/').pop();
-
-        // Wait for the image to load to get its dimensions
-        await new Promise((resolve, reject) => {
-            dom.tilesetImage.onload = resolve;
-            dom.tilesetImage.onerror = reject;
-        });
-
-        selectedTileId = -1; // Reset selection on new image
-        dom.selectedTileIdSpan.textContent = '-';
-        drawGrid();
-        drawPreview(); // Clear the preview as well
-
-    } catch (error) {
-        console.error(`Error loading tileset image '${imagePath}':`, error);
-        alert(`Could not load image: ${error.message}`);
-        dom.tilesetImage.src = '';
-        dom.imageName.textContent = 'Error';
-    }
-}
-
-function drawGrid() {
-    const img = dom.tilesetImage;
-    if (!img.src || !img.complete || img.naturalWidth === 0) {
-        clearGrid();
-        return;
-    }
-
-    const { naturalWidth, naturalHeight } = img;
-    const { tileWidth, tileHeight } = currentPalette;
-
-    dom.gridCanvas.width = naturalWidth;
-    dom.gridCanvas.height = naturalHeight;
-    dom.gridCanvas.style.width = `${naturalWidth}px`;
-    dom.gridCanvas.style.height = `${naturalHeight}px`;
-
-    const ctx = dom.gridCanvas.getContext('2d');
-    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
-
-    // Calculate grid columns and rows
-    currentPalette.columns = Math.floor(naturalWidth / tileWidth);
-    currentPalette.rows = Math.floor(naturalHeight / tileHeight);
-
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 1;
-
-    for (let x = 0; x <= naturalWidth; x += tileWidth) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, naturalHeight);
-        ctx.stroke();
-    }
-    for (let y = 0; y <= naturalHeight; y += tileHeight) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(naturalWidth, y);
-        ctx.stroke();
-    }
-
-    // Highlight selected tile
-    if (selectedTileId !== -1) {
-        const col = selectedTileId % currentPalette.columns;
-        const row = Math.floor(selectedTileId / currentPalette.columns);
-        const x = col * tileWidth;
-        const y = row * tileHeight;
-
-        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold color
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 1.5, y + 1.5, tileWidth - 3, tileHeight - 3);
-    }
-}
-
-function clearGrid() {
-    dom.gridCanvas.width = 0;
-    dom.gridCanvas.height = 0;
-}
-
-function drawPreview() {
-    if (!dom.previewCanvas) return;
-    const pCtx = dom.previewCanvas.getContext('2d');
-    pCtx.clearRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
-
-    if (selectedTileId === -1 || !dom.tilesetImage.src) {
-        pCtx.fillStyle = 'rgba(0,0,0,0.2)';
-        pCtx.fillRect(0, 0, dom.previewCanvas.width, dom.previewCanvas.height);
-        return;
-    }
-
-    const { tileWidth, tileHeight, columns } = currentPalette;
-    const col = selectedTileId % columns;
-    const row = Math.floor(selectedTileId / columns);
-    const sx = col * tileWidth;
-    const sy = row * tileHeight;
-
-    // Ensure the preview canvas is scaled to show the tile clearly
-    const scale = Math.min(dom.previewCanvas.width / tileWidth, dom.previewCanvas.height / tileHeight);
-    const dw = tileWidth * scale;
-    const dh = tileHeight * scale;
-    const dx = (dom.previewCanvas.width - dw) / 2;
-    const dy = (dom.previewCanvas.height - dh) / 2;
-
-    pCtx.imageSmoothingEnabled = false; // Keep pixels sharp
-    pCtx.drawImage(dom.tilesetImage, sx, sy, tileWidth, tileHeight, dx, dy, dw, dh);
-}
-
-function handleCanvasClick(event) {
-    if (!currentPalette.columns || !currentPalette.rows) return;
-
-    const rect = dom.gridCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const col = Math.floor(x / currentPalette.tileWidth);
-    const row = Math.floor(y / currentPalette.tileHeight);
-
-    if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
-        selectedTileId = row * currentPalette.columns + col;
-        dom.selectedTileIdSpan.textContent = selectedTileId;
-        console.log(`Selected tile ID: ${selectedTileId}`);
-        drawGrid(); // Redraw to show selection
-        drawPreview(); // Update the preview
-    }
 }
