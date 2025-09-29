@@ -13,6 +13,14 @@ let selectedTileId = -1;
 // --- Slicer State ---
 let slices = []; // Rectangles being edited on the slicer
 let slicerImage = new Image();
+let selectedSliceIndex = -1;
+let isDrawing = false;
+let isDragging = false;
+let isResizing = false;
+let dragStartPos = { x: 0, y: 0 };
+let resizeHandle = null; // e.g., 'n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'
+let originalSlice = null;
+
 
 // --- Public API ---
 
@@ -22,13 +30,9 @@ export function initialize(editorDom, projDirHandle) {
         assetName: editorDom.paletteAssetName,
         saveBtn: editorDom.paletteSaveBtn,
         selectImageBtn: editorDom.paletteSelectImageBtn,
-        imageName: editorDom.paletteImageName,
-        slicingModeSelector: document.getElementById('slicing-mode-selector'),
-        cellSliceWidthInput: document.getElementById('cell-slice-width'),
-        cellSliceHeightInput: document.getElementById('cell-slice-height'),
-        sliceBtn: document.getElementById('palette-slice-btn'),
-        slicerCanvas: document.getElementById('slicer-canvas'),
-        slicerImage: document.getElementById('slicer-image'),
+        applySlicesBtn: document.getElementById('palette-apply-slices-btn'),
+        slicerCanvas: document.getElementById('sprite-editor-canvas'),
+        slicerImage: document.getElementById('sprite-editor-image'),
         paletteGridView: document.getElementById('palette-grid-view'),
         overlay: editorDom.palettePanelOverlay,
         resizer: document.getElementById('palette-resizer')
@@ -36,7 +40,6 @@ export function initialize(editorDom, projDirHandle) {
     projectsDirHandle = projDirHandle;
 
     setupEventListeners();
-    toggleCellSizeInputs(); // Set initial visibility
 }
 
 export async function openPalette(fileHandle) {
@@ -78,36 +81,47 @@ export function getSelectedTile() {
 
 // --- Internal Logic ---
 
-function toggleCellSizeInputs() {
-    const isGridMode = dom.slicingModeSelector.value === 'grid';
-    // The inputs are inside a shared parent div
-    const cellInputsContainer = dom.cellSliceWidthInput.parentElement;
-    if (cellInputsContainer) {
-        cellInputsContainer.style.display = isGridMode ? 'flex' : 'none';
-    }
-}
-
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.selectImageBtn.addEventListener('click', selectImage);
-    dom.sliceBtn.addEventListener('click', performSlice);
-    dom.slicingModeSelector.addEventListener('change', toggleCellSizeInputs);
+    dom.applySlicesBtn.addEventListener('click', applySlices);
 
-    let isResizing = false;
+    dom.slicerCanvas.addEventListener('mousedown', handleSlicerMouseDown);
+    dom.slicerCanvas.addEventListener('mousemove', handleSlicerMouseMove);
+    document.addEventListener('mouseup', handleSlicerMouseUp); // Listen on document to catch mouseup outside canvas
+    dom.slicerCanvas.addEventListener('mousemove', (e) => { // For cursor changes
+        const rect = dom.slicerCanvas.getBoundingClientRect();
+        const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        if (selectedSliceIndex !== -1) {
+            const handle = getHandleAtPos(mousePos, slices[selectedSliceIndex]);
+            if (handle) {
+                dom.slicerCanvas.style.cursor = `${handle}-resize`;
+            } else if (isPointInRect(mousePos, slices[selectedSliceIndex])) {
+                dom.slicerCanvas.style.cursor = 'move';
+            } else {
+                dom.slicerCanvas.style.cursor = 'crosshair';
+            }
+        } else {
+            dom.slicerCanvas.style.cursor = 'crosshair';
+        }
+    });
+
+
+    let isResizingPanel = false;
     dom.resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
+        isResizingPanel = true;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     });
     document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
+        if (!isResizingPanel) return;
         const parent = dom.panel.querySelector('#palette-editor-body');
         const leftPanel = parent.querySelector('#sprite-editor-view');
         const newLeftWidth = e.clientX - parent.getBoundingClientRect().left;
         leftPanel.style.flex = `0 0 ${newLeftWidth}px`;
     });
     document.addEventListener('mouseup', () => {
-        isResizing = false;
+        isResizingPanel = false;
         document.body.style.cursor = 'default';
         document.body.style.userSelect = 'auto';
     });
@@ -140,7 +154,6 @@ async function loadImage(imagePath) {
         });
 
         dom.slicerImage.src = slicerImage.src;
-        dom.imageName.textContent = imagePath.split('/').pop();
         resetSlicer();
         updatePaletteGrid();
     } catch (error) {
@@ -154,111 +167,184 @@ function resetSlicer() {
     canvas.width = img.naturalWidth || 0;
     canvas.height = img.naturalHeight || 0;
     slices = currentPalette.tiles.map(t => ({ x: t.x, y: t.y, width: t.width, height: t.height }));
+    selectedSliceIndex = -1;
     drawSlicer();
 }
+
+// --- Slicer Drawing and Interaction ---
 
 function drawSlicer() {
     const canvas = dom.slicerCanvas;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 1;
-    slices.forEach(slice => {
+
+    slices.forEach((slice, index) => {
+        if (index === selectedSliceIndex) return; // Draw selected one last
         ctx.strokeRect(slice.x, slice.y, slice.width, slice.height);
     });
+
+    if (selectedSliceIndex !== -1) {
+        const slice = slices[selectedSliceIndex];
+        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold for selection
+        ctx.lineWidth = 2;
+        ctx.strokeRect(slice.x, slice.y, slice.width, slice.height);
+        drawResizeHandles(ctx, slice);
+    }
 }
 
-function performSlice() {
-    const mode = dom.slicingModeSelector.value;
-    if (mode === 'auto') {
-        sliceAutomatically();
+function drawResizeHandles(ctx, rect) {
+    const handleSize = 8;
+    const halfHandle = handleSize / 2;
+    ctx.fillStyle = 'rgba(255, 215, 0, 1)';
+    const handles = getHandlePositions(rect);
+    for (const key in handles) {
+        ctx.fillRect(handles[key].x - halfHandle, handles[key].y - halfHandle, handleSize, handleSize);
+    }
+}
+
+function getHandlePositions(rect) {
+    return {
+        'nw': { x: rect.x, y: rect.y },
+        'n':  { x: rect.x + rect.width / 2, y: rect.y },
+        'ne': { x: rect.x + rect.width, y: rect.y },
+        'e':  { x: rect.x + rect.width, y: rect.y + rect.height / 2 },
+        'se': { x: rect.x + rect.width, y: rect.y + rect.height },
+        's':  { x: rect.x + rect.width / 2, y: rect.y + rect.height },
+        'sw': { x: rect.x, y: rect.y + rect.height },
+        'w':  { x: rect.x, y: rect.y + rect.height / 2 }
+    };
+}
+
+function getHandleAtPos(pos, rect) {
+    const handleSize = 12; // Larger hitbox for easier clicking
+    const halfHandle = handleSize / 2;
+    const handles = getHandlePositions(rect);
+    for (const name in handles) {
+        const handlePos = handles[name];
+        if (Math.abs(pos.x - handlePos.x) <= halfHandle && Math.abs(pos.y - handlePos.y) <= halfHandle) {
+            return name;
+        }
+    }
+    return null;
+}
+
+function isPointInRect(point, rect) {
+    return point.x >= rect.x && point.x <= rect.x + rect.width &&
+           point.y >= rect.y && point.y <= rect.y + rect.height;
+}
+
+function handleSlicerMouseDown(e) {
+    if (e.button !== 0) return;
+    const rect = dom.slicerCanvas.getBoundingClientRect();
+    const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    dragStartPos = { ...mousePos };
+
+    if (selectedSliceIndex !== -1) {
+        const handle = getHandleAtPos(mousePos, slices[selectedSliceIndex]);
+        if (handle) {
+            isResizing = true;
+            resizeHandle = handle;
+            originalSlice = { ...slices[selectedSliceIndex] };
+            return;
+        }
+    }
+
+    const clickedIndex = slices.findIndex(s => isPointInRect(mousePos, s));
+    if (clickedIndex !== -1) {
+        isDragging = true;
+        selectedSliceIndex = clickedIndex;
+        originalSlice = { ...slices[clickedIndex] };
     } else {
-        sliceByGrid();
+        isDrawing = true;
+        selectedSliceIndex = -1;
     }
     drawSlicer();
-    updatePaletteGrid();
+}
+
+function handleSlicerMouseMove(e) {
+    if (!isDrawing && !isDragging && !isResizing) return;
+    const rect = dom.slicerCanvas.getBoundingClientRect();
+    const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    if (isDrawing) {
+        drawSlicer(); // Redraw base slices
+        const ctx = dom.slicerCanvas.getContext('2d');
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 2]);
+        ctx.strokeRect(dragStartPos.x, dragStartPos.y, mousePos.x - dragStartPos.x, mousePos.y - dragStartPos.y);
+        ctx.setLineDash([]);
+    } else if (isDragging) {
+        const dx = mousePos.x - dragStartPos.x;
+        const dy = mousePos.y - dragStartPos.y;
+        slices[selectedSliceIndex].x = originalSlice.x + dx;
+        slices[selectedSliceIndex].y = originalSlice.y + dy;
+        drawSlicer();
+    } else if (isResizing) {
+        const dx = mousePos.x - dragStartPos.x;
+        const dy = mousePos.y - dragStartPos.y;
+        const slice = slices[selectedSliceIndex];
+
+        if (resizeHandle.includes('e')) slice.width = originalSlice.width + dx;
+        if (resizeHandle.includes('w')) {
+            slice.x = originalSlice.x + dx;
+            slice.width = originalSlice.width - dx;
+        }
+        if (resizeHandle.includes('s')) slice.height = originalSlice.height + dy;
+        if (resizeHandle.includes('n')) {
+            slice.y = originalSlice.y + dy;
+            slice.height = originalSlice.height - dy;
+        }
+        drawSlicer();
+    }
+}
+
+function handleSlicerMouseUp(e) {
+    if (isDrawing) {
+        const rect = dom.slicerCanvas.getBoundingClientRect();
+        const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        let x = Math.min(mousePos.x, dragStartPos.x);
+        let y = Math.min(mousePos.y, dragStartPos.y);
+        let width = Math.abs(mousePos.x - dragStartPos.x);
+        let height = Math.abs(mousePos.y - dragStartPos.y);
+
+        if (width > 2 && height > 2) {
+            slices.push({ x, y, width, height });
+            selectedSliceIndex = slices.length - 1;
+            isDirty = true;
+        }
+    } else if (isResizing) {
+        const slice = slices[selectedSliceIndex];
+        if (slice.width < 0) { slice.x += slice.width; slice.width *= -1; }
+        if (slice.height < 0) { slice.y += slice.height; slice.height *= -1; }
+        isDirty = true;
+    } else if (isDragging) {
+        isDirty = true;
+    }
+
+    isDrawing = false;
+    isDragging = false;
+    isResizing = false;
+    originalSlice = null;
+    drawSlicer();
+}
+
+// --- Palette Grid & Save ---
+
+function applySlices() {
+    currentPalette.tiles = slices.map((s, i) => ({
+        id: i,
+        x: Math.round(s.x),
+        y: Math.round(s.y),
+        width: Math.round(s.width),
+        height: Math.round(s.height)
+    }));
     isDirty = true;
-}
-
-// --- Slicing Algorithms ---
-
-function sliceAutomatically() {
-    if (!slicerImage.src || !slicerImage.complete) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = slicerImage.naturalWidth;
-    canvas.height = slicerImage.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(slicerImage, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    const visited = new Array(imageData.width * imageData.height).fill(false);
-    const spriteBounds = [];
-    for (let y = 0; y < imageData.height; y++) {
-        for (let x = 0; x < imageData.width; x++) {
-            const index = (y * imageData.width + x);
-            // Find the start of a new, unvisited sprite
-            if (imageData.data[index * 4 + 3] > 0 && !visited[index]) {
-                const rect = findSpriteBounds(imageData, x, y, visited);
-                spriteBounds.push(rect);
-            }
-        }
-    }
-
-    // The detected bounds ARE the slices.
-    slices = spriteBounds;
-
-    // Sort the slices from top-to-bottom, left-to-right for consistent IDs
-    slices.sort((a, b) => (a.y * slicerImage.width + a.x) - (b.y * slicerImage.width + b.x));
-
-    currentPalette.tiles = slices.map((s, i) => ({ id: i, ...s }));
-}
-
-
-function findSpriteBounds(imageData, startX, startY, visited) {
-    const { data, width, height } = imageData;
-    const queue = [[startX, startY]];
-    let minX = startX, minY = startY, maxX = startX, maxY = startY;
-    visited[startY * width + startX] = true;
-    let head = 0;
-    while(head < queue.length) {
-        const [x, y] = queue[head++];
-        minX = Math.min(minX, x); minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-        const neighbors = [[x, y-1], [x, y+1], [x-1, y], [x+1, y]];
-        for(const [nx, ny] of neighbors) {
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                const nIndex = (ny * width + nx);
-                if (data[nIndex * 4 + 3] > 0 && !visited[nIndex]) {
-                    visited[nIndex] = true;
-                    queue.push([nx, ny]);
-                }
-            }
-        }
-    }
-    return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
-}
-
-function sliceByGrid() {
-    const cellWidth = parseInt(dom.cellSliceWidthInput.value, 10);
-    const cellHeight = parseInt(dom.cellSliceHeightInput.value, 10);
-    if (!slicerImage.src || !slicerImage.complete || cellWidth <= 0 || cellHeight <= 0) return;
-
-    slices = [];
-    const cols = Math.floor(slicerImage.naturalWidth / cellWidth);
-    const rows = Math.floor(slicerImage.naturalHeight / cellHeight);
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            slices.push({
-                x: c * cellWidth,
-                y: r * cellHeight,
-                width: cellWidth,
-                height: cellHeight
-            });
-        }
-    }
-    currentPalette.tiles = slices.map((s, i) => ({ id: i, ...s }));
+    updatePaletteGrid();
+    alert(`${slices.length} recortes aplicados a la paleta.`);
 }
 
 function updatePaletteGrid() {

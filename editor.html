@@ -789,30 +789,13 @@
         </div>
         <div class="panel-content no-padding">
             <div id="palette-toolbar" class="palette-section">
-                <div class="toolbar-group">
-                    <label>Tileset:</label>
-                    <button id="palette-select-image-btn">Seleccionar Imagen</button>
-                    <span id="palette-image-name">Ninguna</span>
-                </div>
-                <div class="toolbar-group">
-                    <label>Modo de Corte:</label>
-                    <select id="slicing-mode-selector">
-                        <option value="auto">Automático</option>
-                        <option value="grid">Por Rejilla</option>
-                    </select>
-                </div>
-                <div class="toolbar-group">
-                    <label for="cell-slice-width">Ancho Celda:</label>
-                    <input type="number" id="cell-slice-width" value="32" min="1">
-                    <label for="cell-slice-height">Alto Celda:</label>
-                    <input type="number" id="cell-slice-height" value="32" min="1">
-                </div>
-                <button id="palette-slice-btn" class="primary-btn">Cortar</button>
+                <button id="palette-select-image-btn">Seleccionar Imagen</button>
+                <button id="palette-apply-slices-btn" class="primary-btn">Aplicar Recortes</button>
             </div>
             <div id="palette-editor-body">
                 <div id="sprite-editor-view" class="palette-view-container">
-                    <canvas id="slicer-canvas"></canvas>
-                    <img id="slicer-image" src="" alt="Tileset para cortar">
+                    <canvas id="sprite-editor-canvas"></canvas>
+                    <img id="sprite-editor-image" src="" alt="Tileset para cortar">
                 </div>
                 <div id="palette-resizer" class="resizer-v"></div>
                 <div id="palette-grid-view" class="palette-view-container">
