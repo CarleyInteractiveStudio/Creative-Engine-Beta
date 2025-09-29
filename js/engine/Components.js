@@ -4,6 +4,7 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
+import { SpriteSheet } from '../sprite.js';
 
 // --- Component Class Definitions ---
 
@@ -93,41 +94,73 @@ export class BoxCollider extends Leyes {
 export class SpriteRenderer extends Leyes {
     constructor(materia) {
         super(materia);
-        this.sprite = new Image();
-        this.source = ''; // Path to the image, relative to project root
-        this.color = '#ffffff'; // Tint color
+        this.sprite = new Image(); // The actual texture/spritesheet image
+        this.source = ''; // Path to the image file
+        this.spriteName = ''; // Name of the specific sprite to render from the sheet
+        this.color = '#ffffff';
+        this.spriteSheet = null; // Will hold the loaded SpriteSheet data object
     }
 
     setSourcePath(path) {
         this.source = path;
+        // When source changes, reset spriteName and spriteSheet
+        this.spriteName = '';
+        this.spriteSheet = null;
     }
 
     async loadSprite(projectsDirHandle) {
-        return new Promise(async (resolve, reject) => {
-            if (this.source) {
-                const url = await getURLForAssetPath(this.source, projectsDirHandle);
-                if (url) {
-                    this.sprite.onload = () => resolve();
-                    this.sprite.onerror = () => {
-                        console.error(`Failed to load sprite at: ${this.source}`);
-                        reject(new Error(`Failed to load sprite at: ${this.source}`));
-                    };
-                    this.sprite.src = url;
-                } else {
-                    this.sprite.src = '';
-                    resolve(); // Resolve immediately if there's no URL
-                }
-            } else {
-                this.sprite.src = '';
-                resolve(); // Resolve immediately if there's no source
-            }
+        // Reset state
+        this.spriteSheet = null;
+        this.sprite.src = '';
+
+        if (!this.source) {
+            return Promise.resolve();
+        }
+
+        // 1. Load the image texture itself
+        const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
+        if (!imageUrl) {
+            console.error(`Could not get URL for sprite source: ${this.source}`);
+            return Promise.reject(new Error(`Could not get URL for sprite source: ${this.source}`));
+        }
+
+        const imagePromise = new Promise((resolve, reject) => {
+            this.sprite.onload = () => resolve();
+            this.sprite.onerror = () => reject(new Error(`Failed to load sprite image at: ${this.source}`));
+            this.sprite.src = imageUrl;
         });
+
+        // 2. Try to load the corresponding .json metadata file
+        const metaPath = this.source.replace(/\.(png|jpg|jpeg)$/, '.json');
+        try {
+            const metaUrl = await getURLForAssetPath(metaPath, projectsDirHandle);
+            if (metaUrl) {
+                const response = await fetch(metaUrl);
+                if (response.ok) {
+                    const jsonText = await response.text();
+                    this.spriteSheet = SpriteSheet.fromJson(jsonText);
+                    console.log(`Loaded sprite sheet data for: ${this.source}`);
+                    // If no sprite is selected, default to the first one in the sheet
+                    if (!this.spriteName && this.spriteSheet && Object.keys(this.spriteSheet.sprites).length > 0) {
+                        this.spriteName = Object.keys(this.spriteSheet.sprites)[0];
+                    }
+                }
+            }
+        } catch (error) {
+            // It's okay if the meta file doesn't exist. It just means it's a simple sprite.
+            console.log(`No sprite sheet data found for ${this.source}. Treating as a single image.`);
+            this.spriteSheet = null;
+        }
+
+        // Wait for the image to finish loading before resolving the whole process
+        await imagePromise;
     }
     clone() {
         const newRenderer = new SpriteRenderer(null);
         newRenderer.source = this.source;
+        newRenderer.spriteName = this.spriteName;
         newRenderer.color = this.color;
-        // The sprite will be loaded automatically when added to a materia in the scene
+        // The sprite and spritesheet will be loaded automatically
         return newRenderer;
     }
 }

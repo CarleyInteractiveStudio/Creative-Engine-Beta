@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editor | Creative Engine</title>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/sprite-editor.css">
     <link rel="stylesheet" href="css/debug.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
 </head>
@@ -67,6 +68,7 @@
                         <a href="#" id="menu-window-animation">Editor de Animación</a>
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
                         <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
+                        <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
                         <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
                     </div>
@@ -812,6 +814,75 @@
         </div>
         <div id="palette-panel-overlay">
             <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <div id="sprite-editor-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="sprite-editor-asset-name">Editor de Sprites</span>
+            <div class="panel-header-controls">
+                 <button id="sprite-editor-save-btn" title="Guardar Datos de Sprites">💾 Guardar</button>
+                 <button class="close-panel-btn" data-panel="sprite-editor-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="sprite-editor-toolbar">
+                <div class="toolbar-group">
+                    <label>Spritesheet:</label>
+                    <button id="sprite-editor-select-image-btn">Seleccionar Imagen...</button>
+                    <span id="sprite-editor-image-name">Ninguna</span>
+                </div>
+                <div class="toolbar-group">
+                    <button id="sprite-editor-add-slice-btn">Añadir Recorte</button>
+                    <button id="sprite-editor-auto-slice-btn">Recorte Automático</button>
+                </div>
+            </div>
+            <div id="sprite-editor-main-view">
+                <div id="sprite-editor-canvas-container">
+                    <canvas id="sprite-editor-canvas"></canvas>
+                </div>
+                <div id="sprite-editor-properties-container">
+                    <div id="sprite-list-view">
+                        <h4>Sprites</h4>
+                        <div id="sprite-list" class="list-content"></div>
+                    </div>
+                    <div id="sprite-properties-view" class="hidden">
+                        <h4>Propiedades del Sprite</h4>
+                        <div class="property-field">
+                            <label for="sprite-prop-name">Nombre</label>
+                            <input type="text" id="sprite-prop-name">
+                        </div>
+                        <div class="property-field">
+                            <label>Rect (X, Y, W, H)</label>
+                            <div class="multi-input">
+                                <input type="number" id="sprite-prop-rect-x">
+                                <input type="number" id="sprite-prop-rect-y">
+                                <input type="number" id="sprite-prop-rect-w">
+                                <input type="number" id="sprite-prop-rect-h">
+                            </div>
+                        </div>
+                         <div class="property-field">
+                            <label>Pivote (X, Y)</label>
+                             <div class="multi-input">
+                                <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
+                                <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="sprite-editor-panel-overlay">
+            <p>Abre una imagen (.png, .jpg) para empezar a recortar sprites.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

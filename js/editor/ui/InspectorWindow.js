@@ -442,10 +442,40 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.SpriteRenderer) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            let spriteSelectorHTML = '';
+
+            // Si hay una hoja de sprites cargada, muestra el desplegable para seleccionar un sprite
+            if (ley.spriteSheet && Object.keys(ley.spriteSheet.sprites).length > 0) {
+                const options = Object.keys(ley.spriteSheet.sprites).map(spriteName =>
+                    `<option value="${spriteName}" ${ley.spriteName === spriteName ? 'selected' : ''}>${spriteName}</option>`
+                ).join('');
+
+                spriteSelectorHTML = `
+                    <div class="prop-row-multi">
+                        <label for="sprite-name-select">Sprite</label>
+                        <div class="prop-inputs">
+                            <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
+                                ${options}
+                            </select>
+                        </div>
+                    </div>
+                `;
+            }
+
             componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
              <div class="component-content">
-                <div class="prop-row-multi"><label>Sprite</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi">
+                    <label>Source</label>
+                    <div class="sprite-dropper">
+                        <div class="sprite-preview">${previewImg}</div>
+                        <button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button>
+                    </div>
+                </div>
+                ${spriteSelectorHTML}
+                <div class="prop-row-multi">
+                    <label>Color</label>
+                    <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                </div>
             </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {

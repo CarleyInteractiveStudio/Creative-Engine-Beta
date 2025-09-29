@@ -1,0 +1,100 @@
+/* Estilos para el panel del Editor de Sprites */
+
+#sprite-editor-main-view {
+    display: flex;
+    width: 100%;
+    height: calc(100% - 35px); /* Altura total menos la barra de herramientas */
+}
+
+#sprite-editor-canvas-container {
+    flex-grow: 1;
+    background-color: var(--color-background-deep);
+    overflow: auto;
+    position: relative;
+}
+
+#sprite-editor-canvas {
+    background-image:
+        linear-gradient(45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--color-background-light) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--color-background-light) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--color-background-light) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    cursor: crosshair;
+}
+
+#sprite-editor-properties-container {
+    width: 250px;
+    min-width: 200px;
+    background-color: var(--color-background-panel);
+    border-left: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+#sprite-list-view {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+#sprite-list {
+    background-color: var(--color-background-deep);
+    border: 1px solid var(--color-border);
+    min-height: 100px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.sprite-list-item {
+    padding: 5px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border-dark);
+}
+
+.sprite-list-item:hover {
+    background-color: var(--color-background-light);
+}
+
+.sprite-list-item.selected {
+    background-color: var(--color-accent);
+    color: white;
+}
+
+#sprite-properties-view {
+    margin-top: 10px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 10px;
+}
+
+#sprite-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    background-color: var(--color-background-header);
+    border-bottom: 1px solid var(--color-border);
+    height: 35px;
+}
+
+#sprite-editor-panel-overlay {
+    position: absolute;
+    top: 35px; /* Debajo de la barra de herramientas */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    z-index: 10;
+}
+
+#sprite-editor-panel-overlay p {
+    padding: 20px;
+}
