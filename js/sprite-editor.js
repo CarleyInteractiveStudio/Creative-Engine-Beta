@@ -18,17 +18,6 @@ class SpriteEditor {
     }
 
     initUI() {
-        // Lógica para mostrar/ocultar el panel desde el menú principal
-        const menuButton = document.getElementById('menu-window-sprite-editor');
-        if (menuButton) {
-            menuButton.addEventListener('click', () => this.panel.classList.remove('hidden'));
-        }
-
-        const closeButton = this.panel.querySelector('.close-panel-btn');
-        if (closeButton) {
-            closeButton.addEventListener('click', () => this.panel.classList.add('hidden'));
-        }
-
         // Lógica para los botones de la barra de herramientas
         document.getElementById('sprite-editor-select-image-btn').addEventListener('click', () => this.loadImage());
         document.getElementById('sprite-editor-save-btn').addEventListener('click', () => this.saveSpriteSheet());
