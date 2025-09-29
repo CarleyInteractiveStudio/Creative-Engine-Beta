@@ -633,13 +633,13 @@ function drawTileCursor() {
     if (!tilemap || !transform) return;
 
     const { ctx } = renderer;
-    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const { cellWidth, cellHeight, columns, rows } = tilemap;
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
     // Calculate mouse position relative to the tilemap's origin (top-left corner)
-    const mapWidth = columns * tileWidth;
-    const mapHeight = rows * tileHeight;
+    const mapWidth = columns * cellWidth;
+    const mapHeight = rows * cellHeight;
     const mapTopLeftX = transform.x - mapWidth / 2;
     const mapTopLeftY = transform.y - mapHeight / 2;
 
@@ -647,13 +647,13 @@ function drawTileCursor() {
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
     // Calculate the column and row under the cursor
-    const col = Math.floor(mouseInMapX / tileWidth);
-    const row = Math.floor(mouseInMapY / tileHeight);
+    const col = Math.floor(mouseInMapX / cellWidth);
+    const row = Math.floor(mouseInMapY / cellHeight);
 
     // Check if the cursor is within the tilemap bounds
     if (col >= 0 && col < columns && row >= 0 && row < rows) {
-        const cursorX = mapTopLeftX + col * tileWidth;
-        const cursorY = mapTopLeftY + row * tileHeight;
+        const cursorX = mapTopLeftX + col * cellWidth;
+        const cursorY = mapTopLeftY + row * cellHeight;
 
         ctx.save();
         if (activeTool === 'tile-brush') {
@@ -664,8 +664,8 @@ function drawTileCursor() {
             ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
         }
         ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-        ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
-        ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+        ctx.fillRect(cursorX, cursorY, cellWidth, cellHeight);
+        ctx.strokeRect(cursorX, cursorY, cellWidth, cellHeight);
         ctx.restore();
     }
 }
@@ -725,22 +725,22 @@ function paintTile(event) {
     const transform = selectedMateria.getComponent(Components.Transform);
     if (!tilemap || !transform) return;
 
-    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const { cellWidth, cellHeight, columns, rows } = tilemap;
 
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const mapWidth = columns * tileWidth;
-    const mapHeight = rows * tileHeight;
+    const mapWidth = columns * cellWidth;
+    const mapHeight = rows * cellHeight;
     const mapTopLeftX = transform.x - mapWidth / 2;
     const mapTopLeftY = transform.y - mapHeight / 2;
 
     const mouseInMapX = worldMouse.x - mapTopLeftX;
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
-    const col = Math.floor(mouseInMapX / tileWidth);
-    const row = Math.floor(mouseInMapY / tileHeight);
+    const col = Math.floor(mouseInMapX / cellWidth);
+    const row = Math.floor(mouseInMapY / cellHeight);
 
     // Prevent re-painting the same tile in a single drag motion
     if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
@@ -748,11 +748,16 @@ function paintTile(event) {
     }
 
     if (col >= 0 && col < columns && row >= 0 && row < rows) {
-        const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : -1;
-
-        if (tileIdToPaint === undefined || tileIdToPaint === null) {
-            console.warn("No tile selected in the palette to paint with.");
-            return;
+        let tileIdToPaint;
+        if (activeTool === 'tile-eraser') {
+            tileIdToPaint = -1;
+        } else { // tile-brush
+            const selectedTile = getSelectedTile(); // Returns object { id, ... } or null
+            if (selectedTile === null) {
+                console.warn("No tile selected in the palette to paint with.");
+                return;
+            }
+            tileIdToPaint = selectedTile.id;
         }
 
         // Use the active layer index from the component
