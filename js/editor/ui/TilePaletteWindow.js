@@ -4,7 +4,7 @@ let dom = {};
 let projectsDirHandle = null;
 let currentPalette = {
     imagePath: '',
-    tiles: [] // Now an array of {id, x, y, width, height}
+    tiles: [] // Array of {id, x, y, width, height}
 };
 let currentFileHandle = null;
 let isDirty = false;
@@ -24,9 +24,8 @@ export function initialize(editorDom, projDirHandle) {
         selectImageBtn: editorDom.paletteSelectImageBtn,
         imageName: editorDom.paletteImageName,
         slicingModeSelector: document.getElementById('slicing-mode-selector'),
-        gridSlicingControls: document.getElementById('grid-slicing-controls'),
-        gridSliceWidthInput: document.getElementById('grid-slice-width'),
-        gridSliceHeightInput: document.getElementById('grid-slice-height'),
+        cellSliceWidthInput: document.getElementById('cell-slice-width'),
+        cellSliceHeightInput: document.getElementById('cell-slice-height'),
         sliceBtn: document.getElementById('palette-slice-btn'),
         slicerCanvas: document.getElementById('slicer-canvas'),
         slicerImage: document.getElementById('slicer-image'),
@@ -37,6 +36,7 @@ export function initialize(editorDom, projDirHandle) {
     projectsDirHandle = projDirHandle;
 
     setupEventListeners();
+    toggleCellSizeInputs(); // Set initial visibility
 }
 
 export async function openPalette(fileHandle) {
@@ -73,42 +73,39 @@ export function getSelectedTile() {
     const tile = currentPalette.tiles.find(t => t.id === selectedTileId);
     if (!tile) return null;
 
-    // Return a copy of the tile data along with the tileset image
-    return {
-        ...tile,
-        image: slicerImage
-    };
+    return { ...tile, image: slicerImage };
 }
 
 // --- Internal Logic ---
 
+function toggleCellSizeInputs() {
+    const isGridMode = dom.slicingModeSelector.value === 'grid';
+    // The inputs are inside a shared parent div
+    const cellInputsContainer = dom.cellSliceWidthInput.parentElement;
+    if (cellInputsContainer) {
+        cellInputsContainer.style.display = isGridMode ? 'flex' : 'none';
+    }
+}
+
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.selectImageBtn.addEventListener('click', selectImage);
-    dom.slicingModeSelector.addEventListener('change', toggleGridControls);
     dom.sliceBtn.addEventListener('click', performSlice);
+    dom.slicingModeSelector.addEventListener('change', toggleCellSizeInputs);
 
-    // Resizer logic
     let isResizing = false;
     dom.resizer.addEventListener('mousedown', (e) => {
         isResizing = true;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isResizing) return;
         const parent = dom.panel.querySelector('#palette-editor-body');
         const leftPanel = parent.querySelector('#sprite-editor-view');
-        // The total width is the width of the parent container
-        const totalWidth = parent.offsetWidth;
-        // The new width for the left panel is the mouse position relative to the parent's left edge
         const newLeftWidth = e.clientX - parent.getBoundingClientRect().left;
-
-        // Set the width of the left panel as a percentage
         leftPanel.style.flex = `0 0 ${newLeftWidth}px`;
     });
-
     document.addEventListener('mouseup', () => {
         isResizing = false;
         document.body.style.cursor = 'default';
@@ -116,17 +113,12 @@ function setupEventListeners() {
     });
 }
 
-function toggleGridControls() {
-    const isGridMode = dom.slicingModeSelector.value === 'grid';
-    dom.gridSlicingControls.classList.toggle('hidden', !isGridMode);
-}
-
 async function selectImage() {
     try {
         const [fileHandle] = await window.showOpenFilePicker({
-            types: [{ description: 'Images', accept: { 'image/*': ['.png', '.jpg', '.jpeg'] } }],
+            types: [{ description: 'Images', accept: { 'image/*': ['.png'] } }],
         });
-        const relativePath = `Assets/${fileHandle.name}`; // Simplification
+        const relativePath = `Assets/${fileHandle.name}`;
         currentPalette.imagePath = relativePath;
         currentPalette.tiles = [];
         isDirty = true;
@@ -161,11 +153,7 @@ function resetSlicer() {
     const img = slicerImage;
     canvas.width = img.naturalWidth || 0;
     canvas.height = img.naturalHeight || 0;
-
-    // When loading a palette, populate the slicer's visual rectangles
-    // from the tiles that were loaded into the current palette.
     slices = currentPalette.tiles.map(t => ({ x: t.x, y: t.y, width: t.width, height: t.height }));
-
     drawSlicer();
 }
 
@@ -173,10 +161,8 @@ function drawSlicer() {
     const canvas = dom.slicerCanvas;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
     ctx.lineWidth = 1;
-
     slices.forEach(slice => {
         ctx.strokeRect(slice.x, slice.y, slice.width, slice.height);
     });
@@ -194,6 +180,8 @@ function performSlice() {
     isDirty = true;
 }
 
+// --- Slicing Algorithms ---
+
 function sliceAutomatically() {
     if (!slicerImage.src || !slicerImage.complete) return;
 
@@ -202,42 +190,41 @@ function sliceAutomatically() {
     canvas.height = slicerImage.naturalHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(slicerImage, 0, 0);
-
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const { data, width, height } = imageData;
-    const visited = new Array(width * height).fill(false);
 
-    slices = [];
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const index = (y * width + x);
-            if (data[index * 4 + 3] > 0 && !visited[index]) {
+    const visited = new Array(imageData.width * imageData.height).fill(false);
+    const spriteBounds = [];
+    for (let y = 0; y < imageData.height; y++) {
+        for (let x = 0; x < imageData.width; x++) {
+            const index = (y * imageData.width + x);
+            // Find the start of a new, unvisited sprite
+            if (imageData.data[index * 4 + 3] > 0 && !visited[index]) {
                 const rect = findSpriteBounds(imageData, x, y, visited);
-                slices.push(rect);
+                spriteBounds.push(rect);
             }
         }
     }
+
+    // The detected bounds ARE the slices.
+    slices = spriteBounds;
+
+    // Sort the slices from top-to-bottom, left-to-right for consistent IDs
+    slices.sort((a, b) => (a.y * slicerImage.width + a.x) - (b.y * slicerImage.width + b.x));
+
     currentPalette.tiles = slices.map((s, i) => ({ id: i, ...s }));
 }
+
 
 function findSpriteBounds(imageData, startX, startY, visited) {
     const { data, width, height } = imageData;
     const queue = [[startX, startY]];
     let minX = startX, minY = startY, maxX = startX, maxY = startY;
-
-    const index = (startY * width + startX);
-    visited[index] = true;
-
+    visited[startY * width + startX] = true;
     let head = 0;
     while(head < queue.length) {
         const [x, y] = queue[head++];
-
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
         const neighbors = [[x, y-1], [x, y+1], [x-1, y], [x+1, y]];
         for(const [nx, ny] of neighbors) {
             if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
@@ -249,26 +236,25 @@ function findSpriteBounds(imageData, startX, startY, visited) {
             }
         }
     }
-
     return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
 function sliceByGrid() {
-    const tileWidth = parseInt(dom.gridSliceWidthInput.value, 10);
-    const tileHeight = parseInt(dom.gridSliceHeightInput.value, 10);
-    if (!slicerImage.src || !slicerImage.complete || tileWidth <= 0 || tileHeight <= 0) return;
+    const cellWidth = parseInt(dom.cellSliceWidthInput.value, 10);
+    const cellHeight = parseInt(dom.cellSliceHeightInput.value, 10);
+    if (!slicerImage.src || !slicerImage.complete || cellWidth <= 0 || cellHeight <= 0) return;
 
     slices = [];
-    const cols = Math.floor(slicerImage.naturalWidth / tileWidth);
-    const rows = Math.floor(slicerImage.naturalHeight / tileHeight);
+    const cols = Math.floor(slicerImage.naturalWidth / cellWidth);
+    const rows = Math.floor(slicerImage.naturalHeight / cellHeight);
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             slices.push({
-                x: c * tileWidth,
-                y: r * tileHeight,
-                width: tileWidth,
-                height: tileHeight
+                x: c * cellWidth,
+                y: r * cellHeight,
+                width: cellWidth,
+                height: cellHeight
             });
         }
     }
@@ -293,7 +279,6 @@ function updatePaletteGrid() {
         const ctx = tileCanvas.getContext('2d');
         ctx.drawImage(slicerImage, tile.x, tile.y, tile.width, tile.height, 0, 0, tile.width, tile.height);
 
-        // Scale the canvas down to fit in the cell if it's too large
         const maxDim = 60;
         if (tile.width > maxDim || tile.height > maxDim) {
             const scale = Math.min(maxDim / tile.width, maxDim / tile.height);
@@ -304,7 +289,6 @@ function updatePaletteGrid() {
         cell.appendChild(tileCanvas);
         cell.addEventListener('click', () => {
             selectedTileId = tile.id;
-            // Redraw all cells to update selection
             Array.from(dom.paletteGridView.children).forEach(c => {
                 c.classList.toggle('selected', parseInt(c.dataset.tileId) === selectedTileId);
             });
