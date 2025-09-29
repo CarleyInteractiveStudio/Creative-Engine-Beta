@@ -136,16 +136,15 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
+        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette || !tilemapRenderer.palette.tiles) {
             return;
         }
 
-        const { tileWidth, tileHeight, columns, rows, layers } = tilemap;
-        const { tileSheet } = tilemapRenderer;
-        // Get the number of columns in the source tilesheet from the palette info
-        const paletteCols = tilemapRenderer.palette.columns;
+        const { cellWidth, cellHeight, columns, rows, layers } = tilemap;
+        const { tileSheet, palette } = tilemapRenderer;
 
-        if (!paletteCols) return;
+        // Create a map for quick lookup of tile data by ID
+        const tileDataMap = new Map(palette.tiles.map(t => [t.id, t]));
 
         // Save context state before applying tilemap-specific transform
         this.ctx.save();
@@ -153,16 +152,13 @@ export class Renderer {
         // Position the tilemap based on its transform component
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        // Note: Tilemap scale is not directly supported for performance reasons.
-        // It would require scaling the context or each tile individually.
 
-        const mapWidth = columns * tileWidth;
-        const mapHeight = rows * tileHeight;
+        const mapWidth = columns * cellWidth;
+        const mapHeight = rows * cellHeight;
 
-        // Offset by half the map size so the transform's (x,y) is the center, like other objects
+        // Offset by half the map size so the transform's (x,y) is the center
         this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
 
-        // Iterate through each layer object and draw its data grid
         for (const layer of layers) {
             const gridData = layer.data;
             for (let r = 0; r < rows; r++) {
@@ -173,26 +169,32 @@ export class Renderer {
                         continue; // Skip empty tiles
                     }
 
-                    // Calculate the source x/y on the tilesheet based on the tile ID
-                    const sx = (tileId % paletteCols) * tileWidth;
-                    const sy = Math.floor(tileId / paletteCols) * tileHeight;
+                    const tileData = tileDataMap.get(tileId);
+                    if (!tileData) {
+                        continue; // Skip if tile ID is not in the palette
+                    }
 
-                    // Calculate the destination x/y on the canvas
-                    const dx = c * tileWidth;
-                    const dy = r * tileHeight;
+                    // Source rectangle from the tilesheet
+                    const sx = tileData.x;
+                    const sy = tileData.y;
+                    const sWidth = tileData.width;
+                    const sHeight = tileData.height;
+
+                    // Destination on the canvas grid
+                    const dx = c * cellWidth;
+                    const dy = r * cellHeight;
 
                     this.ctx.drawImage(
                         tileSheet,
-                        sx, sy,           // Source x, y on the tilesheet
-                        tileWidth, tileHeight, // Source width, height
-                        dx, dy,           // Destination x, y on the canvas
-                        tileWidth, tileHeight  // Destination width, height
+                        sx, sy,           // Source x, y, width, height from palette
+                        sWidth, sHeight,
+                        dx, dy,           // Destination x, y on the canvas grid
+                        cellWidth, cellHeight // Destination width, height based on cell size
                     );
                 }
             }
         }
 
-        // Restore context state
         this.ctx.restore();
     }
 

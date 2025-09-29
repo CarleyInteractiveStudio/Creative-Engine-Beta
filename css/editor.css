@@ -1910,6 +1910,99 @@ body {
     margin-bottom: 8px;
 }
 
+/* --- New Tile Palette Editor Styles --- */
+#palette-editor-body {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    overflow: hidden; /* Prevent body from overflowing */
+}
+
+.palette-view-container {
+    flex: 1; /* Each view takes up half the space by default */
+    overflow: auto; /* Add scrollbars if content is too big */
+    position: relative;
+    display: flex; /* Use flex to center content */
+    justify-content: center;
+    align-items: center;
+    background-color: var(--bg-primary);
+    padding: 10px;
+}
+
+#sprite-editor-view {
+    /* Special background for the slicer */
+    background-image:
+        linear-gradient(45deg, var(--bg-tertiary) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--bg-tertiary) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--bg-tertiary) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--bg-tertiary) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+#slicer-image {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+#slicer-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: crosshair;
+}
+
+#palette-resizer {
+    width: 6px;
+    background-color: var(--bg-tertiary);
+    cursor: col-resize;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+#palette-grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 10px;
+    align-content: flex-start; /* Align items to the top */
+}
+
+.tile-cell {
+    width: 64px;
+    height: 64px;
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.tile-cell:hover {
+    border-color: var(--accent-color);
+}
+
+.tile-cell.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-color);
+}
+
+.tile-cell img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
 .layer-list-header h5 {
     margin: 0;
     color: var(--text-primary);

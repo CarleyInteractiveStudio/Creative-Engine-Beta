@@ -429,11 +429,10 @@ registerComponent('SpriteLight2D', SpriteLight2D);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.tileWidth = 32;
-        this.tileHeight = 32;
+        this.cellWidth = 32;
+        this.cellHeight = 32;
         this.columns = 20;
         this.rows = 20;
-        this.palettePath = ''; // Path to the .cepalette asset
         this.activeLayerIndex = 0;
 
         // Layers are now objects with a name and data grid.
@@ -495,11 +494,10 @@ export class Tilemap extends Leyes {
 
     clone() {
         const newTilemap = new Tilemap(null);
-        newTilemap.tileWidth = this.tileWidth;
-        newTilemap.tileHeight = this.tileHeight;
+        newTilemap.cellWidth = this.cellWidth;
+        newTilemap.cellHeight = this.cellHeight;
         newTilemap.columns = this.columns;
         newTilemap.rows = this.rows;
-        newTilemap.palettePath = this.palettePath;
         newTilemap.activeLayerIndex = this.activeLayerIndex;
         // Deep copy layers
         newTilemap.layers = JSON.parse(JSON.stringify(this.layers));
@@ -510,13 +508,13 @@ export class Tilemap extends Leyes {
 export class TilemapRenderer extends Leyes {
     constructor(materia) {
         super(materia);
-        this.palette = null; // Loaded palette asset
-        this.tileSheet = null; // The Image object for the tiles
+        this.palettePath = ''; // Path to the .cepalette asset
+        this.palette = null; // Loaded palette asset data
+        this.tileSheet = null; // The Image object for the tileset
     }
 
-    async loadPalette(projectsDirHandle) {
-        const tilemap = this.materia.getComponent(Tilemap);
-        if (!tilemap || !tilemap.palettePath) {
+    async loadResources(projectsDirHandle) {
+        if (!this.palettePath) {
             this.palette = null;
             this.tileSheet = null;
             return;
@@ -524,8 +522,8 @@ export class TilemapRenderer extends Leyes {
 
         try {
             // Load palette JSON
-            const paletteUrl = await getURLForAssetPath(tilemap.palettePath, projectsDirHandle);
-            if (!paletteUrl) throw new Error(`Could not get URL for palette: ${tilemap.palettePath}`);
+            const paletteUrl = await getURLForAssetPath(this.palettePath, projectsDirHandle);
+            if (!paletteUrl) throw new Error(`Could not get URL for palette: ${this.palettePath}`);
             const response = await fetch(paletteUrl);
             this.palette = await response.json();
 
@@ -542,16 +540,18 @@ export class TilemapRenderer extends Leyes {
                 }
             }
         } catch (error) {
-            console.error(`Failed to load palette or associated tilesheet for '${tilemap.palettePath}':`, error);
+            console.error(`Failed to load palette or associated tilesheet for '${this.palettePath}':`, error);
             this.palette = null;
             this.tileSheet = null;
         }
     }
 
     clone() {
-        // Renderer doesn't hold much state itself, it's mostly for logic.
-        // The palette will be reloaded based on the Tilemap's path.
-        return new TilemapRenderer(null);
+        const newRenderer = new TilemapRenderer(null);
+        newRenderer.palettePath = this.palettePath;
+        // The actual palette and tilesheet data is not copied,
+        // it will be reloaded by loadResources when the new object is initialized.
+        return newRenderer;
     }
 }
 

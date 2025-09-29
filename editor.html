@@ -788,26 +788,36 @@
             </div>
         </div>
         <div class="panel-content no-padding">
-            <div id="palette-toolbar">
+            <div id="palette-toolbar" class="palette-section">
                 <div class="toolbar-group">
                     <label>Tileset:</label>
-                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
+                    <button id="palette-select-image-btn">Seleccionar Imagen</button>
                     <span id="palette-image-name">Ninguna</span>
                 </div>
                 <div class="toolbar-group">
-                    <label for="palette-tile-width">Ancho Tile:</label>
-                    <input type="number" id="palette-tile-width" value="32" min="1">
-                    <label for="palette-tile-height">Alto Tile:</label>
-                    <input type="number" id="palette-tile-height" value="32" min="1">
+                    <label>Modo de Corte:</label>
+                    <select id="slicing-mode-selector">
+                        <option value="auto">Automático</option>
+                        <option value="grid">Por Rejilla</option>
+                    </select>
                 </div>
-                 <div class="toolbar-group">
-                    <label>Tile Seleccionado:</label>
-                    <span id="palette-selected-tile-id">-</span>
+                <div id="grid-slicing-controls" class="toolbar-group hidden">
+                    <label for="grid-slice-width">Ancho:</label>
+                    <input type="number" id="grid-slice-width" value="32" min="1">
+                    <label for="grid-slice-height">Alto:</label>
+                    <input type="number" id="grid-slice-height" value="32" min="1">
                 </div>
+                <button id="palette-slice-btn" class="primary-btn">Cortar</button>
             </div>
-            <div id="palette-view-container">
-                <canvas id="palette-grid-canvas"></canvas>
-                <img id="palette-tileset-image" src="" alt="Tileset">
+            <div id="palette-editor-body">
+                <div id="sprite-editor-view" class="palette-view-container">
+                    <canvas id="slicer-canvas"></canvas>
+                    <img id="slicer-image" src="" alt="Tileset para cortar">
+                </div>
+                <div id="palette-resizer" class="resizer-v"></div>
+                <div id="palette-grid-view" class="palette-view-container">
+                    <!-- Los tiles recortados aparecerán aquí -->
+                </div>
             </div>
         </div>
         <div id="palette-panel-overlay">

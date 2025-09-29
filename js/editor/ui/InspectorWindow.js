@@ -149,12 +149,9 @@ function handleInspectorClick(e) {
                     if (component) {
                         component[propName] = data.path; // Set the asset path
 
-                        // If it's a tilemap, trigger the palette reload
-                        if (component instanceof Components.Tilemap) {
-                            const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
-                            if (renderer) {
-                                await renderer.loadPalette(projectsDirHandle);
-                            }
+                        // If a palette is dropped on a renderer, load its resources
+                        if (component instanceof Components.TilemapRenderer) {
+                            await component.loadResources(projectsDirHandle);
                         }
 
                         updateInspector(); // Redraw the inspector to show the new path
@@ -610,17 +607,10 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Palette</label>
-                        <div class="asset-dropper" data-component="Tilemap" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
-                            <span class="asset-dropper-text">${ley.palettePath || 'None'}</span>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="prop-row-multi">
-                        <label>Tile Size</label>
+                        <label>Cell Size</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileWidth" value="${ley.tileWidth}" title="Tile Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileHeight" value="${ley.tileHeight}" title="Tile Height">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="cellWidth" value="${ley.cellWidth}" title="Cell Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="cellHeight" value="${ley.cellHeight}" title="Cell Height">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -655,7 +645,12 @@ async function updateInspectorForMateria(selectedMateria) {
                     <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
                 </div>
                 <div class="component-content">
-                    <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
+                     <div class="prop-row-multi">
+                        <label>Palette</label>
+                        <div class="asset-dropper" data-component="TilemapRenderer" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
+                            <span class="asset-dropper-text">${ley.palettePath || 'None (Tilemap Palette)'}</span>
+                        </div>
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.TilemapCollider2D) {
