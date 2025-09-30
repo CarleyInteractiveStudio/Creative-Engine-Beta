@@ -4,7 +4,7 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
-import { SpriteSheet } from '../sprite.js';
+import * as SpriteModule from '../sprite.js';
 
 // --- Component Class Definitions ---
 
@@ -138,7 +138,7 @@ export class SpriteRenderer extends Leyes {
                 const response = await fetch(metaUrl);
                 if (response.ok) {
                     const jsonText = await response.text();
-                    this.spriteSheet = SpriteSheet.fromJson(jsonText);
+                    this.spriteSheet = SpriteModule.SpriteSheet.fromJson(jsonText);
                     console.log(`Loaded sprite sheet data for: ${this.source}`);
                     // If no sprite is selected, default to the first one in the sheet
                     if (!this.spriteName && this.spriteSheet && Object.keys(this.spriteSheet.sprites).length > 0) {

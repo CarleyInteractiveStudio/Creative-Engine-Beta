@@ -9,6 +9,7 @@ let getSelectedMateria;
 let getSelectedAsset;
 let openSpriteSelectorCallback;
 let saveAssetMetaCallback;
+let extractFramesFromSheetCallback;
 let updateSceneCallback;
 let updateAssetBrowserCallback;
 let isScanningForComponents = false;
@@ -37,6 +38,7 @@ export function initialize(dependencies) {
     getSelectedAsset = dependencies.getSelectedAsset;
     openSpriteSelectorCallback = dependencies.openSpriteSelectorCallback;
     saveAssetMetaCallback = dependencies.saveAssetMetaCallback;
+    extractFramesFromSheetCallback = dependencies.extractFramesFromSheetCallback;
     updateSceneCallback = dependencies.updateSceneCallback;
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
@@ -811,124 +813,174 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 metaData = JSON.parse(await metaFile.text());
             } catch (e) { /* Meta file doesn't exist, it will be created on first change. */ }
 
-            metaData.importType = metaData.importType || 'Sprite (2D/UI)';
+            // Set default values for all properties if they don't exist
+            metaData.textureType = metaData.textureType || 'Sprite (2D and UI)';
+            metaData.spriteMode = metaData.spriteMode || 'Single';
+            metaData.pixelsPerUnit = metaData.pixelsPerUnit || 100;
+            metaData.meshType = metaData.meshType || 'Tight';
+            metaData.filterMode = metaData.filterMode || 'Bilinear';
+            metaData.compression = metaData.compression || 'NormalQuality';
+            metaData.wrapMode = metaData.wrapMode || 'Clamp';
+            metaData.mipMapsEnabled = metaData.mipMapsEnabled === undefined ? false : metaData.mipMapsEnabled;
+            metaData.alphaIsTransparency = metaData.alphaIsTransparency === undefined ? true : metaData.alphaIsTransparency;
+            metaData.maxTextureSize = metaData.maxTextureSize || 2048;
+            metaData.textureFormat = metaData.textureFormat || 'RGBA32';
+            metaData.colorSpace = metaData.colorSpace || 'sRGB';
+            metaData.packingTag = metaData.packingTag || '';
+            metaData.spritePivot = metaData.spritePivot || { x: 0.5, y: 0.5 };
+            metaData.spriteBorder = metaData.spriteBorder || { x: 0, y: 0, z: 0, w: 0 };
+            metaData.spriteExtrude = metaData.spriteExtrude || 1;
+            metaData.spriteGenerateFallbackPhysicsShape = metaData.spriteGenerateFallbackPhysicsShape === undefined ? false : metaData.spriteGenerateFallbackPhysicsShape;
             metaData.grid = metaData.grid || { columns: 1, rows: 1 };
+
 
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
             settingsContainer.innerHTML = `
-                <label for="import-type">Tipo de Importación</label>
-                <select id="import-type">
-                    <option value="Sprite (2D/UI)" ${metaData.importType === 'Sprite (2D/UI)' ? 'selected' : ''}>Sprite (2D/UI)</option>
-                    <option value="Animation Sheet" ${metaData.importType === 'Animation Sheet' ? 'selected' : ''}>Hoja de Animación</option>
-                </select>
-                <div id="animation-sheet-settings" class="sub-settings ${metaData.importType === 'Animation Sheet' ? '' : 'hidden'}">
+                <div class="prop-row"><label for="texture-type">Texture Type</label><select id="texture-type"><option>Default</option><option selected>Sprite (2D and UI)</option></select></div>
+                <div class="prop-row"><label for="sprite-mode">Sprite Mode</label><select id="sprite-mode"><option>Single</option><option>Multiple</option><option>Animation Sheet</option></select></div>
+                <div class="prop-row"><label for="pixels-per-unit">Pixels Per Unit</label><input type="number" id="pixels-per-unit" value="${metaData.pixelsPerUnit}"></div>
+                <div class="prop-row"><label for="packing-tag">Packing Tag</label><input type="text" id="packing-tag" placeholder="(Optional)" value="${metaData.packingTag}"></div>
+                <div class="prop-row"><label for="mesh-type">Mesh Type</label><select id="mesh-type"><option>Full Rect</option><option>Tight</option></select></div>
+                <div class="prop-row"><label for="filter-mode">Filter Mode</label><select id="filter-mode"><option>Point</option><option>Bilinear</option><option>Trilinear</option></select></div>
+                <div class="prop-row"><label for="wrap-mode">Wrap Mode</label><select id="wrap-mode"><option>Repeat</option><option>Clamp</option><option>Mirror</option></select></div>
+
+                <div class="prop-row checkbox-row">
+                    <input type="checkbox" id="mip-maps-enabled" ${metaData.mipMapsEnabled ? 'checked' : ''}><label for="mip-maps-enabled">Generate Mip Maps</label>
+                </div>
+                <div class="prop-row checkbox-row">
+                    <input type="checkbox" id="alpha-is-transparency" ${metaData.alphaIsTransparency ? 'checked' : ''}><label for="alpha-is-transparency">Alpha Is Transparency</label>
+                </div>
+
+                <div id="animation-sheet-settings" class="sub-settings hidden">
                     <hr>
-                    <h4>Configuración de Hoja de Sprites</h4>
+                    <h4>Configuración de Hoja de Animación</h4>
                     <div class="prop-row"><label for="sprite-columns">Columnas</label><input type="number" id="sprite-columns" min="1" value="${metaData.grid.columns}"></div>
                     <div class="prop-row"><label for="sprite-rows">Filas</label><input type="number" id="sprite-rows" min="1" value="${metaData.grid.rows}"></div>
-                    <button id="extract-frames-btn" style="width: 100%; margin-top: 10px;">Extraer Fotogramas</button>
+                    <button id="extract-frames-btn" class="secondary-btn" style="width: 100%; margin-top: 10px;">Extraer Fotogramas</button>
                 </div>
+
+                <div id="advanced-sprite-settings" class="sub-settings hidden">
+                    <hr>
+                    <h4>Advanced Sprite Settings</h4>
+                    <div class="prop-row-multi"><label>Pivot</label><div class="prop-inputs"><input type="number" step="0.1" id="sprite-pivot-x" value="${metaData.spritePivot.x}"><input type="number" step="0.1" id="sprite-pivot-y" value="${metaData.spritePivot.y}"></div></div>
+                    <div class="prop-row-multi"><label>Border (L,T,R,B)</label><div class="prop-inputs"><input type="number" id="sprite-border-l" value="${metaData.spriteBorder.x}"><input type="number" id="sprite-border-t" value="${metaData.spriteBorder.y}"><input type="number" id="sprite-border-r" value="${metaData.spriteBorder.z}"><input type="number" id="sprite-border-b" value="${metaData.spriteBorder.w}"></div></div>
+                    <div class="prop-row"><label for="sprite-extrude">Extrude Edges</label><input type="number" min="0" max="32" id="sprite-extrude" value="${metaData.spriteExtrude}"></div>
+                    <div class="prop-row checkbox-row"><input type="checkbox" id="sprite-generate-fallback-physics-shape" ${metaData.spriteGenerateFallbackPhysicsShape ? 'checked' : ''}><label for="sprite-generate-fallback-physics-shape">Generate Physics Shape</label></div>
+                </div>
+
                 <hr>
-                <button id="save-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;">Aplicar</button>
+
+                <h4>Platform-specific overrides (Not yet functional)</h4>
+                <div class="prop-row"><label for="max-texture-size">Max Size</label><select id="max-texture-size"><option>32</option><option>64</option><option>128</option><option>256</option><option>512</option><option>1024</option><option>2048</option><option>4096</option><option>8192</option></select></div>
+                <div class="prop-row"><label for="texture-format">Format</label><select id="texture-format"><option>RGBA32</option><option>RGB24</option><option>DXT1</option><option>DXT5</option></select></div>
+                <div class="prop-row"><label for="compression">Compression</label><select id="compression"><option>None</option><option>LowQuality</option><option>NormalQuality</option><option>HighQuality</option></select></div>
+                <div class="prop-row"><label for="color-space">Color Space</label><select id="color-space"><option>sRGB</option><option>Linear</option></select></div>
+
+                <hr>
+                <div class="button-group">
+                    <button id="sprite-editor-btn" class="secondary-btn">Sprite Editor</button>
+                    <button id="revert-meta-btn" class="secondary-btn">Revert</button>
+                    <button id="save-meta-btn" class="primary-btn">Apply</button>
+                </div>
+
                 <hr>
                 <div class="preview-container"><img id="inspector-preview-img" src="" alt="Preview"></div>
             `;
             dom.inspectorContent.appendChild(settingsContainer);
 
+            // Set selected values for dropdowns from metadata
+            document.getElementById('texture-type').value = metaData.textureType;
+            document.getElementById('sprite-mode').value = metaData.spriteMode;
+            document.getElementById('mesh-type').value = metaData.meshType;
+            document.getElementById('filter-mode').value = metaData.filterMode;
+            document.getElementById('wrap-mode').value = metaData.wrapMode;
+            document.getElementById('max-texture-size').value = metaData.maxTextureSize;
+            document.getElementById('texture-format').value = metaData.textureFormat;
+            document.getElementById('compression').value = metaData.compression;
+            document.getElementById('color-space').value = metaData.colorSpace;
+
             // --- Event Listeners for this specific inspector ---
-            document.getElementById('import-type').addEventListener('change', (e) => {
-                document.getElementById('animation-sheet-settings').classList.toggle('hidden', e.target.value !== 'Animation Sheet');
-            });
+            const spriteModeSelect = document.getElementById('sprite-mode');
+            const animSettings = document.getElementById('animation-sheet-settings');
+            const advancedSpriteSettings = document.getElementById('advanced-sprite-settings');
+            const spriteEditorBtn = document.getElementById('sprite-editor-btn');
+
+            const toggleSpriteModeUI = () => {
+                const mode = spriteModeSelect.value;
+                animSettings.classList.toggle('hidden', mode !== 'Animation Sheet');
+                advancedSpriteSettings.classList.toggle('hidden', mode === 'Single');
+                spriteEditorBtn.style.display = (mode === 'Multiple' || mode === 'Animation Sheet') ? '' : 'none';
+            };
+
+            spriteModeSelect.addEventListener('change', toggleSpriteModeUI);
+            toggleSpriteModeUI(); // Initial check
 
             document.getElementById('save-meta-btn').addEventListener('click', async () => {
-                metaData.importType = document.getElementById('import-type').value;
-                if (metaData.importType === 'Animation Sheet') {
-                    metaData.grid.columns = parseInt(document.getElementById('sprite-columns').value, 10) || 1;
-                    metaData.grid.rows = parseInt(document.getElementById('sprite-rows').value, 10) || 1;
-                }
+                const newMetaData = {
+                    textureType: document.getElementById('texture-type').value,
+                    spriteMode: document.getElementById('sprite-mode').value,
+                    pixelsPerUnit: parseInt(document.getElementById('pixels-per-unit').value, 10),
+                    packingTag: document.getElementById('packing-tag').value,
+                    meshType: document.getElementById('mesh-type').value,
+                    filterMode: document.getElementById('filter-mode').value,
+                    compression: document.getElementById('compression').value,
+                    wrapMode: document.getElementById('wrap-mode').value,
+                    mipMapsEnabled: document.getElementById('mip-maps-enabled').checked,
+                    alphaIsTransparency: document.getElementById('alpha-is-transparency').checked,
+                    maxTextureSize: parseInt(document.getElementById('max-texture-size').value, 10),
+                    textureFormat: document.getElementById('texture-format').value,
+                    colorSpace: document.getElementById('color-space').value,
+                    spritePivot: {
+                        x: parseFloat(document.getElementById('sprite-pivot-x').value),
+                        y: parseFloat(document.getElementById('sprite-pivot-y').value)
+                    },
+                    spriteBorder: {
+                        x: parseInt(document.getElementById('sprite-border-l').value, 10),
+                        y: parseInt(document.getElementById('sprite-border-t').value, 10),
+                        z: parseInt(document.getElementById('sprite-border-r').value, 10),
+                        w: parseInt(document.getElementById('sprite-border-b').value, 10)
+                    },
+                    spriteExtrude: parseInt(document.getElementById('sprite-extrude').value, 10),
+                    spriteGenerateFallbackPhysicsShape: document.getElementById('sprite-generate-fallback-physics-shape').checked,
+                    grid: {
+                        columns: parseInt(document.getElementById('sprite-columns').value, 10) || 1,
+                        rows: parseInt(document.getElementById('sprite-rows').value, 10) || 1
+                    }
+                };
+
                 const dirHandle = currentDirectoryHandle();
-                await saveAssetMetaCallback(assetName, metaData, dirHandle);
-                alert("Metadatos guardados.");
+                await saveAssetMetaCallback(assetName, newMetaData, dirHandle);
+                alert("Metadatos aplicados.");
+            });
+
+            document.getElementById('revert-meta-btn').addEventListener('click', () => {
+                updateInspector(); // Just re-render, which will load from saved meta again
             });
 
             document.getElementById('extract-frames-btn')?.addEventListener('click', async () => {
                 const animName = prompt("Nombre para el nuevo Asset de Animación:", assetName.split('.')[0]);
                 if (!animName) return;
 
-                metaData.grid.columns = parseInt(document.getElementById('sprite-columns').value, 10) || 1;
-                metaData.grid.rows = parseInt(document.getElementById('sprite-rows').value, 10) || 1;
+                const currentMetaData = {
+                    ...metaData, // Start with existing data
+                    grid: {
+                        columns: parseInt(document.getElementById('sprite-columns').value, 10) || 1,
+                        rows: parseInt(document.getElementById('sprite-rows').value, 10) || 1
+                    }
+                };
 
                 const dirHandle = currentDirectoryHandle();
-                if (!dirHandle) {
-                    alert("No se pudo obtener el directorio actual.");
-                    return;
+                await extractFramesFromSheetCallback(assetPath, currentMetaData, animName, dirHandle);
+                if (updateAssetBrowserCallback) {
+                    await updateAssetBrowserCallback();
                 }
+            });
 
-                try {
-                    // 1. Load the image
-                    const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
-                    if (!imageUrl) throw new Error("No se pudo obtener la URL de la imagen.");
-
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-
-                    const imageLoadPromise = new Promise((resolve, reject) => {
-                        img.onload = () => resolve();
-                        img.onerror = () => reject(new Error("No se pudo cargar la imagen de la hoja de sprites."));
-                        img.src = imageUrl;
-                    });
-                    await imageLoadPromise;
-
-                    // 2. Extract frames
-                    const frames = [];
-                    const frameWidth = img.naturalWidth / metaData.grid.columns;
-                    const frameHeight = img.naturalHeight / metaData.grid.rows;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = frameWidth;
-                    canvas.height = frameHeight;
-                    const ctx = canvas.getContext('2d');
-
-                    for (let r = 0; r < metaData.grid.rows; r++) {
-                        for (let c = 0; c < metaData.grid.columns; c++) {
-                            ctx.clearRect(0, 0, frameWidth, frameHeight);
-                            const sx = c * frameWidth;
-                            const sy = r * frameHeight;
-                            ctx.drawImage(img, sx, sy, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
-                            frames.push(canvas.toDataURL());
-                        }
-                    }
-
-                    // 3. Create .cea content
-                    const ceaContent = {
-                        animations: [{
-                            name: animName,
-                            frames: frames,
-                            speed: 10, // Default speed
-                            loop: true // Default loop
-                        }]
-                    };
-
-                    // 4. Save the new .cea file
-                    const fileName = `${animName}.cea`;
-                    const newFileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-                    const writable = await newFileHandle.createWritable();
-                    await writable.write(JSON.stringify(ceaContent, null, 2));
-                    await writable.close();
-
-                    console.log(`Creado el asset de animación: ${fileName}`);
-                    alert(`Se ha creado el archivo de animación '${fileName}' con ${frames.length} fotogramas.`);
-
-                    // 5. Refresh asset browser
-                    if (updateAssetBrowserCallback) {
-                        await updateAssetBrowserCallback();
-                    }
-
-                } catch (error) {
-                    console.error("Error al extraer fotogramas:", error);
-                    alert(`No se pudieron extraer los fotogramas: ${error.message}`);
-                }
+            spriteEditorBtn.addEventListener('click', () => {
+                // This logic will be handled by the main editor script on double-click,
+                // but we can also trigger it from here.
+                onAssetOpened(assetName, fileHandle, currentDirectoryHandle());
             });
 
             const imgElement = document.getElementById('inspector-preview-img');
