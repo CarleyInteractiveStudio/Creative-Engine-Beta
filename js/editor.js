@@ -26,7 +26,6 @@ import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
-import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
 
 // --- Editor Logic ---
@@ -156,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
-            'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-editor-panel': 'menu-window-sprite-editor',
             'asset-store-panel': 'menu-window-asset-store'
         };
@@ -928,12 +926,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'tile-palette') {
-                const panel = document.getElementById('tile-palette-panel');
-                if (panel) {
-                    panel.classList.toggle('hidden');
-                    updateWindowMenuUI();
-                }
             } else if (panelName === 'asset-store') {
                 const panel = document.getElementById('asset-store-panel');
                 if (panel) {
@@ -1413,11 +1405,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 
-                // Handle text-based files first
+                // Handle images
+                const imageExtensions = ['png', 'jpg', 'jpeg', 'webp'];
+                if (imageExtensions.includes(extension)) {
+                    console.log(`Opening image in Sprite Editor: ${name}`);
+                    spriteEditor.openWithImageFile(fileHandle, dirHandle);
+                    return;
+                }
+
+                // Handle text-based files
                 const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
                 if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
                     console.log(`Opening text-based asset: ${name}`);
-                    // FIX: Called the correct function name 'openScriptInEditor'
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
                 }
@@ -1427,10 +1426,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'cea':
                         console.log(`Opening animation asset: ${name}`);
                         openAnimationAssetFromModule(fileHandle, dirHandle);
-                        break;
-                    case 'cepalette':
-                        console.log(`Opening tile palette: ${name}`);
-                        TilePalette.openPalette(fileHandle);
                         break;
                     case 'ceanim':
                         console.log(`Opening animation controller: ${name}`);
@@ -1499,7 +1494,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
             spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

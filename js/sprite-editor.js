@@ -207,6 +207,49 @@ class SpriteEditor {
         input.click();
     }
 
+    async openWithImageFile(imageFileHandle, dirHandle) {
+        const file = await imageFileHandle.getFile();
+        if (!file) return;
+
+        this.panel.classList.remove('hidden');
+
+        // Try to load corresponding .json metadata file
+        let spriteSheetData = null;
+        const metaFileName = file.name.replace(/\.(png|jpg|jpeg|webp)$/, '.json');
+        try {
+            const metaFileHandle = await dirHandle.getFileHandle(metaFileName);
+            const metaFile = await metaFileHandle.getFile();
+            const jsonText = await metaFile.text();
+            spriteSheetData = SpriteSheet.fromJson(jsonText);
+            console.log(`Loaded sprite sheet data for: ${file.name}`);
+        } catch (error) {
+            console.log(`No sprite sheet data found for ${file.name}. Creating new sheet.`);
+            spriteSheetData = new SpriteSheet(file.name);
+        }
+
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            this.loadedImage = new Image();
+            this.loadedImage.onload = () => {
+                this.selectedSpriteName = null;
+                this.propertiesView.classList.add('hidden');
+
+                this.activeSpriteSheet = spriteSheetData;
+                this.activeSpriteSheet.texturePath = file.name; // Ensure path is correct
+                this.spriteListName.textContent = file.name;
+                this.canvas.width = this.loadedImage.width;
+                this.canvas.height = this.loadedImage.height;
+                this.overlay.classList.add('hidden');
+
+                this.updateSpriteList();
+                this.draw();
+            };
+            this.loadedImage.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
     draw() {
         if (!this.loadedImage) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
