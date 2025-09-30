@@ -22,6 +22,7 @@ class SpriteEditor {
         document.getElementById('sprite-editor-select-image-btn').addEventListener('click', () => this.loadImage());
         document.getElementById('sprite-editor-save-btn').addEventListener('click', () => this.saveSpriteSheet());
         document.getElementById('sprite-editor-delete-slice-btn').addEventListener('click', () => this.deleteSelectedSprite());
+        document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSlice());
 
         // Conectar los campos de propiedades
         const propInputs = this.propertiesView.querySelectorAll('input');
@@ -42,6 +43,97 @@ class SpriteEditor {
             this.updateSpriteList();
             this.draw();
         }
+    }
+
+    autoSlice() {
+        if (!this.loadedImage || !this.activeSpriteSheet) {
+            alert("Por favor, carga una imagen primero.");
+            return;
+        }
+
+        if (!confirm("Esto reemplazará los recortes actuales. ¿Deseas continuar?")) {
+            return;
+        }
+
+        // Clear existing sprites
+        this.activeSpriteSheet.sprites = {};
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const { data, width, height } = imageData;
+
+        const visited = new Array(width * height).fill(false);
+        let spriteIndex = 0;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const index = (y * width + x);
+                const alphaIndex = index * 4 + 3;
+
+                if (data[alphaIndex] > 0 && !visited[index]) {
+                    const island = this.findSpriteIsland(imageData, x, y, visited);
+                    if (island.rect.width > 0 && island.rect.height > 0) {
+                        const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.');
+                        const spriteName = `${textureName}_${spriteIndex}`;
+                        const newSprite = new SpriteData(spriteName, island.rect.x, island.rect.y, island.rect.width, island.rect.height);
+                        this.activeSpriteSheet.addSprite(newSprite);
+                        spriteIndex++;
+                    }
+                }
+            }
+        }
+
+        console.log(`Recorte automático completado. Se encontraron ${spriteIndex} sprites.`);
+        this.updateSpriteList();
+        this.draw();
+    }
+
+    findSpriteIsland(imageData, startX, startY, visited) {
+        const { data, width, height } = imageData;
+        const queue = [{ x: startX, y: startY }];
+        let minX = startX, maxX = startX, minY = startY, maxY = startY;
+
+        const startIndex = (startY * width + startX);
+        if (visited[startIndex]) {
+            return { rect: { x: 0, y: 0, width: 0, height: 0 }};
+        }
+        visited[startIndex] = true;
+
+        let head = 0;
+        while (head < queue.length) {
+            const { x, y } = queue[head++];
+
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+
+            const neighbors = [
+                { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+                { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+            ];
+
+            for (const neighbor of neighbors) {
+                const nx = x + neighbor.dx;
+                const ny = y + neighbor.dy;
+
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    const nIndex = ny * width + nx;
+                    const nAlphaIndex = nIndex * 4 + 3;
+                    if (data[nAlphaIndex] > 0 && !visited[nIndex]) {
+                        visited[nIndex] = true;
+                        queue.push({ x: nx, y: ny });
+                    }
+                }
+            }
+        }
+
+        return {
+            rect: {
+                x: minX,
+                y: minY,
+                width: maxX - minX + 1,
+                height: maxY - minY + 1
+            }
+        };
     }
 
     initCanvasEvents() {
