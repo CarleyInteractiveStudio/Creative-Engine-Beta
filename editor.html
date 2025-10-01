@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editor | Creative Engine</title>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/sprite-editor.css">
     <link rel="stylesheet" href="css/debug.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
 </head>
@@ -66,7 +67,7 @@
                         <hr>
                         <a href="#" id="menu-window-animation">Editor de Animación</a>
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
-                        <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
+                        <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
                         <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
                     </div>
@@ -106,9 +107,6 @@
                                     <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)">🔄 Rotar</button>
                                     <button id="tool-scale" class="toolbar-btn" title="Escalar (E)">↗️ Escalar</button>
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
-                                    <hr class="tilemap-tool-divider" style="display: none;">
-                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
-                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
                                 </div>
                             </div>
                         </div>
@@ -388,7 +386,6 @@
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
-                    <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
                 </ul>
@@ -779,39 +776,65 @@
         <div class="resize-handle" data-direction="nw"></div>
     </div>
 
-    <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
+
+    <div id="sprite-editor-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
-            <span id="palette-asset-name">Editor de Paleta de Tiles</span>
+            <span id="sprite-editor-asset-name">Editor de Sprites</span>
             <div class="panel-header-controls">
-                 <button id="palette-save-btn" title="Guardar Paleta">💾 Guardar</button>
-                 <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
+                 <button id="sprite-editor-save-btn" title="Guardar Datos de Sprites">💾 Guardar</button>
+                 <button class="close-panel-btn" data-panel="sprite-editor-panel">&times;</button>
             </div>
         </div>
         <div class="panel-content no-padding">
-            <div id="palette-toolbar">
+            <div id="sprite-editor-toolbar">
                 <div class="toolbar-group">
-                    <label>Tileset:</label>
-                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
-                    <span id="palette-image-name">Ninguna</span>
+                    <label>Spritesheet:</label>
+                    <button id="sprite-editor-select-image-btn">Seleccionar Imagen...</button>
+                    <span id="sprite-editor-image-name">Ninguna</span>
                 </div>
                 <div class="toolbar-group">
-                    <label for="palette-tile-width">Ancho Tile:</label>
-                    <input type="number" id="palette-tile-width" value="32" min="1">
-                    <label for="palette-tile-height">Alto Tile:</label>
-                    <input type="number" id="palette-tile-height" value="32" min="1">
-                </div>
-                 <div class="toolbar-group">
-                    <label>Tile Seleccionado:</label>
-                    <span id="palette-selected-tile-id">-</span>
+                    <button id="sprite-editor-add-slice-btn">Añadir Recorte</button>
+                    <button id="sprite-editor-auto-slice-btn">Recorte Automático</button>
                 </div>
             </div>
-            <div id="palette-view-container">
-                <canvas id="palette-grid-canvas"></canvas>
-                <img id="palette-tileset-image" src="" alt="Tileset">
+            <div id="sprite-editor-main-view">
+                <div id="sprite-editor-canvas-container">
+                    <canvas id="sprite-editor-canvas"></canvas>
+                </div>
+                <div id="sprite-editor-properties-container">
+                    <div id="sprite-list-view">
+                        <h4>Sprites</h4>
+                        <div id="sprite-list" class="list-content"></div>
+                    </div>
+                    <div id="sprite-properties-view" class="hidden">
+                        <h4>Propiedades del Sprite</h4>
+                        <div class="property-field">
+                            <label for="sprite-prop-name">Nombre</label>
+                            <input type="text" id="sprite-prop-name">
+                        </div>
+                        <div class="property-field">
+                            <label>Rect (X, Y, W, H)</label>
+                            <div class="multi-input">
+                                <input type="number" id="sprite-prop-rect-x">
+                                <input type="number" id="sprite-prop-rect-y">
+                                <input type="number" id="sprite-prop-rect-w">
+                                <input type="number" id="sprite-prop-rect-h">
+                            </div>
+                        </div>
+                         <div class="property-field">
+                            <label>Pivote (X, Y)</label>
+                             <div class="multi-input">
+                                <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
+                                <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
+                            </div>
+                        </div>
+                        <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div id="palette-panel-overlay">
-            <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
+        <div id="sprite-editor-panel-overlay">
+            <p>Abre una imagen (.png, .jpg) para empezar a recortar sprites.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

@@ -1,5 +1,4 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
-import { createNewPalette } from './TilePaletteWindow.js';
 
 // --- Module State ---
 let dom;
@@ -385,15 +384,6 @@ async function handleContextMenuClick(e) {
         case 'create-ui-system': {
             if (createUiSystemFile) {
                 createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
-            }
-            break;
-        }
-        case 'create-tile-palette': {
-            const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
-            if (paletteName) {
-                const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                await createNewPalette(fileName, currentDirectoryHandle.handle);
-                await updateAssetBrowserCallback();
             }
             break;
         }
