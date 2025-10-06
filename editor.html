@@ -794,14 +794,13 @@
                 </div>
                 <div class="toolbar-group">
                     <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente dibujando un rectángulo en el canvas.">Añadir Recorte</button>
-                    <button id="sprite-editor-auto-slice-btn" title="Detecta automáticamente los sprites basándose en los píxeles opacos.">Recorte Automático</button>
                 </div>
                 <div class="toolbar-group">
-                    <label>Recortar por Cuadrícula:</label>
+                    <label>Auto Recortar por Cuadrícula:</label>
                     <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32" title="Ancho de la celda">
                     <label>x</label>
                     <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32" title="Alto de la celda">
-                    <button id="sprite-editor-grid-slice-btn">Recortar</button>
+                    <button id="sprite-editor-auto-slice-btn">Auto Recortar</button>
                 </div>
             </div>
             <div id="sprite-editor-main-view">
@@ -814,28 +813,31 @@
                         <div id="sprite-list" class="list-content grid-view"></div>
                     </div>
                     <div id="sprite-properties-view" class="hidden">
-                        <h4>Propiedades del Sprite</h4>
-                        <div class="property-field">
-                            <label for="sprite-prop-name">Nombre</label>
-                            <input type="text" id="sprite-prop-name">
-                        </div>
-                        <div class="property-field">
-                            <label>Rect (X, Y, W, H)</label>
-                            <div class="multi-input">
-                                <input type="number" id="sprite-prop-rect-x">
-                                <input type="number" id="sprite-prop-rect-y">
-                                <input type="number" id="sprite-prop-rect-w">
-                                <input type="number" id="sprite-prop-rect-h">
+                        <button id="sprite-editor-show-properties-btn" class="hidden" style="width: 100%; margin-bottom: 10px;">Ver/Editar Propiedades</button>
+                        <div id="sprite-properties-fields" class="hidden">
+                            <h4>Propiedades del Sprite</h4>
+                            <div class="property-field">
+                                <label for="sprite-prop-name">Nombre</label>
+                                <input type="text" id="sprite-prop-name">
                             </div>
-                        </div>
-                         <div class="property-field">
-                            <label>Pivote (X, Y)</label>
-                             <div class="multi-input">
-                                <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
-                                <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
+                            <div class="property-field">
+                                <label>Rect (X, Y, W, H)</label>
+                                <div class="multi-input">
+                                    <input type="number" id="sprite-prop-rect-x">
+                                    <input type="number" id="sprite-prop-rect-y">
+                                    <input type="number" id="sprite-prop-rect-w">
+                                    <input type="number" id="sprite-prop-rect-h">
+                                </div>
                             </div>
+                            <div class="property-field">
+                                <label>Pivote (X, Y)</label>
+                                <div class="multi-input">
+                                    <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
+                                    <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
+                                </div>
+                            </div>
+                            <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
                         </div>
-                        <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
                     </div>
                 </div>
             </div>

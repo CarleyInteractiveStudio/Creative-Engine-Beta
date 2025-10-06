@@ -22,8 +22,8 @@ class SpriteEditor {
         document.getElementById('sprite-editor-select-image-btn').addEventListener('click', () => this.loadImage());
         document.getElementById('sprite-editor-save-btn').addEventListener('click', () => this.saveSpriteSheet());
         document.getElementById('sprite-editor-delete-slice-btn').addEventListener('click', () => this.deleteSelectedSprite());
-        document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSlice());
-        document.getElementById('sprite-editor-grid-slice-btn').addEventListener('click', () => this.sliceByGrid());
+        document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSliceByGrid());
+        document.getElementById('sprite-editor-show-properties-btn').addEventListener('click', () => this.togglePropertiesVisibility());
 
 
         // Conectar los campos de propiedades
@@ -35,7 +35,31 @@ class SpriteEditor {
         console.log("Sprite Editor UI Initialized");
     }
 
-    sliceByGrid() {
+    togglePropertiesVisibility() {
+        if (!this.selectedSpriteName) return;
+        const propsFields = document.getElementById('sprite-properties-fields');
+        const isHidden = propsFields.classList.contains('hidden');
+        if (isHidden) {
+            this.populateProperties();
+            propsFields.classList.remove('hidden');
+        } else {
+            propsFields.classList.add('hidden');
+        }
+    }
+
+    deleteSelectedSprite() {
+        if (!this.selectedSpriteName || !this.activeSpriteSheet) return;
+
+        if (confirm(`¿Estás seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`)) {
+            this.activeSpriteSheet.removeSprite(this.selectedSpriteName);
+            this.selectedSpriteName = null;
+            this.updatePropertiesView(); // Usar nueva función
+            this.updateSpriteList();
+            this.draw();
+        }
+    }
+
+    autoSliceByGrid() {
         if (!this.loadedImage || !this.activeSpriteSheet) {
             alert("Por favor, carga una imagen primero.");
             return;
@@ -49,87 +73,57 @@ class SpriteEditor {
             return;
         }
 
-        if (!confirm("Esto reemplazará los recortes actuales con una nueva cuadrícula. ¿Deseas continuar?")) {
-            return;
-        }
-
-        // Clear existing sprites
-        this.activeSpriteSheet.sprites = {};
-        this.selectedSpriteName = null;
-        this.propertiesView.classList.add('hidden');
-
-        const imgWidth = this.loadedImage.width;
-        const imgHeight = this.loadedImage.height;
-        let spriteIndex = 0;
-        const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.') || 'sprite';
-
-
-        for (let y = 0; y < imgHeight; y += gridHeight) {
-            for (let x = 0; x < imgWidth; x += gridWidth) {
-                // Asegurarse de no crear sprites fuera de los límites de la imagen
-                if (x + gridWidth <= imgWidth && y + gridHeight <= imgHeight) {
-                     const spriteName = `${textureName}_${spriteIndex}`;
-                     const newSprite = new SpriteData(spriteName, x, y, gridWidth, gridHeight);
-                     this.activeSpriteSheet.addSprite(newSprite);
-                     spriteIndex++;
-                }
-            }
-        }
-
-        console.log(`Recorte por cuadrícula completado. Se crearon ${spriteIndex} sprites.`);
-        this.updateSpriteList();
-        this.draw();
-    }
-
-    deleteSelectedSprite() {
-        if (!this.selectedSpriteName || !this.activeSpriteSheet) return;
-
-        if (confirm(`¿Estás seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`)) {
-            this.activeSpriteSheet.removeSprite(this.selectedSpriteName);
-            this.selectedSpriteName = null;
-            this.propertiesView.classList.add('hidden');
-            this.updateSpriteList();
-            this.draw();
-        }
-    }
-
-    autoSlice() {
-        if (!this.loadedImage || !this.activeSpriteSheet) {
-            alert("Por favor, carga una imagen primero.");
-            return;
-        }
-
         if (!confirm("Esto reemplazará los recortes actuales. ¿Deseas continuar?")) {
             return;
         }
 
-        // Clear existing sprites
+        // 1. Clear existing sprites and selection
         this.activeSpriteSheet.sprites = {};
-        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        const { data, width, height } = imageData;
+        this.selectedSpriteName = null;
+        this.updatePropertiesView();
 
+        // 2. Find all sprite islands
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        const { width, height } = imageData;
         const visited = new Array(width * height).fill(false);
-        let spriteIndex = 0;
+        const islands = [];
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const index = (y * width + x);
                 const alphaIndex = index * 4 + 3;
 
-                if (data[alphaIndex] > 0 && !visited[index]) {
+                if (imageData.data[alphaIndex] > 0 && !visited[index]) {
                     const island = this.findSpriteIsland(imageData, x, y, visited);
                     if (island.rect.width > 0 && island.rect.height > 0) {
-                        const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.');
-                        const spriteName = `${textureName}_${spriteIndex}`;
-                        const newSprite = new SpriteData(spriteName, island.rect.x, island.rect.y, island.rect.width, island.rect.height);
-                        this.activeSpriteSheet.addSprite(newSprite);
-                        spriteIndex++;
+                        islands.push(island.rect);
                     }
                 }
             }
         }
 
-        console.log(`Recorte automático completado. Se encontraron ${spriteIndex} sprites.`);
+        // 3. Subdivide each island into the grid
+        let totalSprites = 0;
+        const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.') || 'sprite';
+
+        islands.forEach((islandRect) => {
+            for (let y = islandRect.y; y < islandRect.y + islandRect.height; y += gridHeight) {
+                for (let x = islandRect.x; x < islandRect.x + islandRect.width; x += gridWidth) {
+                    const remainingWidth = islandRect.x + islandRect.width - x;
+                    const remainingHeight = islandRect.y + islandRect.height - y;
+
+                    // Only create a sprite if it's a full grid cell within the island
+                    if (remainingWidth >= gridWidth && remainingHeight >= gridHeight) {
+                        const spriteName = `${textureName}_${totalSprites}`;
+                        const newSprite = new SpriteData(spriteName, x, y, gridWidth, gridHeight);
+                        this.activeSpriteSheet.addSprite(newSprite);
+                        totalSprites++;
+                    }
+                }
+            }
+        });
+
+        console.log(`Recorte automático completado. Se encontraron ${islands.length} islas y se crearon ${totalSprites} sprites.`);
         this.updateSpriteList();
         this.draw();
     }
@@ -189,7 +183,12 @@ class SpriteEditor {
         let startX, startY;
 
         this.canvas.addEventListener('mousedown', (e) => {
+            // Deselect sprite if clicking on empty canvas space
+            if (e.target === this.canvas) {
+                this.selectSprite(null);
+            }
             if (!this.activeSpriteSheet) return;
+
             isDrawing = true;
             const rect = this.canvas.getBoundingClientRect();
             startX = e.clientX - rect.left;
@@ -220,7 +219,7 @@ class SpriteEditor {
             const width = Math.abs(endX - startX);
             const height = Math.abs(endY - startY);
 
-            if (width > 0 && height > 0) {
+            if (width > 2 && height > 2) { // Avoid creating tiny sprites on mis-click
                 this.addNewSprite(x, y, width, height);
             }
         });
@@ -271,7 +270,10 @@ class SpriteEditor {
             img.src = tempCanvas.toDataURL();
 
             item.appendChild(img);
-            item.addEventListener('click', () => this.selectSprite(spriteName));
+            item.addEventListener('click', (e) => {
+                e.stopPropagation(); // Evita que el evento llegue al canvas y deseleccione
+                this.selectSprite(spriteName)
+            });
             listContainer.appendChild(item);
         }
     }
@@ -279,13 +281,33 @@ class SpriteEditor {
     selectSprite(spriteName) {
         this.selectedSpriteName = spriteName;
         this.updateSpriteList();
-        this.populateProperties();
+        this.updatePropertiesView(); // Usar nueva función para gestionar la visibilidad
         this.draw();
     }
 
+    updatePropertiesView() {
+        const propertiesContainer = document.getElementById('sprite-properties-view');
+        const showPropsBtn = document.getElementById('sprite-editor-show-properties-btn');
+        const propsFields = document.getElementById('sprite-properties-fields');
+
+        if (!this.selectedSpriteName) {
+            // Ocultar todo si no hay ningún sprite seleccionado
+            propertiesContainer.classList.add('hidden');
+            showPropsBtn.classList.add('hidden');
+            propsFields.classList.add('hidden');
+        } else {
+            // Si hay un sprite seleccionado, mostrar el contenedor y el botón
+            propertiesContainer.classList.remove('hidden');
+            showPropsBtn.classList.remove('hidden');
+            // Mantener los campos de propiedades ocultos por defecto
+            propsFields.classList.add('hidden');
+        }
+    }
+
+
     populateProperties() {
         if (!this.selectedSpriteName || !this.activeSpriteSheet) {
-            this.propertiesView.classList.add('hidden');
+            this.updatePropertiesView(); // Llama a la función principal para ocultar todo
             return;
         }
 
@@ -300,7 +322,7 @@ class SpriteEditor {
         document.getElementById('sprite-prop-pivot-x').value = sprite.pivot.x;
         document.getElementById('sprite-prop-pivot-y').value = sprite.pivot.y;
 
-        this.propertiesView.classList.remove('hidden');
+        // No es necesario gestionar la visibilidad aquí, ya se hace en togglePropertiesVisibility
     }
 
     updateSpriteFromProperties() {
@@ -326,9 +348,12 @@ class SpriteEditor {
                 alert(`El nombre "${newName}" ya existe. Por favor, elige otro.`);
                 document.getElementById('sprite-prop-name').value = sprite.name; // Revert
             } else {
+                // Preservar la selección actual
+                const oldSpriteData = { ...sprite };
                 this.activeSpriteSheet.removeSprite(sprite.name);
-                sprite.name = newName;
-                this.activeSpriteSheet.addSprite(sprite);
+                oldSpriteData.name = newName;
+                const newSprite = new SpriteData(oldSpriteData.name, oldSpriteData.rect.x, oldSpriteData.rect.y, oldSpriteData.rect.width, oldSpriteData.rect.height, oldSpriteData.pivot.x, oldSpriteData.pivot.y);
+                this.activeSpriteSheet.addSprite(newSprite);
                 this.selectedSpriteName = newName;
                 this.updateSpriteList();
             }
