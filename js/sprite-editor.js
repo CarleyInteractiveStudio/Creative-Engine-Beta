@@ -23,6 +23,8 @@ class SpriteEditor {
         document.getElementById('sprite-editor-save-btn').addEventListener('click', () => this.saveSpriteSheet());
         document.getElementById('sprite-editor-delete-slice-btn').addEventListener('click', () => this.deleteSelectedSprite());
         document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSlice());
+        document.getElementById('sprite-editor-grid-slice-btn').addEventListener('click', () => this.sliceByGrid());
+
 
         // Conectar los campos de propiedades
         const propInputs = this.propertiesView.querySelectorAll('input');
@@ -31,6 +33,52 @@ class SpriteEditor {
         });
 
         console.log("Sprite Editor UI Initialized");
+    }
+
+    sliceByGrid() {
+        if (!this.loadedImage || !this.activeSpriteSheet) {
+            alert("Por favor, carga una imagen primero.");
+            return;
+        }
+
+        const gridWidth = parseInt(document.getElementById('sprite-editor-grid-width').value, 10);
+        const gridHeight = parseInt(document.getElementById('sprite-editor-grid-height').value, 10);
+
+        if (isNaN(gridWidth) || isNaN(gridHeight) || gridWidth <= 0 || gridHeight <= 0) {
+            alert("El ancho y alto de la cuadrícula deben ser números positivos.");
+            return;
+        }
+
+        if (!confirm("Esto reemplazará los recortes actuales con una nueva cuadrícula. ¿Deseas continuar?")) {
+            return;
+        }
+
+        // Clear existing sprites
+        this.activeSpriteSheet.sprites = {};
+        this.selectedSpriteName = null;
+        this.propertiesView.classList.add('hidden');
+
+        const imgWidth = this.loadedImage.width;
+        const imgHeight = this.loadedImage.height;
+        let spriteIndex = 0;
+        const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.') || 'sprite';
+
+
+        for (let y = 0; y < imgHeight; y += gridHeight) {
+            for (let x = 0; x < imgWidth; x += gridWidth) {
+                // Asegurarse de no crear sprites fuera de los límites de la imagen
+                if (x + gridWidth <= imgWidth && y + gridHeight <= imgHeight) {
+                     const spriteName = `${textureName}_${spriteIndex}`;
+                     const newSprite = new SpriteData(spriteName, x, y, gridWidth, gridHeight);
+                     this.activeSpriteSheet.addSprite(newSprite);
+                     spriteIndex++;
+                }
+            }
+        }
+
+        console.log(`Recorte por cuadrícula completado. Se crearon ${spriteIndex} sprites.`);
+        this.updateSpriteList();
+        this.draw();
     }
 
     deleteSelectedSprite() {
@@ -191,16 +239,38 @@ class SpriteEditor {
     updateSpriteList() {
         const listContainer = document.getElementById('sprite-list');
         listContainer.innerHTML = '';
-        if (!this.activeSpriteSheet) return;
+        if (!this.activeSpriteSheet || !this.loadedImage) return;
+
+        // Crear un canvas temporal para extraer las imágenes de los sprites
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
 
         for (const spriteName in this.activeSpriteSheet.sprites) {
+            const sprite = this.activeSpriteSheet.getSprite(spriteName);
+
+            // Crear el contenedor de la cuadrícula
             const item = document.createElement('div');
-            item.className = 'sprite-list-item';
-            item.textContent = spriteName;
-            item.dataset.spriteName = spriteName;
+            item.className = 'sprite-grid-item';
+            item.title = spriteName;
             if (spriteName === this.selectedSpriteName) {
                 item.classList.add('selected');
             }
+
+            // Crear la imagen de previsualización
+            const img = document.createElement('img');
+
+            // Extraer la imagen del sprite usando el canvas temporal
+            tempCanvas.width = sprite.rect.width;
+            tempCanvas.height = sprite.rect.height;
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(
+                this.loadedImage,
+                sprite.rect.x, sprite.rect.y, sprite.rect.width, sprite.rect.height,
+                0, 0, tempCanvas.width, tempCanvas.height
+            );
+            img.src = tempCanvas.toDataURL();
+
+            item.appendChild(img);
             item.addEventListener('click', () => this.selectSprite(spriteName));
             listContainer.appendChild(item);
         }

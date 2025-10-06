@@ -793,8 +793,15 @@
                     <span id="sprite-editor-image-name">Ninguna</span>
                 </div>
                 <div class="toolbar-group">
-                    <button id="sprite-editor-add-slice-btn">Añadir Recorte</button>
-                    <button id="sprite-editor-auto-slice-btn">Recorte Automático</button>
+                    <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente dibujando un rectángulo en el canvas.">Añadir Recorte</button>
+                    <button id="sprite-editor-auto-slice-btn" title="Detecta automáticamente los sprites basándose en los píxeles opacos.">Recorte Automático</button>
+                </div>
+                <div class="toolbar-group">
+                    <label>Recortar por Cuadrícula:</label>
+                    <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32" title="Ancho de la celda">
+                    <label>x</label>
+                    <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32" title="Alto de la celda">
+                    <button id="sprite-editor-grid-slice-btn">Recortar</button>
                 </div>
             </div>
             <div id="sprite-editor-main-view">
@@ -804,7 +811,7 @@
                 <div id="sprite-editor-properties-container">
                     <div id="sprite-list-view">
                         <h4>Sprites</h4>
-                        <div id="sprite-list" class="list-content"></div>
+                        <div id="sprite-list" class="list-content grid-view"></div>
                     </div>
                     <div id="sprite-properties-view" class="hidden">
                         <h4>Propiedades del Sprite</h4>
