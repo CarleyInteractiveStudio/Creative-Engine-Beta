@@ -809,11 +809,14 @@
                 </div>
                 <div id="sprite-editor-properties-container">
                     <div id="sprite-list-view">
-                        <h4>Sprites</h4>
-                        <div id="sprite-list" class="list-content grid-view"></div>
+                        <div class="sprite-view-header">
+                            <button id="sprite-view-back-btn" class="hidden" title="Volver a la lista de grupos">&lt; Volver</button>
+                            <h4 id="sprite-view-title">Sprites</h4>
+                        </div>
+                        <div id="sprite-list" class="list-content"></div>
                     </div>
                     <div id="sprite-properties-view" class="hidden">
-                        <button id="sprite-editor-show-properties-btn" class="hidden" style="width: 100%; margin-bottom: 10px;">Ver/Editar Propiedades</button>
+                         <button id="sprite-editor-show-properties-btn" class="hidden" style="width: 100%; margin-bottom: 10px;">Ver/Editar Propiedades</button>
                         <div id="sprite-properties-fields" class="hidden">
                             <h4>Propiedades del Sprite</h4>
                             <div class="property-field">

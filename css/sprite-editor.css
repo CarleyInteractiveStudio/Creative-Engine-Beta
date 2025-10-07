@@ -64,6 +64,33 @@
     color: white;
 }
 
+/* Nuevos estilos para la vista jerárquica */
+.sprite-view-header {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--color-border-dark);
+}
+
+#sprite-view-back-btn {
+    margin-right: 10px;
+    padding: 2px 8px;
+}
+
+#sprite-view-title {
+    margin: 0;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+#sprite-list.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+}
+
+
 /* Nuevos estilos para el recorte por cuadrícula */
 #sprite-editor-toolbar .grid-input {
     width: 50px;
