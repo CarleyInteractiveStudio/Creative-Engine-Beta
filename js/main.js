@@ -116,6 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function clearDirHandle() {
+        if (!db) return;
+        try {
+            const transaction = db.transaction(['settings'], 'readwrite');
+            const store = transaction.objectStore('settings');
+            store.delete('projectsDirHandle');
+            console.log("Stored directory handle cleared from IndexedDB.");
+        } catch (error) {
+            console.error("Error clearing directory handle from IndexedDB:", error);
+        }
+    }
+
     // --- Project Loading Logic ---
     const getProjectTimestamps = () => {
         try {
@@ -144,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
+            // Intentamos verificar los permisos. Esta acción fallará con un NotFoundError si el directorio ha sido eliminado.
             if (await dirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
                 if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
                     await showCustomAlert("Permisos Requeridos", "No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar.");
@@ -190,8 +203,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
         } catch (error) {
-            console.error("Error loading projects:", error);
-            projectList.innerHTML = '<p class="no-projects-message">Error al cargar los proyectos.</p>';
+            if (error.name === 'NotFoundError') {
+                console.warn("Project directory not found. It may have been moved or deleted.", error);
+                clearDirHandle(); // Limpiar la referencia inválida
+                await showCustomAlert(
+                    "Carpeta de Proyectos no Encontrada",
+                    "La carpeta de proyectos que habías seleccionado ya no existe o no se puede acceder. Por favor, crea un nuevo proyecto para seleccionar una nueva carpeta."
+                );
+                // Actualizar la UI para reflejar que no hay una carpeta seleccionada
+                projectList.innerHTML = '<p class="no-projects-message">Elige una carpeta para tus proyectos al crear el primero.</p>';
+            } else {
+                console.error("Error loading projects:", error);
+                projectList.innerHTML = '<p class="no-projects-message">Error al cargar los proyectos.</p>';
+            }
         }
     }
 
