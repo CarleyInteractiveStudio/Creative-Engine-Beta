@@ -64,33 +64,6 @@
     color: white;
 }
 
-/* Nuevos estilos para la vista jerárquica */
-.sprite-view-header {
-    display: flex;
-    align-items: center;
-    padding: 8px;
-    border-bottom: 1px solid var(--color-border-dark);
-}
-
-#sprite-view-back-btn {
-    margin-right: 10px;
-    padding: 2px 8px;
-}
-
-#sprite-view-title {
-    margin: 0;
-    font-size: 1em;
-    font-weight: bold;
-}
-
-#sprite-list.list-view {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 4px;
-}
-
-
 /* Nuevos estilos para el recorte por cuadrícula */
 #sprite-editor-toolbar .grid-input {
     width: 50px;
@@ -98,45 +71,39 @@
     text-align: center;
 }
 
-/* Estilos para la vista de cuadrícula de sprites */
-#sprite-list.grid-view {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-    gap: 8px;
+/* Estilos para el contenedor de reconstrucción */
+.reconstruction-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     padding: 8px;
-    align-content: flex-start;
 }
 
-.sprite-grid-item {
+.reconstruction-group {
     position: relative;
-    width: 100%;
-    padding-top: 100%; /* Mantener relación de aspecto cuadrada */
+    border: 1px dashed var(--color-border);
     background-color: var(--color-background-deep);
-    border: 2px solid transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    overflow: hidden;
-    box-sizing: border-box; /* Asegura que el borde no añada tamaño */
 }
 
-.sprite-grid-item:hover {
-    border-color: var(--color-accent-light);
-}
-
-.sprite-grid-item.selected {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 8px var(--color-accent);
-}
-
-.sprite-grid-item img {
+.reconstruction-tile {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 90%;
-    max-height: 90%;
-    object-fit: contain; /* Para no deformar el sprite */
-    image-rendering: pixelated; /* Mantiene los sprites nítidos */
+    box-sizing: border-box;
+    background-size: cover;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.reconstruction-tile:hover {
+    border-color: var(--color-accent-light);
+    background-color: rgba(0, 191, 255, 0.2); /* Cian semitransparente */
+}
+
+.reconstruction-tile.selected {
+    border: 2px solid var(--color-accent);
+    box-shadow: 0 0 8px var(--color-accent);
+    background-color: rgba(0, 128, 255, 0.4); /* Azul acentuado semitransparente */
 }
 
 #sprite-properties-view {
