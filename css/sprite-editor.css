@@ -64,6 +64,15 @@
     color: white;
 }
 
+/* Estilos para el estado maximizado del panel */
+.floating-panel.maximized {
+    top: var(--menubar-height) !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - var(--menubar-height)) !important;
+    transform: none !important;
+}
+
 /* Nuevos estilos para el recorte por cuadrícula */
 #sprite-editor-toolbar .grid-input {
     width: 50px;
@@ -73,16 +82,18 @@
 
 /* Estilos para el contenedor de reconstrucción */
 .reconstruction-container {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columnas */
     gap: 16px;
     padding: 8px;
+    justify-items: center;
 }
 
 .reconstruction-group {
     position: relative;
     border: 1px dashed var(--color-border);
     background-color: var(--color-background-deep);
+    max-width: 100%; /* Asegura que no se desborde de la celda de la cuadrícula */
 }
 
 .reconstruction-tile {

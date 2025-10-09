@@ -936,10 +936,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const panel = document.getElementById('sprite-editor-panel');
                 if (panel) {
                     panel.classList.toggle('hidden');
+                    // Si lo abrimos, nos aseguramos de que no esté maximizado por defecto
+                    if (!panel.classList.contains('hidden')) {
+                        panel.classList.remove('maximized');
+                    }
                     updateWindowMenuUI();
                 }
             }
         });
+
+        // Maximizar/Restaurar para el editor de sprites
+        const spriteEditorMaximizeBtn = document.getElementById('sprite-editor-maximize-btn');
+        if (spriteEditorMaximizeBtn) {
+            spriteEditorMaximizeBtn.addEventListener('click', () => {
+                const panel = document.getElementById('sprite-editor-panel');
+                if (panel) {
+                    panel.classList.toggle('maximized');
+                }
+            });
+        }
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
 

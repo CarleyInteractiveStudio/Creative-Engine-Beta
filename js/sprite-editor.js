@@ -27,6 +27,11 @@ class SpriteEditor {
         document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSliceByGrid());
         document.getElementById('sprite-editor-show-properties-btn').addEventListener('click', () => this.togglePropertiesVisibility());
 
+        // The maximize button logic will be handled in the main editor script where panel management resides
+        document.getElementById('sprite-editor-maximize-btn').addEventListener('click', () => {
+            this.panel.classList.toggle('maximized');
+        });
+
         const propInputs = this.propertiesView.querySelectorAll('input');
         propInputs.forEach(input => input.addEventListener('change', () => this.updateSpriteFromProperties()));
     }
@@ -141,6 +146,7 @@ class SpriteEditor {
             groupContainer.className = 'reconstruction-group';
             groupContainer.style.width = `${group.rect.width}px`;
             groupContainer.style.height = `${group.rect.height}px`;
+            groupContainer.title = `Grupo: ${groupName}\nTamaño: ${group.rect.width}x${group.rect.height}`;
 
             for (const spriteName in group.sprites) {
                 const sprite = group.sprites[spriteName];
@@ -158,7 +164,10 @@ class SpriteEditor {
                 tile.style.top = `${sprite.rect.y - group.rect.y}px`;
                 tile.style.backgroundImage = `url(${tempCanvas.toDataURL()})`;
 
-                tile.addEventListener('click', () => this.selectSprite(spriteName));
+                tile.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.selectSprite(spriteName)
+                });
                 groupContainer.appendChild(tile);
             }
             this.spriteListContainer.appendChild(groupContainer);
@@ -172,11 +181,7 @@ class SpriteEditor {
 
         // Update visual selection in the reconstruction view
         document.querySelectorAll('.reconstruction-tile').forEach(tile => {
-            if (tile.dataset.spriteName === spriteName) {
-                tile.classList.add('selected');
-            } else {
-                tile.classList.remove('selected');
-            }
+            tile.classList.toggle('selected', tile.dataset.spriteName === spriteName);
         });
 
         this.updatePropertiesView();
@@ -322,11 +327,12 @@ class SpriteEditor {
         this.loadedImage.src = URL.createObjectURL(file);
     }
 
-    // Unchanged Methods (simplified)
+    // --- Unchanged Methods (simplified) ---
+    initCanvasEvents() { /* This logic is not part of the auto-slice feature */ }
+    addNewSprite() { /* This logic is not part of the auto-slice feature */ }
     async loadImage() {
         try {
             const [fileHandle] = await window.showOpenFilePicker({ types: [{ description: 'Images', accept: { 'image/*': ['.png', '.jpeg', '.jpg', '.webp'] } }] });
-            // In a real scenario, we would need a way to get the directory handle too.
             // For this implementation, we assume metadata is not being loaded this way.
             this.openWithImageFile(fileHandle, null);
         } catch (e) { console.log("File picker cancelled."); }
