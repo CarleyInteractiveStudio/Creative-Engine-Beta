@@ -788,23 +788,26 @@
         </div>
         <div class="panel-content no-padding">
             <div id="sprite-editor-toolbar">
-                <div class="toolbar-group">
-                    <label>Spritesheet:</label>
+                <div class="toolbar-group main-actions">
                     <button id="sprite-editor-select-image-btn">Seleccionar Imagen...</button>
                     <span id="sprite-editor-image-name">Ninguna</span>
+                    <div class="divider"></div>
+                    <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente.">Añadir Recorte Manual</button>
                 </div>
-                <div class="toolbar-group">
-                    <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente dibujando un rectángulo en el canvas.">Añadir Recorte</button>
-                </div>
-                <div class="toolbar-group">
-                    <label>Auto Recortar por Cuadrícula:</label>
-                    <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32" title="Ancho de la celda">
-                    <label>x</label>
-                    <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32" title="Alto de la celda">
-                    <button id="sprite-editor-auto-slice-btn">Auto Recortar</button>
-                    <div class="checkbox-field" style="margin-left: 10px;">
-                        <input type="checkbox" id="sprite-editor-precise-mode">
-                        <label for="sprite-editor-precise-mode" title="Si está activado, el recorte seguirá el contorno exacto del dibujo en lugar de una cuadrícula.">Modo Preciso</label>
+                <div class="slicing-options">
+                    <h5 class="options-title">Opciones de Recorte Automático</h5>
+                    <div class="toolbar-group">
+                        <button id="sprite-editor-auto-slice-btn">Ejecutar Auto-Recorte</button>
+                        <div class="divider"></div>
+                        <label for="sprite-editor-grid-width">Ancho Cuadrícula:</label>
+                        <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32">
+                        <label for="sprite-editor-grid-height">Alto Cuadrícula:</label>
+                        <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32">
+                        <div class="divider"></div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="sprite-editor-precise-mode">
+                            <label for="sprite-editor-precise-mode" title="Si está activado, el recorte seguirá el contorno exacto del dibujo en lugar de una cuadrícula.">Modo Preciso</label>
+                        </div>
                     </div>
                 </div>
             </div>

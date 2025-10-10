@@ -3,7 +3,8 @@
 #sprite-editor-main-view {
     display: flex;
     width: 100%;
-    height: calc(100% - 35px); /* Altura total menos la barra de herramientas */
+    /* Adjust height to account for the larger toolbar, approx 80px */
+    height: calc(100% - 80px);
 }
 
 #sprite-editor-canvas-container {
@@ -125,17 +126,52 @@
 
 #sprite-editor-toolbar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column; /* Apilar acciones principales y opciones */
     padding: 5px;
     background-color: var(--color-background-header);
     border-bottom: 1px solid var(--color-border);
-    height: 35px;
+    height: auto; /* Permitir que la altura se ajuste al contenido */
+}
+
+.toolbar-group.main-actions {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.toolbar-group .divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--color-border);
+    margin: 0 10px;
+}
+
+.slicing-options {
+    border-top: 1px solid var(--color-border-dark);
+    margin-top: 5px;
+    padding: 8px 0 5px 0;
+    width: 100%;
+}
+
+.slicing-options .options-title {
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.slicing-options .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espacio entre elementos de opciones */
 }
 
 #sprite-editor-panel-overlay {
     position: absolute;
-    top: 35px; /* Debajo de la barra de herramientas */
+    top: 80px; /* Ajustado a la nueva altura aproximada de la barra de herramientas */
     left: 0;
     right: 0;
     bottom: 0;
