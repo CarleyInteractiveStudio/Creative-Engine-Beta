@@ -27,9 +27,7 @@ class SpriteEditor {
         document.getElementById('sprite-editor-auto-slice-btn').addEventListener('click', () => this.autoSlice());
         document.getElementById('sprite-editor-show-properties-btn').addEventListener('click', () => this.togglePropertiesVisibility());
 
-        document.getElementById('sprite-editor-maximize-btn').addEventListener('click', () => {
-            this.panel.classList.toggle('maximized');
-        });
+        // The maximize button logic is now handled exclusively in editor.js to avoid conflicts.
 
         const propInputs = this.propertiesView.querySelectorAll('input');
         propInputs.forEach(input => input.addEventListener('change', () => this.updateSpriteFromProperties()));
@@ -59,54 +57,56 @@ class SpriteEditor {
         this.selectSprite(null);
 
         const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        const mainVisited = new Array(imageData.width * imageData.height).fill(false);
-        const islands = [];
-
-        // 1. Find main islands
-        for (let y = 0; y < imageData.height; y++) {
-            for (let x = 0; x < imageData.width; x++) {
-                if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !mainVisited[y * imageData.width + x]) {
-                    const island = this.findSpriteIsland(imageData, x, y, mainVisited);
-                    if (island.rect.width > 0 && island.rect.height > 0) {
-                        islands.push(island.rect);
-                    }
-                }
-            }
-        }
-
+        const visited = new Array(imageData.width * imageData.height).fill(false);
         let totalSprites = 0;
         const textureName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.') || 'sprite';
 
-        islands.forEach((islandRect, index) => {
-            const groupName = `group_${index}`;
-            this.activeSpriteSheet.addGroup(groupName, islandRect);
+        if (isPreciseMode) {
+            // --- PRECISE MODE (Corrected Logic) ---
+            // Find all individual pixel islands across the entire image in one pass.
+            // Each island becomes a sprite in a single group.
+            const groupName = "Precise_Cut";
+            this.activeSpriteSheet.addGroup(groupName, {x: 0, y: 0, width: imageData.width, height: imageData.height});
 
-            if (isPreciseMode) {
-                // --- PRECISE MODE ---
-                // Find sub-islands within the main island's bounding box
-                const subVisited = new Array(imageData.width * imageData.height).fill(false);
-                for (let y = islandRect.y; y < islandRect.y + islandRect.height; y++) {
-                    for (let x = islandRect.x; x < islandRect.x + islandRect.width; x++) {
-                        if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !subVisited[y * imageData.width + x]) {
-                            const subIsland = this.findSpriteIsland(imageData, x, y, subVisited, mainVisited); // Pass mainVisited to respect main island boundaries
-                            if (subIsland.rect.width > 0 && subIsland.rect.height > 0) {
-                                const spriteName = `${textureName}_${totalSprites++}`;
-                                const newSprite = new SpriteData(spriteName, subIsland.rect.x, subIsland.rect.y, subIsland.rect.width, subIsland.rect.height);
-                                this.activeSpriteSheet.addSprite(newSprite, groupName);
-                            }
+            for (let y = 0; y < imageData.height; y++) {
+                for (let x = 0; x < imageData.width; x++) {
+                    if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !visited[y * imageData.width + x]) {
+                        const island = this.findSpriteIsland(imageData, x, y, visited);
+                        if (island.rect.width > 0 && island.rect.height > 0) {
+                            const spriteName = `${textureName}_${totalSprites++}`;
+                            const newSprite = new SpriteData(spriteName, island.rect.x, island.rect.y, island.rect.width, island.rect.height);
+                            this.activeSpriteSheet.addSprite(newSprite, groupName);
                         }
                     }
                 }
-            } else {
-                // --- GRID MODE ---
-                // Generate grid lines for drawing on main canvas
+            }
+        } else {
+            // --- GRID MODE ---
+            // Find main islands first
+            const islands = [];
+            for (let y = 0; y < imageData.height; y++) {
+                for (let x = 0; x < imageData.width; x++) {
+                    if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !visited[y * imageData.width + x]) {
+                        const island = this.findSpriteIsland(imageData, x, y, visited);
+                        if (island.rect.width > 0 && island.rect.height > 0) {
+                            islands.push(island.rect);
+                        }
+                    }
+                }
+            }
+
+            // Then, subdivide each island by the grid
+            islands.forEach((islandRect, index) => {
+                const groupName = `group_${index}`;
+                this.activeSpriteSheet.addGroup(groupName, islandRect);
+                // Generate grid lines for drawing
                 for (let y = islandRect.y; y < islandRect.y + islandRect.height; y += gridH) {
                     this.gridLines.push({ x1: islandRect.x, y1: y, x2: islandRect.x + islandRect.width, y2: y });
                 }
                 for (let x = islandRect.x; x < islandRect.x + islandRect.width; x += gridW) {
                     this.gridLines.push({ x1: x, y1: islandRect.y, x2: x, y2: islandRect.y + islandRect.height });
                 }
-                // Create sprites based on the grid
+                // Create sprites
                 for (let y = islandRect.y; y < islandRect.y + islandRect.height; y += gridH) {
                     for (let x = islandRect.x; x < islandRect.x + islandRect.width; x += gridW) {
                         if (x + gridW <= islandRect.x + islandRect.width && y + gridH <= islandRect.y + islandRect.height) {
@@ -116,19 +116,18 @@ class SpriteEditor {
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         this.renderReconstructionView();
         this.draw();
     }
 
-    findSpriteIsland(imageData, startX, startY, visited, boundaryMask = null) {
+    findSpriteIsland(imageData, startX, startY, visited) {
         const { data, width, height } = imageData;
         const queue = [{ x: startX, y: startY }];
         let minX = startX, maxX = startX, minY = startY, maxY = startY;
         visited[startY * width + startX] = true;
-        if (boundaryMask) boundaryMask[startY * width + startX] = true;
 
         let head = 0;
         while (head < queue.length) {
@@ -138,18 +137,14 @@ class SpriteEditor {
 
             const neighbors = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
             for (const neighbor of neighbors) {
-                const nx = x + neighbor.dx, ny = y + neighbor.dy;
+                const nx = x + neighbor.dx;
+                const ny = y + neighbor.dy;
+
                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                     const nIndex = ny * width + nx;
                     if (data[nIndex * 4 + 3] > 0 && !visited[nIndex]) {
-                        if (boundaryMask && !boundaryMask[nIndex]) { // Respect the outer boundary if provided
-                             visited[nIndex] = true;
-                             boundaryMask[nIndex] = true;
-                             queue.push({ x: nx, y: ny });
-                        } else if (!boundaryMask) {
-                             visited[nIndex] = true;
-                             queue.push({ x: nx, y: ny });
-                        }
+                        visited[nIndex] = true;
+                        queue.push({ x: nx, y: ny });
                     }
                 }
             }
