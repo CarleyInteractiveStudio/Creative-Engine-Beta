@@ -945,15 +945,57 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Maximizar/Restaurar para el editor de sprites
-        const spriteEditorMaximizeBtn = document.getElementById('sprite-editor-maximize-btn');
-        if (spriteEditorMaximizeBtn) {
-            spriteEditorMaximizeBtn.addEventListener('click', () => {
-                const panel = document.getElementById('sprite-editor-panel');
-                if (panel) {
-                    panel.classList.toggle('maximized');
+        // Lógica de Maximizar/Restaurar para paneles flotantes
+        const setupMaximizeHandler = (button) => {
+            if (!button) return;
+            button.addEventListener('click', () => {
+                const panel = button.closest('.floating-panel');
+                if (!panel) return;
+
+                const isMaximized = panel.classList.contains('maximized');
+
+                if (isMaximized) {
+                    // --- RESTAURAR ---
+                    panel.classList.remove('maximized');
+                    if (panel.dataset.originalStyle) {
+                        try {
+                            const style = JSON.parse(panel.dataset.originalStyle);
+                            panel.style.top = style.top;
+                            panel.style.left = style.left;
+                            panel.style.width = style.width;
+                            panel.style.height = style.height;
+                            panel.style.transform = style.transform;
+                        } catch (e) {
+                            console.error("Error al restaurar el estilo del panel:", e);
+                            // Fallback por si acaso
+                            panel.style.top = '15%';
+                            panel.style.left = '15%';
+                            panel.style.width = '70%';
+                            panel.style.height = '70%';
+                        }
+                    }
+                } else {
+                    // --- MAXIMIZAR ---
+                    const originalStyle = {
+                        top: panel.style.top,
+                        left: panel.style.left,
+                        width: panel.style.width,
+                        height: panel.style.height,
+                        transform: panel.style.transform,
+                    };
+                    panel.dataset.originalStyle = JSON.stringify(originalStyle);
+                    panel.classList.add('maximized');
                 }
             });
+        };
+
+        // Aplicar a todos los botones de maximizar que sigan la convención de clase
+        document.querySelectorAll('.floating-panel .maximize-btn').forEach(setupMaximizeHandler);
+
+        // Aplicar específicamente al del editor de sprites que usa un ID único
+        const spriteEditorMaximizeBtn = document.getElementById('sprite-editor-maximize-btn');
+        if (spriteEditorMaximizeBtn) {
+             setupMaximizeHandler(spriteEditorMaximizeBtn);
         }
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---

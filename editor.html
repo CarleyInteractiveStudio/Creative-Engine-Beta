@@ -787,42 +787,49 @@
             </div>
         </div>
         <div class="panel-content no-padding">
+            <!-- NToolbReorganizada -->
             <div id="sprite-editor-toolbar">
+                <!-- Acciones Generales -->
                 <div class="toolbar-group main-actions">
-                    <button id="sprite-editor-select-image-btn">Seleccionar Imagen...</button>
+                    <button id="sprite-editor-select-image-btn">Cargar Imagen...</button>
                     <span id="sprite-editor-image-name">Ninguna</span>
                     <div class="divider"></div>
-                    <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente.">Añadir Recorte Manual</button>
+                    <button id="sprite-editor-add-slice-btn" title="Añadir un recorte manualmente.">Añadir Recorte</button>
                 </div>
+                <!-- Opciones de Recorte Automático -->
                 <div class="slicing-options">
                     <h5 class="options-title">Opciones de Recorte Automático</h5>
                     <div class="toolbar-group">
-                        <button id="sprite-editor-auto-slice-btn">Ejecutar Auto-Recorte</button>
-                        <div class="divider"></div>
-                        <label for="sprite-editor-grid-width">Ancho Cuadrícula:</label>
-                        <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32">
-                        <label for="sprite-editor-grid-height">Alto Cuadrícula:</label>
-                        <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32">
+                        <button id="sprite-editor-auto-slice-btn">Auto-Recortar</button>
                         <div class="divider"></div>
                         <div class="checkbox-field">
                             <input type="checkbox" id="sprite-editor-precise-mode">
-                            <label for="sprite-editor-precise-mode" title="Si está activado, el recorte seguirá el contorno exacto del dibujo en lugar de una cuadrícula.">Modo Preciso</label>
+                            <label for="sprite-editor-precise-mode" title="Modo Inteligente: Detecta el tamaño óptimo de rejilla para cada isla de píxeles. Desactivado: Usa el tamaño de rejilla manual.">Modo Preciso</label>
                         </div>
+                        <div class="divider"></div>
+                        <label for="sprite-editor-grid-width">Ancho Rejilla:</label>
+                        <input type="number" id="sprite-editor-grid-width" class="grid-input" value="32">
+                        <label for="sprite-editor-grid-height">Alto Rejilla:</label>
+                        <input type="number" id="sprite-editor-grid-height" class="grid-input" value="32">
                     </div>
                 </div>
             </div>
+            <!-- Vista Principal (dividida) -->
             <div id="sprite-editor-main-view">
+                <!-- Panel Izquierdo: Canvas -->
                 <div id="sprite-editor-canvas-container">
                     <canvas id="sprite-editor-canvas"></canvas>
                 </div>
-                <div id="sprite-editor-properties-container">
-                    <div id="sprite-list-view">
-                        <h4>Grupos Recortados</h4>
-                        <div id="sprite-list" class="list-content reconstruction-container"></div>
+                <div class="resizer-v" id="sprite-editor-resizer"></div>
+                <!-- Panel Derecho: Sprites Recortados y Propiedades -->
+                <div id="sprite-editor-right-panel">
+                    <div id="sprite-reconstruction-container" class="scrollable-container">
+                        <div id="reconstruction-grid">
+                            <!-- Los grupos reconstruidos se insertarán aquí -->
+                        </div>
                     </div>
-                    <div id="sprite-properties-view" class="hidden">
-                         <button id="sprite-editor-show-properties-btn" class="hidden" style="width: 100%; margin-bottom: 10px;">Ver/Editar Propiedades</button>
-                        <div id="sprite-properties-fields" class="hidden">
+                    <div id="sprite-properties-view">
+                        <div id="sprite-properties-fields">
                             <h4>Propiedades del Sprite</h4>
                             <div class="property-field">
                                 <label for="sprite-prop-name">Nombre</label>
@@ -831,20 +838,23 @@
                             <div class="property-field">
                                 <label>Rect (X, Y, W, H)</label>
                                 <div class="multi-input">
-                                    <input type="number" id="sprite-prop-rect-x">
-                                    <input type="number" id="sprite-prop-rect-y">
-                                    <input type="number" id="sprite-prop-rect-w">
-                                    <input type="number" id="sprite-prop-rect-h">
+                                    <input type="number" id="sprite-prop-rect-x" readonly>
+                                    <input type="number" id="sprite-prop-rect-y" readonly>
+                                    <input type="number" id="sprite-prop-rect-w" readonly>
+                                    <input type="number" id="sprite-prop-rect-h" readonly>
                                 </div>
                             </div>
                             <div class="property-field">
-                                <label>Pivote (X, Y)</label>
+                                <label>Pivote (0-1)</label>
                                 <div class="multi-input">
-                                    <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
-                                    <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
+                                    <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1" value="0.5">
+                                    <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1" value="0.5">
                                 </div>
                             </div>
                             <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
+                        </div>
+                         <div id="sprite-properties-placeholder">
+                            <p>Selecciona un sprite para ver sus propiedades.</p>
                         </div>
                     </div>
                 </div>
