@@ -1,31 +1,5 @@
 import { SpriteData, SpriteSheet } from './sprite.js';
 
-// Helper function for Greatest Common Divisor
-function gcd(a, b) {
-    return b === 0 ? a : gcd(b, a % b);
-}
-
-// Helper function to find optimal grid size
-function findOptimalGridSize(width, height) {
-    if (width <= 8 || height <= 8) return { w: width, h: height }; // Too small to divide
-
-    const commonDivisor = gcd(width, height);
-    if (commonDivisor >= 16) {
-        return { w: commonDivisor, h: commonDivisor };
-    }
-
-    // If GCD is too small, try common sizes
-    const standardSizes = [64, 48, 32, 24, 16, 8];
-    for (const size of standardSizes) {
-        if (width % size === 0 && height % size === 0) {
-            return { w: size, h: size };
-        }
-    }
-    // Fallback if no clean division is found
-    return { w: width, h: height };
-}
-
-
 class SpriteEditor {
     constructor() {
         // --- DOM Elements ---
@@ -35,7 +9,6 @@ class SpriteEditor {
         this.overlay = document.getElementById('sprite-editor-panel-overlay');
         this.spriteSheetNameLabel = document.getElementById('sprite-editor-image-name');
 
-        // New UI Elements
         this.rightPanel = document.getElementById('sprite-editor-right-panel');
         this.canvasContainer = document.getElementById('sprite-editor-canvas-container');
         this.resizer = document.getElementById('sprite-editor-resizer');
@@ -50,12 +23,8 @@ class SpriteEditor {
         this.selectedSpriteName = null;
         this.currentAssetFileHandle = null;
         this.currentDirHandle = null;
-        this.zoom = 1;
-        this.pan = { x: 0, y: 0 };
-        this.isPanning = false;
 
         this.initUI();
-        this.initCanvasEvents();
     }
 
     initUI() {
@@ -82,7 +51,7 @@ class SpriteEditor {
                 const newLeftWidth = moveEvent.clientX - containerRect.left;
                 const newRightWidth = containerRect.right - moveEvent.clientX;
 
-                if (newLeftWidth > 200 && newRightWidth > 250) { // Minimum panel widths
+                if (newLeftWidth > 200 && newRightWidth > 250) {
                     this.canvasContainer.style.flex = `0 1 ${newLeftWidth}px`;
                     this.rightPanel.style.flex = `0 1 ${newRightWidth}px`;
                 }
@@ -100,12 +69,100 @@ class SpriteEditor {
         });
     }
 
-    initCanvasEvents() {
-        // Add zoom and pan logic here if needed
+    // --- Slicing Algorithms ---
+
+    /**
+     * Finds the bounding box of the very first contiguous group of non-transparent pixels
+     * within a given area (the "island"). This is used to determine the grid size in precise mode.
+     */
+    findFirstSpriteBounds(imageData, islandRect) {
+        const { data, width: totalWidth } = imageData;
+        const visited = new Set();
+
+        for (let y = islandRect.y; y < islandRect.y + islandRect.height; y++) {
+            for (let x = islandRect.x; x < islandRect.x + islandRect.width; x++) {
+                const index = y * totalWidth + x;
+                // Find the first non-transparent pixel that hasn't been visited yet
+                if (data[index * 4 + 3] > 0) {
+                    // This is the top-left of our first sprite, now find its bounds
+                    const queue = [{ x, y }];
+                    visited.add(`${x},${y}`);
+                    let minX = x, maxX = x, minY = y, maxY = y;
+
+                    let head = 0;
+                    while(head < queue.length) {
+                        const current = queue[head++];
+                        minX = Math.min(minX, current.x);
+                        maxX = Math.max(maxX, current.x);
+                        minY = Math.min(minY, current.y);
+                        maxY = Math.max(maxY, current.y);
+
+                        const neighbors = [{dx: 0, dy: 1}, {dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: -1, dy: 0}];
+                        for(const n of neighbors) {
+                            const nx = current.x + n.dx;
+                            const ny = current.y + n.dy;
+                            const nKey = `${nx},${ny}`;
+
+                            // Stay within the original image bounds
+                            if(nx >= 0 && nx < totalWidth && ny >= 0 && ny < imageData.height && !visited.has(nKey)) {
+                                const nIndex = ny * totalWidth + nx;
+                                if (data[nIndex * 4 + 3] > 0) {
+                                    visited.add(nKey);
+                                    queue.push({x: nx, y: ny});
+                                }
+                            }
+                        }
+                    }
+                    return { width: (maxX - minX) + 1, height: (maxY - minY) + 1 };
+                }
+            }
+        }
+        return null; // No sprite found in the island
     }
 
-    // --- Core Slicing Logic ---
+    /**
+     * Finds the bounding box of a large group of pixels, ignoring internal transparency.
+     * This is used to find the main "islands" of sprites on the sheet.
+     */
+    findPixelIsland(imageData, startX, startY, visited) {
+        const { data, width, height } = imageData;
+        const queue = [{ x: startX, y: startY }];
+        let minX = startX, maxX = startX, minY = startY, maxY = startY;
 
+        const startIndex = startY * width + startX;
+        if (visited[startIndex]) return null;
+        visited[startIndex] = true;
+
+        let head = 0;
+        while (head < queue.length) {
+            const { x, y } = queue[head++];
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+
+            // Check 8 directions for more robust island detection
+            for(let dy = -1; dy <= 1; dy++) {
+                for(let dx = -1; dx <= 1; dx++) {
+                    if(dx === 0 && dy === 0) continue;
+
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        const nIndex = ny * width + nx;
+                        if (data[nIndex * 4 + 3] > 0 && !visited[nIndex]) {
+                            visited[nIndex] = true;
+                            queue.push({ x: nx, y: ny });
+                        }
+                    }
+                }
+            }
+        }
+        return { x: minX, y: minY, width: (maxX - minX) + 1, height: (maxY - minY) + 1 };
+    }
+
+    /**
+     * Main auto-slicing function.
+     */
     autoSlice() {
         if (!this.loadedImage) {
             alert("Por favor, carga una imagen primero.");
@@ -129,7 +186,7 @@ class SpriteEditor {
         this.selectSprite(null);
 
         const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        const visited = new Array(imageData.width * imageData.height).fill(false);
+        const visitedIslands = new Array(imageData.width * imageData.height).fill(false);
         const textureBaseName = this.activeSpriteSheet.texturePath.split('.').slice(0, -1).join('.') || 'sprite';
         let spriteCounter = 0;
 
@@ -137,30 +194,41 @@ class SpriteEditor {
         const islands = [];
         for (let y = 0; y < imageData.height; y++) {
             for (let x = 0; x < imageData.width; x++) {
-                if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !visited[y * imageData.width + x]) {
-                    const islandRect = this.findSpriteIsland(imageData, x, y, visited);
-                    if (islandRect.width > 0 && islandRect.height > 0) {
+                if (imageData.data[(y * imageData.width + x) * 4 + 3] > 0 && !visitedIslands[y * imageData.width + x]) {
+                    const islandRect = this.findPixelIsland(imageData, x, y, visitedIslands);
+                    if (islandRect) {
                         islands.push(islandRect);
                     }
                 }
             }
         }
 
-        // 2. Process each island based on the selected mode
+        // 2. Process each island
         islands.forEach((islandRect, index) => {
             const groupName = `Grupo_${index}`;
             this.activeSpriteSheet.addGroup(groupName, islandRect);
 
+            let sliceW, sliceH;
+
             if (isPreciseMode) {
                 // --- PRECISE MODE ---
-                const optimalSize = findOptimalGridSize(islandRect.width, islandRect.height);
-                console.log(`Modo Preciso para Grupo_${index}: Tamaño óptimo detectado -> ${optimalSize.w}x${optimalSize.h}`);
-                this.sliceAreaByGrid(islandRect, optimalSize.w, optimalSize.h, groupName, textureBaseName, spriteCounter);
-
+                const firstSpriteBounds = this.findFirstSpriteBounds(imageData, islandRect);
+                if (firstSpriteBounds) {
+                    sliceW = firstSpriteBounds.width;
+                    sliceH = firstSpriteBounds.height;
+                    console.log(`Modo Preciso para ${groupName}: Tamaño de sprite detectado -> ${sliceW}x${sliceH}`);
+                } else {
+                    // Fallback if no sprite is found in the island
+                    sliceW = islandRect.width;
+                    sliceH = islandRect.height;
+                }
             } else {
                 // --- GRID MODE ---
-                this.sliceAreaByGrid(islandRect, gridW, gridH, groupName, textureBaseName, spriteCounter);
+                sliceW = gridW;
+                sliceH = gridH;
             }
+
+            spriteCounter = this.sliceAreaByGrid(islandRect, sliceW, sliceH, groupName, textureBaseName, spriteCounter);
         });
 
         this.renderReconstructionView();
@@ -190,42 +258,6 @@ class SpriteEditor {
         return currentCount; // Return updated counter
     }
 
-
-    findSpriteIsland(imageData, startX, startY, visited) {
-        const { data, width, height } = imageData;
-        const queue = [{ x: startX, y: startY }];
-        let minX = startX, maxX = startX, minY = startY, maxY = startY;
-        const index = startY * width + startX;
-        visited[index] = true;
-
-        let head = 0;
-        while (head < queue.length) {
-            const { x, y } = queue[head++];
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-
-            // Check 8 directions for more robust island detection
-            for(let dy = -1; dy <= 1; dy++) {
-                for(let dx = -1; dx <= 1; dx++) {
-                    if(dx === 0 && dy === 0) continue;
-
-                    const nx = x + dx;
-                    const ny = y + dy;
-
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        const nIndex = ny * width + nx;
-                        if (data[nIndex * 4 + 3] > 0 && !visited[nIndex]) {
-                            visited[nIndex] = true;
-                            queue.push({ x: nx, y: ny });
-                        }
-                    }
-                }
-            }
-        }
-        return { x: minX, y: minY, width: (maxX - minX) + 1, height: (maxY - minY) + 1 };
-    }
-
-
     // --- UI Rendering & Interaction ---
 
     renderReconstructionView() {
@@ -248,14 +280,12 @@ class SpriteEditor {
 
             const groupCanvas = document.createElement('div');
             groupCanvas.className = 'reconstruction-group-canvas';
-            // Set aspect ratio to maintain shape
             groupCanvas.style.width = '100%';
             groupCanvas.style.aspectRatio = `${group.rect.width} / ${group.rect.height}`;
 
             for (const spriteName in group.sprites) {
                 const sprite = group.sprites[spriteName];
 
-                // Use temp canvas to get sprite image data URL
                 tempCanvas.width = sprite.rect.width;
                 tempCanvas.height = sprite.rect.height;
                 tempCtx.clearRect(0,0, tempCanvas.width, tempCanvas.height);
@@ -265,12 +295,10 @@ class SpriteEditor {
                 tile.className = 'reconstruction-tile';
                 tile.dataset.spriteName = spriteName;
 
-                // Position and size are percentages of the parent container
                 tile.style.left = `${((sprite.rect.x - group.rect.x) / group.rect.width) * 100}%`;
                 tile.style.top = `${((sprite.rect.y - group.rect.y) / group.rect.height) * 100}%`;
                 tile.style.width = `${(sprite.rect.width / group.rect.width) * 100}%`;
                 tile.style.height = `${(sprite.rect.height / group.rect.height) * 100}%`;
-
                 tile.style.backgroundImage = `url(${tempCanvas.toDataURL()})`;
 
                 tile.addEventListener('click', (e) => {
@@ -286,16 +314,12 @@ class SpriteEditor {
 
     selectSprite(spriteName) {
         if (this.selectedSpriteName === spriteName) return;
-
         this.selectedSpriteName = spriteName;
-
-        // Update visual selection in reconstruction view
         this.reconstructionGrid.querySelectorAll('.reconstruction-tile').forEach(tile => {
             tile.classList.toggle('selected', tile.dataset.spriteName === spriteName);
         });
-
         this.updatePropertiesView();
-        this.draw(); // Redraw main canvas
+        this.draw();
     }
 
     updatePropertiesView() {
@@ -324,22 +348,18 @@ class SpriteEditor {
     updateSpriteFromProperties() {
         const sprite = this.activeSpriteSheet.getSprite(this.selectedSpriteName);
         if (!sprite) return;
-
-        // Update pivot
         sprite.pivot.x = parseFloat(document.getElementById('sprite-prop-pivot-x').value);
         sprite.pivot.y = parseFloat(document.getElementById('sprite-prop-pivot-y').value);
-
-        // Update name (with validation)
         const newName = document.getElementById('sprite-prop-name').value.trim();
         if (newName !== sprite.name) {
             if (this.activeSpriteSheet.getSprite(newName)) {
                 alert(`El nombre "${newName}" ya existe.`);
-                document.getElementById('sprite-prop-name').value = sprite.name; // Revert
+                document.getElementById('sprite-prop-name').value = sprite.name;
             } else {
                 this.activeSpriteSheet.renameSprite(sprite.name, newName);
                 this.selectedSpriteName = newName;
-                this.renderReconstructionView(); // Re-render to update dataset attributes
-                this.selectSprite(newName); // Reselect with new name to update highlights
+                this.renderReconstructionView();
+                this.selectSprite(newName);
             }
         }
         this.draw();
@@ -358,32 +378,22 @@ class SpriteEditor {
         alert("Funcionalidad de recorte manual no implementada en esta versión.");
     }
 
-
     // --- Canvas Drawing ---
 
     draw() {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Apply pan and zoom if implemented
-        // this.ctx.translate(this.pan.x, this.pan.y);
-        // this.ctx.scale(this.zoom, this.zoom);
-
         if (this.loadedImage) {
             this.ctx.drawImage(this.loadedImage, 0, 0);
         }
-
         if (this.activeSpriteSheet) {
-            // Draw all group bounding boxes
-            this.ctx.strokeStyle = 'rgba(255, 105, 180, 0.75)'; // Hot pink
+            this.ctx.strokeStyle = 'rgba(255, 105, 180, 0.75)';
             this.ctx.lineWidth = 1;
             for (const groupName in this.activeSpriteSheet.groups) {
                 const group = this.activeSpriteSheet.groups[groupName];
                 this.ctx.strokeRect(group.rect.x, group.rect.y, group.rect.width, group.rect.height);
             }
         }
-
-        // Highlight selected sprite on main canvas
         if (this.selectedSpriteName) {
             const sprite = this.activeSpriteSheet.getSprite(this.selectedSpriteName);
             if (sprite) {
@@ -405,17 +415,13 @@ class SpriteEditor {
         this.currentDirHandle = dirHandle;
         this.panel.classList.remove('hidden');
 
-        // Try to load existing .json metadata file
         let spriteSheetData = null;
         const metaFileName = file.name.replace(/\.(png|jpg|jpeg|webp)$/i, '.json');
         try {
             const metaFileHandle = await dirHandle.getFileHandle(metaFileName);
             const metaFile = await metaFileHandle.getFile();
-            const json = await metaFile.text();
-            spriteSheetData = SpriteSheet.fromJson(json);
-            console.log(`Metadatos encontrados y cargados para ${file.name}`);
+            spriteSheetData = SpriteSheet.fromJson(await metaFile.text());
         } catch (error) {
-            console.log(`No se encontraron metadatos para ${file.name}. Creando uno nuevo.`);
             spriteSheetData = new SpriteSheet(file.name);
         }
 
@@ -425,7 +431,6 @@ class SpriteEditor {
             this.spriteSheetNameLabel.textContent = file.name;
             this.canvas.width = this.loadedImage.width;
             this.canvas.height = this.loadedImage.height;
-
             this.overlay.classList.add('hidden');
             this.selectSprite(null);
             this.renderReconstructionView();
@@ -443,7 +448,6 @@ class SpriteEditor {
             alert("No hay una hoja de sprites activa o válida para guardar.");
             return;
         }
-
         try {
             const metaFileName = this.activeSpriteSheet.texturePath.replace(/\.(png|jpg|jpeg|webp)$/i, '.json');
             const metaFileHandle = await this.currentDirHandle.getFileHandle(metaFileName, { create: true });
@@ -458,30 +462,26 @@ class SpriteEditor {
     }
 
     async loadNewImage() {
-        // This function is for when the user clicks the "Load Image" button inside the editor.
-        // It's a simplified flow that doesn't involve directory handles.
         try {
             const [fileHandle] = await window.showOpenFilePicker({
                 types: [{ description: 'Images', accept: { 'image/*': ['.png', '.jpeg', '.jpg', '.webp'] } }]
             });
             const file = await fileHandle.getFile();
-            this.currentDirHandle = null; // Cannot get dir handle this way
+            this.currentDirHandle = null;
             this.currentAssetFileHandle = fileHandle;
 
             this.loadedImage = new Image();
             this.loadedImage.onload = () => {
-                this.activeSpriteSheet = new SpriteSheet(file.name); // Always new
+                this.activeSpriteSheet = new SpriteSheet(file.name);
                 this.spriteSheetNameLabel.textContent = file.name;
                 this.canvas.width = this.loadedImage.width;
                 this.canvas.height = this.loadedImage.height;
-
                 this.overlay.classList.add('hidden');
                 this.selectSprite(null);
                 this.renderReconstructionView();
                 this.draw();
             };
             this.loadedImage.src = URL.createObjectURL(file);
-
         } catch (e) {
             console.log("Selector de archivos cancelado.");
         }
