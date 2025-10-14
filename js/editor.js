@@ -27,7 +27,6 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import { SpriteEditor } from './sprite-editor.js';
-import * as FCodeEditor from './editor/FCodeEditor.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -781,10 +780,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Show/hide the "View Code" button based on the active tab
                     dom.fCodeViewCodeBtn.style.display = (viewId === 'f-code-content') ? 'block' : 'none';
 
-                    // Initialize FCode Editor on first view
+                    // Initialize FCode Editor on first view using dynamic import
                     if (viewId === 'f-code-content' && !isFCodeEditorInitialized) {
-                        FCodeEditor.initialize(dom.blocklyDiv);
-                        isFCodeEditorInitialized = true;
+                        isFCodeEditorInitialized = true; // Set true immediately to prevent re-entry
+                        import('./editor/FCodeEditor.js')
+                            .then(FCodeEditor => {
+                                FCodeEditor.initialize(dom.blocklyDiv);
+                            })
+                            .catch(err => {
+                                console.error("Failed to load FCodeEditor module", err);
+                                isFCodeEditorInitialized = false; // Allow retry on error
+                            });
                     }
                 }
             });
@@ -1596,12 +1602,6 @@ document.addEventListener('DOMContentLoaded', () => {
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);
-
-            // Expose modules for testing purposes
-            window.CreativeEngineEditor = {
-                CodeEditor,
-                FCodeEditor
-            };
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
