@@ -1,43 +1,64 @@
-// --- Module for the Code Editor Window (CodeMirror) ---
-
-import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
-import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
-import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
-import { undo, redo } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+// --- Module for the Code Editor Window (Monaco) ---
 
 // --- Module State ---
 let dom;
 let codeEditor = null;
 let currentlyOpenFileHandle = null;
 
-// --- Autocomplete Logic ---
-const cesKeywords = [
-    { label: "public", type: "keyword" },
-    { label: "private", type: "keyword" },
-    { label: "sprite", type: "type" },
-    { label: "SpriteAnimacion", type: "type" },
-    { label: "crear", type: "function" },
-    { label: "destruir", type: "function" },
-    { label: "reproducir", type: "function" },
-    { label: "obtener", type: "function" },
-    { label: "si", type: "keyword" },
-    { label: "sino", type: "keyword" },
-    { label: "para", type: "keyword" },
-    { label: "mientras", type: "keyword" },
-    { label: "start", type: "function" },
-    { label: "update", type: "function" }
-];
-
-function cesCompletions(context) {
-    let word = context.matchBefore(/\w*/);
-    if (word.from == word.to && !context.explicit) {
-        return null;
+// --- Private Helpers ---
+function getLanguageForFile(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    switch (extension) {
+        case 'js':
+        case 'ces': // Treat custom script as JavaScript
+            return 'javascript';
+        case 'json':
+            return 'json';
+        case 'md':
+            return 'markdown';
+        case 'css':
+            return 'css';
+        case 'html':
+            return 'html';
+        default:
+            return 'plaintext';
     }
-    return {
-        from: word.from,
-        options: cesKeywords
-    };
+}
+
+function registerCustomAutocompletion() {
+    const cesKeywords = [
+        { label: 'public', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'public' },
+        { label: 'private', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'private' },
+        { label: 'sprite', kind: monaco.languages.CompletionItemKind.Class, insertText: 'sprite' },
+        { label: 'SpriteAnimacion', kind: monaco.languages.CompletionItemKind.Class, insertText: 'SpriteAnimacion' },
+        { label: 'crear', kind: monaco.languages.CompletionItemKind.Function, insertText: 'crear()' },
+        { label: 'destruir', kind: monaco.languages.CompletionItemKind.Function, insertText: 'destruir()' },
+        { label: 'reproducir', kind: monaco.languages.CompletionItemKind.Function, insertText: 'reproducir()' },
+        { label: 'obtener', kind: monaco.languages.CompletionItemKind.Function, insertText: 'obtener()' },
+        { label: 'si', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'si () {\n\t\n}' },
+        { label: 'sino', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'sino' },
+        { label: 'para', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'para () {\n\t\n}' },
+        { label: 'mientras', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'mientras () {\n\t\n}' },
+        { label: 'start', kind: monaco.languages.CompletionItemKind.Method, insertText: 'start() {\n\t\n}' },
+        { label: 'update', kind: monaco.languages.CompletionItemKind.Method, insertText: 'update() {\n\t\n}' }
+    ];
+
+    monaco.languages.registerCompletionItemProvider('javascript', {
+        provideCompletionItems: function(model, position) {
+            const word = model.getWordUntilPosition(position);
+            const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn
+            };
+            const suggestions = cesKeywords.map(keyword => ({
+                ...keyword,
+                range: range
+            }));
+            return { suggestions: suggestions };
+        }
+    });
 }
 
 
@@ -48,26 +69,26 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         currentlyOpenFileHandle = await dirHandle.getFileHandle(fileName);
         const file = await currentlyOpenFileHandle.getFile();
         const content = await file.text();
+        const language = getLanguageForFile(fileName);
 
         if (!codeEditor) {
-            codeEditor = new EditorView({
-                doc: content,
-                extensions: [
-                    basicSetup,
-                    javascript(),
-                    oneDark,
-                    autocompletion({ override: [cesCompletions] })
-                ],
-                parent: dom.codemirrorContainer
+            // Use the AMD loader provided by Monaco
+            require(['vs/editor/editor.main'], function () {
+                codeEditor = monaco.editor.create(dom.codemirrorContainer, {
+                    value: content,
+                    language: language,
+                    theme: 'vs-dark',
+                    automaticLayout: true // Ensures the editor resizes correctly
+                });
+                registerCustomAutocompletion();
             });
         } else {
-            codeEditor.dispatch({
-                changes: { from: 0, to: codeEditor.state.doc.length, insert: content }
-            });
+            codeEditor.setValue(content);
+            monaco.editor.setModelLanguage(codeEditor.getModel(), language);
         }
 
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
-        console.log(`Abierto ${fileName} en el editor.`);
+        console.log(`Abierto ${fileName} en el editor con lenguaje ${language}.`);
     } catch (error) {
         console.error(`Error al abrir el script '${fileName}':`, error);
         alert(`No se pudo abrir el script. Revisa la consola.`);
@@ -81,7 +102,7 @@ export async function saveCurrentScript() {
     }
     try {
         const writable = await currentlyOpenFileHandle.createWritable();
-        await writable.write(codeEditor.state.doc.toString());
+        await writable.write(codeEditor.getValue());
         await writable.close();
         console.log(`Script '${currentlyOpenFileHandle.name}' guardado.`);
     } catch (error) {
@@ -91,11 +112,15 @@ export async function saveCurrentScript() {
 }
 
 export function undoLastChange() {
-    if (codeEditor) undo(codeEditor);
+    if (codeEditor) {
+        codeEditor.getModel().undo();
+    }
 }
 
 export function redoLastChange() {
-    if (codeEditor) redo(codeEditor);
+    if (codeEditor) {
+        codeEditor.getModel().redo();
+    }
 }
 
 export function initialize(domCache) {

@@ -756,6 +756,31 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Tab switching for the code editor (P Code, F Code, etc.)
+        const codeEditorTabBar = dom.codeEditorContent.querySelector('.tab-bar');
+        const codeEditorBody = dom.codeEditorContent.querySelector('.code-editor-body');
+
+        if (codeEditorTabBar && codeEditorBody) {
+            codeEditorTabBar.addEventListener('click', (e) => {
+                if (e.target.matches('.tab-btn')) {
+                    const tabId = e.target.dataset.tab;
+
+                    // Deactivate all buttons and content panels first
+                    codeEditorTabBar.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    codeEditorBody.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+                    // Activate the clicked button
+                    e.target.classList.add('active');
+
+                    // Activate the corresponding content panel
+                    const activeContent = codeEditorBody.querySelector(`#${tabId}`);
+                    if (activeContent) {
+                        activeContent.classList.add('active');
+                    }
+                }
+            });
+        }
+
         if (dom.prefsSnappingToggle) {
             dom.prefsSnappingToggle.addEventListener('change', (e) => {
                 if (e.target.checked) {
