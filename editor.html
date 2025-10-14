@@ -902,12 +902,41 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
     <script>
-        require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+        // --- Sequential Script Loader ---
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.body.appendChild(script);
+            });
+        }
+
+        async function loadApp() {
+            try {
+                // 1. Load Monaco Loader
+                await loadScript('https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js');
+
+                // 2. Configure Monaco
+                require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+
+                // 3. Load Blockly scripts
+                await loadScript('https://unpkg.com/blockly/blockly.min.js');
+                await loadScript('https://unpkg.com/blockly/javascript_compressed.js');
+
+                // 4. Finally, load the main application module
+                const editorModule = await import('./js/editor.js?v=1.0');
+
+            } catch (error) {
+                console.error("Fatal error during script loading:", error);
+                // Display a user-friendly error message on the screen
+                document.body.innerHTML = '<div style="color: white; background-color: #1e1e1e; padding: 40px;"><h1>Error Crítico</h1><p>No se pudieron cargar las dependencias principales del editor. Revisa la consola para más detalles.</p></div>';
+            }
+        }
+
+        loadApp();
     </script>
-    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
-    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
-    <script type="module" src="js/editor.js?v=1.0"></script>
 </body>
 </html>
