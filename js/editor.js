@@ -862,6 +862,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', handleKeyboardShortcuts);
 
+        // Code Editor Maximize Button
+        const maximizeBtn = document.getElementById('code-editor-maximize-btn');
+        if (maximizeBtn) {
+            maximizeBtn.addEventListener('click', () => {
+                const scenePanel = dom.scenePanel;
+                scenePanel.classList.toggle('code-editor-maximized');
+                // Trigger layout update for the editor if it exists
+                if (window.monaco && codeEditor) {
+                    setTimeout(() => codeEditor.layout(), 200); // Delay to allow CSS transition
+                }
+            });
+        }
+
         // Modal close buttons
         document.querySelectorAll('.modal .close-button').forEach(button => {
             button.addEventListener('click', (e) => {

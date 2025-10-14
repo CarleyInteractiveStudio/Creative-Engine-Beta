@@ -2231,6 +2231,14 @@ body {
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+    justify-content: space-between; /* Alinea los grupos de elementos */
+}
+
+#code-editor-toolbar .tab-bar {
+    padding: 0;
+    background-color: transparent;
+    border-bottom: none;
+    margin-left: auto; /* Empuja las pestañas a la derecha */
 }
 
 #code-editor-toolbar button {
@@ -2245,9 +2253,16 @@ body {
     background-color: #4f4f56;
 }
 
+#scene-panel.code-editor-maximized {
+    grid-row: 1 / -1;
+    grid-column: 1 / -1;
+    z-index: 1000;
+}
+
+
 #codemirror-container {
-    flex-grow: 1;
-    overflow: hidden; /* Ensures the container itself doesn't scroll */
+    height: 100%;
+    width: 100%;
 }
 
 #codemirror-container .cm-editor {

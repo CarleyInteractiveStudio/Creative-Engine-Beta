@@ -4,6 +4,7 @@
 let dom;
 let codeEditor = null;
 let currentlyOpenFileHandle = null;
+let editorInitializationPromise = null;
 
 // --- Private Helpers ---
 function getLanguageForFile(fileName) {
@@ -25,7 +26,7 @@ function getLanguageForFile(fileName) {
     }
 }
 
-function registerCustomAutocompletion() {
+function registerCustomAutocompletion(monaco) {
     const cesKeywords = [
         { label: 'public', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'public' },
         { label: 'private', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'private' },
@@ -61,31 +62,48 @@ function registerCustomAutocompletion() {
     });
 }
 
+function ensureEditorInitialized() {
+    if (!editorInitializationPromise) {
+        editorInitializationPromise = new Promise((resolve, reject) => {
+            require(['vs/editor/editor.main'], function (monaco) {
+                if (!dom || !dom.codemirrorContainer) {
+                    return reject(new Error("DOM not ready for Monaco Editor initialization."));
+                }
+
+                const editor = monaco.editor.create(dom.codemirrorContainer, {
+                    value: '', // Initial content is empty
+                    language: 'javascript',
+                    theme: 'vs-dark',
+                    automaticLayout: true // Ensures the editor resizes correctly
+                });
+
+                registerCustomAutocompletion(monaco);
+
+                codeEditor = editor; // Assign to module-level variable
+                resolve(editor);
+            }, (error) => {
+                reject(error);
+            });
+        });
+    }
+    return editorInitializationPromise;
+}
 
 // --- Public API ---
 
 export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
     try {
+        // Ensure the editor is initialized before proceeding
+        await ensureEditorInitialized();
+
         currentlyOpenFileHandle = await dirHandle.getFileHandle(fileName);
         const file = await currentlyOpenFileHandle.getFile();
         const content = await file.text();
         const language = getLanguageForFile(fileName);
 
-        if (!codeEditor) {
-            // Use the AMD loader provided by Monaco
-            require(['vs/editor/editor.main'], function () {
-                codeEditor = monaco.editor.create(dom.codemirrorContainer, {
-                    value: content,
-                    language: language,
-                    theme: 'vs-dark',
-                    automaticLayout: true // Ensures the editor resizes correctly
-                });
-                registerCustomAutocompletion();
-            });
-        } else {
-            codeEditor.setValue(content);
-            monaco.editor.setModelLanguage(codeEditor.getModel(), language);
-        }
+        // Now we are sure codeEditor exists
+        codeEditor.setValue(content);
+        window.monaco.editor.setModelLanguage(codeEditor.getModel(), language);
 
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
         console.log(`Abierto ${fileName} en el editor con lenguaje ${language}.`);
