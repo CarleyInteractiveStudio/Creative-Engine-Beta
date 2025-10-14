@@ -3,6 +3,7 @@
 // --- Module State ---
 let dom;
 let codeEditor = null;
+let monacoInstance = null; // Variable to hold the loaded monaco instance
 let currentlyOpenFileHandle = null;
 let editorInitializationPromise = null;
 
@@ -66,6 +67,7 @@ function ensureEditorInitialized() {
     if (!editorInitializationPromise) {
         editorInitializationPromise = new Promise((resolve, reject) => {
             require(['vs/editor/editor.main'], function (monaco) {
+                monacoInstance = monaco; // Store the loaded instance
                 if (!dom || !dom.codemirrorContainer) {
                     return reject(new Error("DOM not ready for Monaco Editor initialization."));
                 }
@@ -101,9 +103,9 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         const content = await file.text();
         const language = getLanguageForFile(fileName);
 
-        // Now we are sure codeEditor exists
+        // Now we are sure codeEditor and monacoInstance exist
         codeEditor.setValue(content);
-        window.monaco.editor.setModelLanguage(codeEditor.getModel(), language);
+        monacoInstance.editor.setModelLanguage(codeEditor.getModel(), language);
 
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
         console.log(`Abierto ${fileName} en el editor con lenguaje ${language}.`);

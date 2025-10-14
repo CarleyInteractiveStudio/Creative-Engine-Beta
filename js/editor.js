@@ -1578,6 +1578,11 @@ document.addEventListener('DOMContentLoaded', () => {
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);
 
+            // Expose modules for testing purposes
+            window.CreativeEngineEditor = {
+                CodeEditor
+            };
+
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
