@@ -137,6 +137,7 @@
                                     <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
                                     <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
                                     <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                                    <button id="f-code-view-code-btn" title="Ver Código Generado" style="display: none;">Ver Código</button>
                                 </div>
                                 <div class="view-toggle code-editor-view-toggle">
                                     <button class="view-toggle-btn active" data-view="p-code-content">P Code</button>
@@ -152,9 +153,11 @@
                             <div id="p-code-content" class="code-view-content active">
                                 <div id="codemirror-container"></div>
                             </div>
-                            <div id="f-code-content" class="code-view-content">
-                                <!-- F Code (Blockly/LiteGraph) will go here -->
-                                <p style="padding: 15px; text-align: center;">El editor de código visual (F Code) estará disponible en una futura actualización.</p>
+                            <div id="f-code-content" class="code-view-content" style="position: relative; display: flex; flex-direction: column;">
+                                <div id="blockly-div" style="flex-grow: 1; position: relative;"></div>
+                                <div id="f-code-preview" style="display: none; background-color: #1e1e1e; padding: 10px; border-top: 1px solid var(--border-color); height: 150px; overflow-y: auto;">
+                                    <pre><code class="language-js"></code></pre>
+                                </div>
                             </div>
                             <div id="linked-code-content" class="code-view-content">
                                 <!-- Linked code view will go here -->
@@ -902,6 +905,14 @@
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
     <script>
         require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+    </script>
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="https://unpkg.com/blockly/javascript_compressed.js"></script>
+    <script type="module" src="js/editor/FCodeEditor.js"></script>
+    <script type="module">
+        // Expose FCodeEditor to the global scope for testing purposes
+        import * as FCodeEditor from './js/editor/FCodeEditor.js';
+        window.FCodeEditor = FCodeEditor;
     </script>
     <script type="module" src="js/editor.js?v=1.0"></script>
 </body>

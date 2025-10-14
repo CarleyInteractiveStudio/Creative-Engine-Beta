@@ -27,6 +27,7 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import { SpriteEditor } from './sprite-editor.js';
+import * as FCodeEditor from './editor/FCodeEditor.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -757,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Tab switching for the code editor (P Code, F Code, etc.) - NEW LOGIC
+        let isFCodeEditorInitialized = false;
         const codeEditorViewToggle = dom.codeEditorContent.querySelector('.code-editor-view-toggle');
         const codeEditorBody = dom.codeEditorContent.querySelector('.code-editor-body');
 
@@ -775,7 +777,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (activeContent) {
                         activeContent.classList.add('active');
                     }
+
+                    // Show/hide the "View Code" button based on the active tab
+                    dom.fCodeViewCodeBtn.style.display = (viewId === 'f-code-content') ? 'block' : 'none';
+
+                    // Initialize FCode Editor on first view
+                    if (viewId === 'f-code-content' && !isFCodeEditorInitialized) {
+                        FCodeEditor.initialize(dom.blocklyDiv);
+                        isFCodeEditorInitialized = true;
+                    }
                 }
+            });
+        }
+
+        // F Code "View Code" button logic
+        if (dom.fCodeViewCodeBtn) {
+            dom.fCodeViewCodeBtn.addEventListener('click', () => {
+                const previewPanel = document.getElementById('f-code-preview');
+                const previewCodeElement = previewPanel.querySelector('code');
+                FCodeEditor.toggleCodePreview(previewPanel, previewCodeElement);
             });
         }
 
@@ -1387,6 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
             'drawing-canvas', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
             'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
+            'blockly-div', 'f-code-view-code-btn', 'f-code-preview',
             'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
@@ -1578,7 +1599,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Expose modules for testing purposes
             window.CreativeEngineEditor = {
-                CodeEditor
+                CodeEditor,
+                FCodeEditor
             };
 
             updateLoadingProgress(60, "Aplicando preferencias...");
