@@ -106,6 +106,7 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         // Now we are sure codeEditor and monacoInstance exist
         codeEditor.setValue(content);
         monacoInstance.editor.setModelLanguage(codeEditor.getModel(), language);
+        codeEditor.focus(); // Set focus to the editor to make it editable immediately
 
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
         console.log(`Abierto ${fileName} en el editor con lenguaje ${language}.`);

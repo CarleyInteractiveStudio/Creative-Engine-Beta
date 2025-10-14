@@ -756,24 +756,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Tab switching for the code editor (P Code, F Code, etc.)
-        const codeEditorTabBar = dom.codeEditorContent.querySelector('.tab-bar');
+        // Tab switching for the code editor (P Code, F Code, etc.) - NEW LOGIC
+        const codeEditorViewToggle = dom.codeEditorContent.querySelector('.code-editor-view-toggle');
         const codeEditorBody = dom.codeEditorContent.querySelector('.code-editor-body');
 
-        if (codeEditorTabBar && codeEditorBody) {
-            codeEditorTabBar.addEventListener('click', (e) => {
-                if (e.target.matches('.tab-btn')) {
-                    const tabId = e.target.dataset.tab;
+        if (codeEditorViewToggle && codeEditorBody) {
+            codeEditorViewToggle.addEventListener('click', (e) => {
+                if (e.target.matches('.view-toggle-btn')) {
+                    const viewId = e.target.dataset.view;
 
-                    // Deactivate all buttons and content panels first
-                    codeEditorTabBar.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                    codeEditorBody.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    // Deactivate all buttons and content panels
+                    codeEditorViewToggle.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                    codeEditorBody.querySelectorAll('.code-view-content').forEach(content => content.classList.remove('active'));
 
-                    // Activate the clicked button
+                    // Activate the clicked button and the corresponding content panel
                     e.target.classList.add('active');
-
-                    // Activate the corresponding content panel
-                    const activeContent = codeEditorBody.querySelector(`#${tabId}`);
+                    const activeContent = codeEditorBody.querySelector(`#${viewId}`);
                     if (activeContent) {
                         activeContent.classList.add('active');
                     }

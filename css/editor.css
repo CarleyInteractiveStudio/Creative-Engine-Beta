@@ -520,43 +520,6 @@ body {
     color: white;
 }
 
-/* --- Code Editor Tabs --- */
-.code-editor-header {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-}
-
-#code-editor-toolbar {
-    border-bottom: none; /* The header will have the bottom border */
-}
-
-.code-editor-header .tab-bar {
-    padding: 0 4px;
-    background-color: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.code-editor-body {
-    flex-grow: 1;
-    position: relative;
-    overflow: hidden;
-}
-
-.code-editor-body .tab-content {
-    display: none;
-    height: 100%;
-    width: 100%;
-    overflow: auto;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-.code-editor-body .tab-content.active {
-    display: block;
-}
-
 /* --- Terminal Styles --- */
 #terminal-content {
     display: flex;
@@ -2251,6 +2214,22 @@ body {
 }
 #code-editor-toolbar button:hover {
     background-color: #4f4f56;
+}
+
+#code-editor-toolbar {
+    justify-content: space-between;
+}
+
+.toolbar-left-group, .toolbar-right-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.code-editor-view-toggle {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
 }
 
 #scene-panel.code-editor-maximized {

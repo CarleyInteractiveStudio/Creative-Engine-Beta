@@ -133,26 +133,30 @@
                     <div id="code-editor-content" class="panel-content view-content no-padding">
                         <div class="code-editor-header">
                             <div id="code-editor-toolbar">
-                                <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
-                                <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
-                                <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
-                                <div class="tab-bar">
-                                    <button class="tab-btn active" data-tab="p-code-content">P Code</button>
-                                    <button class="tab-btn" data-tab="f-code-content">F Code</button>
-                                    <button class="tab-btn" data-tab="linked-code-content">Código Ligado</button>
+                                <div class="toolbar-left-group">
+                                    <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
+                                    <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
+                                    <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
                                 </div>
-                                <button id="code-editor-maximize-btn" class="panel-tool-btn" title="Maximizar/Restaurar">🗖</button>
+                                <div class="view-toggle code-editor-view-toggle">
+                                    <button class="view-toggle-btn active" data-view="p-code-content">P Code</button>
+                                    <button class="view-toggle-btn" data-view="f-code-content">F Code</button>
+                                    <button class="view-toggle-btn" data-view="linked-code-content">Código Ligado</button>
+                                </div>
+                                <div class="toolbar-right-group">
+                                    <button id="code-editor-maximize-btn" class="panel-tool-btn" title="Maximizar/Restaurar">🗖</button>
+                                </div>
                             </div>
                         </div>
                         <div class="code-editor-body">
-                            <div id="p-code-content" class="tab-content active">
+                            <div id="p-code-content" class="code-view-content active">
                                 <div id="codemirror-container"></div>
                             </div>
-                            <div id="f-code-content" class="tab-content">
+                            <div id="f-code-content" class="code-view-content">
                                 <!-- F Code (Blockly/LiteGraph) will go here -->
                                 <p style="padding: 15px; text-align: center;">El editor de código visual (F Code) estará disponible en una futura actualización.</p>
                             </div>
-                            <div id="linked-code-content" class="tab-content">
+                            <div id="linked-code-content" class="code-view-content">
                                 <!-- Linked code view will go here -->
                                 <p style="padding: 15px; text-align: center;">La vista de código ligado estará disponible en una futura actualización.</p>
                             </div>
