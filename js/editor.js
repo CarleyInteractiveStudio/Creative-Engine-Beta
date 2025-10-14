@@ -889,6 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Scene/Game/Code View Toggle Logic
+        let isCodeEditorInitialized = false;
         dom.scenePanel.querySelector('.view-toggle').addEventListener('click', (e) => {
             if (e.target.matches('.view-toggle-btn')) {
                 const viewId = e.target.dataset.view;
@@ -908,6 +909,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameControls.style.display = 'flex';
                 } else {
                     gameControls.style.display = 'none';
+                }
+
+                // Initialize Code Editor on first view
+                if (viewId === 'code-editor-content' && !isCodeEditorInitialized) {
+                    CodeEditor.initializeEditorView();
+                    isCodeEditorInitialized = true;
                 }
 
                 // Ensure canvas is resized after being made visible

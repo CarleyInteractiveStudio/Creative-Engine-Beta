@@ -141,6 +141,12 @@ export function redoLastChange() {
     }
 }
 
+export function initializeEditorView() {
+    // This function is called when the code view is activated.
+    // It ensures the editor is created if it hasn't been already.
+    ensureEditorInitialized();
+}
+
 export function initialize(domCache) {
     dom = domCache;
 
