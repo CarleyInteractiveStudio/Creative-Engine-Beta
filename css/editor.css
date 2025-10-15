@@ -2219,10 +2219,11 @@ body {
     display: inline-flex;
     align-items: center;
     background-color: var(--bg-primary);
-    border-radius: 15px; /* Bubble effect */
-    padding: 3px;
+    border-radius: 18px; /* Slightly larger bubble */
+    padding: 5px; /* Increased padding */
     margin-left: 15px;
     border: 1px solid var(--border-color);
+    gap: 5px; /* Added gap between buttons */
 }
 
 .mode-btn {

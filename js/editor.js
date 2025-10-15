@@ -27,6 +27,7 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import { SpriteEditor } from './sprite-editor.js';
+import * as FCodeEditor from './editor/FCodeEditor.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -128,6 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
         }
+
+        // Give the DOM a moment to update, then resize Blockly if it's visible
+        setTimeout(() => {
+            if (editorMode === 'PFC' || editorMode === 'Ambos') {
+                FCodeEditor.resizeWorkspace();
+            }
+        }, 0);
     }
 
     selectMateria = function(materiaOrId) {
@@ -1616,6 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveAssetMetaCallback: saveAssetMeta,
                 setEditorModeCallback: setEditorMode
             });
+            FCodeEditor.initialize(document.getElementById('blockly-workspace'), document.getElementById('blockly-toolbox'));
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);
