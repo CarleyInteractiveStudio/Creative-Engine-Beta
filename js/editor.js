@@ -109,17 +109,22 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'PFC':
                 blocklyContainer.style.display = 'flex';
                 // Placeholder content for Blockly
-                if (blocklyContainer.innerHTML === '') {
-                    blocklyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">El editor de bloques (PFC) se implementará aquí.</div>';
+                if (blocklyContainer.querySelector('#blockly-workspace').innerHTML.trim() === '') {
+                    blocklyContainer.querySelector('#blockly-toolbox').innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">Categorías y buscador de bloques irán aquí.</div>';
+                    blocklyContainer.querySelector('#blockly-workspace').innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Arrastra bloques aquí para empezar a programar.</div>';
                 }
                 break;
             case 'Ambos':
+                // Temporary adjustment: Show code editor and blockly toolbox, but not the blockly workspace.
                 codeEditorContent.classList.add('split-view');
                 codeWrapper.style.display = 'flex';
-                blocklyContainer.style.display = 'flex';
-                // Placeholder content for Blockly
-                 if (blocklyContainer.innerHTML === '') {
-                    blocklyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">El editor de bloques (PFC) se implementará aquí.</div>';
+                blocklyContainer.style.display = 'flex'; // The container needs to be visible
+                blocklyContainer.querySelector('#blockly-workspace').style.display = 'none'; // Hide the workspace
+                blocklyContainer.querySelector('#blockly-toolbox').style.display = 'block'; // Ensure toolbox is visible
+
+                // Placeholder content for the toolbox
+                if (blocklyContainer.querySelector('#blockly-toolbox').innerHTML.trim() === '') {
+                   blocklyContainer.querySelector('#blockly-toolbox').innerHTML = '<div style="padding: 10px; color: var(--text-secondary);">Arrastra bloques desde aquí a tu código.</div>';
                 }
                 break;
         }

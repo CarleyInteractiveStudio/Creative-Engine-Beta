@@ -503,7 +503,7 @@ body {
     background-color: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 4px 12px;
+    padding: 5px 15px; /* Increased padding */
     cursor: pointer;
     font-size: 0.9em;
     font-weight: 600;
@@ -2188,12 +2188,18 @@ body {
 
 #code-editor-toolbar {
     display: flex;
+    justify-content: space-between; /* This will push left and right apart */
     align-items: center;
-    gap: 10px;
     padding: 4px 8px;
     background-color: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 #code-editor-toolbar button {
@@ -2250,9 +2256,30 @@ body {
     flex: 1 1 50%; /* Each pane takes up 50% of the width */
     height: 100%;
     overflow: hidden;
+    background-color: #1e1e1e; /* Consistent dark background like oneDark theme */
     position: relative; /* For potential resizers */
     display: flex;
     flex-direction: column;
+}
+
+#blockly-container {
+    flex-direction: row; /* Override the column direction for this specific pane */
+}
+
+#blockly-toolbox {
+    width: 200px; /* Fixed width for the toolbox */
+    height: 100%;
+    background-color: var(--bg-secondary);
+    display: block; /* Ensure it's visible when its parent is flex */
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+#blockly-workspace {
+    flex-grow: 1; /* Workspace takes the rest of the space */
+    height: 100%;
+    position: relative; /* Needed for Blockly to inject correctly */
 }
 
 #codemirror-container {

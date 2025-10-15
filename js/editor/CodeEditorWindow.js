@@ -1,6 +1,8 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
+import { EditorView, keymap, highlightActiveLine, dropCursor, highlightSpecialChars, history, drawSelection, indentOnInput } from "https://esm.sh/@codemirror/view@6.26.3";
+import { EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
+import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentUnit } from "https://esm.sh/@codemirror/language@6.10.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo } from "https://esm.sh/@codemirror/commands@6.3.3";
@@ -73,10 +75,23 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         const content = await file.text();
 
         if (!codeEditor) {
+            const customSetup = [
+                history(),
+                drawSelection(),
+                dropCursor(),
+                indentOnInput(),
+                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+                bracketMatching(),
+                highlightActiveLine(),
+                keymap.of([
+                    ...history.standardKeymap,
+                ])
+            ];
+
             codeEditor = new EditorView({
                 doc: content,
                 extensions: [
-                    basicSetup,
+                    customSetup,
                     javascript(),
                     oneDark,
                     autocompletion({ override: [cesCompletions] })
