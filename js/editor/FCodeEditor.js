@@ -11,43 +11,56 @@ const toolboxJson = {
     "contents": [
         {
             "kind": "category",
+            "name": "Eventos",
+            "colour": "50",
+            "contents": [
+                 { "kind": "block", "type": "event_start" }
+            ]
+        },
+        {
+            "kind": "category",
             "name": "Control",
             "colour": "%{BKY_LOGIC_HUE}",
             "contents": [
-                {
-                    "kind": "block",
-                    "type": "controls_if"
-                },
-                {
-                    "kind": "block",
-                    "type": "controls_repeat_ext"
-                }
+                { "kind": "block", "type": "controls_if" },
+                { "kind": "block", "type": "controls_repeat_ext" },
+                { "kind": "block", "type": "wait_seconds" }
             ]
         },
         {
             "kind": "category",
             "name": "Movimiento",
-            "colour": "210",
+            "colour": "%{BKY_PROCEDURES_HUE}",
             "contents": [
-                {
-                    "kind": "block",
-                    "type": "move_forward"
-                },
-                {
-                    "kind": "block",
-                    "type": "turn_right"
-                }
+                { "kind": "block", "type": "move_forward" },
+                { "kind": "block", "type": "turn_right" },
+                { "kind": "block", "type": "go_to_xy" }
             ]
         },
         {
             "kind": "category",
-            "name": "Eventos",
-            "colour": "120",
+            "name": "Apariencia",
+            "colour": "260",
             "contents": [
-                 {
-                    "kind": "block",
-                    "type": "event_start"
-                }
+                { "kind": "block", "type": "change_costume" },
+                { "kind": "block", "type": "show" },
+                { "kind": "block", "type": "hide" }
+            ]
+        },
+        {
+            "kind": "category",
+            "name": "Sonido",
+            "colour": "300",
+            "contents": [
+                { "kind": "block", "type": "play_sound" }
+            ]
+        },
+        {
+            "kind": "category",
+            "name": "Sensores",
+            "colour": "180",
+            "contents": [
+                { "kind": "block", "type": "on_collision" }
             ]
         }
     ]
@@ -63,7 +76,7 @@ function defineCustomBlocks() {
                 .appendField("Mover hacia adelante");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour(210);
+            this.setColour("%{BKY_PROCEDURES_HUE}");
             this.setTooltip("Mueve el objeto hacia adelante una cierta distancia.");
         }
     };
@@ -75,7 +88,7 @@ function defineCustomBlocks() {
                 .appendField("Girar a la derecha");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour(210);
+            this.setColour("%{BKY_PROCEDURES_HUE}");
             this.setTooltip("Gira el objeto a la derecha un número de grados.");
         }
     };
@@ -85,8 +98,97 @@ function defineCustomBlocks() {
             this.appendDummyInput()
                 .appendField("Al iniciar el juego");
             this.setNextStatement(true, null);
-            this.setColour(120);
+            this.setColour(50);
             this.setTooltip("Este bloque se ejecuta una sola vez al comenzar el juego.");
+        }
+    };
+
+    Blockly.Blocks['wait_seconds'] = {
+        init: function() {
+            this.appendValueInput("SECONDS")
+                .setCheck("Number")
+                .appendField("esperar");
+            this.appendDummyInput()
+                .appendField("segundos");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setInputsInline(true);
+            this.setColour("%{BKY_LOGIC_HUE}");
+            this.setTooltip("Pausa la ejecución durante un número de segundos.");
+        }
+    };
+
+    Blockly.Blocks['go_to_xy'] = {
+        init: function() {
+            this.appendValueInput("X")
+                .setCheck("Number")
+                .appendField("ir a x:");
+            this.appendValueInput("Y")
+                .setCheck("Number")
+                .appendField("y:");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setInputsInline(true);
+            this.setColour("%{BKY_PROCEDURES_HUE}");
+            this.setTooltip("Mueve el objeto a una posición específica.");
+        }
+    };
+
+    Blockly.Blocks['change_costume'] = {
+        init: function() {
+            this.appendValueInput("COSTUME")
+                .setCheck("String")
+                .appendField("cambiar disfraz a");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(260);
+            this.setTooltip("Cambia la apariencia del objeto.");
+        }
+    };
+
+    Blockly.Blocks['show'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("mostrar");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(260);
+            this.setTooltip("Hace que el objeto sea visible.");
+        }
+    };
+
+    Blockly.Blocks['hide'] = {
+        init: function() {
+            this.appendDummyInput()
+                .appendField("ocultar");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(260);
+            this.setTooltip("Hace que el objeto sea invisible.");
+        }
+    };
+
+    Blockly.Blocks['play_sound'] = {
+        init: function() {
+            this.appendValueInput("SOUND")
+                .setCheck("String")
+                .appendField("reproducir sonido");
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour(300);
+            this.setTooltip("Reproduce un archivo de sonido.");
+        }
+    };
+
+    Blockly.Blocks['on_collision'] = {
+        init: function() {
+            this.appendValueInput("TARGET")
+                .setCheck("String")
+                .appendField("al chocar con objeto de tipo");
+            this.appendStatementInput("DO")
+                .appendField("hacer");
+            this.setColour(180);
+            this.setTooltip("Se ejecuta cuando este objeto choca con otro.");
         }
     };
 }
@@ -96,10 +198,9 @@ function defineCustomBlocks() {
 
 /**
  * Initializes the Blockly workspace.
- * @param {HTMLElement} workspaceDiv The div where the main workspace will be injected.
- * @param {HTMLElement} toolboxDiv The div that will be used as the toolbox.
+ * @param {HTMLElement} containerDiv The div where the entire Blockly UI will be injected.
  */
-export function initialize(workspaceDiv, toolboxDiv) {
+export function initialize(containerDiv) {
     if (workspace) {
         // Already initialized
         return;
@@ -107,26 +208,15 @@ export function initialize(workspaceDiv, toolboxDiv) {
 
     defineCustomBlocks();
 
-    // For the toolbox, we will manually create the flyout from our JSON definition.
-    // This gives us more control over styling and behavior.
-    toolboxDiv.innerHTML = ''; // Clear placeholder
-    toolboxJson.contents.forEach(category => {
-        const categoryDiv = document.createElement('div');
-        categoryDiv.className = 'blockly-toolbox-category';
-        categoryDiv.textContent = category.name;
-        categoryDiv.style.backgroundColor = category.colour;
-        toolboxDiv.appendChild(categoryDiv);
-    });
-
-    // Inject the main workspace
-    workspace = Blockly.inject(workspaceDiv, {
+    // Let Blockly handle the DOM injection, including the toolbox.
+    workspace = Blockly.inject(containerDiv, {
         toolbox: toolboxJson,
         theme: Blockly.Themes.Zelos,
         renderer: 'zelos',
         media: 'https://unpkg.com/blockly/media/'
     });
 
-    console.log("Blockly editor (PFC) initialized.");
+    console.log("Blockly editor (PFC) initialized correctly.");
 }
 
 /**

@@ -2267,16 +2267,6 @@ body {
     flex-direction: row; /* Override the column direction for this specific pane */
 }
 
-#blockly-toolbox {
-    width: 200px; /* Fixed width for the toolbox */
-    height: 100%;
-    background-color: var(--bg-secondary);
-    display: block; /* Ensure it's visible when its parent is flex */
-    border-right: 1px solid var(--border-color);
-    overflow-y: auto;
-    flex-shrink: 0;
-}
-
 #blockly-workspace {
     flex-grow: 1; /* Workspace takes the rest of the space */
     height: 100%;

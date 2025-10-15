@@ -1624,7 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveAssetMetaCallback: saveAssetMeta,
                 setEditorModeCallback: setEditorMode
             });
-            FCodeEditor.initialize(document.getElementById('blockly-workspace'), document.getElementById('blockly-toolbox'));
+            FCodeEditor.initialize(document.getElementById('blockly-container'));
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);
