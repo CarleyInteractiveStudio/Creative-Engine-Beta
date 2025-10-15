@@ -135,8 +135,18 @@
                             <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
                             <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
                             <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                            <div class="mode-selector">
+                                <button class="mode-btn active" data-mode="PC" title="Puro Código">PC</button>
+                                <button class="mode-btn" data-mode="PFC" title="Programación Fácil por Cuadros">PFC</button>
+                                <button class="mode-btn" data-mode="Ambos" title="Híbrido">Ambos</button>
+                            </div>
                         </div>
-                        <div id="codemirror-container"></div>
+                        <div id="code-editor-wrapper" class="code-editor-pane">
+                           <div id="codemirror-container"></div>
+                        </div>
+                        <div id="blockly-container" class="code-editor-pane" style="display: none;">
+                            <!-- Blockly will be injected here -->
+                        </div>
                     </div>
                     <div id="terminal-content" class="panel-content view-content no-padding">
                         <div id="terminal-output">

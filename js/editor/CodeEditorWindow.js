@@ -10,6 +10,10 @@ import { autocompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 let dom;
 let codeEditor = null;
 let currentlyOpenFileHandle = null;
+let currentDirHandle = null;
+let getEditorMode = () => 'PC'; // Default implementation
+let saveAssetMeta = async () => { console.warn('saveAssetMeta callback not implemented.'); }; // Default implementation
+let setEditorMode = () => { console.warn('setEditorMode callback not implemented.'); }; // Default implementation
 
 // --- Autocomplete Logic ---
 const cesKeywords = [
@@ -46,6 +50,25 @@ function cesCompletions(context) {
 export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
     try {
         currentlyOpenFileHandle = await dirHandle.getFileHandle(fileName);
+        currentDirHandle = dirHandle; // Store for saving meta file later
+
+        // --- Load Metadata ---
+        let initialMode = 'PC'; // Default for old scripts
+        try {
+            const metaFileHandle = await dirHandle.getFileHandle(`${fileName}.meta`);
+            const metaFile = await metaFileHandle.getFile();
+            const metaContent = await metaFile.text();
+            const metaData = JSON.parse(metaContent);
+            if (metaData && metaData.editorMode) {
+                initialMode = metaData.editorMode;
+            }
+        } catch (error) {
+            console.log(`No .meta file found for ${fileName}, defaulting to PC mode.`);
+        }
+
+        // Update the main editor's state and UI via callback
+        setEditorMode(initialMode);
+
         const file = await currentlyOpenFileHandle.getFile();
         const content = await file.text();
 
@@ -75,15 +98,23 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
 }
 
 export async function saveCurrentScript() {
-    if (!currentlyOpenFileHandle || !codeEditor) {
+    if (!currentlyOpenFileHandle || !codeEditor || !currentDirHandle) {
         alert("No hay ningún script abierto para guardar.");
         return;
     }
     try {
+        // 1. Save the code content
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(codeEditor.state.doc.toString());
         await writable.close();
         console.log(`Script '${currentlyOpenFileHandle.name}' guardado.`);
+
+        // 2. Save the metadata using the callback
+        const metaData = {
+            editorMode: getEditorMode()
+        };
+        await saveAssetMeta(currentlyOpenFileHandle.name, metaData, currentDirHandle);
+
     } catch (error) {
         console.error("Error al guardar el script:", error);
         alert("No se pudo guardar el script.");
@@ -98,8 +129,11 @@ export function redoLastChange() {
     if (codeEditor) redo(codeEditor);
 }
 
-export function initialize(domCache) {
+export function initialize(domCache, { getEditorModeCallback, saveAssetMetaCallback, setEditorModeCallback }) {
     dom = domCache;
+    getEditorMode = getEditorModeCallback;
+    saveAssetMeta = saveAssetMetaCallback;
+    setEditorMode = setEditorModeCallback;
 
     // Setup event listeners for toolbar buttons
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());

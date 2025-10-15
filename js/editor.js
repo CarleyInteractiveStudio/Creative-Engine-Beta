@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedAsset = null;
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
+    let editorMode = 'PC'; // "PC", "PFC", or "Ambos"
     const panelVisibility = {
         hierarchy: true,
         inspector: true,
@@ -65,7 +66,64 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateEditorViewForMode, setEditorMode;
+
+    function setEditorMode(newMode) {
+        if (!['PC', 'PFC', 'Ambos'].includes(newMode)) {
+            console.warn(`Attempted to set invalid editor mode: ${newMode}`);
+            return;
+        }
+        editorMode = newMode;
+
+        // Update UI buttons
+        const codeToolbar = document.getElementById('code-editor-toolbar');
+        if (codeToolbar) {
+            codeToolbar.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === newMode);
+            });
+        }
+
+        // Update the actual view
+        updateEditorViewForMode();
+    }
+    // Expose for testing
+    window.setEditorMode = setEditorMode;
+
+    function updateEditorViewForMode() {
+        console.log(`Editor mode changed to: ${editorMode}`);
+        const codeEditorContent = document.getElementById('code-editor-content');
+        const codeWrapper = document.getElementById('code-editor-wrapper');
+        const blocklyContainer = document.getElementById('blockly-container');
+
+        if (!codeWrapper || !blocklyContainer || !codeEditorContent) return;
+
+        // Reset view first
+        codeEditorContent.classList.remove('split-view');
+        codeWrapper.style.display = 'none';
+        blocklyContainer.style.display = 'none';
+
+        switch (editorMode) {
+            case 'PC':
+                codeWrapper.style.display = 'flex';
+                break;
+            case 'PFC':
+                blocklyContainer.style.display = 'flex';
+                // Placeholder content for Blockly
+                if (blocklyContainer.innerHTML === '') {
+                    blocklyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">El editor de bloques (PFC) se implementará aquí.</div>';
+                }
+                break;
+            case 'Ambos':
+                codeEditorContent.classList.add('split-view');
+                codeWrapper.style.display = 'flex';
+                blocklyContainer.style.display = 'flex';
+                // Placeholder content for Blockly
+                 if (blocklyContainer.innerHTML === '') {
+                    blocklyContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">El editor de bloques (PFC) se implementará aquí.</div>';
+                }
+                break;
+        }
+    }
 
     selectMateria = function(materiaOrId) {
         let materiaToSelect = null;
@@ -696,6 +754,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // Mode Selector Logic
+        const codeToolbar = document.getElementById('code-editor-toolbar');
+        if (codeToolbar) {
+            codeToolbar.addEventListener('click', (e) => {
+                if (e.target.matches('.mode-btn')) {
+                    const selectedMode = e.target.dataset.mode;
+                    if (selectedMode === editorMode) return;
+
+                    editorMode = selectedMode;
+
+                    // Update button active states
+                    codeToolbar.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    // Update the editor view
+                    updateEditorViewForMode();
+                }
+            });
+        }
+
         // --- Submenu dynamic positioning ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
@@ -1528,7 +1606,11 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
-            CodeEditor.initialize(dom);
+            CodeEditor.initialize(dom, {
+                getEditorModeCallback: () => editorMode,
+                saveAssetMetaCallback: saveAssetMeta,
+                setEditorModeCallback: setEditorMode
+            });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);
