@@ -901,7 +901,7 @@
     </div>
 
     <script>
-        // --- Definitive Sequential Script Loader ---
+        // --- Definitive, Isolated Sequential Script Loader ---
         function loadScript(src) {
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
@@ -914,21 +914,28 @@
 
         async function loadApp() {
             try {
-                // 1. Load libraries that might conflict with AMD
+                // 1. Load Monaco's AMD loader first.
+                await loadScript('https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js');
+
+                // 2. Temporarily hide the AMD `define` function.
+                const anonyDefine = window.define;
+                window.define = undefined;
+
+                // 3. Load the conflicting AMD-aware libraries. They will now load as globals.
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js');
                 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 
-                // 2. Load Monaco's AMD loader
-                await loadScript('https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js');
+                // 4. Restore the AMD `define` function.
+                window.define = anonyDefine;
 
-                // 3. Configure Monaco's loader
+                // 5. Configure Monaco's loader.
                 require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
 
-                // 4. Load Blockly scripts (non-AMD)
+                // 6. Load other non-conflicting libraries.
                 await loadScript('https://unpkg.com/blockly/blockly.min.js');
                 await loadScript('https://unpkg.com/blockly/javascript_compressed.js');
 
-                // 5. Finally, load the main application module (ESM)
+                // 7. Finally, load the main application module (ESM).
                 await import('./js/editor.js?v=1.0');
 
             } catch (error) {
