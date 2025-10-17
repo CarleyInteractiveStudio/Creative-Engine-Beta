@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         editorMode = newMode;
+        document.body.dataset.editorMode = newMode; // Make mode globally accessible for event listeners
 
         // Update UI buttons
         const codeToolbar = document.getElementById('code-editor-toolbar');
