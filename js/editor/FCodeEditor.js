@@ -29,7 +29,8 @@ const toolboxJson = {
             "contents": [
                 { "kind": "block", "type": "controls_if" },
                 { "kind": "block", "type": "controls_repeat_ext" },
-                { "kind": "block", "type": "wait_seconds" }
+                { "kind": "block", "type": "wait_seconds" },
+                { "kind": "block", "type": "math_number", "fields": { "NUM": 100 } }
             ]
         },
         {
@@ -185,10 +186,14 @@ function defineCustomBlocks() {
             this.appendValueInput("SOUND")
                 .setCheck("String")
                 .appendField("reproducir sonido");
+            this.appendValueInput("VOLUME")
+                .setCheck("Number")
+                .appendField("a volumen");
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
+            this.setInputsInline(true);
             this.setColour(300);
-            this.setTooltip("Reproduce un archivo de sonido.");
+            this.setTooltip("Reproduce un archivo de sonido a un volumen específico (0-100).");
         }
     };
 
@@ -371,7 +376,8 @@ function defineCodeGenerators() {
     };
     JS['play_sound'] = function(block) {
         const sound = JS.valueToCode(block, 'SOUND', JS.ORDER_ATOMIC) || '""';
-        return `// Audio.play(${sound}); // Funcionalidad no implementada en el motor\n`;
+        const volume = JS.valueToCode(block, 'VOLUME', JS.ORDER_ATOMIC) || '100';
+        return `// Audio.play(${sound}, { volume: ${volume} / 100 }); // Funcionalidad no implementada en el motor\n`;
     };
     JS['play_sound_and_wait'] = function(block) {
         const sound = JS.valueToCode(block, 'SOUND', JS.ORDER_ATOMIC) || '""';

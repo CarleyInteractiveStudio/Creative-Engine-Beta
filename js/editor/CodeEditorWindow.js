@@ -1,8 +1,8 @@
 // --- Module for the Code Editor Window (CodeMirror) ---
 
-import { EditorView, keymap, highlightActiveLine, dropCursor, highlightSpecialChars, drawSelection, indentOnInput } from "https://esm.sh/@codemirror/view@6.26.3";
+import { EditorView, keymap, highlightActiveLine, dropCursor, highlightSpecialChars, drawSelection } from "https://esm.sh/@codemirror/view@6.26.3";
 import { EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
-import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentUnit } from "https://esm.sh/@codemirror/language@6.10.1";
+import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, indentUnit, indentOnInput } from "https://esm.sh/@codemirror/language@6.10.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo, history, standardKeymap } from "https://esm.sh/@codemirror/commands@6.3.3";
