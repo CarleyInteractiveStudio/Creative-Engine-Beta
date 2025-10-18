@@ -132,11 +132,31 @@
                     </div>
                     <div id="code-editor-content" class="panel-content view-content no-padding">
                         <div id="code-editor-toolbar">
-                            <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
-                            <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
-                            <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                            <div class="toolbar-group">
+                                <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
+                                <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
+                                <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                            </div>
+                            <div class="toolbar-group" id="editor-mode-selectors">
+                                <button id="btn-pc-mode" class="editor-mode-btn active" title="Puro Código">P.C.</button>
+                                <button id="btn-pfc-mode" class="editor-mode-btn" title="Programación Fácil por Cuadros">P.F.C.</button>
+                                <button id="btn-ambos-mode" class="editor-mode-btn" title="Ambos">Ambos</button>
+                            </div>
                         </div>
-                        <div id="codemirror-container"></div>
+                        <div id="code-editor-panes">
+                            <div id="codemirror-container" class="code-editor-pane"></div>
+                            <div id="fcode-editor-container" class="code-editor-pane" style="display: none;">
+                                <!-- P.F.C. view will be initialized here -->
+                            </div>
+                            <div id="hybrid-editor-container" class="code-editor-pane" style="display: none; flex-direction: row;">
+                                <div id="hybrid-toolbox-container">
+                                    <!-- Blockly toolbox for hybrid mode will be injected here -->
+                                </div>
+                                <div id="hybrid-codemirror-container">
+                                    <!-- CodeMirror instance will be adopted here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div id="terminal-content" class="panel-content view-content no-padding">
                         <div id="terminal-output">
@@ -875,6 +895,13 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Blockly Scripts for P.F.C. Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/12.3.1/blockly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/12.3.1/blocks.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/12.3.1/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/12.3.1/msg/es.min.js"></script>
+
     <script type="module" src="js/editor.js?v=1.0"></script>
 </body>
 </html>

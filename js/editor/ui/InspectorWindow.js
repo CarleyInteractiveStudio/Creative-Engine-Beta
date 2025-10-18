@@ -1,6 +1,39 @@
 import * as Components from '../../engine/Components.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 
+// --- Utility Functions ---
+async function findFileAndDirHandle(fileName, projectsDirHandle) {
+    if (!projectsDirHandle) return null;
+
+    let result = null;
+
+    async function searchDir(dirHandle) {
+        if (result) return;
+        for await (const entry of dirHandle.values()) {
+            if (result) return; // Check again in case a parallel search found it
+            if (entry.name === fileName && entry.kind === 'file') {
+                result = { fileHandle: entry, dirHandle: dirHandle };
+                return;
+            } else if (entry.kind === 'directory') {
+                await searchDir(entry);
+            }
+        }
+    }
+
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        await searchDir(assetsHandle);
+    } catch(e) {
+        console.error("Error searching for file handle:", e);
+        return null;
+    }
+
+    return result;
+}
+
+
 // --- Module State ---
 let dom;
 let projectsDirHandle;
@@ -97,7 +130,35 @@ function handleInspectorChange(e) {
     }
 
     // Handle component property changes that require a re-render of the inspector
-    if (e.target.matches('.inspector-re-render')) {
+    if (e.target.matches('#execution-mode-select')) {
+        const scriptName = e.target.dataset.scriptName;
+        const newMode = e.target.value;
+
+        (async () => {
+            const scriptHandles = await findFileAndDirHandle(scriptName, projectsDirHandle);
+            if (scriptHandles) {
+                let metaData = {};
+                try {
+                    const metaFileHandle = await scriptHandles.dirHandle.getFileHandle(`${scriptName}.meta`);
+                    const metaFile = await metaFileHandle.getFile();
+                    metaData = JSON.parse(await metaFile.text());
+                } catch (e) {
+                    console.log(`Creando nuevo archivo .meta para ${scriptName} al cambiar el modo de ejecución.`);
+                }
+
+                metaData.executionMode = newMode;
+
+                const metaFileHandle = await scriptHandles.dirHandle.getFileHandle(`${scriptName}.meta`, { create: true });
+                const writable = await metaFileHandle.createWritable();
+                await writable.write(JSON.stringify(metaData, null, 2));
+                await writable.close();
+                console.log(`Modo de ejecución para '${scriptName}' actualizado a '${newMode}'.`);
+            }
+        })();
+
+        needsUpdate = true; // Re-render to be sure
+    }
+    else if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
         const value = e.target.value;
@@ -477,7 +538,33 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
+            let executionMode = 'pc'; // Default value
+            const scriptHandles = await findFileAndDirHandle(ley.scriptName, projectsDirHandle);
+
+            if (scriptHandles) {
+                try {
+                    const metaFileHandle = await scriptHandles.dirHandle.getFileHandle(`${ley.scriptName}.meta`);
+                    const metaFile = await metaFileHandle.getFile();
+                    const metaData = JSON.parse(await metaFile.text());
+                    executionMode = metaData.executionMode || 'pc';
+                } catch (e) {
+                    console.log(`No se encontró .meta para ${ley.scriptName}, usando modo por defecto.`);
+                }
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label for="execution-mode-select">Modo de Ejecución</label>
+                        <select id="execution-mode-select" class="prop-input" data-script-name="${ley.scriptName}">
+                            <option value="pc" ${executionMode === 'pc' ? 'selected' : ''}>Puro Código (P.C.)</option>
+                            <option value="pfc" ${executionMode === 'pfc' ? 'selected' : ''}>Bloques (P.F.C.)</option>
+                            <option value="ambos" ${executionMode === 'ambos' ? 'selected' : ''}>Ambos</option>
+                        </select>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
         } else if (ley instanceof Components.Camera) {

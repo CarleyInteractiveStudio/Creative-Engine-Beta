@@ -27,6 +27,8 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import { SpriteEditor } from './sprite-editor.js';
+import * as FCodeEditor from './editor/FCodeEditor.js';
+import * as HybridEditor from './editor/HybridEditor.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -263,13 +265,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Transpilar cada archivo y recolectar errores
         for (const fileHandle of cesFiles) {
-            const file = await fileHandle.getFile();
-            const code = await file.text();
-            const result = transpile(code); // Usar la función transpile que añadiremos
+            let codeToExecute = '';
+            let executionMode = 'pc';
+
+            // Find the directory of the current file to access its .meta
+            // This is a simplified approach; a real implementation might need a more robust way to get the dir handle.
+            // For now, we assume all scripts are in the root 'Assets' folder for this logic.
+            const metaFileHandle = await assetsHandle.getFileHandle(`${fileHandle.name}.meta`).catch(() => null);
+
+            if (metaFileHandle) {
+                const metaFile = await metaFileHandle.getFile();
+                const metaData = JSON.parse(await metaFile.text());
+                executionMode = metaData.executionMode || 'pc';
+
+                if (executionMode === 'pfc' && metaData.blocklyXml) {
+                    // Generate JavaScript from Blockly XML
+                    const tempWorkspace = new Blockly.Workspace();
+                    const xml = Blockly.Xml.textToDom(metaData.blocklyXml);
+                    Blockly.Xml.domToWorkspace(xml, tempWorkspace);
+                    codeToExecute = Blockly.JavaScript.workspaceToCode(tempWorkspace);
+                    tempWorkspace.dispose();
+                }
+            }
+
+            if (executionMode === 'pc' || !codeToExecute) {
+                const file = await fileHandle.getFile();
+                codeToExecute = await file.text();
+            } else if (executionMode === 'ambos') {
+                const file = await fileHandle.getFile();
+                let rawCode = await file.text();
+                const blockDataMap = new Map(Object.entries(metaData.blockDataMap || {}));
+
+                codeToExecute = rawCode.replace(/\[\[BLOCK::([\w-]+)::([\w_]+)\]\]/g, (match, id, type) => {
+                    const blockData = blockDataMap.get(id);
+                    if (blockData && blockData.xml) {
+                        const tempWorkspace = new Blockly.Workspace();
+                        try {
+                            const xml = Blockly.Xml.textToDom(blockData.xml);
+                            const tempBlock = Blockly.Xml.domToBlock(xml, tempWorkspace);
+                            const code = Blockly.JavaScript.blockToCode(tempBlock);
+                            tempWorkspace.dispose();
+                            return code || '';
+                        } catch (e) {
+                            console.error(`Error al procesar el bloque ${id}:`, e);
+                            tempWorkspace.dispose();
+                            return ''; // Reemplazar con vacío si hay error
+                        }
+                    }
+                    return ''; // Reemplazar con vacío si no se encuentra el bloque
+                });
+            }
+
+            const result = transpile(codeToExecute);
 
             if (result.errors && result.errors.length > 0) {
-                allErrors.push({fileName: fileHandle.name, errors: result.errors});
-            } else if (fileHandle.name === 'main.ces') { // Asumimos que main.ces es el punto de entrada
+                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
+            } else if (fileHandle.name === 'main.ces') {
                 mainGameJsCode = result.jsCode;
             }
         }
@@ -1381,7 +1432,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher'
+            'btn-retry-loading', 'btn-back-to-launcher',
+            // Code Editor Mode Elements
+            'btn-pc-mode', 'btn-pfc-mode', 'btn-ambos-mode', 'fcode-editor-container', 'hybrid-editor-container'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1529,6 +1582,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeMusicPlayer(dom);
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
+            FCodeEditor.initialize(dom);
+            HybridEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
             Terminal.initialize(dom, projectsDirHandle);

@@ -93,7 +93,9 @@ export async function updateAssetBrowser() {
 
         const entries = [];
         for await (const entry of dirHandle.values()) {
-            entries.push(entry);
+            if (!entry.name.endsWith('.meta')) {
+                entries.push(entry);
+            }
         }
 
         if (entries.length === 0) {
@@ -368,11 +370,21 @@ async function handleContextMenuClick(e) {
             if (scriptName) {
                 const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
                 const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
+                const defaultMetaContent = JSON.stringify({ editorMode: 'pc', blocklyXml: '' }, null, 2);
                 try {
+                    // Create .ces file
                     const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write(defaultContent);
                     await writable.close();
+
+                    // Create .ces.meta file
+                    const metaFileName = `${fileName}.meta`;
+                    const metaFileHandle = await currentDirectoryHandle.handle.getFileHandle(metaFileName, { create: true });
+                    const metaWritable = await metaFileHandle.createWritable();
+                    await metaWritable.write(defaultMetaContent);
+                    await metaWritable.close();
+
                     await updateAssetBrowserCallback();
                 } catch (err) {
                     console.error("Error al crear el script:", err);
@@ -393,6 +405,19 @@ async function handleContextMenuClick(e) {
                 if (confirm(`¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`)) {
                     try {
                         await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
+
+                        // If it's a script, also delete its meta file
+                        if (selectedAsset.name.endsWith('.ces')) {
+                            const metaName = `${selectedAsset.name}.meta`;
+                            try {
+                                await currentDirectoryHandle.handle.removeEntry(metaName);
+                                console.log(`Metadatos '${metaName}' borrados.`);
+                            } catch (metaErr) {
+                                // It's okay if meta file doesn't exist, just log it
+                                console.log(`No se encontró el archivo .meta para '${selectedAsset.name}'.`);
+                            }
+                        }
+
                         console.log(`'${selectedAsset.name}' borrado.`);
                         await updateAssetBrowserCallback();
                     } catch (err) {
@@ -425,6 +450,26 @@ async function handleContextMenuClick(e) {
                         await writable.close();
 
                         await currentDirectoryHandle.handle.removeEntry(oldName);
+
+                        // If it's a script, also rename its meta file
+                        if (oldName.endsWith('.ces')) {
+                            const oldMetaName = `${oldName}.meta`;
+                            const newMetaName = `${newName}.meta`;
+                            try {
+                                const oldMetaHandle = await currentDirectoryHandle.handle.getFileHandle(oldMetaName);
+                                const metaContent = await (await oldMetaHandle.getFile()).text();
+
+                                const newMetaHandle = await currentDirectoryHandle.handle.getFileHandle(newMetaName, { create: true });
+                                const metaWritable = await newMetaHandle.createWritable();
+                                await metaWritable.write(metaContent);
+                                await metaWritable.close();
+
+                                await currentDirectoryHandle.handle.removeEntry(oldMetaName);
+                                console.log(`Metadatos renombrados de '${oldMetaName}' a '${newMetaName}'.`);
+                            } catch (metaErr) {
+                                console.log(`No se encontró un archivo .meta para '${oldName}', se creará uno nuevo si es necesario.`);
+                            }
+                        }
 
                         console.log(`'${oldName}' renombrado a '${newName}'.`);
                         await updateAssetBrowserCallback();

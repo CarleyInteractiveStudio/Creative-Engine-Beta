@@ -2208,9 +2208,86 @@ body {
     background-color: #4f4f56;
 }
 
-#codemirror-container {
+#code-editor-toolbar .toolbar-group {
+    display: flex;
+    gap: 10px;
+}
+
+#editor-mode-selectors {
+    margin-left: auto; /* Pushes this group to the right */
+}
+
+.editor-mode-btn {
+    font-weight: bold;
+    padding: 4px 12px;
+}
+
+.editor-mode-btn.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+#code-editor-panes {
     flex-grow: 1;
+    display: flex;
+    flex-direction: column; /* Panes stack vertically */
+    overflow: hidden; /* Hide anything that overflows */
+    position: relative;
+}
+
+.code-editor-pane {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* Each pane scrolls independently */
+    position: absolute; /* Allow stacking */
+    top: 0;
+    left: 0;
+    display: none; /* Hide by default */
+}
+
+#hybrid-editor-container {
+    display: flex; /* Overrides the default 'none' when active */
+    flex-direction: row;
+}
+
+#hybrid-toolbox-container {
+    width: 250px; /* Fixed width for the toolbox */
+    height: 100%;
+    overflow-y: auto;
+    border-right: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#hybrid-codemirror-container {
+    flex-grow: 1; /* Code editor takes the rest of the space */
+    height: 100%;
+    overflow: hidden;
+    position: relative; /* Needed for CodeMirror to attach correctly */
+}
+
+/* --- Estilos para el Widget de Bloque en Modo Híbrido --- */
+.cm-block-widget {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 0 2px;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--accent-color);
+    font-family: monospace;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cm-block-widget:hover {
+    background-color: #4f4f56;
+}
+
+#codemirror-container {
     overflow: hidden; /* Ensures the container itself doesn't scroll */
+    position: relative; /* Remove absolute positioning */
+    display: block; /* Make sure it's visible by default */
 }
 
 #codemirror-container .cm-editor {
