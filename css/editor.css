@@ -2099,6 +2099,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden; /* Prevent this container from scrolling */
 }
 
 /* --- Tile Palette Editor Panel --- */
@@ -2256,7 +2257,7 @@ body {
 .code-editor-pane {
     flex: 1 1 50%; /* Each pane takes up 50% of the width */
     height: 100%;
-    overflow: hidden;
+    overflow-y: auto; /* Allow individual panes to scroll */
     background-color: #1e1e1e; /* Consistent dark background like oneDark theme */
     position: relative; /* For potential resizers */
     display: flex;
