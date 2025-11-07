@@ -1,6 +1,7 @@
 // Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
+import { AudioManager } from './engine/AudioManager.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
@@ -1394,6 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             InputManager.initialize(dom.sceneCanvas);
+            AudioManager.initialize();
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;
