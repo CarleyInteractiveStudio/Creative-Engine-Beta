@@ -94,6 +94,22 @@ function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
+function createAudioSourceObject(parent = null) {
+    const newMateria = new Materia('Audio Source');
+    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new Components.AudioSource(newMateria));
+
+    if (parent) {
+        parent.addChild(newMateria);
+    } else {
+        SceneManager.currentScene.addMateria(newMateria);
+    }
+
+    updateHierarchy();
+    selectMateriaCallback(newMateria.id);
+    return newMateria;
+}
+
 function createTilemapObject(parent = null) {
     const newMateria = new Materia('Tilemap');
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -301,6 +317,8 @@ function setupEventListeners() {
         const menu = document.getElementById('hierarchy-context-menu');
         const hasSelection = !!getSelectedMateria();
 
+    // Disable/enable menu items based on whether a Materia is selected
+    menu.querySelector('[data-action="add-component"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasSelection);
@@ -324,6 +342,9 @@ function setupEventListeners() {
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);
+                    break;
+                case 'create-audio-source':
+                    createAudioSourceObject(selectedMateria);
                     break;
                 case 'create-tilemap':
                     createTilemapObject(selectedMateria);

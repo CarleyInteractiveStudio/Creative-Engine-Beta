@@ -674,3 +674,28 @@ export class TilemapCollider2D extends Leyes {
 }
 
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+
+export class AudioSource extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = ''; // Path to the audio file
+        this.volume = 1.0;
+        this.loop = false;
+        this.autoplay = false;
+
+        // Non-serialized properties
+        this.audioBuffer = null;
+        this.isPlaying = false;
+    }
+
+    clone() {
+        const newAudioSource = new AudioSource(null);
+        newAudioSource.source = this.source;
+        newAudioSource.volume = this.volume;
+        newAudioSource.loop = this.loop;
+        newAudioSource.autoplay = this.autoplay;
+        return newAudioSource;
+    }
+}
+
+registerComponent('AudioSource', AudioSource);

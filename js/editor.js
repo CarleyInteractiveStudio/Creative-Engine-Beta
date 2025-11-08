@@ -1,7 +1,7 @@
 // Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
-import { AudioManager } from './engine/AudioManager.js';
+import AudioManager from './engine/AudioManager.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
@@ -487,13 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of tilemapsToRender) {
                 if (!materia.isActive) continue;
 
-                // Culling for tilemaps can be more complex (chunk-based),
-                // for now, we'll do a simple bounds check on the whole map.
-                // A proper implementation would be more performant.
                 if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
+                    const objectBounds = MathUtils.getOOB(materia); // This needs a proper implementation for tilemaps
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    // Layer culling
                     const cameraComponent = cameraForCulling.getComponent(Components.Camera);
                     const objectLayerBit = 1 << materia.layer;
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
@@ -609,12 +605,22 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = true;
         lastFrameTime = performance.now();
         console.log("Game Started");
-        // The main editorLoop will now call runGameLoop
+
+        // Autoplay audio sources
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
+            if (materia.isActive) {
+                const audioSource = materia.getComponent(Components.AudioSource);
+                if (audioSource && audioSource.autoplay && audioSource.audioBuffer) {
+                    AudioManager.playSound(audioSource.audioBuffer, audioSource.volume, audioSource.loop);
+                }
+            }
+        }
     };
 
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
+        AudioManager.stopAllSounds();
         console.log("Game Stopped");
     };
 
@@ -1395,7 +1401,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             InputManager.initialize(dom.sceneCanvas);
-            AudioManager.initialize();
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;

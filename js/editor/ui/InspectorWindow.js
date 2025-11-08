@@ -19,6 +19,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
+    'Audio': [Components.AudioSource],
     'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
@@ -58,7 +59,15 @@ function handleInspectorInput(e) {
 
     const componentName = e.target.dataset.component;
     const propPath = e.target.dataset.prop;
-    let value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    let value;
+
+    if (e.target.type === 'checkbox') {
+        value = e.target.checked;
+    } else if (e.target.type === 'number' || e.target.type === 'range') {
+        value = parseFloat(e.target.value);
+    } else {
+        value = e.target.value;
+    }
 
     const ComponentClass = Components[componentName];
     if (!ComponentClass) return;
@@ -377,7 +386,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        AudioSource: '🎵'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -711,6 +721,32 @@ async function updateInspectorForMateria(selectedMateria) {
                     <hr>
                     <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
                     <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.AudioSource) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Audio Source</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Audio Clip</label>
+                        <div class="asset-dropper" data-component="AudioSource" data-prop="source" data-asset-type=".mp3,.wav" title="Arrastra un archivo de audio (.mp3, .wav) aquí">
+                            <span class="asset-dropper-text">${ley.source || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label for="audio-volume">Volume</label>
+                        <input type="range" id="audio-volume" class="prop-input" data-component="AudioSource" data-prop="volume" min="0" max="1" step="0.01" value="${ley.volume}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <div class="prop-inputs">
+                            <input type="checkbox" id="audio-autoplay" class="prop-input" data-component="AudioSource" data-prop="autoplay" ${ley.autoplay ? 'checked' : ''}>
+                            <label for="audio-autoplay">Autoplay</label>
+                        </div>
+                        <div class="prop-inputs">
+                            <input type="checkbox" id="audio-loop" class="prop-input" data-component="AudioSource" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                            <label for="audio-loop">Loop</label>
+                        </div>
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.SpriteLight2D) {
