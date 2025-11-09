@@ -26,7 +26,7 @@ class SpriteData {
  * Representa una hoja de sprites completa, que es una textura
  * junto con la definición de todos los sprites individuales que contiene.
  */
-class SpriteSheet {
+export class SpriteSheet {
     /**
      * @param {string} texturePath - La ruta a la imagen de la hoja de sprites.
      */
