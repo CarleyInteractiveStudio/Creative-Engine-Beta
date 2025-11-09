@@ -724,6 +724,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.AudioSource) {
+            const spatialSettingsDisplay = ley.isSpatial ? 'flex' : 'none';
             componentHTML = `
                 <div class="component-header">${iconHTML}<h4>Audio Source</h4></div>
                 <div class="component-content">
@@ -745,6 +746,23 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="checkbox" id="audio-loop" class="prop-input" data-component="AudioSource" data-prop="loop" ${ley.loop ? 'checked' : ''}>
                             <label for="audio-loop">Loop</label>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                         <div class="prop-inputs">
+                            <input type="checkbox" id="audio-spatial" class="prop-input inspector-re-render" data-component="AudioSource" data-prop="isSpatial" ${ley.isSpatial ? 'checked' : ''}>
+                            <label for="audio-spatial">Spatial Blend</label>
+                        </div>
+                    </div>
+                    <div class="spatial-settings" style="display: ${spatialSettingsDisplay}; flex-direction: column; gap: 8px;">
+                        <div class="prop-row-multi">
+                            <label for="audio-min-dist">Min Distance</label>
+                            <input type="number" id="audio-min-dist" class="prop-input" data-component="AudioSource" data-prop="minDistance" min="0" step="0.1" value="${ley.minDistance}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label for="audio-max-dist">Max Distance</label>
+                            <input type="number" id="audio-max-dist" class="prop-input" data-component="AudioSource" data-prop="maxDistance" min="0" step="1" value="${ley.maxDistance}">
                         </div>
                     </div>
                 </div>

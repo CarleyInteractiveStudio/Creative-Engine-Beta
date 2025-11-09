@@ -682,6 +682,9 @@ export class AudioSource extends Leyes {
         this.volume = 1.0;
         this.loop = false;
         this.autoplay = false;
+        this.isSpatial = false; // Is the audio spatialized?
+        this.minDistance = 1;   // Distance where volume is max
+        this.maxDistance = 500; // Distance where volume is 0
 
         // Non-serialized properties
         this.audioBuffer = null;
@@ -694,6 +697,9 @@ export class AudioSource extends Leyes {
         newAudioSource.volume = this.volume;
         newAudioSource.loop = this.loop;
         newAudioSource.autoplay = this.autoplay;
+        newAudioSource.isSpatial = this.isSpatial;
+        newAudioSource.minDistance = this.minDistance;
+        newAudioSource.maxDistance = this.maxDistance;
         return newAudioSource;
     }
 }
