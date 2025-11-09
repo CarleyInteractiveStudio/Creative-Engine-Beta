@@ -2,7 +2,7 @@
  * Almacena los datos de un único sprite recortado de una hoja de sprites.
  * Es el análogo a la estructura SpriteMetaData de Unity.
  */
-class SpriteData {
+export class SpriteData {
     /**
      * @param {string} name - El nombre identificador del sprite.
      * @param {number} x - La coordenada X del rectángulo de recorte en la textura.
