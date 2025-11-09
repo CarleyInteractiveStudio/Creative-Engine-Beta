@@ -487,9 +487,13 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of tilemapsToRender) {
                 if (!materia.isActive) continue;
 
+                // Culling for tilemaps can be more complex (chunk-based),
+                // for now, we'll do a simple bounds check on the whole map.
+                // A proper implementation would be more performant.
                 if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia); // This needs a proper implementation for tilemaps
+                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
+                    // Layer culling
                     const cameraComponent = cameraForCulling.getComponent(Components.Camera);
                     const objectLayerBit = 1 << materia.layer;
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
@@ -613,22 +617,12 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = true;
         lastFrameTime = performance.now();
         console.log("Game Started");
-
-        // Autoplay audio sources
-        for (const materia of SceneManager.currentScene.getAllMaterias()) {
-            if (materia.isActive) {
-                const audioSource = materia.getComponent(Components.AudioSource);
-                if (audioSource && audioSource.autoplay && audioSource.audioBuffer) {
-                    AudioManager.playSound(audioSource);
-                }
-            }
-        }
+        // The main editorLoop will now call runGameLoop
     };
 
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
-        AudioManager.stopAllSounds();
         console.log("Game Stopped");
     };
 

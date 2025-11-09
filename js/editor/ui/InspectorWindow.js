@@ -111,7 +111,7 @@ function handleInspectorChange(e) {
     if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
-        const value = e.target.value;
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
 
         const ComponentClass = Components[componentName];
         if (ComponentClass) {
@@ -725,10 +725,17 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.AudioSource) {
             const spatialSettingsDisplay = ley.isSpatial ? 'flex' : 'none';
+            const audioClipDisplay = ley.useMicrophone ? 'none' : 'flex';
             componentHTML = `
                 <div class="component-header">${iconHTML}<h4>Audio Source</h4></div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
+                     <div class="prop-row-multi">
+                         <div class="prop-inputs">
+                            <input type="checkbox" id="audio-mic" class="prop-input inspector-re-render" data-component="AudioSource" data-prop="useMicrophone" ${ley.useMicrophone ? 'checked' : ''}>
+                            <label for="audio-mic">Usar Micrófono</label>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${audioClipDisplay};">
                         <label>Audio Clip</label>
                         <div class="asset-dropper" data-component="AudioSource" data-prop="source" data-asset-type=".mp3,.wav" title="Arrastra un archivo de audio (.mp3, .wav) aquí">
                             <span class="asset-dropper-text">${ley.source || 'None'}</span>
@@ -743,7 +750,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="checkbox" id="audio-autoplay" class="prop-input" data-component="AudioSource" data-prop="autoplay" ${ley.autoplay ? 'checked' : ''}>
                             <label for="audio-autoplay">Autoplay</label>
                         </div>
-                        <div class="prop-inputs">
+                        <div class="prop-inputs" style="display: ${ley.useMicrophone ? 'none' : 'flex'};" >
                             <input type="checkbox" id="audio-loop" class="prop-input" data-component="AudioSource" data-prop="loop" ${ley.loop ? 'checked' : ''}>
                             <label for="audio-loop">Loop</label>
                         </div>

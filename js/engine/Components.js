@@ -2,6 +2,7 @@
 // This file contains all the component classes.
 
 import { Leyes } from './Leyes.js';
+import AudioManager from './AudioManager.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
@@ -679,6 +680,7 @@ export class AudioSource extends Leyes {
     constructor(materia) {
         super(materia);
         this.source = ''; // Path to the audio file
+        this.useMicrophone = false; // Use microphone input instead of a file
         this.volume = 1.0;
         this.loop = false;
         this.autoplay = false;
@@ -691,9 +693,24 @@ export class AudioSource extends Leyes {
         this.isPlaying = false;
     }
 
+    // Public methods to be called from user scripts
+    play() {
+        if (this.useMicrophone) {
+            AudioManager.connectMicrophoneToSource(this);
+        } else {
+            AudioManager.playSound(this);
+        }
+    }
+
+    stop() {
+        AudioManager.stopSound(this);
+    }
+
+
     clone() {
         const newAudioSource = new AudioSource(null);
         newAudioSource.source = this.source;
+        newAudioSource.useMicrophone = this.useMicrophone;
         newAudioSource.volume = this.volume;
         newAudioSource.loop = this.loop;
         newAudioSource.autoplay = this.autoplay;

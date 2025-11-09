@@ -162,6 +162,91 @@ class AudioManager {
         this.playingSources.clear();
         console.log("All sounds stopped.");
     }
+
+    // --- Microphone Input ---
+    async startMicrophone() {
+        if (!this.isInitialized) {
+            console.warn("AudioManager not initialized. Cannot start microphone.");
+            return;
+        }
+        if (this.micStream && this.micStream.active) {
+            console.log("Microphone is already active.");
+            return;
+        }
+
+        try {
+            this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            this.micSourceNode = this.audioContext.createMediaStreamSource(this.micStream);
+            console.log("Microphone access granted and source node created.");
+            // By default, do not connect it to the output.
+            // A specific component will decide how to route this audio.
+        } catch (error) {
+            console.error("Error accessing microphone:", error);
+        }
+    }
+
+    stopMicrophone() {
+        if (this.micStream) {
+            this.micStream.getTracks().forEach(track => track.stop());
+            this.micStream = null;
+            if (this.micSourceNode) {
+                this.micSourceNode.disconnect();
+                this.micSourceNode = null;
+            }
+            console.log("Microphone stopped.");
+        }
+    }
+
+    connectMicrophoneToSource(audioSource) {
+        if (!this.micSourceNode) {
+            console.warn("Microphone not started. Cannot connect to source.");
+            return null;
+        }
+        if (!audioSource) return null;
+
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = audioSource.volume;
+
+        let finalNode = gainNode;
+        let pannerNode = null;
+
+        const transform = audioSource.materia.getComponent(Transform);
+
+        if (audioSource.isSpatial && transform) {
+            pannerNode = this.audioContext.createPanner();
+            // Configuration... (same as playSound)
+            pannerNode.panningModel = 'HRTF';
+            pannerNode.distanceModel = 'linear';
+            pannerNode.refDistance = audioSource.minDistance;
+            pannerNode.maxDistance = audioSource.maxDistance;
+            pannerNode.rolloffFactor = 1;
+            pannerNode.positionX.setValueAtTime(transform.x, this.audioContext.currentTime);
+            pannerNode.positionY.setValueAtTime(transform.y, this.audioContext.currentTime);
+            pannerNode.positionZ.setValueAtTime(0, this.audioContext.currentTime);
+
+            this.micSourceNode.connect(pannerNode);
+pannerNode.connect(gainNode);
+        } else {
+            this.micSourceNode.connect(gainNode);
+        }
+
+        gainNode.connect(this.audioContext.destination);
+
+        const playingSourceInfo = {
+            bufferSource: this.micSourceNode, // It's not a buffer, but we reuse the structure
+            pannerNode,
+            gainNode,
+            transform,
+            isMic: true // Flag to identify this as a mic source
+        };
+
+        this.playingSources.set(audioSource, playingSourceInfo);
+        audioSource.isPlaying = true;
+
+        // Note: There's no 'onended' for a live stream. We manage its lifecycle manually.
+        return playingSourceInfo;
+    }
+
 }
 
 export default new AudioManager();
