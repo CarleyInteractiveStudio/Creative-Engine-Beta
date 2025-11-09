@@ -2,7 +2,6 @@
 // This file contains all the component classes.
 
 import { Leyes } from './Leyes.js';
-import AudioManager from './AudioManager.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
@@ -675,50 +674,3 @@ export class TilemapCollider2D extends Leyes {
 }
 
 registerComponent('TilemapCollider2D', TilemapCollider2D);
-
-export class AudioSource extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.source = ''; // Path to the audio file
-        this.useMicrophone = false; // Use microphone input instead of a file
-        this.volume = 1.0;
-        this.loop = false;
-        this.autoplay = false;
-        this.isSpatial = false; // Is the audio spatialized?
-        this.minDistance = 1;   // Distance where volume is max
-        this.maxDistance = 500; // Distance where volume is 0
-
-        // Non-serialized properties
-        this.audioBuffer = null;
-        this.isPlaying = false;
-    }
-
-    // Public methods to be called from user scripts
-    play() {
-        if (this.useMicrophone) {
-            AudioManager.connectMicrophoneToSource(this);
-        } else {
-            AudioManager.playSound(this);
-        }
-    }
-
-    stop() {
-        AudioManager.stopSound(this);
-    }
-
-
-    clone() {
-        const newAudioSource = new AudioSource(null);
-        newAudioSource.source = this.source;
-        newAudioSource.useMicrophone = this.useMicrophone;
-        newAudioSource.volume = this.volume;
-        newAudioSource.loop = this.loop;
-        newAudioSource.autoplay = this.autoplay;
-        newAudioSource.isSpatial = this.isSpatial;
-        newAudioSource.minDistance = this.minDistance;
-        newAudioSource.maxDistance = this.maxDistance;
-        return newAudioSource;
-    }
-}
-
-registerComponent('AudioSource', AudioSource);

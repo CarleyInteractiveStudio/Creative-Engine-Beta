@@ -87,55 +87,6 @@ function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
-function drawGizmos(renderer, materia) {
-    drawWorldGizmos(materia);
-    drawCameraGizmos(renderer);
-    drawAudioGizmos(renderer);
-}
-
 function drawWorldGizmos(materia) {
     // Logic to draw the move/rotate/scale gizmos
-}
-
-function drawCameraGizmos(renderer) {
-    // Logic to draw camera gizmos
-}
-
-function drawAudioGizmos(renderer) {
-    if (!renderer || !renderer.ctx) return;
-
-    const selected = getSelectedMateria();
-    if (!selected) return;
-
-    const audioSource = selected.getComponent(Components.AudioSource);
-    if (audioSource && audioSource.isSpatial) {
-        const transform = selected.getComponent(Components.Transform);
-        if (transform) {
-            const ctx = renderer.ctx;
-            const pixelRatio = window.devicePixelRatio || 1;
-            const zoom = renderer.camera.effectiveZoom;
-
-            ctx.save();
-
-            // Draw Max Distance Circle (Outer)
-            ctx.beginPath();
-            ctx.arc(transform.x, transform.y, audioSource.maxDistance, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(66, 135, 245, 0.15)';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(66, 135, 245, 0.7)';
-            ctx.lineWidth = 1 / zoom / pixelRatio;
-            ctx.stroke();
-
-            // Draw Min Distance Circle (Inner)
-            ctx.beginPath();
-            ctx.arc(transform.x, transform.y, audioSource.minDistance, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(66, 135, 245, 0.3)';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.lineWidth = 1 / zoom / pixelRatio;
-            ctx.stroke();
-
-            ctx.restore();
-        }
-    }
 }

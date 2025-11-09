@@ -77,6 +77,9 @@
                     <button id="menubar-carl-ia-btn" class="menu-btn">🤖 Carl IA</button>
                 </div>
                 <div class="menu-item">
+                    <button id="menubar-library-btn" class="menu-btn">Librerías</button>
+                </div>
+                <div class="menu-item">
                     <button class="menu-btn">Ayuda</button>
                     <div class="menu-content">
                         <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help">Ayuda</a>
@@ -125,7 +128,6 @@
                         <button id="btn-play" title="Play">▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
-                        <button id="btn-mic" title="Activar Micrófono">🎤</button>
                     </div>
                 </div>
                 <div class="panel-content-container">
@@ -419,12 +421,6 @@
                 <ul class="submenu">
                     <li data-action="create-camera">Cámara</li>
                     <li data-action="create-tilemap">Tilemap</li>
-                </ul>
-            </li>
-            <li class="has-submenu">
-                Audio <span class="arrow">▶</span>
-                <ul class="submenu">
-                    <li data-action="create-audio-source">Audio Source</li>
                 </ul>
             </li>
             <li class="has-submenu">
@@ -900,6 +896,67 @@
         <div class="resize-handle" data-direction="w"></div>
         <div class="resize-handle" data-direction="nw"></div>
     </div>
+
+    <div id="library-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span>Gestor de Librerías</span>
+            <div class="panel-header-controls">
+                <button class="close-panel-btn" data-panel="library-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <!-- Main List View -->
+            <div id="library-list-view">
+                <div id="library-toolbar">
+                    <button id="library-import-btn">Importar Librería</button>
+                    <button id="library-add-btn" title="Crear nueva librería (no implementado)">+</button>
+                </div>
+                <div id="library-list-container">
+                    <!-- Library items will be populated by JS -->
+                    <div class="library-item" data-lib-id="example-lib-1">
+                        <img src="image/Paquete.png" class="library-icon">
+                        <span class="library-name">Mi Librería de Ejemplo</span>
+                        <div class="library-item-controls">
+                            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details View (Initially Hidden) -->
+            <div id="library-details-view" class="hidden">
+                <div id="library-details-header">
+                    <button id="library-back-btn">&larr; Volver a la lista</button>
+                </div>
+                <div id="library-details-content">
+                    <div class="details-main-info">
+                        <img id="details-lib-icon" src="image/Paquete.png">
+                        <h3 id="details-lib-name">Nombre de la Librería</h3>
+                    </div>
+                    <div class="details-author-info">
+                        <img id="details-author-icon" src="https://via.placeholder.com/32" class="author-icon">
+                        <span id="details-author-name">Nombre del Autor</span>
+                    </div>
+                    <p id="details-lib-desc">Aquí va una descripción detallada de lo que hace la librería.</p>
+                    <h4>Uso</h4>
+                    <pre><code id="details-lib-usage"></code></pre>
+                    <div class="details-actions">
+                         <button id="library-update-btn">Actualizar</button>
+                         <button id="library-delete-btn" class="danger-btn">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>

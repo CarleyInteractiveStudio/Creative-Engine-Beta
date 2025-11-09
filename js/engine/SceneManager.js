@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AudioSource } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
 import { Materia } from './Materia.js';
 
 export class Scene {
@@ -137,8 +137,6 @@ export function serializeScene(scene) {
 }
 
 import { getComponent } from './ComponentRegistry.js';
-import AudioManager from './AudioManager.js';
-import { getURLForAssetPath } from './AssetUtils.js';
 
 export async function deserializeScene(sceneData, projectsDirHandle) {
     const newScene = new Scene();
@@ -166,12 +164,6 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 }
                 if (newLey instanceof Animator) {
                     await newLey.loadController(projectsDirHandle);
-                }
-                if (newLey instanceof AudioSource && newLey.source) {
-                    const audioUrl = await getURLForAssetPath(newLey.source, projectsDirHandle);
-                    if (audioUrl) {
-                        newLey.audioBuffer = await AudioManager.loadAudio(audioUrl);
-                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
 // Re-syncing with GitHub to ensure latest changes are deployed.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
-import AudioManager from './engine/AudioManager.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
@@ -29,6 +28,8 @@ import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
+import * as LibraryManager from './editor/ui/LibraryManager.js';
+
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -580,14 +581,6 @@ document.addEventListener('DOMContentLoaded', () => {
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
 
-        // Update AudioManager for spatial audio
-        if (isGameRunning && SceneManager.currentScene) {
-            const mainCamera = SceneManager.currentScene.findAllCameras()[0]; // Assume first camera is main
-            const listenerTransform = mainCamera ? mainCamera.getComponent(Components.Transform) : null;
-            AudioManager.update(listenerTransform);
-        }
-
-
         if (isGameRunning) {
         }
         DebugPanel.update();
@@ -1122,6 +1115,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // --- Library Panel Button ---
+        if (dom.menubarLibraryBtn) {
+            dom.menubarLibraryBtn.addEventListener('click', () => {
+                const panel = dom.libraryPanel;
+                const isVisible = !panel.classList.contains('hidden');
+                panel.classList.toggle('hidden');
+
+                // If the panel is now visible, load the libraries
+                if (!isVisible) {
+                    LibraryManager.loadLibraries();
+                }
+            });
+        }
+
         // --- Terminal Logic --- is now handled by the Terminal module
 
         // --- Carl IA Panel Logic ---
@@ -1341,7 +1348,13 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher'
+            'btn-retry-loading', 'btn-back-to-launcher',
+            // Library Panel Elements
+            'menubar-library-btn', 'library-panel', 'library-list-view', 'library-details-view',
+            'library-toolbar', 'library-import-btn', 'library-add-btn', 'library-list-container',
+            'library-details-header', 'library-back-btn', 'library-details-content',
+            'details-lib-icon', 'details-lib-name', 'details-author-icon', 'details-author-name',
+            'details-lib-desc', 'details-lib-usage', 'library-update-btn', 'library-delete-btn'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1384,6 +1397,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
+
+            // Ensure 'lib' directory exists
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
@@ -1484,6 +1502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
+            LibraryManager.initialize({ dom, projectsDirHandle });
             initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });

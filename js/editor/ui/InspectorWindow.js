@@ -19,7 +19,6 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
-    'Audio': [Components.AudioSource],
     'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
@@ -59,15 +58,7 @@ function handleInspectorInput(e) {
 
     const componentName = e.target.dataset.component;
     const propPath = e.target.dataset.prop;
-    let value;
-
-    if (e.target.type === 'checkbox') {
-        value = e.target.checked;
-    } else if (e.target.type === 'number' || e.target.type === 'range') {
-        value = parseFloat(e.target.value);
-    } else {
-        value = e.target.value;
-    }
+    let value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
 
     const ComponentClass = Components[componentName];
     if (!ComponentClass) return;
@@ -111,7 +102,7 @@ function handleInspectorChange(e) {
     if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
-        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+        const value = e.target.value;
 
         const ComponentClass = Components[componentName];
         if (ComponentClass) {
@@ -386,8 +377,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        AudioSource: '🎵'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -721,57 +711,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     <hr>
                     <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
                     <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
-                </div>
-            `;
-        } else if (ley instanceof Components.AudioSource) {
-            const spatialSettingsDisplay = ley.isSpatial ? 'flex' : 'none';
-            const audioClipDisplay = ley.useMicrophone ? 'none' : 'flex';
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Audio Source</h4></div>
-                <div class="component-content">
-                     <div class="prop-row-multi">
-                         <div class="prop-inputs">
-                            <input type="checkbox" id="audio-mic" class="prop-input inspector-re-render" data-component="AudioSource" data-prop="useMicrophone" ${ley.useMicrophone ? 'checked' : ''}>
-                            <label for="audio-mic">Usar Micrófono</label>
-                        </div>
-                    </div>
-                    <div class="prop-row-multi" style="display: ${audioClipDisplay};">
-                        <label>Audio Clip</label>
-                        <div class="asset-dropper" data-component="AudioSource" data-prop="source" data-asset-type=".mp3,.wav" title="Arrastra un archivo de audio (.mp3, .wav) aquí">
-                            <span class="asset-dropper-text">${ley.source || 'None'}</span>
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label for="audio-volume">Volume</label>
-                        <input type="range" id="audio-volume" class="prop-input" data-component="AudioSource" data-prop="volume" min="0" max="1" step="0.01" value="${ley.volume}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <div class="prop-inputs">
-                            <input type="checkbox" id="audio-autoplay" class="prop-input" data-component="AudioSource" data-prop="autoplay" ${ley.autoplay ? 'checked' : ''}>
-                            <label for="audio-autoplay">Autoplay</label>
-                        </div>
-                        <div class="prop-inputs" style="display: ${ley.useMicrophone ? 'none' : 'flex'};" >
-                            <input type="checkbox" id="audio-loop" class="prop-input" data-component="AudioSource" data-prop="loop" ${ley.loop ? 'checked' : ''}>
-                            <label for="audio-loop">Loop</label>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="prop-row-multi">
-                         <div class="prop-inputs">
-                            <input type="checkbox" id="audio-spatial" class="prop-input inspector-re-render" data-component="AudioSource" data-prop="isSpatial" ${ley.isSpatial ? 'checked' : ''}>
-                            <label for="audio-spatial">Spatial Blend</label>
-                        </div>
-                    </div>
-                    <div class="spatial-settings" style="display: ${spatialSettingsDisplay}; flex-direction: column; gap: 8px;">
-                        <div class="prop-row-multi">
-                            <label for="audio-min-dist">Min Distance</label>
-                            <input type="number" id="audio-min-dist" class="prop-input" data-component="AudioSource" data-prop="minDistance" min="0" step="0.1" value="${ley.minDistance}">
-                        </div>
-                        <div class="prop-row-multi">
-                            <label for="audio-max-dist">Max Distance</label>
-                            <input type="number" id="audio-max-dist" class="prop-input" data-component="AudioSource" data-prop="maxDistance" min="0" step="1" value="${ley.maxDistance}">
-                        </div>
-                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.SpriteLight2D) {
