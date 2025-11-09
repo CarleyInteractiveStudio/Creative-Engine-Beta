@@ -318,7 +318,6 @@ function setupEventListeners() {
         const hasSelection = !!getSelectedMateria();
 
     // Disable/enable menu items based on whether a Materia is selected
-    menu.querySelector('[data-action="add-component"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasSelection);
         menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasSelection);
