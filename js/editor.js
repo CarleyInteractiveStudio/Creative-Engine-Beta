@@ -576,6 +576,14 @@ document.addEventListener('DOMContentLoaded', () => {
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
 
+        // Update AudioManager for spatial audio
+        if (isGameRunning && SceneManager.currentScene) {
+            const mainCamera = SceneManager.currentScene.findAllCameras()[0]; // Assume first camera is main
+            const listenerTransform = mainCamera ? mainCamera.getComponent(Components.Transform) : null;
+            AudioManager.update(listenerTransform);
+        }
+
+
         if (isGameRunning) {
         }
         DebugPanel.update();
@@ -611,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (materia.isActive) {
                 const audioSource = materia.getComponent(Components.AudioSource);
                 if (audioSource && audioSource.autoplay && audioSource.audioBuffer) {
-                    AudioManager.playSound(audioSource.audioBuffer, audioSource.volume, audioSource.loop);
+                    AudioManager.playSound(audioSource);
                 }
             }
         }
