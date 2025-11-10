@@ -28,6 +28,7 @@ import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
+import { API as LibraryAPI } from './editor/LibraryAPI.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1377,13 +1378,35 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
             // Ensure the 'lib' directory exists for the current project
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
             try {
-                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                await projectHandle.getDirectoryHandle('lib', { create: true });
-                console.log("Directorio 'lib' asegurado para el proyecto.");
+                const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+                console.log("Directorio 'lib' asegurado. Cargando librerías...");
+
+                for await (const entry of libDirHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                        try {
+                            const file = await entry.getFile();
+                            const content = await file.text();
+                            const libData = JSON.parse(content);
+
+                            if (libData.script) {
+                                // Decode the Base64 script content
+                                const scriptContent = atob(libData.script);
+                                // Execute the script in the global scope
+                                const script = document.createElement('script');
+                                script.type = 'text/javascript';
+                                script.textContent = scriptContent;
+                                document.head.appendChild(script);
+                                console.log(`Librería '${libData.name}' cargada y ejecutada.`);
+                            }
+                        } catch (e) {
+                            console.error(`Error al cargar la librería ${entry.name}:`, e);
+                        }
+                    }
+                }
             } catch (libError) {
                 console.error("No se pudo crear o verificar el directorio 'lib':", libError);
-                // This might not be a critical error, so we'll just log it and continue.
             }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
@@ -1535,6 +1558,26 @@ document.addEventListener('DOMContentLoaded', () => {
             startGame = runChecksAndPlay;
 
             updateLoadingProgress(100, "¡Listo!");
+
+            // Final step: Populate library windows menu
+            const windowMenu = document.getElementById('window-menu-content');
+            const registeredWindows = LibraryAPI.getRegisteredWindows();
+            if (registeredWindows.length > 0) {
+                const hr = document.createElement('hr');
+                windowMenu.appendChild(hr);
+
+                registeredWindows.forEach(win => {
+                    const menuItem = document.createElement('a');
+                    menuItem.href = '#';
+                    menuItem.textContent = win.nombre;
+                    menuItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const panel = LibraryAPI.crearPanel({ titulo: win.nombre });
+                        win.alAbrir(panel);
+                    });
+                    windowMenu.appendChild(menuItem);
+                });
+            }
 
             // Fade out the loading screen and show the editor
             setTimeout(() => {

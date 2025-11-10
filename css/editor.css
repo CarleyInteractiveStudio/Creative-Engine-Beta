@@ -520,6 +520,26 @@ body {
     color: white;
 }
 
+/* --- Library API Panel Styles --- */
+.library-api-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Add space between elements */
+    padding: 15px;
+}
+
+.library-api-content label {
+    font-weight: bold;
+    margin-bottom: -10px; /* Pull the input closer to the label */
+}
+
+.library-api-content input[type="text"],
+.library-api-content input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
 /* --- Terminal Styles --- */
 #terminal-content {
     display: flex;
