@@ -6,7 +6,7 @@ import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
-import { getURLForAssetPath } from './editor/AssetUtils.js';
+import { getURLForAssetPath } from './engine/AssetUtils.js';
 import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFromModule } from './editor/ui/AnimationEditorWindow.js';
 import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
@@ -28,9 +28,6 @@ import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
-import { initialize as initializeLibraryCreator } from './editor/ui/LibraryCreator.js';
-import { initialize as initializeLibraryAPIHelp } from './editor/ui/LibraryAPIHelp.js';
-import { initialize as initializeLibraryManager } from './editor/ui/LibraryManager.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1379,6 +1376,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
+            // Ensure the 'lib' directory exists for the current project
+            try {
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                await projectHandle.getDirectoryHandle('lib', { create: true });
+                console.log("Directorio 'lib' asegurado para el proyecto.");
+            } catch (libError) {
+                console.error("No se pudo crear o verificar el directorio 'lib':", libError);
+                // This might not be a critical error, so we'll just log it and continue.
+            }
+
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas);
@@ -1504,20 +1511,6 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize(dom, projectsDirHandle);
             spriteEditor = new SpriteEditor();
-            initializeLibraryCreator(dom, projectsDirHandle);
-
-            // Open Library Creator Modal
-            const libraryCreateBtn = document.getElementById('library-create-btn');
-            if(libraryCreateBtn) {
-                libraryCreateBtn.addEventListener('click', () => {
-                    const libraryCreatorModal = document.getElementById('library-creator-modal');
-                    if(libraryCreatorModal) {
-                        libraryCreatorModal.classList.add('is-open');
-                    }
-                });
-            }
-            initializeLibraryAPIHelp();
-            initializeLibraryManager(dom, projectsDirHandle);
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

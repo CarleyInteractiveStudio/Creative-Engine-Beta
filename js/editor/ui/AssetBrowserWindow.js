@@ -1,4 +1,4 @@
-import { getURLForAssetPath } from '../AssetUtils.js';
+import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
 
 // --- Module State ---
