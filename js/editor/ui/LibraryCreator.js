@@ -1,3 +1,60 @@
+import { getURLForAssetPath } from '../AssetUtils.js';
+
+let dom = {};
+let projectsDirHandle = null;
+let fileHandles = {
+    authorIcon: null,
+    libIcon: null,
+    script: null
+};
+
+async function selectFile(type, options) {
+    try {
+        const [handle] = await window.showOpenFilePicker(options);
+        const file = await handle.getFile();
+
+        switch (type) {
+            case 'authorIcon':
+                fileHandles.authorIcon = handle;
+                dom.authorIconPath.value = handle.name;
+                dom.authorIconPreview.src = URL.createObjectURL(file);
+                dom.authorIconPreview.style.display = 'block';
+                break;
+            case 'libIcon':
+                fileHandles.libIcon = handle;
+                dom.libIconPath.value = handle.name;
+                dom.libIconPreview.src = URL.createObjectURL(file);
+                dom.libIconPreview.style.display = 'block';
+                break;
+            case 'script':
+                fileHandles.script = handle;
+                dom.scriptPath.value = handle.name;
+                break;
+        }
+    } catch (err) {
+        console.log("User cancelled file selection or an error occurred.", err);
+    }
+}
+
+function validateInputs() {
+    const requiredFields = [
+        'lib-creator-name', 'lib-creator-version', 'lib-creator-author-name',
+        'lib-creator-script-path', 'lib-creator-desc', 'lib-creator-usage'
+    ];
+    for (const id of requiredFields) {
+        const el = document.getElementById(id);
+        if (!el.value.trim()) {
+            alert(`El campo '${el.previousElementSibling.textContent}' es obligatorio.`);
+            return false;
+        }
+    }
+    if (!fileHandles.script) {
+        alert("Debes seleccionar un archivo de script principal.");
+        return false;
+    }
+    return true;
+}
+
 async function createLibraryPackage() {
     if (!validateInputs()) return;
 
@@ -62,5 +119,50 @@ function fileToBase64(file) {
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
         reader.readAsDataURL(file);
+    });
+}
+
+export function initialize(domain, projDirHandle) {
+    dom = {
+        modal: document.getElementById('library-creator-modal'),
+        closeBtn: document.querySelector('#library-creator-modal .close-button'),
+        name: document.getElementById('lib-creator-name'),
+        version: document.getElementById('lib-creator-version'),
+        authorName: document.getElementById('lib-creator-author-name'),
+        authorIconPath: document.getElementById('lib-creator-author-icon-path'),
+        authorIconBtn: document.getElementById('lib-creator-author-icon-btn'),
+        authorIconPreview: document.getElementById('lib-creator-author-icon-preview'),
+        libIconPath: document.getElementById('lib-creator-icon-path'),
+        libIconBtn: document.getElementById('lib-creator-icon-btn'),
+        libIconPreview: document.getElementById('lib-creator-icon-preview'),
+        scriptPath: document.getElementById('lib-creator-script-path'),
+        scriptBtn: document.getElementById('lib-creator-script-btn'),
+        desc: document.getElementById('lib-creator-desc'),
+        usage: document.getElementById('lib-creator-usage'),
+        helpBtn: document.getElementById('library-creator-help-btn'),
+        createBtn: document.getElementById('library-creator-create-btn'),
+        ...domain
+    };
+    projectsDirHandle = projDirHandle;
+
+    dom.closeBtn.addEventListener('click', () => dom.modal.classList.remove('is-open'));
+
+    dom.authorIconBtn.addEventListener('click', () => selectFile('authorIcon', {
+        types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg'] } }]
+    }));
+
+    dom.libIconBtn.addEventListener('click', () => selectFile('libIcon', {
+        types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg'] } }]
+    }));
+
+    dom.scriptBtn.addEventListener('click', () => selectFile('script', {
+        types: [{ description: 'JavaScript', accept: { 'application/javascript': ['.js'] } }]
+    }));
+
+    dom.createBtn.addEventListener('click', createLibraryPackage);
+
+    // This button could open a link to documentation in the future
+    dom.helpBtn.addEventListener('click', () => {
+        alert("La documentación para la API de librerías estará disponible pronto.");
     });
 }

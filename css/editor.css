@@ -1517,7 +1517,22 @@ body {
 }
 
 .library-item:hover {
-    background-color: var(--color-background-hover);
+    background-color: var(--bg-tertiary);
+}
+
+.library-details-btn {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.library-details-btn:hover {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
 }
 
 .library-icon {
