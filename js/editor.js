@@ -29,6 +29,8 @@ import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
 import { API as LibraryAPI } from './editor/LibraryAPI.js';
+import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
+import * as CES_Transpiler from './editor/CES_Transpiler.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1558,6 +1560,9 @@ document.addEventListener('DOMContentLoaded', () => {
             startGame = runChecksAndPlay;
 
             updateLoadingProgress(100, "¡Listo!");
+
+            // Update the RuntimeAPIManager with the loaded APIs
+            RuntimeAPIManager.updateAPIs(LibraryAPI.getRuntimeAPIs());
 
             // Final step: Populate library windows menu
             const windowMenu = document.getElementById('window-menu-content');

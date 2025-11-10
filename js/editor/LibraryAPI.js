@@ -8,6 +8,7 @@
 import { createFloatingPanel } from './FloatingPanelManager.js';
 
 const registeredWindows = [];
+const runtimeAPIs = {};
 
 /**
  * Registra una nueva ventana de librería en el menú principal "Ventana > Librerías".
@@ -158,12 +159,27 @@ function crearPanel(options) {
 }
 
 
+function registrarRuntimeAPI(nombre, apiObject) {
+    if (!nombre || typeof nombre !== 'string' || !apiObject || typeof apiObject !== 'object') {
+        console.error("Error al registrar la API de runtime: el nombre debe ser un string y apiObject debe ser un objeto.");
+        return;
+    }
+    if (runtimeAPIs[nombre]) {
+        console.warn(`Una API de runtime con el nombre "${nombre}" ya ha sido registrada. Será sobrescrita.`);
+    }
+    runtimeAPIs[nombre] = apiObject;
+    console.log(`API de runtime registrada: "${nombre}"`);
+}
+
+
 // Exponer la API en un objeto global para que sea accesible desde los scripts de las librerías
 window.CreativeEngine = window.CreativeEngine || {};
 window.CreativeEngine.API = {
     registrarVentana,
     crearPanel,
-    getRegisteredWindows: () => [...registeredWindows] // Getter para uso interno del editor
+    registrarRuntimeAPI,
+    getRegisteredWindows: () => [...registeredWindows], // Getter para uso interno del editor
+    getRuntimeAPIs: () => ({ ...runtimeAPIs }) // Getter para uso interno del editor
 };
 
 export const API = window.CreativeEngine.API;
