@@ -71,7 +71,12 @@
                         <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
                         <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
+                        <hr>
+                        <a href="#" id="menu-window-lib" class="disabled">Lib</a>
                     </div>
+                </div>
+                <div class="menu-item">
+                    <button id="menubar-libraries-btn" class="menu-btn">Librerías</button>
                 </div>
                 <div class="menu-item">
                     <button id="menubar-carl-ia-btn" class="menu-btn">🤖 Carl IA</button>
@@ -88,6 +93,106 @@
             </div>
         </div>
         <main id="editor-main-content">
+            <div id="library-panel" class="editor-panel floating-panel hidden" style="width: 700px; height: 500px;">
+                <div class="panel-header">
+                    <span>Librerías</span>
+                    <div class="panel-header-controls">
+                        <button id="library-panel-create-btn" class="panel-tool-btn">Crear</button>
+                        <button id="library-panel-import-btn" class="panel-tool-btn">Importar</button>
+                        <button id="library-panel-export-btn" class="panel-tool-btn">Exportar</button>
+                        <button class="close-panel-btn" data-panel="library-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content" id="library-list-container">
+                    <!-- Library cards will be populated by JS -->
+                     <div class="panel-overlay-message">
+                        <p>No se encontraron librerías en la carpeta /lib del proyecto.</p>
+                        <p>Usa 'Crear' para empezar una nueva o 'Importar' para añadir un archivo .celib existente.</p>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+            <div id="create-library-modal" class="modal">
+                <div class="modal-content large">
+                    <span class="close-button">&times;</span>
+                    <h2>Crear Nueva Librería</h2>
+                    <div class="settings-form">
+                        <fieldset class="settings-section">
+                            <legend>Información Básica</legend>
+                            <label for="lib-create-name">Nombre de la Librería</label>
+                            <input type="text" id="lib-create-name" placeholder="Ej: MiLibreriaDeFisicas">
+                            <label for="lib-create-author">Autor / Organización</label>
+                            <input type="text" id="lib-create-author" placeholder="Ej: MiEstudio">
+                            <label for="lib-create-version">Versión</label>
+                            <input type="text" id="lib-create-version" placeholder="1.0.0">
+                            <label for="lib-create-signature">Firma (Opcional)</label>
+                            <input type="text" id="lib-create-signature" placeholder="Una clave única para verificar la autoría">
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Apariencia</legend>
+                            <div style="display: flex; gap: 20px;">
+                                <div style="flex: 1;">
+                                    <label>Icono de la Librería</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-icon-preview" src="image/Paquete.png" alt="Vista previa del icono">
+                                        <button id="lib-create-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Icono principal que se mostrará en la tienda.</p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label>Icono del Autor</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-author-icon-preview" src="image/Paquete.png" alt="Vista previa del icono del autor">
+                                        <button id="lib-create-author-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-author-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Un logo pequeño o foto de perfil.</p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Funcionalidad y Permisos</legend>
+                            <label for="lib-create-description">Descripción / Cómo usar</label>
+                            <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores."></textarea>
+
+                            <label for="lib-create-script-file">Archivo de Script (.js)</label>
+                            <div class="file-picker">
+                                <input type="text" id="lib-create-script-path" readonly placeholder="Ningún script seleccionado">
+                                <button id="lib-create-script-picker-btn">...</button>
+                                <input type="file" id="lib-create-script-input" style="display: none;" accept=".js">
+                            </div>
+                             <p class="field-description">El archivo JavaScript principal que contiene la lógica de tu librería.</p>
+                            <hr>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-req-windows">
+                                <label for="lib-create-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-runtime-access">
+                                <label for="lib-create-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-is-tool">
+                                <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="lib-create-cancel-btn">Cancelar</button>
+                        <button id="lib-create-confirm-btn" class="primary-btn">Crear Librería</button>
+                    </div>
+                </div>
+            </div>
             <!-- The editor panels will go here in the next step -->
              <div id="hierarchy-panel" class="editor-panel">
                 <div class="panel-header">

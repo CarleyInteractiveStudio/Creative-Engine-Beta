@@ -31,6 +31,7 @@ import { SpriteEditor } from './sprite-editor.js';
 import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
+import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1368,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {
+            RuntimeAPIManager.clearAPIs(); // Limpiar APIs de sesiones anteriores
             updateLoadingProgress(5, "Conectando a la base de datos local...");
             await openDB();
 
@@ -1392,16 +1394,40 @@ document.addEventListener('DOMContentLoaded', () => {
                             const content = await file.text();
                             const libData = JSON.parse(content);
 
-                            if (libData.script) {
-                                // Decode the Base64 script content
-                                const scriptContent = atob(libData.script);
-                                // Execute the script in the global scope
-                                const script = document.createElement('script');
-                                script.type = 'text/javascript';
-                                script.textContent = scriptContent;
-                                document.head.appendChild(script);
-                                console.log(`Librería '${libData.name}' cargada y ejecutada.`);
+                            // Decode the Base64 script content
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+
+                            // 1. Handle API for creating windows (Editor-side)
+                            if (libData.api_access && libData.api_access.can_create_windows) {
+                                // This script runs in the editor's context to register UI elements
+                                try {
+                                    // We wrap the code in a function to control its scope
+                                    const setupFunction = new Function('CreativeEngine', scriptContent);
+                                    setupFunction(window.CreativeEngine); // Pass the API object
+                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
+                                } catch(e) {
+                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                }
                             }
+
+                            // 2. Handle API for game scripts (Runtime)
+                            if (libData.api_access && libData.api_access.runtime_accessible) {
+                                // This script is evaluated to get its public functions for the game
+                                try {
+                                    // Wrap in a function and immediately execute to get the return value
+                                    const getApiObject = new Function(scriptContent + '; return this;');
+                                    const apiObject = getApiObject.call({});
+
+                                    if (apiObject && typeof apiObject === 'object') {
+                                        RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                    } else {
+                                        console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
+                                    }
+                                } catch(e) {
+                                    console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);
+                                }
+                            }
+
                         } catch (e) {
                             console.error(`Error al cargar la librería ${entry.name}:`, e);
                         }
@@ -1535,6 +1561,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize(dom, projectsDirHandle);
+            initializeLibraryWindow(dom, projectsDirHandle);
             spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

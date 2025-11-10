@@ -10,44 +10,48 @@ const usingMap = {
 };
 
 export function transpile(code) {
-    const allAPIs = RuntimeAPIManager.getAPIs();
+    const allAPIs = RuntimeAPIManager.getAPIs(); // This is a Map
     const lines = code.split(/\r?\n/);
     const errors = [];
     let jsCode = '';
     const imports = new Set();
     let inBlock = false;
 
+    // --- Library Import Data ---
     const importedLibs = [];
-    const availableFunctions = {};
+    const functionToLibMap = new Map();
     const ambiguousFunctions = new Set();
 
+    // --- Phase 1: Handle all imports (go and using) and map library functions ---
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         let trimmedLine = line.trim();
 
         if (trimmedLine === '' || trimmedLine.startsWith('//')) return;
 
-        // --- Phase 1: Handle imports (go and using) ---
+        // Handle 'go' imports for libraries
         const goMatch = trimmedLine.match(/^go\s+"([^"]+)"/);
         if (goMatch) {
             const libName = goMatch[1];
-            if (!allAPIs[libName]) {
+            if (!allAPIs.has(libName)) {
                 errors.push(`Línea ${lineNumber}: La librería '${libName}' no se encontró o no está registrada.`);
                 return;
             }
-            importedLibs.push(libName);
-
-            // Register functions and check for ambiguities
-            for (const funcName in allAPIs[libName]) {
-                if (availableFunctions[funcName]) {
-                    ambiguousFunctions.add(funcName);
-                } else {
-                    availableFunctions[funcName] = libName;
+            if (!importedLibs.some(lib => lib.name === libName)) {
+                importedLibs.push({ name: libName, index: importedLibs.length });
+                const libAPI = allAPIs.get(libName);
+                for (const funcName in libAPI) {
+                    if (functionToLibMap.has(funcName)) {
+                        ambiguousFunctions.add(funcName);
+                    } else {
+                        functionToLibMap.set(funcName, libName);
+                    }
                 }
             }
             return; // Finished processing this 'go' line
         }
 
+        // Handle 'using' imports for engine modules
         const usingMatch = trimmedLine.match(/^using\s+([^;]+);/);
         if (usingMatch) {
             const namespace = usingMatch[1].trim();
@@ -55,8 +59,6 @@ export function transpile(code) {
             else errors.push(`Línea ${lineNumber}: Namespace '${namespace}' desconocido.`);
             return;
         }
-
-        // Defer processing of other lines until all 'go' statements are read
     });
 
     if (errors.length > 0) return { errors };
@@ -66,10 +68,11 @@ export function transpile(code) {
         const lineNumber = index + 1;
         let trimmedLine = line.trim();
 
-        if (trimmedLine === '' || trimmedLine.startsWith('//') || trimmedLine.startsWith('go ')) return;
+        if (trimmedLine === '' || trimmedLine.startsWith('//') || trimmedLine.startsWith('go ') || trimmedLine.startsWith('using ')) return;
 
         if (trimmedLine.includes('{')) inBlock = true;
 
+        // Retain existing variable declaration logic
         if (!inBlock) {
             const varMatch = trimmedLine.match(/^public\s+(?:materia\/gameObject)\s+([^;]+);/);
             if (varMatch) {
@@ -78,43 +81,48 @@ export function transpile(code) {
             }
         }
 
-        // Handle function calls from libraries
-        let processedLine = trimmedLine.replace(/(\w+)\s*\((.*)\)/g, (match, funcName, args) => {
-            // Check for direct, non-ambiguous call
-            if (availableFunctions[funcName] && !ambiguousFunctions.has(funcName)) {
-                const libName = availableFunctions[funcName];
-                return `RuntimeAPIManager.getAPIs()["${libName}"].${funcName}(${args})`;
+        // --- Transpile Function Calls (Library and Engine) ---
+        let processedLine = trimmedLine.replace(/([a-zA-Z0-9_.]+)\s*\((.*)\)/g, (match, funcName, args) => {
+            // Handle disambiguation first: Library.function()
+            if (funcName.includes('.')) {
+                const parts = funcName.split('.');
+                const libName = parts[0];
+                const fn = parts[1];
+                 if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[fn]) {
+                    return `RuntimeAPIManager.getAPI("${libName}").${fn}(${args})`;
+                }
             }
-            // Check for ambiguity
+
+            // Handle alternative disambiguation: function.(Library()) - This is a custom syntax
+            const altDisambiguationMatch = match.match(/(\w+)\.\s*\(\s*(\w+)\s*\(\s*\)\s*\)\((.*)\)/);
+            if (altDisambiguationMatch) {
+                const [_, func, libName, funcArgs] = altDisambiguationMatch;
+                if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[func]) {
+                    return `RuntimeAPIManager.getAPI("${libName}").${func}(${funcArgs})`;
+                }
+            }
+
+            // Handle standard, non-ambiguous library call
+            if (functionToLibMap.has(funcName) && !ambiguousFunctions.has(funcName)) {
+                const libName = functionToLibMap.get(funcName);
+                return `RuntimeAPIManager.getAPI("${libName}").${funcName}(${args})`;
+            }
+
+            // Report ambiguity error
             if (ambiguousFunctions.has(funcName)) {
-                errors.push(`Línea ${lineNumber}: Llamada a función ambigua '${funcName}'. Especifique la librería (ej: LibName.${funcName}() o go[1].${funcName}()).`);
-                return match;
+                const possibleLibs = importedLibs.filter(lib => allAPIs.get(lib.name)?.[funcName]).map(lib => lib.name);
+                errors.push(`Línea ${lineNumber}: Llamada a función ambigua '${funcName}'. Especifique la librería (ej: ${possibleLibs[0]}.${funcName}()).`);
+                return match; // Return original match to stop processing this line
             }
-            // Check for disambiguation by name
-            const byNameMatch = match.match(/(\w+)\.(\w+)\s*\((.*)\)/);
-            if (byNameMatch) {
-                const [_, libName, func, funcArgs] = byNameMatch;
-                if (importedLibs.includes(libName) && allAPIs[libName][func]) {
-                    return `RuntimeAPIManager.getAPIs()["${libName}"].${func}(${funcArgs})`;
-                }
-            }
-            // Check for disambiguation by index
-            const byIndexMatch = match.match(/go\[(\d+)\]\.(\w+)\s*\((.*)\)/);
-            if (byIndexMatch) {
-                const [_, indexStr, func, funcArgs] = byIndexMatch;
-                const index = parseInt(indexStr, 10) - 1;
-                if (index >= 0 && index < importedLibs.length) {
-                    const libName = importedLibs[index];
-                    if (allAPIs[libName][func]) {
-                        return `RuntimeAPIManager.getAPIs()["${libName}"].${func}(${funcArgs})`;
-                    }
-                }
-            }
-            return match; // Return original if no match
+
+            // If it's not a known library function, return it as is for other JS/engine functions.
+            return match;
         });
 
         if (errors.length > 0) return;
 
+
+        // Retain existing lifecycle function logic
         const starMatch = processedLine.match(/^public\s+star\s*\(\)\s*{/);
         if (starMatch) {
             jsCode += 'Engine.start = function() {\n';
@@ -126,6 +134,7 @@ export function transpile(code) {
             return;
         }
 
+        // Retain existing block and syntax error logic
         if (inBlock) {
             if (processedLine.includes('}')) {
                 inBlock = false;
