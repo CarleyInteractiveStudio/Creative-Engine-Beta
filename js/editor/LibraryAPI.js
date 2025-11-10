@@ -46,44 +46,62 @@ function crearPanel(options) {
     panelElement.querySelector('.panel-content').classList.add('library-api-content');
     const contentDiv = panelElement.querySelector('.panel-content');
 
-    // Métodos que la librería podrá usar
-    const panelAPI = {
-        elemento: panelElement,
-        contenido: contentDiv,
+    const panelAPI = createApiForContainer(contentDiv);
+    panelAPI.elemento = panelElement; // Add the top-level element reference
+
+    return panelAPI;
+}
+
+/**
+ * Factory function to create a UI API object for a given container element.
+ * @param {HTMLElement} container - The container where UI elements will be added.
+ * @returns {object} The API object with methods to add UI components.
+ */
+function createApiForContainer(container) {
+    const api = {
+        contenido: container,
 
         agregarTexto: (texto) => {
             const p = document.createElement('p');
             p.textContent = texto;
-            contentDiv.appendChild(p);
+            container.appendChild(p);
+            return p;
         },
 
         agregarBoton: (etiqueta, onClick) => {
             const btn = document.createElement('button');
             btn.textContent = etiqueta;
-            btn.className = 'primary-btn'; // O una clase genérica de botón del editor
-            btn.addEventListener('click', onClick);
-            contentDiv.appendChild(btn);
+            btn.className = 'primary-btn';
+            if (onClick) btn.addEventListener('click', onClick);
+            container.appendChild(btn);
+            return btn;
         },
 
-        agregarInputTexto: (etiqueta, valorInicial = '') => {
+        agregarInputTexto: (etiqueta, opciones = {}) => {
             const label = document.createElement('label');
             label.textContent = etiqueta;
             const input = document.createElement('input');
             input.type = 'text';
-            input.value = valorInicial;
-            contentDiv.appendChild(label);
-            contentDiv.appendChild(input);
-            return input; // Devolver para que la librería pueda leer su valor
+            input.value = opciones.valorInicial || '';
+            if (opciones.alCambiar) {
+                input.addEventListener('input', (e) => opciones.alCambiar(e.target.value));
+            }
+            container.appendChild(label);
+            container.appendChild(input);
+            return input;
         },
 
-        agregarInputNumerico: (etiqueta, valorInicial = 0) => {
+        agregarInputNumerico: (etiqueta, opciones = {}) => {
             const label = document.createElement('label');
             label.textContent = etiqueta;
             const input = document.createElement('input');
             input.type = 'number';
-            input.value = valorInicial;
-            contentDiv.appendChild(label);
-            contentDiv.appendChild(input);
+            input.value = opciones.valorInicial || 0;
+            if (opciones.alCambiar) {
+                input.addEventListener('input', (e) => opciones.alCambiar(e.target.value));
+            }
+            container.appendChild(label);
+            container.appendChild(input);
             return input;
         },
 
@@ -93,8 +111,27 @@ function crearPanel(options) {
             if (options.alt) img.alt = options.alt;
             img.style.maxWidth = '100%';
             img.style.height = 'auto';
-            contentDiv.appendChild(img);
+            container.appendChild(img);
             return img;
+        },
+
+        agregarContenedor: (options = {}) => {
+            const div = document.createElement('div');
+            const direction = options.direction || 'vertical'; // Default to vertical
+            div.className = `lib-container lib-container-${direction}`;
+            container.appendChild(div);
+            // Return a new API object scoped to this new container
+            return createApiForContainer(div);
+        },
+
+        agregarAreaScroll: (options = {}) => {
+            const div = document.createElement('div');
+            div.className = 'lib-scroll-area';
+            if(options.height) {
+                div.style.height = options.height;
+            }
+            container.appendChild(div);
+            return createApiForContainer(div);
         },
 
         agregarVideo: (options) => {
@@ -102,7 +139,7 @@ function crearPanel(options) {
             video.src = options.src;
             video.controls = true;
             video.style.maxWidth = '100%';
-            contentDiv.appendChild(video);
+            container.appendChild(video);
             return video;
         },
 
@@ -115,8 +152,8 @@ function crearPanel(options) {
             slider.max = options.max || 100;
             slider.step = options.step || 1;
             slider.value = options.value || 50;
-            contentDiv.appendChild(label);
-            contentDiv.appendChild(slider);
+            container.appendChild(label);
+            container.appendChild(slider);
             return slider;
         },
 
@@ -130,7 +167,7 @@ function crearPanel(options) {
             span.textContent = etiqueta;
             label.appendChild(checkbox);
             label.appendChild(span);
-            contentDiv.appendChild(label);
+            container.appendChild(label);
             return checkbox;
         },
 
@@ -144,18 +181,17 @@ function crearPanel(options) {
                 option.textContent = typeof item === 'object' ? item.text : item;
                 select.appendChild(option);
             });
-            contentDiv.appendChild(label);
-            contentDiv.appendChild(select);
+            container.appendChild(label);
+            container.appendChild(select);
             return select;
         },
 
         agregarSeparador: () => {
             const hr = document.createElement('hr');
-            contentDiv.appendChild(hr);
+            container.appendChild(hr);
         }
     };
-
-    return panelAPI;
+    return api;
 }
 
 

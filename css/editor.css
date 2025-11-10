@@ -680,6 +680,28 @@ body {
     margin: 10px 0;
 }
 
+/* --- Library API Layout Components --- */
+.lib-container {
+    display: flex;
+    gap: 10px; /* Default gap for all containers */
+}
+.lib-container-vertical {
+    flex-direction: column;
+}
+.lib-container-horizontal {
+    flex-direction: row;
+    align-items: center; /* Align items vertically in a row */
+}
+
+.lib-scroll-area {
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 50px; /* Give it some default minimum size */
+}
+
 /* --- Terminal Styles --- */
 #terminal-content {
     display: flex;
