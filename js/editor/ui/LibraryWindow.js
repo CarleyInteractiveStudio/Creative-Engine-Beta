@@ -68,7 +68,22 @@ async function refreshLibraryList() {
                     const file = await entry.getFile();
                     const content = await file.text();
                     const libData = JSON.parse(content);
-                    libraries.push({ name: entry.name, data: libData });
+
+                    // Check activation status from .meta file
+                    let isActive = true;
+                    try {
+                        const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                        const metaFile = await metaFileHandle.getFile();
+                        const metaContent = await metaFile.text();
+                        const metaData = JSON.parse(metaContent);
+                        if (metaData.active === false) {
+                            isActive = false;
+                        }
+                    } catch (e) {
+                        // Meta file not found or invalid, defaults to active
+                    }
+
+                    libraries.push({ name: entry.name, data: libData, isActive: isActive });
                 } catch (e) {
                     console.error(`Error parsing library file ${entry.name}:`, e);
                 }
@@ -87,7 +102,7 @@ async function refreshLibraryList() {
         // Render library cards
         libraries.forEach(lib => {
             const card = document.createElement('div');
-            card.className = 'library-card';
+            card.className = `library-card ${lib.isActive ? 'active' : 'inactive'}`;
             card.innerHTML = `
                 <img src="${lib.data.library_icon_base64 || 'image/Paquete.png'}" class="library-icon">
                 <div class="library-info">
@@ -101,7 +116,7 @@ async function refreshLibraryList() {
                     </div>
                 </div>
                 <div class="library-actions">
-                    <button class="btn-toggle-activate" data-lib-name="${lib.name}" title="Activar/Desactivar">🔘</button>
+                    <button class="btn-toggle-activate ${lib.isActive ? 'state-active' : 'state-inactive'}" data-lib-name="${lib.name}" title="Activar/Desactivar"></button>
                     <button class="btn-delete-library" data-lib-name="${lib.name}" title="Eliminar del Proyecto">🗑️</button>
                 </div>
             `;
@@ -292,6 +307,40 @@ export function initialize(editorDom, handle) {
     // Confirmation button
     dom.libCreateConfirmBtn.addEventListener('click', handleCreateLibrary);
 
+    async function toggleLibraryActivation(libName) {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+        const metaFileName = `${libName}.meta`;
+
+        let currentState = true;
+        try {
+            const metaFileHandle = await libDirHandle.getFileHandle(metaFileName);
+            const metaFile = await metaFileHandle.getFile();
+            const metaContent = await metaFile.text();
+            const metaData = JSON.parse(metaContent);
+            if (metaData.active === false) {
+                currentState = false;
+            }
+        } catch (e) {
+            // Meta file doesn't exist, so it's considered active.
+        }
+
+        const newState = !currentState;
+        try {
+            const metaFileHandle = await libDirHandle.getFileHandle(metaFileName, { create: true });
+            const writable = await metaFileHandle.createWritable();
+            await writable.write(JSON.stringify({ active: newState }, null, 2));
+            await writable.close();
+
+            alert(`La librería ha sido ${newState ? 'activada' : 'desactivada'}. Por favor, reinicia el editor para aplicar los cambios.`);
+            refreshLibraryList();
+
+        } catch (error) {
+            console.error(`Error al actualizar el estado de la librería '${libName}':`, error);
+            alert("No se pudo actualizar el estado de la librería.");
+        }
+    }
     // Placeholder for actions on library cards (delegated event listener)
     document.getElementById('library-list-container').addEventListener('click', (e) => {
         const target = e.target;
@@ -304,9 +353,8 @@ export function initialize(editorDom, handle) {
             }
         }
         if (target.classList.contains('btn-toggle-activate')) {
-            // To-do: Implement activation/deactivation logic
-            console.log(`Toggle activate for: ${target.dataset.libName}`);
-            alert("La funcionalidad de activar/desactivar aún no está implementada.");
+            const libName = target.dataset.libName;
+            toggleLibraryActivation(libName);
         }
     });
 

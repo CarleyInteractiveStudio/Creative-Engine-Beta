@@ -1389,6 +1389,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 for await (const entry of libDirHandle.values()) {
                     if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                        // Check for activation status via .meta file
+                        let isActive = true; // Active by default
+                        try {
+                            const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                            const metaFile = await metaFileHandle.getFile();
+                            const metaContent = await metaFile.text();
+                            const metaData = JSON.parse(metaContent);
+                            if (metaData.active === false) {
+                                isActive = false;
+                            }
+                        } catch (e) {
+                            // Meta file doesn't exist or is invalid, assume active. This is the default.
+                        }
+
+                        if (!isActive) {
+                            console.log(`Librería '${entry.name}' está inactiva. Omitiendo.`);
+                            continue; // Skip to the next library
+                        }
+
+                        // If active, proceed with loading...
                         try {
                             const file = await entry.getFile();
                             const content = await file.text();
@@ -1414,9 +1434,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (libData.api_access && libData.api_access.runtime_accessible) {
                                 // This script is evaluated to get its public functions for the game
                                 try {
-                                    // Wrap in a function and immediately execute to get the return value
-                                    const getApiObject = new Function(scriptContent + '; return this;');
-                                    const apiObject = getApiObject.call({});
+                                    // Wrap in an IIFE (Immediately Invoked Function Expression) to capture the return value.
+                                    const apiObject = (new Function(scriptContent))();
 
                                     if (apiObject && typeof apiObject === 'object') {
                                         RuntimeAPIManager.registerAPI(libData.name, apiObject);
