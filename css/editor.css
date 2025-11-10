@@ -534,10 +534,32 @@ body {
 }
 
 .library-api-content input[type="text"],
-.library-api-content input[type="number"] {
+.library-api-content input[type="number"],
+.library-api-content select {
     width: 100%;
     padding: 8px;
     box-sizing: border-box;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+}
+
+.library-api-content .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.library-api-content .checkbox-field input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.library-api-content hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 10px 0;
 }
 
 /* --- Terminal Styles --- */

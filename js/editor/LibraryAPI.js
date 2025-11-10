@@ -84,6 +84,73 @@ function crearPanel(options) {
             contentDiv.appendChild(label);
             contentDiv.appendChild(input);
             return input;
+        },
+
+        agregarImagen: (options) => {
+            const img = document.createElement('img');
+            img.src = options.src;
+            if (options.alt) img.alt = options.alt;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            contentDiv.appendChild(img);
+            return img;
+        },
+
+        agregarVideo: (options) => {
+            const video = document.createElement('video');
+            video.src = options.src;
+            video.controls = true;
+            video.style.maxWidth = '100%';
+            contentDiv.appendChild(video);
+            return video;
+        },
+
+        agregarSlider: (etiqueta, options) => {
+            const label = document.createElement('label');
+            label.textContent = etiqueta;
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = options.min || 0;
+            slider.max = options.max || 100;
+            slider.step = options.step || 1;
+            slider.value = options.value || 50;
+            contentDiv.appendChild(label);
+            contentDiv.appendChild(slider);
+            return slider;
+        },
+
+        agregarCheckbox: (etiqueta, checked = false) => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-field';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = checked;
+            const span = document.createElement('span');
+            span.textContent = etiqueta;
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            contentDiv.appendChild(label);
+            return checkbox;
+        },
+
+        agregarDropdown: (etiqueta, items) => {
+            const label = document.createElement('label');
+            label.textContent = etiqueta;
+            const select = document.createElement('select');
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = typeof item === 'object' ? item.value : item;
+                option.textContent = typeof item === 'object' ? item.text : item;
+                select.appendChild(option);
+            });
+            contentDiv.appendChild(label);
+            contentDiv.appendChild(select);
+            return select;
+        },
+
+        agregarSeparador: () => {
+            const hr = document.createElement('hr');
+            contentDiv.appendChild(hr);
         }
     };
 
