@@ -1,5 +1,5 @@
 import * as Components from '../../engine/Components.js';
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath } from '../AssetUtils.js';
 
 // --- Module State ---
 let dom;

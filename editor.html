@@ -29,6 +29,20 @@
     </div>
 
     <div id="editor-container" style="display: none;">
+        <div id="wizard-modal" class="modal">
+            <div class="modal-content">
+                <div id="wizard-header">
+                    <h2 id="wizard-title"></h2>
+                    <span id="wizard-close-btn" class="close-button">&times;</span>
+                </div>
+                <div id="wizard-body"></div>
+                <div id="wizard-footer">
+                    <button id="wizard-prev-btn">Anterior</button>
+                    <button id="wizard-next-btn">Siguiente</button>
+                    <button id="wizard-finish-btn">Finalizar</button>
+                </div>
+            </div>
+        </div>
         <div id="menubar">
             <div class="menubar-left">
                 <div class="logo-area">
@@ -82,7 +96,8 @@
                 <div class="menu-item">
                     <button class="menu-btn">Ayuda</button>
                     <div class="menu-content">
-                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help">Ayuda</a>
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank">Documentación</a>
+                        <a href="#" id="menu-library-api">API para Librerías</a>
                     </div>
                 </div>
             </div>
@@ -909,7 +924,7 @@
             <div id="library-list-view">
                 <div id="library-toolbar">
                     <button id="library-import-btn">Importar Librería</button>
-                    <button id="library-add-btn" title="Crear nueva librería (no implementado)">+</button>
+                    <button id="library-create-btn">Crear Librería</button>
                 </div>
                 <div id="library-list-container">
                     <!-- Library items will be populated by JS -->
@@ -960,6 +975,115 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <div id="library-creator-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Asistente de Creación de Librerías</h2>
+            <div class="settings-form">
+                <fieldset class="settings-section">
+                    <legend>Metadatos de la Librería</legend>
+                    <label for="lib-creator-name">Nombre de la Librería</label>
+                    <input type="text" id="lib-creator-name" placeholder="Ej: MiLibreriaUI">
+                    <label for="lib-creator-version">Versión</label>
+                    <input type="text" id="lib-creator-version" placeholder="1.0.0">
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Información del Creador</legend>
+                    <label for="lib-creator-author-name">Nombre del Creador</label>
+                    <input type="text" id="lib-creator-author-name" placeholder="Tu Nombre">
+                    <label>Foto del Creador</label>
+                    <div class="file-picker">
+                        <input type="text" id="lib-creator-author-icon-path" readonly placeholder="Ninguna seleccionada">
+                        <button id="lib-creator-author-icon-btn">Seleccionar...</button>
+                        <img id="lib-creator-author-icon-preview" class="image-preview" src="">
+                    </div>
+                </fieldset>
+                 <fieldset class="settings-section">
+                    <legend>Archivos de la Librería</legend>
+                    <label>Icono de la Librería (.png, .jpg)</label>
+                     <div class="file-picker">
+                        <input type="text" id="lib-creator-icon-path" readonly placeholder="Ninguno seleccionado">
+                        <button id="lib-creator-icon-btn">Seleccionar...</button>
+                        <img id="lib-creator-icon-preview" class="image-preview" src="">
+                    </div>
+                    <label>Script Principal (.js)</label>
+                    <div class="file-picker">
+                        <input type="text" id="lib-creator-script-path" readonly placeholder="Ninguno seleccionado">
+                        <button id="lib-creator-script-btn">Seleccionar...</button>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Documentación</legend>
+                    <label for="lib-creator-desc">Descripción Breve</label>
+                    <textarea id="lib-creator-desc" rows="3" placeholder="Describe en una frase lo que hace tu librería."></textarea>
+                    <label for="lib-creator-usage">Documentación de Uso (Cómo llamarla desde código)</label>
+                    <textarea id="lib-creator-usage" rows="6" placeholder="Ej: MiLibreria.mostrarVentana('Hola Mundo');"></textarea>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="library-creator-help-btn">Ayuda API</button>
+                <button id="library-creator-create-btn" class="primary-btn">Crear Archivo .celib</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="library-api-help-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>API para Librerías de Creative Engine</h2>
+            <div class="settings-form">
+                <p>Aquí encontrarás la documentación sobre cómo interactuar con el editor de Creative Engine desde tus librerías.</p>
+
+                <fieldset class="settings-section">
+                    <legend>Acceso Global</legend>
+                    <p>Tu script se ejecutará en el ámbito global (`window`). Se recomienda definir un objeto principal para tu librería para evitar colisiones de nombres.</p>
+                    <pre><code>window.MiLibreria = { ... };</code></pre>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Registrar Componentes</legend>
+                    <p>Para que tus componentes personalizados aparezcan en el editor, debes registrarlos. La API buscará un objeto global `CreativeEngine.registerComponent`.</p>
+                    <pre><code>
+// Ejemplo de un componente simple
+class MiComponente {
+    constructor() {
+        this.nombre = "Mi Componente";
+        this.valor = 10;
+    }
+    update(deltaTime) {
+        // Lógica del componente...
+    }
+}
+
+// Registrar el componente
+// El primer argumento es el nombre que se mostrará en el editor
+// El segundo es un ícono (opcional, puede ser un emoji)
+// El tercero es la clase del componente
+CreativeEngine.registerComponent('Mi Componente', '🧩', MiComponente);
+                    </code></pre>
+                </fieldset>
+
+                 <fieldset class="settings-section">
+                    <legend>Añadir Menús</legend>
+                    <p>Puedes añadir nuevas opciones a la barra de menú principal del editor.</p>
+                    <pre><code>
+CreativeEngine.addMenu('Mi Menú', [
+    { name: 'Opción 1', action: () => alert('Has pulsado la opción 1') },
+    { name: 'Opción 2', action: () => console.log('Acción 2') },
+    { isSeparator: true },
+    {
+        name: 'Submenú',
+        submenu: [
+            { name: 'Sub-Opción A', action: () => alert('Sub A') }
+        ]
+    }
+]);
+                    </code></pre>
+                </fieldset>
+            </div>
+        </div>
+    </div>
     <script type="module" src="js/editor.js?v=1.0"></script>
 </body>
 </html>

@@ -520,6 +520,39 @@ body {
     color: white;
 }
 
+/* --- Wizard Modal --- */
+#wizard-modal .modal-content {
+    width: 600px;
+    max-width: 90vw;
+    height: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+#wizard-body {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#wizard-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
 /* --- Terminal Styles --- */
 #terminal-content {
     display: flex;
@@ -1598,6 +1631,32 @@ body {
     margin-top: 20px;
     display: flex;
     gap: 10px;
+}
+
+/* --- Library Creator Modal --- */
+.file-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.file-picker input[type="text"] {
+    flex-grow: 1;
+    background-color: var(--color-background-deep);
+}
+
+.file-picker button {
+    flex-shrink: 0;
+}
+
+.image-preview {
+    display: none; /* Hidden by default */
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-border);
 }
 .mini-timeline img {
     height: 50px;

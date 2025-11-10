@@ -1,4 +1,4 @@
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath } from '../AssetUtils.js';
 
 let dom = {};
 let projectsDirHandle = null;

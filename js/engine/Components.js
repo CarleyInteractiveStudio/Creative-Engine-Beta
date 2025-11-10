@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
-import { getURLForAssetPath } from './AssetUtils.js';
+import { getURLForAssetPath } from '../editor/AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
 
 // --- Component Class Definitions ---
