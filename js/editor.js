@@ -931,29 +931,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Scene/Game/Code View Toggle Logic
-        dom.scenePanel.querySelector('.view-toggle').addEventListener('click', (e) => {
-            if (e.target.matches('.view-toggle-btn')) {
-                const viewId = e.target.dataset.view;
-                activeView = viewId;
+        const viewToggleContainer = dom.scenePanel.querySelector('.view-toggle');
+        if (viewToggleContainer) {
+            viewToggleContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.view-toggle-btn')) {
+                    const viewId = e.target.dataset.view;
+                    activeView = viewId;
 
-                // Update button active states
-                dom.scenePanel.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
+                    // Update button active states
+                    viewToggleContainer.querySelectorAll('.view-toggle-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
 
-                // Update view content visibility
-                dom.scenePanel.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
-                document.getElementById(viewId).classList.add('active');
+                    // Update view content visibility
+                    dom.scenePanel.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
+                    document.getElementById(viewId).classList.add('active');
 
-                // Show/hide game controls
-                const gameControls = dom.scenePanel.querySelector('#game-controls');
-                if (viewId === 'scene-content' || viewId === 'game-content') {
-                    gameControls.style.display = 'flex';
-                } else {
-                    gameControls.style.display = 'none';
-                }
-
-                // Ensure canvas is resized after being made visible
-                if (viewId === 'scene-content' && renderer) {
+                    // Ensure canvas is resized after being made visible
+                    if (viewId === 'scene-content' && renderer) {
                     setTimeout(() => renderer.resize(), 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
                     setTimeout(() => gameRenderer.resize(), 0);
@@ -1573,6 +1567,12 @@ public star() {
     consola.imprimir("El resultado es: " + resultado); // Imprime 15
 }
 \`\`\`
+
+### 3. Comunicación Asíncrona con Callbacks
+
+El motor permite pasar funciones de tus scripts \`.ces\` a las librerías. Esto es fundamental para operaciones asíncronas (como peticiones de red o tareas que tardan tiempo). La librería puede "llamar de vuelta" a tu función cuando el resultado esté listo.
+
+Para ver un **ejemplo de código completo y detallado**, abre el panel de "Librerías" y haz clic en el botón **"Documentación API"**.
 `;
                     const readmeFileHandle = await libDirHandle.getFileHandle('README.md', { create: true });
                     const writable = await readmeFileHandle.createWritable();

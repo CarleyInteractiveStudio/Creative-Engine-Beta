@@ -295,25 +295,75 @@ panel.agregarVideo("https://www.youtube.com/embed/dQw4w9WgXcQ");</code></pre>
                         <h3>API de Layout</h3>
 
                         <h4><code>panel.agregarContenedor(opciones)</code></h4>
-                        <p>Crea un contenedor para agrupar otros elementos. Puedes anidarlos y definir su dirección (<code>'vertical'</code> u <code>'horizontal'</code>).</p>
-                        <pre><code>const contenedorHorizontal = panel.agregarContenedor({ direccion: 'horizontal' });
-// Los elementos añadidos a 'contenedorHorizontal' se alinearán uno al lado del otro.
-contenedorHorizontal.agregarBoton("Botón 1", () => {});
-contenedorHorizontal.agregarBoton("Botón 2", () => {});</code></pre>
+                        <p>Crea un contenedor para agrupar otros elementos. Puedes anidarlos y definir su dirección (<code>'vertical'</code> es el valor por defecto, u <code>'horizontal'</code>).</p>
+                        <pre><code>// Por defecto, los contenedores son verticales (uno debajo de otro)
+const col = panel.agregarContenedor();
+col.agregarTexto("Elemento 1");
+col.agregarInputTexto("Entrada 1");
+
+// Contenedor horizontal para alinear elementos uno al lado del otro
+const fila = panel.agregarContenedor({ direccion: 'horizontal' });
+fila.agregarBoton("Aceptar", () => {});
+fila.agregarBoton("Cancelar", () => {});</code></pre>
 
                         <h4><code>panel.agregarAreaScroll(opciones)</code></h4>
-                        <p>Crea un área con scroll. Todos los elementos que añadas a esta área estarán dentro de un contenedor desplazable.</p>
-                        <pre><code>const areaScroll = panel.agregarAreaScroll({ alto: '200px' });
-for (let i = 0; i < 20; i++) {
-    areaScroll.agregarTexto(`Elemento número ${i + 1}`);
+                        <p>Crea un área con scroll. Todos los elementos que añadas a esta área estarán dentro de un contenedor desplazable. Es útil para listas largas.</p>
+                        <pre><code>// Un área de 200px de alto que tendrá una barra de scroll si el contenido se desborda
+const areaScroll = panel.agregarAreaScroll({ alto: '200px' });
+
+// Añadimos contenido que probablemente excederá los 200px de alto
+for (let i = 0; i < 30; i++) {
+    areaScroll.agregarTexto(`Este es el elemento número ${i + 1} en la lista.`);
 }</code></pre>
 
                         <hr>
                         <h3>API de Runtime (Acceso desde Scripts .ces)</h3>
                         <p>Si marcaste la casilla "Permitir acceso a sus funciones desde scripts" al crear la librería, tu script debe devolver un objeto. Las funciones dentro de este objeto estarán disponibles en los scripts <code>.ces</code>.</p>
 
-                        <h4>Estructura del Script de Runtime</h4>
-                        <p>El script debe devolver un objeto cuyas claves son los nombres de las funciones que quieres exponer.</p>
+                        <h4>Comunicación Asíncrona con Callbacks</h4>
+                        <p>El motor soporta pasar funciones definidas en <code>.ces</code> como argumentos a funciones de librerías. Esto es esencial para operaciones asíncronas (que no devuelven un resultado al instante).</p>
+
+                        <h5>Ejemplo de Librería (JavaScript)</h5>
+                        <p>Imagina una librería que tarda un tiempo en obtener un resultado, como una petición a un servidor o un cálculo complejo.</p>
+                        <pre><code>// Archivo de script de la librería (.js)
+return {
+    obtenerDatosDelServidor: function(alTerminar) {
+        // Simulamos una espera de 2 segundos
+        setTimeout(function() {
+            const resultado = "¡Datos recibidos con éxito!";
+
+            // Verificamos si 'alTerminar' es una función antes de llamarla
+            if (typeof alTerminar === 'function') {
+                // Ejecutamos el callback pasándole el resultado
+                alTerminar(resultado);
+            }
+        }, 2000);
+    }
+};</code></pre>
+
+                        <h5>Uso del Callback en <code>.ces</code></h5>
+                        <p>El script <code>.ces</code> define una función y la pasa a la librería para que esta la "llame de vuelta" cuando el resultado esté listo.</p>
+                        <pre><code>// Dentro de un archivo .ces
+go "MiLibreriaAsincrona"
+
+// 1. Definimos la función que manejará la respuesta
+function cuandoLleguenLosDatos(respuesta) {
+    consola.imprimir("Respuesta del servidor: " + respuesta);
+}
+
+public star() {
+    consola.imprimir("Pidiendo datos al servidor...");
+
+    // 2. Llamamos a la librería y le pasamos nuestra función
+    obtenerDatosDelServidor(cuandoLleguenLosDatos);
+
+    consola.imprimir("La petición se está procesando en segundo plano...");
+}</code></pre>
+                        <p>En la consola verás primero los mensajes "Pidiendo datos..." y "La petición se está procesando...", y 2 segundos después, aparecerá "Respuesta del servidor: ¡Datos recibidos con éxito!".</p>
+                        <hr>
+
+                        <h4>Estructura del Script de Runtime (Síncrono)</h4>
+                        <p>Para funciones que devuelven un valor inmediatamente.</p>
                         <pre><code>// Dentro de tu archivo .js
 return {
     saludar: function(nombre) {
