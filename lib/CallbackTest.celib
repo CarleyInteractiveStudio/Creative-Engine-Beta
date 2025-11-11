@@ -1,0 +1,9 @@
+{
+  "name": "CallbackTest",
+  "author": "Jules",
+  "version": "1.0.0",
+  "description": "Una librería simple para probar el sistema de callbacks.",
+  "tags": ["test", "callback"],
+  "icon_base64": "",
+  "script_base64": "cmV0dXJuIHsKICAgIHByb2JhckNhbGxiYWNrOiBmdW5jdGlvbihjYWxsYmFjaykgewogICAgICAgIGlmICh0eXBlb2YgY2FsbGJhY2sgPT09ICdmdW5jdGlvbicpIHsKICAgICAgICAgICAgc2V0VGltZW91dCgoKSA9PiB7CiAgICAgICAgICAgICAgICBjYWxsYmFjaygiwqFFbCBjYWxsYmFjayBkZXNkZSBsYSBsaWJyZXLDtWEgZnVuY2lvbmEhIik7CiAgICAgICAgICAgIH0sIDEwMDApOwogICAgICAgIH0gZWxzZSB7CiAgICAgICAgICAgIGNvbnNvbGUuZXJyb3IoIkVsIGFyZ3VtZW50byBwcm9wb3JjaW9uYWRvIG5vIGVzIHVuYSBmdW5jaSVDMyVCM24uIik7CiAgICAgICAgfQogICAgfQp9Ow=="
+}

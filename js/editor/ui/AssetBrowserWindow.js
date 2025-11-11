@@ -105,6 +105,11 @@ export async function updateAssetBrowser() {
         }
 
         for (const entry of entries) {
+            // Ocultar archivos .meta
+            if (entry.name.endsWith('.meta')) {
+                continue;
+            }
+
             const item = document.createElement('div');
             item.className = 'grid-item';
             item.draggable = true;
@@ -158,6 +163,8 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.celib')) {
+                iconContainer.textContent = '📚';
             } else {
                 iconContainer.textContent = '📄';
             }
@@ -217,7 +224,11 @@ export async function updateAssetBrowser() {
     }
 
     try {
+        const libHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
         await populateFolderTree(assetsHandle, 'Assets', folderTreeContainer);
+        await populateFolderTree(libHandle, 'lib', folderTreeContainer);
+
         await populateGridView(currentDirectoryHandle.handle, currentDirectoryHandle.path);
     } catch (error) {
         console.error("Error updating asset browser:", error);
@@ -428,14 +439,14 @@ async function handleContextMenuClick(e) {
                         await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
                         console.log(`'${selectedAsset.name}' borrado.`);
 
-                        // If it was a library, try to delete its meta file too
-                        if (selectedAsset.name.endsWith('.celib')) {
+                        // Also try to delete a corresponding .meta file, if one exists
+                        if (selectedAsset.kind === 'file') {
                             const metaName = `${selectedAsset.name}.meta`;
                             try {
                                 await currentDirectoryHandle.handle.removeEntry(metaName);
-                                console.log(`Metadatos de la librería '${metaName}' borrados.`);
+                                console.log(`Metadatos '${metaName}' borrados.`);
                             } catch (metaErr) {
-                                // It's okay if the meta file doesn't exist, so we just log it.
+                                // This is not a critical error, the meta file might not exist.
                                 console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
                             }
                         }

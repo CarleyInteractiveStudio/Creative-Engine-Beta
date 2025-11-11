@@ -21,8 +21,9 @@ export function transpile(code) {
     const importedLibs = [];
     const functionToLibMap = new Map();
     const ambiguousFunctions = new Set();
+    const declaredFunctions = new Set();
 
-    // --- Phase 1: Handle all imports (go and using) and map library functions ---
+    // --- Phase 1: Handle all imports (go and using), map library functions, and find user-defined functions ---
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         let trimmedLine = line.trim();
@@ -59,6 +60,12 @@ export function transpile(code) {
             else errors.push(`Línea ${lineNumber}: Namespace '${namespace}' desconocido.`);
             return;
         }
+
+        // Find user-defined function declarations
+        const functionMatch = trimmedLine.match(/^function\s+([a-zA-Z0-9_]+)\s*\(/);
+        if (functionMatch) {
+            declaredFunctions.add(functionMatch[1]);
+        }
     });
 
     if (errors.length > 0) return { errors };
@@ -69,6 +76,12 @@ export function transpile(code) {
         let trimmedLine = line.trim();
 
         if (trimmedLine === '' || trimmedLine.startsWith('//') || trimmedLine.startsWith('go ') || trimmedLine.startsWith('using ')) return;
+
+        // Handle user-defined function declarations
+        if (trimmedLine.startsWith('function ')) {
+            jsCode += `${line}\n`;
+            return;
+        }
 
         if (trimmedLine.includes('{')) inBlock = true;
 
@@ -82,14 +95,29 @@ export function transpile(code) {
         }
 
         // --- Transpile Function Calls (Library and Engine) ---
-        let processedLine = trimmedLine.replace(/([a-zA-Z0-9_.]+)\s*\((.*)\)/g, (match, funcName, args) => {
+        let processedLine = trimmedLine.replace(/([a-zA-Z0-9_.]+)\s*\((.*)\)/g, (match, funcName, argsStr) => {
+            // --- Argument Processing with Callback Support ---
+            const processArgs = (argsString) => {
+                if (!argsString) return '';
+                return argsString.split(',')
+                    .map(arg => arg.trim())
+                    .map(arg => {
+                        // If the argument is a declared function, pass it as a variable.
+                        // Otherwise, it's a literal (string, number, etc.) and is passed as is.
+                        return declaredFunctions.has(arg) ? arg : arg;
+                    })
+                    .join(', ');
+            };
+
+            const processedArgs = processArgs(argsStr);
+
             // Handle disambiguation first: Library.function()
             if (funcName.includes('.')) {
                 const parts = funcName.split('.');
                 const libName = parts[0];
                 const fn = parts[1];
                  if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[fn]) {
-                    return `RuntimeAPIManager.getAPI("${libName}").${fn}(${args})`;
+                    return `RuntimeAPIManager.getAPI("${libName}").${fn}(${processedArgs})`;
                 }
             }
 
@@ -97,15 +125,16 @@ export function transpile(code) {
             const altDisambiguationMatch = match.match(/(\w+)\.\s*\(\s*(\w+)\s*\(\s*\)\s*\)\((.*)\)/);
             if (altDisambiguationMatch) {
                 const [_, func, libName, funcArgs] = altDisambiguationMatch;
+                 const processedFuncArgs = processArgs(funcArgs);
                 if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[func]) {
-                    return `RuntimeAPIManager.getAPI("${libName}").${func}(${funcArgs})`;
+                    return `RuntimeAPIManager.getAPI("${libName}").${func}(${processedFuncArgs})`;
                 }
             }
 
             // Handle standard, non-ambiguous library call
             if (functionToLibMap.has(funcName) && !ambiguousFunctions.has(funcName)) {
                 const libName = functionToLibMap.get(funcName);
-                return `RuntimeAPIManager.getAPI("${libName}").${funcName}(${args})`;
+                return `RuntimeAPIManager.getAPI("${libName}").${funcName}(${processedArgs})`;
             }
 
             // Report ambiguity error
@@ -143,9 +172,9 @@ export function transpile(code) {
             }
             jsCode += `    ${processedLine}\n`;
         } else {
-             if (!processedLine.startsWith('let')) {
-                 errors.push(`Línea ${lineNumber}: Sintaxis inesperada: "${trimmedLine}"`);
-             }
+            // After refactoring, top-level function calls are valid.
+            // We just add the processed line to the code.
+            jsCode += `${processedLine}\n`;
         }
     });
 
