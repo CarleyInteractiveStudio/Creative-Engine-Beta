@@ -261,6 +261,57 @@ function setupEventListeners() {
     });
 }
 
+async function exportLibrariesAsPackage(libraryNames) {
+    if (!libraryNames || libraryNames.length === 0) {
+        alert("No se seleccionaron librerías para exportar.");
+        return;
+    }
+
+    try {
+        const zip = new JSZip();
+        const manifest = {
+            type: 'library_package',
+            description: 'Paquete de librerías de Creative Engine.',
+            fileList: []
+        };
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+        for (const libName of libraryNames) {
+            // Add .celib file
+            const celibHandle = await libDirHandle.getFileHandle(libName);
+            const celibFile = await celibHandle.getFile();
+            zip.file(libName, celibFile);
+            manifest.fileList.push(libName);
+
+            // Add .celib.meta file if it exists
+            const metaName = `${libName}.meta`;
+            try {
+                const metaHandle = await libDirHandle.getFileHandle(metaName);
+                const metaFile = await metaHandle.getFile();
+                zip.file(metaName, metaFile);
+                manifest.fileList.push(metaName);
+            } catch (e) {
+                // Meta file doesn't exist, which is fine.
+            }
+        }
+
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+        const content = await zip.generateAsync({ type: 'blob' });
+        const defaultFilename = `librerias_${new Date().toISOString().slice(0, 10)}.cep`;
+        downloadBlob(content, defaultFilename);
+        console.log("Paquete de librerías exportado con éxito.");
+
+    } catch (error) {
+        console.error(`Error al exportar el paquete de librerías:`, error);
+        alert("No se pudo exportar el paquete de librerías.");
+    }
+}
+
+
 export function initialize(dependencies) {
     dom = dependencies.dom;
     exportContext = dependencies.exportContext;
@@ -268,4 +319,9 @@ export function initialize(dependencies) {
     updateAssetBrowser = dependencies.updateAssetBrowser;
     projectsDirHandle = dependencies.projectsDirHandle;
     setupEventListeners();
+
+    // Return the new function so it can be used by other modules
+    return {
+        exportLibrariesAsPackage
+    };
 }

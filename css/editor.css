@@ -520,6 +520,188 @@ body {
     color: white;
 }
 
+/* --- Library Panel Styles --- */
+#library-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    align-content: flex-start;
+}
+
+.library-card {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    transition: opacity 0.3s ease;
+}
+
+.library-card.inactive {
+    opacity: 0.5;
+}
+
+.library-card .library-icon {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.library-card .library-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+}
+
+.library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.library-name {
+    margin: 0;
+    font-size: 1.1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.library-version {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    background-color: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.library-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.library-author .author-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.library-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.library-actions button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 1.2em;
+}
+
+.btn-toggle-activate {
+    position: relative;
+}
+
+.btn-toggle-activate::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.btn-toggle-activate.state-active::after {
+    background-color: #2ecc71; /* Green */
+    box-shadow: 0 0 5px #2ecc71;
+}
+
+.btn-toggle-activate.state-inactive::after {
+    background-color: #7f8c8d; /* Gray */
+}
+
+/* --- Library API Panel Styles --- */
+.library-api-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Add space between elements */
+    padding: 15px;
+}
+
+.library-api-content label {
+    font-weight: bold;
+    margin-bottom: -10px; /* Pull the input closer to the label */
+}
+
+.library-api-content input[type="text"],
+.library-api-content input[type="number"],
+.library-api-content select {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+}
+
+.library-api-content .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.library-api-content .checkbox-field input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.library-api-content hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 10px 0;
+}
+
+/* --- Library API Layout Components --- */
+.lib-container {
+    display: flex;
+    gap: 10px; /* Default gap for all containers */
+}
+.lib-container-vertical {
+    flex-direction: column;
+}
+.lib-container-horizontal {
+    flex-direction: row;
+    align-items: center; /* Align items vertically in a row */
+}
+
+.lib-scroll-area {
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    padding: 10px;
+    border-radius: 4px;
+    min-height: 50px; /* Give it some default minimum size */
+}
+
 /* --- Terminal Styles --- */
 #terminal-content {
     display: flex;

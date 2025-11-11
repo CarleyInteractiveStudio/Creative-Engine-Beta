@@ -1,0 +1,19 @@
+// Script para probar el sistema de callbacks
+
+go "CallbackTest"
+
+// Función que se pasará como callback
+function miRespuesta(mensaje) {
+    print("Mensaje recibido en .ces: " + mensaje);
+}
+
+// Llamar a la función de la librería y pasarle nuestra función
+probarCallback(miRespuesta);
+
+public star() {
+    print("Iniciando prueba de callbacks...");
+}
+
+public update(deltaTime) {
+    // No se necesita nada aquí para esta prueba
+}

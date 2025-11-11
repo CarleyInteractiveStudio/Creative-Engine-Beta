@@ -67,10 +67,16 @@
                         <hr>
                         <a href="#" id="menu-window-animation">Editor de Animación</a>
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
+                        <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
                         <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
                         <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
+                        <hr>
+                        <a href="#" id="menu-window-lib" class="disabled">Lib</a>
                     </div>
+                </div>
+                <div class="menu-item">
+                    <button id="menubar-libraries-btn" class="menu-btn">Librerías</button>
                 </div>
                 <div class="menu-item">
                     <button id="menubar-carl-ia-btn" class="menu-btn">🤖 Carl IA</button>
@@ -87,6 +93,250 @@
             </div>
         </div>
         <main id="editor-main-content">
+            <div id="library-panel" class="editor-panel floating-panel hidden" style="width: 700px; height: 500px;">
+                <div class="panel-header">
+                    <span>Librerías</span>
+                    <div class="panel-header-controls">
+                        <button id="library-panel-create-btn" class="panel-tool-btn">Crear</button>
+                        <button id="library-panel-import-btn" class="panel-tool-btn">Importar</button>
+                        <button id="library-panel-export-btn" class="panel-tool-btn">Exportar</button>
+                        <button id="library-api-docs-btn" class="panel-tool-btn">Documentación API</button>
+                        <button class="close-panel-btn" data-panel="library-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content" id="library-list-container">
+                    <!-- Library cards will be populated by JS -->
+                     <div class="panel-overlay-message">
+                        <p>No se encontraron librerías en la carpeta /lib del proyecto.</p>
+                        <p>Usa 'Crear' para empezar una nueva o 'Importar' para añadir un archivo .celib existente.</p>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+            <div id="create-library-modal" class="modal">
+                <div class="modal-content large">
+                    <span class="close-button">&times;</span>
+                    <h2>Crear Nueva Librería</h2>
+                    <div class="settings-form">
+                        <fieldset class="settings-section">
+                            <legend>Información Básica</legend>
+                            <label for="lib-create-name">Nombre de la Librería</label>
+                            <input type="text" id="lib-create-name" placeholder="Ej: MiLibreriaDeFisicas">
+                            <label for="lib-create-author">Autor / Organización</label>
+                            <input type="text" id="lib-create-author" placeholder="Ej: MiEstudio">
+                            <label for="lib-create-version">Versión</label>
+                            <input type="text" id="lib-create-version" placeholder="1.0.0">
+                            <label for="lib-create-signature">Firma (Opcional)</label>
+                            <input type="text" id="lib-create-signature" placeholder="Una clave única para verificar la autoría">
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Apariencia</legend>
+                            <div style="display: flex; gap: 20px;">
+                                <div style="flex: 1;">
+                                    <label>Icono de la Librería</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-icon-preview" src="image/Paquete.png" alt="Vista previa del icono">
+                                        <button id="lib-create-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Icono principal que se mostrará en la tienda.</p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label>Icono del Autor</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-author-icon-preview" src="image/Paquete.png" alt="Vista previa del icono del autor">
+                                        <button id="lib-create-author-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-author-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Un logo pequeño o foto de perfil.</p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Funcionalidad y Permisos</legend>
+                            <label for="lib-create-description">Descripción / Cómo usar</label>
+                            <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores."></textarea>
+
+                            <label for="lib-create-script-file">Archivo de Script (.js)</label>
+                            <div class="file-picker">
+                                <input type="text" id="lib-create-script-path" readonly placeholder="Ningún script seleccionado">
+                                <button id="lib-create-script-picker-btn">...</button>
+                                <input type="file" id="lib-create-script-input" style="display: none;" accept=".js">
+                            </div>
+                             <p class="field-description">El archivo JavaScript principal que contiene la lógica de tu librería.</p>
+                            <hr>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-req-windows">
+                                <label for="lib-create-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-runtime-access">
+                                <label for="lib-create-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-is-tool">
+                                <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="lib-create-cancel-btn">Cancelar</button>
+                        <button id="lib-create-confirm-btn" class="primary-btn">Crear Librería</button>
+                    </div>
+                </div>
+            </div>
+            <div id="library-api-docs-modal" class="modal">
+                <div class="modal-content large">
+                    <span class="close-button">&times;</span>
+                    <h2>Documentación de la API para Crear Librerías</h2>
+                    <div id="library-api-docs-content" class="panel-content" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 15px;">
+
+                        <h3>Conceptos Básicos</h3>
+                        <p>Las librerías te permiten extender la funcionalidad del editor y del motor. Todo comienza con un único archivo JavaScript.</p>
+
+                        <h4>Estructura del Script</h4>
+                        <p>Tu script debe ser una función autoejecutable (IIFE) que interactúa con la API global <code>CreativeEngine.API</code>.</p>
+                        <pre><code>(function() {
+    // Tu código va aquí...
+})();</code></pre>
+
+                        <h4>Registrar una Ventana</h4>
+                        <p>Para que tu librería aparezca en el menú "Ventana", debes registrarla. Esto se hace llamando a <code>registrarVentana</code>.</p>
+                        <pre><code>CreativeEngine.API.registrarVentana({
+    nombre: "Mi Primera Librería",
+    alAbrir: function(panel) {
+        // Esta función se ejecuta cuando el usuario abre tu ventana.
+        // El objeto 'panel' es tu lienzo para construir la UI.
+        panel.agregarTexto("¡Hola, mundo!");
+    }
+});</code></pre>
+
+                        <hr>
+                        <h3>API de Componentes de UI</h3>
+                        <p>Dentro de la función <code>alAbrir</code>, puedes usar el objeto <code>panel</code> para añadir elementos de interfaz.</p>
+
+                        <h4><code>panel.agregarTexto(texto, opciones)</code></h4>
+                        <p>Muestra un texto simple. Opcionalmente puedes pasarle un objeto de opciones para darle un tamaño de fuente específico, como <code>{ tamaño: 'grande' }</code>.</p>
+                        <pre><code>panel.agregarTexto("Este es un texto normal.");
+panel.agregarTexto("Este es un título.", { tamaño: 'grande' });</code></pre>
+
+                        <h4><code>panel.agregarBoton(texto, alHacerClic)</code></h4>
+                        <p>Crea un botón. La función <code>alHacerClic</code> se ejecuta cuando el usuario presiona el botón.</p>
+                        <pre><code>panel.agregarBoton("Haz clic aquí", function() {
+    alert("¡Botón presionado!");
+});</code></pre>
+
+                        <h4><code>panel.agregarInputTexto(etiqueta, opciones)</code></h4>
+                        <p>Crea un campo de texto con una etiqueta. Puedes especificar un callback <code>alCambiar</code> para reaccionar a la entrada del usuario.</p>
+                        <pre><code>panel.agregarInputTexto("Nombre:", {
+    placeholder: "Escribe tu nombre...",
+    alCambiar: function(valor) {
+        console.log("El nuevo nombre es:", valor);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarSlider(etiqueta, opciones)</code></h4>
+                        <p>Crea un slider deslizable. Puedes definir <code>min</code>, <code>max</code>, <code>step</code> (incremento) y un valor inicial <code>valor</code>.</p>
+                        <pre><code>panel.agregarSlider("Velocidad:", {
+    min: 0,
+    max: 100,
+    step: 1,
+    valor: 50,
+    alCambiar: function(valor) {
+        console.log("Nueva velocidad:", valor);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarCheckbox(etiqueta, opciones)</code></h4>
+                        <p>Crea una casilla de verificación. Puedes definir si está marcada por defecto con <code>marcado: true</code>.</p>
+                        <pre><code>panel.agregarCheckbox("Activar Modo Turbo", {
+    marcado: true,
+    alCambiar: function(estaMarcado) {
+        console.log("Modo Turbo activado:", estaMarcado);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarDropdown(etiqueta, items, opciones)</code></h4>
+                        <p>Crea un menú desplegable. <code>items</code> debe ser un array de strings.</p>
+                        <pre><code>panel.agregarDropdown("Dificultad:", ["Fácil", "Normal", "Difícil"], {
+    alCambiar: function(opcionSeleccionada) {
+        console.log("Dificultad elegida:", opcionSeleccionada);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarImagen(url, opciones)</code></h4>
+                        <p>Muestra una imagen. Puedes pasarle <code>ancho</code> y <code>alto</code> en las opciones.</p>
+                        <pre><code>panel.agregarImagen("https://via.placeholder.com/150", {
+    ancho: "150px",
+    alto: "150px"
+});</code></pre>
+
+                        <h4><code>panel.agregarVideo(url, opciones)</code></h4>
+                        <p>Incrusta un video. Funciona mejor con URLs de video directas o plataformas como YouTube.</p>
+                        <pre><code>// Nota: Puede que necesites una URL 'embed' para algunas plataformas.
+panel.agregarVideo("https://www.youtube.com/embed/dQw4w9WgXcQ");</code></pre>
+
+                        <hr>
+                        <h3>API de Layout</h3>
+
+                        <h4><code>panel.agregarContenedor(opciones)</code></h4>
+                        <p>Crea un contenedor para agrupar otros elementos. Puedes anidarlos y definir su dirección (<code>'vertical'</code> u <code>'horizontal'</code>).</p>
+                        <pre><code>const contenedorHorizontal = panel.agregarContenedor({ direccion: 'horizontal' });
+// Los elementos añadidos a 'contenedorHorizontal' se alinearán uno al lado del otro.
+contenedorHorizontal.agregarBoton("Botón 1", () => {});
+contenedorHorizontal.agregarBoton("Botón 2", () => {});</code></pre>
+
+                        <h4><code>panel.agregarAreaScroll(opciones)</code></h4>
+                        <p>Crea un área con scroll. Todos los elementos que añadas a esta área estarán dentro de un contenedor desplazable.</p>
+                        <pre><code>const areaScroll = panel.agregarAreaScroll({ alto: '200px' });
+for (let i = 0; i < 20; i++) {
+    areaScroll.agregarTexto(`Elemento número ${i + 1}`);
+}</code></pre>
+
+                        <hr>
+                        <h3>API de Runtime (Acceso desde Scripts .ces)</h3>
+                        <p>Si marcaste la casilla "Permitir acceso a sus funciones desde scripts" al crear la librería, tu script debe devolver un objeto. Las funciones dentro de este objeto estarán disponibles en los scripts <code>.ces</code>.</p>
+
+                        <h4>Estructura del Script de Runtime</h4>
+                        <p>El script debe devolver un objeto cuyas claves son los nombres de las funciones que quieres exponer.</p>
+                        <pre><code>// Dentro de tu archivo .js
+return {
+    saludar: function(nombre) {
+        return "Hola, " + nombre + "!";
+    },
+    sumar: function(a, b) {
+        return a + b;
+    }
+};</code></pre>
+
+                        <h4>Uso en un Script <code>.ces</code></h4>
+                        <p>Para usar estas funciones, primero importa la librería con <code>go "NombreDeLaLibreria"</code> y luego llama a las funciones directamente.</p>
+                        <pre><code>// Dentro de un archivo .ces
+go "MiLibreriaDePrueba"
+
+public star() {
+    variable saludo = saludar("Mundo");
+    consola.imprimir(saludo); // Imprime: "Hola, Mundo!"
+
+    variable resultado = sumar(5, 3);
+    consola.imprimir(resultado); // Imprime: 8
+}</code></pre>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button id="library-api-docs-close-btn" class="primary-btn">Cerrar</button>
+                    </div>
+                </div>
+            </div>
             <!-- The editor panels will go here in the next step -->
              <div id="hierarchy-panel" class="editor-panel">
                 <div class="panel-header">
@@ -107,6 +357,9 @@
                                     <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)">🔄 Rotar</button>
                                     <button id="tool-scale" class="toolbar-btn" title="Escalar (E)">↗️ Escalar</button>
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
+                                    <hr class="tilemap-tool-divider" style="display: none;">
+                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
+                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
                                 </div>
                             </div>
                         </div>
@@ -386,6 +639,7 @@
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
                 </ul>
@@ -776,6 +1030,49 @@
         <div class="resize-handle" data-direction="nw"></div>
     </div>
 
+    <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="palette-asset-name">Editor de Paleta de Tiles</span>
+            <div class="panel-header-controls">
+                 <button id="palette-save-btn" title="Guardar Paleta">💾 Guardar</button>
+                 <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="palette-toolbar">
+                <div class="toolbar-group">
+                    <label>Tileset:</label>
+                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
+                    <span id="palette-image-name">Ninguna</span>
+                </div>
+                <div class="toolbar-group">
+                    <label for="palette-tile-width">Ancho Tile:</label>
+                    <input type="number" id="palette-tile-width" value="32" min="1">
+                    <label for="palette-tile-height">Alto Tile:</label>
+                    <input type="number" id="palette-tile-height" value="32" min="1">
+                </div>
+                 <div class="toolbar-group">
+                    <label>Tile Seleccionado:</label>
+                    <span id="palette-selected-tile-id">-</span>
+                </div>
+            </div>
+            <div id="palette-view-container">
+                <canvas id="palette-grid-canvas"></canvas>
+                <img id="palette-tileset-image" src="" alt="Tileset">
+            </div>
+        </div>
+        <div id="palette-panel-overlay">
+            <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
 
     <div id="sprite-editor-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">

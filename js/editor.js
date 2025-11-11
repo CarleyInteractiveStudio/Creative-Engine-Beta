@@ -26,7 +26,12 @@ import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
+import * as TilePalette from './editor/ui/TilePaletteWindow.js';
 import { SpriteEditor } from './sprite-editor.js';
+import { API as LibraryAPI } from './editor/LibraryAPI.js';
+import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
+import * as CES_Transpiler from './editor/CES_Transpiler.js';
+import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -155,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'assets-panel': 'menu-window-assets',
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
+            'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-editor-panel': 'menu-window-sprite-editor',
             'asset-store-panel': 'menu-window-asset-store'
         };
@@ -926,6 +932,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
+            } else if (panelName === 'tile-palette') {
+                const panel = document.getElementById('tile-palette-panel');
+                if (panel) {
+                    panel.classList.toggle('hidden');
+                    updateWindowMenuUI();
+                }
             } else if (panelName === 'asset-store') {
                 const panel = document.getElementById('asset-store-panel');
                 if (panel) {
@@ -1357,6 +1369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {
+            RuntimeAPIManager.clearAPIs(); // Limpiar APIs de sesiones anteriores
             updateLoadingProgress(5, "Conectando a la base de datos local...");
             await openDB();
 
@@ -1367,6 +1380,174 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
+
+            // Ensure the 'lib' directory exists for the current project
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            try {
+                const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+                console.log("Directorio 'lib' asegurado. Verificando README...");
+
+                // --- Create README.md in /lib if it doesn't exist ---
+                try {
+                    await libDirHandle.getFileHandle('README.md', { create: false });
+                    // File exists, do nothing.
+                } catch (e) {
+                    // File does not exist, so we create it.
+                    console.log("Creando README.md para librerías...");
+                    const readmeContent = `
+# Guía para la Creación y Gestión de Librerías
+
+Esta carpeta \`/lib\` contiene todas las librerías (.celib) de tu proyecto.
+
+## ¿Qué es una Librería?
+
+Una librería es un paquete autocontenido que puede extender la funcionalidad del editor de Creative Engine o proporcionar nuevas funciones para tus scripts de juego (.ces).
+
+---
+
+## Gestión de Librerías
+
+### Activación y Desactivación
+- **Para activar o desactivar una librería**, abre el panel "Librerías" desde el menú superior del editor.
+- Cada librería en la lista tiene un botón de estado (Activar/Desactivar).
+- Cuando desactivas una librería, el motor crea un archivo \`.celib.meta\` para guardar su estado. La librería no se cargará la próxima vez que inicies el editor.
+- **Importante:** Debes reiniciar el editor para que los cambios de activación/desactivación surtan efecto.
+
+### Importación
+- Puedes importar librerías arrastrando un archivo \`.celib\` directamente a cualquier parte del "Navegador de Assets" del editor. El archivo se moverá automáticamente a esta carpeta \`/lib\`.
+- También puedes usar el botón "Importar" en el panel de "Librerías".
+
+### Exportación
+- Para compartir tus librerías, puedes seleccionarlas en el panel "Librerías" y usar el botón "Exportar". Esto creará un archivo \`.cep\` que otros pueden importar.
+
+---
+
+## Creación de Librerías (API)
+
+Las librerías se crean a partir de un único archivo JavaScript. Para una guía detallada y ejemplos de código, haz clic en el botón **"Documentación API"** en el panel de "Librerías" dentro del editor.
+
+A continuación, un resumen rápido:
+
+### 1. Registrar una Ventana en el Editor
+
+Para que tu librería tenga una interfaz en el editor, usa \`CreativeEngine.API.registrarVentana\`.
+
+\`\`\`javascript
+(function() {
+    CreativeEngine.API.registrarVentana({
+        nombre: "Mi Herramienta",
+        alAbrir: function(panel) {
+            panel.agregarTexto("¡Hola, mundo!");
+            panel.agregarBoton("Saludar", () => alert("¡Hola!"));
+        }
+    });
+})();
+\`\`\`
+
+### 2. Exponer Funciones a los Scripts (.ces)
+
+Si quieres que tus scripts de juego puedan usar funciones de tu librería, el script de la librería debe devolver un objeto.
+
+\`\`\`javascript
+// mi-libreria.js
+return {
+    sumar: function(a, b) {
+        return a + b;
+    },
+    generarNumeroAleatorio: function(max) {
+        return Math.floor(Math.random() * max);
+    }
+};
+\`\`\`
+
+Luego, en tu script \`.ces\`, puedes usar estas funciones con \`go\`.
+
+\`\`\`ces
+// mi-script.ces
+go "MiLibreria"
+
+public star() {
+    variable resultado = sumar(10, 5);
+    consola.imprimir("El resultado es: " + resultado); // Imprime 15
+}
+\`\`\`
+`;
+                    const readmeFileHandle = await libDirHandle.getFileHandle('README.md', { create: true });
+                    const writable = await readmeFileHandle.createWritable();
+                    await writable.write(readmeContent);
+                    await writable.close();
+                }
+                // --- End of README creation ---
+
+
+                for await (const entry of libDirHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                        // Check for activation status via .meta file
+                        let isActive = true; // Active by default
+                        try {
+                            const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                            const metaFile = await metaFileHandle.getFile();
+                            const metaContent = await metaFile.text();
+                            const metaData = JSON.parse(metaContent);
+                            if (metaData.active === false) {
+                                isActive = false;
+                            }
+                        } catch (e) {
+                            // Meta file doesn't exist or is invalid, assume active. This is the default.
+                        }
+
+                        if (!isActive) {
+                            console.log(`Librería '${entry.name}' está inactiva. Omitiendo.`);
+                            continue; // Skip to the next library
+                        }
+
+                        // If active, proceed with loading...
+                        try {
+                            const file = await entry.getFile();
+                            const content = await file.text();
+                            const libData = JSON.parse(content);
+
+                            // Decode the Base64 script content
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+
+                            // 1. Handle API for creating windows (Editor-side)
+                            if (libData.api_access && libData.api_access.can_create_windows) {
+                                // This script runs in the editor's context to register UI elements
+                                try {
+                                    // We wrap the code in a function to control its scope
+                                    const setupFunction = new Function('CreativeEngine', scriptContent);
+                                    setupFunction(window.CreativeEngine); // Pass the API object
+                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
+                                } catch(e) {
+                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                }
+                            }
+
+                            // 2. Handle API for game scripts (Runtime)
+                            if (libData.api_access && libData.api_access.runtime_accessible) {
+                                // This script is evaluated to get its public functions for the game
+                                try {
+                                    // Wrap in an IIFE (Immediately Invoked Function Expression) to capture the return value.
+                                    const apiObject = (new Function(scriptContent))();
+
+                                    if (apiObject && typeof apiObject === 'object') {
+                                        RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                    } else {
+                                        console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
+                                    }
+                                } catch(e) {
+                                    console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);
+                                }
+                            }
+
+                        } catch (e) {
+                            console.error(`Error al cargar la librería ${entry.name}:`, e);
+                        }
+                    }
+                }
+            } catch (libError) {
+                console.error("No se pudo crear o verificar el directorio 'lib':", libError);
+            }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
@@ -1405,18 +1586,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 
-                // Handle images
-                const imageExtensions = ['png', 'jpg', 'jpeg', 'webp'];
-                if (imageExtensions.includes(extension)) {
-                    console.log(`Opening image in Sprite Editor: ${name}`);
-                    spriteEditor.openWithImageFile(fileHandle, dirHandle);
-                    return;
-                }
-
-                // Handle text-based files
+                // Handle text-based files first
                 const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
                 if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
                     console.log(`Opening text-based asset: ${name}`);
+                    // FIX: Called the correct function name 'openScriptInEditor'
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
                 }
@@ -1426,6 +1600,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'cea':
                         console.log(`Opening animation asset: ${name}`);
                         openAnimationAssetFromModule(fileHandle, dirHandle);
+                        break;
+                    case 'cepalette':
+                        console.log(`Opening tile palette: ${name}`);
+                        TilePalette.openPalette(fileHandle);
                         break;
                     case 'ceanim':
                         console.log(`Opening animation controller: ${name}`);
@@ -1470,10 +1648,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
-            initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
+            const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -1484,6 +1662,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
+            const libraryModule = initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
+
             const assetBrowserCallbacks = {
                 onAssetSelected,
                 onAssetOpened,
@@ -1491,9 +1671,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 onExportPackage,
                 createUiSystemFile,
                 updateAssetBrowser,
+                refreshLibraryList: libraryModule.refreshLibraryList // Add the new callback here
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
+            TilePalette.initialize(dom, projectsDirHandle);
             spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
@@ -1519,6 +1701,34 @@ document.addEventListener('DOMContentLoaded', () => {
             startGame = runChecksAndPlay;
 
             updateLoadingProgress(100, "¡Listo!");
+
+            // Update the RuntimeAPIManager with the loaded APIs
+            const runtimeAPIs = LibraryAPI.getRuntimeAPIs();
+            if (runtimeAPIs) {
+                for (const [name, apiObject] of Object.entries(runtimeAPIs)) {
+                    RuntimeAPIManager.registerAPI(name, apiObject);
+                }
+            }
+
+            // Final step: Populate library windows menu
+            const windowMenu = document.getElementById('window-menu-content');
+            const registeredWindows = LibraryAPI.getRegisteredWindows();
+            if (registeredWindows.length > 0) {
+                const hr = document.createElement('hr');
+                windowMenu.appendChild(hr);
+
+                registeredWindows.forEach(win => {
+                    const menuItem = document.createElement('a');
+                    menuItem.href = '#';
+                    menuItem.textContent = win.nombre;
+                    menuItem.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const panel = LibraryAPI.crearPanel({ titulo: win.nombre });
+                        win.alAbrir(panel);
+                    });
+                    windowMenu.appendChild(menuItem);
+                });
+            }
 
             // Fade out the loading screen and show the editor
             setTimeout(() => {

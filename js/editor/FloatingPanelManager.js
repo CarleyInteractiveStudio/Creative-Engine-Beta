@@ -1,10 +1,7 @@
 // --- Module for managing floating panels (drag and resize) ---
 
-export function initializeFloatingPanels() {
-    const panels = document.querySelectorAll('.floating-panel');
-
-    panels.forEach(panel => {
-        const header = panel.querySelector('.panel-header');
+function initializePanel(panel) {
+    const header = panel.querySelector('.panel-header');
         let offsetX, offsetY, isDragging = false;
         let isResizing = false;
 
@@ -99,5 +96,52 @@ export function initializeFloatingPanels() {
                 document.body.style.userSelect = '';
             }
         });
+}
+
+export function initializeFloatingPanels() {
+    const panels = document.querySelectorAll('.floating-panel');
+    panels.forEach(initializePanel);
+}
+
+export function createFloatingPanel(id, options = {}) {
+    const { title = 'Panel Flotante', content = '', width = 400, height = 300, top = 100, left = 100 } = options;
+
+    const panel = document.createElement('div');
+    panel.id = id;
+    panel.className = 'editor-panel floating-panel';
+    panel.style.width = `${width}px`;
+    panel.style.height = `${height}px`;
+    panel.style.top = `${top}px`;
+    panel.style.left = `${left}px`;
+
+    panel.innerHTML = `
+        <div class="panel-header">
+            <span>${title}</span>
+            <div class="panel-header-controls">
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                <button class="close-panel-btn" data-panel="${id}">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content">${content}</div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    `;
+
+    document.getElementById('editor-container').appendChild(panel);
+
+    // Make the new panel draggable and resizable
+    initializePanel(panel);
+
+    // Attach close button logic
+    panel.querySelector('.close-panel-btn').addEventListener('click', () => {
+        panel.remove();
     });
+
+    return panel;
 }

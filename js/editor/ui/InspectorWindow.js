@@ -9,6 +9,7 @@ let getSelectedMateria;
 let getSelectedAsset;
 let openSpriteSelectorCallback;
 let saveAssetMetaCallback;
+let extractFramesFromSheetCallback;
 let updateSceneCallback;
 let updateAssetBrowserCallback;
 let isScanningForComponents = false;
@@ -37,6 +38,7 @@ export function initialize(dependencies) {
     getSelectedAsset = dependencies.getSelectedAsset;
     openSpriteSelectorCallback = dependencies.openSpriteSelectorCallback;
     saveAssetMetaCallback = dependencies.saveAssetMetaCallback;
+    extractFramesFromSheetCallback = dependencies.extractFramesFromSheetCallback;
     updateSceneCallback = dependencies.updateSceneCallback;
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
@@ -855,79 +857,12 @@ async function updateInspectorForAsset(assetName, assetPath) {
             document.getElementById('extract-frames-btn')?.addEventListener('click', async () => {
                 const animName = prompt("Nombre para el nuevo Asset de Animación:", assetName.split('.')[0]);
                 if (!animName) return;
-
                 metaData.grid.columns = parseInt(document.getElementById('sprite-columns').value, 10) || 1;
                 metaData.grid.rows = parseInt(document.getElementById('sprite-rows').value, 10) || 1;
-
                 const dirHandle = currentDirectoryHandle();
-                if (!dirHandle) {
-                    alert("No se pudo obtener el directorio actual.");
-                    return;
-                }
-
-                try {
-                    // 1. Load the image
-                    const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
-                    if (!imageUrl) throw new Error("No se pudo obtener la URL de la imagen.");
-
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-
-                    const imageLoadPromise = new Promise((resolve, reject) => {
-                        img.onload = () => resolve();
-                        img.onerror = () => reject(new Error("No se pudo cargar la imagen de la hoja de sprites."));
-                        img.src = imageUrl;
-                    });
-                    await imageLoadPromise;
-
-                    // 2. Extract frames
-                    const frames = [];
-                    const frameWidth = img.naturalWidth / metaData.grid.columns;
-                    const frameHeight = img.naturalHeight / metaData.grid.rows;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = frameWidth;
-                    canvas.height = frameHeight;
-                    const ctx = canvas.getContext('2d');
-
-                    for (let r = 0; r < metaData.grid.rows; r++) {
-                        for (let c = 0; c < metaData.grid.columns; c++) {
-                            ctx.clearRect(0, 0, frameWidth, frameHeight);
-                            const sx = c * frameWidth;
-                            const sy = r * frameHeight;
-                            ctx.drawImage(img, sx, sy, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
-                            frames.push(canvas.toDataURL());
-                        }
-                    }
-
-                    // 3. Create .cea content
-                    const ceaContent = {
-                        animations: [{
-                            name: animName,
-                            frames: frames,
-                            speed: 10, // Default speed
-                            loop: true // Default loop
-                        }]
-                    };
-
-                    // 4. Save the new .cea file
-                    const fileName = `${animName}.cea`;
-                    const newFileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-                    const writable = await newFileHandle.createWritable();
-                    await writable.write(JSON.stringify(ceaContent, null, 2));
-                    await writable.close();
-
-                    console.log(`Creado el asset de animación: ${fileName}`);
-                    alert(`Se ha creado el archivo de animación '${fileName}' con ${frames.length} fotogramas.`);
-
-                    // 5. Refresh asset browser
-                    if (updateAssetBrowserCallback) {
-                        await updateAssetBrowserCallback();
-                    }
-
-                } catch (error) {
-                    console.error("Error al extraer fotogramas:", error);
-                    alert(`No se pudieron extraer los fotogramas: ${error.message}`);
+                await extractFramesFromSheetCallback(assetPath, metaData, animName, dirHandle);
+                if (updateAssetBrowserCallback) {
+                    await updateAssetBrowserCallback();
                 }
             });
 

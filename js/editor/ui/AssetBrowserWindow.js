@@ -1,4 +1,5 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { createNewPalette } from './TilePaletteWindow.js';
 
 // --- Module State ---
 let dom;
@@ -13,6 +14,7 @@ let onShowContextMenu;
 let onExportPackage;
 let createUiSystemFile;
 let updateAssetBrowserCallback;
+let refreshLibraryListCallback; // New callback
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -25,6 +27,7 @@ export function initialize(dependencies) {
     exportContext = dependencies.exportContext; // Share the context object
     createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
+    refreshLibraryListCallback = dependencies.refreshLibraryList; // Store the new callback
 
     // Setup event listeners
     dom.assetGridView.addEventListener('click', handleGridClick);
@@ -102,6 +105,11 @@ export async function updateAssetBrowser() {
         }
 
         for (const entry of entries) {
+            // Ocultar archivos .meta
+            if (entry.name.endsWith('.meta')) {
+                continue;
+            }
+
             const item = document.createElement('div');
             item.className = 'grid-item';
             item.draggable = true;
@@ -155,6 +163,8 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.celib')) {
+                iconContainer.textContent = '📚';
             } else {
                 iconContainer.textContent = '📄';
             }
@@ -214,7 +224,11 @@ export async function updateAssetBrowser() {
     }
 
     try {
+        const libHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
         await populateFolderTree(assetsHandle, 'Assets', folderTreeContainer);
+        await populateFolderTree(libHandle, 'lib', folderTreeContainer);
+
         await populateGridView(currentDirectoryHandle.handle, currentDirectoryHandle.path);
     } catch (error) {
         console.error("Error updating asset browser:", error);
@@ -311,12 +325,28 @@ async function handleExternalFileDrop(e) {
     // This handles files from the user's OS
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
-        const allowedExtensions = ['.png', '.jpeg', '.jpg', '.mp3', '.cea', '.ces', '.ceScene', '.ceanim'];
         let filesImported = 0;
+        let librariesImported = 0;
 
         for (const file of e.dataTransfer.files) {
-            const extension = `.${file.name.split('.').pop().toLowerCase()}`;
-            if (allowedExtensions.includes(extension)) {
+            if (file.name.toLowerCase().endsWith('.celib')) {
+                // Special handling for library files
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+                    const fileHandle = await libDirHandle.getFileHandle(file.name, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+                    librariesImported++;
+                } catch (err) {
+                    console.error(`Error al importar la librería '${file.name}':`, err);
+                    alert(`No se pudo importar la librería '${file.name}'.`);
+                }
+            } else {
+                // Normal file handling
                 try {
                     const fileHandle = await currentDirectoryHandle.handle.getFileHandle(file.name, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -327,14 +357,18 @@ async function handleExternalFileDrop(e) {
                     console.error(`Error al importar el archivo '${file.name}':`, err);
                     alert(`No se pudo importar el archivo '${file.name}'.`);
                 }
-            } else {
-                console.warn(`Archivo omitido: '${file.name}'. Tipo de archivo no soportado.`);
             }
         }
 
         if (filesImported > 0) {
-            console.log(`${filesImported} archivo(s) importados con éxito.`);
+            console.log(`${filesImported} archivo(s) importados con éxito a la carpeta de Assets.`);
             await updateAssetBrowserCallback();
+        }
+        if (librariesImported > 0) {
+            console.log(`${librariesImported} librería(s) importada(s) con éxito a la carpeta /lib.`);
+            if (refreshLibraryListCallback) {
+                refreshLibraryListCallback();
+            }
         }
     }
 }
@@ -387,13 +421,36 @@ async function handleContextMenuClick(e) {
             }
             break;
         }
+        case 'create-tile-palette': {
+            const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
+            if (paletteName) {
+                const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
+                await createNewPalette(fileName, currentDirectoryHandle.handle);
+                await updateAssetBrowserCallback();
+            }
+            break;
+        }
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
             if (selectedAsset) {
                 if (confirm(`¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`)) {
                     try {
+                        // Delete the main asset
                         await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
                         console.log(`'${selectedAsset.name}' borrado.`);
+
+                        // Also try to delete a corresponding .meta file, if one exists
+                        if (selectedAsset.kind === 'file') {
+                            const metaName = `${selectedAsset.name}.meta`;
+                            try {
+                                await currentDirectoryHandle.handle.removeEntry(metaName);
+                                console.log(`Metadatos '${metaName}' borrados.`);
+                            } catch (metaErr) {
+                                // This is not a critical error, the meta file might not exist.
+                                console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
+                            }
+                        }
+
                         await updateAssetBrowserCallback();
                     } catch (err) {
                         console.error(`Error al borrar '${selectedAsset.name}':`, err);
