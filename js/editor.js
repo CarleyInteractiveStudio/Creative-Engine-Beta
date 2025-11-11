@@ -954,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        }
 
         // Panel Close Button Logic
         document.querySelectorAll('.close-panel-btn').forEach(button => {
