@@ -297,6 +297,11 @@ export function initialize(editorDom, handle, exportFunc) {
     dom.libraryPanelExportBtn = document.getElementById('library-panel-export-btn');
     dom.createLibraryModal = document.getElementById('create-library-modal');
 
+    // API Docs Modal Elements
+    dom.libraryApiDocsBtn = document.getElementById('library-api-docs-btn');
+    dom.libraryApiDocsModal = document.getElementById('library-api-docs-modal');
+    dom.libraryApiDocsCloseBtn = document.getElementById('library-api-docs-close-btn');
+
     // Form inputs
     dom.libCreateName = document.getElementById('lib-create-name');
     dom.libCreateAuthor = document.getElementById('lib-create-author');
@@ -351,6 +356,28 @@ export function initialize(editorDom, handle, exportFunc) {
     if (dom.libraryPanelExportBtn) {
         dom.libraryPanelExportBtn.addEventListener('click', handleExportSelectedLibraries);
     }
+
+    // --- API Docs Modal Listeners ---
+    if (dom.libraryApiDocsBtn) {
+        dom.libraryApiDocsBtn.addEventListener('click', () => {
+            dom.libraryApiDocsModal.classList.add('is-open');
+        });
+    }
+
+    if (dom.libraryApiDocsCloseBtn) {
+        dom.libraryApiDocsCloseBtn.addEventListener('click', () => {
+            dom.libraryApiDocsModal.classList.remove('is-open');
+        });
+    }
+
+    // Also close the docs modal with the generic close button
+    const docsModalCloseButton = dom.libraryApiDocsModal.querySelector('.close-button');
+    if (docsModalCloseButton) {
+        docsModalCloseButton.addEventListener('click', () => {
+            dom.libraryApiDocsModal.classList.remove('is-open');
+        });
+    }
+
 
     if (dom.libCreateCancelBtn) {
         dom.libCreateCancelBtn.addEventListener('click', () => {
