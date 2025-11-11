@@ -1555,7 +1555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const exportContext = { type: null, description: '', rootHandle: null, fileName: '' };
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
-            initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
+            const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
@@ -1580,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize(dom, projectsDirHandle);
-            initializeLibraryWindow(dom, projectsDirHandle);
+            initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
             spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

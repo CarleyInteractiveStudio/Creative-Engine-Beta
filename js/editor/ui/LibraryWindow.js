@@ -2,6 +2,7 @@
 
 let dom = {};
 let projectsDirHandle = null;
+let exportLibrariesAsPackage = null; // To hold the function from another module
 
 // --- Helper Functions ---
 
@@ -104,6 +105,7 @@ async function refreshLibraryList() {
             const card = document.createElement('div');
             card.className = `library-card ${lib.isActive ? 'active' : 'inactive'}`;
             card.innerHTML = `
+                <input type="checkbox" class="library-select-checkbox" data-lib-name="${lib.name}">
                 <img src="${lib.data.library_icon_base64 || 'image/Paquete.png'}" class="library-icon">
                 <div class="library-info">
                     <div class="library-header">
@@ -126,6 +128,82 @@ async function refreshLibraryList() {
     } catch (error) {
         console.error("Error al cargar la lista de librerías:", error);
         container.innerHTML = `<div class="panel-overlay-message"><p>Error al acceder al directorio 'lib'.</p></div>`;
+    }
+}
+
+async function handleImportLibrary() {
+    try {
+        const [fileHandle] = await window.showOpenFilePicker({
+            types: [{ description: 'Creative Engine Library', accept: { 'application/json': ['.celib'] } }],
+            multiple: false,
+        });
+
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        const newLibData = JSON.parse(content);
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+        let finalFileName = fileHandle.name;
+        let shouldWriteFile = true;
+
+        // Check for existing file with the same name
+        try {
+            const existingFileHandle = await libDirHandle.getFileHandle(fileHandle.name);
+            const existingFile = await existingFileHandle.getFile();
+            const existingContent = await existingFile.text();
+            const existingLibData = JSON.parse(existingContent);
+
+            // Compare signature and author for version check
+            if (existingLibData.signature === newLibData.signature && existingLibData.author === newLibData.author) {
+                // Version comparison logic (simple string comparison for now)
+                if (newLibData.version > existingLibData.version) {
+                    // Automatically update
+                    console.log(`Actualizando librería '${newLibData.name}' de v${existingLibData.version} a v${newLibData.version}.`);
+                } else if (newLibData.version < existingLibData.version) {
+                    if (!confirm(`Ya tienes una versión más reciente (v${existingLibData.version}) de '${newLibData.name}'. ¿Seguro que quieres instalar esta versión anterior (v${newLibData.version})?`)) {
+                        shouldWriteFile = false;
+                    }
+                } else {
+                    alert(`La librería '${newLibData.name}' ya está en la versión ${newLibData.version}. No se requiere ninguna acción.`);
+                    shouldWriteFile = false;
+                }
+            } else {
+                // Name conflict, but different library. Rename.
+                finalFileName = `${newLibData.name}_${newLibData.author || 'unknown'}.celib`;
+                let counter = 1;
+                while (true) {
+                    try {
+                        await libDirHandle.getFileHandle(finalFileName);
+                        // if it exists, append number and try again
+                        finalFileName = `${newLibData.name}_${newLibData.author || 'unknown'}_${counter}.celib`;
+                        counter++;
+                    } catch (e) {
+                        // File does not exist, we found a free name
+                        break;
+                    }
+                }
+            }
+        } catch (e) {
+            // No existing file found, proceed as normal.
+        }
+
+        if (shouldWriteFile) {
+            const newFileHandle = await libDirHandle.getFileHandle(finalFileName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            alert(`Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
+            refreshLibraryList();
+        }
+
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error("Error al importar la librería:", err);
+            alert("Ocurrió un error durante la importación.");
+        }
     }
 }
 
@@ -204,10 +282,12 @@ async function handleCreateLibrary() {
  * Initializes the Library Window module.
  * @param {object} editorDom The cached DOM elements from editor.js
  * @param {FileSystemDirectoryHandle} handle The handle to the projects directory.
+ * @param {function} exportFunc The function to call for exporting library packages.
  */
-export function initialize(editorDom, handle) {
+export function initialize(editorDom, handle, exportFunc) {
     dom = editorDom;
     projectsDirHandle = handle;
+    exportLibrariesAsPackage = exportFunc;
 
     // --- Cache specific DOM elements ---
     dom.menubarLibrariesBtn = document.getElementById('menubar-libraries-btn');
@@ -265,15 +345,11 @@ export function initialize(editorDom, handle) {
     }
 
     if (dom.libraryPanelImportBtn) {
-        dom.libraryPanelImportBtn.addEventListener('click', () => {
-            alert("La funcionalidad de importar librerías aún no está implementada.");
-        });
+        dom.libraryPanelImportBtn.addEventListener('click', handleImportLibrary);
     }
 
     if (dom.libraryPanelExportBtn) {
-        dom.libraryPanelExportBtn.addEventListener('click', () => {
-            alert("La funcionalidad de exportar librerías aún no está implementada.");
-        });
+        dom.libraryPanelExportBtn.addEventListener('click', handleExportSelectedLibraries);
     }
 
     if (dom.libCreateCancelBtn) {
@@ -341,16 +417,60 @@ export function initialize(editorDom, handle) {
             alert("No se pudo actualizar el estado de la librería.");
         }
     }
+    async function handleDeleteLibrary(libName) {
+        if (!confirm(`¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+            // Delete .celib file
+            await libDirHandle.removeEntry(libName);
+            console.log(`Librería '${libName}' eliminada.`);
+
+            // Try to delete .meta file, ignore if it doesn't exist
+            try {
+                await libDirHandle.removeEntry(`${libName}.meta`);
+                console.log(`Metadatos de '${libName}' eliminados.`);
+            } catch (e) {
+                // Meta file didn't exist, which is fine.
+            }
+
+            alert("Librería eliminada. Reinicia el editor para que los cambios surtan efecto.");
+            refreshLibraryList();
+
+        } catch (error) {
+            console.error(`Error al eliminar la librería '${libName}':`, error);
+            alert("No se pudo eliminar la librería.");
+        }
+    }
+
+    function handleExportSelectedLibraries() {
+        const selectedCheckboxes = document.querySelectorAll('#library-list-container .library-select-checkbox:checked');
+        const libraryNames = Array.from(selectedCheckboxes).map(cb => cb.dataset.libName);
+
+        if (libraryNames.length === 0) {
+            alert("Por favor, selecciona al menos una librería para exportar.");
+            return;
+        }
+
+        if (exportLibrariesAsPackage) {
+            exportLibrariesAsPackage(libraryNames);
+        } else {
+            console.error("La función de exportación no está disponible.");
+            alert("Error: La funcionalidad de exportación de paquetes no se ha cargado correctamente.");
+        }
+    }
+
     // Placeholder for actions on library cards (delegated event listener)
     document.getElementById('library-list-container').addEventListener('click', (e) => {
         const target = e.target;
         if (target.classList.contains('btn-delete-library')) {
             const libName = target.dataset.libName;
-            if (confirm(`¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`)) {
-                // To-do: Implement file deletion logic
-                console.log(`Solicitado eliminar: ${libName}`);
-                alert("La funcionalidad de eliminación aún no está implementada.");
-            }
+            handleDeleteLibrary(libName);
         }
         if (target.classList.contains('btn-toggle-activate')) {
             const libName = target.dataset.libName;

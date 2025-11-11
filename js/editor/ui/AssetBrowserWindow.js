@@ -402,8 +402,22 @@ async function handleContextMenuClick(e) {
             if (selectedAsset) {
                 if (confirm(`¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`)) {
                     try {
+                        // Delete the main asset
                         await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
                         console.log(`'${selectedAsset.name}' borrado.`);
+
+                        // If it was a library, try to delete its meta file too
+                        if (selectedAsset.name.endsWith('.celib')) {
+                            const metaName = `${selectedAsset.name}.meta`;
+                            try {
+                                await currentDirectoryHandle.handle.removeEntry(metaName);
+                                console.log(`Metadatos de la librería '${metaName}' borrados.`);
+                            } catch (metaErr) {
+                                // It's okay if the meta file doesn't exist, so we just log it.
+                                console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
+                            }
+                        }
+
                         await updateAssetBrowserCallback();
                     } catch (err) {
                         console.error(`Error al borrar '${selectedAsset.name}':`, err);
