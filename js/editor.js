@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     let isGameRunning = false;
+    let isGamePaused = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
@@ -241,6 +242,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const allErrors = [];
         let mainGameJsCode = null;
 
+        // --- PRE-BUILD STEP: Load all active libraries ---
+        console.log("Cargando APIs de librerías activas...");
+        RuntimeAPIManager.clearAPIs(); // Start with a clean slate
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+        for await (const entry of libDirHandle.values()) {
+            if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                let isActive = true;
+                try {
+                    const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                    const metaFile = await metaFileHandle.getFile();
+                    const metaData = JSON.parse(await metaFile.text());
+                    if (metaData.active === false) isActive = false;
+                } catch (e) { /* Meta file doesn't exist, assume active */ }
+
+                if (isActive) {
+                    try {
+                        const file = await entry.getFile();
+                        const libData = JSON.parse(await file.text());
+                        if (libData.api_access && libData.api_access.runtime_accessible) {
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            const apiObject = (new Function(scriptContent))();
+                            if (apiObject && typeof apiObject === 'object') {
+                                RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                console.log(`  - API de '${libData.name}' registrada para el runtime.`);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Error al cargar la librería en tiempo de ejecución '${entry.name}':`, e);
+                        // Optional: Add to allErrors to halt the build if a library fails to load
+                    }
+                }
+            }
+        }
+        console.log("Carga de APIs de librerías completada.");
+        // --- END PRE-BUILD STEP ---
+
         // 1. Encontrar todos los archivos .ces
         const cesFiles = [];
         async function findCesFiles(dirHandle, currentPath = '') {
@@ -256,10 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        await findCesFiles(assetsHandle);
+        const projectHandleForScripts = await projectsDirHandle.getDirectoryHandle(projectName);
+        await findCesFiles(projectHandleForScripts);
 
         if (cesFiles.length === 0) {
             console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
@@ -293,6 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
             console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
+
+            isGameRunning = true;
+            isGamePaused = false;
+            dom.btnPlay.style.display = 'none';
+            dom.btnPause.style.display = 'inline-block';
+            dom.btnPause.textContent = '⏸️'; // Ensure it's the pause icon
+            dom.btnPause.title = 'Pause';
+            dom.btnStop.style.display = 'inline-block';
+
             // 4. Cargar el script del juego y empezar
             if (mainGameJsCode) {
                 try {
@@ -302,13 +349,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     await import(url); // Importar el script para que defina Engine.start/update
                     URL.revokeObjectURL(url); // Limpiar
                     console.log("Script principal cargado. Iniciando juego...");
-                    originalStartGame(); // Llamar a la función de inicio original
+                    lastFrameTime = performance.now();
+                    // originalStartGame no es necesario aquí, ya que el loop se encarga
                 } catch (e) {
                     console.error("Error al ejecutar el script del juego:", e);
+                    stopGame(); // Detener el juego si el script falla
                 }
             } else {
                 console.warn("Build exitoso, pero no se encontró 'main.ces'. El juego podría no tener lógica de scripting.");
-                originalStartGame();
+                lastFrameTime = performance.now();
             }
         }
     };
@@ -590,8 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        if (isGameRunning) {
+        if (isGameRunning && !isGamePaused) {
             runGameLoop(); // This handles the logic update
+        }
+
+        // Rendering should happen even when paused, so we keep this outside the check
+        if (isGameRunning) {
             // When game is running, update both views
             if (renderer) updateScene(renderer, false); // Editor view with gizmos
             if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
@@ -608,17 +661,38 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     startGame = function() {
-        if (isGameRunning) return;
-        isGameRunning = true;
-        lastFrameTime = performance.now();
-        console.log("Game Started");
-        // The main editorLoop will now call runGameLoop
+        // This is the "un-paused" start. `runChecksAndPlay` is the initial start.
+        if (isGameRunning && !isGamePaused) return;
+
+        // If it's the very first run, runChecksAndPlay should be used.
+        // This function now primarily handles "play" and "unpause".
+        if (!isGameRunning) {
+             // This state should ideally be unreachable if runChecksAndPlay is the only entry point
+             console.warn("startGame called directly without pre-run checks. Running checks now...");
+             runChecksAndPlay(); // Fallback
+             return;
+        }
+
+        isGamePaused = false;
+        lastFrameTime = performance.now(); // Reset time to avoid large deltaTime jump
+        console.log("Game Resumed");
+
+        // Update button visibility
+        dom.btnPlay.style.display = 'none';
+        dom.btnPause.style.display = 'inline-block';
+        dom.btnStop.style.display = 'inline-block';
     };
 
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
+        isGamePaused = false;
         console.log("Game Stopped");
+
+        // Update button visibility
+        dom.btnPlay.style.display = 'inline-block';
+        dom.btnPause.style.display = 'none';
+        dom.btnStop.style.display = 'none';
     };
 
 
@@ -951,6 +1025,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateWindowMenuUI();
                 }
             }
+        });
+
+        // --- Game Control Logic ---
+        dom.btnPlay.addEventListener('click', () => {
+             // Switch to the game view first
+            dom.scenePanel.querySelector('.view-toggle-btn[data-view="game-content"]').click();
+            // Now run the checks and potentially the game
+            runChecksAndPlay();
+        });
+
+        dom.btnPause.addEventListener('click', () => {
+            if (isGameRunning && !isGamePaused) {
+                isGamePaused = true;
+                console.log("Game Paused");
+                // Update button text to show "Resume"
+                dom.btnPause.textContent = '▶️';
+                dom.btnPause.title = 'Resume';
+            } else if (isGameRunning && isGamePaused) {
+                isGamePaused = false;
+                lastFrameTime = performance.now(); // Avoid deltaTime jump
+                console.log("Game Resumed");
+                dom.btnPause.textContent = '⏸️';
+                dom.btnPause.title = 'Pause';
+            }
+        });
+
+        dom.btnStop.addEventListener('click', () => {
+            stopGame();
         });
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
@@ -1692,13 +1794,8 @@ public star() {
             initializeFloatingPanels();
             editorLoopId = requestAnimationFrame(editorLoop);
 
-            const oldPlayButton = document.getElementById('btn-play');
-            const newPlayButton = oldPlayButton.cloneNode(true);
-            oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
-            dom.btnPlay = newPlayButton;
-            dom.btnPlay.addEventListener('click', runChecksAndPlay);
-            originalStartGame = startGame;
-            startGame = runChecksAndPlay;
+            // The 'startGame' function is no longer reassigned. runChecksAndPlay is called directly.
+            // Listeners for play/pause/stop are now handled in setupEventListeners.
 
             updateLoadingProgress(100, "¡Listo!");
 
