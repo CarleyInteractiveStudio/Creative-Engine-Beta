@@ -14,6 +14,7 @@ let onShowContextMenu;
 let onExportPackage;
 let createUiSystemFile;
 let updateAssetBrowserCallback;
+let refreshLibraryListCallback; // New callback
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -26,6 +27,7 @@ export function initialize(dependencies) {
     exportContext = dependencies.exportContext; // Share the context object
     createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
+    refreshLibraryListCallback = dependencies.refreshLibraryList; // Store the new callback
 
     // Setup event listeners
     dom.assetGridView.addEventListener('click', handleGridClick);
@@ -312,12 +314,28 @@ async function handleExternalFileDrop(e) {
     // This handles files from the user's OS
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
-        const allowedExtensions = ['.png', '.jpeg', '.jpg', '.mp3', '.cea', '.ces', '.ceScene', '.ceanim'];
         let filesImported = 0;
+        let librariesImported = 0;
 
         for (const file of e.dataTransfer.files) {
-            const extension = `.${file.name.split('.').pop().toLowerCase()}`;
-            if (allowedExtensions.includes(extension)) {
+            if (file.name.toLowerCase().endsWith('.celib')) {
+                // Special handling for library files
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+                    const fileHandle = await libDirHandle.getFileHandle(file.name, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+                    librariesImported++;
+                } catch (err) {
+                    console.error(`Error al importar la librería '${file.name}':`, err);
+                    alert(`No se pudo importar la librería '${file.name}'.`);
+                }
+            } else {
+                // Normal file handling
                 try {
                     const fileHandle = await currentDirectoryHandle.handle.getFileHandle(file.name, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -328,14 +346,18 @@ async function handleExternalFileDrop(e) {
                     console.error(`Error al importar el archivo '${file.name}':`, err);
                     alert(`No se pudo importar el archivo '${file.name}'.`);
                 }
-            } else {
-                console.warn(`Archivo omitido: '${file.name}'. Tipo de archivo no soportado.`);
             }
         }
 
         if (filesImported > 0) {
-            console.log(`${filesImported} archivo(s) importados con éxito.`);
+            console.log(`${filesImported} archivo(s) importados con éxito a la carpeta de Assets.`);
             await updateAssetBrowserCallback();
+        }
+        if (librariesImported > 0) {
+            console.log(`${librariesImported} librería(s) importada(s) con éxito a la carpeta /lib.`);
+            if (refreshLibraryListCallback) {
+                refreshLibraryListCallback();
+            }
         }
     }
 }

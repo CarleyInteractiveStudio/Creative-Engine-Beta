@@ -1569,6 +1569,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
+            const libraryModule = initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
+
             const assetBrowserCallbacks = {
                 onAssetSelected,
                 onAssetOpened,
@@ -1576,11 +1578,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 onExportPackage,
                 createUiSystemFile,
                 updateAssetBrowser,
+                refreshLibraryList: libraryModule.refreshLibraryList // Add the new callback here
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize(dom, projectsDirHandle);
-            initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
+            const libraryModule = initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
             spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

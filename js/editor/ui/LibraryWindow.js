@@ -479,4 +479,9 @@ export function initialize(editorDom, handle, exportFunc) {
     });
 
     console.log("Módulo de la Ventana de Librerías inicializado.");
+
+    // Return the refresh function so other modules can trigger an update
+    return {
+        refreshLibraryList
+    };
 }
