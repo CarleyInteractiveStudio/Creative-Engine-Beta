@@ -1703,7 +1703,12 @@ public star() {
             updateLoadingProgress(100, "¡Listo!");
 
             // Update the RuntimeAPIManager with the loaded APIs
-            RuntimeAPIManager.updateAPIs(LibraryAPI.getRuntimeAPIs());
+            const runtimeAPIs = LibraryAPI.getRuntimeAPIs();
+            if (runtimeAPIs) {
+                for (const [name, apiObject] of Object.entries(runtimeAPIs)) {
+                    RuntimeAPIManager.registerAPI(name, apiObject);
+                }
+            }
 
             // Final step: Populate library windows menu
             const windowMenu = document.getElementById('window-menu-content');
