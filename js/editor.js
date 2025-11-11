@@ -1023,32 +1023,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Game Control Logic ---
-        dom.btnPlay.addEventListener('click', () => {
-             // Switch to the game view first
-            dom.scenePanel.querySelector('.view-toggle-btn[data-view="game-content"]').click();
-            // Now run the checks and potentially the game
-            runChecksAndPlay();
-        });
+        if (dom.btnPlay) {
+            dom.btnPlay.addEventListener('click', () => {
+                // Switch to the game view first
+                const gameViewButton = dom.scenePanel.querySelector('.view-toggle-btn[data-view="game-content"]');
+                if (gameViewButton) gameViewButton.click();
+                // Now run the checks and potentially the game
+                runChecksAndPlay();
+            });
+        }
 
-        dom.btnPause.addEventListener('click', () => {
-            if (isGameRunning && !isGamePaused) {
-                isGamePaused = true;
-                console.log("Game Paused");
-                // Update button text to show "Resume"
-                dom.btnPause.textContent = '▶️';
-                dom.btnPause.title = 'Resume';
-            } else if (isGameRunning && isGamePaused) {
-                isGamePaused = false;
-                lastFrameTime = performance.now(); // Avoid deltaTime jump
-                console.log("Game Resumed");
-                dom.btnPause.textContent = '⏸️';
-                dom.btnPause.title = 'Pause';
-            }
-        });
+        if (dom.btnPause) {
+            dom.btnPause.addEventListener('click', () => {
+                if (isGameRunning && !isGamePaused) {
+                    isGamePaused = true;
+                    console.log("Game Paused");
+                    // Update button text to show "Resume"
+                    dom.btnPause.textContent = '▶️';
+                    dom.btnPause.title = 'Resume';
+                } else if (isGameRunning && isGamePaused) {
+                    isGamePaused = false;
+                    lastFrameTime = performance.now(); // Avoid deltaTime jump
+                    console.log("Game Resumed");
+                    dom.btnPause.textContent = '⏸️';
+                    dom.btnPause.title = 'Pause';
+                }
+            });
+        }
 
-        dom.btnStop.addEventListener('click', () => {
-            stopGame();
-        });
+        if (dom.btnStop) {
+            dom.btnStop.addEventListener('click', () => {
+                stopGame();
+            });
+        }
 
         // --- Project Settings Listeners are now in js/editor/ui/ProjectSettingsWindow.js ---
 
@@ -1396,7 +1403,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
             'drawing-canvas', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
             'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
-            'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
+            'animation-playback-view', 'animation-playback-canvas',
+            'btn-play', 'btn-pause', 'btn-stop', // Game controls
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
