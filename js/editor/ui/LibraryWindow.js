@@ -103,7 +103,8 @@ async function refreshLibraryList() {
         // Render library cards
         libraries.forEach(lib => {
             const card = document.createElement('div');
-            card.className = 'library-card-item';
+            // Use the new main class for the bubble card
+            card.className = `library-card ${lib.isActive ? '' : 'inactive'}`;
             card.dataset.libraryName = lib.data.name;
             card.dataset.fileName = lib.name;
 
@@ -111,19 +112,19 @@ async function refreshLibraryList() {
             const libraryIconSrc = lib.data.library_icon_base64 || 'image/Paquete.png';
 
             card.innerHTML = `
-                <div class="library-card-header">
-                    <img src="${libraryIconSrc}" class="library-item-icon">
-                    <div class="library-item-title">
-                        <h4>${lib.data.name || 'Sin Nombre'}</h4>
-                        <span>v${lib.data.version || '0.0.0'}</span>
+                <!-- 1. Square library icon -->
+                <img src="${libraryIconSrc}" class="library-icon">
+
+                <!-- This div groups the text content -->
+                <div class="library-info">
+                    <!-- 2. Library Name -->
+                    <h4 class="library-name">${lib.data.name || 'Sin Nombre'}</h4>
+
+                    <!-- 3. Author Info (Icon + Name) -->
+                    <div class="library-author">
+                        <img src="${authorIconSrc}" class="author-icon">
+                        <span class="author-name">${lib.data.author || 'Anónimo'}</span>
                     </div>
-                    <div class="library-item-author">
-                        <img src="${authorIconSrc}" class="author-item-icon">
-                        <span>${lib.data.author || 'Anónimo'}</span>
-                    </div>
-                </div>
-                <div class="library-card-status ${lib.isActive ? 'status-active' : 'status-inactive'}">
-                    ${lib.isActive ? 'Activo' : 'Inactivo'}
                 </div>
             `;
             container.appendChild(card);
@@ -499,7 +500,7 @@ export function initialize(editorDom, handle, exportFunc) {
     let selectedLibraryForContextMenu = null;
 
     document.getElementById('library-list-container').addEventListener('contextmenu', (e) => {
-        const card = e.target.closest('.library-card-item');
+        const card = e.target.closest('.library-card');
         if (card) {
             e.preventDefault();
             selectedLibraryForContextMenu = card.dataset.fileName;
@@ -530,7 +531,7 @@ export function initialize(editorDom, handle, exportFunc) {
     let selectedLibraryForDetails = null;
 
     document.getElementById('library-list-container').addEventListener('click', async (e) => {
-        const card = e.target.closest('.library-card-item');
+        const card = e.target.closest('.library-card');
         if (card) {
             selectedLibraryForDetails = card.dataset.fileName;
             await openLibraryDetails(selectedLibraryForDetails);

@@ -523,77 +523,103 @@ body {
 /* --- Library Panel Styles --- */
 #library-list-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 15px;
+    /* Adjust minmax to better fit the new, more compact design */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 30px; /* Increased gap for the bubble tails */
     align-content: flex-start;
+    padding: 20px;
 }
 
 .library-card {
     background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 15px;
     display: flex;
-    gap: 15px;
-    align-items: center;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center;   /* Center items horizontally */
+    text-align: center;
+    gap: 8px; /* Space between elements */
     transition: opacity 0.3s ease;
+    position: relative; /* Needed for the triangular tail */
+    margin-bottom: 15px; /* Space for the tail */
 }
+
+/* The "speech bubble" triangular tail */
+.library-card::after {
+    content: '';
+    position: absolute;
+    bottom: -15px; /* Position it at the bottom */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border: 15px solid transparent;
+    border-top-color: var(--border-color); /* Match border color */
+    border-bottom: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+}
+
 
 .library-card.inactive {
     opacity: 0.5;
 }
 
+/* 1. Square image for the library */
 .library-card .library-icon {
     width: 64px;
     height: 64px;
-    object-fit: contain;
-    border-radius: 4px;
+    object-fit: cover; /* Use cover to fill the square */
+    border-radius: 0; /* Sharp square corners */
     flex-shrink: 0;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
 }
 
 .library-card .library-info {
-    flex-grow: 1;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
     overflow: hidden;
+    width: 100%;
 }
 
-.library-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-}
-
+/* 2. Library Name */
 .library-name {
-    margin: 0;
+    margin: 5px 0 0 0;
     font-size: 1.1em;
+    font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%;
 }
 
-.library-version {
-    font-size: 0.8em;
-    color: var(--text-secondary);
-    background-color: var(--bg-tertiary);
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
+/* 3. Author Info Container (Icon + Name) */
 .library-author {
     display: flex;
+    flex-direction: column; /* Stack author icon and name */
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     font-size: 0.9em;
     color: var(--text-secondary);
+    margin-top: 5px;
 }
 
+/* 3a. Small round author icon */
 .library-author .author-icon {
     width: 24px;
     height: 24px;
     border-radius: 50%;
     object-fit: cover;
+    border: 1px solid var(--border-color);
+}
+
+/* 3b. Author Name */
+.library-author .author-name {
+    font-style: italic;
 }
 
 .library-actions {
