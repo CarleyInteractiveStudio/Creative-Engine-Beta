@@ -124,7 +124,7 @@
                 <div class="modal-content large">
                     <span class="close-button">&times;</span>
                     <h2>Crear Nueva Librería</h2>
-                    <div class="settings-form">
+                    <form class="settings-form">
                         <fieldset class="settings-section">
                             <legend>Información Básica</legend>
                             <label for="lib-create-name">Nombre de la Librería</label>
@@ -187,7 +187,7 @@
                                 <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
                             </div>
                         </fieldset>
-                    </div>
+                    </form>
                     <div class="modal-footer">
                         <button id="lib-create-cancel-btn">Cancelar</button>
                         <button id="lib-create-confirm-btn" class="primary-btn">Crear Librería</button>
@@ -683,6 +683,23 @@ public star() {
             <li data-action="duplicate">Duplicar</li>
             <li data-action="delete" class="danger">Eliminar</li>
         </ul>
+    </div>
+    <div id="library-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="toggle-library-activation">Activar/Desactivar</li>
+            <li data-action="delete-library" class="danger">Eliminar</li>
+        </ul>
+    </div>
+    <div id="library-details-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2 id="lib-details-title">Detalles de la Librería</h2>
+            <div class="settings-form" id="lib-details-content">
+                </div>
+            <div class="modal-footer">
+                <button id="lib-details-save-btn" class="primary-btn">Guardar Cambios</button>
+            </div>
+        </div>
     </div>
     <div id="sprite-selector-modal" class="modal">
         <div class="modal-content large">

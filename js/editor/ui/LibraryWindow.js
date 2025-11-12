@@ -103,23 +103,27 @@ async function refreshLibraryList() {
         // Render library cards
         libraries.forEach(lib => {
             const card = document.createElement('div');
-            card.className = `library-card ${lib.isActive ? 'active' : 'inactive'}`;
+            card.className = 'library-card-item';
+            card.dataset.libraryName = lib.data.name;
+            card.dataset.fileName = lib.name;
+
+            const authorIconSrc = lib.data.author_icon_base64 || 'image/Paquete.png';
+            const libraryIconSrc = lib.data.library_icon_base64 || 'image/Paquete.png';
+
             card.innerHTML = `
-                <input type="checkbox" class="library-select-checkbox" data-lib-name="${lib.name}">
-                <img src="${lib.data.library_icon_base64 || 'image/Paquete.png'}" class="library-icon">
-                <div class="library-info">
-                    <div class="library-header">
-                        <h3 class="library-name">${lib.data.name || 'Sin Nombre'}</h3>
-                        <span class="library-version">v${lib.data.version || '0.0.0'}</span>
+                <div class="library-card-header">
+                    <img src="${libraryIconSrc}" class="library-item-icon">
+                    <div class="library-item-title">
+                        <h4>${lib.data.name || 'Sin Nombre'}</h4>
+                        <span>v${lib.data.version || '0.0.0'}</span>
                     </div>
-                    <div class="library-author">
-                        <img src="${lib.data.author_icon_base64 || 'image/Paquete.png'}" class="author-icon">
+                    <div class="library-item-author">
+                        <img src="${authorIconSrc}" class="author-item-icon">
                         <span>${lib.data.author || 'Anónimo'}</span>
                     </div>
                 </div>
-                <div class="library-actions">
-                    <button class="btn-toggle-activate ${lib.isActive ? 'state-active' : 'state-inactive'}" data-lib-name="${lib.name}" title="Activar/Desactivar"></button>
-                    <button class="btn-delete-library" data-lib-name="${lib.name}" title="Eliminar del Proyecto">🗑️</button>
+                <div class="library-card-status ${lib.isActive ? 'status-active' : 'status-inactive'}">
+                    ${lib.isActive ? 'Activo' : 'Inactivo'}
                 </div>
             `;
             container.appendChild(card);
@@ -492,17 +496,120 @@ export function initialize(editorDom, handle, exportFunc) {
         }
     }
 
-    // Placeholder for actions on library cards (delegated event listener)
-    document.getElementById('library-list-container').addEventListener('click', (e) => {
-        const target = e.target;
-        if (target.classList.contains('btn-delete-library')) {
-            const libName = target.dataset.libName;
-            handleDeleteLibrary(libName);
+    let selectedLibraryForContextMenu = null;
+
+    document.getElementById('library-list-container').addEventListener('contextmenu', (e) => {
+        const card = e.target.closest('.library-card-item');
+        if (card) {
+            e.preventDefault();
+            selectedLibraryForContextMenu = card.dataset.fileName;
+            const menu = document.getElementById('library-context-menu');
+            menu.style.display = 'block';
+            menu.style.left = `${e.clientX}px`;
+            menu.style.top = `${e.clientY}px`;
         }
-        if (target.classList.contains('btn-toggle-activate')) {
-            const libName = target.dataset.libName;
-            toggleLibraryActivation(libName);
+    });
+
+    document.getElementById('library-context-menu').addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        if (selectedLibraryForContextMenu) {
+            if (action === 'toggle-library-activation') {
+                toggleLibraryActivation(selectedLibraryForContextMenu);
+            } else if (action === 'delete-library') {
+                handleDeleteLibrary(selectedLibraryForContextMenu);
+            }
         }
+        document.getElementById('library-context-menu').style.display = 'none';
+    });
+
+    // Hide context menu on left-click
+    window.addEventListener('click', () => {
+        document.getElementById('library-context-menu').style.display = 'none';
+    });
+
+    let selectedLibraryForDetails = null;
+
+    document.getElementById('library-list-container').addEventListener('click', async (e) => {
+        const card = e.target.closest('.library-card-item');
+        if (card) {
+            selectedLibraryForDetails = card.dataset.fileName;
+            await openLibraryDetails(selectedLibraryForDetails);
+        }
+    });
+
+    async function openLibraryDetails(fileName) {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+            const fileHandle = await libDirHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const libData = JSON.parse(content);
+
+            document.getElementById('lib-details-title').textContent = `Detalles de: ${libData.name}`;
+            const detailsContent = document.getElementById('lib-details-content');
+            detailsContent.innerHTML = `
+                <p><strong>Autor:</strong> ${libData.author || 'No especificado'}</p>
+                <p><strong>Versión:</strong> ${libData.version || 'No especificada'}</p>
+                <p><strong>Descripción:</strong> ${libData.description || 'Sin descripción.'}</p>
+                <hr>
+                <h4>Permisos</h4>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-req-windows" ${libData.api_access?.can_create_windows ? 'checked' : ''}>
+                    <label for="details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-runtime-access" ${libData.api_access?.runtime_accessible ? 'checked' : ''}>
+                    <label for="details-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-is-tool" ${libData.api_access?.is_engine_tool ? 'checked' : ''}>
+                    <label for="details-is-tool">Es una herramienta interna para el motor.</label>
+                </div>
+            `;
+
+            document.getElementById('library-details-modal').classList.add('is-open');
+
+        } catch (error) {
+            console.error(`Error al abrir los detalles de la librería '${fileName}':`, error);
+            alert("No se pudieron cargar los detalles de la librería.");
+        }
+    }
+
+    document.getElementById('lib-details-save-btn').addEventListener('click', async () => {
+        if (!selectedLibraryForDetails) return;
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+            const fileHandle = await libDirHandle.getFileHandle(selectedLibraryForDetails);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const libData = JSON.parse(content);
+
+            libData.api_access = {
+                can_create_windows: document.getElementById('details-req-windows').checked,
+                runtime_accessible: document.getElementById('details-runtime-access').checked,
+                is_engine_tool: document.getElementById('details-is-tool').checked,
+            };
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(libData, null, 2));
+            await writable.close();
+
+            document.getElementById('library-details-modal').classList.remove('is-open');
+            alert("Cambios guardados. Por favor, reinicia el editor para aplicar los nuevos permisos.");
+
+        } catch (error) {
+            console.error(`Error al guardar los cambios de la librería '${selectedLibraryForDetails}':`, error);
+            alert("No se pudieron guardar los cambios.");
+        }
+    });
+
+    document.getElementById('library-details-modal').querySelector('.close-button').addEventListener('click', () => {
+        document.getElementById('library-details-modal').classList.remove('is-open');
     });
 
     console.log("Módulo de la Ventana de Librerías inicializado.");

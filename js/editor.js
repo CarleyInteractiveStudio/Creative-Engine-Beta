@@ -269,11 +269,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const libData = JSON.parse(content);
 
                         if (libData.api_access && libData.api_access.runtime_accessible) {
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base_64)));
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
                             const apiObject = (new Function(scriptContent))();
 
                             if (apiObject && typeof apiObject === 'object') {
                                 RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                const fileNameWithoutExt = entry.name.replace('.celib', '');
+                                if (libData.name !== fileNameWithoutExt) {
+                                    RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
+                                    console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
+                                }
                             } else {
                                 console.warn(`La librería '${libData.name}' no devolvió un objeto API.`);
                             }
@@ -1613,6 +1618,11 @@ public star() {
 
                                     if (apiObject && typeof apiObject === 'object') {
                                         RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                        const fileNameWithoutExt = entry.name.replace('.celib', '');
+                                        if (libData.name !== fileNameWithoutExt) {
+                                            RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
+                                            console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
+                                        }
                                     } else {
                                         console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
                                     }
