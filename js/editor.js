@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, loadRuntimeApis;
 
     selectMateria = function(materiaOrId) {
         let materiaToSelect = null;
@@ -231,11 +231,82 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Project Settings and Preferences Logic has been moved to their respective modules ---
 
+    loadRuntimeApis = async function() {
+        RuntimeAPIManager.clearAPIs(); // Siempre empezar de cero
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (!projectName || !projectsDirHandle) {
+            console.warn("No se puede cargar librerías sin un proyecto cargado.");
+            return;
+        }
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+        try {
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+            for await (const entry of libDirHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                    // Comprobar si la librería está activa
+                    let isActive = true;
+                    try {
+                        const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                        const metaFile = await metaFileHandle.getFile();
+                        const metaContent = await metaFile.text();
+                        const metaData = JSON.parse(metaContent);
+                        if (metaData.active === false) {
+                            isActive = false;
+                        }
+                    } catch (e) {
+                        // El meta no existe, se asume activa por defecto
+                    }
+
+                    if (!isActive) {
+                        console.log(`Omitiendo librería inactiva: ${entry.name}`);
+                        continue;
+                    }
+
+                    // Cargar y registrar la API si es accesible en runtime
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const libData = JSON.parse(content);
+
+                        if (libData.api_access && libData.api_access.runtime_accessible) {
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            const apiObject = (new Function(scriptContent))();
+
+                            if (apiObject && typeof apiObject === 'object') {
+                                RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                            } else {
+                                console.warn(`La librería '${libData.name}' no devolvió un objeto API.`);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Error procesando la librería ${entry.name}:`, e);
+                    }
+                }
+            }
+        } catch (error) {
+            // Esto es normal si el directorio 'lib' no existe
+            if (error.name === 'NotFoundError') {
+                console.log("Directorio 'lib' no encontrado. No se cargarán librerías en tiempo de ejecución.");
+            } else {
+                console.error("Error al acceder al directorio de librerías:", error);
+            }
+        }
+    };
+
+
     runChecksAndPlay = async function() {
         if (!projectsDirHandle) {
             alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
             return;
         }
+
+        // --- ¡PASO CLAVE! Cargar/Recargar todas las APIs de las librerías activas ---
+        await loadRuntimeApis();
+        // --- Fin del paso ---
+
         console.log("Verificando todos los scripts del proyecto...");
         dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
         const allErrors = [];
@@ -1479,74 +1550,42 @@ public star() {
                 }
                 // --- End of README creation ---
 
+                // --- Cargar APIs de librerías en tiempo de ejecución ---
+                await loadRuntimeApis();
 
+                // --- Cargar APIs de librerías del lado del editor (para UI) ---
                 for await (const entry of libDirHandle.values()) {
                     if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
-                        // Check for activation status via .meta file
-                        let isActive = true; // Active by default
+                        // La comprobación de 'activa' ya se hace en loadRuntimeApis,
+                        // pero la necesitamos aquí también para la UI del editor.
+                        let isActive = true;
                         try {
-                            const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
-                            const metaFile = await metaFileHandle.getFile();
-                            const metaContent = await metaFile.text();
-                            const metaData = JSON.parse(metaContent);
-                            if (metaData.active === false) {
-                                isActive = false;
-                            }
-                        } catch (e) {
-                            // Meta file doesn't exist or is invalid, assume active. This is the default.
-                        }
+                            const meta = JSON.parse(await (await libDirHandle.getFileHandle(`${entry.name}.meta`)).getFile().then(f => f.text()));
+                            if (meta.active === false) isActive = false;
+                        } catch (e) {}
 
-                        if (!isActive) {
-                            console.log(`Librería '${entry.name}' está inactiva. Omitiendo.`);
-                            continue; // Skip to the next library
-                        }
-
-                        // If active, proceed with loading...
-                        try {
-                            const file = await entry.getFile();
-                            const content = await file.text();
-                            const libData = JSON.parse(content);
-
-                            // Decode the Base64 script content
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
-
-                            // 1. Handle API for creating windows (Editor-side)
-                            if (libData.api_access && libData.api_access.can_create_windows) {
-                                // This script runs in the editor's context to register UI elements
-                                try {
-                                    // We wrap the code in a function to control its scope
+                        if (isActive) {
+                             try {
+                                const file = await entry.getFile();
+                                const libData = JSON.parse(await file.text());
+                                if (libData.api_access && libData.api_access.can_create_windows) {
+                                    const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
                                     const setupFunction = new Function('CreativeEngine', scriptContent);
-                                    setupFunction(window.CreativeEngine); // Pass the API object
-                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
-                                } catch(e) {
-                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                    setupFunction(window.CreativeEngine);
+                                    console.log(`Librería de UI '${libData.name}' cargada.`);
                                 }
+                            } catch (e) {
+                                console.error(`Error al cargar la UI de la librería ${entry.name}:`, e);
                             }
-
-                            // 2. Handle API for game scripts (Runtime)
-                            if (libData.api_access && libData.api_access.runtime_accessible) {
-                                // This script is evaluated to get its public functions for the game
-                                try {
-                                    // Wrap in an IIFE (Immediately Invoked Function Expression) to capture the return value.
-                                    const apiObject = (new Function(scriptContent))();
-
-                                    if (apiObject && typeof apiObject === 'object') {
-                                        RuntimeAPIManager.registerAPI(libData.name, apiObject);
-                                    } else {
-                                        console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
-                                    }
-                                } catch(e) {
-                                    console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);
-                                }
-                            }
-
-                        } catch (e) {
-                            console.error(`Error al cargar la librería ${entry.name}:`, e);
                         }
                     }
                 }
+
             } catch (libError) {
-                console.error("No se pudo crear o verificar el directorio 'lib':", libError);
+                // Solo mostrar error si no es un 'NotFoundError'
+                if (libError.name !== 'NotFoundError') {
+                    console.error("Error al procesar el directorio 'lib':", libError);
+                }
             }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
