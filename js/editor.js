@@ -1416,7 +1416,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher'
+            'btn-retry-loading', 'btn-back-to-launcher',
+            'btn-play', 'btn-pause', 'btn-stop'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
