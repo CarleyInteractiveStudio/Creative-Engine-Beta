@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     let isGameRunning = false;
+    let isGamePaused = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
@@ -70,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, loadRuntimeApis;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis;
 
     selectMateria = function(materiaOrId) {
         let materiaToSelect = null;
@@ -232,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Project Settings and Preferences Logic has been moved to their respective modules ---
 
     loadRuntimeApis = async function() {
-        RuntimeAPIManager.clearAPIs(); // Siempre empezar de cero
+        RuntimeAPIManager.clearAPIs();
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         if (!projectName || !projectsDirHandle) {
@@ -246,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for await (const entry of libDirHandle.values()) {
                 if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
-                    // Comprobar si la librería está activa
                     let isActive = true;
                     try {
                         const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
@@ -257,22 +257,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             isActive = false;
                         }
                     } catch (e) {
-                        // El meta no existe, se asume activa por defecto
                     }
 
                     if (!isActive) {
-                        console.log(`Omitiendo librería inactiva: ${entry.name}`);
                         continue;
                     }
 
-                    // Cargar y registrar la API si es accesible en runtime
                     try {
                         const file = await entry.getFile();
                         const content = await file.text();
                         const libData = JSON.parse(content);
 
                         if (libData.api_access && libData.api_access.runtime_accessible) {
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base_64)));
                             const apiObject = (new Function(scriptContent))();
 
                             if (apiObject && typeof apiObject === 'object') {
@@ -287,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
-            // Esto es normal si el directorio 'lib' no existe
             if (error.name === 'NotFoundError') {
                 console.log("Directorio 'lib' no encontrado. No se cargarán librerías en tiempo de ejecución.");
             } else {
@@ -296,17 +292,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
     runChecksAndPlay = async function() {
         if (!projectsDirHandle) {
             alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
             return;
         }
-
-        // --- ¡PASO CLAVE! Cargar/Recargar todas las APIs de las librerías activas ---
         await loadRuntimeApis();
-        // --- Fin del paso ---
-
         console.log("Verificando todos los scripts del proyecto...");
         dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
         const allErrors = [];
@@ -661,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        if (isGameRunning) {
+        if (isGameRunning && !isGamePaused) {
             runGameLoop(); // This handles the logic update
             // When game is running, update both views
             if (renderer) updateScene(renderer, false); // Editor view with gizmos
@@ -678,18 +669,36 @@ document.addEventListener('DOMContentLoaded', () => {
         editorLoopId = requestAnimationFrame(editorLoop);
     };
 
+    updateGameControlsUI = function() {
+        if (isGameRunning) {
+            dom.btnPlay.style.display = 'none';
+            dom.btnPause.style.display = 'inline-block';
+            dom.btnStop.style.display = 'inline-block';
+            dom.btnPause.textContent = isGamePaused ? '▶️' : '⏸️';
+        } else {
+            dom.btnPlay.style.display = 'inline-block';
+            dom.btnPause.style.display = 'none';
+            dom.btnStop.style.display = 'none';
+            isGamePaused = false;
+        }
+    };
+
     startGame = function() {
         if (isGameRunning) return;
         isGameRunning = true;
+        isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
-        // The main editorLoop will now call runGameLoop
+        updateGameControlsUI();
     };
 
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
         console.log("Game Stopped");
+        updateGameControlsUI();
+        // A full scene reload might be desired here to reset state.
+        // For now, we'll just stop the loop logic.
     };
 
 
@@ -1550,42 +1559,74 @@ public star() {
                 }
                 // --- End of README creation ---
 
-                // --- Cargar APIs de librerías en tiempo de ejecución ---
-                await loadRuntimeApis();
 
-                // --- Cargar APIs de librerías del lado del editor (para UI) ---
                 for await (const entry of libDirHandle.values()) {
                     if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
-                        // La comprobación de 'activa' ya se hace en loadRuntimeApis,
-                        // pero la necesitamos aquí también para la UI del editor.
-                        let isActive = true;
+                        // Check for activation status via .meta file
+                        let isActive = true; // Active by default
                         try {
-                            const meta = JSON.parse(await (await libDirHandle.getFileHandle(`${entry.name}.meta`)).getFile().then(f => f.text()));
-                            if (meta.active === false) isActive = false;
-                        } catch (e) {}
-
-                        if (isActive) {
-                             try {
-                                const file = await entry.getFile();
-                                const libData = JSON.parse(await file.text());
-                                if (libData.api_access && libData.api_access.can_create_windows) {
-                                    const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
-                                    const setupFunction = new Function('CreativeEngine', scriptContent);
-                                    setupFunction(window.CreativeEngine);
-                                    console.log(`Librería de UI '${libData.name}' cargada.`);
-                                }
-                            } catch (e) {
-                                console.error(`Error al cargar la UI de la librería ${entry.name}:`, e);
+                            const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                            const metaFile = await metaFileHandle.getFile();
+                            const metaContent = await metaFile.text();
+                            const metaData = JSON.parse(metaContent);
+                            if (metaData.active === false) {
+                                isActive = false;
                             }
+                        } catch (e) {
+                            // Meta file doesn't exist or is invalid, assume active. This is the default.
+                        }
+
+                        if (!isActive) {
+                            console.log(`Librería '${entry.name}' está inactiva. Omitiendo.`);
+                            continue; // Skip to the next library
+                        }
+
+                        // If active, proceed with loading...
+                        try {
+                            const file = await entry.getFile();
+                            const content = await file.text();
+                            const libData = JSON.parse(content);
+
+                            // Decode the Base64 script content
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+
+                            // 1. Handle API for creating windows (Editor-side)
+                            if (libData.api_access && libData.api_access.can_create_windows) {
+                                // This script runs in the editor's context to register UI elements
+                                try {
+                                    // We wrap the code in a function to control its scope
+                                    const setupFunction = new Function('CreativeEngine', scriptContent);
+                                    setupFunction(window.CreativeEngine); // Pass the API object
+                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
+                                } catch(e) {
+                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                }
+                            }
+
+                            // 2. Handle API for game scripts (Runtime)
+                            if (libData.api_access && libData.api_access.runtime_accessible) {
+                                // This script is evaluated to get its public functions for the game
+                                try {
+                                    // Wrap in an IIFE (Immediately Invoked Function Expression) to capture the return value.
+                                    const apiObject = (new Function(scriptContent))();
+
+                                    if (apiObject && typeof apiObject === 'object') {
+                                        RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                    } else {
+                                        console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
+                                    }
+                                } catch(e) {
+                                    console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);
+                                }
+                            }
+
+                        } catch (e) {
+                            console.error(`Error al cargar la librería ${entry.name}:`, e);
                         }
                     }
                 }
-
             } catch (libError) {
-                // Solo mostrar error si no es un 'NotFoundError'
-                if (libError.name !== 'NotFoundError') {
-                    console.error("Error al procesar el directorio 'lib':", libError);
-                }
+                console.error("No se pudo crear o verificar el directorio 'lib':", libError);
             }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
@@ -1735,7 +1776,16 @@ public star() {
             const newPlayButton = oldPlayButton.cloneNode(true);
             oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
             dom.btnPlay = newPlayButton;
+
             dom.btnPlay.addEventListener('click', runChecksAndPlay);
+            dom.btnPause.addEventListener('click', () => {
+                isGamePaused = !isGamePaused;
+                console.log(isGamePaused ? "Game Paused" : "Game Resumed");
+                updateGameControlsUI();
+            });
+            dom.btnStop.addEventListener('click', stopGame);
+
+
             originalStartGame = startGame;
             startGame = runChecksAndPlay;
 
