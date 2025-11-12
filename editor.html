@@ -694,10 +694,49 @@ public star() {
         <div class="modal-content large">
             <span class="close-button">&times;</span>
             <h2 id="lib-details-title">Detalles de la Librería</h2>
-            <div class="settings-form" id="lib-details-content">
+            <div class="details-bubble-container">
+                <!-- Bubble 1: Main Info -->
+                <div class="details-bubble top-bubble">
+                    <div class="info-column">
+                        <img id="details-lib-icon" src="image/Paquete.png" class="details-lib-icon">
+                        <div class="info-text">
+                            <h3 id="details-lib-name">Nombre de la Librería</h3>
+                            <span id="details-lib-version">v1.0.0</span>
+                        </div>
+                    </div>
+                    <div class="info-column">
+                        <img id="details-author-icon" src="image/Paquete.png" class="details-author-icon">
+                        <div class="info-text">
+                            <h3 id="details-author-name">Nombre del Autor</h3>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Bubble 2: Description -->
+                <fieldset class="details-bubble">
+                    <legend>Información</legend>
+                    <p id="details-lib-description">Aquí va la descripción de la librería.</p>
+                </fieldset>
+
+                <!-- Bubble 3: Status & Permissions -->
+                <fieldset class="details-bubble">
+                    <legend>Estado y Permisos</legend>
+                    <div class="status-toggle-container">
+                        <label for="details-status-toggle">Estado:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="details-status-toggle" class="toggle-input">
+                            <label for="details-status-toggle" class="toggle-label"></label>
+                        </div>
+                        <span id="details-status-text">Activo</span>
+                    </div>
+                    <hr>
+                    <div id="details-permissions-content">
+                        <!-- Permissions checkboxes will be injected by JS -->
+                    </div>
+                </fieldset>
+            </div>
             <div class="modal-footer">
-                <button id="lib-details-save-btn" class="primary-btn">Guardar Cambios</button>
+                <button id="lib-details-save-btn" class="modern-btn">Guardar Cambios</button>
             </div>
         </div>
     </div>

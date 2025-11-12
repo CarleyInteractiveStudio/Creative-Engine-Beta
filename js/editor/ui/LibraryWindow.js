@@ -548,14 +548,33 @@ export function initialize(editorDom, handle, exportFunc) {
             const content = await file.text();
             const libData = JSON.parse(content);
 
-            document.getElementById('lib-details-title').textContent = `Detalles de: ${libData.name}`;
-            const detailsContent = document.getElementById('lib-details-content');
-            detailsContent.innerHTML = `
-                <p><strong>Autor:</strong> ${libData.author || 'No especificado'}</p>
-                <p><strong>Versión:</strong> ${libData.version || 'No especificada'}</p>
-                <p><strong>Descripción:</strong> ${libData.description || 'Sin descripción.'}</p>
-                <hr>
-                <h4>Permisos</h4>
+            // --- Populate Top Bubble ---
+            document.getElementById('details-lib-icon').src = libData.library_icon_base64 || 'image/Paquete.png';
+            document.getElementById('details-lib-name').textContent = libData.name || 'Sin Nombre';
+            document.getElementById('details-lib-version').textContent = `v${libData.version || '0.0.0'}`;
+            document.getElementById('details-author-icon').src = libData.author_icon_base64 || 'image/Paquete.png';
+            document.getElementById('details-author-name').textContent = libData.author || 'Anónimo';
+
+            // --- Populate Description Bubble ---
+            document.getElementById('details-lib-description').textContent = libData.description || 'Sin descripción.';
+
+            // --- Populate Status & Permissions Bubble ---
+            const statusToggle = document.getElementById('details-status-toggle');
+            const statusText = document.getElementById('details-status-text');
+
+            let isActive = true;
+            try {
+                const metaFileHandle = await libDirHandle.getFileHandle(`${fileName}.meta`);
+                const metaFile = await metaFileHandle.getFile();
+                const metaContent = await metaFile.text();
+                isActive = JSON.parse(metaContent).active !== false;
+            } catch (e) { /* Defaults to active */ }
+
+            statusToggle.checked = isActive;
+            statusText.textContent = isActive ? 'Activo' : 'Inactivo';
+
+            const permissionsContent = document.getElementById('details-permissions-content');
+            permissionsContent.innerHTML = `
                 <div class="checkbox-field">
                     <input type="checkbox" id="details-req-windows" ${libData.api_access?.can_create_windows ? 'checked' : ''}>
                     <label for="details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
@@ -585,6 +604,8 @@ export function initialize(editorDom, handle, exportFunc) {
             const projectName = new URLSearchParams(window.location.search).get('project');
             const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
             const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+            // --- Save .celib file (permissions) ---
             const fileHandle = await libDirHandle.getFileHandle(selectedLibraryForDetails);
             const file = await fileHandle.getFile();
             const content = await file.text();
@@ -600,8 +621,18 @@ export function initialize(editorDom, handle, exportFunc) {
             await writable.write(JSON.stringify(libData, null, 2));
             await writable.close();
 
+            // --- Save .meta file (activation status) ---
+            const isActive = document.getElementById('details-status-toggle').checked;
+            const metaFileName = `${selectedLibraryForDetails}.meta`;
+            const metaFileHandle = await libDirHandle.getFileHandle(metaFileName, { create: true });
+            const metaWritable = await metaFileHandle.createWritable();
+            await metaWritable.write(JSON.stringify({ active: isActive }, null, 2));
+            await metaWritable.close();
+
+
             document.getElementById('library-details-modal').classList.remove('is-open');
-            alert("Cambios guardados. Por favor, reinicia el editor para aplicar los nuevos permisos.");
+            alert("Cambios guardados. Por favor, reinicia el editor para aplicar todos los cambios.");
+            refreshLibraryList(); // Refresh the main view to show active/inactive state
 
         } catch (error) {
             console.error(`Error al guardar los cambios de la librería '${selectedLibraryForDetails}':`, error);
