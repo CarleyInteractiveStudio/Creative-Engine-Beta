@@ -14,7 +14,8 @@ let onShowContextMenu;
 let onExportPackage;
 let createUiSystemFile;
 let updateAssetBrowserCallback;
-let refreshLibraryListCallback; // New callback
+let refreshLibraryListCallback;
+let openLibraryDetailsCallback; // New callback for double-click
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -27,7 +28,8 @@ export function initialize(dependencies) {
     exportContext = dependencies.exportContext; // Share the context object
     createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
-    refreshLibraryListCallback = dependencies.refreshLibraryList; // Store the new callback
+    refreshLibraryListCallback = dependencies.refreshLibraryList;
+    openLibraryDetailsCallback = dependencies.openLibraryDetails; // Store the new callback
 
     // Setup event listeners
     dom.assetGridView.addEventListener('click', handleGridClick);
@@ -164,7 +166,27 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
             } else if (entry.name.endsWith('.celib')) {
-                iconContainer.textContent = '📚';
+                // Asynchronously read the library file to get the custom icon
+                (async () => {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const libData = JSON.parse(content);
+                        if (libData.library_icon_base64) {
+                            imgIcon.src = libData.library_icon_base64;
+                            iconContainer.appendChild(imgIcon);
+                        } else {
+                            // Fallback icon if no custom one is provided
+                            imgIcon.src = 'image/Paquete.png';
+                            iconContainer.appendChild(imgIcon);
+                        }
+                    } catch (e) {
+                        console.error(`Error reading .celib file for icon: ${entry.name}`, e);
+                        // Fallback icon on error
+                        imgIcon.src = 'image/Paquete.png';
+                        iconContainer.appendChild(imgIcon);
+                    }
+                })();
             } else {
                 iconContainer.textContent = '📄';
             }
@@ -262,6 +284,17 @@ async function handleGridDblClick(e) {
     if (kind === 'directory') {
         currentDirectoryHandle = { handle: await currentDirectoryHandle.handle.getDirectoryHandle(name), path: path };
         updateAssetBrowserCallback();
+    } else if (name.endsWith('.celib')) {
+        if (openLibraryDetailsCallback) {
+            // Ensure the library panel is visible before opening details
+            const libraryPanel = document.getElementById('library-panel');
+            if (libraryPanel && libraryPanel.classList.contains('hidden')) {
+                libraryPanel.classList.remove('hidden');
+            }
+            openLibraryDetailsCallback(name);
+        } else {
+            console.warn("La funcionalidad de doble clic para librerías no está conectada.");
+        }
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle);

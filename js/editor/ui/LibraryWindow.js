@@ -648,6 +648,7 @@ export function initialize(editorDom, handle, exportFunc) {
 
     // Return the refresh function so other modules can trigger an update
     return {
-        refreshLibraryList
+        refreshLibraryList,
+        openLibraryDetails // Export the function
     };
 }

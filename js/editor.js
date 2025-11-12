@@ -1762,7 +1762,8 @@ public star() {
                 onExportPackage,
                 createUiSystemFile,
                 updateAssetBrowser,
-                refreshLibraryList: libraryModule.refreshLibraryList // Add the new callback here
+                refreshLibraryList: libraryModule.refreshLibraryList,
+                openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });

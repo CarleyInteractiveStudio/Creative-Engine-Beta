@@ -989,6 +989,22 @@ async function updateInspectorForAsset(assetName, assetPath) {
             }
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);
+        } else if (assetName.endsWith('.celib')) {
+            const libData = JSON.parse(content);
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview'; // Reutilizamos el estilo
+
+            const iconSrc = libData.library_icon_base64 || 'image/Paquete.png';
+
+            preview.innerHTML = `
+                <img src="${iconSrc}" class="asset-preview-icon" style="width: 64px; height: 64px; border-radius: 5px;">
+                <h3 style="margin-top: 10px; margin-bottom: 5px;">${libData.name || 'Librería sin nombre'}</h3>
+                <p style="font-size: 0.9em; color: var(--color-text-secondary);">${libData.author || 'Autor desconocido'}</p>
+                <hr style="margin: 10px 0;">
+                <p>${libData.description || 'Sin descripción.'}</p>
+                <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Librerías.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
