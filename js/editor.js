@@ -674,29 +674,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    startGame = function() {
+    startGame = async function() {
         if (isGameRunning) return;
         isGameRunning = true;
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
 
-        // --- NEW ---
-        // Call star() on all active CreativeScript components in the scene
-        if (SceneManager.currentScene) {
-            for (const materia of SceneManager.currentScene.getAllMaterias()) {
-                if (materia.isActive) {
-                    const scripts = materia.getComponents(Components.CreativeScript);
-                    for (const script of scripts) {
-                        // The CreativeScript component's 'star' method will handle execution
-                        script.star();
+        try {
+            if (SceneManager.currentScene) {
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    if (materia.isActive) {
+                        const scripts = materia.getComponents(Components.CreativeScript);
+                        for (const script of scripts) {
+                            await script.initializeInstance(); // Await initialization
+                            if (script.isInitialized) {
+                                try {
+                                    script.star(); // Call star only if initialized
+                                } catch (e) {
+                                    console.error(`Error en el método star() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                                }
+                            }
+                        }
                     }
                 }
             }
+        } catch (error) {
+            console.error("Un error crítico ocurrió durante la inicialización de los scripts:", error);
+        } finally {
+            // Ensure UI always updates, even if scripts fail
+            updateGameControlsUI();
         }
-        // --- END NEW ---
-
-        updateGameControlsUI();
     };
 
     stopGame = function() {

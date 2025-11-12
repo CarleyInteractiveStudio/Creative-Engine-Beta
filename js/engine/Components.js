@@ -65,44 +65,40 @@ export class CreativeScript extends Leyes {
     constructor(materia, scriptName) {
         super(materia);
         this.scriptName = scriptName;
-        this.instance = null; // This will hold the instantiated class
+        this.instance = null;
+        this.isInitialized = false;
     }
 
-    // Called once when the game starts
+    // Called once when the game starts, after initializeInstance
     star() {
         if (this.instance && typeof this.instance.star === 'function') {
-            try {
-                this.instance.star();
-            } catch (e) {
-                console.error(`Error en el método star() del script '${this.scriptName}':`, e);
-            }
+            this.instance.star();
         }
     }
 
     // Called every frame
     update(deltaTime) {
         if (this.instance && typeof this.instance.update === 'function') {
-            try {
-                this.instance.update(deltaTime);
-            } catch (e) {
-                console.error(`Error en el método update() del script '${this.scriptName}':`, e);
-            }
+            this.instance.update(deltaTime);
         }
     }
 
-    // Called by the engine to load and instantiate the script class
+    // Called during scene load. Just notes the script name.
     async load(projectsDirHandle) {
-        if (!this.scriptName) return;
+        // Intentionally left simple. The real work is in initializeInstance.
+        return Promise.resolve();
+    }
+
+    // Called by startGame, just before the first star() call.
+    async initializeInstance() {
+        if (this.isInitialized || !this.scriptName) return;
 
         try {
-            // CES_Transpiler stores the transpiled code in a global map.
-            // We retrieve the JS code from there.
             const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
             if (!transpiledCode) {
-                throw new Error(`No se encontró código transpilado para '${this.scriptName}'. Asegúrate de que se compiló correctamente.`);
+                throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
 
-            // Use a dynamic import() of a data URL to load the class
             const blob = new Blob([transpiledCode], { type: 'application/javascript' });
             const url = URL.createObjectURL(blob);
             const scriptModule = await import(url);
@@ -110,20 +106,19 @@ export class CreativeScript extends Leyes {
 
             const ScriptClass = scriptModule.default;
             if (ScriptClass) {
-                this.instance = new ScriptClass(this.materia); // Pass the Materia owner to the script's constructor
-                console.log(`Script '${this.scriptName}' cargado e instanciado con éxito.`);
+                this.instance = new ScriptClass(this.materia);
+                this.isInitialized = true;
+                console.log(`Script '${this.scriptName}' instanciado con éxito.`);
             } else {
                 throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
             }
         } catch (error) {
-            console.error(`Error al cargar el script '${this.scriptName}':`, error);
+            console.error(`Error al inicializar la instancia del script '${this.scriptName}':`, error);
+            this.isInitialized = false; // Mark as failed
         }
     }
 
     clone() {
-        // When cloning, we just create a new script component.
-        // The 'load' method will be called on it by the scene manager,
-        // creating a fresh instance.
         return new CreativeScript(null, this.scriptName);
     }
 }
