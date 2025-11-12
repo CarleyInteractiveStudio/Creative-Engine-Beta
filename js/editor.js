@@ -335,17 +335,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 2. Transpilar cada archivo y recolectar errores
-        for (const fileHandle of cesFiles) {
+        const transpilationPromises = cesFiles.map(async (fileHandle) => {
             const file = await fileHandle.getFile();
             const code = await file.text();
-            const result = transpile(code); // Usar la función transpile que añadiremos
+            const result = CES_Transpiler.transpile(code, fileHandle.name);
 
             if (result.errors && result.errors.length > 0) {
-                allErrors.push({fileName: fileHandle.name, errors: result.errors});
-            } else if (fileHandle.name === 'main.ces') { // Asumimos que main.ces es el punto de entrada
-                mainGameJsCode = result.jsCode;
+                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
             }
-        }
+        });
+
+        await Promise.all(transpilationPromises);
+
 
         // 3. Actuar según el resultado
         if (allErrors.length > 0) {
@@ -356,27 +357,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error(`  - ${error}`);
                 }
             }
-            // Opcional: Cambiar a la pestaña de la consola para que los errores sean visibles
+            // Cambiar a la pestaña de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
             console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
-            // 4. Cargar el script del juego y empezar
-            if (mainGameJsCode) {
-                try {
-                    // Crear un módulo dinámico desde el código JS transpilado
-                    const blob = new Blob([mainGameJsCode], { type: 'application/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    await import(url); // Importar el script para que defina Engine.start/update
-                    URL.revokeObjectURL(url); // Limpiar
-                    console.log("Script principal cargado. Iniciando juego...");
-                    originalStartGame(); // Llamar a la función de inicio original
-                } catch (e) {
-                    console.error("Error al ejecutar el script del juego:", e);
-                }
-            } else {
-                console.warn("Build exitoso, pero no se encontró 'main.ces'. El juego podría no tener lógica de scripting.");
-                originalStartGame();
-            }
+            // 4. Iniciar el juego. La lógica ahora está en startGame.
+            originalStartGame();
         }
     };
 
@@ -694,6 +680,22 @@ document.addEventListener('DOMContentLoaded', () => {
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
+
+        // --- NEW ---
+        // Call star() on all active CreativeScript components in the scene
+        if (SceneManager.currentScene) {
+            for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                if (materia.isActive) {
+                    const scripts = materia.getComponents(Components.CreativeScript);
+                    for (const script of scripts) {
+                        // The CreativeScript component's 'star' method will handle execution
+                        script.star();
+                    }
+                }
+            }
+        }
+        // --- END NEW ---
+
         updateGameControlsUI();
     };
 

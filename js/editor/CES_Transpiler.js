@@ -1,184 +1,153 @@
-// Contains the logic for transpiling Creative Engine Script (.ces) to JavaScript.
+// CES_Transpiler.js
 import * as RuntimeAPIManager from '../engine/RuntimeAPIManager.js';
 
-const usingMap = {
-    'creative.engine': "import * as Engine from './modules/engine.js';",
-    'creative.engine.core': "import * as Core from './modules/core.js';",
-    'creative.engine.ui': "import * as UI from './modules/ui.js';",
-    'creative.engine.animator': "import * as Animator from './modules/animator.js';",
-    'creative.engine.physics': "import * as Physics from './modules/physics.js';",
-};
+// --- State ---
+const transpiledCodeMap = new Map();
 
-export function transpile(code) {
-    const allAPIs = RuntimeAPIManager.getAPIs(); // This is a Map
+// --- Public API ---
+
+/**
+ * Transpiles a .ces script into an ES6 class.
+ * @param {string} code The raw .ces code.
+ * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
+ * @returns {{errors: string[] | null}} An object with an errors array, or null if successful.
+ */
+export function transpile(code, scriptName) {
+    const allAPIs = RuntimeAPIManager.getAPIs();
     const lines = code.split(/\r?\n/);
     const errors = [];
-    let jsCode = '';
-    const imports = new Set();
-    let inBlock = false;
+    const className = scriptName.replace('.ces', '');
 
-    // --- Library Import Data ---
-    const importedLibs = [];
+    let publicVars = [];
+    let starMethod = '';
+    let updateMethod = '';
+    let customMethods = '';
+    const importedLibs = new Set();
     const functionToLibMap = new Map();
-    const ambiguousFunctions = new Set();
-    const declaredFunctions = new Set();
 
-    // --- Phase 1: Handle all imports (go and using), map library functions, and find user-defined functions ---
+    // --- Phase 1: Pre-process lines to find imports, public vars, and method blocks ---
+    let currentMethod = null;
+    let methodContent = '';
+    let braceCount = 0;
+
     lines.forEach((line, index) => {
         const lineNumber = index + 1;
         let trimmedLine = line.trim();
 
         if (trimmedLine === '' || trimmedLine.startsWith('//')) return;
 
-        // Handle 'go' imports for libraries
+        // Handle library imports
         const goMatch = trimmedLine.match(/^go\s+"([^"]+)"/);
         if (goMatch) {
             const libName = goMatch[1];
             if (!allAPIs.has(libName)) {
-                errors.push(`Línea ${lineNumber}: La librería '${libName}' no se encontró o no está registrada.`);
+                errors.push(`Línea ${lineNumber}: La librería '${libName}' no se encontró.`);
                 return;
             }
-            if (!importedLibs.some(lib => lib.name === libName)) {
-                importedLibs.push({ name: libName, index: importedLibs.length });
-                const libAPI = allAPIs.get(libName);
-                for (const funcName in libAPI) {
-                    if (functionToLibMap.has(funcName)) {
-                        ambiguousFunctions.add(funcName);
-                    } else {
-                        functionToLibMap.set(funcName, libName);
-                    }
+            importedLibs.add(libName);
+            const libAPI = allAPIs.get(libName);
+            for (const funcName in libAPI) {
+                if (functionToLibMap.has(funcName)) { // Ambiguity detected
+                    functionToLibMap.set(funcName, null);
+                } else {
+                    functionToLibMap.set(funcName, libName);
                 }
             }
-            return; // Finished processing this 'go' line
-        }
-
-        // Handle 'using' imports for engine modules
-        const usingMatch = trimmedLine.match(/^using\s+([^;]+);/);
-        if (usingMatch) {
-            const namespace = usingMatch[1].trim();
-            if (usingMap[namespace]) imports.add(usingMap[namespace]);
-            else errors.push(`Línea ${lineNumber}: Namespace '${namespace}' desconocido.`);
             return;
         }
 
-        // Find user-defined function declarations
-        const functionMatch = trimmedLine.match(/^function\s+([a-zA-Z0-9_]+)\s*\(/);
-        if (functionMatch) {
-            declaredFunctions.add(functionMatch[1]);
-        }
-    });
-
-    if (errors.length > 0) return { errors };
-
-    // --- Phase 2: Process the rest of the code ---
-    lines.forEach((line, index) => {
-        const lineNumber = index + 1;
-        let trimmedLine = line.trim();
-
-        if (trimmedLine === '' || trimmedLine.startsWith('//') || trimmedLine.startsWith('go ') || trimmedLine.startsWith('using ')) return;
-
-        // Handle user-defined function declarations
-        if (trimmedLine.startsWith('function ')) {
-            jsCode += `${line}\n`;
+        // Handle public variables
+        const publicVarMatch = trimmedLine.match(/^public\s+(\w+)\s+(\w+);/);
+        if (publicVarMatch) {
+            publicVars.push({ type: publicVarMatch[1], name: publicVarMatch[2] });
             return;
         }
 
-        if (trimmedLine.includes('{')) inBlock = true;
-
-        // Retain existing variable declaration logic
-        if (!inBlock) {
-            const varMatch = trimmedLine.match(/^public\s+(?:materia\/gameObject)\s+([^;]+);/);
-            if (varMatch) {
-                jsCode += `let ${varMatch[1]};\n`;
+        // Detect start of a method
+        const methodMatch = trimmedLine.match(/^public\s+(\w+)\s*\(([^)]*)\)\s*{/);
+        if (methodMatch) {
+            if (currentMethod) {
+                errors.push(`Línea ${lineNumber}: No se puede anidar una función dentro de otra.`);
                 return;
             }
-        }
-
-        // --- Transpile Function Calls (Library and Engine) ---
-        let processedLine = trimmedLine.replace(/([a-zA-Z0-9_.]+)\s*\((.*)\)/g, (match, funcName, argsStr) => {
-            // --- Argument Processing with Callback Support ---
-            const processArgs = (argsString) => {
-                if (!argsString) return '';
-                return argsString.split(',')
-                    .map(arg => arg.trim())
-                    .map(arg => {
-                        // If the argument is a declared function, pass it as a variable.
-                        // Otherwise, it's a literal (string, number, etc.) and is passed as is.
-                        return declaredFunctions.has(arg) ? arg : arg;
-                    })
-                    .join(', ');
-            };
-
-            const processedArgs = processArgs(argsStr);
-
-            // Handle disambiguation first: Library.function()
-            if (funcName.includes('.')) {
-                const parts = funcName.split('.');
-                const libName = parts[0];
-                const fn = parts[1];
-                 if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[fn]) {
-                    return `RuntimeAPIManager.getAPI("${libName}").${fn}(${processedArgs})`;
-                }
+            currentMethod = { name: methodMatch[1], args: methodMatch[2] };
+            braceCount = 1;
+            methodContent = '';
+            if (trimmedLine.endsWith('}')) { // Handle single-line methods
+                 braceCount = 0;
+                 if (currentMethod.name === 'star') starMethod = methodContent;
+                 else if (currentMethod.name === 'update') updateMethod = methodContent;
+                 else customMethods += `    ${currentMethod.name}(${currentMethod.args}) { ${methodContent} }\n\n`;
+                 currentMethod = null;
             }
-
-            // Handle alternative disambiguation: function.(Library()) - This is a custom syntax
-            const altDisambiguationMatch = match.match(/(\w+)\.\s*\(\s*(\w+)\s*\(\s*\)\s*\)\((.*)\)/);
-            if (altDisambiguationMatch) {
-                const [_, func, libName, funcArgs] = altDisambiguationMatch;
-                 const processedFuncArgs = processArgs(funcArgs);
-                if (importedLibs.some(lib => lib.name === libName) && allAPIs.get(libName)?.[func]) {
-                    return `RuntimeAPIManager.getAPI("${libName}").${func}(${processedFuncArgs})`;
-                }
-            }
-
-            // Handle standard, non-ambiguous library call
-            if (functionToLibMap.has(funcName) && !ambiguousFunctions.has(funcName)) {
-                const libName = functionToLibMap.get(funcName);
-                return `RuntimeAPIManager.getAPI("${libName}").${funcName}(${processedArgs})`;
-            }
-
-            // Report ambiguity error
-            if (ambiguousFunctions.has(funcName)) {
-                const possibleLibs = importedLibs.filter(lib => allAPIs.get(lib.name)?.[funcName]).map(lib => lib.name);
-                errors.push(`Línea ${lineNumber}: Llamada a función ambigua '${funcName}'. Especifique la librería (ej: ${possibleLibs[0]}.${funcName}()).`);
-                return match; // Return original match to stop processing this line
-            }
-
-            // If it's not a known library function, return it as is for other JS/engine functions.
-            return match;
-        });
-
-        if (errors.length > 0) return;
-
-
-        // Retain existing lifecycle function logic
-        const starMatch = processedLine.match(/^public\s+star\s*\(\)\s*{/);
-        if (starMatch) {
-            jsCode += 'Engine.start = function() {\n';
-            return;
-        }
-        const updateMatch = processedLine.match(/^public\s+update\s*\(([^)]*)\)\s*{/);
-        if (updateMatch) {
-            jsCode += `Engine.update = function(${updateMatch[1]}) {\n`;
             return;
         }
 
-        // Retain existing block and syntax error logic
-        if (inBlock) {
-            if (processedLine.includes('}')) {
-                inBlock = false;
-                jsCode += '};\n';
-                return;
+        // Handle content inside a method
+        if (currentMethod) {
+            methodContent += line + '\n';
+            if (trimmedLine.includes('{')) braceCount++;
+            if (trimmedLine.includes('}')) braceCount--;
+
+            if (braceCount === 0) {
+                 if (currentMethod.name === 'star') starMethod = methodContent;
+                 else if (currentMethod.name === 'update') updateMethod = methodContent;
+                 else customMethods += `    ${currentMethod.name}(${currentMethod.args}) { ${methodContent} }\n\n`;
+                 currentMethod = null;
             }
-            jsCode += `    ${processedLine}\n`;
         } else {
-            // After refactoring, top-level function calls are valid.
-            // We just add the processed line to the code.
-            jsCode += `${processedLine}\n`;
+             errors.push(`Línea ${lineNumber}: Código encontrado fuera de un método.`);
         }
     });
 
-    if (errors.length > 0) return { errors };
-    const finalImports = Array.from(imports).join('\n');
-    return { jsCode: `${finalImports}\n\n${jsCode}` };
+    if (errors.length > 0) {
+        transpiledCodeMap.delete(scriptName);
+        return { errors };
+    }
+
+    // --- Phase 2: Build the JavaScript class ---
+    let jsCode = `import { CreativeScriptBehavior } from './engine/Components.js';\n`;
+
+    // Add library functions to the top level for easy access within the class
+    importedLibs.forEach(libName => {
+        const libAPI = allAPIs.get(libName);
+        for (const funcName in libAPI) {
+            // If the function is not ambiguous, create a proxy for it
+            if(functionToLibMap.get(funcName) === libName) {
+                jsCode += `const ${funcName} = (...args) => RuntimeAPIManager.getAPI("${libName}").${funcName}(...args);\n`;
+            }
+        }
+    });
+
+    jsCode += `\nexport default class ${className} extends CreativeScriptBehavior {\n`;
+
+    // Add constructor
+    jsCode += `    constructor(materia) {\n        super(materia);\n`;
+    publicVars.forEach(pv => {
+        jsCode += `        this.${pv.name} = null; // Type: ${pv.type}\n`;
+    });
+    jsCode += `    }\n\n`;
+
+    // Add star method
+    jsCode += `    star() {\n${starMethod}\n    }\n\n`;
+
+    // Add update method
+    jsCode += `    update(deltaTime) {\n${updateMethod}\n    }\n\n`;
+
+    // Add custom methods
+    jsCode += customMethods;
+
+    jsCode += `}\n`;
+
+    transpiledCodeMap.set(scriptName, jsCode);
+    return { errors: null };
+}
+
+/**
+ * Retrieves the transpiled JavaScript code for a given script.
+ * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
+ * @returns {string | undefined} The transpiled code, or undefined if not found.
+ */
+export function getTranspiledCode(scriptName) {
+    return transpiledCodeMap.get(scriptName);
 }

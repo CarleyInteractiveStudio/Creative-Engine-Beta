@@ -5,6 +5,18 @@ import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
+import * as CES_Transpiler from '../editor/CES_Transpiler.js';
+
+
+// --- Base Behavior for Scripts ---
+export class CreativeScriptBehavior {
+    constructor(materia) {
+        this.materia = materia;
+        this.transform = materia.getComponent(Transform);
+    }
+    star() { /* To be overridden by user scripts */ }
+    update(deltaTime) { /* To be overridden by user scripts */ }
+}
 
 // --- Component Class Definitions ---
 
@@ -50,14 +62,69 @@ export class Camera extends Leyes {
 }
 
 export class CreativeScript extends Leyes {
-    constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; }
-    parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } }
-    async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } }
+    constructor(materia, scriptName) {
+        super(materia);
+        this.scriptName = scriptName;
+        this.instance = null; // This will hold the instantiated class
+    }
+
+    // Called once when the game starts
+    star() {
+        if (this.instance && typeof this.instance.star === 'function') {
+            try {
+                this.instance.star();
+            } catch (e) {
+                console.error(`Error en el método star() del script '${this.scriptName}':`, e);
+            }
+        }
+    }
+
+    // Called every frame
+    update(deltaTime) {
+        if (this.instance && typeof this.instance.update === 'function') {
+            try {
+                this.instance.update(deltaTime);
+            } catch (e) {
+                console.error(`Error en el método update() del script '${this.scriptName}':`, e);
+            }
+        }
+    }
+
+    // Called by the engine to load and instantiate the script class
+    async load(projectsDirHandle) {
+        if (!this.scriptName) return;
+
+        try {
+            // CES_Transpiler stores the transpiled code in a global map.
+            // We retrieve the JS code from there.
+            const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
+            if (!transpiledCode) {
+                throw new Error(`No se encontró código transpilado para '${this.scriptName}'. Asegúrate de que se compiló correctamente.`);
+            }
+
+            // Use a dynamic import() of a data URL to load the class
+            const blob = new Blob([transpiledCode], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            const scriptModule = await import(url);
+            URL.revokeObjectURL(url);
+
+            const ScriptClass = scriptModule.default;
+            if (ScriptClass) {
+                this.instance = new ScriptClass(this.materia); // Pass the Materia owner to the script's constructor
+                console.log(`Script '${this.scriptName}' cargado e instanciado con éxito.`);
+            } else {
+                throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
+            }
+        } catch (error) {
+            console.error(`Error al cargar el script '${this.scriptName}':`, error);
+        }
+    }
+
     clone() {
-        const newScript = new CreativeScript(null, this.scriptName);
-        // Deep copy public var references
-        newScript.publicVarReferences = JSON.parse(JSON.stringify(this.publicVarReferences));
-        return newScript;
+        // When cloning, we just create a new script component.
+        // The 'load' method will be called on it by the scene manager,
+        // creating a fresh instance.
+        return new CreativeScript(null, this.scriptName);
     }
 }
 
