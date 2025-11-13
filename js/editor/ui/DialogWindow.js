@@ -13,23 +13,27 @@ class DialogWindow {
     }
 
     _createDialogElement() {
-        // Main container
+        // Overlay container
         this.dialogElement = document.createElement('div');
         this.dialogElement.className = 'custom-dialog';
+
+        // Actual dialog content container
+        const container = document.createElement('div');
+        container.className = 'dialog-container';
 
         // Header
         const header = document.createElement('div');
         header.className = 'dialog-header';
         header.textContent = this.title;
-        this.dialogElement.appendChild(header);
+        container.appendChild(header);
 
         // Content
         const contentDiv = document.createElement('div');
         contentDiv.className = 'dialog-content';
-        contentDiv.innerHTML = this.content; // Use innerHTML to allow for formatted messages
-        this.dialogElement.appendChild(contentDiv);
+        contentDiv.innerHTML = this.content;
+        container.appendChild(contentDiv);
 
-        // Footer with buttons
+        // Footer
         const footer = document.createElement('div');
         footer.className = 'dialog-footer';
         this.buttons.forEach(btnInfo => {
@@ -44,45 +48,23 @@ class DialogWindow {
             });
             footer.appendChild(button);
         });
-        this.dialogElement.appendChild(footer);
+        container.appendChild(footer);
 
+        this.dialogElement.appendChild(container);
         document.body.appendChild(this.dialogElement);
-        this._makeDraggable(header);
-    }
-
-    _makeDraggable(headerElement) {
-        let isDragging = false;
-        let offsetX, offsetY;
-
-        headerElement.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            offsetX = e.clientX - this.dialogElement.getBoundingClientRect().left;
-            offsetY = e.clientY - this.dialogElement.getBoundingClientRect().top;
-            this.dialogElement.style.cursor = 'grabbing';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            this.dialogElement.style.left = `${e.clientX - offsetX}px`;
-            this.dialogElement.style.top = `${e.clientY - offsetY}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            this.dialogElement.style.cursor = 'default';
-        });
     }
 
     show() {
-        this.dialogElement.style.display = 'block';
-        // Center on screen initially
-        const rect = this.dialogElement.getBoundingClientRect();
-        this.dialogElement.style.left = `${(window.innerWidth - rect.width) / 2}px`;
-        this.dialogElement.style.top = `${(window.innerHeight - rect.height) / 2}px`;
+        // Use class-based visibility
+        this.dialogElement.classList.add('is-open');
     }
 
     hide() {
-        this.dialogElement.remove(); // Remove from DOM after use
+        this.dialogElement.classList.remove('is-open');
+        // Remove after the fade-out animation
+        setTimeout(() => {
+            this.dialogElement.remove();
+        }, 300); // Should match animation duration
     }
 }
 

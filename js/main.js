@@ -196,11 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Modal Logic ---
-    const openModal = (modal) => { if (modal) modal.style.display = 'block'; };
+    const openModal = (modal) => { if (modal) modal.classList.add('is-open'); };
     const closeModal = () => {
-        if (supportModal) supportModal.style.display = 'none';
-        if (licenseModal) licenseModal.style.display = 'none';
-        if (createProjectModal) createProjectModal.style.display = 'none';
+        if (supportModal) supportModal.classList.remove('is-open');
+        if (licenseModal) licenseModal.classList.remove('is-open');
+        if (createProjectModal) createProjectModal.classList.remove('is-open');
     };
 
     if(supportButton) supportButton.addEventListener('click', () => openModal(supportModal));
