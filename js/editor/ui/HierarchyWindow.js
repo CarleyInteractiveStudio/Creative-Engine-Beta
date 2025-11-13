@@ -80,23 +80,6 @@ export function updateHierarchy() {
 }
 
 // --- Hierarchy Creation Functions ---
-function generateUniqueName(baseName) {
-    const allMaterias = SceneManager.currentScene.getAllMaterias();
-    const existingNames = new Set(allMaterias.map(m => m.name));
-
-    if (!existingNames.has(baseName)) {
-        return baseName;
-    }
-
-    let counter = 1;
-    let newName = `${baseName} (${counter})`;
-    while (existingNames.has(newName)) {
-        counter++;
-        newName = `${baseName} (${counter})`;
-    }
-    return newName;
-}
-
 function createBaseMateria(name, parent = null) {
     const newMateria = new Materia(name);
     newMateria.addComponent(new Components.Transform(newMateria));
@@ -338,8 +321,7 @@ function setupEventListeners() {
 
             switch (action) {
                 case 'create-empty':
-                    const newName = generateUniqueName('mater vacio');
-                    createBaseMateria(newName, selectedMateria);
+                    createBaseMateria('Materia Vacio', selectedMateria);
                     break;
                 case 'create-camera':
                     createCameraObject(selectedMateria);

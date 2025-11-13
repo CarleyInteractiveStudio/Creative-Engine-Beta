@@ -737,3 +737,78 @@ export class TilemapCollider2D extends Leyes {
 }
 
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+
+// --- Audio Components ---
+
+export class Audio extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = ''; // Path to the audio file
+        this.volume = 1.0;
+        this.loop = false;
+        this.playOnAwake = false;
+
+        // Internal state
+        this.audio = null; // Will hold the HTMLAudioElement
+        this.isLoaded = false;
+    }
+
+    async loadAudio(projectsDirHandle) {
+        this.isLoaded = false;
+        if (this.source) {
+            try {
+                const url = await getURLForAssetPath(this.source, projectsDirHandle);
+                if (url) {
+                    this.audio = new Audio(url);
+                    this.audio.volume = this.volume;
+                    this.audio.loop = this.loop;
+                    this.isLoaded = true;
+                    if (this.playOnAwake) {
+                        this.play();
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to load audio source: ${this.source}`, error);
+                this.audio = null;
+            }
+        } else {
+            this.audio = null;
+        }
+    }
+
+    play() {
+        if (this.audio && this.isLoaded) {
+            this.audio.play().catch(e => console.error("Error playing audio:", e));
+        }
+    }
+
+    stop() {
+        if (this.audio) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+        }
+    }
+
+    clone() {
+        const newAudio = new Audio(null);
+        newAudio.source = this.source;
+        newAudio.volume = this.volume;
+        newAudio.loop = this.loop;
+        newAudio.playOnAwake = this.playOnAwake;
+        return newAudio;
+    }
+}
+
+export class AudioListener extends Leyes {
+    constructor(materia) {
+        super(materia);
+        // This component is mainly a tag for the AudioManager
+    }
+
+    clone() {
+        return new AudioListener(null);
+    }
+}
+
+registerComponent('Audio', Audio);
+registerComponent('AudioListener', AudioListener);
