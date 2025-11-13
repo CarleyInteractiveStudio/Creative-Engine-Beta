@@ -232,7 +232,8 @@ panel.agregarTexto("Este es un título.", { tamaño: 'grande' });</code></pre>
                         <h4><code>panel.agregarBoton(texto, alHacerClic)</code></h4>
                         <p>Crea un botón. La función <code>alHacerClic</code> se ejecuta cuando el usuario presiona el botón.</p>
                         <pre><code>panel.agregarBoton("Haz clic aquí", function() {
-    alert("¡Botón presionado!");
+    // Es mejor usar los diálogos del motor
+    window.Dialogs.showNotification("Aviso", "¡Botón presionado!");
 });</code></pre>
 
                         <h4><code>panel.agregarInputTexto(etiqueta, opciones)</code></h4>

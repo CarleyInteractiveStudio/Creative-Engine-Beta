@@ -161,7 +161,7 @@ function handleInspectorClick(e) {
                     }
                 }
             } else {
-                alert(`Asset incorrecto. Se esperaba un archivo ${expectedType}.`);
+                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedType}.`);
             }
         };
     }
@@ -201,7 +201,7 @@ function handleInspectorClick(e) {
                 tilemap.removeLayer(tilemap.activeLayerIndex);
                 updateInspector();
             } else {
-                alert("No se puede eliminar la última capa.");
+                window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
             }
         }
     }
@@ -851,7 +851,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 }
                 const dirHandle = currentDirectoryHandle();
                 await saveAssetMetaCallback(assetName, metaData, dirHandle);
-                alert("Metadatos guardados.");
+                window.Dialogs.showNotification('Éxito', 'Metadatos del asset guardados.');
             });
 
             document.getElementById('extract-frames-btn')?.addEventListener('click', async () => {

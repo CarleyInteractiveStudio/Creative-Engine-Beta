@@ -46,7 +46,7 @@ export async function openAnimatorController(fileHandle) {
         renderAnimatorGraph();
     } catch (error) {
         console.error(`Error al cargar el controlador '${fileHandle.name}':`, error);
-        alert("No se pudo cargar el controlador.");
+        window.Dialogs.showNotification('Error', 'No se pudo cargar el controlador.');
     }
 }
 
@@ -80,7 +80,7 @@ function updateGraphData() {
 
 async function saveAnimatorController() {
     if (!currentControllerHandle) {
-        alert("No hay ningún controlador seleccionado para guardar.");
+        window.Dialogs.showNotification('Error', 'No hay ningún controlador seleccionado para guardar.');
         return;
     }
     try {
@@ -88,18 +88,21 @@ async function saveAnimatorController() {
         const writable = await currentControllerHandle.createWritable();
         await writable.write(contentToSave);
         await writable.close();
-        alert(`Controlador '${currentControllerHandle.name}' guardado con éxito.`);
+        window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
-        alert("No se pudo guardar el controlador.");
+        window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador.');
     }
 }
 
 async function createNewAnimatorController() {
-    const controllerName = prompt("Nombre del nuevo controlador de animación:", "NewAnimator");
-    if (!controllerName) return;
+    window.Dialogs.showPrompt(
+        'Nuevo Controlador',
+        'Introduce el nombre para el nuevo controlador de animación:',
+        async (controllerName) => {
+            if (!controllerName) return;
 
-    const fileName = `${controllerName}.ceanim`;
+            const fileName = `${controllerName}.ceanim`;
     const defaultContent = {
         name: controllerName,
         entryState: "Idle",
@@ -128,8 +131,11 @@ async function createNewAnimatorController() {
 
     } catch (error) {
         console.error("Error al crear el controlador de animación:", error);
-        alert("No se pudo crear el archivo del controlador.");
+        window.Dialogs.showNotification('Error', 'No se pudo crear el archivo del controlador.');
     }
+        },
+        'NewAnimator'
+    );
 }
 
 async function populateControllerList() {
