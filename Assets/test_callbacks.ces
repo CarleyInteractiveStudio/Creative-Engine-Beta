@@ -3,7 +3,7 @@
 go "CallbackTest"
 
 public star() {
-    print("Iniciando prueba desde test_callbacks.ces...");
+    console.log("Iniciando prueba desde test_callbacks.ces...");
     test(); // Llamar a la función de la librería
 }
 
