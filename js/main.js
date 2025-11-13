@@ -235,21 +235,21 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => {
                 if (response.ok) {
                     form.reset();
-                    alert('¡Gracias! Tu mensaje ha sido enviado.');
+                    window.Dialogs.showNotification('Mensaje Enviado', '¡Gracias! Tu mensaje ha sido enviado.');
                     closeModal();
                 } else {
                     response.json().then(data => {
                         if (Object.hasOwn(data, 'errors')) {
-                            alert(data["errors"].map(error => error["message"]).join(", "));
+                            window.Dialogs.showNotification('Error', data["errors"].map(error => error["message"]).join(", "));
                         } else {
-                            alert('Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
+                            window.Dialogs.showNotification('Error', 'Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
                         }
                     });
                 }
             })
             .catch(error => {
                 console.error('Form submission error:', error);
-                alert('Hubo un problema de conexión. Por favor, revisa tu conexión a internet.');
+                window.Dialogs.showNotification('Error de Conexión', 'Hubo un problema de conexión. Por favor, revisa tu conexión a internet.');
             })
             .finally(() => {
                 button.textContent = originalButtonText;
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (openFolderBtn && projectItem) {
             event.stopPropagation(); // Prevent opening the project
             const projectName = projectItem.dataset.projectName;
-            alert(`El proyecto se encuentra en la carpeta que seleccionaste, dentro de una subcarpeta llamada:\n\n${projectName}`);
+            window.Dialogs.showNotification('Ubicación del Proyecto', `El proyecto se encuentra en la carpeta que seleccionaste, dentro de una subcarpeta llamada:\n\n${projectName}`);
             return;
         }
 

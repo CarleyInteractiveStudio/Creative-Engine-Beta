@@ -1,4 +1,5 @@
 import { SpriteData, SpriteSheet } from './sprite.js';
+import { showNotification, showConfirmation } from './editor/ui/DialogWindow.js';
 
 class SpriteEditor {
     constructor() {
@@ -46,13 +47,17 @@ class SpriteEditor {
     deleteSelectedSprite() {
         if (!this.selectedSpriteName || !this.activeSpriteSheet) return;
 
-        if (confirm(`¿Estás seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`)) {
-            this.activeSpriteSheet.removeSprite(this.selectedSpriteName);
-            this.selectedSpriteName = null;
-            this.propertiesView.classList.add('hidden');
-            this.updateSpriteList();
-            this.draw();
-        }
+        showConfirmation(
+            'Confirmar Eliminación',
+            `¿Estás seguro de que quieres eliminar el sprite "${this.selectedSpriteName}"?`,
+            () => {
+                this.activeSpriteSheet.removeSprite(this.selectedSpriteName);
+                this.selectedSpriteName = null;
+                this.propertiesView.classList.add('hidden');
+                this.updateSpriteList();
+                this.draw();
+            }
+        );
     }
 
     initCanvasEvents() {
@@ -172,7 +177,7 @@ class SpriteEditor {
         const newName = document.getElementById('sprite-prop-name').value;
         if (newName !== sprite.name) {
             if (this.activeSpriteSheet.sprites[newName]) {
-                alert(`El nombre "${newName}" ya existe. Por favor, elige otro.`);
+                showNotification('Nombre Duplicado', `El nombre "${newName}" ya existe. Por favor, elige otro.`);
                 document.getElementById('sprite-prop-name').value = sprite.name; // Revert
             } else {
                 this.activeSpriteSheet.removeSprite(sprite.name);
@@ -250,7 +255,7 @@ class SpriteEditor {
 
     saveSpriteSheet() {
         if (!this.activeSpriteSheet) {
-            alert("No hay una hoja de sprites activa para guardar.");
+            showNotification('Error', 'No hay una hoja de sprites activa para guardar.');
             return;
         }
 
@@ -276,7 +281,7 @@ class SpriteEditor {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        alert(`Se han guardado los datos de los sprites. Asegúrate de colocar el archivo "${metaFileName}" en el mismo directorio que tu imagen.`);
+        showNotification('Guardado Exitoso', `Se han guardado los datos de los sprites. Asegúrate de colocar el archivo "${metaFileName}" en el mismo directorio que tu imagen.`);
     }
 }
 

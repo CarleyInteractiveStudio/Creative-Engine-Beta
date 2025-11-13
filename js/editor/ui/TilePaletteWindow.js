@@ -1,4 +1,5 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { showNotification, showConfirmation } from './DialogWindow.js';
 
 let dom = {};
 let projectsDirHandle = null;
@@ -51,15 +52,21 @@ export async function createNewPalette(name, dirHandle) {
         await openPalette(fileHandle);
     } catch (error) {
         console.error(`Error creating new palette file ${name}:`, error);
-        alert(`Failed to create palette: ${error.message}`);
+        showNotification('Error', `Failed to create palette: ${error.message}`);
     }
 }
 
 export async function openPalette(fileHandle) {
     if (isDirty) {
-        if (!confirm("You have unsaved changes in the current palette. Do you want to discard them?")) {
-            return;
-        }
+        const discard = await new Promise(resolve => {
+            showConfirmation(
+                'Cambios sin Guardar',
+                'You have unsaved changes in the current palette. Do you want to discard them?',
+                () => resolve(true), // onConfirm
+                () => resolve(false) // onCancel
+            );
+        });
+        if (!discard) return;
     }
 
     try {
@@ -94,7 +101,7 @@ export async function openPalette(fileHandle) {
         }
     } catch (error) {
         console.error(`Error opening palette ${fileHandle.name}:`, error);
-        alert(`Could not open palette: ${error.message}`);
+        showNotification('Error', `Could not open palette: ${error.message}`);
     }
 }
 
@@ -125,7 +132,7 @@ function setupEventListeners() {
 
 async function saveCurrentPalette() {
     if (!currentFileHandle) {
-        alert("No palette file is currently open. Cannot save.");
+        showNotification('Error', 'No palette file is currently open. Cannot save.');
         return;
     }
 
@@ -141,10 +148,10 @@ async function saveCurrentPalette() {
         await writable.close();
         isDirty = false;
         console.log(`Palette saved: ${currentFileHandle.name}`);
-        alert("Paleta guardada exitosamente.");
+        showNotification('Éxito', 'Paleta guardada exitosamente.');
     } catch (error) {
         console.error("Error saving palette:", error);
-        alert(`Failed to save palette: ${error.message}`);
+        showNotification('Error', `Failed to save palette: ${error.message}`);
     }
 }
 
@@ -187,7 +194,7 @@ async function loadImage(imagePath) {
 
     } catch (error) {
         console.error(`Error loading tileset image '${imagePath}':`, error);
-        alert(`Could not load image: ${error.message}`);
+        showNotification('Error', `Could not load image: ${error.message}`);
         dom.tilesetImage.src = '';
         dom.imageName.textContent = 'Error';
     }

@@ -11,6 +11,7 @@
 
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
+import { showConfirmation } from './DialogWindow.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -352,13 +353,17 @@ function setupEventListeners() {
                     break;
                 case 'delete':
                     if (selectedMateria) {
-                        if (confirm(`¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`)) {
-                            const idToDelete = selectedMateria.id;
-                            selectMateriaCallback(null);
-                            SceneManager.currentScene.removeMateria(idToDelete);
-                            updateHierarchy();
-                            updateInspector();
-                        }
+                        showConfirmation(
+                            'Confirmar Eliminación',
+                            `¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`,
+                            () => {
+                                const idToDelete = selectedMateria.id;
+                                selectMateriaCallback(null);
+                                SceneManager.currentScene.removeMateria(idToDelete);
+                                updateHierarchy();
+                                updateInspector();
+                            }
+                        );
                     }
                     break;
                 case 'duplicate':

@@ -32,6 +32,7 @@ import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
+import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -299,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     runChecksAndPlay = async function() {
         if (!projectsDirHandle) {
-            alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
+            showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
             return;
         }
         await loadRuntimeApis();
@@ -1072,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEditorLayout();
                 updateWindowMenuUI();
 
-                alert("El diseño de los paneles ha sido restablecido.");
+                showNotificationDialog('Diseño Restablecido', 'El diseño de los paneles ha sido restablecido.');
             });
         }
 
@@ -1084,12 +1085,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const id of requiredFields) {
                     const element = document.getElementById(id);
                     if (!element.value) {
-                        alert(`El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
+                        showNotificationDialog('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
                         return;
                     }
                 }
                 if (dom.ksPassword.value.length < 6) {
-                    alert("La contraseña de la clave debe tener al menos 6 caracteres.");
+                    showNotificationDialog('Contraseña Débil', 'La contraseña de la clave debe tener al menos 6 caracteres.');
                     return;
                 }
 
@@ -1102,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandTextarea.value = command;
                 dom.ksCommandOutput.classList.remove('hidden');
 
-                alert("Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.");
+                showNotificationDialog('Comando Generado', 'Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.');
             });
         }
 
@@ -1303,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!userPrompt) return;
 
                 if (!selectedProvider) {
-                    alert("Por favor, elige un cerebro antes de enviar un mensaje.");
+                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro antes de enviar un mensaje.');
                     return;
                 }
 
@@ -1534,7 +1535,7 @@ Para que tu librería tenga una interfaz en el editor, usa \`CreativeEngine.API.
         nombre: "Mi Herramienta",
         alAbrir: function(panel) {
             panel.agregarTexto("¡Hola, mundo!");
-            panel.agregarBoton("Saludar", () => alert("¡Hola!"));
+            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', '¡Hola!'));
         }
     });
 })();
@@ -1715,22 +1716,29 @@ public star() {
                         openUiAsset(fileHandle);
                         break;
                     case 'ceScene':
-                        if (SceneManager.isSceneDirty()) {
-                            if (!confirm("Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?")) {
-                                return;
+                        const loadSceneAction = async () => {
+                            console.log(`Loading scene: ${name}`);
+                            const newScene = await SceneManager.loadScene(fileHandle);
+                            if (newScene) {
+                                SceneManager.setCurrentScene(newScene);
+                                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                                SceneManager.setSceneDirty(false);
+                                updateHierarchy();
+                                selectMateria(null);
+                            } else {
+                                showNotificationDialog('Error', `Failed to load scene: ${name}`);
                             }
-                        }
-                        console.log(`Loading scene: ${name}`);
-                        const newScene = await SceneManager.loadScene(fileHandle);
-                        if (newScene) {
-                            SceneManager.setCurrentScene(newScene);
-                            SceneManager.setCurrentSceneFileHandle(fileHandle);
-                            dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                            SceneManager.setSceneDirty(false);
-                            updateHierarchy();
-                            selectMateria(null);
+                        };
+
+                        if (SceneManager.isSceneDirty()) {
+                            showConfirmationDialog(
+                                'Cambios sin Guardar',
+                                'Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?',
+                                loadSceneAction // Proceed only if confirmed
+                            );
                         } else {
-                            alert(`Failed to load scene: ${name}`);
+                            await loadSceneAction(); // Proceed immediately if no changes
                         }
                         break;
                     default:

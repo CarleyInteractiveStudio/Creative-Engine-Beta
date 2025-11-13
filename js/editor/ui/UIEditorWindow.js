@@ -1,4 +1,6 @@
 // Contains all logic for the UI Editor Window
+import { showNotification } from './DialogWindow.js';
+
 let dom;
 let currentUiAsset = null;
 let selectedUiElement = null;
@@ -186,7 +188,7 @@ export async function openUiAsset(fileHandle) {
 
     } catch (error) {
         console.error(`Error al abrir el asset UI '${fileHandle.name}':`, error);
-        alert("No se pudo abrir el asset de UI.");
+        showNotification('Error', 'No se pudo abrir el asset de UI.');
     }
 }
 
@@ -218,7 +220,7 @@ export async function createUiSystemFile(dirHandle, updateAssetBrowser) {
         console.log(`Creado archivo de UI: ${fileName}`);
     } catch (err) {
         console.error("Error al crear el archivo de UI:", err);
-        alert("No se pudo crear el archivo de UI.");
+        showNotification('Error', 'No se pudo crear el archivo de UI.');
     }
 }
 
@@ -226,17 +228,17 @@ function setupEventListeners() {
     if (dom.uiSaveBtn) {
         dom.uiSaveBtn.addEventListener('click', async () => {
             if (!uiEditorFileHandle || !currentUiAsset) {
-                alert("No hay ningún asset de UI abierto para guardar.");
+                showNotification('Error', 'No hay ningún asset de UI abierto para guardar.');
                 return;
             }
             try {
                 const writable = await uiEditorFileHandle.createWritable();
                 await writable.write(JSON.stringify(currentUiAsset, null, 2));
                 await writable.close();
-                alert(`Asset '${uiEditorFileHandle.name}' guardado.`);
+                showNotification('Éxito', `Asset '${uiEditorFileHandle.name}' guardado.`);
             } catch (error) {
                 console.error("Error al guardar el asset de UI:", error);
-                alert("No se pudo guardar el asset de UI.");
+                showNotification('Error', 'No se pudo guardar el asset de UI.');
             }
         });
     }

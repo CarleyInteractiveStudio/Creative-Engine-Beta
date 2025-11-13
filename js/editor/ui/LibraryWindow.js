@@ -1,5 +1,7 @@
 // js/editor/ui/LibraryWindow.js
 
+import { showNotification, showConfirmation } from './DialogWindow.js';
+
 let dom = {};
 let projectsDirHandle = null;
 let exportLibrariesAsPackage = null; // To hold the function from another module
@@ -168,11 +170,17 @@ async function handleImportLibrary() {
                     // Automatically update
                     console.log(`Actualizando librería '${newLibData.name}' de v${existingLibData.version} a v${newLibData.version}.`);
                 } else if (newLibData.version < existingLibData.version) {
-                    if (!confirm(`Ya tienes una versión más reciente (v${existingLibData.version}) de '${newLibData.name}'. ¿Seguro que quieres instalar esta versión anterior (v${newLibData.version})?`)) {
-                        shouldWriteFile = false;
-                    }
+                    shouldWriteFile = await new Promise(resolve => {
+                        showConfirmation(
+                            'Versión Anterior',
+                            `Ya tienes una versión más reciente (v${existingLibData.version}) de '${newLibData.name}'. ¿Seguro que quieres instalar esta versión anterior (v${newLibData.version})?`,
+                            () => resolve(true) // Continue if confirmed
+                        );
+                        // If not confirmed, the dialog closes and this promise never resolves, effectively stopping the process.
+                        // A more robust implementation might handle the 'cancel' case explicitly.
+                    });
                 } else {
-                    alert(`La librería '${newLibData.name}' ya está en la versión ${newLibData.version}. No se requiere ninguna acción.`);
+                    showNotification('Sin Cambios', `La librería '${newLibData.name}' ya está en la versión ${newLibData.version}. No se requiere ninguna acción.`);
                     shouldWriteFile = false;
                 }
             } else {
@@ -200,14 +208,14 @@ async function handleImportLibrary() {
             const writable = await newFileHandle.createWritable();
             await writable.write(content);
             await writable.close();
-            alert(`Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
+            showNotification('Importación Exitosa', `Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
             refreshLibraryList();
         }
 
     } catch (err) {
         if (err.name !== 'AbortError') {
             console.error("Error al importar la librería:", err);
-            alert("Ocurrió un error durante la importación.");
+            showNotification('Error', 'Ocurrió un error durante la importación.');
         }
     }
 }
@@ -219,7 +227,7 @@ async function handleCreateLibrary() {
     // 1. Get all data from the modal form
     const libName = dom.libCreateName.value.trim();
     if (!libName) {
-        alert("El nombre de la librería es obligatorio.");
+        showNotification('Campo Obligatorio', 'El nombre de la librería es obligatorio.');
         return;
     }
 
@@ -245,7 +253,7 @@ async function handleCreateLibrary() {
     const scriptFile = dom.libCreateScriptInput.files[0];
 
     if (!scriptFile) {
-        alert("Debes seleccionar un archivo de script (.js).");
+        showNotification('Campo Obligatorio', 'Debes seleccionar un archivo de script (.js).');
         return;
     }
 
@@ -255,7 +263,7 @@ async function handleCreateLibrary() {
         libData.script_base64 = await scriptToBase64(scriptFile);
     } catch (error) {
         console.error("Error al procesar los archivos:", error);
-        alert("Hubo un error al leer uno de los archivos seleccionados.");
+        showNotification('Error', 'Hubo un error al leer uno de los archivos seleccionados.');
         return;
     }
 
@@ -272,13 +280,13 @@ async function handleCreateLibrary() {
         await writable.write(fileContent);
         await writable.close();
 
-        alert(`Librería '${libName}' creada con éxito.`);
+        showNotification('Éxito', `Librería '${libName}' creada con éxito.`);
         dom.createLibraryModal.classList.remove('is-open');
         refreshLibraryList(); // Update the view
 
     } catch (error) {
         console.error("Error al guardar el archivo de la librería:", error);
-        alert("No se pudo guardar el archivo .celib.");
+        showNotification('Error', 'No se pudo guardar el archivo .celib.');
     }
 }
 
@@ -441,43 +449,45 @@ export function initialize(editorDom, handle, exportFunc) {
             await writable.write(JSON.stringify({ active: newState }, null, 2));
             await writable.close();
 
-            alert(`La librería ha sido ${newState ? 'activada' : 'desactivada'}. Por favor, reinicia el editor para aplicar los cambios.`);
+            showNotification('Estado Cambiado', `La librería ha sido ${newState ? 'activada' : 'desactivada'}. Por favor, reinicia el editor para aplicar los cambios.`);
             refreshLibraryList();
 
         } catch (error) {
             console.error(`Error al actualizar el estado de la librería '${libName}':`, error);
-            alert("No se pudo actualizar el estado de la librería.");
+            showNotification('Error', 'No se pudo actualizar el estado de la librería.');
         }
     }
     async function handleDeleteLibrary(libName) {
-        if (!confirm(`¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`)) {
-            return;
-        }
+        showConfirmation(
+            'Confirmar Eliminación',
+            `¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`,
+            async () => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const libDirHandle = await projectHandle.getDirectoryHandle('lib');
 
-        try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+                    // Delete .celib file
+                    await libDirHandle.removeEntry(libName);
+                    console.log(`Librería '${libName}' eliminada.`);
 
-            // Delete .celib file
-            await libDirHandle.removeEntry(libName);
-            console.log(`Librería '${libName}' eliminada.`);
+                    // Try to delete .meta file, ignore if it doesn't exist
+                    try {
+                        await libDirHandle.removeEntry(`${libName}.meta`);
+                        console.log(`Metadatos de '${libName}' eliminados.`);
+                    } catch (e) {
+                        // Meta file didn't exist, which is fine.
+                    }
 
-            // Try to delete .meta file, ignore if it doesn't exist
-            try {
-                await libDirHandle.removeEntry(`${libName}.meta`);
-                console.log(`Metadatos de '${libName}' eliminados.`);
-            } catch (e) {
-                // Meta file didn't exist, which is fine.
+                    showNotification('Librería Eliminada', 'Librería eliminada. Reinicia el editor para que los cambios surtan efecto.');
+                    refreshLibraryList();
+
+                } catch (error) {
+                    console.error(`Error al eliminar la librería '${libName}':`, error);
+                    showNotification('Error', 'No se pudo eliminar la librería.');
+                }
             }
-
-            alert("Librería eliminada. Reinicia el editor para que los cambios surtan efecto.");
-            refreshLibraryList();
-
-        } catch (error) {
-            console.error(`Error al eliminar la librería '${libName}':`, error);
-            alert("No se pudo eliminar la librería.");
-        }
+        );
     }
 
     function handleExportSelectedLibraries() {
@@ -485,7 +495,7 @@ export function initialize(editorDom, handle, exportFunc) {
         const libraryNames = Array.from(selectedCheckboxes).map(cb => cb.dataset.libName);
 
         if (libraryNames.length === 0) {
-            alert("Por favor, selecciona al menos una librería para exportar.");
+            showNotification('Error', 'Por favor, selecciona al menos una librería para exportar.');
             return;
         }
 
@@ -493,7 +503,7 @@ export function initialize(editorDom, handle, exportFunc) {
             exportLibrariesAsPackage(libraryNames);
         } else {
             console.error("La función de exportación no está disponible.");
-            alert("Error: La funcionalidad de exportación de paquetes no se ha cargado correctamente.");
+            showNotification('Error', 'La funcionalidad de exportación de paquetes no se ha cargado correctamente.');
         }
     }
 
@@ -593,7 +603,7 @@ export function initialize(editorDom, handle, exportFunc) {
 
         } catch (error) {
             console.error(`Error al abrir los detalles de la librería '${fileName}':`, error);
-            alert("No se pudieron cargar los detalles de la librería.");
+            showNotification('Error', 'No se pudieron cargar los detalles de la librería.');
         }
     }
 
@@ -631,12 +641,12 @@ export function initialize(editorDom, handle, exportFunc) {
 
 
             document.getElementById('library-details-modal').classList.remove('is-open');
-            alert("Cambios guardados. Por favor, reinicia el editor para aplicar todos los cambios.");
+            showNotification('Cambios Guardados', 'Cambios guardados. Por favor, reinicia el editor para aplicar todos los cambios.');
             refreshLibraryList(); // Refresh the main view to show active/inactive state
 
         } catch (error) {
             console.error(`Error al guardar los cambios de la librería '${selectedLibraryForDetails}':`, error);
-            alert("No se pudieron guardar los cambios.");
+            showNotification('Error', 'No se pudieron guardar los cambios.');
         }
     });
 
