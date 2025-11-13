@@ -7,6 +7,7 @@ import { getURLForAssetPath } from './AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import * as MicrophoneManager from './MicrophoneManager.js';
 
 
 // --- Base Behavior for Scripts ---
@@ -812,3 +813,30 @@ export class AudioListener extends Leyes {
 
 registerComponent('Audio', Audio);
 registerComponent('AudioListener', AudioListener);
+
+export class Microphone extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isRecording = false;
+        // This component will be controlled via the MicrophoneManager
+    }
+
+    start(onVolumeChange) {
+        this.isRecording = true;
+        MicrophoneManager.startRecording(onVolumeChange);
+    }
+
+    stop() {
+        this.isRecording = false;
+        MicrophoneManager.stopRecording();
+    }
+
+    getVolume() {
+        return MicrophoneManager.getVolume();
+    }
+
+    clone() {
+        return new Microphone(null);
+    }
+}
+registerComponent('Microphone', Microphone);
