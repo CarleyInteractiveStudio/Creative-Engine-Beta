@@ -89,8 +89,9 @@ export function transpile(code, scriptName) {
     }
 
     // --- Phase 2: Build the JavaScript class ---
-    let jsCode = `import { CreativeScriptBehavior } from '/js/engine/Components.js';\n`;
-    jsCode += `import * as RuntimeAPIManager from '/js/engine/RuntimeAPIManager.js';\n\n`;
+    let jsCode = `const baseUrl = window.location.origin;\n`;
+    jsCode += `import { CreativeScriptBehavior } from \`\${baseUrl}/js/engine/Components.js\`;\n`;
+    jsCode += `import * as RuntimeAPIManager from \`\${baseUrl}/js/engine/RuntimeAPIManager.js\`;\n\n`;
 
     importedLibs.forEach(libName => {
         const libAPI = allAPIs.get(libName);
