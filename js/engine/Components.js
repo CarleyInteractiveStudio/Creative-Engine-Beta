@@ -6,6 +6,7 @@ import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import { SpriteSheet } from '../sprite.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
+import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
 
 // --- Base Behavior for Scripts ---
@@ -99,12 +100,12 @@ export class CreativeScript extends Leyes {
                 throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
 
-            const blob = new Blob([transpiledCode], { type: 'application/javascript' });
-            const url = URL.createObjectURL(blob);
-            const scriptModule = await import(url);
-            URL.revokeObjectURL(url);
+            // The transpiled code is now a factory function: (CreativeScriptBehavior, RuntimeAPIManager) => class {...}
+            // We need to evaluate it and then call it with the dependencies.
+            const factory = (new Function(`return ${transpiledCode}`))();
 
-            const ScriptClass = scriptModule.default;
+            // We need the actual CreativeScriptBehavior class and RuntimeAPIManager module.
+            const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
             if (ScriptClass) {
                 this.instance = new ScriptClass(this.materia);
                 this.isInitialized = true;

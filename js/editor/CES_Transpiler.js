@@ -89,34 +89,38 @@ export function transpile(code, scriptName) {
     }
 
     // --- Phase 2: Build the JavaScript class ---
-    const baseUrl = window.location.origin;
-    let jsCode = `import { CreativeScriptBehavior } from '${baseUrl}/js/engine/Components.js';\n`;
-    jsCode += `import * as RuntimeAPIManager from '${baseUrl}/js/engine/RuntimeAPIManager.js';\n\n`;
+    let jsCode = `(function(CreativeScriptBehavior, RuntimeAPIManager) {\n`;
 
     importedLibs.forEach(libName => {
         const libAPI = allAPIs.get(libName);
         for (const funcName in libAPI) {
             if(functionToLibMap.get(funcName) === libName) {
-                jsCode += `const ${funcName} = (...args) => RuntimeAPIManager.getAPI("${libName}").${funcName}(...args);\n`;
+                jsCode += `    const ${funcName} = (...args) => RuntimeAPIManager.getAPI("${libName}").${funcName}(...args);\n`;
             }
         }
     });
 
-    jsCode += `\nexport default class ${className} extends CreativeScriptBehavior {\n`;
+    jsCode += `\n    class ${className} extends CreativeScriptBehavior {\n`;
 
-    jsCode += `    constructor(materia) {\n        super(materia);\n`;
+    jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `        this.${pv.name} = null; // Type: ${pv.type}\n`;
+        jsCode += `            this.${pv.name} = null; // Type: ${pv.type}\n`;
     });
-    jsCode += `    }\n\n`;
+    jsCode += `        }\n\n`;
 
-    jsCode += `    star() {\n${starMethod}\n    }\n\n`;
+    // Indent the method bodies correctly
+    const indentBody = (body) => body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n');
 
-    jsCode += `    update(deltaTime) {\n${updateMethod}\n    }\n\n`;
+    jsCode += `        star() {\n${indentBody(starMethod)}\n        }\n\n`;
+    jsCode += `        update(deltaTime) {\n${indentBody(updateMethod)}\n        }\n\n`;
 
-    jsCode += customMethods;
+    // Custom methods also need indentation
+    const indentCustomMethods = (methods) => {
+        return methods.trim().split('\n').map(line => `        ${line.trim()}`).join('\n');
+    };
+    jsCode += `${indentCustomMethods(customMethods)}\n`;
 
-    jsCode += `}\n`;
+    jsCode += `    }\n\n    return ${className};\n});`;
 
     transpiledCodeMap.set(scriptName, jsCode);
     return { errors: null, jsCode };
