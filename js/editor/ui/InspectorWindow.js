@@ -18,7 +18,6 @@ let getCurrentProjectConfig = () => ({}); // To access layers
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'Audio': [Components.Audio, Components.AudioListener, Components.Microphone],
     'Renderizado': [Components.SpriteRenderer],
     'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
@@ -223,25 +222,6 @@ function handleInspectorClick(e) {
             updateInspector(); // Refresh to show new collider count and for visualizer
         }
     }
-
-    if (e.target.matches('#mic-record-btn')) {
-        const mic = selectedMateria.getComponent(Components.Microphone);
-        if (mic) {
-            mic.start((volume) => {
-                const volumeBar = document.getElementById('mic-volume-bar');
-                if (volumeBar) {
-                    volumeBar.value = volume;
-                }
-            });
-        }
-    }
-
-    if (e.target.matches('#mic-stop-btn')) {
-        const mic = selectedMateria.getComponent(Components.Microphone);
-        if (mic) {
-            mic.stop();
-        }
-    }
 }
 
 function getCullingMaskText(mask) {
@@ -397,8 +377,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Audio: '🎵', AudioListener: '👂', Microphone: '🎤'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -762,53 +741,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.Audio) {
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Audio</h4></div>
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Source</label>
-                        <div class="asset-dropper" data-component="Audio" data-prop="source" data-asset-type=".mp3" title="Arrastra un asset de audio (.mp3, .wav) aquí">
-                            <span class="asset-dropper-text">${ley.source || 'None'}</span>
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Volume</label>
-                        <div class="prop-inputs">
-                            <input type="range" class="prop-input" min="0" max="1" step="0.05" data-component="Audio" data-prop="volume" value="${ley.volume}">
-                        </div>
-                    </div>
-                    <div class="prop-row">
-                        <label for="audio-loop">Loop</label>
-                        <input type="checkbox" id="audio-loop" class="prop-input" data-component="Audio" data-prop="loop" ${ley.loop ? 'checked' : ''}>
-                    </div>
-                    <div class="prop-row">
-                        <label for="audio-play-on-awake">Play On Awake</label>
-                        <input type="checkbox" id="audio-play-on-awake" class="prop-input" data-component="Audio" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
-                    </div>
-                </div>
-            `;
-        } else if (ley instanceof Components.AudioListener) {
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Audio Listener</h4></div>
-                <div class="component-content">
-                    <p class="field-description">Este componente actúa como el 'oído' de la escena. Solo debe haber uno activo por escena.</p>
-                </div>
-            `;
-        } else if (ley instanceof Components.Microphone) {
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Microphone</h4></div>
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <button id="mic-record-btn">Record</button>
-                        <button id="mic-stop-btn">Stop</button>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Volume</label>
-                        <progress id="mic-volume-bar" value="0" max="1"></progress>
-                    </div>
-                </div>
-            `;
         }
 
         if (componentHTML) {

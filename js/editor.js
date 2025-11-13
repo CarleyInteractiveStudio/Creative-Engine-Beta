@@ -33,7 +33,6 @@ import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
-import * as AudioManager from './engine/AudioManager.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -458,9 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
             physicsSystem.update(deltaTime);
         }
 
-        // Update audio
-        AudioManager.update(deltaTime);
-
         // Update all game objects scripts
         for (const materia of SceneManager.currentScene.materias) {
             if (!materia.isActive) continue;
@@ -688,7 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (SceneManager.currentScene) {
-                AudioManager.initialize(SceneManager.currentScene);
                 for (const materia of SceneManager.currentScene.getAllMaterias()) {
                     if (materia.isActive) {
                         const scripts = materia.getComponents(Components.CreativeScript);
@@ -701,10 +696,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     console.error(`Error en el método star() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
                                 }
                             }
-                        }
-                        const audioSource = materia.getComponent(Components.Audio);
-                        if (audioSource) {
-                            await audioSource.loadAudio(projectsDirHandle);
                         }
                     }
                 }

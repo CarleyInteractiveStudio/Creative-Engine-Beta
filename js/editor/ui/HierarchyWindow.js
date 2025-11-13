@@ -106,58 +106,26 @@ function createBaseMateria(name, parent = null) {
     } else {
         SceneManager.currentScene.addMateria(newMateria);
     }
-
-    updateHierarchy();
-    selectMateriaCallback(newMateria.id);
+    // La actualización y selección se harán centralmente
     return newMateria;
 }
 
 function createTilemapObject(parent = null) {
-    const newMateria = new Materia('Tilemap');
-    newMateria.addComponent(new Components.Transform(newMateria));
+    const newMateria = createBaseMateria(generateUniqueName('Tilemap'), parent);
     newMateria.addComponent(new Components.Tilemap(newMateria));
     newMateria.addComponent(new Components.TilemapRenderer(newMateria));
-
-    if (parent) {
-        parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
-    }
-
-    updateHierarchy();
-    selectMateriaCallback(newMateria.id);
     return newMateria;
 }
 
 function createLightObject(name, lightComponent, parent = null) {
-    const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
+    const newMateria = createBaseMateria(generateUniqueName(name), parent);
     newMateria.addComponent(new lightComponent(newMateria));
-
-    if (parent) {
-        parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
-    }
-
-    updateHierarchy();
-    selectMateriaCallback(newMateria.id);
     return newMateria;
 }
 
 function createCameraObject(parent = null) {
-    const newMateria = new Materia('Cámara');
-    newMateria.addComponent(new Components.Transform(newMateria));
+    const newMateria = createBaseMateria(generateUniqueName('Cámara'), parent);
     newMateria.addComponent(new Components.Camera(newMateria));
-
-    if (parent) {
-        parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
-    }
-
-    updateHierarchy();
-    selectMateriaCallback(newMateria.id);
     return newMateria;
 }
 
@@ -335,34 +303,33 @@ function setupEventListeners() {
 
             showContextMenuCallback(null);
             const selectedMateria = getSelectedMateria();
+            let newMateria = null;
 
             switch (action) {
                 case 'create-empty':
-                    createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
+                    newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
                     break;
                 case 'create-audio':
-                    {
-                        const newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
-                        newMateria.addComponent(new Components.Audio(newMateria));
-                    }
+                    newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
+                    newMateria.addComponent(new Components.Audio(newMateria));
                     break;
                 case 'create-camera':
-                    createCameraObject(selectedMateria);
+                    newMateria = createCameraObject(selectedMateria);
                     break;
                 case 'create-tilemap':
-                    createTilemapObject(selectedMateria);
+                    newMateria = createTilemapObject(selectedMateria);
                     break;
                 case 'create-point-light':
-                    createLightObject('Point Light', Components.PointLight2D, selectedMateria);
+                    newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
                     break;
                 case 'create-spot-light':
-                    createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
+                    newMateria = createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
                     break;
                 case 'create-freeform-light':
-                    createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
+                    newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
                     break;
                 case 'create-sprite-light':
-                    createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
+                    newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
                     break;
                 case 'rename':
                     if (selectedMateria) {
@@ -381,8 +348,10 @@ function setupEventListeners() {
                             `¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`,
                             () => {
                                 const idToDelete = selectedMateria.id;
+                                // Deselect first to avoid lingering references
                                 selectMateriaCallback(null);
                                 SceneManager.currentScene.removeMateria(idToDelete);
+                                // Explicitly update UI after deletion
                                 updateHierarchy();
                                 updateInspector();
                             }
@@ -392,6 +361,11 @@ function setupEventListeners() {
                 case 'duplicate':
                     duplicateSelectedMateria();
                     break;
+            }
+
+            if (newMateria) {
+                updateHierarchy();
+                selectMateriaCallback(newMateria.id);
             }
         });
     }

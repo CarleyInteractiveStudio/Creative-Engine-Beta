@@ -1945,8 +1945,14 @@ body {
     bottom: 0;
 }
 
-.context-menu .has-submenu:hover .submenu {
+.context-menu .has-submenu:hover > .submenu {
     display: block;
+}
+
+.context-menu .submenu .submenu {
+    display: none;
+    top: -5px; /* Alineación inicial */
+    left: 100%; /* Posición a la derecha del padre */
 }
 
 .context-menu .arrow {
