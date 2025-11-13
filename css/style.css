@@ -558,3 +558,61 @@ footer {
 .open-folder-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
+/* --- Custom Dialog Windows (Copied from editor.css for consistency) --- */
+.custom-dialog {
+    position: fixed;
+    z-index: 2000; /* High z-index */
+    background-color: var(--secondary-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    min-width: 300px;
+    max-width: 500px;
+    display: none; /* Hidden by default */
+    overflow: hidden;
+}
+
+.dialog-header {
+    padding: 10px 15px;
+    background-color: var(--primary-bg-color); /* Darker header */
+    color: var(--highlight-color);
+    font-weight: bold;
+    cursor: grab;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-header:active {
+    cursor: grabbing;
+}
+
+.dialog-content {
+    padding: 20px;
+    color: var(--primary-text-color);
+    line-height: 1.6;
+}
+
+.dialog-footer {
+    padding: 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: var(--primary-bg-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.dialog-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--secondary-bg-color);
+    color: var(--primary-text-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dialog-button:hover {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
