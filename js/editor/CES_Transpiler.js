@@ -10,11 +10,10 @@ const transpiledCodeMap = new Map();
  * Transpiles a .ces script into an ES6 class.
  * @param {string} code The raw .ces code.
  * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
- * @returns {{errors: string[] | null}} An object with an errors array, or null if successful.
+ * @returns {{errors: string[] | null, jsCode: string | null}} An object with an errors array, or the generated JS code.
  */
 export function transpile(code, scriptName) {
     const allAPIs = RuntimeAPIManager.getAPIs();
-    const lines = code.split(/\r?\n/);
     const errors = [];
     const className = scriptName.replace('.ces', '');
 
@@ -25,94 +24,77 @@ export function transpile(code, scriptName) {
     const importedLibs = new Set();
     const functionToLibMap = new Map();
 
-    // --- Phase 1: Pre-process lines to find imports, public vars, and method blocks ---
-    let currentMethod = null;
-    let methodContent = '';
-    let braceCount = 0;
+    // --- Phase 1: Parse top-level declarations ---
 
-    lines.forEach((line, index) => {
-        const lineNumber = index + 1;
-        let trimmedLine = line.trim();
+    let validationCode = code;
 
-        if (trimmedLine === '' || trimmedLine.startsWith('//')) return;
-
-        // Handle library imports
-        const goMatch = trimmedLine.match(/^go\s+"([^"]+)"/);
-        if (goMatch) {
-            const libName = goMatch[1];
-            if (!allAPIs.has(libName)) {
-                errors.push(`Línea ${lineNumber}: La librería '${libName}' no se encontró.`);
-                return;
-            }
-            importedLibs.add(libName);
-            const libAPI = allAPIs.get(libName);
-            for (const funcName in libAPI) {
-                if (functionToLibMap.has(funcName)) { // Ambiguity detected
-                    functionToLibMap.set(funcName, null);
-                } else {
-                    functionToLibMap.set(funcName, libName);
-                }
-            }
-            return;
+    // 1.a: Parse and remove library imports
+    const goRegex = /^\s*go\s+"([^"]+)"/gm;
+    let goMatch;
+    while ((goMatch = goRegex.exec(code)) !== null) {
+        const libName = goMatch[1];
+        if (!allAPIs.has(libName)) {
+            errors.push(`Error: La librería '${libName}' no se encontró.`);
+            continue;
         }
-
-        // Handle public variables
-        const publicVarMatch = trimmedLine.match(/^public\s+(\w+)\s+(\w+);/);
-        if (publicVarMatch) {
-            publicVars.push({ type: publicVarMatch[1], name: publicVarMatch[2] });
-            return;
+        importedLibs.add(libName);
+        const libAPI = allAPIs.get(libName);
+        for (const funcName in libAPI) {
+            if (functionToLibMap.has(funcName) && functionToLibMap.get(funcName) !== null) {
+                functionToLibMap.set(funcName, null); // Ambiguity detected
+            } else {
+                functionToLibMap.set(funcName, libName);
+            }
         }
+    }
+    validationCode = validationCode.replace(goRegex, '');
 
-        // Detect start of a method
-        const methodMatch = trimmedLine.match(/^public\s+(\w+)\s*\(([^)]*)\)\s*{/);
-        if (methodMatch) {
-            if (currentMethod) {
-                errors.push(`Línea ${lineNumber}: No se puede anidar una función dentro de otra.`);
-                return;
-            }
-            currentMethod = { name: methodMatch[1], args: methodMatch[2] };
-            braceCount = 1;
-            methodContent = '';
-            if (trimmedLine.endsWith('}')) { // Handle single-line methods
-                 braceCount = 0;
-                 if (currentMethod.name === 'star') starMethod = methodContent;
-                 else if (currentMethod.name === 'update') updateMethod = methodContent;
-                 else customMethods += `    ${currentMethod.name}(${currentMethod.args}) { ${methodContent} }\n\n`;
-                 currentMethod = null;
-            }
-            return;
-        }
+    // 1.b: Parse and remove public variables
+    const publicVarRegex = /^\s*public\s+(\w+)\s+(\w+);/gm;
+    let varMatch;
+    while ((varMatch = publicVarRegex.exec(code)) !== null) {
+        publicVars.push({ type: varMatch[1], name: varMatch[2] });
+    }
+    validationCode = validationCode.replace(publicVarRegex, '');
 
-        // Handle content inside a method
-        if (currentMethod) {
-            methodContent += line + '\n';
-            if (trimmedLine.includes('{')) braceCount++;
-            if (trimmedLine.includes('}')) braceCount--;
+    // 1.c: Parse and remove methods using a robust regex that handles one level of nested braces
+    const methodRegex = /public\s+(\w+)\s*\(([^)]*)\)\s*{((?:[^{}]|{[^{}]*})*)}/g;
+    let methodMatch;
+    while ((methodMatch = methodRegex.exec(code)) !== null) {
+        const name = methodMatch[1];
+        const args = methodMatch[2];
+        const body = methodMatch[3];
 
-            if (braceCount === 0) {
-                 if (currentMethod.name === 'star') starMethod = methodContent;
-                 else if (currentMethod.name === 'update') updateMethod = methodContent;
-                 else customMethods += `    ${currentMethod.name}(${currentMethod.args}) { ${methodContent} }\n\n`;
-                 currentMethod = null;
-            }
+        if (name === 'star') {
+            starMethod = body;
+        } else if (name === 'update') {
+            updateMethod = body;
         } else {
-             errors.push(`Línea ${lineNumber}: Código encontrado fuera de un método.`);
+            customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
         }
-    });
+    }
+    validationCode = validationCode.replace(methodRegex, '');
+
+    // 1.d: Remove comments and check for leftover code
+    validationCode = validationCode.replace(/\/\/.*/g, '');
+    validationCode = validationCode.replace(/\/\*[\s\S]*?\*\//g, '');
+    if (validationCode.trim() !== '') {
+        const firstInvalidLine = validationCode.trim().split('\n')[0];
+        errors.push(`Error: Código inválido encontrado fuera de una declaración de método, variable o import: "${firstInvalidLine}..."`);
+    }
 
     if (errors.length > 0) {
         transpiledCodeMap.delete(scriptName);
-        return { errors };
+        return { errors, jsCode: null };
     }
 
     // --- Phase 2: Build the JavaScript class ---
     let jsCode = `import { CreativeScriptBehavior } from './engine/Components.js';\n`;
+    jsCode += `import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';\n\n`;
 
-    // Add library functions to the top level for easy access within the class
     importedLibs.forEach(libName => {
         const libAPI = allAPIs.get(libName);
         for (const funcName in libAPI) {
-            // If the function is not ambiguous, create a proxy for it
             if(functionToLibMap.get(funcName) === libName) {
                 jsCode += `const ${funcName} = (...args) => RuntimeAPIManager.getAPI("${libName}").${funcName}(...args);\n`;
             }
@@ -121,26 +103,22 @@ export function transpile(code, scriptName) {
 
     jsCode += `\nexport default class ${className} extends CreativeScriptBehavior {\n`;
 
-    // Add constructor
     jsCode += `    constructor(materia) {\n        super(materia);\n`;
     publicVars.forEach(pv => {
         jsCode += `        this.${pv.name} = null; // Type: ${pv.type}\n`;
     });
     jsCode += `    }\n\n`;
 
-    // Add star method
     jsCode += `    star() {\n${starMethod}\n    }\n\n`;
 
-    // Add update method
     jsCode += `    update(deltaTime) {\n${updateMethod}\n    }\n\n`;
 
-    // Add custom methods
     jsCode += customMethods;
 
     jsCode += `}\n`;
 
     transpiledCodeMap.set(scriptName, jsCode);
-    return { errors: null };
+    return { errors: null, jsCode };
 }
 
 /**
