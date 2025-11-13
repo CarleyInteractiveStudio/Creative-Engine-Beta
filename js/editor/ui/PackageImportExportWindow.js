@@ -311,3 +311,18 @@ async function exportLibrariesAsPackage(libraryNames) {
         showNotification('Error', 'No se pudo exportar el paquete de librerías.');
     }
 }
+
+export function initialize(dependencies) {
+    dom = dependencies.dom;
+    exportContext = dependencies.exportContext;
+    getCurrentDirectoryHandle = dependencies.getCurrentDirectoryHandle;
+    updateAssetBrowser = dependencies.updateAssetBrowser;
+    projectsDirHandle = dependencies.projectsDirHandle;
+
+    setupEventListeners();
+
+    // Return any functions that need to be accessed by other modules
+    return {
+        exportLibrariesAsPackage
+    };
+}

@@ -447,16 +447,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('ctx-rename').addEventListener('click', async () => {
+    document.getElementById('ctx-rename').addEventListener('click', () => {
         hideContextMenu();
         if (!currentProjectName) return;
 
-        // The prompt is kept for now as creating a custom prompt modal is a larger task.
-        const newName = prompt(`Renombrar proyecto "${currentProjectName}":`, currentProjectName);
-        if (newName && newName !== currentProjectName) {
-            await showCustomAlert("Función no Disponible", "La funcionalidad de renombrar es compleja y se implementará en una futura actualización. Por ahora, para renombrar, cree un nuevo proyecto y copie los archivos manualmente.");
-            // TODO: Implement the complex rename logic (copy to new, delete old)
-        }
+        window.Dialogs.showPrompt(
+            'Renombrar Proyecto',
+            `Introduce el nuevo nombre para "${currentProjectName}":`,
+            async (newName) => {
+                const sanitizedName = newName.trim().replace(/[^a-zA-Z0-9-]/g, '-');
+
+                if (!sanitizedName || sanitizedName === currentProjectName) {
+                    window.Dialogs.showNotification('Renombrado Cancelado', 'El nombre no es válido o es el mismo que el actual.');
+                    return;
+                }
+
+                try {
+                    const dirHandle = await getDirHandle();
+                    if (!dirHandle) {
+                        throw new Error("No se pudo obtener el directorio de proyectos.");
+                    }
+
+                    // 1. Verificar si el nuevo nombre ya existe
+                    try {
+                        await dirHandle.getDirectoryHandle(sanitizedName, { create: false });
+                        window.Dialogs.showNotification('Error', `El nombre de proyecto "${sanitizedName}" ya existe.`);
+                        return;
+                    } catch (e) {
+                        // Es bueno que no exista, continuamos.
+                    }
+
+                    // 2. Crear el nuevo directorio y copiar todo
+                    const oldProjectHandle = await dirHandle.getDirectoryHandle(currentProjectName, { create: false });
+                    const newProjectHandle = await dirHandle.getDirectoryHandle(sanitizedName, { create: true });
+                    await copyDirectory(oldProjectHandle, newProjectHandle);
+
+                    // 3. Eliminar el directorio antiguo
+                    await dirHandle.removeEntry(currentProjectName, { recursive: true });
+
+                    window.Dialogs.showNotification('Éxito', `El proyecto fue renombrado a "${sanitizedName}".`);
+                    loadProjects(); // Recargar la lista
+
+                } catch (error) {
+                    console.error("Error al renombrar el proyecto:", error);
+                    window.Dialogs.showNotification('Error', 'Ocurrió un error inesperado al renombrar.');
+                }
+            },
+            currentProjectName // Valor por defecto en el input
+        );
     });
 
 
@@ -495,6 +533,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.body.addEventListener('click', startMusic, { once: true });
 
+
+    // --- File System Utilities ---
+    async function copyDirectory(sourceHandle, destHandle) {
+        for await (const entry of sourceHandle.values()) {
+            if (entry.kind === 'file') {
+                const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+                const file = await entry.getFile();
+                const writable = await newFileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+            } else if (entry.kind === 'directory') {
+                const newDirHandle = await destHandle.getDirectoryHandle(entry.name, { create: true });
+                await copyDirectory(entry, newDirHandle);
+            }
+        }
+    }
 
     // --- Custom Dialog Logic ---
     const dialogModal = document.getElementById('custom-dialog-modal');

@@ -114,8 +114,47 @@ export function showConfirmation(title, message, onConfirm, onCancel) {
     dialog.show();
 }
 
+/**
+ * Displays a dialog with a text input field.
+ * @param {string} title The title of the dialog.
+ * @param {string} message The message to display above the input.
+ * @param {function} onConfirm The callback to execute with the input value if the user clicks "Aceptar".
+ * @param {string} [defaultValue=''] The default value for the input field.
+ */
+export function showPrompt(title, message, onConfirm, defaultValue = '') {
+    // Create a unique ID for the input to focus it later
+    const inputId = `dialog-input-${Date.now()}`;
+    const content = `
+        <p>${message}</p>
+        <input type="text" id="${inputId}" class="dialog-input" value="${defaultValue}">
+    `;
+
+    const dialog = new DialogWindow(title, content, [
+        {
+            text: 'Aceptar',
+            callback: () => {
+                const input = dialog.dialogElement.querySelector(`#${inputId}`);
+                if (onConfirm) {
+                    onConfirm(input.value);
+                }
+            }
+        },
+        { text: 'Cancelar' } // No callback needed for cancel
+    ]);
+
+    dialog.show();
+    // Focus the input field for better UX
+    const inputElement = dialog.dialogElement.querySelector(`#${inputId}`);
+    if (inputElement) {
+        inputElement.focus();
+        inputElement.select();
+    }
+}
+
+
 // Expose functions to the global scope for non-module scripts
 window.Dialogs = {
     showNotification,
-    showConfirmation
+    showConfirmation,
+    showPrompt
 };
