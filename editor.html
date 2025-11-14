@@ -1096,37 +1096,38 @@ public star() {
 
     <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
-            <span id="palette-asset-name">Editor de Paleta de Tiles</span>
+            <span id="palette-asset-name">Paleta de Tiles</span>
             <div class="panel-header-controls">
-                 <button id="palette-save-btn" title="Guardar Paleta">💾 Guardar</button>
+                 <button id="palette-save-btn" title="Guardar Paleta">💾</button>
                  <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
             </div>
         </div>
-        <div class="panel-content no-padding">
+        <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="palette-toolbar">
                 <div class="toolbar-group">
-                    <label>Tileset:</label>
-                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
-                    <span id="palette-image-name">Ninguna</span>
-                </div>
-                <div class="toolbar-group">
-                    <label for="palette-tile-width">Ancho Tile:</label>
-                    <input type="number" id="palette-tile-width" value="32" min="1">
-                    <label for="palette-tile-height">Alto Tile:</label>
-                    <input type="number" id="palette-tile-height" value="32" min="1">
+                    <label>Paleta:</label>
+                    <span id="palette-file-name">Ninguna</span>
+                    <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                  <div class="toolbar-group">
-                    <label>Tile Seleccionado:</label>
+                    <label>Tile:</label>
                     <span id="palette-selected-tile-id">-</span>
                 </div>
             </div>
-            <div id="palette-view-container">
-                <canvas id="palette-grid-canvas"></canvas>
-                <img id="palette-tileset-image" src="" alt="Tileset">
+            <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
+                <div id="palette-tools-vertical" class="vertical-toolbar">
+                    <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
+                    <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                    <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                </div>
+                <div id="palette-view-container">
+                    <canvas id="palette-grid-canvas"></canvas>
+                    <img id="palette-tileset-image" src="" alt="Tileset" style="display: none;">
+                </div>
             </div>
         </div>
         <div id="palette-panel-overlay">
-            <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
+            <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

@@ -1,18 +1,15 @@
-// Module for the Scene View, including rendering, gizmos, and camera controls.
 import * as Components from '../../engine/Components.js';
+import * as TilePaletteWindow from './TilePaletteWindow.js';
 
-// --- Module State ---
 let dom;
 let renderer;
 let InputManager;
 let SceneManager;
 let getSelectedMateria;
-let activeTool;
+let activeTool = 'move'; // Default editor tool
 let isPanning = false;
-let isDraggingGizmo = false;
+let isPainting = false; // To track tile painting state
 let lastMousePosition = { x: 0, y: 0 };
-let dragState = {};
-let currentProjectConfig;
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -21,72 +18,162 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     SceneManager = dependencies.SceneManager;
     getSelectedMateria = dependencies.getSelectedMateria;
-    currentProjectConfig = dependencies.currentProjectConfig;
 
-    // The activeTool state will be managed here now.
-    activeTool = 'move';
-
-    // Setup event listeners for the scene canvas
     dom.sceneCanvas.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp); // Listen on window to catch mouse up anywhere
+    dom.sceneCanvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     dom.sceneCanvas.addEventListener('wheel', handleMouseWheel, { passive: false });
+    dom.sceneCanvas.addEventListener('mouseleave', handleMouseLeave); // Stop painting if mouse leaves
 }
 
 // --- Public API ---
 export function getActiveTool() {
+    // This now serves as a general tool getter, not just for gizmos
     return activeTool;
 }
 
 export function setActiveTool(toolName) {
     activeTool = toolName;
-    console.log(`Herramienta activa: ${toolName}`);
-    // We'll need a way to update the UI buttons from here later.
+    console.log(`SceneView tool active: ${toolName}`);
 }
 
 export function update(deltaTime) {
-    // This function will be called in the main editor loop
+    // The main editor loop can call this, though most logic is event-driven
     handlePanning();
-    handleGizmoDrag();
 }
-
-export function render(targetRenderer, isGameView = false) {
-    // The main rendering logic will go here.
-}
-
 
 // --- Event Handlers & Internal Logic ---
 
 function handleMouseDown(e) {
-    // Logic for starting a pan or a gizmo drag
+    lastMousePosition = { x: e.clientX, y: e.clientY };
+
+    const paletteTool = TilePaletteWindow.getActiveTool();
+    const tileTools = ['tile-brush', 'tile-rect-fill', 'tile-eraser'];
+
+    if (tileTools.includes(paletteTool)) {
+        isPainting = true;
+        paintTile(e); // Paint on the first click
+        return; // Prevent other actions like panning or selecting
+    }
+
+    // Middle mouse button for panning
+    if (e.button === 1) {
+        isPanning = true;
+        dom.sceneCanvas.style.cursor = 'grabbing';
+    }
+}
+
+function handleMouseMove(e) {
+    if (isPainting) {
+        paintTile(e); // Continue painting if mouse is held down
+    } else if (isPanning) {
+        const dx = e.clientX - lastMousePosition.x;
+        const dy = e.clientY - lastMousePosition.y;
+        lastMousePosition = { x: e.clientX, y: e.clientY };
+
+        if (renderer && renderer.camera) {
+            renderer.camera.x -= dx / renderer.camera.effectiveZoom;
+            renderer.camera.y += dy / renderer.camera.effectiveZoom;
+        }
+    }
 }
 
 function handleMouseUp(e) {
-    // Logic for ending a pan or a gizmo drag
+    if (isPainting) {
+        isPainting = false;
+    }
+    if (isPanning) {
+        isPanning = false;
+        dom.sceneCanvas.style.cursor = 'grab';
+    }
 }
 
+function handleMouseLeave() {
+    // Stop painting if the mouse leaves the canvas to prevent weird artifacts
+    isPainting = false;
+}
+
+
 function handleMouseWheel(e) {
-    // Logic for zooming the camera
+    e.preventDefault();
+    if (!renderer || !renderer.camera) return;
+
+    const zoomSpeed = 0.1;
+    const zoomFactor = e.deltaY > 0 ? 1 - zoomSpeed : 1 + zoomSpeed;
+
+    renderer.camera.zoom *= zoomFactor;
+    // Add clamping for zoom if necessary
 }
 
 function handlePanning() {
-    // Logic to move the camera while panning
+    // This is now handled directly in handleMouseMove to be more responsive
 }
 
-function handleGizmoDrag() {
-    // Logic to move/rotate/scale the selected object
+function paintTile(e) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    if (!tilemap) return;
+
+    const grid = findParentGrid(selectedMateria);
+    if (!grid) {
+        console.warn("Selected Tilemap does not have a Grid parent.");
+        return;
+    }
+
+    const worldPos = screenToWorld(e.clientX, e.clientY);
+
+    // Convert world position to grid cell coordinates
+    const gridX = Math.floor(worldPos.x / grid.cellWidth);
+    const gridY = Math.floor(worldPos.y / grid.cellHeight);
+    const tileKey = `${gridX},${gridY}`;
+
+    const tool = TilePaletteWindow.getActiveTool();
+    const selectedTileId = TilePaletteWindow.getSelectedTile();
+
+    switch (tool) {
+        case 'tile-brush':
+            if (selectedTileId !== -1) {
+                tilemap.tileData.set(tileKey, selectedTileId);
+                console.log(`Painted tile ${selectedTileId} at ${tileKey}`);
+            }
+            break;
+        case 'tile-eraser':
+            if (tilemap.tileData.has(tileKey)) {
+                tilemap.tileData.delete(tileKey);
+                console.log(`Erased tile at ${tileKey}`);
+            }
+            break;
+        case 'tile-rect-fill':
+            // This would require more state (start/end points)
+            // For now, it will act like the brush.
+            if (selectedTileId !== -1) {
+                tilemap.tileData.set(tileKey, selectedTileId);
+            }
+            break;
+    }
+    // Need a way to signal that the scene needs redrawing
+    // For now, the render loop will handle it.
 }
 
-function checkGizmoHit(canvasPos) {
-    // Logic to see if the mouse is over a gizmo handle
+
+function findParentGrid(materia) {
+    if (!materia.parent) return null;
+    const parentMateria = SceneManager.currentScene.getMateriaById(materia.parent);
+    if (!parentMateria) return null;
+
+    const grid = parentMateria.getComponent(Components.Grid);
+    return grid ? grid : null; // Only return if the component exists
 }
 
 function screenToWorld(screenX, screenY) {
     if (!renderer || !renderer.camera) return { x: 0, y: 0 };
-    const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
-    const worldY = (screenY - renderer.canvas.height / 2) / -renderer.camera.effectiveZoom + renderer.camera.y;
-    return { x: worldX, y: worldY };
-}
+    const rect = dom.sceneCanvas.getBoundingClientRect();
+    const x = screenX - rect.left;
+    const y = screenY - rect.top;
 
-function drawWorldGizmos(materia) {
-    // Logic to draw the move/rotate/scale gizmos
+    const worldX = (x - rect.width / 2) / renderer.camera.zoom + renderer.camera.x;
+    const worldY = (y - rect.height / 2) / -renderer.camera.zoom + renderer.camera.y;
+    return { x: worldX, y: worldY };
 }

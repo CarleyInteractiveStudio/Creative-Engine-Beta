@@ -23,6 +23,40 @@ body.is-dragging-panel {
     align-items: center;
 }
 
+/* --- Vertical Toolbar Styles (e.g., for Tile Palette) --- */
+.vertical-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 5px;
+    background-color: var(--color-background-deep);
+    border-right: 1px solid var(--color-border-dark);
+}
+
+.vertical-toolbar .tool-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    background-color: var(--color-background-light);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.vertical-toolbar .tool-btn:hover {
+    background-color: var(--color-background-hover);
+}
+
+.vertical-toolbar .tool-btn.active {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent-dark);
+    color: white;
+}
+
 .menubar-center {
     flex-grow: 1;
     display: flex;
