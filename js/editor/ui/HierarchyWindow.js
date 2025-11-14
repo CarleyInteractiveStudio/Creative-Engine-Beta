@@ -22,6 +22,7 @@ let isDraggingFromHierarchy = false;
 let showContextMenuCallback = () => {};
 let projectsDirHandle = null; // Needed for drag-drop from assets
 let updateInspector = () => {}; // To refresh inspector after rename/delete
+let contextMateriaId = null; // ID of the materia under the context menu
 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
@@ -201,8 +202,8 @@ function handleContextMenuAction(action) {
             }
             break;
         case 'delete':
-            // Re-fetch the materia right before the operation to ensure a valid reference
-            const materiaToDelete = selectedMateria ? SceneManager.currentScene.findMateriaById(selectedMateria.id) : null;
+            // Use the ID captured at the moment the context menu was opened
+            const materiaToDelete = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
             if (materiaToDelete) {
                 showConfirmation(
                     'Confirmar Eliminación',
@@ -353,9 +354,12 @@ function setupEventListeners() {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
         if (item) {
-            selectMateriaCallback(parseInt(item.dataset.id, 10));
+            const materiaId = parseInt(item.dataset.id, 10);
+            selectMateriaCallback(materiaId);
+            contextMateriaId = materiaId; // Store ID for the action
         } else {
             selectMateriaCallback(null);
+            contextMateriaId = null; // No item was clicked
         }
 
         const menu = document.getElementById('hierarchy-context-menu');
