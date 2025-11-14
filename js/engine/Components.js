@@ -124,33 +124,64 @@ export class CreativeScript extends Leyes {
     }
 }
 
-export class Rigidbody extends Leyes {
+export class Rigidbody2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
+        this.bodyType = 'Dynamic'; // 'Dynamic', 'Kinematic', 'Static'
+        this.simulated = true;
+        this.physicsMaterial = null; // Reference to a PhysicsMaterial2D asset
+        this.useAutoMass = false;
         this.mass = 1.0;
+        this.linearDrag = 0.0;
+        this.angularDrag = 0.05;
+        this.gravityScale = 1.0;
+        this.collisionDetection = 'Discrete'; // 'Discrete', 'Continuous'
+        this.sleepingMode = 'StartAwake'; // 'StartAwake', 'StartAsleep', 'NeverSleep'
+        this.interpolate = 'None'; // 'None', 'Interpolate', 'Extrapolate'
+        this.constraints = {
+            freezePositionX: false,
+            freezePositionY: false,
+            freezeRotation: false
+        };
+        // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
     }
     clone() {
-        const newRigidbody = new Rigidbody(null);
-        newRigidbody.bodyType = this.bodyType;
-        newRigidbody.mass = this.mass;
-        newRigidbody.velocity = { ...this.velocity };
-        return newRigidbody;
+        const newRb = new Rigidbody2D(null);
+        newRb.bodyType = this.bodyType;
+        newRb.simulated = this.simulated;
+        newRb.physicsMaterial = this.physicsMaterial;
+        newRb.useAutoMass = this.useAutoMass;
+        newRb.mass = this.mass;
+        newRb.linearDrag = this.linearDrag;
+        newRb.angularDrag = this.angularDrag;
+        newRb.gravityScale = this.gravityScale;
+        newRb.collisionDetection = this.collisionDetection;
+        newRb.sleepingMode = this.sleepingMode;
+        newRb.interpolate = this.interpolate;
+        newRb.constraints = { ...this.constraints };
+        newRb.velocity = { ...this.velocity };
+        return newRb;
     }
 }
 
-export class BoxCollider extends Leyes {
+export class BoxCollider2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 1.0;
-        this.height = 1.0;
+        this.usedByComposite = false;
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.size = { x: 1.0, y: 1.0 };
+        this.edgeRadius = 0.0;
     }
     clone() {
-        const newBoxCollider = new BoxCollider(null);
-        newBoxCollider.width = this.width;
-        newBoxCollider.height = this.height;
-        return newBoxCollider;
+        const newCollider = new BoxCollider2D(null);
+        newCollider.usedByComposite = this.usedByComposite;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.size = { ...this.size };
+        newCollider.edgeRadius = this.edgeRadius;
+        return newCollider;
     }
 }
 
@@ -524,8 +555,8 @@ export class AudioSource extends Leyes {
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
-registerComponent('Rigidbody', Rigidbody);
-registerComponent('BoxCollider', BoxCollider);
+registerComponent('Rigidbody2D', Rigidbody2D);
+registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
@@ -678,6 +709,10 @@ registerComponent('TilemapRenderer', TilemapRenderer);
 export class TilemapCollider2D extends Leyes {
     constructor(materia) {
         super(materia);
+        this.usedByComposite = false;
+        this.usedByEffector = false;
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
         this.sourceLayerIndex = 0; // Which layer to use for collision
         this.generatedColliders = []; // Array of {x, y, width, height} objects
     }
@@ -751,6 +786,10 @@ export class TilemapCollider2D extends Leyes {
 
     clone() {
         const newCollider = new TilemapCollider2D(null);
+        newCollider.usedByComposite = this.usedByComposite;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
         newCollider.sourceLayerIndex = this.sourceLayerIndex;
         // The colliders themselves are not copied; they should be regenerated.
         return newCollider;
@@ -774,3 +813,32 @@ export class Grid extends Leyes {
 
 registerComponent('Grid', Grid);
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+
+export class CompositeCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.physicsMaterial = null;
+        this.isTrigger = false;
+        this.usedByEffector = false;
+        this.offset = { x: 0, y: 0 };
+        this.geometryType = 'Outlines'; // 'Outlines' or 'Polygons'
+        this.generationType = 'Synchronous'; // 'Synchronous' or 'Asynchronous'
+        this.vertexDistance = 0.005;
+        this.offsetDistance = 0.025; // Replaces Edge Radius in some contexts
+    }
+
+    clone() {
+        const newCollider = new CompositeCollider2D(null);
+        newCollider.physicsMaterial = this.physicsMaterial;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.offset = { ...this.offset };
+        newCollider.geometryType = this.geometryType;
+        newCollider.generationType = this.generationType;
+        newCollider.vertexDistance = this.vertexDistance;
+        newCollider.offsetDistance = this.offsetDistance;
+        return newCollider;
+    }
+}
+
+registerComponent('CompositeCollider2D', CompositeCollider2D);
