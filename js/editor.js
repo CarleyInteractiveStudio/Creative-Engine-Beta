@@ -1742,6 +1742,17 @@ public star() {
                             await loadSceneAction(); // Proceed immediately if no changes
                         }
                         break;
+                    case 'png':
+                    case 'jpg':
+                    case 'jpeg':
+                        console.log(`Opening image in Sprite Editor: ${name}`);
+                        if (spriteEditor) {
+                            spriteEditor.openImage(fileHandle, dirHandle);
+                            // Ensure the panel is visible
+                            dom.spriteEditorPanel.classList.remove('hidden');
+                            updateWindowMenuUI();
+                        }
+                        break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
                         break;

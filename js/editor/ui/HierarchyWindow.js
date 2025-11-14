@@ -170,11 +170,15 @@ export function initialize(dependencies) {
 
 function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
+    // For actions on existing items, we MUST use the materia that was under the cursor
+    // when the context menu was opened. This prevents race conditions if selection changes.
+    const contextMateria = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
     let newMateria = null;
     let shouldUpdate = false;
 
     switch (action) {
         case 'create-empty':
+            // Parenting uses the selected materia, which is intuitive.
             newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
             break;
         case 'create-audio':
@@ -199,34 +203,43 @@ function handleContextMenuAction(action) {
         case 'create-sprite-light':
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
             break;
+
         case 'rename':
-            if (selectedMateria) {
-                const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
+            if (contextMateria) { // Use contextMateria
+                const newName = prompt(`Renombrar '${contextMateria.name}':`, contextMateria.name);
                 if (newName && newName.trim() !== '') {
-                    selectedMateria.name = newName.trim();
-                    shouldUpdate = true; // Mark that an update is needed
+                    contextMateria.name = newName.trim();
+                    shouldUpdate = true;
                 }
             }
             break;
         case 'delete':
-            // Use the ID captured at the moment the context menu was opened
-            const materiaToDelete = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
-            if (materiaToDelete) {
+            if (contextMateria) { // Use contextMateria
                 showConfirmation(
                     'Confirmar Eliminación',
-                    `¿Estás seguro de que quieres eliminar '${materiaToDelete.name}'? Esta acción no se puede deshacer.`,
+                    `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
                     () => {
-                        const idToDelete = materiaToDelete.id;
+                        const idToDelete = contextMateria.id;
                         selectMateriaCallback(null);
                         SceneManager.currentScene.removeMateria(idToDelete);
-                        updateHierarchy(); // Update immediately after deletion
+                        updateHierarchy();
                         updateInspector();
                     }
                 );
             }
             break;
         case 'duplicate':
-            duplicateSelectedMateria(); // This function handles its own updates
+            if (contextMateria) { // Use contextMateria
+                const newDuplicatedMateria = contextMateria.clone();
+                newDuplicatedMateria.name = `${contextMateria.name} (Clone)`;
+                if (contextMateria.parent) {
+                    contextMateria.parent.addChild(newDuplicatedMateria);
+                } else {
+                    SceneManager.currentScene.addMateria(newDuplicatedMateria);
+                }
+                // Set as the newMateria so it gets selected after creation
+                newMateria = newDuplicatedMateria;
+            }
             break;
     }
 
