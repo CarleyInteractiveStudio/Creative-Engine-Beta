@@ -503,6 +503,24 @@ export class SpriteLight2D extends Leyes {
     }
 }
 
+export class AudioSource extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = ''; // Path to the audio file
+        this.volume = 1.0;
+        this.loop = false;
+        this.playOnAwake = true;
+    }
+    clone() {
+        const newAudio = new AudioSource(null);
+        newAudio.source = this.source;
+        newAudio.volume = this.volume;
+        newAudio.loop = this.loop;
+        newAudio.playOnAwake = this.playOnAwake;
+        return newAudio;
+    }
+}
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -519,6 +537,7 @@ registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
+registerComponent('AudioSource', AudioSource);
 
 // --- Tilemap Components ---
 

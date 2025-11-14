@@ -171,7 +171,7 @@ function handleContextMenuAction(action) {
             break;
         case 'create-audio':
             newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
-            newMateria.addComponent(new Components.Audio(newMateria));
+            newMateria.addComponent(new Components.AudioSource(newMateria));
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
