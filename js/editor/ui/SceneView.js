@@ -8,7 +8,10 @@ let SceneManager;
 let getSelectedMateria;
 let activeTool = 'move'; // Default editor tool
 let isPanning = false;
-let isPainting = false; // To track tile painting state
+let isPainting = false;
+let isDrawingRect = false; // For the rectangle fill tool
+let rectStartGridPos = { x: 0, y: 0 }; // Store the start grid cell
+let currentMousePosition = { x: 0, y: 0 }; // For overlay drawing
 let lastMousePosition = { x: 0, y: 0 };
 
 // --- Initialization ---
@@ -46,26 +49,41 @@ export function update(deltaTime) {
 
 function handleMouseDown(e) {
     lastMousePosition = { x: e.clientX, y: e.clientY };
-
     const paletteTool = TilePaletteWindow.getActiveTool();
-    const tileTools = ['tile-brush', 'tile-rect-fill', 'tile-eraser'];
 
+    if (paletteTool === 'tile-rect-fill') {
+        const startWorldPos = screenToWorld(e.clientX, e.clientY);
+        const grid = getSelectedGrid();
+        if (!grid) return;
+
+        rectStartGridPos = worldToGrid(startWorldPos, grid);
+        isDrawingRect = true;
+        return;
+    }
+
+    const tileTools = ['tile-brush', 'tile-eraser'];
     if (tileTools.includes(paletteTool)) {
         isPainting = true;
         paintTile(e); // Paint on the first click
-        return; // Prevent other actions like panning or selecting
+        return;
     }
 
-    // Middle mouse button for panning
-    if (e.button === 1) {
+    if (e.button === 1) { // Middle mouse button for panning
         isPanning = true;
         dom.sceneCanvas.style.cursor = 'grabbing';
     }
 }
 
+
 function handleMouseMove(e) {
+    currentMousePosition = { x: e.clientX, y: e.clientY };
+    if (isDrawingRect) {
+        // The visual feedback for the rectangle will be handled in the render loop.
+        // We just need to trigger redraws, which the loop does automatically.
+        return;
+    }
     if (isPainting) {
-        paintTile(e); // Continue painting if mouse is held down
+        paintTile(e);
     } else if (isPanning) {
         const dx = e.clientX - lastMousePosition.x;
         const dy = e.clientY - lastMousePosition.y;
@@ -79,6 +97,11 @@ function handleMouseMove(e) {
 }
 
 function handleMouseUp(e) {
+    if (isDrawingRect) {
+        const endWorldPos = screenToWorld(e.clientX, e.clientY);
+        fillTileRect(endWorldPos);
+        isDrawingRect = false;
+    }
     if (isPainting) {
         isPainting = false;
     }
@@ -157,6 +180,40 @@ function paintTile(e) {
     // For now, the render loop will handle it.
 }
 
+function fillTileRect(endWorldPos) {
+    const tilemap = getSelectedMateria() ? getSelectedMateria().getComponent(Components.Tilemap) : null;
+    const grid = getSelectedGrid();
+    if (!tilemap || !grid) {
+        isDrawingRect = false;
+        return;
+    }
+
+    const endGridPos = worldToGrid(endWorldPos, grid);
+    const selectedTileId = TilePaletteWindow.getSelectedTile();
+    if (selectedTileId === -1) return;
+
+    const startX = Math.min(rectStartGridPos.x, endGridPos.x);
+    const startY = Math.min(rectStartGridPos.y, endGridPos.y);
+    const endX = Math.max(rectStartGridPos.x, endGridPos.x);
+    const endY = Math.max(rectStartGridPos.y, endGridPos.y);
+
+    for (let x = startX; x <= endX; x++) {
+        for (let y = startY; y <= endY; y++) {
+            tilemap.tileData.set(`${x},${y}`, selectedTileId);
+        }
+    }
+    console.log(`Filled rectangle from (${startX},${startY}) to (${endX},${endY})`);
+}
+
+function getSelectedGrid() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return null;
+
+    let grid = selectedMateria.getComponent(Components.Grid);
+    if (grid) return grid;
+
+    return findParentGrid(selectedMateria);
+}
 
 function findParentGrid(materia) {
     if (!materia.parent) return null;
@@ -165,6 +222,12 @@ function findParentGrid(materia) {
 
     const grid = parentMateria.getComponent(Components.Grid);
     return grid ? grid : null; // Only return if the component exists
+}
+
+function worldToGrid(worldPos, grid) {
+    const gridX = Math.floor(worldPos.x / grid.cellWidth);
+    const gridY = Math.floor(worldPos.y / grid.cellHeight);
+    return { x: gridX, y: gridY };
 }
 
 function screenToWorld(screenX, screenY) {
@@ -176,4 +239,45 @@ function screenToWorld(screenX, screenY) {
     const worldX = (x - rect.width / 2) / renderer.camera.zoom + renderer.camera.x;
     const worldY = (y - rect.height / 2) / -renderer.camera.zoom + renderer.camera.y;
     return { x: worldX, y: worldY };
+}
+
+export function drawOverlay() {
+    if (!renderer) return;
+
+    if (isDrawingRect) {
+        const grid = getSelectedGrid();
+        if (!grid) return;
+
+        // Start position is already in grid coordinates. Convert back to world space for drawing.
+        const startWorldX = rectStartGridPos.x * grid.cellWidth;
+        const startWorldY = rectStartGridPos.y * grid.cellHeight;
+
+        // Current mouse position is in screen space. Convert to world, then to grid.
+        const currentWorldPos = screenToWorld(currentMousePosition.x, currentMousePosition.y);
+        const currentGridPos = worldToGrid(currentWorldPos, grid);
+
+        // End position of the rectangle is the corner of the grid cell under the mouse.
+        const endWorldX = (currentGridPos.x + 1) * grid.cellWidth;
+        const endWorldY = (currentGridPos.y + 1) * grid.cellHeight;
+
+        // Determine top-left and bottom-right corners for drawing
+        const rectX = Math.min(startWorldX, endWorldX);
+        const rectY = Math.min(startWorldY, endWorldY);
+        const rectWidth = Math.abs(startWorldX - endWorldX);
+        const rectHeight = Math.abs(startWorldY - endWorldY);
+
+        // Use renderer's context to draw directly on the canvas
+        const ctx = renderer.ctx;
+        ctx.save();
+        ctx.fillStyle = 'rgba(100, 150, 255, 0.4)'; // Semi-transparent blue
+        ctx.strokeStyle = 'rgba(180, 210, 255, 1)'; // Lighter blue for border
+        ctx.lineWidth = 2 / renderer.camera.zoom; // Make line width scale with zoom
+
+        ctx.beginPath();
+        ctx.rect(rectX, rectY, rectWidth, rectHeight);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+    }
 }
