@@ -112,10 +112,17 @@ function createBaseMateria(name, parent = null) {
 }
 
 function createTilemapObject(parent = null) {
-    const newMateria = createBaseMateria(generateUniqueName('Tilemap'), parent);
-    newMateria.addComponent(new Components.Tilemap(newMateria));
-    newMateria.addComponent(new Components.TilemapRenderer(newMateria));
-    return newMateria;
+    // Create the parent Grid object
+    const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
+    gridMateria.addComponent(new Components.Grid(gridMateria));
+
+    // Create the child Tilemap object
+    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
+    tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
+    tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
+
+    // The function returns the parent Grid, which is what should be selected
+    return gridMateria;
 }
 
 function createLightObject(name, lightComponent, parent = null) {

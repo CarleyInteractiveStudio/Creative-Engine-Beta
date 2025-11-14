@@ -544,8 +544,6 @@ registerComponent('AudioSource', AudioSource);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.tileWidth = 32;
-        this.tileHeight = 32;
         this.columns = 20;
         this.rows = 20;
         this.palettePath = ''; // Path to the .cepalette asset
@@ -627,6 +625,8 @@ export class TilemapRenderer extends Leyes {
         super(materia);
         this.palette = null; // Loaded palette asset
         this.tileSheet = null; // The Image object for the tiles
+        this.sortingLayer = 'Default';
+        this.orderInLayer = 0;
     }
 
     async loadPalette(projectsDirHandle) {
@@ -664,9 +664,11 @@ export class TilemapRenderer extends Leyes {
     }
 
     clone() {
-        // Renderer doesn't hold much state itself, it's mostly for logic.
+        const newRenderer = new TilemapRenderer(null);
+        newRenderer.sortingLayer = this.sortingLayer;
+        newRenderer.orderInLayer = this.orderInLayer;
         // The palette will be reloaded based on the Tilemap's path.
-        return new TilemapRenderer(null);
+        return newRenderer;
     }
 }
 
@@ -755,4 +757,20 @@ export class TilemapCollider2D extends Leyes {
     }
 }
 
+export class Grid extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.cellSize = { x: 32, y: 32 };
+        this.cellLayout = 'Rectangular'; // Future: Isometric, Hexagonal
+    }
+
+    clone() {
+        const newGrid = new Grid(null);
+        newGrid.cellSize = { ...this.cellSize };
+        newGrid.cellLayout = this.cellLayout;
+        return newGrid;
+    }
+}
+
+registerComponent('Grid', Grid);
 registerComponent('TilemapCollider2D', TilemapCollider2D);
