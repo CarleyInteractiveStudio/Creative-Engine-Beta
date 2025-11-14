@@ -1427,7 +1427,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
-            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-select-image-btn',
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
+            'palette-file-name', 'palette-tools-vertical',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // New Loading Panel Elements
