@@ -160,6 +160,80 @@ export function initialize(dependencies) {
     setupEventListeners();
 }
 
+function handleContextMenuAction(action) {
+    const selectedMateria = getSelectedMateria();
+    let newMateria = null;
+    let shouldUpdate = false;
+
+    switch (action) {
+        case 'create-empty':
+            newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
+            break;
+        case 'create-audio':
+            newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
+            newMateria.addComponent(new Components.Audio(newMateria));
+            break;
+        case 'create-camera':
+            newMateria = createCameraObject(selectedMateria);
+            break;
+        case 'create-tilemap':
+            newMateria = createTilemapObject(selectedMateria);
+            break;
+        case 'create-point-light':
+            newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
+            break;
+        case 'create-spot-light':
+            newMateria = createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
+            break;
+        case 'create-freeform-light':
+            newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
+            break;
+        case 'create-sprite-light':
+            newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
+            break;
+        case 'rename':
+            if (selectedMateria) {
+                const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
+                if (newName && newName.trim() !== '') {
+                    selectedMateria.name = newName.trim();
+                    shouldUpdate = true; // Mark that an update is needed
+                }
+            }
+            break;
+        case 'delete':
+            // Re-fetch the materia right before the operation to ensure a valid reference
+            const materiaToDelete = selectedMateria ? SceneManager.currentScene.findMateriaById(selectedMateria.id) : null;
+            if (materiaToDelete) {
+                showConfirmation(
+                    'Confirmar Eliminación',
+                    `¿Estás seguro de que quieres eliminar '${materiaToDelete.name}'? Esta acción no se puede deshacer.`,
+                    () => {
+                        const idToDelete = materiaToDelete.id;
+                        selectMateriaCallback(null);
+                        SceneManager.currentScene.removeMateria(idToDelete);
+                        updateHierarchy(); // Update immediately after deletion
+                        updateInspector();
+                    }
+                );
+            }
+            break;
+        case 'duplicate':
+            duplicateSelectedMateria(); // This function handles its own updates
+            break;
+    }
+
+    // Centralized update for creation and rename actions
+    if (newMateria) {
+        // For new objects, update hierarchy and select the new one.
+        updateHierarchy();
+        selectMateriaCallback(newMateria.id);
+    } else if (shouldUpdate) {
+        // For other actions like rename, just update the UI.
+        updateHierarchy();
+        updateInspector();
+    }
+}
+
 function setupEventListeners() {
     const hierarchyPanel = dom.hierarchyPanel;
     const hierarchyContent = dom.hierarchyContent;
@@ -300,73 +374,8 @@ function setupEventListeners() {
         hierarchyMenu.addEventListener('click', (e) => {
             const action = e.target.dataset.action;
             if (!action || e.target.classList.contains('disabled')) return;
-
             showContextMenuCallback(null);
-            const selectedMateria = getSelectedMateria();
-            let newMateria = null;
-
-            switch (action) {
-                case 'create-empty':
-                    newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
-                    break;
-                case 'create-audio':
-                    newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
-                    newMateria.addComponent(new Components.Audio(newMateria));
-                    break;
-                case 'create-camera':
-                    newMateria = createCameraObject(selectedMateria);
-                    break;
-                case 'create-tilemap':
-                    newMateria = createTilemapObject(selectedMateria);
-                    break;
-                case 'create-point-light':
-                    newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
-                    break;
-                case 'create-spot-light':
-                    newMateria = createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
-                    break;
-                case 'create-freeform-light':
-                    newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
-                    break;
-                case 'create-sprite-light':
-                    newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
-                    break;
-                case 'rename':
-                    if (selectedMateria) {
-                        const newName = prompt(`Renombrar '${selectedMateria.name}':`, selectedMateria.name);
-                        if (newName && newName.trim() !== '') {
-                            selectedMateria.name = newName.trim();
-                            updateHierarchy();
-                            updateInspector();
-                        }
-                    }
-                    break;
-                case 'delete':
-                    if (selectedMateria) {
-                        showConfirmation(
-                            'Confirmar Eliminación',
-                            `¿Estás seguro de que quieres eliminar '${selectedMateria.name}'? Esta acción no se puede deshacer.`,
-                            () => {
-                                const idToDelete = selectedMateria.id;
-                                // Deselect first to avoid lingering references
-                                selectMateriaCallback(null);
-                                SceneManager.currentScene.removeMateria(idToDelete);
-                                // Explicitly update UI after deletion
-                                updateHierarchy();
-                                updateInspector();
-                            }
-                        );
-                    }
-                    break;
-                case 'duplicate':
-                    duplicateSelectedMateria();
-                    break;
-            }
-
-            if (newMateria) {
-                updateHierarchy();
-                selectMateriaCallback(newMateria.id);
-            }
+            handleContextMenuAction(action);
         });
     }
 }
