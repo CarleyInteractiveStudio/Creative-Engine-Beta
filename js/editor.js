@@ -1431,6 +1431,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-file-name', 'palette-tools-vertical',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
+            // Sprite Editor Panel
+            'sprite-editor-panel',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
