@@ -1747,7 +1747,7 @@ public star() {
                     case 'jpeg':
                         console.log(`Opening image in Sprite Editor: ${name}`);
                         if (spriteEditor) {
-                            spriteEditor.openImage(fileHandle, dirHandle);
+                            spriteEditor.openImageFromFileHandle(fileHandle, dirHandle);
                             // Ensure the panel is visible
                             dom.spriteEditorPanel.classList.remove('hidden');
                             updateWindowMenuUI();

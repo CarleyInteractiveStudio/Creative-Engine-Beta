@@ -283,6 +283,29 @@ class SpriteEditor {
 
         showNotification('Guardado Exitoso', `Se han guardado los datos de los sprites. Asegúrate de colocar el archivo "${metaFileName}" en el mismo directorio que tu imagen.`);
     }
+
+    async openImageFromFileHandle(fileHandle, dirHandle) {
+        const file = await fileHandle.getFile();
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            this.loadedImage = new Image();
+            this.loadedImage.onload = () => {
+                this.selectedSpriteName = null;
+                this.propertiesView.classList.add('hidden');
+                this.activeSpriteSheet = new SpriteSheet(file.name);
+                this.spriteListName.textContent = file.name;
+                this.canvas.width = this.loadedImage.width;
+                this.canvas.height = this.loadedImage.height;
+                this.overlay.classList.add('hidden');
+                this.draw();
+                this.updateSpriteList();
+            };
+            this.loadedImage.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
 }
 
 // Se instancia en editor.js cuando el DOM esté listo
