@@ -5,56 +5,66 @@ let sourceImage = null;
 let generatedSlices = [];
 let saveCallback = null;
 let dirHandle = null;
-let currentAssetBrowserDirHandle = null;
+let openAssetSelectorCallback = null;
+let saveAssetMetaCallback = null;
 
 // --- Initialization ---
-export function initialize(cachedDom, assetBrowserDirectoryHandle) {
-    currentAssetBrowserDirHandle = assetBrowserDirectoryHandle;
+export function initialize(dependencies) {
     localDom = {
-        panel: cachedDom.spriteSlicerPanel,
-        overlay: cachedDom.spriteSlicerOverlay,
-        mainContent: cachedDom.spriteSlicerPanel.querySelector('.slicer-main-content'),
-        canvas: cachedDom.slicerCanvas,
-        ctx: cachedDom.slicerCanvas.getContext('2d'),
-        sliceType: cachedDom.sliceType,
-        gridCellSizeOptions: cachedDom.sliceGridCellSizeOptions,
-        gridCellCountOptions: cachedDom.sliceGridCellCountOptions,
-        pivotSelect: cachedDom.slicePivot,
-        customPivotContainer: cachedDom.sliceCustomPivotContainer,
-        sliceBtn: cachedDom.sliceBtn,
-        applyBtn: cachedDom.slicerApplyBtn,
-        loadImageBtn: cachedDom.slicerLoadImageBtn,
-        closeBtn: cachedDom.spriteSlicerPanel.querySelector('.close-panel-btn'),
-        pixelSizeX: cachedDom.slicePixelSizeX,
-        pixelSizeY: cachedDom.slicePixelSizeY,
-        columnCount: cachedDom.sliceColumnCount,
-        rowCount: cachedDom.sliceRowCount,
-        offsetX: cachedDom.sliceOffsetX,
-        offsetY: cachedDom.sliceOffsetY,
-        paddingX: cachedDom.slicePaddingX,
-        paddingY: cachedDom.slicePaddingY,
+        panel: dependencies.dom.spriteSlicerPanel,
+        overlay: dependencies.dom.spriteSlicerOverlay,
+        mainContent: dependencies.dom.spriteSlicerPanel.querySelector('.slicer-main-content'),
+        canvas: dependencies.dom.slicerCanvas,
+        ctx: dependencies.dom.slicerCanvas.getContext('2d'),
+        sliceType: dependencies.dom.sliceType,
+        gridCellSizeOptions: dependencies.dom.sliceGridCellSizeOptions,
+        gridCellCountOptions: dependencies.dom.sliceGridCellCountOptions,
+        pivotSelect: dependencies.dom.slicePivot,
+        customPivotContainer: dependencies.dom.sliceCustomPivotContainer,
+        sliceBtn: dependencies.dom.sliceBtn,
+        applyBtn: dependencies.dom.slicerApplyBtn,
+        loadImageBtn: dependencies.dom.slicerLoadImageBtn,
+        closeBtn: dependencies.dom.spriteSlicerPanel.querySelector('.close-panel-btn'),
+        pixelSizeX: dependencies.dom.slicePixelSizeX,
+        pixelSizeY: dependencies.dom.slicePixelSizeY,
+        columnCount: dependencies.dom.sliceColumnCount,
+        rowCount: dependencies.dom.sliceRowCount,
+        offsetX: dependencies.dom.sliceOffsetX,
+        offsetY: dependencies.dom.sliceOffsetY,
+        paddingX: dependencies.dom.slicePaddingX,
+        paddingY: dependencies.dom.slicePaddingY,
     };
+    openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
+    saveAssetMetaCallback = dependencies.saveAssetMetaCallback;
+
 
     // Setup Event Listeners
     localDom.sliceType.addEventListener('change', handleSliceTypeChange);
     localDom.pivotSelect.addEventListener('change', handlePivotChange);
     localDom.sliceBtn.addEventListener('click', executeSlice);
     localDom.applyBtn.addEventListener('click', applySlices);
-    localDom.loadImageBtn.addEventListener('click', async () => {
-        try {
-            const [fileHandle] = await window.showOpenFilePicker({
-                types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
-                multiple: false,
-                startIn: currentAssetBrowserDirHandle(), // Start in the current asset browser directory
-            });
-            // To properly save metadata later, we need the directory handle.
-            // This is a simplification; a more robust solution would track the directory handle of the picked file.
-            const dir = currentAssetBrowserDirHandle();
-            await loadImageFromFileHandle(fileHandle, dir, saveCallback); // We might not have a save callback here, needs consideration
-        } catch (err) {
-            console.log("User cancelled file picker or error occurred:", err);
+    localDom.loadImageBtn.addEventListener('click', () => {
+        if (openAssetSelectorCallback) {
+            openAssetSelectorCallback(
+                (asset) => {
+                    // When an asset is selected, load it.
+                    // The saveAssetMetaCallback is crucial for the 'Apply' button to work later.
+                    loadImageFromFileHandle(asset.handle, asset.dirHandle, saveAssetMetaCallback);
+                },
+                {
+                    accept: {
+                        'image/png': ['.png'],
+                        'image/jpeg': ['.jpg', '.jpeg'],
+                    }
+                }
+            );
+        } else {
+            console.error("Error: El selector de assets no está disponible.");
         }
     });
+
+    // Set the initial state correctly
+    resetToDefaultState();
 }
 
 // --- Public API ---
@@ -92,6 +102,9 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
                 draw();
                 localDom.overlay.classList.add('hidden');
                 localDom.mainContent.classList.remove('hidden');
+                // Enable buttons now that an image is loaded
+                localDom.sliceBtn.disabled = false;
+                localDom.applyBtn.disabled = false;
             };
             sourceImage.src = e.target.result;
         };
@@ -113,6 +126,9 @@ function resetToDefaultState() {
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.overlay.classList.remove('hidden');
     localDom.mainContent.classList.add('hidden');
+    // Disable buttons when no image is loaded
+    localDom.sliceBtn.disabled = true;
+    localDom.applyBtn.disabled = true;
 }
 
 function draw() {
@@ -159,8 +175,8 @@ async function applySlices() {
         return;
     }
     if (!saveCallback || !dirHandle || !currentFileHandle) {
-        window.Dialogs.showNotification("Error", "No se puede aplicar cambios. Asegúrate de haber cargado la imagen a través del Inspector.");
-        console.error("Error al aplicar: Faltan dependencias de guardado. Esto puede ocurrir si la imagen se cargó manualmente.");
+        window.Dialogs.showNotification("Error", "No se puede aplicar cambios. Faltan referencias internas al archivo.");
+        console.error("Error al aplicar: Faltan dependencias de guardado (saveCallback, dirHandle, or currentFileHandle is null).");
         return;
     }
 

@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector;
 
     createAsset = async function(fileName, content, dirHandle) {
         try {
@@ -393,47 +393,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    openSpriteSelector = async function(componentName) {
-        const grid = dom.spriteSelectorGrid;
-        grid.innerHTML = '';
-        dom.spriteSelectorModal.classList.add('is-open');
+    let assetSelectionCallback = null;
 
-        const imageFiles = [];
-        async function findImages(dirHandle, path = '') {
-            for await (const entry of dirHandle.values()) {
-                const entryPath = path ? `${path}/${entry.name}` : entry.name;
-                if (entry.kind === 'file' && (entry.name.endsWith('.png') || entry.name.endsWith('.jpg'))) {
-                    imageFiles.push(entryPath);
-                } else if (entry.kind === 'directory') {
-                    await findImages(entry, entryPath);
-                }
-            }
-        }
+    openAssetSelector = function(callback, options = {}) {
+        assetSelectionCallback = {
+            callback: callback,
+            options: options
+        };
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        await findImages(projectHandle, ''); // Start with empty path
+        // For a better UX, show the assets panel and hide the inspector
+        // This makes it clear the user is in "selection mode"
+        dom.assetsPanel.classList.remove('hidden');
+        dom.inspectorPanel.classList.add('hidden');
+        panelVisibility.assets = true;
+        panelVisibility.inspector = false;
+        updateEditorLayout();
 
-        imageFiles.forEach(imgPath => {
-            const img = document.createElement('img');
-            getURLForAssetPath(imgPath, projectsDirHandle).then(url => { if(url) img.src = url; });
-            img.addEventListener('click', async () => {
-                if (selectedMateria) {
-                    const ComponentClass = Components[componentName];
-                    if (!ComponentClass) return;
 
-                    const component = selectedMateria.getComponent(ComponentClass);
-                    if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
-                        updateInspector();
-                        updateScene(renderer, false);
-                    }
-                }
-                dom.spriteSelectorModal.classList.remove('is-open');
-            });
-            grid.appendChild(img);
-        });
+        // Inform the user what to do
+        showNotificationDialog("Seleccionar Asset", "Haz doble clic en un asset para seleccionarlo.", 5000);
     };
 
     runLayoutUpdate = function() {
@@ -1702,39 +1680,64 @@ public star() {
                 updateInspector();
             };
             const onAssetOpened = async (name, fileHandle, dirHandle) => {
+                // --- Asset Selection Mode ---
+                if (assetSelectionCallback) {
+                    const { callback, options } = assetSelectionCallback;
+
+                    // Check if the file type is acceptable
+                    if (options.accept) {
+                        const file = await fileHandle.getFile();
+                        const mimeType = file.type;
+                        const extension = `.${name.split('.').pop()}`;
+
+                        const isAccepted = Object.entries(options.accept).some(([type, exts]) => {
+                            if (mimeType && mimeType.startsWith(type.replace('*', ''))) return true;
+                            if (exts.includes(extension)) return true;
+                            return false;
+                        });
+
+                        if (!isAccepted) {
+                            showNotificationDialog('Tipo de Archivo Incorrecto', 'El archivo seleccionado no es compatible con la opción actual.');
+                            return; // Stop processing
+                        }
+                    }
+
+
+                    callback({ name, handle: fileHandle, dirHandle: dirHandle });
+
+                    // Clean up and restore UI
+                    assetSelectionCallback = null;
+                    dom.inspectorPanel.classList.remove('hidden');
+                    panelVisibility.inspector = true;
+                    updateEditorLayout();
+                    return; // Exit after handling selection
+                }
+
+                // --- Normal Asset Opening Mode ---
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 
-                // Handle text-based files first
                 const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
                 if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
-                    console.log(`Opening text-based asset: ${name}`);
-                    // FIX: Called the correct function name 'openScriptInEditor'
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
                 }
 
-                // Handle other specific asset types
                 switch (extension) {
                     case 'cea':
-                        console.log(`Opening animation asset: ${name}`);
                         openAnimationAssetFromModule(fileHandle, dirHandle);
                         break;
                     case 'cepalette':
-                        console.log(`Opening tile palette: ${name}`);
                         TilePalette.openPalette(fileHandle);
                         break;
                     case 'ceanim':
-                        console.log(`Opening animation controller: ${name}`);
                         openAnimatorController(fileHandle, dirHandle);
                         break;
                     case 'ceui':
-                        console.log(`Opening UI asset: ${name}`);
                         openUiAsset(fileHandle);
                         break;
                     case 'ceScene':
                         const loadSceneAction = async () => {
-                            console.log(`Loading scene: ${name}`);
                             const newScene = await SceneManager.loadScene(fileHandle);
                             if (newScene) {
                                 SceneManager.setCurrentScene(newScene);
@@ -1747,21 +1750,16 @@ public star() {
                                 showNotificationDialog('Error', `Failed to load scene: ${name}`);
                             }
                         };
-
                         if (SceneManager.isSceneDirty()) {
-                            showConfirmationDialog(
-                                'Cambios sin Guardar',
-                                'Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?',
-                                loadSceneAction // Proceed only if confirmed
-                            );
+                            showConfirmationDialog('Cambios sin Guardar', '¿Descartar cambios y abrir la nueva escena?', loadSceneAction);
                         } else {
-                            await loadSceneAction(); // Proceed immediately if no changes
+                            await loadSceneAction();
                         }
                         break;
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
-                        // openSpriteEditorForAsset(fileHandle, dirHandle);
+                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
@@ -1781,7 +1779,11 @@ public star() {
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
-            SpriteSlicer.initialize(dom, getCurrentDirectoryHandle);
+            SpriteSlicer.initialize({
+                dom: dom,
+                openAssetSelectorCallback: openAssetSelector,
+                saveAssetMetaCallback: saveAssetMeta
+            });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
