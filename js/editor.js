@@ -393,25 +393,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    let assetSelectionCallback = null;
+    openAssetSelector = async function(callback, options = {}) {
+        const modal = dom.assetSelectorModal;
+        const content = dom.assetSelectorContent;
+        content.innerHTML = ''; // Clear previous content
 
-    openAssetSelector = function(callback, options = {}) {
-        assetSelectionCallback = {
-            callback: callback,
-            options: options
-        };
+        // Clone the current asset browser view
+        const assetGridView = dom.assetGridView.cloneNode(true);
 
-        // For a better UX, show the assets panel and hide the inspector
-        // This makes it clear the user is in "selection mode"
-        dom.assetsPanel.classList.remove('hidden');
-        dom.inspectorPanel.classList.add('hidden');
-        panelVisibility.assets = true;
-        panelVisibility.inspector = false;
-        updateEditorLayout();
+        // Re-attach event listeners for double-click
+        for (const item of assetGridView.querySelectorAll('.grid-item')) {
+            if (item.dataset.kind === 'directory') {
+                // For now, disable navigation within the modal.
+                // A more advanced implementation could handle this.
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+                continue;
+            }
 
+            item.addEventListener('dblclick', async () => {
+                const name = item.dataset.name;
+                const dirHandle = getCurrentDirectoryHandle();
+                const fileHandle = await dirHandle.getFileHandle(name);
 
-        // Inform the user what to do
-        showNotificationDialog("Seleccionar Asset", "Haz doble clic en un asset para seleccionarlo.", 5000);
+                // --- Filtering Logic (similar to what was in onAssetOpened) ---
+                if (options.accept) {
+                    const file = await fileHandle.getFile();
+                    const mimeType = file.type;
+                    const extension = `.${name.split('.').pop()}`;
+                    const isAccepted = Object.entries(options.accept).some(([type, exts]) => {
+                        if (mimeType && mimeType.startsWith(type.replace('*', ''))) return true;
+                        if (exts.includes(extension)) return true;
+                        return false;
+                    });
+
+                    if (!isAccepted) {
+                        showNotificationDialog('Tipo de Archivo Incorrecto', `El archivo '${name}' no es compatible.`);
+                        return;
+                    }
+                }
+
+                callback({ name, handle: fileHandle, dirHandle: dirHandle });
+                modal.classList.remove('is-open'); // Close modal on selection
+            });
+        }
+
+        content.appendChild(assetGridView);
+        modal.classList.add('is-open');
     };
 
     runLayoutUpdate = function() {
@@ -1379,7 +1407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
-            'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
+            'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel', 'asset-selector-modal', 'asset-selector-content',
             'drawing-canvas', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
             'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
             'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
@@ -1680,40 +1708,8 @@ public star() {
                 updateInspector();
             };
             const onAssetOpened = async (name, fileHandle, dirHandle) => {
-                // --- Asset Selection Mode ---
-                if (assetSelectionCallback) {
-                    const { callback, options } = assetSelectionCallback;
-
-                    // Check if the file type is acceptable
-                    if (options.accept) {
-                        const file = await fileHandle.getFile();
-                        const mimeType = file.type;
-                        const extension = `.${name.split('.').pop()}`;
-
-                        const isAccepted = Object.entries(options.accept).some(([type, exts]) => {
-                            if (mimeType && mimeType.startsWith(type.replace('*', ''))) return true;
-                            if (exts.includes(extension)) return true;
-                            return false;
-                        });
-
-                        if (!isAccepted) {
-                            showNotificationDialog('Tipo de Archivo Incorrecto', 'El archivo seleccionado no es compatible con la opción actual.');
-                            return; // Stop processing
-                        }
-                    }
-
-
-                    callback({ name, handle: fileHandle, dirHandle: dirHandle });
-
-                    // Clean up and restore UI
-                    assetSelectionCallback = null;
-                    dom.inspectorPanel.classList.remove('hidden');
-                    panelVisibility.inspector = true;
-                    updateEditorLayout();
-                    return; // Exit after handling selection
-                }
-
-                // --- Normal Asset Opening Mode ---
+                // This function now ONLY handles opening assets for editing.
+                // Asset selection is handled by the `openAssetSelector` modal.
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 

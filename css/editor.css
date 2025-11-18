@@ -1947,6 +1947,11 @@ body {
     border-color: var(--accent-color);
 }
 
+#asset-selector-content {
+    height: 60vh;
+    overflow-y: auto;
+}
+
 .asset-settings {
     display: flex;
     flex-direction: column;
