@@ -318,6 +318,23 @@ footer {
     background-color: #484f58;
 }
 
+.dialog-input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--primary-bg-color);
+    color: var(--primary-text-color);
+    box-sizing: border-box; /* Ensures padding doesn't affect final width */
+}
+
+.dialog-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
 /* PayPal Button Container */
 #donate-button-container {
     margin-top: 15px;
@@ -540,4 +557,77 @@ footer {
 
 .open-folder-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Custom Dialog Windows (Copied from editor.css for consistency) --- */
+.custom-dialog {
+    display: none; /* Hidden by default, shown with .is-open from JS */
+    position: fixed;
+    z-index: 2000; /* High z-index */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-dialog.is-open {
+    display: flex;
+}
+
+.dialog-container {
+    background-color: var(--secondary-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    min-width: 300px;
+    max-width: 500px;
+    display: none; /* Hidden by default */
+    overflow: hidden;
+}
+
+.dialog-header {
+    padding: 10px 15px;
+    background-color: var(--primary-bg-color); /* Darker header */
+    color: var(--highlight-color);
+    font-weight: bold;
+    cursor: grab;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dialog-header:active {
+    cursor: grabbing;
+}
+
+.dialog-content {
+    padding: 20px;
+    color: var(--primary-text-color);
+    line-height: 1.6;
+}
+
+.dialog-footer {
+    padding: 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: var(--primary-bg-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.dialog-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--secondary-bg-color);
+    color: var(--primary-text-color);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dialog-button:hover {
+    background-color: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
 }

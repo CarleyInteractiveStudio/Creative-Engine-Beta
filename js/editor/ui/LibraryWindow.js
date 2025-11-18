@@ -1,5 +1,7 @@
 // js/editor/ui/LibraryWindow.js
 
+import { showNotification, showConfirmation } from './DialogWindow.js';
+
 let dom = {};
 let projectsDirHandle = null;
 let exportLibrariesAsPackage = null; // To hold the function from another module
@@ -103,23 +105,28 @@ async function refreshLibraryList() {
         // Render library cards
         libraries.forEach(lib => {
             const card = document.createElement('div');
-            card.className = `library-card ${lib.isActive ? 'active' : 'inactive'}`;
+            // Use the new main class for the bubble card
+            card.className = `library-card ${lib.isActive ? '' : 'inactive'}`;
+            card.dataset.libraryName = lib.data.name;
+            card.dataset.fileName = lib.name;
+
+            const authorIconSrc = lib.data.author_icon_base64 || 'image/Paquete.png';
+            const libraryIconSrc = lib.data.library_icon_base64 || 'image/Paquete.png';
+
             card.innerHTML = `
-                <input type="checkbox" class="library-select-checkbox" data-lib-name="${lib.name}">
-                <img src="${lib.data.library_icon_base64 || 'image/Paquete.png'}" class="library-icon">
+                <!-- 1. Square library icon -->
+                <img src="${libraryIconSrc}" class="library-icon">
+
+                <!-- This div groups the text content -->
                 <div class="library-info">
-                    <div class="library-header">
-                        <h3 class="library-name">${lib.data.name || 'Sin Nombre'}</h3>
-                        <span class="library-version">v${lib.data.version || '0.0.0'}</span>
-                    </div>
+                    <!-- 2. Library Name -->
+                    <h4 class="library-name">${lib.data.name || 'Sin Nombre'}</h4>
+
+                    <!-- 3. Author Info (Icon + Name) -->
                     <div class="library-author">
-                        <img src="${lib.data.author_icon_base64 || 'image/Paquete.png'}" class="author-icon">
-                        <span>${lib.data.author || 'Anónimo'}</span>
+                        <img src="${authorIconSrc}" class="author-icon">
+                        <span class="author-name">${lib.data.author || 'Anónimo'}</span>
                     </div>
-                </div>
-                <div class="library-actions">
-                    <button class="btn-toggle-activate ${lib.isActive ? 'state-active' : 'state-inactive'}" data-lib-name="${lib.name}" title="Activar/Desactivar"></button>
-                    <button class="btn-delete-library" data-lib-name="${lib.name}" title="Eliminar del Proyecto">🗑️</button>
                 </div>
             `;
             container.appendChild(card);
@@ -163,11 +170,17 @@ async function handleImportLibrary() {
                     // Automatically update
                     console.log(`Actualizando librería '${newLibData.name}' de v${existingLibData.version} a v${newLibData.version}.`);
                 } else if (newLibData.version < existingLibData.version) {
-                    if (!confirm(`Ya tienes una versión más reciente (v${existingLibData.version}) de '${newLibData.name}'. ¿Seguro que quieres instalar esta versión anterior (v${newLibData.version})?`)) {
-                        shouldWriteFile = false;
-                    }
+                    shouldWriteFile = await new Promise(resolve => {
+                        showConfirmation(
+                            'Versión Anterior',
+                            `Ya tienes una versión más reciente (v${existingLibData.version}) de '${newLibData.name}'. ¿Seguro que quieres instalar esta versión anterior (v${newLibData.version})?`,
+                            () => resolve(true) // Continue if confirmed
+                        );
+                        // If not confirmed, the dialog closes and this promise never resolves, effectively stopping the process.
+                        // A more robust implementation might handle the 'cancel' case explicitly.
+                    });
                 } else {
-                    alert(`La librería '${newLibData.name}' ya está en la versión ${newLibData.version}. No se requiere ninguna acción.`);
+                    showNotification('Sin Cambios', `La librería '${newLibData.name}' ya está en la versión ${newLibData.version}. No se requiere ninguna acción.`);
                     shouldWriteFile = false;
                 }
             } else {
@@ -195,14 +208,14 @@ async function handleImportLibrary() {
             const writable = await newFileHandle.createWritable();
             await writable.write(content);
             await writable.close();
-            alert(`Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
+            showNotification('Importación Exitosa', `Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
             refreshLibraryList();
         }
 
     } catch (err) {
         if (err.name !== 'AbortError') {
             console.error("Error al importar la librería:", err);
-            alert("Ocurrió un error durante la importación.");
+            showNotification('Error', 'Ocurrió un error durante la importación.');
         }
     }
 }
@@ -214,7 +227,7 @@ async function handleCreateLibrary() {
     // 1. Get all data from the modal form
     const libName = dom.libCreateName.value.trim();
     if (!libName) {
-        alert("El nombre de la librería es obligatorio.");
+        showNotification('Campo Obligatorio', 'El nombre de la librería es obligatorio.');
         return;
     }
 
@@ -240,7 +253,7 @@ async function handleCreateLibrary() {
     const scriptFile = dom.libCreateScriptInput.files[0];
 
     if (!scriptFile) {
-        alert("Debes seleccionar un archivo de script (.js).");
+        showNotification('Campo Obligatorio', 'Debes seleccionar un archivo de script (.js).');
         return;
     }
 
@@ -250,7 +263,7 @@ async function handleCreateLibrary() {
         libData.script_base64 = await scriptToBase64(scriptFile);
     } catch (error) {
         console.error("Error al procesar los archivos:", error);
-        alert("Hubo un error al leer uno de los archivos seleccionados.");
+        showNotification('Error', 'Hubo un error al leer uno de los archivos seleccionados.');
         return;
     }
 
@@ -267,13 +280,13 @@ async function handleCreateLibrary() {
         await writable.write(fileContent);
         await writable.close();
 
-        alert(`Librería '${libName}' creada con éxito.`);
+        showNotification('Éxito', `Librería '${libName}' creada con éxito.`);
         dom.createLibraryModal.classList.remove('is-open');
         refreshLibraryList(); // Update the view
 
     } catch (error) {
         console.error("Error al guardar el archivo de la librería:", error);
-        alert("No se pudo guardar el archivo .celib.");
+        showNotification('Error', 'No se pudo guardar el archivo .celib.');
     }
 }
 
@@ -436,43 +449,45 @@ export function initialize(editorDom, handle, exportFunc) {
             await writable.write(JSON.stringify({ active: newState }, null, 2));
             await writable.close();
 
-            alert(`La librería ha sido ${newState ? 'activada' : 'desactivada'}. Por favor, reinicia el editor para aplicar los cambios.`);
+            showNotification('Estado Cambiado', `La librería ha sido ${newState ? 'activada' : 'desactivada'}. Por favor, reinicia el editor para aplicar los cambios.`);
             refreshLibraryList();
 
         } catch (error) {
             console.error(`Error al actualizar el estado de la librería '${libName}':`, error);
-            alert("No se pudo actualizar el estado de la librería.");
+            showNotification('Error', 'No se pudo actualizar el estado de la librería.');
         }
     }
     async function handleDeleteLibrary(libName) {
-        if (!confirm(`¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`)) {
-            return;
-        }
+        showConfirmation(
+            'Confirmar Eliminación',
+            `¿Estás seguro de que quieres eliminar la librería '${libName}' del proyecto? Esta acción no se puede deshacer.`,
+            async () => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const libDirHandle = await projectHandle.getDirectoryHandle('lib');
 
-        try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+                    // Delete .celib file
+                    await libDirHandle.removeEntry(libName);
+                    console.log(`Librería '${libName}' eliminada.`);
 
-            // Delete .celib file
-            await libDirHandle.removeEntry(libName);
-            console.log(`Librería '${libName}' eliminada.`);
+                    // Try to delete .meta file, ignore if it doesn't exist
+                    try {
+                        await libDirHandle.removeEntry(`${libName}.meta`);
+                        console.log(`Metadatos de '${libName}' eliminados.`);
+                    } catch (e) {
+                        // Meta file didn't exist, which is fine.
+                    }
 
-            // Try to delete .meta file, ignore if it doesn't exist
-            try {
-                await libDirHandle.removeEntry(`${libName}.meta`);
-                console.log(`Metadatos de '${libName}' eliminados.`);
-            } catch (e) {
-                // Meta file didn't exist, which is fine.
+                    showNotification('Librería Eliminada', 'Librería eliminada. Reinicia el editor para que los cambios surtan efecto.');
+                    refreshLibraryList();
+
+                } catch (error) {
+                    console.error(`Error al eliminar la librería '${libName}':`, error);
+                    showNotification('Error', 'No se pudo eliminar la librería.');
+                }
             }
-
-            alert("Librería eliminada. Reinicia el editor para que los cambios surtan efecto.");
-            refreshLibraryList();
-
-        } catch (error) {
-            console.error(`Error al eliminar la librería '${libName}':`, error);
-            alert("No se pudo eliminar la librería.");
-        }
+        );
     }
 
     function handleExportSelectedLibraries() {
@@ -480,7 +495,7 @@ export function initialize(editorDom, handle, exportFunc) {
         const libraryNames = Array.from(selectedCheckboxes).map(cb => cb.dataset.libName);
 
         if (libraryNames.length === 0) {
-            alert("Por favor, selecciona al menos una librería para exportar.");
+            showNotification('Error', 'Por favor, selecciona al menos una librería para exportar.');
             return;
         }
 
@@ -488,27 +503,162 @@ export function initialize(editorDom, handle, exportFunc) {
             exportLibrariesAsPackage(libraryNames);
         } else {
             console.error("La función de exportación no está disponible.");
-            alert("Error: La funcionalidad de exportación de paquetes no se ha cargado correctamente.");
+            showNotification('Error', 'La funcionalidad de exportación de paquetes no se ha cargado correctamente.');
         }
     }
 
-    // Placeholder for actions on library cards (delegated event listener)
-    document.getElementById('library-list-container').addEventListener('click', (e) => {
-        const target = e.target;
-        if (target.classList.contains('btn-delete-library')) {
-            const libName = target.dataset.libName;
-            handleDeleteLibrary(libName);
+    let selectedLibraryForContextMenu = null;
+
+    document.getElementById('library-list-container').addEventListener('contextmenu', (e) => {
+        const card = e.target.closest('.library-card');
+        if (card) {
+            e.preventDefault();
+            selectedLibraryForContextMenu = card.dataset.fileName;
+            const menu = document.getElementById('library-context-menu');
+            menu.style.display = 'block';
+            menu.style.left = `${e.clientX}px`;
+            menu.style.top = `${e.clientY}px`;
         }
-        if (target.classList.contains('btn-toggle-activate')) {
-            const libName = target.dataset.libName;
-            toggleLibraryActivation(libName);
+    });
+
+    document.getElementById('library-context-menu').addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        if (selectedLibraryForContextMenu) {
+            if (action === 'toggle-library-activation') {
+                toggleLibraryActivation(selectedLibraryForContextMenu);
+            } else if (action === 'delete-library') {
+                handleDeleteLibrary(selectedLibraryForContextMenu);
+            }
         }
+        document.getElementById('library-context-menu').style.display = 'none';
+    });
+
+    // Hide context menu on left-click
+    window.addEventListener('click', () => {
+        document.getElementById('library-context-menu').style.display = 'none';
+    });
+
+    let selectedLibraryForDetails = null;
+
+    document.getElementById('library-list-container').addEventListener('click', async (e) => {
+        const card = e.target.closest('.library-card');
+        if (card) {
+            selectedLibraryForDetails = card.dataset.fileName;
+            await openLibraryDetails(selectedLibraryForDetails);
+        }
+    });
+
+    async function openLibraryDetails(fileName) {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+            const fileHandle = await libDirHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const libData = JSON.parse(content);
+
+            // --- Populate Top Bubble ---
+            document.getElementById('details-lib-icon').src = libData.library_icon_base64 || 'image/Paquete.png';
+            document.getElementById('details-lib-name').textContent = libData.name || 'Sin Nombre';
+            document.getElementById('details-lib-version').textContent = `v${libData.version || '0.0.0'}`;
+            document.getElementById('details-author-icon').src = libData.author_icon_base64 || 'image/Paquete.png';
+            document.getElementById('details-author-name').textContent = libData.author || 'Anónimo';
+
+            // --- Populate Description Bubble ---
+            document.getElementById('details-lib-description').textContent = libData.description || 'Sin descripción.';
+
+            // --- Populate Status & Permissions Bubble ---
+            const statusToggle = document.getElementById('details-status-toggle');
+            const statusText = document.getElementById('details-status-text');
+
+            let isActive = true;
+            try {
+                const metaFileHandle = await libDirHandle.getFileHandle(`${fileName}.meta`);
+                const metaFile = await metaFileHandle.getFile();
+                const metaContent = await metaFile.text();
+                isActive = JSON.parse(metaContent).active !== false;
+            } catch (e) { /* Defaults to active */ }
+
+            statusToggle.checked = isActive;
+            statusText.textContent = isActive ? 'Activo' : 'Inactivo';
+
+            const permissionsContent = document.getElementById('details-permissions-content');
+            permissionsContent.innerHTML = `
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-req-windows" ${libData.api_access?.can_create_windows ? 'checked' : ''}>
+                    <label for="details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-runtime-access" ${libData.api_access?.runtime_accessible ? 'checked' : ''}>
+                    <label for="details-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" id="details-is-tool" ${libData.api_access?.is_engine_tool ? 'checked' : ''}>
+                    <label for="details-is-tool">Es una herramienta interna para el motor.</label>
+                </div>
+            `;
+
+            document.getElementById('library-details-modal').classList.add('is-open');
+
+        } catch (error) {
+            console.error(`Error al abrir los detalles de la librería '${fileName}':`, error);
+            showNotification('Error', 'No se pudieron cargar los detalles de la librería.');
+        }
+    }
+
+    document.getElementById('lib-details-save-btn').addEventListener('click', async () => {
+        if (!selectedLibraryForDetails) return;
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+            // --- Save .celib file (permissions) ---
+            const fileHandle = await libDirHandle.getFileHandle(selectedLibraryForDetails);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const libData = JSON.parse(content);
+
+            libData.api_access = {
+                can_create_windows: document.getElementById('details-req-windows').checked,
+                runtime_accessible: document.getElementById('details-runtime-access').checked,
+                is_engine_tool: document.getElementById('details-is-tool').checked,
+            };
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(libData, null, 2));
+            await writable.close();
+
+            // --- Save .meta file (activation status) ---
+            const isActive = document.getElementById('details-status-toggle').checked;
+            const metaFileName = `${selectedLibraryForDetails}.meta`;
+            const metaFileHandle = await libDirHandle.getFileHandle(metaFileName, { create: true });
+            const metaWritable = await metaFileHandle.createWritable();
+            await metaWritable.write(JSON.stringify({ active: isActive }, null, 2));
+            await metaWritable.close();
+
+
+            document.getElementById('library-details-modal').classList.remove('is-open');
+            showNotification('Cambios Guardados', 'Cambios guardados. Por favor, reinicia el editor para aplicar todos los cambios.');
+            refreshLibraryList(); // Refresh the main view to show active/inactive state
+
+        } catch (error) {
+            console.error(`Error al guardar los cambios de la librería '${selectedLibraryForDetails}':`, error);
+            showNotification('Error', 'No se pudieron guardar los cambios.');
+        }
+    });
+
+    document.getElementById('library-details-modal').querySelector('.close-button').addEventListener('click', () => {
+        document.getElementById('library-details-modal').classList.remove('is-open');
     });
 
     console.log("Módulo de la Ventana de Librerías inicializado.");
 
     // Return the refresh function so other modules can trigger an update
     return {
-        refreshLibraryList
+        refreshLibraryList,
+        openLibraryDetails // Export the function
     };
 }

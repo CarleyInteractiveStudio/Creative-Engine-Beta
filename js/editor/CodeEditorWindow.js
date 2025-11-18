@@ -70,23 +70,23 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         console.log(`Abierto ${fileName} en el editor.`);
     } catch (error) {
         console.error(`Error al abrir el script '${fileName}':`, error);
-        alert(`No se pudo abrir el script. Revisa la consola.`);
+        window.Dialogs.showNotification('Error', `No se pudo abrir el script '${fileName}'. Revisa la consola.`);
     }
 }
 
 export async function saveCurrentScript() {
     if (!currentlyOpenFileHandle || !codeEditor) {
-        alert("No hay ningún script abierto para guardar.");
+        window.Dialogs.showNotification('Aviso', 'No hay ningún script abierto para guardar.');
         return;
     }
     try {
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(codeEditor.state.doc.toString());
         await writable.close();
-        console.log(`Script '${currentlyOpenFileHandle.name}' guardado.`);
+        window.Dialogs.showNotification('Éxito', `Script '${currentlyOpenFileHandle.name}' guardado.`);
     } catch (error) {
         console.error("Error al guardar el script:", error);
-        alert("No se pudo guardar el script.");
+        window.Dialogs.showNotification('Error', 'No se pudo guardar el script.');
     }
 }
 

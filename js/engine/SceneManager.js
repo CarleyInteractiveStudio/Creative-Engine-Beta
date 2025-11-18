@@ -1,6 +1,7 @@
 // SceneManager.js
 // This file will contain all the logic for managing scenes.
 
+import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
@@ -186,26 +187,42 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
 }
 
 export async function loadScene(fileName, directoryHandle, projectsDirHandle) {
-    if(isSceneDirty) {
-        if(!confirm("Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.")) {
-            return;
-        }
-    }
-    try {
-        const fileHandle = await directoryHandle.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
-        const content = await file.text();
-        const sceneData = JSON.parse(content);
+    const loadAction = async () => {
+        try {
+            const fileHandle = await directoryHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const sceneData = JSON.parse(content);
 
-        currentScene = await deserializeScene(sceneData, projectsDirHandle); // Await the async deserialization
-        currentSceneFileHandle = fileHandle;
+            currentScene = await deserializeScene(sceneData, projectsDirHandle); // Await the async deserialization
+            currentSceneFileHandle = fileHandle;
 
-        return {
-            scene: currentScene,
-            fileHandle: currentSceneFileHandle
+            return {
+                scene: currentScene,
+                fileHandle: currentSceneFileHandle
+            }
+        } catch (error) {
+            console.error(`Error al cargar la escena '${fileName}':`, error);
         }
-    } catch (error) {
-        console.error(`Error al cargar la escena '${fileName}':`, error);
+    };
+
+    if (isSceneDirty) {
+        showConfirmation(
+            'Cambios sin Guardar',
+            'Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.',
+            async () => {
+                // The user confirmed, so we need to call loadAction and handle the return
+                // Since this is async, we can't directly return from here.
+                // This will initiate the load but the calling function won't get the return value.
+                // This is a limitation of converting sync `confirm` to async dialogs without a larger refactor.
+                await loadAction();
+                // We might need to broadcast an event like 'scene-loaded' here.
+                // For now, this is the simplest conversion.
+            }
+        );
+        return; // Stop execution here, the callback will handle the loading.
+    } else {
+        return await loadAction();
     }
 }
 

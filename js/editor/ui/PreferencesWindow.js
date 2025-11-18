@@ -5,6 +5,8 @@
  * incluyendo la carga, guardado y aplicación de las preferencias del usuario.
  */
 
+import { showNotification, showConfirmation } from './DialogWindow.js';
+
 // Module-level state
 let currentPreferences = {};
 let autoSaveIntervalId = null;
@@ -109,7 +111,7 @@ function savePreferences() {
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
     applyPreferences();
-    alert("Preferencias guardadas.");
+    showNotification('Éxito', 'Preferencias guardadas.');
     _dom.preferencesModal.classList.remove('is-open');
 }
 
@@ -199,16 +201,16 @@ function setupEventListeners() {
             const apiKey = _dom.prefsAiApiKey.value;
 
             if (!provider || provider === 'none') {
-                alert("Por favor, selecciona un proveedor de IA válido.");
+                showNotification('Error', 'Por favor, selecciona un proveedor de IA válido.');
                 return;
             }
             if (!apiKey) {
-                alert("Por favor, introduce una API Key.");
+                showNotification('Error', 'Por favor, introduce una API Key.');
                 return;
             }
 
             localStorage.setItem(`creativeEngine_${provider}_apiKey`, apiKey);
-            alert(`API Key para ${provider} guardada.`);
+            showNotification('Éxito', `API Key para ${provider} guardada.`);
             updateAiProviderUi();
         });
     }
@@ -216,11 +218,15 @@ function setupEventListeners() {
     if (_dom.prefsAiDeleteKeyBtn) {
         _dom.prefsAiDeleteKeyBtn.addEventListener('click', () => {
             const provider = _dom.prefsAiProvider.value;
-            if (confirm(`¿Estás seguro de que quieres borrar la API Key para ${provider}?`)) {
-                localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
-                alert(`API Key para ${provider} borrada.`);
-                updateAiProviderUi();
-            }
+            showConfirmation(
+                'Confirmar Borrado',
+                `¿Estás seguro de que quieres borrar la API Key para ${provider}?`,
+                () => {
+                    localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
+                    showNotification('Éxito', `API Key para ${provider} borrada.`);
+                    updateAiProviderUi();
+                }
+            );
         });
     }
 

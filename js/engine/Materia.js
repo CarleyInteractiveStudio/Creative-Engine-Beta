@@ -36,6 +36,10 @@ export class Materia {
         return this.leyes.find(ley => ley instanceof componentClass);
     }
 
+    getComponents(componentClass) {
+        return this.leyes.filter(ley => ley instanceof componentClass);
+    }
+
     removeComponent(ComponentClass) {
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {

@@ -196,11 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Modal Logic ---
-    const openModal = (modal) => { if (modal) modal.style.display = 'block'; };
+    const openModal = (modal) => { if (modal) modal.classList.add('is-open'); };
     const closeModal = () => {
-        if (supportModal) supportModal.style.display = 'none';
-        if (licenseModal) licenseModal.style.display = 'none';
-        if (createProjectModal) createProjectModal.style.display = 'none';
+        if (supportModal) supportModal.classList.remove('is-open');
+        if (licenseModal) licenseModal.classList.remove('is-open');
+        if (createProjectModal) createProjectModal.classList.remove('is-open');
     };
 
     if(supportButton) supportButton.addEventListener('click', () => openModal(supportModal));
@@ -235,21 +235,21 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => {
                 if (response.ok) {
                     form.reset();
-                    alert('¡Gracias! Tu mensaje ha sido enviado.');
+                    window.Dialogs.showNotification('Mensaje Enviado', '¡Gracias! Tu mensaje ha sido enviado.');
                     closeModal();
                 } else {
                     response.json().then(data => {
                         if (Object.hasOwn(data, 'errors')) {
-                            alert(data["errors"].map(error => error["message"]).join(", "));
+                            window.Dialogs.showNotification('Error', data["errors"].map(error => error["message"]).join(", "));
                         } else {
-                            alert('Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
+                            window.Dialogs.showNotification('Error', 'Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
                         }
                     });
                 }
             })
             .catch(error => {
                 console.error('Form submission error:', error);
-                alert('Hubo un problema de conexión. Por favor, revisa tu conexión a internet.');
+                window.Dialogs.showNotification('Error de Conexión', 'Hubo un problema de conexión. Por favor, revisa tu conexión a internet.');
             })
             .finally(() => {
                 button.textContent = originalButtonText;
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (openFolderBtn && projectItem) {
             event.stopPropagation(); // Prevent opening the project
             const projectName = projectItem.dataset.projectName;
-            alert(`El proyecto se encuentra en la carpeta que seleccionaste, dentro de una subcarpeta llamada:\n\n${projectName}`);
+            window.Dialogs.showNotification('Ubicación del Proyecto', `El proyecto se encuentra en la carpeta que seleccionaste, dentro de una subcarpeta llamada:\n\n${projectName}`);
             return;
         }
 
@@ -447,16 +447,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('ctx-rename').addEventListener('click', async () => {
+    document.getElementById('ctx-rename').addEventListener('click', () => {
         hideContextMenu();
         if (!currentProjectName) return;
 
-        // The prompt is kept for now as creating a custom prompt modal is a larger task.
-        const newName = prompt(`Renombrar proyecto "${currentProjectName}":`, currentProjectName);
-        if (newName && newName !== currentProjectName) {
-            await showCustomAlert("Función no Disponible", "La funcionalidad de renombrar es compleja y se implementará en una futura actualización. Por ahora, para renombrar, cree un nuevo proyecto y copie los archivos manualmente.");
-            // TODO: Implement the complex rename logic (copy to new, delete old)
-        }
+        window.Dialogs.showPrompt(
+            'Renombrar Proyecto',
+            `Introduce el nuevo nombre para "${currentProjectName}":`,
+            async (newName) => {
+                const sanitizedName = newName.trim().replace(/[^a-zA-Z0-9-]/g, '-');
+
+                if (!sanitizedName || sanitizedName === currentProjectName) {
+                    window.Dialogs.showNotification('Renombrado Cancelado', 'El nombre no es válido o es el mismo que el actual.');
+                    return;
+                }
+
+                try {
+                    const dirHandle = await getDirHandle();
+                    if (!dirHandle) {
+                        throw new Error("No se pudo obtener el directorio de proyectos.");
+                    }
+
+                    // 1. Verificar si el nuevo nombre ya existe
+                    try {
+                        await dirHandle.getDirectoryHandle(sanitizedName, { create: false });
+                        window.Dialogs.showNotification('Error', `El nombre de proyecto "${sanitizedName}" ya existe.`);
+                        return;
+                    } catch (e) {
+                        // Es bueno que no exista, continuamos.
+                    }
+
+                    // 2. Crear el nuevo directorio y copiar todo
+                    const oldProjectHandle = await dirHandle.getDirectoryHandle(currentProjectName, { create: false });
+                    const newProjectHandle = await dirHandle.getDirectoryHandle(sanitizedName, { create: true });
+                    await copyDirectory(oldProjectHandle, newProjectHandle);
+
+                    // 3. Eliminar el directorio antiguo
+                    await dirHandle.removeEntry(currentProjectName, { recursive: true });
+
+                    window.Dialogs.showNotification('Éxito', `El proyecto fue renombrado a "${sanitizedName}".`);
+                    loadProjects(); // Recargar la lista
+
+                } catch (error) {
+                    console.error("Error al renombrar el proyecto:", error);
+                    window.Dialogs.showNotification('Error', 'Ocurrió un error inesperado al renombrar.');
+                }
+            },
+            currentProjectName // Valor por defecto en el input
+        );
     });
 
 
@@ -495,6 +533,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.body.addEventListener('click', startMusic, { once: true });
 
+
+    // --- File System Utilities ---
+    async function copyDirectory(sourceHandle, destHandle) {
+        for await (const entry of sourceHandle.values()) {
+            if (entry.kind === 'file') {
+                const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+                const file = await entry.getFile();
+                const writable = await newFileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+            } else if (entry.kind === 'directory') {
+                const newDirHandle = await destHandle.getDirectoryHandle(entry.name, { create: true });
+                await copyDirectory(entry, newDirHandle);
+            }
+        }
+    }
 
     // --- Custom Dialog Logic ---
     const dialogModal = document.getElementById('custom-dialog-modal');

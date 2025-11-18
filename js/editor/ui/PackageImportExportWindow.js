@@ -1,4 +1,5 @@
 // Contains all logic for the Package Import/Export modals and functionality
+import { showNotification } from './DialogWindow.js';
 
 let dom;
 let exportContext; // This will be passed from editor.js
@@ -52,7 +53,7 @@ async function populateFileTree(container, dirHandle, pathPrefix = '') {
 
 async function exportPackage(filesToExport, manifest) {
     if (!filesToExport || filesToExport.length === 0) {
-        alert("No se seleccionaron archivos para exportar.");
+        showNotification('Error', 'No se seleccionaron archivos para exportar.');
         return;
     }
     console.log(`Exportando paquete con ${filesToExport.length} entradas.`);
@@ -74,7 +75,7 @@ async function exportPackage(filesToExport, manifest) {
 
     } catch(error) {
         console.error(`Error al exportar el paquete:`, error);
-        alert("No se pudo exportar el paquete.");
+        showNotification('Error', 'No se pudo exportar el paquete.');
     }
 };
 
@@ -105,13 +106,13 @@ async function confirmImport(zip, dirHandle) {
                 await writable.close();
             }
         }
-        alert("¡Importación completada con éxito!");
+        showNotification('Éxito', '¡Importación completada con éxito!');
         dom.packageFileTreeModal.classList.remove('is-open');
         await updateAssetBrowser();
 
     } catch (error) {
         console.error("Error durante la importación de archivos:", error);
-        alert("Ocurrió un error al importar los archivos. Revisa la consola.");
+        showNotification('Error', 'Ocurrió un error al importar los archivos. Revisa la consola.');
     }
 }
 
@@ -127,7 +128,7 @@ async function handleImport() {
         const manifestFile = zip.file('manifest.json');
 
         if (!manifestFile) {
-            alert("Este no es un paquete válido. Falta el archivo manifest.json.");
+            showNotification('Paquete Inválido', 'Este no es un paquete válido. Falta el archivo manifest.json.');
             return;
         }
 
@@ -195,7 +196,7 @@ function setupEventListeners() {
     document.getElementById('menu-export-asset').addEventListener('click', async () => {
         const selectedAsset = dom.assetGridView.querySelector('.grid-item.active');
         if (!selectedAsset || selectedAsset.dataset.kind !== 'directory') {
-            alert("Por favor, selecciona una carpeta en el Navegador de Assets para exportar.");
+            showNotification('Error', 'Por favor, selecciona una carpeta en el Navegador de Assets para exportar.');
             return;
         }
         onExportPackage(selectedAsset.dataset.name);
@@ -263,7 +264,7 @@ function setupEventListeners() {
 
 async function exportLibrariesAsPackage(libraryNames) {
     if (!libraryNames || libraryNames.length === 0) {
-        alert("No se seleccionaron librerías para exportar.");
+        showNotification('Error', 'No se seleccionaron librerías para exportar.');
         return;
     }
 
@@ -307,10 +308,9 @@ async function exportLibrariesAsPackage(libraryNames) {
 
     } catch (error) {
         console.error(`Error al exportar el paquete de librerías:`, error);
-        alert("No se pudo exportar el paquete de librerías.");
+        showNotification('Error', 'No se pudo exportar el paquete de librerías.');
     }
 }
-
 
 export function initialize(dependencies) {
     dom = dependencies.dom;
@@ -318,9 +318,10 @@ export function initialize(dependencies) {
     getCurrentDirectoryHandle = dependencies.getCurrentDirectoryHandle;
     updateAssetBrowser = dependencies.updateAssetBrowser;
     projectsDirHandle = dependencies.projectsDirHandle;
+
     setupEventListeners();
 
-    // Return the new function so it can be used by other modules
+    // Return any functions that need to be accessed by other modules
     return {
         exportLibrariesAsPackage
     };

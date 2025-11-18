@@ -1,5 +1,7 @@
 // js/editor/ui/ProjectSettingsWindow.js
 
+import { showNotification } from './DialogWindow.js';
+
 let dom = {};
 let projectsDirHandle = null;
 let currentProjectConfig = {};
@@ -16,7 +18,7 @@ export function initialize(editorDom, editorProjectsDirHandle, config) {
 
 async function saveProjectConfig(showAlert = true) {
     if (!projectsDirHandle) {
-        if(showAlert) alert("El directorio del proyecto no está disponible.");
+        if(showAlert) showNotification('Error', 'El directorio del proyecto no está disponible.');
         return;
     }
 
@@ -58,10 +60,10 @@ async function saveProjectConfig(showAlert = true) {
         await writable.write(JSON.stringify(currentProjectConfig, null, 2));
         await writable.close();
         console.log("Configuración del proyecto guardada.");
-        if(showAlert) alert("¡Configuración guardada!");
+        if(showAlert) showNotification('Éxito', '¡Configuración guardada!');
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto:", error);
-        if(showAlert) alert("No se pudo guardar la configuración.");
+        if(showAlert) showNotification('Error', 'No se pudo guardar la configuración.');
     }
 }
 

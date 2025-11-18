@@ -105,9 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (error) {
-      alert(`Error en el registro: ${error.message}`);
+      window.Dialogs.showNotification('Error de Registro', error.message);
     } else {
-      alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta.');
+      window.Dialogs.showNotification('¡Registro Exitoso!', 'Revisa tu correo para verificar tu cuenta.');
       showView(loginView);
     }
 
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { error } = await _supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      alert(`Error al iniciar sesión: ${error.message}`);
+      window.Dialogs.showNotification('Error de Inicio de Sesión', error.message);
     } else {
       closeAuthModal(); // onAuthStateChange handles the rest
     }
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       redirectTo: 'https://carleyinteractivestudio.github.io/Creative-Engine-Beta/#'
     });
 
-    alert('Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.');
+    window.Dialogs.showNotification('Recuperación de Contraseña', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.');
     showView(loginView);
 
     button.disabled   = false;

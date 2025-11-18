@@ -1,17 +1,10 @@
-// Script para probar el sistema de callbacks
+// Script para probar el nuevo sistema de componentes
 
 go "CallbackTest"
 
-// Función que se pasará como callback
-function miRespuesta(mensaje) {
-    print("Mensaje recibido en .ces: " + mensaje);
-}
-
-// Llamar a la función de la librería y pasarle nuestra función
-probarCallback(miRespuesta);
-
 public star() {
-    print("Iniciando prueba de callbacks...");
+    console.log("Iniciando prueba desde test_callbacks.ces...");
+    test(); // Llamar a la función de la librería
 }
 
 public update(deltaTime) {

@@ -27,11 +27,12 @@ import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
-import { SpriteEditor } from './sprite-editor.js';
+import * as SpriteSlicer from './editor/ui/SpriteSlicerWindow.js';
 import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
+import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,10 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
         animator: false, // For the new controller panel
     };
     let physicsSystem = null;
-    let spriteEditor = null;
 
 
     let isGameRunning = false;
+    let isGamePaused = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
@@ -70,7 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis;
+
+    createAsset = async function(fileName, content, dirHandle) {
+        try {
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            console.log(`Asset '${fileName}' creado exitosamente.`);
+            return fileHandle;
+        } catch (error) {
+            console.error(`No se pudo crear el asset '${fileName}':`, error);
+            showNotificationDialog('Error de Creación', `No se pudo crear el asset: ${error.message}`);
+            return null;
+        }
+    };
 
     selectMateria = function(materiaOrId) {
         let materiaToSelect = null;
@@ -161,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-panel': 'menu-window-animation',
             'animator-controller-panel': 'menu-window-animator',
             'tile-palette-panel': 'menu-window-tile-palette',
-            'sprite-editor-panel': 'menu-window-sprite-editor',
+            'sprite-slicer-panel': 'menu-window-sprite-editor',
             'asset-store-panel': 'menu-window-asset-store'
         };
         const checkmark = '✅ ';
@@ -231,11 +247,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Project Settings and Preferences Logic has been moved to their respective modules ---
 
-    runChecksAndPlay = async function() {
-        if (!projectsDirHandle) {
-            alert("El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.");
+    loadRuntimeApis = async function() {
+        RuntimeAPIManager.clearAPIs();
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (!projectName || !projectsDirHandle) {
+            console.warn("No se puede cargar librerías sin un proyecto cargado.");
             return;
         }
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+        try {
+            const libDirHandle = await projectHandle.getDirectoryHandle('lib');
+
+            for await (const entry of libDirHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                    let isActive = true;
+                    try {
+                        const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                        const metaFile = await metaFileHandle.getFile();
+                        const metaContent = await metaFile.text();
+                        const metaData = JSON.parse(metaContent);
+                        if (metaData.active === false) {
+                            isActive = false;
+                        }
+                    } catch (e) {
+                    }
+
+                    if (!isActive) {
+                        continue;
+                    }
+
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const libData = JSON.parse(content);
+
+                        if (libData.api_access && libData.api_access.runtime_accessible) {
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            const apiObject = (new Function(scriptContent))();
+
+                            if (apiObject && typeof apiObject === 'object') {
+                                RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                const fileNameWithoutExt = entry.name.replace('.celib', '');
+                                if (libData.name !== fileNameWithoutExt) {
+                                    RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
+                                    console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
+                                }
+                            } else {
+                                console.warn(`La librería '${libData.name}' no devolvió un objeto API.`);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Error procesando la librería ${entry.name}:`, e);
+                    }
+                }
+            }
+        } catch (error) {
+            if (error.name === 'NotFoundError') {
+                console.log("Directorio 'lib' no encontrado. No se cargarán librerías en tiempo de ejecución.");
+            } else {
+                console.error("Error al acceder al directorio de librerías:", error);
+            }
+        }
+    };
+
+    runChecksAndPlay = async function() {
+        if (!projectsDirHandle) {
+            showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
+            return;
+        }
+        await loadRuntimeApis();
         console.log("Verificando todos los scripts del proyecto...");
         dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
         const allErrors = [];
@@ -268,17 +350,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 2. Transpilar cada archivo y recolectar errores
-        for (const fileHandle of cesFiles) {
+        const transpilationPromises = cesFiles.map(async (fileHandle) => {
             const file = await fileHandle.getFile();
             const code = await file.text();
-            const result = transpile(code); // Usar la función transpile que añadiremos
+            const result = CES_Transpiler.transpile(code, fileHandle.name);
 
             if (result.errors && result.errors.length > 0) {
-                allErrors.push({fileName: fileHandle.name, errors: result.errors});
-            } else if (fileHandle.name === 'main.ces') { // Asumimos que main.ces es el punto de entrada
-                mainGameJsCode = result.jsCode;
+                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
             }
-        }
+        });
+
+        await Promise.all(transpilationPromises);
+
 
         // 3. Actuar según el resultado
         if (allErrors.length > 0) {
@@ -289,27 +372,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error(`  - ${error}`);
                 }
             }
-            // Opcional: Cambiar a la pestaña de la consola para que los errores sean visibles
+            // Cambiar a la pestaña de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
             console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
-            // 4. Cargar el script del juego y empezar
-            if (mainGameJsCode) {
-                try {
-                    // Crear un módulo dinámico desde el código JS transpilado
-                    const blob = new Blob([mainGameJsCode], { type: 'application/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    await import(url); // Importar el script para que defina Engine.start/update
-                    URL.revokeObjectURL(url); // Limpiar
-                    console.log("Script principal cargado. Iniciando juego...");
-                    originalStartGame(); // Llamar a la función de inicio original
-                } catch (e) {
-                    console.error("Error al ejecutar el script del juego:", e);
-                }
-            } else {
-                console.warn("Build exitoso, pero no se encontró 'main.ces'. El juego podría no tener lógica de scripting.");
-                originalStartGame();
-            }
+            // 4. Iniciar el juego. La lógica ahora está en startGame.
+            originalStartGame();
         }
     };
 
@@ -453,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let sx, sy, sWidth, sHeight;
                     let pivotX = 0.5, pivotY = 0.5; // Default pivot is center
 
-                    const spriteData = spriteRenderer.spriteSheet?.getSprite(spriteRenderer.spriteName);
+                    const spriteData = spriteRenderer.spriteSheet?.sprites[spriteRenderer.spriteName];
 
                     if (spriteData && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
                         // Use data from the sprite sheet
@@ -590,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        if (isGameRunning) {
+        if (isGameRunning && !isGamePaused) {
             runGameLoop(); // This handles the logic update
             // When game is running, update both views
             if (renderer) updateScene(renderer, false); // Editor view with gizmos
@@ -607,18 +675,60 @@ document.addEventListener('DOMContentLoaded', () => {
         editorLoopId = requestAnimationFrame(editorLoop);
     };
 
-    startGame = function() {
+    updateGameControlsUI = function() {
+        if (isGameRunning) {
+            dom.btnPlay.style.display = 'none';
+            dom.btnPause.style.display = 'inline-block';
+            dom.btnStop.style.display = 'inline-block';
+            dom.btnPause.textContent = isGamePaused ? '▶️' : '⏸️';
+        } else {
+            dom.btnPlay.style.display = 'inline-block';
+            dom.btnPause.style.display = 'none';
+            dom.btnStop.style.display = 'none';
+            isGamePaused = false;
+        }
+    };
+
+    startGame = async function() {
         if (isGameRunning) return;
         isGameRunning = true;
+        isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
-        // The main editorLoop will now call runGameLoop
+
+        try {
+            if (SceneManager.currentScene) {
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    if (materia.isActive) {
+                        const scripts = materia.getComponents(Components.CreativeScript);
+                        for (const script of scripts) {
+                            await script.initializeInstance(); // Await initialization
+                            if (script.isInitialized) {
+                                try {
+                                    script.star(); // Call star only if initialized
+                                } catch (e) {
+                                    console.error(`Error en el método star() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Un error crítico ocurrió durante la inicialización de los scripts:", error);
+        } finally {
+            // Ensure UI always updates, even if scripts fail
+            updateGameControlsUI();
+        }
     };
 
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
         console.log("Game Stopped");
+        updateGameControlsUI();
+        // A full scene reload might be desired here to reset state.
+        // For now, we'll just stop the loop logic.
     };
 
 
@@ -932,20 +1042,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'tile-palette') {
-                const panel = document.getElementById('tile-palette-panel');
+            } else if (panelName === 'tile-palette' || panelName === 'sprite-editor') {
+                const panelId = panelName === 'sprite-editor' ? 'sprite-slicer-panel' : 'tile-palette-panel';
+                const panel = document.getElementById(panelId);
                 if (panel) {
                     panel.classList.toggle('hidden');
                     updateWindowMenuUI();
                 }
             } else if (panelName === 'asset-store') {
                 const panel = document.getElementById('asset-store-panel');
-                if (panel) {
-                    panel.classList.toggle('hidden');
-                    updateWindowMenuUI();
-                }
-            } else if (panelName === 'sprite-editor') {
-                const panel = document.getElementById('sprite-editor-panel');
                 if (panel) {
                     panel.classList.toggle('hidden');
                     updateWindowMenuUI();
@@ -977,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateEditorLayout();
                 updateWindowMenuUI();
 
-                alert("El diseño de los paneles ha sido restablecido.");
+                showNotificationDialog('Diseño Restablecido', 'El diseño de los paneles ha sido restablecido.');
             });
         }
 
@@ -989,12 +1094,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const id of requiredFields) {
                     const element = document.getElementById(id);
                     if (!element.value) {
-                        alert(`El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
+                        showNotificationDialog('Campo Obligatorio', `El campo '${element.previousElementSibling.textContent}' es obligatorio.`);
                         return;
                     }
                 }
                 if (dom.ksPassword.value.length < 6) {
-                    alert("La contraseña de la clave debe tener al menos 6 caracteres.");
+                    showNotificationDialog('Contraseña Débil', 'La contraseña de la clave debe tener al menos 6 caracteres.');
                     return;
                 }
 
@@ -1007,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dom.ksCommandTextarea.value = command;
                 dom.ksCommandOutput.classList.remove('hidden');
 
-                alert("Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.");
+                showNotificationDialog('Comando Generado', 'Comando generado. Cópialo y ejecútalo en una terminal con JDK instalado para crear tu archivo keystore.');
             });
         }
 
@@ -1208,7 +1313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!userPrompt) return;
 
                 if (!selectedProvider) {
-                    alert("Por favor, elige un cerebro antes de enviar un mensaje.");
+                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro antes de enviar un mensaje.');
                     return;
                 }
 
@@ -1331,12 +1436,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
-            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-select-image-btn',
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
+            'palette-file-name', 'palette-tools-vertical',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
+            // Sprite Slicer Panel Elements
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
+            'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
+            'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
+            'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
+            'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher'
+            'btn-retry-loading', 'btn-back-to-launcher',
+            'btn-play', 'btn-pause', 'btn-stop'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1438,7 +1552,7 @@ Para que tu librería tenga una interfaz en el editor, usa \`CreativeEngine.API.
         nombre: "Mi Herramienta",
         alAbrir: function(panel) {
             panel.agregarTexto("¡Hola, mundo!");
-            panel.agregarBoton("Saludar", () => alert("¡Hola!"));
+            panel.agregarBoton("Saludar", () => showNotificationDialog('Saludo', '¡Hola!'));
         }
     });
 })();
@@ -1532,6 +1646,11 @@ public star() {
 
                                     if (apiObject && typeof apiObject === 'object') {
                                         RuntimeAPIManager.registerAPI(libData.name, apiObject);
+                                        const fileNameWithoutExt = entry.name.replace('.celib', '');
+                                        if (libData.name !== fileNameWithoutExt) {
+                                            RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
+                                            console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
+                                        }
                                     } else {
                                         console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
                                     }
@@ -1614,23 +1733,35 @@ public star() {
                         openUiAsset(fileHandle);
                         break;
                     case 'ceScene':
-                        if (SceneManager.isSceneDirty()) {
-                            if (!confirm("Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?")) {
-                                return;
+                        const loadSceneAction = async () => {
+                            console.log(`Loading scene: ${name}`);
+                            const newScene = await SceneManager.loadScene(fileHandle);
+                            if (newScene) {
+                                SceneManager.setCurrentScene(newScene);
+                                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                                SceneManager.setSceneDirty(false);
+                                updateHierarchy();
+                                selectMateria(null);
+                            } else {
+                                showNotificationDialog('Error', `Failed to load scene: ${name}`);
                             }
-                        }
-                        console.log(`Loading scene: ${name}`);
-                        const newScene = await SceneManager.loadScene(fileHandle);
-                        if (newScene) {
-                            SceneManager.setCurrentScene(newScene);
-                            SceneManager.setCurrentSceneFileHandle(fileHandle);
-                            dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                            SceneManager.setSceneDirty(false);
-                            updateHierarchy();
-                            selectMateria(null);
+                        };
+
+                        if (SceneManager.isSceneDirty()) {
+                            showConfirmationDialog(
+                                'Cambios sin Guardar',
+                                'Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?',
+                                loadSceneAction // Proceed only if confirmed
+                            );
                         } else {
-                            alert(`Failed to load scene: ${name}`);
+                            await loadSceneAction(); // Proceed immediately if no changes
                         }
+                        break;
+                    case 'png':
+                    case 'jpg':
+                    case 'jpeg':
+                        // openSpriteEditorForAsset(fileHandle, dirHandle);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
@@ -1650,6 +1781,7 @@ public star() {
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
+            SpriteSlicer.initialize(dom, getCurrentDirectoryHandle);
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
@@ -1671,12 +1803,12 @@ public star() {
                 onExportPackage,
                 createUiSystemFile,
                 updateAssetBrowser,
-                refreshLibraryList: libraryModule.refreshLibraryList // Add the new callback here
+                refreshLibraryList: libraryModule.refreshLibraryList,
+                openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
-            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser });
+            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize(dom, projectsDirHandle);
-            spriteEditor = new SpriteEditor();
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();
@@ -1696,7 +1828,16 @@ public star() {
             const newPlayButton = oldPlayButton.cloneNode(true);
             oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
             dom.btnPlay = newPlayButton;
+
             dom.btnPlay.addEventListener('click', runChecksAndPlay);
+            dom.btnPause.addEventListener('click', () => {
+                isGamePaused = !isGamePaused;
+                console.log(isGamePaused ? "Game Paused" : "Game Resumed");
+                updateGameControlsUI();
+            });
+            dom.btnStop.addEventListener('click', stopGame);
+
+
             originalStartGame = startGame;
             startGame = runChecksAndPlay;
 

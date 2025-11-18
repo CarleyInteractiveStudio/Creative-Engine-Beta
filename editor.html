@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editor | Creative Engine</title>
     <link rel="stylesheet" href="css/editor.css">
-    <link rel="stylesheet" href="css/sprite-editor.css">
+    <link rel="stylesheet" href="css/sprite-slicer.css">
     <link rel="stylesheet" href="css/debug.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
 </head>
@@ -124,7 +124,7 @@
                 <div class="modal-content large">
                     <span class="close-button">&times;</span>
                     <h2>Crear Nueva Librería</h2>
-                    <div class="settings-form">
+                    <form class="settings-form">
                         <fieldset class="settings-section">
                             <legend>Información Básica</legend>
                             <label for="lib-create-name">Nombre de la Librería</label>
@@ -187,7 +187,7 @@
                                 <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
                             </div>
                         </fieldset>
-                    </div>
+                    </form>
                     <div class="modal-footer">
                         <button id="lib-create-cancel-btn">Cancelar</button>
                         <button id="lib-create-confirm-btn" class="primary-btn">Crear Librería</button>
@@ -232,7 +232,8 @@ panel.agregarTexto("Este es un título.", { tamaño: 'grande' });</code></pre>
                         <h4><code>panel.agregarBoton(texto, alHacerClic)</code></h4>
                         <p>Crea un botón. La función <code>alHacerClic</code> se ejecuta cuando el usuario presiona el botón.</p>
                         <pre><code>panel.agregarBoton("Haz clic aquí", function() {
-    alert("¡Botón presionado!");
+    // Es mejor usar los diálogos del motor
+    window.Dialogs.showNotification("Aviso", "¡Botón presionado!");
 });</code></pre>
 
                         <h4><code>panel.agregarInputTexto(etiqueta, opciones)</code></h4>
@@ -370,7 +371,7 @@ public star() {
                             <button id="view-toggle-terminal" class="view-toggle-btn" data-view="terminal-content" style="display: none;">Terminal</button>
                         </div>
                     </div>
-                    <div id="game-controls" class="game-controls" style="display: none;">
+                    <div id="game-controls" class="game-controls">
                         <button id="btn-play" title="Play">▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
@@ -661,21 +662,28 @@ public star() {
     </div>
     <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
         <ul>
-            <li data-action="create-empty">Crear Vacío</li>
             <li class="has-submenu">
-                Objeto 2D <span class="arrow">▶</span>
+                Crear <span class="arrow">▶</span>
                 <ul class="submenu">
+                    <li data-action="create-empty">Mater Vacío</li>
+                    <li data-action="create-audio">Audio</li>
                     <li data-action="create-camera">Cámara</li>
-                    <li data-action="create-tilemap">Tilemap</li>
-                </ul>
-            </li>
-            <li class="has-submenu">
-                Luz <span class="arrow">▶</span>
-                <ul class="submenu">
-                    <li data-action="create-point-light">Point Light</li>
-                    <li data-action="create-spot-light">Spot Light</li>
-                    <li data-action="create-freeform-light">Freeform Light</li>
-                    <li data-action="create-sprite-light">Sprite Light</li>
+                    <hr>
+                    <li class="has-submenu">
+                        Mater 2D <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-tilemap">Tilemap</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
+                        Luz <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-point-light">Point Light</li>
+                            <li data-action="create-spot-light">Spot Light</li>
+                            <li data-action="create-freeform-light">Freeform Light</li>
+                            <li data-action="create-sprite-light">Sprite Light</li>
+                        </ul>
+                    </li>
                 </ul>
             </li>
             <hr>
@@ -683,6 +691,62 @@ public star() {
             <li data-action="duplicate">Duplicar</li>
             <li data-action="delete" class="danger">Eliminar</li>
         </ul>
+    </div>
+    <div id="library-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="toggle-library-activation">Activar/Desactivar</li>
+            <li data-action="delete-library" class="danger">Eliminar</li>
+        </ul>
+    </div>
+    <div id="library-details-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2 id="lib-details-title">Detalles de la Librería</h2>
+            <div class="details-bubble-container">
+                <!-- Bubble 1: Main Info -->
+                <div class="details-bubble top-bubble">
+                    <div class="info-column">
+                        <img id="details-lib-icon" src="image/Paquete.png" class="details-lib-icon">
+                        <div class="info-text">
+                            <h3 id="details-lib-name">Nombre de la Librería</h3>
+                            <span id="details-lib-version">v1.0.0</span>
+                        </div>
+                    </div>
+                    <div class="info-column">
+                        <img id="details-author-icon" src="image/Paquete.png" class="details-author-icon">
+                        <div class="info-text">
+                            <h3 id="details-author-name">Nombre del Autor</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bubble 2: Description -->
+                <fieldset class="details-bubble">
+                    <legend>Información</legend>
+                    <p id="details-lib-description">Aquí va la descripción de la librería.</p>
+                </fieldset>
+
+                <!-- Bubble 3: Status & Permissions -->
+                <fieldset class="details-bubble">
+                    <legend>Estado y Permisos</legend>
+                    <div class="status-toggle-container">
+                        <label for="details-status-toggle">Estado:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="details-status-toggle" class="toggle-input">
+                            <label for="details-status-toggle" class="toggle-label"></label>
+                        </div>
+                        <span id="details-status-text">Activo</span>
+                    </div>
+                    <hr>
+                    <div id="details-permissions-content">
+                        <!-- Permissions checkboxes will be injected by JS -->
+                    </div>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="lib-details-save-btn" class="modern-btn">Guardar Cambios</button>
+            </div>
+        </div>
     </div>
     <div id="sprite-selector-modal" class="modal">
         <div class="modal-content large">
@@ -1032,106 +1096,38 @@ public star() {
 
     <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
-            <span id="palette-asset-name">Editor de Paleta de Tiles</span>
+            <span id="palette-asset-name">Paleta de Tiles</span>
             <div class="panel-header-controls">
-                 <button id="palette-save-btn" title="Guardar Paleta">💾 Guardar</button>
+                 <button id="palette-save-btn" title="Guardar Paleta">💾</button>
                  <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
             </div>
         </div>
-        <div class="panel-content no-padding">
+        <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="palette-toolbar">
                 <div class="toolbar-group">
-                    <label>Tileset:</label>
-                    <button id="palette-select-image-btn">Seleccionar Imagen...</button>
-                    <span id="palette-image-name">Ninguna</span>
-                </div>
-                <div class="toolbar-group">
-                    <label for="palette-tile-width">Ancho Tile:</label>
-                    <input type="number" id="palette-tile-width" value="32" min="1">
-                    <label for="palette-tile-height">Alto Tile:</label>
-                    <input type="number" id="palette-tile-height" value="32" min="1">
+                    <label>Paleta:</label>
+                    <span id="palette-file-name">Ninguna</span>
+                    <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                  <div class="toolbar-group">
-                    <label>Tile Seleccionado:</label>
+                    <label>Tile:</label>
                     <span id="palette-selected-tile-id">-</span>
                 </div>
             </div>
-            <div id="palette-view-container">
-                <canvas id="palette-grid-canvas"></canvas>
-                <img id="palette-tileset-image" src="" alt="Tileset">
+            <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
+                <div id="palette-tools-vertical" class="vertical-toolbar">
+                    <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
+                    <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                    <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                </div>
+                <div id="palette-view-container">
+                    <canvas id="palette-grid-canvas"></canvas>
+                    <img id="palette-tileset-image" src="" alt="Tileset" style="display: none;">
+                </div>
             </div>
         </div>
         <div id="palette-panel-overlay">
-            <p>Abre un asset de paleta (.cepalette) o crea uno nuevo para empezar.</p>
-        </div>
-        <div class="resize-handle" data-direction="n"></div>
-        <div class="resize-handle" data-direction="ne"></div>
-        <div class="resize-handle" data-direction="e"></div>
-        <div class="resize-handle" data-direction="se"></div>
-        <div class="resize-handle" data-direction="s"></div>
-        <div class="resize-handle" data-direction="sw"></div>
-        <div class="resize-handle" data-direction="w"></div>
-        <div class="resize-handle" data-direction="nw"></div>
-    </div>
-
-    <div id="sprite-editor-panel" class="editor-panel floating-panel hidden">
-        <div class="panel-header">
-            <span id="sprite-editor-asset-name">Editor de Sprites</span>
-            <div class="panel-header-controls">
-                 <button id="sprite-editor-save-btn" title="Guardar Datos de Sprites">💾 Guardar</button>
-                 <button class="close-panel-btn" data-panel="sprite-editor-panel">&times;</button>
-            </div>
-        </div>
-        <div class="panel-content no-padding">
-            <div id="sprite-editor-toolbar">
-                <div class="toolbar-group">
-                    <label>Spritesheet:</label>
-                    <button id="sprite-editor-select-image-btn">Seleccionar Imagen...</button>
-                    <span id="sprite-editor-image-name">Ninguna</span>
-                </div>
-                <div class="toolbar-group">
-                    <button id="sprite-editor-add-slice-btn">Añadir Recorte</button>
-                    <button id="sprite-editor-auto-slice-btn">Recorte Automático</button>
-                </div>
-            </div>
-            <div id="sprite-editor-main-view">
-                <div id="sprite-editor-canvas-container">
-                    <canvas id="sprite-editor-canvas"></canvas>
-                </div>
-                <div id="sprite-editor-properties-container">
-                    <div id="sprite-list-view">
-                        <h4>Sprites</h4>
-                        <div id="sprite-list" class="list-content"></div>
-                    </div>
-                    <div id="sprite-properties-view" class="hidden">
-                        <h4>Propiedades del Sprite</h4>
-                        <div class="property-field">
-                            <label for="sprite-prop-name">Nombre</label>
-                            <input type="text" id="sprite-prop-name">
-                        </div>
-                        <div class="property-field">
-                            <label>Rect (X, Y, W, H)</label>
-                            <div class="multi-input">
-                                <input type="number" id="sprite-prop-rect-x">
-                                <input type="number" id="sprite-prop-rect-y">
-                                <input type="number" id="sprite-prop-rect-w">
-                                <input type="number" id="sprite-prop-rect-h">
-                            </div>
-                        </div>
-                         <div class="property-field">
-                            <label>Pivote (X, Y)</label>
-                             <div class="multi-input">
-                                <input type="number" id="sprite-prop-pivot-x" step="0.01" min="0" max="1">
-                                <input type="number" id="sprite-prop-pivot-y" step="0.01" min="0" max="1">
-                            </div>
-                        </div>
-                        <button id="sprite-editor-delete-slice-btn" class="danger-btn">Eliminar Sprite</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="sprite-editor-panel-overlay">
-            <p>Abre una imagen (.png, .jpg) para empezar a recortar sprites.</p>
+            <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>
@@ -1146,5 +1142,109 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="js/editor.js?v=1.0"></script>
+
+    <div id="sprite-slicer-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+        <div class="panel-header">
+            <span>Editor de Sprites</span>
+            <div class="panel-header-controls">
+                <button id="slicer-load-image-btn" class="panel-tool-btn">Cargar Imagen</button>
+                <button id="slicer-apply-btn" class="panel-tool-btn primary-btn">Aplicar</button>
+                <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="sprite-slicer-overlay" class="panel-overlay-message">
+                <p>Carga una imagen para empezar a editar sprites.</p>
+                <p>Puedes hacerlo desde el botón "Cargar Imagen" o abriendo un asset de imagen desde el Inspector.</p>
+            </div>
+            <div class="slicer-main-content hidden">
+                <div class="slicer-preview">
+                    <canvas id="slicer-canvas"></canvas>
+                </div>
+                <div class="slicer-options">
+                    <fieldset class="inspector-section">
+                        <legend>Slice</legend>
+                        <div class="inspector-row">
+                            <label for="slice-type">Type</label>
+                            <select id="slice-type">
+                                <option value="Automatic">Automatic</option>
+                                <option value="Grid by Cell Size">Grid by Cell Size</option>
+                                <option value="Grid by Cell Count">Grid by Cell Count</option>
+                            </select>
+                        </div>
+                        <div id="slice-grid-cell-size-options">
+                             <div class="inspector-row">
+                                <label for="slice-pixel-size-x">Pixel Size</label>
+                                <div class="multi-input">
+                                    <input type="number" id="slice-pixel-size-x" value="64">
+                                    <input type="number" id="slice-pixel-size-y" value="64">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="slice-grid-cell-count-options" class="hidden">
+                            <div class="inspector-row">
+                                <label for="slice-column-count">Column & Row</label>
+                                <div class="multi-input">
+                                    <input type="number" id="slice-column-count" value="1">
+                                    <input type="number" id="slice-row-count" value="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="slice-offset-x">Offset</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-offset-x" value="0">
+                                <input type="number" id="slice-offset-y" value="0">
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="slice-padding-x">Padding</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-padding-x" value="0">
+                                <input type="number" id="slice-padding-y" value="0">
+                            </div>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="slice-keep-empty">
+                            <label for="slice-keep-empty">Keep Empty Rects</label>
+                        </div>
+                        <hr>
+                        <div class="inspector-row">
+                            <label for="slice-pivot">Pivot</label>
+                            <select id="slice-pivot">
+                                <option value="Center">Center</option>
+                                <option value="Top Left">Top Left</option>
+                                <option value="Top">Top</option>
+                                <option value="Top Right">Top Right</option>
+                                <option value="Left">Left</option>
+                                <option value="Right">Right</option>
+                                <option value="Bottom Left">Bottom Left</option>
+                                <option value="Bottom">Bottom</option>
+                                <option value="Bottom Right">Bottom Right</option>
+                                <option value="Custom">Custom</option>
+                            </select>
+                        </div>
+                         <div class="inspector-row hidden" id="slice-custom-pivot-container">
+                            <label for="slice-custom-pivot-x">Custom Pivot</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-custom-pivot-x" value="0.5" step="0.01">
+                                <input type="number" id="slice-custom-pivot-y" value="0.5" step="0.01">
+                            </div>
+                        </div>
+                         <hr>
+                        <button id="slice-btn" class="primary-btn" style="width:100%">Slice</button>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
 </body>
 </html>

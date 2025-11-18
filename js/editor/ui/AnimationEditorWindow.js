@@ -61,7 +61,7 @@ function getDrawingBounds(canvas) {
 
 export function addFrameFromCanvas() {
     if (!currentAnimationAsset) {
-        alert("No hay ningún asset de animación cargado.");
+        window.Dialogs.showNotification('Error', 'No hay ningún asset de animación cargado.');
         return;
     }
 
@@ -92,7 +92,7 @@ export function addFrameFromCanvas() {
         currentFrameIndex = currentAnimationAsset.animations[0].frames.length - 1;
         populateTimeline();
     } else {
-        alert("El asset de animación no tiene un estado de animación válido.");
+        window.Dialogs.showNotification('Error', 'El asset de animación no tiene un estado de animación válido.');
         return;
     }
     drawOnionSkin();
@@ -119,7 +119,7 @@ export function populateTimeline() {
 
 export async function saveAnimationAsset() {
     if (!currentAnimationAsset || !currentAnimationFileHandle) {
-        alert("No hay asset de animación cargado para guardar.");
+        window.Dialogs.showNotification('Error', 'No hay asset de animación cargado para guardar.');
         return;
     }
     try {
@@ -127,10 +127,10 @@ export async function saveAnimationAsset() {
         const content = JSON.stringify(currentAnimationAsset, null, 2);
         await writable.write(content);
         await writable.close();
-        console.log(`Asset '${currentAnimationFileHandle.name}' guardado.`);
+        window.Dialogs.showNotification('Éxito', `Asset '${currentAnimationFileHandle.name}' guardado.`);
     } catch (error) {
         console.error("Error al guardar el asset de animación:", error);
-        alert("No se pudo guardar el archivo.");
+        window.Dialogs.showNotification('Error', 'No se pudo guardar el archivo.');
     }
 }
 
@@ -365,7 +365,7 @@ function drawOnionSkin() {
 
     dom.deleteFrameBtn.addEventListener('click', () => {
         if (currentFrameIndex === -1) {
-            alert("Por favor, selecciona un fotograma para borrar.");
+            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un fotograma para borrar.');
             return;
         }
 

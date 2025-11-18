@@ -1,5 +1,6 @@
 import * as Components from '../../engine/Components.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import * as SpriteSlicer from './SpriteSlicerWindow.js';
 
 // --- Module State ---
 let dom;
@@ -12,6 +13,7 @@ let saveAssetMetaCallback;
 let extractFramesFromSheetCallback;
 let updateSceneCallback;
 let updateAssetBrowserCallback;
+let createAssetCallback;
 let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 
@@ -41,6 +43,7 @@ export function initialize(dependencies) {
     extractFramesFromSheetCallback = dependencies.extractFramesFromSheetCallback;
     updateSceneCallback = dependencies.updateSceneCallback;
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
+    createAssetCallback = dependencies.createAssetCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
@@ -75,8 +78,29 @@ function handleInspectorInput(e) {
     current[props[props.length - 1]] = value;
 }
 
-function handleInspectorChange(e) {
+async function handleInspectorChange(e) {
     const selectedMateria = getSelectedMateria();
+    const selectedAsset = getSelectedAsset();
+
+    // --- Asset Inspector Logic ---
+    if (selectedAsset) {
+        if (e.target.matches('#texture-type')) {
+            const isSprite = e.target.value === 'Sprite (2D and UI)';
+            const spriteSettings = dom.inspectorContent.querySelector('#sprite-settings-container');
+            const animSettings = dom.inspectorContent.querySelector('#animation-sheet-settings-container');
+            if (spriteSettings) spriteSettings.classList.toggle('hidden', !isSprite);
+            if (animSettings) animSettings.classList.toggle('hidden', isSprite);
+            return;
+        }
+        if (e.target.matches('#sprite-mode')) {
+            const showButton = e.target.value === 'Multiple';
+            const btnContainer = dom.inspectorContent.querySelector('#sprite-editor-btn-container');
+            if (btnContainer) btnContainer.classList.toggle('hidden', !showButton);
+            return;
+        }
+    }
+
+    // --- Materia Inspector Logic ---
     if (!selectedMateria) return;
 
     let needsUpdate = false;
@@ -87,7 +111,6 @@ function handleInspectorChange(e) {
         needsUpdate = true;
     } else if (e.target.matches('#materia-name-input')) {
          selectedMateria.name = e.target.value;
-         // A dedicated callback to update hierarchy would be ideal
          updateSceneCallback();
          needsUpdate = true;
     } else if (e.target.matches('#materia-layer-select')) {
@@ -98,7 +121,6 @@ function handleInspectorChange(e) {
         needsUpdate = true;
     }
 
-    // Handle component property changes that require a re-render of the inspector
     if (e.target.matches('.inspector-re-render')) {
         const componentName = e.target.dataset.component;
         const propPath = e.target.dataset.prop;
@@ -161,7 +183,7 @@ function handleInspectorClick(e) {
                     }
                 }
             } else {
-                alert(`Asset incorrecto. Se esperaba un archivo ${expectedType}.`);
+                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedType}.`);
             }
         };
     }
@@ -201,7 +223,7 @@ function handleInspectorClick(e) {
                 tilemap.removeLayer(tilemap.activeLayerIndex);
                 updateInspector();
             } else {
-                alert("No se puede eliminar la última capa.");
+                window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
             }
         }
     }
@@ -811,27 +833,140 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
                 const metaFile = await metaFileHandle.getFile();
                 metaData = JSON.parse(await metaFile.text());
-            } catch (e) { /* Meta file doesn't exist, it will be created on first change. */ }
+            } catch (e) { /* Meta file doesn't exist, use defaults. */ }
 
-            metaData.importType = metaData.importType || 'Sprite (2D/UI)';
-            metaData.grid = metaData.grid || { columns: 1, rows: 1 };
+            // Set default values for new properties
+            metaData.textureType = metaData.textureType || 'Sprite (2D and UI)';
+            metaData.spriteMode = metaData.spriteMode || 'Single';
+            metaData.pixelsPerUnit = metaData.pixelsPerUnit || 100;
+            metaData.meshType = metaData.meshType || 'Tight';
+            metaData.tag = metaData.tag || '';
+            metaData.filterMode = metaData.filterMode || 'Point';
+            metaData.wrapMode = metaData.wrapMode || 'Clamp';
+            metaData.maxSize = metaData.maxSize || 2048;
+            metaData.compression = metaData.compression || 'Normal';
+            metaData.animSpeed = metaData.animSpeed || 10;
+            metaData.animColumns = metaData.animColumns || 1;
+            metaData.animRows = metaData.animRows || 1;
 
             const settingsContainer = document.createElement('div');
             settingsContainer.className = 'asset-settings';
             settingsContainer.innerHTML = `
-                <label for="import-type">Tipo de Importación</label>
-                <select id="import-type">
-                    <option value="Sprite (2D/UI)" ${metaData.importType === 'Sprite (2D/UI)' ? 'selected' : ''}>Sprite (2D/UI)</option>
-                    <option value="Animation Sheet" ${metaData.importType === 'Animation Sheet' ? 'selected' : ''}>Hoja de Animación</option>
-                </select>
-                <div id="animation-sheet-settings" class="sub-settings ${metaData.importType === 'Animation Sheet' ? '' : 'hidden'}">
-                    <hr>
-                    <h4>Configuración de Hoja de Sprites</h4>
-                    <div class="prop-row"><label for="sprite-columns">Columnas</label><input type="number" id="sprite-columns" min="1" value="${metaData.grid.columns}"></div>
-                    <div class="prop-row"><label for="sprite-rows">Filas</label><input type="number" id="sprite-rows" min="1" value="${metaData.grid.rows}"></div>
-                    <button id="extract-frames-btn" style="width: 100%; margin-top: 10px;">Extraer Fotogramas</button>
+                <div class="inspector-section">
+                    <label for="texture-type">Texture Type</label>
+                    <select id="texture-type" class="inspector-re-render-asset">
+                        <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
+                        <option value="Animation Sheet" ${metaData.textureType === 'Animation Sheet' ? 'selected' : ''}>Animation Sheet</option>
+                    </select>
                 </div>
-                <hr>
+
+                <div id="sprite-settings-container" class="${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}">
+                    <fieldset class="inspector-section">
+                        <legend>Sprite (2D and UI)</legend>
+
+                        <div class="inspector-row">
+                            <label for="sprite-mode">Sprite Mode</label>
+                            <select id="sprite-mode" class="inspector-re-render-asset">
+                                <option value="Single" ${metaData.spriteMode === 'Single' ? 'selected' : ''}>Single</option>
+                                <option value="Multiple" ${metaData.spriteMode === 'Multiple' ? 'selected' : ''}>Multiple</option>
+                            </select>
+                        </div>
+
+                        <div class="inspector-row">
+                            <label for="pixels-per-unit">Pixels Per Unit</label>
+                            <input type="number" id="pixels-per-unit" value="${metaData.pixelsPerUnit}">
+                        </div>
+
+                        <div class="inspector-row">
+                            <label for="mesh-type">Mesh Type</label>
+                            <select id="mesh-type">
+                                <option value="Full Rect" ${metaData.meshType === 'Full Rect' ? 'selected' : ''}>Full Rect</option>
+                                <option value="Tight" ${metaData.meshType === 'Tight' ? 'selected' : ''}>Tight</option>
+                            </select>
+                        </div>
+
+                        <div class="inspector-row">
+                            <label for="texture-tag">Tag</label>
+                            <input type="text" id="texture-tag" value="${metaData.tag}" placeholder="Untagged">
+                        </div>
+
+                        <hr>
+
+                        <div id="sprite-editor-btn-container" class="${metaData.spriteMode !== 'Multiple' ? 'hidden' : ''}">
+                             <button id="sprite-editor-btn" class="primary-btn" style="width: 100%;">Sprite Editor</button>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend>Advanced</legend>
+                        <div class="inspector-row">
+                            <label for="filter-mode">Filter Mode</label>
+                            <select id="filter-mode">
+                                <option value="Point" ${metaData.filterMode === 'Point' ? 'selected' : ''}>Point (no filter)</option>
+                                <option value="Bilinear" ${metaData.filterMode === 'Bilinear' ? 'selected' : ''}>Bilinear</option>
+                                <option value="Trilinear" ${metaData.filterMode === 'Trilinear' ? 'selected' : ''}>Trilinear</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="wrap-mode">Wrap Mode</label>
+                            <select id="wrap-mode">
+                                <option value="Repeat" ${metaData.wrapMode === 'Repeat' ? 'selected' : ''}>Repeat</option>
+                                <option value="Clamp" ${metaData.wrapMode === 'Clamp' ? 'selected' : ''}>Clamp</option>
+                            </select>
+                        </div>
+                         <hr>
+                        <div class="inspector-row">
+                            <label for="max-size">Max Size</label>
+                            <select id="max-size">
+                                <option value="32" ${metaData.maxSize === 32 ? 'selected' : ''}>32</option>
+                                <option value="64" ${metaData.maxSize === 64 ? 'selected' : ''}>64</option>
+                                <option value="128" ${metaData.maxSize === 128 ? 'selected' : ''}>128</option>
+                                <option value="256" ${metaData.maxSize === 256 ? 'selected' : ''}>256</option>
+                                <option value="512" ${metaData.maxSize === 512 ? 'selected' : ''}>512</option>
+                                <option value="1024" ${metaData.maxSize === 1024 ? 'selected' : ''}>1024</option>
+                                <option value="2048" ${metaData.maxSize === 2048 ? 'selected' : ''}>2048</option>
+                                <option value="4096" ${metaData.maxSize === 4096 ? 'selected' : ''}>4096</option>
+                                <option value="8192" ${metaData.maxSize === 8192 ? 'selected' : ''}>8192</option>
+                            </select>
+                        </div>
+                         <div class="inspector-row">
+                            <label for="compression-quality">Compression</label>
+                            <select id="compression-quality">
+                                <option value="None" ${metaData.compression === 'None' ? 'selected' : ''}>None</option>
+                                <option value="Low" ${metaData.compression === 'Low' ? 'selected' : ''}>Low Quality</option>
+                                <option value="Normal" ${metaData.compression === 'Normal' ? 'selected' : ''}>Normal Quality</option>
+                                <option value="High" ${metaData.compression === 'High' ? 'selected' : ''}>High Quality</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div id="animation-sheet-settings-container" class="${metaData.textureType !== 'Animation Sheet' ? 'hidden' : ''}">
+                    <fieldset class="inspector-section bubble-style">
+                        <legend>Animation Preview</legend>
+                        <div class="anim-preview-bubble">
+                            <canvas id="anim-preview-canvas" width="128" height="128"></canvas>
+                            <div class="anim-preview-controls">
+                                <button id="anim-preview-play">▶️</button>
+                                <button id="anim-preview-stop">⏹️</button>
+                                <input type="number" id="anim-preview-speed" value="${metaData.animSpeed || 10}" min="1" title="FPS">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="inspector-section">
+                        <legend>Slicing</legend>
+                        <div class="inspector-row">
+                            <label for="anim-columns">Columns</label>
+                            <input type="number" id="anim-columns" value="${metaData.animColumns || 1}" min="1">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="anim-rows">Rows</label>
+                            <input type="number" id="anim-rows" value="${metaData.animRows || 1}" min="1">
+                        </div>
+                         <button id="create-anim-asset-btn" class="primary-btn" style="width: 100%; margin-top: 10px;">Crear Asset de Animación (.cea)</button>
+                    </fieldset>
+                </div>
+
                 <button id="save-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;">Aplicar</button>
                 <hr>
                 <div class="preview-container"><img id="inspector-preview-img" src="" alt="Preview"></div>
@@ -839,32 +974,167 @@ async function updateInspectorForAsset(assetName, assetPath) {
             dom.inspectorContent.appendChild(settingsContainer);
 
             // --- Event Listeners for this specific inspector ---
-            document.getElementById('import-type').addEventListener('change', (e) => {
-                document.getElementById('animation-sheet-settings').classList.toggle('hidden', e.target.value !== 'Animation Sheet');
-            });
+            // The main 'change' handler (handleInspectorChange) will now manage this via event delegation.
+
+            const spriteEditorBtn = document.getElementById('sprite-editor-btn');
+            if (spriteEditorBtn) {
+                spriteEditorBtn.addEventListener('click', () => {
+                    const dirHandle = currentDirectoryHandle();
+                    if (dirHandle) {
+                        dirHandle.getFileHandle(assetName).then(fileHandle => {
+                            SpriteSlicer.open(fileHandle, dirHandle, saveAssetMetaCallback);
+                        });
+                    }
+                });
+            }
 
             document.getElementById('save-meta-btn').addEventListener('click', async () => {
-                metaData.importType = document.getElementById('import-type').value;
-                if (metaData.importType === 'Animation Sheet') {
-                    metaData.grid.columns = parseInt(document.getElementById('sprite-columns').value, 10) || 1;
-                    metaData.grid.rows = parseInt(document.getElementById('sprite-rows').value, 10) || 1;
+                let currentMetaData = {};
+                try {
+                    const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
+                    const metaFile = await metaFileHandle.getFile();
+                    currentMetaData = JSON.parse(await metaFile.text());
+                } catch (e) { /* no-op, will create a new one */ }
+
+                // Collect all values from the UI
+                currentMetaData.textureType = document.getElementById('texture-type').value;
+
+                if (currentMetaData.textureType === 'Sprite (2D and UI)') {
+                    currentMetaData.spriteMode = document.getElementById('sprite-mode').value;
+                    currentMetaData.pixelsPerUnit = parseFloat(document.getElementById('pixels-per-unit').value) || 100;
+                    currentMetaData.meshType = document.getElementById('mesh-type').value;
+                    currentMetaData.tag = document.getElementById('texture-tag').value;
+                    currentMetaData.filterMode = document.getElementById('filter-mode').value;
+                    currentMetaData.wrapMode = document.getElementById('wrap-mode').value;
+                    currentMetaData.maxSize = parseInt(document.getElementById('max-size').value, 10);
+                    currentMetaData.compression = document.getElementById('compression-quality').value;
+                } else {
+                    currentMetaData.animSpeed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
+                    currentMetaData.animColumns = parseInt(document.getElementById('anim-columns').value, 10) || 1;
+                    currentMetaData.animRows = parseInt(document.getElementById('anim-rows').value, 10) || 1;
                 }
-                const dirHandle = currentDirectoryHandle();
-                await saveAssetMetaCallback(assetName, metaData, dirHandle);
-                alert("Metadatos guardados.");
+
+                await saveAssetMetaCallback(assetName, currentMetaData, dirHandle);
+                window.Dialogs.showNotification('Éxito', 'Metadatos del asset guardados.');
             });
 
-            document.getElementById('extract-frames-btn')?.addEventListener('click', async () => {
-                const animName = prompt("Nombre para el nuevo Asset de Animación:", assetName.split('.')[0]);
-                if (!animName) return;
-                metaData.grid.columns = parseInt(document.getElementById('sprite-columns').value, 10) || 1;
-                metaData.grid.rows = parseInt(document.getElementById('sprite-rows').value, 10) || 1;
-                const dirHandle = currentDirectoryHandle();
-                await extractFramesFromSheetCallback(assetPath, metaData, animName, dirHandle);
-                if (updateAssetBrowserCallback) {
-                    await updateAssetBrowserCallback();
-                }
-            });
+            // --- Animation Preview Logic ---
+            if (metaData.textureType === 'Animation Sheet') {
+                const canvas = document.getElementById('anim-preview-canvas');
+                const playBtn = document.getElementById('anim-preview-play');
+                const stopBtn = document.getElementById('anim-preview-stop');
+                const speedInput = document.getElementById('anim-preview-speed');
+                const colsInput = document.getElementById('anim-columns');
+                const rowsInput = document.getElementById('anim-rows');
+                const ctx = canvas.getContext('2d');
+
+                let animState = { isPlaying: false, frame: 0, lastTime: 0, animId: null, image: new Image() };
+
+                const drawFrame = () => {
+                    const img = animState.image;
+                    if (!img.src || img.naturalWidth === 0) return;
+
+                    const cols = parseInt(colsInput.value, 10) || 1;
+                    const rows = parseInt(rowsInput.value, 10) || 1;
+                    const frameWidth = img.naturalWidth / cols;
+                    const frameHeight = img.naturalHeight / rows;
+                    const totalFrames = cols * rows;
+
+                    const currentCol = animState.frame % cols;
+                    const currentRow = Math.floor(animState.frame / cols);
+
+                    const sx = currentCol * frameWidth;
+                    const sy = currentRow * frameHeight;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Draw with aspect ratio correction
+                    const canvasAspect = canvas.width / canvas.height;
+                    const frameAspect = frameWidth / frameHeight;
+                    let drawWidth, drawHeight, dx, dy;
+
+                    if (canvasAspect > frameAspect) { // Canvas is wider
+                        drawHeight = canvas.height;
+                        drawWidth = drawHeight * frameAspect;
+                        dx = (canvas.width - drawWidth) / 2;
+                        dy = 0;
+                    } else { // Canvas is taller or same aspect
+                        drawWidth = canvas.width;
+                        drawHeight = drawWidth / frameAspect;
+                        dx = 0;
+                        dy = (canvas.height - drawHeight) / 2;
+                    }
+                    ctx.drawImage(img, sx, sy, frameWidth, frameHeight, dx, dy, drawWidth, drawHeight);
+                };
+
+                const loop = (timestamp) => {
+                    if (!animState.isPlaying) return;
+
+                    const speed = parseInt(speedInput.value, 10) || 10;
+                    const totalFrames = (parseInt(colsInput.value, 10) || 1) * (parseInt(rowsInput.value, 10) || 1);
+
+                    if (timestamp - animState.lastTime > (1000 / speed)) {
+                        animState.lastTime = timestamp;
+                        animState.frame = (animState.frame + 1) % totalFrames;
+                        drawFrame();
+                    }
+                    animState.animId = requestAnimationFrame(loop);
+                };
+
+                playBtn.addEventListener('click', () => {
+                    if (animState.isPlaying) return;
+                    animState.isPlaying = true;
+                    animState.lastTime = performance.now();
+                    animState.animId = requestAnimationFrame(loop);
+                });
+
+                stopBtn.addEventListener('click', () => {
+                    animState.isPlaying = false;
+                    cancelAnimationFrame(animState.animId);
+                    animState.frame = 0;
+                    drawFrame();
+                });
+
+                getURLForAssetPath(assetPath, projectsDirHandle).then(url => {
+                    if(url) {
+                        animState.image.src = url;
+                        animState.image.onload = () => drawFrame();
+                    }
+                });
+
+                document.getElementById('create-anim-asset-btn').addEventListener('click', async () => {
+                    if (!createAssetCallback) {
+                        console.error("createAssetCallback no está disponible.");
+                        return;
+                    }
+
+                    const speed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
+                    const cols = parseInt(document.getElementById('anim-columns').value, 10) || 1;
+                    const rows = parseInt(document.getElementById('anim-rows').value, 10) || 1;
+
+                    const imageUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
+                    if (!imageUrl) {
+                        window.Dialogs.showNotification("Error", "No se pudo cargar la imagen para crear la animación.");
+                        return;
+                    }
+
+                    const frames = await extractFramesFromImage(imageUrl, cols, rows);
+
+                    const animAssetName = `${assetName.split('.')[0]}.cea`;
+                    const animData = {
+                        name: animAssetName,
+                        animations: [{
+                            name: "default",
+                            speed: speed,
+                            loop: true,
+                            frames: frames
+                        }]
+                    };
+
+                    await createAssetCallback(animAssetName, JSON.stringify(animData, null, 2), dirHandle);
+                    window.Dialogs.showNotification("Éxito", `Asset de animación "${animAssetName}" creado.`);
+                    if(updateAssetBrowserCallback) updateAssetBrowserCallback();
+                });
+            }
 
             const imgElement = document.getElementById('inspector-preview-img');
             if (imgElement && assetPath) {
@@ -989,6 +1259,66 @@ async function updateInspectorForAsset(assetName, assetPath) {
             }
             settingsContainer.innerHTML = html;
             dom.inspectorContent.appendChild(settingsContainer);
+        } else if (assetName.endsWith('.celib')) {
+            const libData = JSON.parse(content);
+            const preview = document.createElement('div');
+            preview.className = 'asset-preview'; // Reutilizamos el estilo
+
+            const iconSrc = libData.library_icon_base64 || 'image/Paquete.png';
+
+            preview.innerHTML = `
+                <img src="${iconSrc}" class="asset-preview-icon" style="width: 64px; height: 64px; border-radius: 5px;">
+                <h3 style="margin-top: 10px; margin-bottom: 5px;">${libData.name || 'Librería sin nombre'}</h3>
+                <p style="font-size: 0.9em; color: var(--color-text-secondary);">${libData.author || 'Autor desconocido'}</p>
+                <hr style="margin: 10px 0;">
+                <p>${libData.description || 'Sin descripción.'}</p>
+                <p style="margin-top: 15px; font-style: italic; font-size: 0.8em;">Doble-click en el Navegador para abrir en el panel de Librerías.</p>
+            `;
+            dom.inspectorContent.appendChild(preview);
+        } else if (assetName.endsWith('.sprt')) {
+            const spriteSheetData = JSON.parse(content);
+            const texturePath = spriteSheetData.texturePath;
+
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'sprt-preview-container';
+            previewContainer.innerHTML = `<p><strong>Textura:</strong> ${texturePath}</p>`;
+
+            const spriteGrid = document.createElement('div');
+            spriteGrid.className = 'sprt-preview-grid';
+
+            // Cargar la imagen de textura
+            const imageUrl = await getURLForAssetPath(`Assets/${texturePath}`, projectsDirHandle);
+            if (imageUrl) {
+                const img = new Image();
+                img.onload = () => {
+                    for (const spriteName in spriteSheetData.sprites) {
+                        const spriteData = spriteSheetData.sprites[spriteName];
+                        const rect = spriteData.rect;
+
+                        const spriteContainer = document.createElement('div');
+                        spriteContainer.className = 'sprt-preview-item';
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = rect.width;
+                        canvas.height = rect.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+
+                        const nameLabel = document.createElement('span');
+                        nameLabel.textContent = spriteName;
+
+                        spriteContainer.appendChild(canvas);
+                        spriteContainer.appendChild(nameLabel);
+                        spriteGrid.appendChild(spriteContainer);
+                    }
+                };
+                img.src = imageUrl;
+            } else {
+                spriteGrid.innerHTML = `<p class="error-message">No se pudo cargar la imagen de textura: ${texturePath}</p>`;
+            }
+
+            previewContainer.appendChild(spriteGrid);
+            dom.inspectorContent.appendChild(previewContainer);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
@@ -1108,4 +1438,34 @@ export async function showAddComponentModal() {
     } finally {
         isScanningForComponents = false;
     }
+}
+
+function extractFramesFromImage(imageUrl, cols, rows) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imageUrl;
+
+        img.onload = () => {
+            const frames = [];
+            const frameWidth = img.naturalWidth / cols;
+            const frameHeight = img.naturalHeight / rows;
+            const canvas = document.createElement('canvas');
+            canvas.width = frameWidth;
+            canvas.height = frameHeight;
+            const ctx = canvas.getContext('2d');
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    ctx.clearRect(0, 0, frameWidth, frameHeight);
+                    const sx = c * frameWidth;
+                    const sy = r * frameHeight;
+                    ctx.drawImage(img, sx, sy, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+                    frames.push(canvas.toDataURL('image/png'));
+                }
+            }
+            resolve(frames);
+        };
+        img.onerror = () => reject(new Error("No se pudo cargar la imagen para extraer los fotogramas."));
+    });
 }

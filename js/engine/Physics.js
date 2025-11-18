@@ -1,4 +1,4 @@
-import { Rigidbody, BoxCollider, Transform } from './Components.js';
+import { Rigidbody2D, BoxCollider2D, TilemapCollider2D, Transform } from './Components.js';
 
 export class PhysicsSystem {
     constructor(scene) {
@@ -9,7 +9,7 @@ export class PhysicsSystem {
     update(deltaTime) {
         // Update positions based on velocity
         for (const materia of this.scene.materias) {
-            const rigidbody = materia.getComponent(Rigidbody);
+            const rigidbody = materia.getComponent(Rigidbody2D);
             const transform = materia.getComponent(Transform);
 
             if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
@@ -20,16 +20,16 @@ export class PhysicsSystem {
         }
 
         // Collision detection
-        const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider));
+        const collidables = this.scene.materias.filter(m => m.getComponent(BoxCollider2D));
         for (let i = 0; i < collidables.length; i++) {
             for (let j = i + 1; j < collidables.length; j++) {
                 const materiaA = collidables[i];
                 const materiaB = collidables[j];
 
                 const transformA = materiaA.getComponent(Transform);
-                const colliderA = materiaA.getComponent(BoxCollider);
+                const colliderA = materiaA.getComponent(BoxCollider2D);
                 const transformB = materiaB.getComponent(Transform);
-                const colliderB = materiaB.getComponent(BoxCollider);
+                const colliderB = materiaB.getComponent(BoxCollider2D);
 
                 const leftA = transformA.x - colliderA.width / 2;
                 const rightA = transformA.x + colliderA.width / 2;

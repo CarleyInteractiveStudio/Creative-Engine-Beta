@@ -1,5 +1,6 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
+import { showNotification, showConfirmation } from './DialogWindow.js';
 
 // --- Module State ---
 let dom;
@@ -14,7 +15,8 @@ let onShowContextMenu;
 let onExportPackage;
 let createUiSystemFile;
 let updateAssetBrowserCallback;
-let refreshLibraryListCallback; // New callback
+let refreshLibraryListCallback;
+let openLibraryDetailsCallback; // New callback for double-click
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -27,7 +29,8 @@ export function initialize(dependencies) {
     exportContext = dependencies.exportContext; // Share the context object
     createUiSystemFile = dependencies.createUiSystemFile;
     updateAssetBrowserCallback = dependencies.updateAssetBrowser;
-    refreshLibraryListCallback = dependencies.refreshLibraryList; // Store the new callback
+    refreshLibraryListCallback = dependencies.refreshLibraryList;
+    openLibraryDetailsCallback = dependencies.openLibraryDetails; // Store the new callback
 
     // Setup event listeners
     dom.assetGridView.addEventListener('click', handleGridClick);
@@ -85,7 +88,7 @@ export async function updateAssetBrowser() {
 
         } catch (error) {
             console.error("Error al mover el archivo:", error);
-            alert("No se pudo mover el archivo.");
+            showNotification('Error', 'No se pudo mover el archivo.');
         }
     }
 
@@ -164,7 +167,27 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
             } else if (entry.name.endsWith('.celib')) {
-                iconContainer.textContent = '📚';
+                // Asynchronously read the library file to get the custom icon
+                (async () => {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        const libData = JSON.parse(content);
+                        if (libData.library_icon_base64) {
+                            imgIcon.src = libData.library_icon_base64;
+                            iconContainer.appendChild(imgIcon);
+                        } else {
+                            // Fallback icon if no custom one is provided
+                            imgIcon.src = 'image/Paquete.png';
+                            iconContainer.appendChild(imgIcon);
+                        }
+                    } catch (e) {
+                        console.error(`Error reading .celib file for icon: ${entry.name}`, e);
+                        // Fallback icon on error
+                        imgIcon.src = 'image/Paquete.png';
+                        iconContainer.appendChild(imgIcon);
+                    }
+                })();
             } else {
                 iconContainer.textContent = '📄';
             }
@@ -262,6 +285,17 @@ async function handleGridDblClick(e) {
     if (kind === 'directory') {
         currentDirectoryHandle = { handle: await currentDirectoryHandle.handle.getDirectoryHandle(name), path: path };
         updateAssetBrowserCallback();
+    } else if (name.endsWith('.celib')) {
+        if (openLibraryDetailsCallback) {
+            // Ensure the library panel is visible before opening details
+            const libraryPanel = document.getElementById('library-panel');
+            if (libraryPanel && libraryPanel.classList.contains('hidden')) {
+                libraryPanel.classList.remove('hidden');
+            }
+            openLibraryDetailsCallback(name);
+        } else {
+            console.warn("La funcionalidad de doble clic para librerías no está conectada.");
+        }
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle);
@@ -343,7 +377,7 @@ async function handleExternalFileDrop(e) {
                     librariesImported++;
                 } catch (err) {
                     console.error(`Error al importar la librería '${file.name}':`, err);
-                    alert(`No se pudo importar la librería '${file.name}'.`);
+                    showNotification('Error de Importación', `No se pudo importar la librería '${file.name}'.`);
                 }
             } else {
                 // Normal file handling
@@ -355,7 +389,7 @@ async function handleExternalFileDrop(e) {
                     filesImported++;
                 } catch (err) {
                     console.error(`Error al importar el archivo '${file.name}':`, err);
-                    alert(`No se pudo importar el archivo '${file.name}'.`);
+                    showNotification('Error de Importación', `No se pudo importar el archivo '${file.name}'.`);
                 }
             }
         }
@@ -392,7 +426,7 @@ async function handleContextMenuClick(e) {
                     await updateAssetBrowserCallback();
                 } catch (err) {
                     console.error("Error al crear la carpeta:", err);
-                    alert("No se pudo crear la carpeta.");
+                    showNotification('Error', 'No se pudo crear la carpeta.');
                 }
             }
             break;
@@ -410,7 +444,7 @@ async function handleContextMenuClick(e) {
                     await updateAssetBrowserCallback();
                 } catch (err) {
                     console.error("Error al crear el script:", err);
-                    alert("No se pudo crear el script.");
+                    showNotification('Error', 'No se pudo crear el script.');
                 }
             }
             break;
@@ -433,32 +467,36 @@ async function handleContextMenuClick(e) {
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
             if (selectedAsset) {
-                if (confirm(`¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`)) {
-                    try {
-                        // Delete the main asset
-                        await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
-                        console.log(`'${selectedAsset.name}' borrado.`);
+                showConfirmation(
+                    'Confirmar Borrado',
+                    `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
+                    async () => {
+                        try {
+                            // Delete the main asset
+                            await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
+                            console.log(`'${selectedAsset.name}' borrado.`);
 
-                        // Also try to delete a corresponding .meta file, if one exists
-                        if (selectedAsset.kind === 'file') {
-                            const metaName = `${selectedAsset.name}.meta`;
-                            try {
-                                await currentDirectoryHandle.handle.removeEntry(metaName);
-                                console.log(`Metadatos '${metaName}' borrados.`);
-                            } catch (metaErr) {
-                                // This is not a critical error, the meta file might not exist.
-                                console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
+                            // Also try to delete a corresponding .meta file, if one exists
+                            if (selectedAsset.kind === 'file') {
+                                const metaName = `${selectedAsset.name}.meta`;
+                                try {
+                                    await currentDirectoryHandle.handle.removeEntry(metaName);
+                                    console.log(`Metadatos '${metaName}' borrados.`);
+                                } catch (metaErr) {
+                                    // This is not a critical error, the meta file might not exist.
+                                    console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
+                                }
                             }
-                        }
 
-                        await updateAssetBrowserCallback();
-                    } catch (err) {
-                        console.error(`Error al borrar '${selectedAsset.name}':`, err);
-                        alert(`No se pudo borrar el asset.`);
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error(`Error al borrar '${selectedAsset.name}':`, err);
+                            showNotification('Error', 'No se pudo borrar el asset.');
+                        }
                     }
-                }
+                );
             } else {
-                alert("Por favor, selecciona un archivo o carpeta para borrar.");
+                showNotification('Error', 'Por favor, selecciona un archivo o carpeta para borrar.');
             }
             break;
         }
@@ -470,7 +508,7 @@ async function handleContextMenuClick(e) {
                 if (newName && newName !== oldName) {
                     try {
                         if (selectedAsset.kind === 'directory') {
-                            alert("El renombrado de carpetas aún no está implementado.");
+                            showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
                             return;
                         }
                         const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
@@ -487,11 +525,11 @@ async function handleContextMenuClick(e) {
                         await updateAssetBrowserCallback();
                     } catch (err) {
                         console.error(`Error al renombrar '${oldName}':`, err);
-                        alert(`No se pudo renombrar el asset.`);
+                        showNotification('Error', 'No se pudo renombrar el asset.');
                     }
                 }
             } else {
-                alert("Por favor, selecciona un archivo para renombrar.");
+                showNotification('Error', 'Por favor, selecciona un archivo para renombrar.');
             }
             break;
         }
@@ -499,7 +537,7 @@ async function handleContextMenuClick(e) {
              if (selectedAsset && selectedAsset.kind === 'directory') {
                 onExportPackage(selectedAsset.name);
              } else {
-                alert("Por favor, selecciona una carpeta para exportar.");
+                showNotification('Error', 'Por favor, selecciona una carpeta para exportar.');
              }
             break;
         }

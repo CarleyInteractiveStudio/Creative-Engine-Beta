@@ -632,28 +632,36 @@ function drawTileCursor() {
     const transform = selectedMateria.getComponent(Components.Transform);
     if (!tilemap || !transform) return;
 
+    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
+    if (!grid) return; // No grid, no cursor
+
     const { ctx } = renderer;
-    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const { cellSize } = grid;
+    const { columns, rows } = tilemap;
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
+    // The grid's transform is the reference for positioning
+    const gridTransform = grid.materia.getComponent(Components.Transform);
+    if (!gridTransform) return;
+
     // Calculate mouse position relative to the tilemap's origin (top-left corner)
-    const mapWidth = columns * tileWidth;
-    const mapHeight = rows * tileHeight;
-    const mapTopLeftX = transform.x - mapWidth / 2;
-    const mapTopLeftY = transform.y - mapHeight / 2;
+    const mapWidth = columns * cellSize.x;
+    const mapHeight = rows * cellSize.y;
+    const mapTopLeftX = gridTransform.x - mapWidth / 2;
+    const mapTopLeftY = gridTransform.y - mapHeight / 2;
 
     const mouseInMapX = worldMouse.x - mapTopLeftX;
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
     // Calculate the column and row under the cursor
-    const col = Math.floor(mouseInMapX / tileWidth);
-    const row = Math.floor(mouseInMapY / tileHeight);
+    const col = Math.floor(mouseInMapX / cellSize.x);
+    const row = Math.floor(mouseInMapY / cellSize.y);
 
     // Check if the cursor is within the tilemap bounds
     if (col >= 0 && col < columns && row >= 0 && row < rows) {
-        const cursorX = mapTopLeftX + col * tileWidth;
-        const cursorY = mapTopLeftY + row * tileHeight;
+        const cursorX = mapTopLeftX + col * cellSize.x;
+        const cursorY = mapTopLeftY + row * cellSize.y;
 
         ctx.save();
         if (activeTool === 'tile-brush') {
@@ -664,8 +672,8 @@ function drawTileCursor() {
             ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
         }
         ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-        ctx.fillRect(cursorX, cursorY, tileWidth, tileHeight);
-        ctx.strokeRect(cursorX, cursorY, tileWidth, tileHeight);
+        ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+        ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
         ctx.restore();
     }
 }
@@ -688,6 +696,68 @@ export function drawOverlay() {
 
     // Draw tilemap colliders
     drawTilemapColliders();
+
+    // Draw grid for selected Tilemap
+    drawTilemapGrid();
+}
+
+function drawTilemapGrid() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    // Find the Grid component, either on the selected object or its parent
+    let grid = selectedMateria.getComponent(Components.Grid);
+    if (!grid && selectedMateria.parent) {
+        grid = selectedMateria.parent.getComponent(Components.Grid);
+    }
+    if (!grid) return;
+
+    // Find the Tilemap component to get dimensions
+    let tilemap = selectedMateria.getComponent(Components.Tilemap);
+    if (!tilemap) {
+        // If we selected the Grid, find the Tilemap in its children
+        const childWithTilemap = selectedMateria.children.find(c => c.getComponent(Components.Tilemap));
+        if (childWithTilemap) {
+            tilemap = childWithTilemap.getComponent(Components.Tilemap);
+        }
+    }
+    if (!tilemap) return; // Cannot draw grid without tilemap dimensions
+
+    // Find the transform of the Grid object
+    const gridMateria = grid.materia;
+    const transform = gridMateria.getComponent(Components.Transform);
+    if (!transform) return;
+
+    const { ctx, camera } = renderer;
+    const { cellSize } = grid;
+    const { columns, rows } = tilemap;
+
+    const mapWidth = columns * cellSize.x;
+    const mapHeight = rows * cellSize.y;
+    const mapTopLeftX = transform.x - mapWidth / 2;
+    const mapTopLeftY = transform.y - mapHeight / 2;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1 / camera.effectiveZoom;
+    ctx.beginPath();
+
+    // Draw vertical lines
+    for (let i = 0; i <= columns; i++) {
+        const x = mapTopLeftX + i * cellSize.x;
+        ctx.moveTo(x, mapTopLeftY);
+        ctx.lineTo(x, mapTopLeftY + mapHeight);
+    }
+
+    // Draw horizontal lines
+    for (let i = 0; i <= rows; i++) {
+        const y = mapTopLeftY + i * cellSize.y;
+        ctx.moveTo(mapTopLeftX, y);
+        ctx.lineTo(mapTopLeftX + mapWidth, y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
 }
 
 function drawTilemapColliders() {
@@ -722,25 +792,31 @@ function paintTile(event) {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    if (!tilemap) return;
 
-    const { tileWidth, tileHeight, columns, rows } = tilemap;
+    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
+    if (!grid) return;
+
+    const gridTransform = grid.materia.getComponent(Components.Transform);
+    if (!gridTransform) return;
+
+    const { cellSize } = grid;
+    const { columns, rows } = tilemap;
 
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const mapWidth = columns * tileWidth;
-    const mapHeight = rows * tileHeight;
-    const mapTopLeftX = transform.x - mapWidth / 2;
-    const mapTopLeftY = transform.y - mapHeight / 2;
+    const mapWidth = columns * cellSize.x;
+    const mapHeight = rows * cellSize.y;
+    const mapTopLeftX = gridTransform.x - mapWidth / 2;
+    const mapTopLeftY = gridTransform.y - mapHeight / 2;
 
     const mouseInMapX = worldMouse.x - mapTopLeftX;
     const mouseInMapY = worldMouse.y - mapTopLeftY;
 
-    const col = Math.floor(mouseInMapX / tileWidth);
-    const row = Math.floor(mouseInMapY / tileHeight);
+    const col = Math.floor(mouseInMapX / cellSize.x);
+    const row = Math.floor(mouseInMapY / cellSize.y);
 
     // Prevent re-painting the same tile in a single drag motion
     if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {

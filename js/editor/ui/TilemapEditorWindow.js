@@ -185,7 +185,7 @@ function selectTile(event) {
 
 async function onSave() {
     if (!currentMapHandle || !currentMapAsset) {
-        alert("No hay ningún mapa abierto para guardar.");
+        window.Dialogs.showNotification('Error', 'No hay ningún mapa abierto para guardar.');
         return;
     }
 
@@ -194,11 +194,10 @@ async function onSave() {
         const jsonString = JSON.stringify(currentMapAsset, null, 2);
         await writable.write(jsonString);
         await writable.close();
-        console.log(`Mapa '${currentMapHandle.name}' guardado con éxito.`);
-        alert("¡Mapa guardado!");
+        window.Dialogs.showNotification('Éxito', `Mapa '${currentMapHandle.name}' guardado.`);
     } catch (err) {
         console.error("Error al guardar el mapa:", err);
-        alert("No se pudo guardar el mapa.");
+        window.Dialogs.showNotification('Error', 'No se pudo guardar el mapa.');
     }
 }
 
@@ -211,7 +210,7 @@ async function loadTileset() {
 
         const relativePath = await projectsDirHandle.resolve(fileHandle);
         if (!relativePath) {
-            alert("El tileset debe estar dentro de la carpeta del proyecto.");
+            window.Dialogs.showNotification('Error', 'El tileset debe estar dentro de la carpeta del proyecto.');
             return;
         }
 
@@ -272,17 +271,21 @@ export function initialize(dependencies) {
     });
     dom.tilemapRemoveLayerBtn.addEventListener('click', () => {
         if (!currentMapAsset || currentMapAsset.layers.length <= 1) {
-            alert("No se puede eliminar la última capa.");
+            window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
             return;
         }
-        if (confirm(`¿Estás seguro de que quieres eliminar la capa '${currentMapAsset.layers[activeLayerIndex].name}'?`)) {
-            currentMapAsset.layers.splice(activeLayerIndex, 1);
-            if (activeLayerIndex >= currentMapAsset.layers.length) {
-                activeLayerIndex = currentMapAsset.layers.length - 1;
+        window.Dialogs.showConfirmation(
+            'Confirmar Eliminación',
+            `¿Estás seguro de que quieres eliminar la capa '${currentMapAsset.layers[activeLayerIndex].name}'?`,
+            () => {
+                currentMapAsset.layers.splice(activeLayerIndex, 1);
+                if (activeLayerIndex >= currentMapAsset.layers.length) {
+                    activeLayerIndex = currentMapAsset.layers.length - 1;
+                }
+                renderLayerList();
+                drawMap();
             }
-            renderLayerList();
-            drawMap();
-        }
+        );
     });
 
     dom.tilemapCanvas.addEventListener('mousedown', (e) => {

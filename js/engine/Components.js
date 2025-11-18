@@ -4,7 +4,19 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
-import { SpriteSheet } from '../sprite.js';
+import * as CES_Transpiler from '../editor/CES_Transpiler.js';
+import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+
+
+// --- Base Behavior for Scripts ---
+export class CreativeScriptBehavior {
+    constructor(materia) {
+        this.materia = materia;
+        this.transform = materia.getComponent(Transform);
+    }
+    star() { /* To be overridden by user scripts */ }
+    update(deltaTime) { /* To be overridden by user scripts */ }
+}
 
 // --- Component Class Definitions ---
 
@@ -50,44 +62,125 @@ export class Camera extends Leyes {
 }
 
 export class CreativeScript extends Leyes {
-    constructor(materia, scriptName) { super(materia); this.scriptName = scriptName; this.instance = null; this.publicVars = []; this.publicVarReferences = {}; }
-    parsePublicVars(code) { this.publicVars = []; const regex = /public\s+(\w+)\s+(\w+);/g; let match; while ((match = regex.exec(code)) !== null) { this.publicVars.push({ type: match[1], name: match[2] }); } }
-    async load(projectsDirHandle) { if (!this.scriptName) return; try { const projectName = new URLSearchParams(window.location.search).get('project'); const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName); let currentHandle = projectHandle; const parts = this.scriptName.split('/').filter(p => p); const fileName = parts.pop(); for (const part of parts) { currentHandle = await currentHandle.getDirectoryHandle(part); } const fileHandle = await currentHandle.getFileHandle(fileName); const file = await fileHandle.getFile(); const code = await file.text(); this.parsePublicVars(code); const scriptModule = new Function('materia', `${code}\nreturn { start, update };`)(this.materia); this.instance = { start: scriptModule.start || (() => {}), update: scriptModule.update || (() => {}), }; for (const key in this.publicVarReferences) { this.instance[key] = this.publicVarReferences[key]; } } catch (error) { console.error(`Error loading script '${this.scriptName}':`, error); } }
+    constructor(materia, scriptName) {
+        super(materia);
+        this.scriptName = scriptName;
+        this.instance = null;
+        this.isInitialized = false;
+    }
+
+    // Called once when the game starts, after initializeInstance
+    star() {
+        if (this.instance && typeof this.instance.star === 'function') {
+            this.instance.star();
+        }
+    }
+
+    // Called every frame
+    update(deltaTime) {
+        if (this.instance && typeof this.instance.update === 'function') {
+            this.instance.update(deltaTime);
+        }
+    }
+
+    // Called during scene load. Just notes the script name.
+    async load(projectsDirHandle) {
+        // Intentionally left simple. The real work is in initializeInstance.
+        return Promise.resolve();
+    }
+
+    // Called by startGame, just before the first star() call.
+    async initializeInstance() {
+        if (this.isInitialized || !this.scriptName) return;
+
+        try {
+            const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
+            if (!transpiledCode) {
+                throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
+            }
+
+            // The transpiled code is now a factory function: (CreativeScriptBehavior, RuntimeAPIManager) => class {...}
+            // We need to evaluate it and then call it with the dependencies.
+            const factory = (new Function(`return ${transpiledCode}`))();
+
+            // We need the actual CreativeScriptBehavior class and RuntimeAPIManager module.
+            const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
+            if (ScriptClass) {
+                this.instance = new ScriptClass(this.materia);
+                this.isInitialized = true;
+                console.log(`Script '${this.scriptName}' instanciado con éxito.`);
+            } else {
+                throw new Error(`El script '${this.scriptName}' no exporta una clase por defecto.`);
+            }
+        } catch (error) {
+            console.error(`Error al inicializar la instancia del script '${this.scriptName}':`, error);
+            this.isInitialized = false; // Mark as failed
+        }
+    }
+
     clone() {
-        const newScript = new CreativeScript(null, this.scriptName);
-        // Deep copy public var references
-        newScript.publicVarReferences = JSON.parse(JSON.stringify(this.publicVarReferences));
-        return newScript;
+        return new CreativeScript(null, this.scriptName);
     }
 }
 
-export class Rigidbody extends Leyes {
+export class Rigidbody2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.bodyType = 'dynamic'; // 'dynamic', 'static', 'kinematic'
+        this.bodyType = 'Dynamic'; // 'Dynamic', 'Kinematic', 'Static'
+        this.simulated = true;
+        this.physicsMaterial = null; // Reference to a PhysicsMaterial2D asset
+        this.useAutoMass = false;
         this.mass = 1.0;
+        this.linearDrag = 0.0;
+        this.angularDrag = 0.05;
+        this.gravityScale = 1.0;
+        this.collisionDetection = 'Discrete'; // 'Discrete', 'Continuous'
+        this.sleepingMode = 'StartAwake'; // 'StartAwake', 'StartAsleep', 'NeverSleep'
+        this.interpolate = 'None'; // 'None', 'Interpolate', 'Extrapolate'
+        this.constraints = {
+            freezePositionX: false,
+            freezePositionY: false,
+            freezeRotation: false
+        };
+        // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
     }
     clone() {
-        const newRigidbody = new Rigidbody(null);
-        newRigidbody.bodyType = this.bodyType;
-        newRigidbody.mass = this.mass;
-        newRigidbody.velocity = { ...this.velocity };
-        return newRigidbody;
+        const newRb = new Rigidbody2D(null);
+        newRb.bodyType = this.bodyType;
+        newRb.simulated = this.simulated;
+        newRb.physicsMaterial = this.physicsMaterial;
+        newRb.useAutoMass = this.useAutoMass;
+        newRb.mass = this.mass;
+        newRb.linearDrag = this.linearDrag;
+        newRb.angularDrag = this.angularDrag;
+        newRb.gravityScale = this.gravityScale;
+        newRb.collisionDetection = this.collisionDetection;
+        newRb.sleepingMode = this.sleepingMode;
+        newRb.interpolate = this.interpolate;
+        newRb.constraints = { ...this.constraints };
+        newRb.velocity = { ...this.velocity };
+        return newRb;
     }
 }
 
-export class BoxCollider extends Leyes {
+export class BoxCollider2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 1.0;
-        this.height = 1.0;
+        this.usedByComposite = false;
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.size = { x: 1.0, y: 1.0 };
+        this.edgeRadius = 0.0;
     }
     clone() {
-        const newBoxCollider = new BoxCollider(null);
-        newBoxCollider.width = this.width;
-        newBoxCollider.height = this.height;
-        return newBoxCollider;
+        const newCollider = new BoxCollider2D(null);
+        newCollider.usedByComposite = this.usedByComposite;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.size = { ...this.size };
+        newCollider.edgeRadius = this.edgeRadius;
+        return newCollider;
     }
 }
 
@@ -130,18 +223,18 @@ export class SpriteRenderer extends Leyes {
             this.sprite.src = imageUrl;
         });
 
-        // 2. Try to load the corresponding .json metadata file
-        const metaPath = this.source.replace(/\.(png|jpg|jpeg)$/, '.json');
+        // 2. Try to load the corresponding .meta metadata file
+        const metaPath = this.source + '.meta';
         try {
             const metaUrl = await getURLForAssetPath(metaPath, projectsDirHandle);
             if (metaUrl) {
                 const response = await fetch(metaUrl);
                 if (response.ok) {
-                    const jsonText = await response.text();
-                    this.spriteSheet = SpriteSheet.fromJson(jsonText);
+                    const metaData = await response.json();
+                    this.spriteSheet = metaData; // The .meta file now directly contains the sprite data
                     console.log(`Loaded sprite sheet data for: ${this.source}`);
                     // If no sprite is selected, default to the first one in the sheet
-                    if (!this.spriteName && this.spriteSheet && Object.keys(this.spriteSheet.sprites).length > 0) {
+                    if (!this.spriteName && this.spriteSheet && this.spriteSheet.sprites && Object.keys(this.spriteSheet.sprites).length > 0) {
                         this.spriteName = Object.keys(this.spriteSheet.sprites)[0];
                     }
                 }
@@ -440,11 +533,29 @@ export class SpriteLight2D extends Leyes {
     }
 }
 
+export class AudioSource extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = ''; // Path to the audio file
+        this.volume = 1.0;
+        this.loop = false;
+        this.playOnAwake = true;
+    }
+    clone() {
+        const newAudio = new AudioSource(null);
+        newAudio.source = this.source;
+        newAudio.volume = this.volume;
+        newAudio.loop = this.loop;
+        newAudio.playOnAwake = this.playOnAwake;
+        return newAudio;
+    }
+}
+
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
-registerComponent('Rigidbody', Rigidbody);
-registerComponent('BoxCollider', BoxCollider);
+registerComponent('Rigidbody2D', Rigidbody2D);
+registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
@@ -456,14 +567,13 @@ registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
+registerComponent('AudioSource', AudioSource);
 
 // --- Tilemap Components ---
 
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.tileWidth = 32;
-        this.tileHeight = 32;
         this.columns = 20;
         this.rows = 20;
         this.palettePath = ''; // Path to the .cepalette asset
@@ -545,6 +655,8 @@ export class TilemapRenderer extends Leyes {
         super(materia);
         this.palette = null; // Loaded palette asset
         this.tileSheet = null; // The Image object for the tiles
+        this.sortingLayer = 'Default';
+        this.orderInLayer = 0;
     }
 
     async loadPalette(projectsDirHandle) {
@@ -582,9 +694,11 @@ export class TilemapRenderer extends Leyes {
     }
 
     clone() {
-        // Renderer doesn't hold much state itself, it's mostly for logic.
+        const newRenderer = new TilemapRenderer(null);
+        newRenderer.sortingLayer = this.sortingLayer;
+        newRenderer.orderInLayer = this.orderInLayer;
         // The palette will be reloaded based on the Tilemap's path.
-        return new TilemapRenderer(null);
+        return newRenderer;
     }
 }
 
@@ -594,6 +708,10 @@ registerComponent('TilemapRenderer', TilemapRenderer);
 export class TilemapCollider2D extends Leyes {
     constructor(materia) {
         super(materia);
+        this.usedByComposite = false;
+        this.usedByEffector = false;
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
         this.sourceLayerIndex = 0; // Which layer to use for collision
         this.generatedColliders = []; // Array of {x, y, width, height} objects
     }
@@ -667,10 +785,59 @@ export class TilemapCollider2D extends Leyes {
 
     clone() {
         const newCollider = new TilemapCollider2D(null);
+        newCollider.usedByComposite = this.usedByComposite;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
         newCollider.sourceLayerIndex = this.sourceLayerIndex;
         // The colliders themselves are not copied; they should be regenerated.
         return newCollider;
     }
 }
 
+export class Grid extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.cellSize = { x: 32, y: 32 };
+        this.cellLayout = 'Rectangular'; // Future: Isometric, Hexagonal
+    }
+
+    clone() {
+        const newGrid = new Grid(null);
+        newGrid.cellSize = { ...this.cellSize };
+        newGrid.cellLayout = this.cellLayout;
+        return newGrid;
+    }
+}
+
+registerComponent('Grid', Grid);
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+
+export class CompositeCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.physicsMaterial = null;
+        this.isTrigger = false;
+        this.usedByEffector = false;
+        this.offset = { x: 0, y: 0 };
+        this.geometryType = 'Outlines'; // 'Outlines' or 'Polygons'
+        this.generationType = 'Synchronous'; // 'Synchronous' or 'Asynchronous'
+        this.vertexDistance = 0.005;
+        this.offsetDistance = 0.025; // Replaces Edge Radius in some contexts
+    }
+
+    clone() {
+        const newCollider = new CompositeCollider2D(null);
+        newCollider.physicsMaterial = this.physicsMaterial;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.offset = { ...this.offset };
+        newCollider.geometryType = this.geometryType;
+        newCollider.generationType = this.generationType;
+        newCollider.vertexDistance = this.vertexDistance;
+        newCollider.offsetDistance = this.offsetDistance;
+        return newCollider;
+    }
+}
+
+registerComponent('CompositeCollider2D', CompositeCollider2D);
