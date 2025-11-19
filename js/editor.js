@@ -416,6 +416,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isAccepted) {
                 const newItem = originalItem.cloneNode(true);
+
+                // Clean up the filename for display
+                const nameWithoutExtension = name.substring(0, name.lastIndexOf('.'));
+                const nameElement = newItem.querySelector('.name');
+                if (nameElement) {
+                    nameElement.textContent = nameWithoutExtension;
+                }
+
                 newItem.addEventListener('dblclick', async () => {
                     const dirHandle = getCurrentDirectoryHandle();
                     const fileHandle = await dirHandle.getFileHandle(name);

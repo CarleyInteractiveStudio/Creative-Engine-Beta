@@ -1948,8 +1948,21 @@ body {
 }
 
 #asset-selector-content {
-    height: 60vh;
-    overflow-y: auto;
+    height: auto; /* Let content define height */
+    padding: 15px;
+}
+
+#asset-selector-content .asset-grid-view {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 15px;
+    padding-bottom: 15px; /* Space for scrollbar */
+}
+
+#asset-selector-content .grid-item {
+    flex-shrink: 0; /* Prevent items from shrinking */
+    width: 100px; /* Fixed width for horizontal items */
 }
 
 .asset-settings {

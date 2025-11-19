@@ -1,6 +1,14 @@
 // --- Module for managing floating panels (drag and resize) ---
 
+let highestZIndex = 1500; // Start above the default floating-panel z-index
+
 function initializePanel(panel) {
+    // Bring panel to front on click
+    panel.addEventListener('mousedown', () => {
+        highestZIndex++;
+        panel.style.zIndex = highestZIndex;
+    });
+
     const header = panel.querySelector('.panel-header');
         let offsetX, offsetY, isDragging = false;
         let isResizing = false;
