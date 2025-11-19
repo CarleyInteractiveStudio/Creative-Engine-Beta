@@ -1145,6 +1145,13 @@ public star() {
             <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
         </div>
         <div class="panel-content">
+            <div id="asset-selector-toolbar">
+                <div id="asset-selector-view-modes">
+                    <button class="view-mode-btn active" data-mode="folders">Carpetas</button>
+                    <button class="view-mode-btn" data-mode="project">Proyecto</button>
+                </div>
+                <input type="search" id="asset-selector-search" placeholder="Buscar por nombre...">
+            </div>
             <div id="asset-selector-breadcrumbs"></div>
             <div id="asset-selector-grid-view" class="asset-grid-view-style">
                 <!-- Asset items will be populated by JS -->

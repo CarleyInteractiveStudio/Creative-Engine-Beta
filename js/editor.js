@@ -78,116 +78,166 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleEl = dom.assetSelectorTitle;
         const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
         const gridView = dom.assetSelectorGridView;
+        const searchInput = dom.assetSelectorSearch;
+        const viewModesContainer = dom.assetSelectorViewModes;
 
-        let currentDirHandleInSelector;
+        let currentDirHandle;
+        let currentPath;
+        let allProjectFiles = []; // Cache for "Project" view
+        let currentViewMode = 'folders'; // 'folders' or 'project'
 
-        async function populateSelector(dirHandle, path) {
-            gridView.innerHTML = '';
-            breadcrumbsEl.textContent = `Ruta: /${path}`;
-            currentDirHandleInSelector = dirHandle;
-
-            if (path !== 'Assets') {
-                const upItem = document.createElement('div');
-                upItem.className = 'grid-item';
-                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
-                upItem.addEventListener('dblclick', async () => {
-                    const parentPath = path.substring(0, path.lastIndexOf('/'));
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                    let parentHandle = projectHandle;
-                    const parts = parentPath.split('/');
-                    for(const part of parts) {
-                        if (part) parentHandle = await parentHandle.getDirectoryHandle(part);
-                    }
-
-                    populateSelector(parentHandle, parentPath);
-                });
-                gridView.appendChild(upItem);
-            }
-
-            const entries = [];
+        async function findAllFiles(dirHandle, path, fileList) {
             for await (const entry of dirHandle.values()) {
-                entries.push(entry);
-            }
-            // Sort entries to show folders first
-            entries.sort((a, b) => {
-                if (a.kind === 'directory' && b.kind !== 'directory') return -1;
-                if (a.kind !== 'directory' && b.kind === 'directory') return 1;
-                return a.name.localeCompare(b.name);
-            });
-
-            for (const entry of entries) {
-                if (entry.kind === 'directory') {
-                    const item = document.createElement('div');
-                    item.className = 'grid-item';
-                    item.dataset.name = entry.name;
-                    item.dataset.kind = 'directory';
-                    item.innerHTML = `<div class="icon">📁</div><div class="name">${entry.name}</div>`;
-                    item.addEventListener('dblclick', async () => {
-                        const newDirHandle = await dirHandle.getDirectoryHandle(entry.name);
-                        populateSelector(newDirHandle, `${path}/${entry.name}`);
-                    });
-                    gridView.appendChild(item);
-                } else if (entry.kind === 'file') {
-                    const lowerName = entry.name.toLowerCase();
-                    let matchesFilter = false;
-                    switch (filter) {
-                        case 'image':
-                            matchesFilter = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
-                            break;
-                        case 'audio':
-                            matchesFilter = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
-                            break;
-                        default:
-                            matchesFilter = true;
-                    }
-
-                    if (matchesFilter) {
-                        const item = document.createElement('div');
-                        item.className = 'grid-item';
-                        item.dataset.name = entry.name;
-                        item.dataset.kind = 'file';
-
-                        const iconContainer = document.createElement('div');
-                        iconContainer.className = 'icon';
-                        const imgIcon = document.createElement('img');
-                        imgIcon.className = 'icon-preview';
-
-                        getURLForAssetPath(`${path}/${entry.name}`, projectsDirHandle).then(url => {
-                            if (url) {
-                                imgIcon.src = url;
-                                iconContainer.appendChild(imgIcon);
-                            } else {
-                                iconContainer.textContent = '📄';
-                            }
-                        });
-
-                        const nameDiv = document.createElement('div');
-                        nameDiv.className = 'name';
-                        nameDiv.textContent = entry.name.substring(0, entry.name.lastIndexOf('.')) || entry.name;
-
-                        item.appendChild(iconContainer);
-                        item.appendChild(nameDiv);
-
-                        item.addEventListener('dblclick', async () => {
-                            const fileHandle = await currentDirHandleInSelector.getFileHandle(entry.name);
-                            callback(fileHandle, currentDirHandleInSelector);
-                            selectorPanel.classList.add('hidden');
-                        });
-                        gridView.appendChild(item);
-                    }
+                const entryPath = `${path}/${entry.name}`;
+                if (entry.kind === 'file') {
+                    fileList.push({ handle: entry, path: entryPath, dirHandle: dirHandle });
+                } else if (entry.kind === 'directory') {
+                    await findAllFiles(entry, entryPath, fileList);
                 }
             }
         }
 
+        function renderItems(items) {
+            gridView.innerHTML = '';
+            const searchTerm = searchInput.value.toLowerCase();
+
+            // "Go Up" button for folder view
+            if (currentViewMode === 'folders' && currentPath !== 'Assets') {
+                const upItem = document.createElement('div');
+                upItem.className = 'grid-item';
+                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
+                upItem.addEventListener('dblclick', async () => {
+                    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    let parentHandle = projectHandle;
+                    for (const part of parentPath.split('/')) {
+                        if (part) parentHandle = await parentHandle.getDirectoryHandle(part);
+                    }
+                    currentPath = parentPath;
+                    currentDirHandle = parentHandle;
+                    populateSelector();
+                });
+                gridView.appendChild(upItem);
+            }
+
+            const filteredItems = items.filter(item =>
+                item.name.toLowerCase().includes(searchTerm)
+            );
+
+            for (const item of filteredItems) {
+                const uiItem = document.createElement('div');
+                uiItem.className = 'grid-item';
+                uiItem.dataset.name = item.name;
+
+                if (item.kind === 'directory') {
+                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${item.name}</div>`;
+                    uiItem.addEventListener('dblclick', async () => {
+                        currentDirHandle = await currentDirHandle.getDirectoryHandle(item.name);
+                        currentPath = `${currentPath}/${item.name}`;
+                        populateSelector();
+                    });
+                } else { // It's a file
+                    const fullPath = (currentViewMode === 'project') ? item.path : `${currentPath}/${item.name}`;
+                    const displayDirHandle = (currentViewMode === 'project') ? item.dirHandle : currentDirHandle;
+
+                    const iconContainer = document.createElement('div');
+                    iconContainer.className = 'icon';
+                    const imgIcon = document.createElement('img');
+                    imgIcon.className = 'icon-preview';
+                    getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                        imgIcon.src = url || '📄';
+                        iconContainer.appendChild(imgIcon);
+                    });
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'name';
+                    nameDiv.textContent = item.name.substring(0, item.name.lastIndexOf('.')) || item.name;
+
+                    uiItem.appendChild(iconContainer);
+                    uiItem.appendChild(nameDiv);
+
+                    uiItem.addEventListener('dblclick', async () => {
+                        const fileHandle = (currentViewMode === 'project') ? item.handle : await displayDirHandle.getFileHandle(item.name);
+                        callback(fileHandle, displayDirHandle);
+                        selectorPanel.classList.add('hidden');
+                    });
+                }
+                gridView.appendChild(uiItem);
+            }
+        }
+
+        async function populateSelector() {
+            let itemsToRender = [];
+            if (currentViewMode === 'folders') {
+                breadcrumbsEl.textContent = `Ruta: /${currentPath}`;
+                breadcrumbsEl.style.display = 'block';
+
+                for await (const entry of currentDirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const lowerName = entry.name.toLowerCase();
+                        let matchesFilter = false;
+                        switch (filter) {
+                            case 'image': matchesFilter = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
+                            case 'audio': matchesFilter = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
+                            default: matchesFilter = true;
+                        }
+                        if (matchesFilter) itemsToRender.push(entry);
+                    } else {
+                        itemsToRender.push(entry);
+                    }
+                }
+                itemsToRender.sort((a, b) => (a.kind === b.kind) ? a.name.localeCompare(b.name) : (a.kind === 'directory' ? -1 : 1));
+            } else { // 'project' view
+                breadcrumbsEl.style.display = 'none';
+                itemsToRender = allProjectFiles
+                    .map(fileInfo => fileInfo.handle) // Extract just the handle for rendering
+                    .filter(handle => {
+                        const lowerName = handle.name.toLowerCase();
+                         switch (filter) {
+                            case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                            case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                            default: return true;
+                        }
+                    });
+            }
+            renderItems(itemsToRender);
+        }
+
+        // --- Event Listeners ---
+        searchInput.oninput = populateSelector;
+
+        viewModesContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.view-mode-btn')) {
+                const newMode = e.target.dataset.mode;
+                if (newMode === currentViewMode) return;
+
+                currentViewMode = newMode;
+                viewModesContainer.querySelectorAll('.view-mode-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                populateSelector();
+            }
+        });
+
+        // --- Initialization ---
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        populateSelector(assetsHandle, 'Assets');
+
+        currentDirHandle = assetsHandle;
+        currentPath = 'Assets';
+        allProjectFiles = [];
+        await findAllFiles(assetsHandle, 'Assets', allProjectFiles);
 
         titleEl.textContent = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
         selectorPanel.classList.remove('hidden');
+
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel'))
+            .reduce((maxZ, p) => Math.max(maxZ, parseInt(p.style.zIndex || '1500')), 1500);
+        selectorPanel.style.zIndex = highestZ + 1;
+
+        // Initial population
+        await populateSelector();
 
         const closeBtn = selectorPanel.querySelector('.close-panel-btn');
         const newCloseBtn = closeBtn.cloneNode(true);
@@ -1576,7 +1626,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop',
             // Asset Selector Bubble Elements
-            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view'
+            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
