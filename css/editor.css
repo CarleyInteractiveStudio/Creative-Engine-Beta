@@ -1050,6 +1050,36 @@ body {
     border-color: var(--accent-color);
 }
 
+/* --- Asset Selector Bubble --- */
+.bubble-style {
+    width: 600px;
+    height: 450px;
+    border-radius: 12px;
+}
+.bubble-style .panel-content {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+#asset-selector-breadcrumbs {
+    padding: 8px;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+.asset-grid-view-style {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 15px;
+    padding: 5px;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+}
+
 /* --- .sprt Asset Inspector Preview --- */
 .sprt-preview-container {
     padding: 10px;

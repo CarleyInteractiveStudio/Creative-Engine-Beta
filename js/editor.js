@@ -71,7 +71,131 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector;
+
+    openAssetSelector = async function(filter, callback) {
+        const selectorPanel = dom.assetSelectorBubble;
+        const titleEl = dom.assetSelectorTitle;
+        const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
+        const gridView = dom.assetSelectorGridView;
+
+        let currentDirHandleInSelector;
+
+        async function populateSelector(dirHandle, path) {
+            gridView.innerHTML = '';
+            breadcrumbsEl.textContent = `Ruta: /${path}`;
+            currentDirHandleInSelector = dirHandle;
+
+            if (path !== 'Assets') {
+                const upItem = document.createElement('div');
+                upItem.className = 'grid-item';
+                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
+                upItem.addEventListener('dblclick', async () => {
+                    const parentPath = path.substring(0, path.lastIndexOf('/'));
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                    let parentHandle = projectHandle;
+                    const parts = parentPath.split('/');
+                    for(const part of parts) {
+                        if (part) parentHandle = await parentHandle.getDirectoryHandle(part);
+                    }
+
+                    populateSelector(parentHandle, parentPath);
+                });
+                gridView.appendChild(upItem);
+            }
+
+            const entries = [];
+            for await (const entry of dirHandle.values()) {
+                entries.push(entry);
+            }
+            // Sort entries to show folders first
+            entries.sort((a, b) => {
+                if (a.kind === 'directory' && b.kind !== 'directory') return -1;
+                if (a.kind !== 'directory' && b.kind === 'directory') return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            for (const entry of entries) {
+                if (entry.kind === 'directory') {
+                    const item = document.createElement('div');
+                    item.className = 'grid-item';
+                    item.dataset.name = entry.name;
+                    item.dataset.kind = 'directory';
+                    item.innerHTML = `<div class="icon">📁</div><div class="name">${entry.name}</div>`;
+                    item.addEventListener('dblclick', async () => {
+                        const newDirHandle = await dirHandle.getDirectoryHandle(entry.name);
+                        populateSelector(newDirHandle, `${path}/${entry.name}`);
+                    });
+                    gridView.appendChild(item);
+                } else if (entry.kind === 'file') {
+                    const lowerName = entry.name.toLowerCase();
+                    let matchesFilter = false;
+                    switch (filter) {
+                        case 'image':
+                            matchesFilter = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                            break;
+                        case 'audio':
+                            matchesFilter = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                            break;
+                        default:
+                            matchesFilter = true;
+                    }
+
+                    if (matchesFilter) {
+                        const item = document.createElement('div');
+                        item.className = 'grid-item';
+                        item.dataset.name = entry.name;
+                        item.dataset.kind = 'file';
+
+                        const iconContainer = document.createElement('div');
+                        iconContainer.className = 'icon';
+                        const imgIcon = document.createElement('img');
+                        imgIcon.className = 'icon-preview';
+
+                        getURLForAssetPath(`${path}/${entry.name}`, projectsDirHandle).then(url => {
+                            if (url) {
+                                imgIcon.src = url;
+                                iconContainer.appendChild(imgIcon);
+                            } else {
+                                iconContainer.textContent = '📄';
+                            }
+                        });
+
+                        const nameDiv = document.createElement('div');
+                        nameDiv.className = 'name';
+                        nameDiv.textContent = entry.name.substring(0, entry.name.lastIndexOf('.')) || entry.name;
+
+                        item.appendChild(iconContainer);
+                        item.appendChild(nameDiv);
+
+                        item.addEventListener('dblclick', async () => {
+                            const fileHandle = await currentDirHandleInSelector.getFileHandle(entry.name);
+                            callback(fileHandle, currentDirHandleInSelector);
+                            selectorPanel.classList.add('hidden');
+                        });
+                        gridView.appendChild(item);
+                    }
+                }
+            }
+        }
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        populateSelector(assetsHandle, 'Assets');
+
+        titleEl.textContent = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+        selectorPanel.classList.remove('hidden');
+
+        const closeBtn = selectorPanel.querySelector('.close-panel-btn');
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.addEventListener('click', () => {
+            selectorPanel.classList.add('hidden');
+        });
+    };
 
     createAsset = async function(fileName, content, dirHandle) {
         try {
@@ -1450,7 +1574,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop'
+            'btn-play', 'btn-pause', 'btn-stop',
+            // Asset Selector Bubble Elements
+            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1781,7 +1907,11 @@ public star() {
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
-            SpriteSlicer.initialize(dom, getCurrentDirectoryHandle);
+            SpriteSlicer.initialize({
+                dom: dom,
+                openAssetSelectorCallback: openAssetSelector,
+                saveAssetMetaCallback: saveAssetMeta
+            });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
