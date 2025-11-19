@@ -1139,6 +1139,34 @@ public star() {
         <div class="resize-handle" data-direction="nw"></div>
     </div>
 
+    <div id="asset-selector-bubble" class="editor-panel floating-panel bubble-style hidden">
+        <div class="panel-header">
+            <span id="asset-selector-title">Seleccionar Asset</span>
+            <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
+        </div>
+        <div class="panel-content">
+            <div id="asset-selector-toolbar">
+                <div id="asset-selector-view-modes">
+                    <button class="view-mode-btn active" data-mode="folders">Carpetas</button>
+                    <button class="view-mode-btn" data-mode="project">Proyecto</button>
+                </div>
+                <input type="search" id="asset-selector-search" placeholder="Buscar por nombre...">
+            </div>
+            <div id="asset-selector-breadcrumbs"></div>
+            <div id="asset-selector-grid-view" class="asset-grid-view-style">
+                <!-- Asset items will be populated by JS -->
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="js/editor.js?v=1.0"></script>

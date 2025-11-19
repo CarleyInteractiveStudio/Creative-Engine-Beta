@@ -1050,6 +1050,82 @@ body {
     border-color: var(--accent-color);
 }
 
+/* --- Asset Selector Bubble --- */
+.bubble-style {
+    width: 600px;
+    height: 450px;
+    border-radius: 12px;
+}
+.bubble-style .panel-content {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Add gap between toolbar, breadcrumbs, and grid */
+}
+
+#asset-selector-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#asset-selector-view-modes {
+    display: flex;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+#asset-selector-view-modes .view-mode-btn {
+    padding: 5px 15px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#asset-selector-view-modes .view-mode-btn:hover {
+    background-color: var(--bg-tertiary);
+}
+
+#asset-selector-view-modes .view-mode-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+#asset-selector-search {
+    padding: 6px 10px;
+    width: 200px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 15px; /* Pill shape */
+}
+
+#asset-selector-breadcrumbs {
+    padding: 6px 8px; /* Slightly smaller padding */
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+.asset-grid-view-style {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 15px;
+    padding: 5px;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+}
+
 /* --- .sprt Asset Inspector Preview --- */
 .sprt-preview-container {
     padding: 10px;

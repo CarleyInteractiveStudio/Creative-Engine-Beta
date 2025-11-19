@@ -71,7 +71,184 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector;
+
+    openAssetSelector = async function(filter, callback) {
+        const selectorPanel = dom.assetSelectorBubble;
+        const titleEl = dom.assetSelectorTitle;
+        const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
+        const gridView = dom.assetSelectorGridView;
+        const searchInput = dom.assetSelectorSearch;
+        const viewModesContainer = dom.assetSelectorViewModes;
+
+        let currentDirHandle;
+        let currentPath;
+        let allProjectFiles = []; // Cache for "Project" view
+        let currentViewMode = 'folders'; // 'folders' or 'project'
+
+        async function findAllFiles(dirHandle, path, fileList) {
+            for await (const entry of dirHandle.values()) {
+                const entryPath = `${path}/${entry.name}`;
+                if (entry.kind === 'file') {
+                    fileList.push({ handle: entry, path: entryPath, dirHandle: dirHandle });
+                } else if (entry.kind === 'directory') {
+                    await findAllFiles(entry, entryPath, fileList);
+                }
+            }
+        }
+
+        function renderItems(items) {
+            gridView.innerHTML = '';
+            const searchTerm = searchInput.value.toLowerCase();
+
+            if (currentViewMode === 'folders' && currentPath !== 'Assets') {
+                const upItem = document.createElement('div');
+                upItem.className = 'grid-item';
+                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
+                upItem.addEventListener('dblclick', async () => {
+                    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    let parentHandle = projectHandle;
+                    for (const part of parentPath.split('/')) {
+                        if (part) parentHandle = await parentHandle.getDirectoryHandle(part);
+                    }
+                    currentPath = parentPath;
+                    currentDirHandle = parentHandle;
+                    populateSelector();
+                });
+                gridView.appendChild(upItem);
+            }
+
+            const filteredItems = items.filter(item => {
+                const name = (currentViewMode === 'project') ? item.handle.name : item.name;
+                return name.toLowerCase().includes(searchTerm);
+            });
+
+            for (const item of filteredItems) {
+                const isProjectView = currentViewMode === 'project';
+                const name = isProjectView ? item.handle.name : item.name;
+                const kind = isProjectView ? item.handle.kind : item.kind;
+
+                const uiItem = document.createElement('div');
+                uiItem.className = 'grid-item';
+                uiItem.dataset.name = name;
+
+                if (kind === 'directory') {
+                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${name}</div>`;
+                    uiItem.addEventListener('dblclick', async () => {
+                        currentDirHandle = await currentDirHandle.getDirectoryHandle(name);
+                        currentPath = `${currentPath}/${name}`;
+                        populateSelector();
+                    });
+                } else { // It's a file
+                    const fullPath = isProjectView ? item.path : `${currentPath}/${name}`;
+                    const displayDirHandle = isProjectView ? item.dirHandle : currentDirHandle;
+
+                    const iconContainer = document.createElement('div');
+                    iconContainer.className = 'icon';
+                    const imgIcon = document.createElement('img');
+                    imgIcon.className = 'icon-preview';
+                    getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                        imgIcon.src = url || '📄';
+                        iconContainer.appendChild(imgIcon);
+                    });
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'name';
+                    nameDiv.textContent = name.substring(0, name.lastIndexOf('.')) || name;
+
+                    uiItem.appendChild(iconContainer);
+                    uiItem.appendChild(nameDiv);
+
+                    uiItem.addEventListener('dblclick', async () => {
+                        const fileHandle = isProjectView ? item.handle : await displayDirHandle.getFileHandle(name);
+                        callback(fileHandle, displayDirHandle);
+                        selectorPanel.classList.add('hidden');
+                    });
+                }
+                gridView.appendChild(uiItem);
+            }
+        }
+
+        async function populateSelector() {
+            let itemsToRender = [];
+            if (currentViewMode === 'folders') {
+                breadcrumbsEl.textContent = `Ruta: /${currentPath}`;
+                breadcrumbsEl.style.display = 'block';
+
+                const entries = [];
+                for await (const entry of currentDirHandle.values()) {
+                    entries.push(entry);
+                }
+
+                itemsToRender = entries.filter(entry => {
+                    if (entry.kind === 'directory') return true;
+                    const lowerName = entry.name.toLowerCase();
+                    switch (filter) {
+                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                        default: return true;
+                    }
+                });
+
+                itemsToRender.sort((a, b) => (a.kind === b.kind) ? a.name.localeCompare(b.name) : (a.kind === 'directory' ? -1 : 1));
+            } else { // 'project' view
+                breadcrumbsEl.style.display = 'none';
+                itemsToRender = allProjectFiles.filter(fileInfo => {
+                    const lowerName = fileInfo.handle.name.toLowerCase();
+                    switch (filter) {
+                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                        default: return true;
+                    }
+                });
+            }
+            renderItems(itemsToRender);
+        }
+
+        // --- Event Listeners ---
+        searchInput.oninput = populateSelector;
+
+        viewModesContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.view-mode-btn')) {
+                const newMode = e.target.dataset.mode;
+                if (newMode === currentViewMode) return;
+
+                currentViewMode = newMode;
+                viewModesContainer.querySelectorAll('.view-mode-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                populateSelector();
+            }
+        });
+
+        // --- Initialization ---
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+        currentDirHandle = assetsHandle;
+        currentPath = 'Assets';
+        allProjectFiles = [];
+        await findAllFiles(assetsHandle, 'Assets', allProjectFiles);
+
+        titleEl.textContent = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+        selectorPanel.classList.remove('hidden');
+
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel'))
+            .reduce((maxZ, p) => Math.max(maxZ, parseInt(p.style.zIndex || '1500')), 1500);
+        selectorPanel.style.zIndex = highestZ + 1;
+
+        // Initial population
+        await populateSelector();
+
+        const closeBtn = selectorPanel.querySelector('.close-panel-btn');
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.addEventListener('click', () => {
+            selectorPanel.classList.add('hidden');
+        });
+    };
 
     createAsset = async function(fileName, content, dirHandle) {
         try {
@@ -1450,7 +1627,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop'
+            'btn-play', 'btn-pause', 'btn-stop',
+            // Asset Selector Bubble Elements
+            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1761,7 +1941,7 @@ public star() {
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
-                        // openSpriteEditorForAsset(fileHandle, dirHandle);
+                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
@@ -1781,7 +1961,11 @@ public star() {
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
-            SpriteSlicer.initialize(dom, getCurrentDirectoryHandle);
+            SpriteSlicer.initialize({
+                dom: dom,
+                openAssetSelectorCallback: openAssetSelector,
+                saveAssetMetaCallback: saveAssetMeta
+            });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
             Terminal.initialize(dom, projectsDirHandle);
