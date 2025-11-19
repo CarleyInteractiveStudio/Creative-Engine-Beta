@@ -101,7 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
             gridView.innerHTML = '';
             const searchTerm = searchInput.value.toLowerCase();
 
-            // "Go Up" button for folder view
             if (currentViewMode === 'folders' && currentPath !== 'Assets') {
                 const upItem = document.createElement('div');
                 upItem.className = 'grid-item';
@@ -121,25 +120,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 gridView.appendChild(upItem);
             }
 
-            const filteredItems = items.filter(item =>
-                item.name.toLowerCase().includes(searchTerm)
-            );
+            const filteredItems = items.filter(item => {
+                const name = (currentViewMode === 'project') ? item.handle.name : item.name;
+                return name.toLowerCase().includes(searchTerm);
+            });
 
             for (const item of filteredItems) {
+                const isProjectView = currentViewMode === 'project';
+                const name = isProjectView ? item.handle.name : item.name;
+                const kind = isProjectView ? item.handle.kind : item.kind;
+
                 const uiItem = document.createElement('div');
                 uiItem.className = 'grid-item';
-                uiItem.dataset.name = item.name;
+                uiItem.dataset.name = name;
 
-                if (item.kind === 'directory') {
-                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${item.name}</div>`;
+                if (kind === 'directory') {
+                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${name}</div>`;
                     uiItem.addEventListener('dblclick', async () => {
-                        currentDirHandle = await currentDirHandle.getDirectoryHandle(item.name);
-                        currentPath = `${currentPath}/${item.name}`;
+                        currentDirHandle = await currentDirHandle.getDirectoryHandle(name);
+                        currentPath = `${currentPath}/${name}`;
                         populateSelector();
                     });
                 } else { // It's a file
-                    const fullPath = (currentViewMode === 'project') ? item.path : `${currentPath}/${item.name}`;
-                    const displayDirHandle = (currentViewMode === 'project') ? item.dirHandle : currentDirHandle;
+                    const fullPath = isProjectView ? item.path : `${currentPath}/${name}`;
+                    const displayDirHandle = isProjectView ? item.dirHandle : currentDirHandle;
 
                     const iconContainer = document.createElement('div');
                     iconContainer.className = 'icon';
@@ -152,13 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const nameDiv = document.createElement('div');
                     nameDiv.className = 'name';
-                    nameDiv.textContent = item.name.substring(0, item.name.lastIndexOf('.')) || item.name;
+                    nameDiv.textContent = name.substring(0, name.lastIndexOf('.')) || name;
 
                     uiItem.appendChild(iconContainer);
                     uiItem.appendChild(nameDiv);
 
                     uiItem.addEventListener('dblclick', async () => {
-                        const fileHandle = (currentViewMode === 'project') ? item.handle : await displayDirHandle.getFileHandle(item.name);
+                        const fileHandle = isProjectView ? item.handle : await displayDirHandle.getFileHandle(name);
                         callback(fileHandle, displayDirHandle);
                         selectorPanel.classList.add('hidden');
                     });
@@ -173,33 +177,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 breadcrumbsEl.textContent = `Ruta: /${currentPath}`;
                 breadcrumbsEl.style.display = 'block';
 
+                const entries = [];
                 for await (const entry of currentDirHandle.values()) {
-                    if (entry.kind === 'file') {
-                        const lowerName = entry.name.toLowerCase();
-                        let matchesFilter = false;
-                        switch (filter) {
-                            case 'image': matchesFilter = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
-                            case 'audio': matchesFilter = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
-                            default: matchesFilter = true;
-                        }
-                        if (matchesFilter) itemsToRender.push(entry);
-                    } else {
-                        itemsToRender.push(entry);
-                    }
+                    entries.push(entry);
                 }
+
+                itemsToRender = entries.filter(entry => {
+                    if (entry.kind === 'directory') return true;
+                    const lowerName = entry.name.toLowerCase();
+                    switch (filter) {
+                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                        default: return true;
+                    }
+                });
+
                 itemsToRender.sort((a, b) => (a.kind === b.kind) ? a.name.localeCompare(b.name) : (a.kind === 'directory' ? -1 : 1));
             } else { // 'project' view
                 breadcrumbsEl.style.display = 'none';
-                itemsToRender = allProjectFiles
-                    .map(fileInfo => fileInfo.handle) // Extract just the handle for rendering
-                    .filter(handle => {
-                        const lowerName = handle.name.toLowerCase();
-                         switch (filter) {
-                            case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
-                            case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
-                            default: return true;
-                        }
-                    });
+                itemsToRender = allProjectFiles.filter(fileInfo => {
+                    const lowerName = fileInfo.handle.name.toLowerCase();
+                    switch (filter) {
+                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
+                        default: return true;
+                    }
+                });
             }
             renderItems(itemsToRender);
         }
