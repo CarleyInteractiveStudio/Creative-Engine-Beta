@@ -1623,7 +1623,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
             'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
-            'slice-custom-pivot-x', 'slice-custom-pivot-y',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-sprite-list', 'slicer-sprite-properties',
+            'sprite-prop-name', 'sprite-prop-x', 'sprite-prop-y', 'sprite-prop-w', 'sprite-prop-h',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',

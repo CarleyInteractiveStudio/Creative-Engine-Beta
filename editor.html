@@ -1171,7 +1171,7 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="js/editor.js?v=1.0"></script>
 
-    <div id="sprite-slicer-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+    <div id="sprite-slicer-panel" class="editor-panel floating-panel hidden" style="width: 950px; height: 650px;">
         <div class="panel-header">
             <span>Editor de Sprites</span>
             <div class="panel-header-controls">
@@ -1186,58 +1186,87 @@ public star() {
                 <p>Puedes hacerlo desde el botón "Cargar Imagen" o abriendo un asset de imagen desde el Inspector.</p>
             </div>
             <div class="slicer-main-content hidden">
-                <div class="slicer-preview">
-                    <canvas id="slicer-canvas"></canvas>
-                </div>
-                <div class="slicer-options">
-                    <fieldset class="inspector-section">
-                        <legend>Slice</legend>
-                        <div class="inspector-row">
-                            <label for="slice-type">Type</label>
-                            <select id="slice-type">
-                                <option value="Automatic">Automatic</option>
-                                <option value="Grid by Cell Size">Grid by Cell Size</option>
-                                <option value="Grid by Cell Count">Grid by Cell Count</option>
-                            </select>
-                        </div>
-                        <div id="slice-grid-cell-size-options">
-                             <div class="inspector-row">
-                                <label for="slice-pixel-size-x">Pixel Size</label>
-                                <div class="multi-input">
-                                    <input type="number" id="slice-pixel-size-x" value="64">
-                                    <input type="number" id="slice-pixel-size-y" value="64">
-                                </div>
-                            </div>
-                        </div>
-                        <div id="slice-grid-cell-count-options" class="hidden">
+                <div class="slicer-sidebar">
+                    <div class="slicer-options">
+                        <fieldset class="inspector-section">
+                            <legend>Slice</legend>
                             <div class="inspector-row">
-                                <label for="slice-column-count">Column & Row</label>
-                                <div class="multi-input">
-                                    <input type="number" id="slice-column-count" value="1">
-                                    <input type="number" id="slice-row-count" value="1">
+                                <label for="slice-type">Type</label>
+                                <select id="slice-type">
+                                    <option value="Manual">Manual</option>
+                                    <option value="Automatic">Automatic</option>
+                                    <option value="Grid by Cell Size">Grid by Cell Size</option>
+                                    <option value="Grid by Cell Count">Grid by Cell Count</option>
+                                </select>
+                            </div>
+                            <div id="slice-options-dynamic-container">
+                                <div id="slice-grid-cell-size-options" class="hidden">
+                                    <div class="inspector-row">
+                                        <label for="slice-pixel-size-x">Pixel Size</label>
+                                        <div class="multi-input">
+                                            <input type="number" id="slice-pixel-size-x" value="64">
+                                            <input type="number" id="slice-pixel-size-y" value="64">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="slice-grid-cell-count-options" class="hidden">
+                                    <div class="inspector-row">
+                                        <label for="slice-column-count">Column & Row</label>
+                                        <div class="multi-input">
+                                            <input type="number" id="slice-column-count" value="1">
+                                            <input type="number" id="slice-row-count" value="1">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="inspector-row">
+                                    <label for="slice-offset-x">Offset</label>
+                                    <div class="multi-input">
+                                        <input type="number" id="slice-offset-x" value="0">
+                                        <input type="number" id="slice-offset-y" value="0">
+                                    </div>
+                                </div>
+                                <div class="inspector-row">
+                                    <label for="slice-padding-x">Padding</label>
+                                    <div class="multi-input">
+                                        <input type="number" id="slice-padding-x" value="0">
+                                        <input type="number" id="slice-padding-y" value="0">
+                                    </div>
+                                </div>
+                                <div class="checkbox-field">
+                                    <input type="checkbox" id="slice-keep-empty">
+                                    <label for="slice-keep-empty">Keep Empty Rects</label>
                                 </div>
                             </div>
+                             <hr>
+                            <button id="slice-btn" class="primary-btn" style="width:100%">Slice</button>
+                        </fieldset>
+                    </div>
+                    <div id="slicer-sprite-list-container" class="inspector-section">
+                        <legend>Sprites</legend>
+                        <div id="slicer-sprite-list" class="scrollable-list">
+                        </div>
+                    </div>
+                    <div id="slicer-sprite-properties" class="inspector-section hidden">
+                        <legend>Sprite Properties</legend>
+                        <div class="inspector-row">
+                            <label for="sprite-prop-name">Name</label>
+                            <input type="text" id="sprite-prop-name">
                         </div>
                         <div class="inspector-row">
-                            <label for="slice-offset-x">Offset</label>
-                             <div class="multi-input">
-                                <input type="number" id="slice-offset-x" value="0">
-                                <input type="number" id="slice-offset-y" value="0">
+                            <label>Position</label>
+                            <div class="multi-input">
+                                <input type="number" id="sprite-prop-x" placeholder="X">
+                                <input type="number" id="sprite-prop-y" placeholder="Y">
                             </div>
                         </div>
                         <div class="inspector-row">
-                            <label for="slice-padding-x">Padding</label>
-                             <div class="multi-input">
-                                <input type="number" id="slice-padding-x" value="0">
-                                <input type="number" id="slice-padding-y" value="0">
+                            <label>Size</label>
+                            <div class="multi-input">
+                                <input type="number" id="sprite-prop-w" placeholder="W">
+                                <input type="number" id="sprite-prop-h" placeholder="H">
                             </div>
                         </div>
-                        <div class="checkbox-field">
-                            <input type="checkbox" id="slice-keep-empty">
-                            <label for="slice-keep-empty">Keep Empty Rects</label>
-                        </div>
-                        <hr>
-                        <div class="inspector-row">
+                         <div class="inspector-row">
                             <label for="slice-pivot">Pivot</label>
                             <select id="slice-pivot">
                                 <option value="Center">Center</option>
@@ -1259,9 +1288,12 @@ public star() {
                                 <input type="number" id="slice-custom-pivot-y" value="0.5" step="0.01">
                             </div>
                         </div>
-                         <hr>
-                        <button id="slice-btn" class="primary-btn" style="width:100%">Slice</button>
-                    </fieldset>
+                    </div>
+                </div>
+                <div class="slicer-preview-container">
+                    <div class="slicer-preview">
+                        <canvas id="slicer-canvas"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
