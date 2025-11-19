@@ -1,33 +1,25 @@
-// --- Module for managing floating panels (drag, resize, and z-index) ---
-
-let highestZ = 1500; // Start above the default docked panels
+// --- Module for managing floating panels (drag and resize) ---
 
 function initializePanel(panel) {
     const header = panel.querySelector('.panel-header');
-    let offsetX, offsetY, isDragging = false;
-    let isResizing = false;
+        let offsetX, offsetY, isDragging = false;
+        let isResizing = false;
 
-    // Bring panel to front on any mousedown
-    panel.addEventListener('mousedown', () => {
-        highestZ += 1;
-        panel.style.zIndex = highestZ;
-    });
+        // Dragging logic
+        if (header) {
+            header.addEventListener('mousedown', (e) => {
+                // Ignore clicks on buttons inside the header
+                if (e.target.closest('button, input, select')) return;
 
-    // Dragging logic
-    if (header) {
-        header.addEventListener('mousedown', (e) => {
-            // Ignore clicks on buttons inside the header
-            if (e.target.closest('button, input, select, .resize-handle')) return;
+                // Prevent dragging when the panel is maximized
+                if (panel.classList.contains('maximized')) return;
 
-            // Prevent dragging when the panel is maximized
-            if (panel.classList.contains('maximized')) return;
-
-            isDragging = true;
-            offsetX = e.clientX - panel.offsetLeft;
-            offsetY = e.clientY - panel.offsetTop;
-            document.body.style.userSelect = 'none'; // Prevent text selection
-        });
-    }
+                isDragging = true;
+                offsetX = e.clientX - panel.offsetLeft;
+                offsetY = e.clientY - panel.offsetTop;
+                document.body.style.userSelect = 'none'; // Prevent text selection
+            });
+        }
 
         // Maximize button logic
         const maximizeBtn = panel.querySelector('.maximize-btn');

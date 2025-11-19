@@ -5,15 +5,11 @@ let sourceImage = null;
 let generatedSlices = [];
 let saveCallback = null;
 let dirHandle = null;
-let openAssetSelectorCallback = null;
-let saveAssetMetaCallback = null;
+let currentAssetBrowserDirHandle = null;
 
 // --- Initialization ---
-export function initialize(dependencies) {
-    const cachedDom = dependencies.dom;
-    openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
-    saveAssetMetaCallback = dependencies.saveAssetMetaCallback; // Store the generic save callback
-
+export function initialize(cachedDom, assetBrowserDirectoryHandle) {
+    currentAssetBrowserDirHandle = assetBrowserDirectoryHandle;
     localDom = {
         panel: cachedDom.spriteSlicerPanel,
         overlay: cachedDom.spriteSlicerOverlay,
@@ -44,33 +40,33 @@ export function initialize(dependencies) {
     localDom.pivotSelect.addEventListener('change', handlePivotChange);
     localDom.sliceBtn.addEventListener('click', executeSlice);
     localDom.applyBtn.addEventListener('click', applySlices);
-    localDom.loadImageBtn.addEventListener('click', () => {
-        if (openAssetSelectorCallback) {
-            openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
-                // When an image is selected, load it.
-                // The saveAssetMetaCallback from initialization is used as the save callback.
-                loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
+    localDom.loadImageBtn.addEventListener('click', async () => {
+        try {
+            const [fileHandle] = await window.showOpenFilePicker({
+                types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
+                multiple: false,
+                startIn: currentAssetBrowserDirHandle(), // Start in the current asset browser directory
             });
-        } else {
-            console.error("Asset selector callback not initialized for Sprite Slicer.");
+            // To properly save metadata later, we need the directory handle.
+            // This is a simplification; a more robust solution would track the directory handle of the picked file.
+            const dir = currentAssetBrowserDirHandle();
+            await loadImageFromFileHandle(fileHandle, dir, saveCallback); // We might not have a save callback here, needs consideration
+        } catch (err) {
+            console.log("User cancelled file picker or error occurred:", err);
         }
     });
 }
 
 // --- Public API ---
-export async function open(fileHandle, directoryHandle, saveMetaCb) {
+export async function open(fileHandle, directoryHandle, saveMetaCallback) {
     localDom.panel.classList.remove('hidden');
-    resetToDefaultState();
 
     if (fileHandle) {
-        await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
+        await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCallback);
     } else {
-        // Opened from the Window menu, show overlay. User will use 'Load Image'.
+        // Opened from the Window menu, show overlay
         localDom.overlay.classList.remove('hidden');
         localDom.mainContent.classList.add('hidden');
-        // Ensure buttons that require a loaded image are disabled
-        localDom.sliceBtn.disabled = true;
-        localDom.applyBtn.disabled = true;
     }
 }
 

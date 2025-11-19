@@ -107,22 +107,20 @@ function createBaseMateria(name, parent = null) {
     } else {
         SceneManager.currentScene.addMateria(newMateria);
     }
-    // La actualización y selección se harán centralmente
     return newMateria;
 }
 
 function createTilemapObject(parent = null) {
-    // Create the parent Grid object
-    const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
+    const gridName = generateUniqueName('Grid');
+    const gridMateria = createBaseMateria(gridName, parent);
     gridMateria.addComponent(new Components.Grid(gridMateria));
 
-    // Create the child Tilemap object
-    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
+    const tilemapName = generateUniqueName('Tilemap');
+    const tilemapMateria = createBaseMateria(tilemapName, gridMateria);
     tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
     tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
 
-    // The function returns the parent Grid, which is what should be selected
-    return gridMateria;
+    return gridMateria; // Select the parent Grid object
 }
 
 function createLightObject(name, lightComponent, parent = null) {
@@ -143,14 +141,13 @@ export function duplicateSelectedMateria() {
 
     const newMateria = selectedMateria.clone();
     newMateria.name = `${selectedMateria.name} (Clone)`;
-    // Add to the same parent as the original, or to the root if it has no parent.
     if (selectedMateria.parent) {
         selectedMateria.parent.addChild(newMateria);
     } else {
         SceneManager.currentScene.addMateria(newMateria);
     }
     updateHierarchy();
-    selectMateriaCallback(newMateria.id); // Select the new clone
+    selectMateriaCallback(newMateria.id);
 }
 
 
@@ -170,42 +167,42 @@ export function initialize(dependencies) {
 
 function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
-    // For actions on existing items, we MUST use the materia that was under the cursor
-    // when the context menu was opened. This prevents race conditions if selection changes.
     const contextMateria = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
     let newMateria = null;
     let shouldUpdate = false;
 
+    // Use selectedMateria as the parent for new objects
+    const parentForNewObject = selectedMateria;
+
     switch (action) {
         case 'create-empty':
-            // Parenting uses the selected materia, which is intuitive.
-            newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), parentForNewObject);
             break;
         case 'create-audio':
-            newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName('Audio'), parentForNewObject);
             newMateria.addComponent(new Components.AudioSource(newMateria));
             break;
         case 'create-camera':
-            newMateria = createCameraObject(selectedMateria);
+            newMateria = createCameraObject(parentForNewObject);
             break;
         case 'create-tilemap':
-            newMateria = createTilemapObject(selectedMateria);
+            newMateria = createTilemapObject(parentForNewObject);
             break;
         case 'create-point-light':
-            newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
+            newMateria = createLightObject('Point Light', Components.PointLight2D, parentForNewObject);
             break;
         case 'create-spot-light':
-            newMateria = createLightObject('Spot Light', Components.SpotLight2D, selectedMateria);
+            newMateria = createLightObject('Spot Light', Components.SpotLight2D, parentForNewObject);
             break;
         case 'create-freeform-light':
-            newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, selectedMateria);
+            newMateria = createLightObject('Freeform Light', Components.FreeformLight2D, parentForNewObject);
             break;
         case 'create-sprite-light':
-            newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
+            newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, parentForNewObject);
             break;
 
         case 'rename':
-            if (contextMateria) { // Use contextMateria
+            if (contextMateria) {
                 const newName = prompt(`Renombrar '${contextMateria.name}':`, contextMateria.name);
                 if (newName && newName.trim() !== '') {
                     contextMateria.name = newName.trim();
@@ -214,7 +211,7 @@ function handleContextMenuAction(action) {
             }
             break;
         case 'delete':
-            if (contextMateria) { // Use contextMateria
+            if (contextMateria) {
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
@@ -229,7 +226,7 @@ function handleContextMenuAction(action) {
             }
             break;
         case 'duplicate':
-            if (contextMateria) { // Use contextMateria
+            if (contextMateria) {
                 const newDuplicatedMateria = contextMateria.clone();
                 newDuplicatedMateria.name = `${contextMateria.name} (Clone)`;
                 if (contextMateria.parent) {
@@ -237,19 +234,15 @@ function handleContextMenuAction(action) {
                 } else {
                     SceneManager.currentScene.addMateria(newDuplicatedMateria);
                 }
-                // Set as the newMateria so it gets selected after creation
                 newMateria = newDuplicatedMateria;
             }
             break;
     }
 
-    // Centralized update for creation and rename actions
     if (newMateria) {
-        // For new objects, update hierarchy and select the new one.
         updateHierarchy();
         selectMateriaCallback(newMateria.id);
     } else if (shouldUpdate) {
-        // For other actions like rename, just update the UI.
         updateHierarchy();
         updateInspector();
     }
@@ -260,43 +253,62 @@ function setupEventListeners() {
     const hierarchyContent = dom.hierarchyContent;
     if (!hierarchyPanel || !hierarchyContent) return;
 
-    // --- Drag and Drop Listeners (on the whole panel) ---
+    // Drag and Drop Listeners
     hierarchyPanel.addEventListener('dragover', (e) => {
-        e.preventDefault(); // Necessary to allow drop
-        if (isDraggingFromHierarchy) {
-            e.dataTransfer.dropEffect = 'move';
-        } else {
-            e.dataTransfer.dropEffect = 'copy';
-        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = isDraggingFromHierarchy ? 'move' : 'copy';
         hierarchyPanel.classList.add('drag-over');
     });
 
     hierarchyPanel.addEventListener('dragleave', (e) => {
-        // Prevent flickering when moving over child elements
-        if (e.currentTarget.contains(e.relatedTarget)) return;
-        hierarchyPanel.classList.remove('drag-over');
+        if (!hierarchyPanel.contains(e.relatedTarget)) {
+            hierarchyPanel.classList.remove('drag-over');
+        }
     });
 
-    // --- Item-specific listeners (on the content div via event delegation) ---
-    hierarchyContent.addEventListener('click', (e) => {
-        // Handle clicks on the toggle arrow
-        if (e.target.classList.contains('toggle')) {
-            const item = e.target.closest('.hierarchy-item');
-            if (item) {
-                const materiaId = parseInt(item.dataset.id, 10);
-                const materia = SceneManager.currentScene.findMateriaById(materiaId);
-                if (materia) {
-                    materia.isCollapsed = !materia.isCollapsed;
-                    updateHierarchy();
+    hierarchyPanel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        hierarchyPanel.classList.remove('drag-over');
+        const dataText = e.dataTransfer.getData('text/plain');
+        const targetItem = e.target.closest('.hierarchy-item');
+
+        if (isDraggingFromHierarchy) {
+            isDraggingFromHierarchy = false;
+            const draggedId = parseInt(dataText, 10);
+            if (isNaN(draggedId)) return;
+            const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);
+            if (!draggedMateria) return;
+
+            const targetMateria = targetItem ? SceneManager.currentScene.findMateriaById(parseInt(targetItem.dataset.id, 10)) : null;
+
+            if (targetMateria && draggedId !== targetMateria.id && !draggedMateria.isAncestorOf(targetMateria)) {
+                targetMateria.addChild(draggedMateria);
+            } else if (!targetItem) {
+                if (draggedMateria.parent) {
+                    draggedMateria.parent.removeChild(draggedMateria);
+                    SceneManager.currentScene.addMateria(draggedMateria);
                 }
             }
-            return; // Stop further processing
+            updateHierarchy();
         }
+        // Asset drop logic can be added here if needed
+    });
 
-        // Handle clicks for selection
+    // Item-specific listeners
+    hierarchyContent.addEventListener('click', (e) => {
         const item = e.target.closest('.hierarchy-item');
-        if (item) {
-            selectMateriaCallback(parseInt(item.dataset.id, 10));
+        if (!item) return;
+
+        const materiaId = parseInt(item.dataset.id, 10);
+        const materia = SceneManager.currentScene.findMateriaById(materiaId);
+
+        if (e.target.classList.contains('toggle')) {
+            if (materia) {
+                materia.isCollapsed = !materia.isCollapsed;
+                updateHierarchy();
+            }
+        } else {
+            selectMateriaCallback(materiaId);
         }
     });
 
@@ -309,97 +321,35 @@ function setupEventListeners() {
         }
     });
 
-    hierarchyContent.addEventListener('dragend', (e) => {
-        isDraggingFromHierarchy = false;
-    });
-
-    // --- The single, robust, unified drop handler ---
-    hierarchyPanel.addEventListener('drop', (e) => {
-        e.preventDefault();
-        hierarchyPanel.classList.remove('drag-over');
-        isDraggingFromHierarchy = false; // Reset state regardless
-        const dataText = e.dataTransfer.getData('text/plain');
-        const targetItem = e.target.closest('.hierarchy-item');
-
-        // Helper for async asset logic
-        const handleAssetDrop = async (data) => {
-            const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Transform(newMateria));
-            SceneManager.currentScene.addMateria(newMateria);
-            updateHierarchy();
-            selectMateriaCallback(newMateria.id);
-        };
-
-        let data;
-        try {
-            data = JSON.parse(dataText);
-        } catch (error) {
-            data = dataText; // Not JSON, assume it's a plain ID
-        }
-
-        if (typeof data === 'object' && data !== null && data.path) {
-            // It's an asset drop
-            handleAssetDrop(data);
-        } else {
-            // It's a hierarchy re-parenting drop
-            const draggedId = parseInt(data, 10);
-            if (isNaN(draggedId)) return;
-
-            const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);
-            if (!draggedMateria) return;
-
-            if (targetItem) {
-                // Parenting logic
-                const targetId = parseInt(targetItem.dataset.id, 10);
-                if (draggedId !== targetId) {
-                    const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
-                    if (targetMateria && !draggedMateria.isAncestorOf(targetMateria)) {
-                        targetMateria.addChild(draggedMateria);
-                        updateHierarchy();
-                    }
-                }
-            } else {
-                // Un-parenting logic
-                if (draggedMateria.parent) {
-                    draggedMateria.parent.removeChild(draggedMateria);
-                    SceneManager.currentScene.addMateria(draggedMateria);
-                    updateHierarchy();
-                }
-            }
-        }
-    });
-
-    // --- Context Menu ---
+    // Context Menu
     hierarchyContent.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
-        if (item) {
-            const materiaId = parseInt(item.dataset.id, 10);
-            selectMateriaCallback(materiaId);
-            contextMateriaId = materiaId; // Store ID for the action
-        } else {
-            selectMateriaCallback(null);
-            contextMateriaId = null; // No item was clicked
-        }
+        contextMateriaId = item ? parseInt(item.dataset.id, 10) : null;
+
+        // Select the item under the cursor for context
+        selectMateriaCallback(contextMateriaId);
 
         const menu = document.getElementById('hierarchy-context-menu');
-        const hasSelection = !!getSelectedMateria();
+        const hasSelection = contextMateriaId !== null;
 
-        menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasSelection);
+        menu.querySelectorAll('[data-action]').forEach(el => {
+            const requiresSelection = ['rename', 'delete', 'duplicate'].includes(el.dataset.action);
+            if (requiresSelection) {
+                el.classList.toggle('disabled', !hasSelection);
+            }
+        });
 
         showContextMenuCallback(menu, e);
     });
 
-    // --- Menu click listener ---
     const hierarchyMenu = document.getElementById('hierarchy-context-menu');
     if (hierarchyMenu) {
         hierarchyMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            if (!action || e.target.classList.contains('disabled')) return;
-            showContextMenuCallback(null);
-            handleContextMenuAction(action);
+            const target = e.target.closest('[data-action]');
+            if (!target || target.classList.contains('disabled')) return;
+            showContextMenuCallback(null); // Hide menu
+            handleContextMenuAction(target.dataset.action);
         });
     }
 }

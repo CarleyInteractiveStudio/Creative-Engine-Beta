@@ -360,6 +360,8 @@ public star() {
                                     <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
                                     <hr class="tilemap-tool-divider" style="display: none;">
                                     <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
+                                    <button id="tool-tile-rectangle-fill" class="toolbar-btn tilemap-tool" title="Relleno Rectangular" style="display: none;">🖼️ Relleno</button>
+                                    <button id="tool-tile-bucket-fill" class="toolbar-btn tilemap-tool" title="Bote de Pintura (G)" style="display: none;">🏺 Bote</button>
                                     <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
                                 </div>
                             </div>
@@ -1118,6 +1120,7 @@ public star() {
                 <div id="palette-tools-vertical" class="vertical-toolbar">
                     <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
                     <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                    <button class="tool-btn" data-tool="tile-bucket-fill" title="Bote de Pintura (G)">🏺</button>
                     <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
                 </div>
                 <div id="palette-view-container">
@@ -1128,34 +1131,6 @@ public star() {
         </div>
         <div id="palette-panel-overlay">
             <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
-        </div>
-        <div class="resize-handle" data-direction="n"></div>
-        <div class="resize-handle" data-direction="ne"></div>
-        <div class="resize-handle" data-direction="e"></div>
-        <div class="resize-handle" data-direction="se"></div>
-        <div class="resize-handle" data-direction="s"></div>
-        <div class="resize-handle" data-direction="sw"></div>
-        <div class="resize-handle" data-direction="w"></div>
-        <div class="resize-handle" data-direction="nw"></div>
-    </div>
-
-    <div id="asset-selector-bubble" class="editor-panel floating-panel bubble-style hidden">
-        <div class="panel-header">
-            <span id="asset-selector-title">Seleccionar Asset</span>
-            <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
-        </div>
-        <div class="panel-content">
-            <div id="asset-selector-toolbar">
-                <div id="asset-selector-view-modes">
-                    <button class="view-mode-btn active" data-mode="folders">Carpetas</button>
-                    <button class="view-mode-btn" data-mode="project">Proyecto</button>
-                </div>
-                <input type="search" id="asset-selector-search" placeholder="Buscar por nombre...">
-            </div>
-            <div id="asset-selector-breadcrumbs"></div>
-            <div id="asset-selector-grid-view" class="asset-grid-view-style">
-                <!-- Asset items will be populated by JS -->
-            </div>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>
