@@ -398,48 +398,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const content = dom.assetSelectorContent;
         content.innerHTML = ''; // Clear previous content
 
-        // Clone the current asset browser view
-        const assetGridView = dom.assetGridView.cloneNode(true);
+        const filteredAssetGrid = document.createElement('div');
+        filteredAssetGrid.className = 'asset-grid-view'; // Use the same class for styling
 
-        // Re-attach event listeners for double-click
-        for (const item of assetGridView.querySelectorAll('.grid-item')) {
-            if (item.dataset.kind === 'directory') {
-                // For now, disable navigation within the modal.
-                // A more advanced implementation could handle this.
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-                continue;
+        const originalItems = dom.assetGridView.querySelectorAll('.grid-item');
+
+        for (const originalItem of originalItems) {
+            const name = originalItem.dataset.name;
+            const kind = originalItem.dataset.kind;
+
+            if (kind === 'directory') {
+                continue; // Skip directories
             }
 
-            item.addEventListener('dblclick', async () => {
-                const name = item.dataset.name;
-                const dirHandle = getCurrentDirectoryHandle();
-                const fileHandle = await dirHandle.getFileHandle(name);
+            const extension = `.${name.split('.').pop()}`;
+            const isAccepted = Object.values(options.accept).some(exts => exts.includes(extension));
 
-                // --- Filtering Logic (similar to what was in onAssetOpened) ---
-                if (options.accept) {
-                    const file = await fileHandle.getFile();
-                    const mimeType = file.type;
-                    const extension = `.${name.split('.').pop()}`;
-                    const isAccepted = Object.entries(options.accept).some(([type, exts]) => {
-                        if (mimeType && mimeType.startsWith(type.replace('*', ''))) return true;
-                        if (exts.includes(extension)) return true;
-                        return false;
-                    });
-
-                    if (!isAccepted) {
-                        showNotificationDialog('Tipo de Archivo Incorrecto', `El archivo '${name}' no es compatible.`);
-                        return;
-                    }
-                }
-
-                callback({ name, handle: fileHandle, dirHandle: dirHandle });
-                modal.classList.remove('is-open'); // Close modal on selection
-            });
+            if (isAccepted) {
+                const newItem = originalItem.cloneNode(true);
+                newItem.addEventListener('dblclick', async () => {
+                    const dirHandle = getCurrentDirectoryHandle();
+                    const fileHandle = await dirHandle.getFileHandle(name);
+                    callback({ name, handle: fileHandle, dirHandle: dirHandle });
+                    modal.classList.add('hidden'); // Close modal on selection
+                });
+                filteredAssetGrid.appendChild(newItem);
+            }
         }
 
-        content.appendChild(assetGridView);
-        modal.classList.add('is-open');
+        if (filteredAssetGrid.children.length === 0) {
+            filteredAssetGrid.innerHTML = '<p class="empty-folder-message">No se encontraron assets compatibles en esta carpeta.</p>';
+        }
+
+        content.appendChild(filteredAssetGrid);
+        modal.classList.remove('hidden');
     };
 
     runLayoutUpdate = function() {

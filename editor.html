@@ -762,14 +762,22 @@ public star() {
             <div id="component-list"></div>
         </div>
     </div>
-    <div id="asset-selector-modal" class="modal">
-        <div class="modal-content large">
-            <span class="close-button">&times;</span>
-            <h2>Seleccionar Asset</h2>
-            <div id="asset-selector-content" class="panel-content no-padding">
-                <!-- Asset browser content will be injected here -->
-            </div>
+    <div id="asset-selector-modal" class="editor-panel floating-panel hidden" style="width: 600px; height: 400px;">
+        <div class="panel-header">
+            <span>Seleccionar Asset</span>
+            <button class="close-panel-btn" data-panel="asset-selector-modal">&times;</button>
         </div>
+        <div id="asset-selector-content" class="panel-content no-padding">
+            <!-- Asset browser content will be injected here -->
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
     </div>
     <div id="culling-mask-dropdown" class="context-menu" style="display: none;">
         <!-- Layer checkboxes will be populated by JS -->
