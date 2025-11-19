@@ -1941,7 +1941,7 @@ public star() {
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
-                        // openSpriteEditorForAsset(fileHandle, dirHandle);
+                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
