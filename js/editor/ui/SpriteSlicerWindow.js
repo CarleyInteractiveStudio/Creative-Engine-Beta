@@ -3,12 +3,10 @@ let localDom = {};
 let currentFileHandle = null;
 let sourceImage = null;
 let generatedSlices = [];
-let saveCallback = null;
 let dirHandle = null;
 let openAssetSelectorCallback = null;
 let createAssetCallback = null;
 let projectsDirHandle = null;
-
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -50,7 +48,6 @@ export function initialize(dependencies) {
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
             openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
-                // When an image is selected, load it.
                 loadImageFromFileHandle(fileHandle, directoryHandle);
             });
         } else {
@@ -85,10 +82,8 @@ export async function open(fileHandle, directoryHandle) {
             window.Dialogs.showNotification("Error", "Tipo de archivo no soportado por el Editor de Sprites.");
         }
     } else {
-        // Opened from the Window menu, show overlay. User will use 'Load Image'.
         localDom.overlay.classList.remove('hidden');
         localDom.mainContent.classList.add('hidden');
-        // Ensure buttons that require a loaded image are disabled
         localDom.sliceBtn.disabled = true;
         localDom.applyBtn.disabled = true;
     }
@@ -124,26 +119,23 @@ async function loadSpriteAsset(spriteAssetHandle) {
             throw new Error("El archivo .ceSprite está malformado.");
         }
 
-        // Get the project name from the URL to construct the full path handle
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
-        const sourceImageHandle = await getHandleFromPath(projectHandle, spriteData.sourceImage);
+        const sourceImageHandle = await getHandleFromPath(projectHandle, `Assets/${spriteData.sourceImage}`);
         if (!sourceImageHandle) {
             throw new Error(`No se pudo encontrar la imagen de origen: ${spriteData.sourceImage}`);
         }
 
-        // To call loadImageFromFileHandle, we also need the directory handle of the source image.
-        const pathParts = spriteData.sourceImage.split('/');
-        pathParts.pop(); // Remove file name to get dir path
+        const pathParts = `Assets/${spriteData.sourceImage}`.split('/');
+        pathParts.pop();
         const sourceDirHandle = await getHandleFromPath(projectHandle, pathParts.join('/'));
 
 
         await loadImageFromFileHandle(sourceImageHandle, sourceDirHandle);
 
-        // Once the image is loaded, apply the slice data from the asset file
         generatedSlices = spriteData.sprites.map(s => s.rect);
-        draw(); // Redraw with the slices
+        draw();
 
     } catch (error) {
         console.error("Error al cargar el asset de sprite:", error);
@@ -189,7 +181,6 @@ function resetToDefaultState() {
     sourceImage = null;
     currentFileHandle = null;
     dirHandle = null;
-    saveCallback = null;
     generatedSlices = [];
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.overlay.classList.remove('hidden');
@@ -227,7 +218,6 @@ function executeSlice(isPreview = false) {
 
     switch (type) {
         case 'Automatic':
-            // Automatic is expensive, only run it on explicit button click, not preview
             if (!isPreview) {
                 sliceAutomatic();
             }
@@ -257,9 +247,8 @@ async function saveSpriteAsset() {
         return;
     }
 
-    // 1. Define the .ceSprite structure
     const spriteAsset = {
-        sourceImage: `Assets/${currentFileHandle.name}`, // Assuming assets are in Assets/
+        sourceImage: currentFileHandle.name, // Store only the filename, relative to Assets/
         sprites: []
     };
 
@@ -268,12 +257,11 @@ async function saveSpriteAsset() {
         spriteAsset.sprites.push({
             name: spriteName,
             rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-            pivot: { x: 0.5, y: 0.5 }, // Default pivot, can be customized later
-            border: { left: 0, top: 0, right: 0, bottom: 0 } // Default border
+            pivot: { x: 0.5, y: 0.5 },
+            border: { left: 0, top: 0, right: 0, bottom: 0 }
         });
     });
 
-    // 2. Use the callback to save the new asset
     const defaultName = `${currentFileHandle.name.split('.')[0]}.ceSprite`;
     try {
         await createAssetCallback(defaultName, spriteAsset);

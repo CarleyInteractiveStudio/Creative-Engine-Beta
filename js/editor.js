@@ -1938,11 +1938,10 @@ public star() {
                             await loadSceneAction(); // Proceed immediately if no changes
                         }
                         break;
-                    case 'cesprite':
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
-                        SpriteSlicer.open(fileHandle, dirHandle);
+                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
@@ -1974,7 +1973,6 @@ public star() {
                     await writable.write(contentToWrite);
                     await writable.close();
 
-                    console.log(`Asset '${fileName}' creado en /Assets.`);
                     updateAssetBrowser();
                     return fileHandle;
 

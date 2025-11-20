@@ -10,14 +10,8 @@ async function generateSpritePreview(spriteFile, projectHandle) {
         const sourcePath = data.sourceImage;
         const firstSpriteRect = data.sprites[0].rect;
 
-        let imageHandle = projectHandle;
-        const pathParts = sourcePath.split('/').filter(p => p);
-        const imageName = pathParts.pop();
-
-        for (const part of pathParts) {
-            imageHandle = await imageHandle.getDirectoryHandle(part);
-        }
-        imageHandle = await imageHandle.getFileHandle(imageName);
+        const assetsDirHandle = await projectHandle.getDirectoryHandle('Assets');
+        const imageHandle = await assetsDirHandle.getFileHandle(sourcePath);
 
         if (!imageHandle) {
             console.error(`Source image not found for sprite preview: ${sourcePath}`);
@@ -78,12 +72,9 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
             return await generateSpritePreview(file, projectHandle);
         }
 
-        // For other types, we don't generate a URL
         return null;
 
     } catch (error) {
-        // This can happen if a file is deleted but the UI hasn't updated, which is normal.
-        // console.warn(`Could not create URL for asset path: ${path}`, error);
         return null;
     }
 }
