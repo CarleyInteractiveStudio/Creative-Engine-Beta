@@ -640,6 +640,7 @@ public star() {
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-ui-system">Sistema UI (.ceui)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-sprite-asset">Asset de Sprite (.ceSprite)</li>
                     <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-package">Paquete (.cep)</li>
@@ -1094,7 +1095,7 @@ public star() {
         <div class="resize-handle" data-direction="nw"></div>
     </div>
 
-    <div id="tile-palette-panel" class="editor-panel floating-panel hidden" style="width: 400px; height: 500px;">
+    <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
             <span id="palette-asset-name">Paleta de Tiles</span>
             <div class="panel-header-controls">
@@ -1104,39 +1105,24 @@ public star() {
         </div>
         <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="palette-toolbar">
-                 <div class="toolbar-group">
+                <div class="toolbar-group">
                     <label>Paleta:</label>
                     <span id="palette-file-name">Ninguna</span>
                     <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                 <div class="toolbar-group">
-                    <label>Tileset:</label>
-                    <span id="palette-tileset-name">Ninguno</span>
-                    <button id="palette-assign-tileset-btn" class="panel-tool-btn">Asignar</button>
+                    <label>Sprite Asset:</label>
+                    <span id="palette-sprite-asset-name">Ninguno</span>
+                    <button id="palette-load-sprite-asset-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                 <div class="toolbar-group">
-                    <label>Tamaño:</label>
-                    <div class="multi-input" style="width: 100px;">
-                        <input type="number" id="palette-tile-width" value="16" min="1" title="Ancho del Tile">
-                        <input type="number" id="palette-tile-height" value="16" min="1" title="Alto del Tile">
-                    </div>
-                </div>
-                 <div class="toolbar-group">
-                    <label>Tile:</label>
-                    <span id="palette-selected-tile-id">-</span>
+                    <label>Sprite:</label>
+                    <span id="palette-selected-sprite-name">-</span>
                 </div>
             </div>
-            <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
-                <div id="palette-tools-vertical" class="vertical-toolbar">
-                    <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
-                    <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
-                    <button class="tool-btn" data-tool="tile-bucket-fill" title="Bote de Pintura">🗑️</button>
-                    <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
-                </div>
-                <div id="palette-view-container">
-                    <canvas id="palette-grid-canvas"></canvas>
-                    <div id="palette-cursor-overlay" style="position: absolute; pointer-events: none; border: 2px solid cyan; display: none;"></div>
-                    <img id="palette-tileset-image" src="" alt="Tileset" style="display: none;">
+            <div id="palette-main-content" style="display: flex; flex: 1; overflow-y: auto;">
+                <div id="palette-sprite-grid" class="asset-grid-view-style">
+                    <!-- Sprites individuales se cargarán aquí -->
                 </div>
             </div>
         </div>
@@ -1190,7 +1176,7 @@ public star() {
             <span>Editor de Sprites</span>
             <div class="panel-header-controls">
                 <button id="slicer-load-image-btn" class="panel-tool-btn">Cargar Imagen</button>
-                <button id="slicer-apply-btn" class="panel-tool-btn primary-btn">Aplicar</button>
+                <button id="slicer-save-btn" class="panel-tool-btn primary-btn">Guardar</button>
                 <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
             </div>
         </div>

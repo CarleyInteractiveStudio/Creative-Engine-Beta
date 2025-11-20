@@ -431,6 +431,28 @@ async function handleContextMenuClick(e) {
             }
             break;
         }
+        case 'create-sprite-asset': {
+            const assetName = prompt("Nombre del nuevo Asset de Sprite (.ceSprite):");
+            if (assetName) {
+                const fileName = assetName.endsWith('.ceSprite') ? assetName : `${assetName}.ceSprite`;
+                const defaultContent = {
+                    sourceImagePath: "",
+                    sliceConfig: {},
+                    sprites: []
+                };
+                try {
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify(defaultContent, null, 2));
+                    await writable.close();
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error al crear el asset de sprite:", err);
+                    showNotification('Error', 'No se pudo crear el asset de sprite.');
+                }
+            }
+            break;
+        }
         case 'create-script': {
             const scriptName = prompt("Nombre del nuevo script (.ces):");
             if (scriptName) {

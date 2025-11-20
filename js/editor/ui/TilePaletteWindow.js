@@ -1,54 +1,42 @@
+
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
-import { showNotification, showConfirmation } from './DialogWindow.js';
+import { showNotification } from './DialogWindow.js';
 
 let dom = {};
 let projectsDirHandle = null;
 let openAssetSelectorCallback = null;
-let currentPalette = null;
-let currentFileHandle = null;
-let selectedTileId = -1;
-let activeTool = 'tile-brush';
+let currentPaletteFileHandle = null;
+let currentSpriteAsset = null;
+let selectedSpriteName = null;
+let fullSpriteSheetImage = null; // To hold the loaded spritesheet image
 
 export function initialize(dependencies) {
     dom = {
         panel: dependencies.dom.tilePalettePanel,
-        fileNameSpan: dependencies.dom.paletteFileName,
+        paletteFileName: dependencies.dom.paletteFileName,
         saveBtn: dependencies.dom.paletteSaveBtn,
         loadBtn: dependencies.dom.paletteLoadBtn,
-        tilesetNameSpan: dependencies.dom.paletteTilesetName,
-        assignTilesetBtn: dependencies.dom.paletteAssignTilesetBtn,
-        tileWidthInput: dependencies.dom.paletteTileWidth,
-        tileHeightInput: dependencies.dom.paletteTileHeight,
-        selectedTileIdSpan: dependencies.dom.paletteSelectedTileId,
-        viewContainer: dependencies.dom.paletteViewContainer,
-        gridCanvas: dependencies.dom.paletteGridCanvas,
-        cursorOverlay: dependencies.dom.paletteCursorOverlay,
-        tilesetImage: dependencies.dom.paletteTilesetImage,
+        spriteAssetName: dependencies.dom.paletteSpriteAssetName,
+        loadSpriteAssetBtn: dependencies.dom.paletteLoadSpriteAssetBtn,
+        selectedSpriteName: dependencies.dom.paletteSelectedSpriteName,
+        spriteGrid: dependencies.dom.paletteSpriteGrid,
         overlay: dependencies.dom.palettePanelOverlay,
-        verticalToolbar: dependencies.dom.paletteToolsVertical,
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
 
     dom.overlay.style.display = 'flex';
     dom.saveBtn.style.display = 'none';
-
     setupEventListeners();
 }
 
 export async function createNewPalette(name, dirHandle) {
-    const content = {
-        imagePath: "",
-        tileWidth: 32,
-        tileHeight: 32
-    };
-
+    const content = { spriteAssetPath: "" };
     try {
         const fileHandle = await dirHandle.getFileHandle(name, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(JSON.stringify(content, null, 2));
         await writable.close();
-        console.log(`Created new palette: ${name}`);
         await openPalette(fileHandle);
     } catch (error) {
         console.error(`Error creating new palette file ${name}:`, error);
@@ -58,261 +46,165 @@ export async function createNewPalette(name, dirHandle) {
 
 export async function openPalette(fileHandle) {
     try {
+        currentPaletteFileHandle = fileHandle;
         const file = await fileHandle.getFile();
         const content = await file.text();
-        currentPalette = JSON.parse(content);
-        currentFileHandle = fileHandle;
-
-        selectedTileId = -1; // Reset selection
+        const paletteData = JSON.parse(content);
 
         dom.panel.classList.remove('hidden');
         dom.overlay.style.display = 'none';
-        dom.fileNameSpan.textContent = file.name;
-        dom.selectedTileIdSpan.textContent = '-';
+        dom.paletteFileName.textContent = file.name;
         dom.saveBtn.style.display = 'inline-block';
 
-        dom.tileWidthInput.value = currentPalette.tileWidth;
-        dom.tileHeightInput.value = currentPalette.tileHeight;
-
-        if (currentPalette.imagePath) {
-            dom.tilesetNameSpan.textContent = currentPalette.imagePath.split('/').pop();
-            await loadImage(currentPalette.imagePath);
+        if (paletteData.spriteAssetPath) {
+            await loadSpriteAsset(paletteData.spriteAssetPath);
         } else {
-            dom.tilesetNameSpan.textContent = 'Ninguno';
-            dom.tilesetImage.style.display = 'none';
-            clearGrid();
+            resetSpriteDisplay();
         }
     } catch (error) {
         console.error(`Error opening palette ${fileHandle.name}:`, error);
-        showNotification('Error', `No se pudo abrir la paleta: ${error.message}`);
-        currentPalette = null;
-        currentFileHandle = null;
-        dom.fileNameSpan.textContent = 'Error';
+        showNotification('Error', `Could not open palette: ${error.message}`);
     }
 }
 
-export function getSelectedTile() {
-    return selectedTileId;
+async function loadSpriteAsset(assetPath) {
+    try {
+        const spriteAssetUrl = await getURLForAssetPath(assetPath, projectsDirHandle, true);
+        if (!spriteAssetUrl) throw new Error(`Could not get URL for ${assetPath}`);
+
+        const response = await fetch(spriteAssetUrl);
+        if (!response.ok) throw new Error(`Failed to fetch sprite asset: ${response.statusText}`);
+
+        currentSpriteAsset = await response.json();
+
+        if (!currentSpriteAsset.sourceImagePath) {
+            throw new Error("Sprite asset is missing 'sourceImagePath'.");
+        }
+
+        const imageUrl = await getURLForAssetPath(currentSpriteAsset.sourceImagePath, projectsDirHandle);
+        if (!imageUrl) throw new Error("Could not load source image for sprites.");
+
+        fullSpriteSheetImage = new Image();
+        await new Promise((resolve, reject) => {
+            fullSpriteSheetImage.onload = resolve;
+            fullSpriteSheetImage.onerror = reject;
+            fullSpriteSheetImage.src = imageUrl;
+        });
+
+        dom.spriteAssetName.textContent = assetPath.split('/').pop();
+        renderSpriteGrid();
+
+    } catch (error) {
+        console.error(`Error loading sprite asset '${assetPath}':`, error);
+        showNotification('Error', `Could not load sprite asset: ${error.message}`);
+        resetSpriteDisplay();
+    }
 }
 
-export function getActiveTool() {
-    return activeTool;
+function renderSpriteGrid() {
+    dom.spriteGrid.innerHTML = '';
+    if (!currentSpriteAsset || !currentSpriteAsset.sprites || !fullSpriteSheetImage) return;
+
+    for (const spriteData of currentSpriteAsset.sprites) {
+        const item = document.createElement('div');
+        item.className = 'grid-item sprite-item';
+        item.dataset.spriteName = spriteData.name;
+        item.title = spriteData.name;
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const rect = spriteData.rect;
+
+        canvas.width = rect.w;
+        canvas.height = rect.h;
+
+        // Draw the specific sprite from the full spritesheet onto the small canvas
+        ctx.drawImage(fullSpriteSheetImage, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+
+        item.appendChild(canvas);
+        dom.spriteGrid.appendChild(item);
+    }
 }
 
-
-// --- Internal Logic ---
+function resetSpriteDisplay() {
+    currentSpriteAsset = null;
+    fullSpriteSheetImage = null;
+    selectedSpriteName = null;
+    dom.spriteAssetName.textContent = 'Ninguno';
+    dom.selectedSpriteName.textContent = '-';
+    dom.spriteGrid.innerHTML = '<p class="empty-folder-message">Cargue un archivo .ceSprite</p>';
+}
 
 function setupEventListeners() {
-    dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.loadBtn.addEventListener('click', () => {
         openAssetSelectorCallback('file', (fileHandle) => {
             if (fileHandle.name.endsWith('.cepalette')) {
                 openPalette(fileHandle);
             } else {
-                showNotification('Error', 'Por favor, selecciona un archivo .cepalette.');
+                showNotification('Error', 'Please select a .cepalette file.');
             }
         });
     });
 
-    dom.assignTilesetBtn.addEventListener('click', () => {
-        if (!currentPalette) {
+    dom.loadSpriteAssetBtn.addEventListener('click', () => {
+        if (!currentPaletteFileHandle) {
             showNotification('Aviso', 'Por favor, carga primero un archivo de paleta.');
             return;
         }
-        openAssetSelectorCallback('image', async (fileHandle, dirHandle) => {
-            const imagePath = `Assets/${fileHandle.name}`;
-            currentPalette.imagePath = imagePath;
-            dom.tilesetNameSpan.textContent = fileHandle.name;
-
-            // --- Nueva Lógica ---
-            try {
-                const metaFileHandle = await dirHandle.getFileHandle(`${fileHandle.name}.meta`, { create: false });
-                const metaFile = await metaFileHandle.getFile();
-                const metaContent = await metaFile.text();
-                const metaData = JSON.parse(metaContent);
-
-                if (metaData && metaData.sprites && metaData.sprites.length > 0) {
-                    const firstSprite = metaData.sprites[0];
-                    if (firstSprite.rect && firstSprite.rect.w > 0 && firstSprite.rect.h > 0) {
-                        currentPalette.tileWidth = firstSprite.rect.w;
-                        currentPalette.tileHeight = firstSprite.rect.h;
-                        console.log(`Dimensiones de tile actualizadas desde .meta: ${firstSprite.rect.w}x${firstSprite.rect.h}`);
-                        saveCurrentPalette();
-                    }
-                }
-            } catch (error) {
-                console.log(`No se encontró o no se pudo leer el archivo .meta para ${fileHandle.name}. Se usarán las dimensiones existentes.`);
+        openAssetSelectorCallback('file', async (fileHandle) => {
+             if (fileHandle.name.endsWith('.ceSprite')) {
+                const assetPath = `Assets/${fileHandle.name}`; // Simplified path
+                await saveCurrentPalette(assetPath);
+                await loadSpriteAsset(assetPath);
+            } else {
+                showNotification('Error', 'Please select a .ceSprite file.');
             }
-            // --- Fin de la Nueva Lógica ---
-
-            loadImage(imagePath);
         });
     });
 
-    dom.verticalToolbar.addEventListener('click', (e) => {
-        const toolBtn = e.target.closest('.tool-btn');
-        if (toolBtn) {
-            dom.verticalToolbar.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            toolBtn.classList.add('active');
-            activeTool = toolBtn.dataset.tool;
+    dom.spriteGrid.addEventListener('click', (e) => {
+        const item = e.target.closest('.sprite-item');
+        if (item) {
+            dom.spriteGrid.querySelectorAll('.sprite-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            selectedSpriteName = item.dataset.spriteName;
+            dom.selectedSpriteName.textContent = selectedSpriteName;
         }
     });
 
-    dom.viewContainer.addEventListener('mousemove', handleMouseMoveInPalette);
-    dom.viewContainer.addEventListener('mouseleave', handleMouseLeavePalette);
-    dom.viewContainer.addEventListener('mousedown', handleCanvasClick);
-
-    dom.tileWidthInput.addEventListener('change', (e) => {
-        if (!currentPalette) return;
-        const newWidth = parseInt(e.target.value, 10);
-        if (newWidth > 0) {
-            currentPalette.tileWidth = newWidth;
-            drawGrid();
-            saveCurrentPalette();
-        }
-    });
-
-    dom.tileHeightInput.addEventListener('change', (e) => {
-        if (!currentPalette) return;
-        const newHeight = parseInt(e.target.value, 10);
-        if (newHeight > 0) {
-            currentPalette.tileHeight = newHeight;
-            drawGrid();
-            saveCurrentPalette();
-        }
-    });
+    dom.saveBtn.addEventListener('click', () => saveCurrentPalette());
 }
 
-async function saveCurrentPalette() {
-    if (!currentFileHandle || !currentPalette) return;
+async function saveCurrentPalette(newSpriteAssetPath = null) {
+    if (!currentPaletteFileHandle) return;
+
     try {
-        const writable = await currentFileHandle.createWritable();
-        await writable.write(JSON.stringify(currentPalette, null, 2));
+        const file = await currentPaletteFileHandle.getFile();
+        let paletteData = JSON.parse(await file.text());
+
+        if (newSpriteAssetPath) {
+            paletteData.spriteAssetPath = newSpriteAssetPath;
+        }
+
+        const writable = await currentPaletteFileHandle.createWritable();
+        await writable.write(JSON.stringify(paletteData, null, 2));
         await writable.close();
-        showNotification('Éxito', 'Paleta guardada exitosamente.');
+        console.log("Palette saved successfully.");
     } catch (error) {
         console.error("Error saving palette:", error);
         showNotification('Error', `Failed to save palette: ${error.message}`);
     }
 }
 
-async function loadImage(imagePath) {
-    try {
-        const imageUrl = await getURLForAssetPath(imagePath, projectsDirHandle);
-        if (!imageUrl) throw new Error(`Could not create URL for ${imagePath}`);
+export function getSelectedSpriteInfo() {
+    if (!selectedSpriteName || !currentSpriteAsset) return null;
 
-        dom.tilesetImage.src = imageUrl;
-        dom.tilesetImage.style.display = 'block';
+    const spriteData = currentSpriteAsset.sprites.find(s => s.name === selectedSpriteName);
+    if (!spriteData) return null;
 
-        // Wait for the image to load to get its dimensions
-        await new Promise((resolve, reject) => {
-            dom.tilesetImage.onload = resolve;
-            dom.tilesetImage.onerror = reject;
-        });
-
-        // Sincronizar inputs en caso de que el meta haya cambiado los valores
-        dom.tileWidthInput.value = currentPalette.tileWidth;
-        dom.tileHeightInput.value = currentPalette.tileHeight;
-
-        drawGrid();
-
-    } catch (error) {
-        console.error(`Error loading tileset image '${imagePath}':`, error);
-        showNotification('Error', `Could not load image: ${error.message}`);
-        dom.tilesetImage.style.display = 'none';
-    }
-}
-
-function drawGrid() {
-    const img = dom.tilesetImage;
-    if (!img.src || !img.complete || img.naturalWidth === 0 || !currentPalette) return;
-
-    const { naturalWidth, naturalHeight } = img;
-    const { tileWidth, tileHeight } = currentPalette;
-    currentPalette.columns = Math.floor(naturalWidth / tileWidth);
-    currentPalette.rows = Math.floor(naturalHeight / tileHeight);
-
-    // The grid is now just a selection highlight, so clear and redraw only that.
-    const ctx = dom.gridCanvas.getContext('2d');
-    dom.gridCanvas.width = naturalWidth;
-    dom.gridCanvas.height = naturalHeight;
-    ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
-
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i <= currentPalette.columns; i++) {
-        const x = i * tileWidth;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, naturalHeight);
-        ctx.stroke();
-    }
-    for (let i = 0; i <= currentPalette.rows; i++) {
-        const y = i * tileHeight;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(naturalWidth, y);
-        ctx.stroke();
-    }
-
-    if (selectedTileId !== -1) {
-        const col = selectedTileId % currentPalette.columns;
-        const row = Math.floor(selectedTileId / currentPalette.columns);
-        const x = col * tileWidth;
-        const y = row * tileHeight;
-
-        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 1.5, y + 1.5, tileWidth - 3, tileHeight - 3);
-    }
-}
-
-function clearGrid() {
-    dom.gridCanvas.getContext('2d').clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
-    dom.cursorOverlay.style.display = 'none';
-}
-
-function handleMouseMoveInPalette(event) {
-    if (!currentPalette) return;
-    const { tileWidth, tileHeight } = currentPalette;
-    const rect = dom.viewContainer.getBoundingClientRect();
-    const x = event.clientX - rect.left + dom.viewContainer.scrollLeft;
-    const y = event.clientY - rect.top + dom.viewContainer.scrollTop;
-
-    const col = Math.floor(x / tileWidth);
-    const row = Math.floor(y / tileHeight);
-
-    if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
-        dom.cursorOverlay.style.display = 'block';
-        dom.cursorOverlay.style.left = `${col * tileWidth}px`;
-        dom.cursorOverlay.style.top = `${row * tileHeight}px`;
-        dom.cursorOverlay.style.width = `${tileWidth}px`;
-        dom.cursorOverlay.style.height = `${tileHeight}px`;
-    } else {
-        dom.cursorOverlay.style.display = 'none';
-    }
-}
-
-function handleMouseLeavePalette() {
-    dom.cursorOverlay.style.display = 'none';
-}
-
-function handleCanvasClick(event) {
-    if (!currentPalette || !currentPalette.columns || !currentPalette.rows) return;
-
-    const rect = dom.viewContainer.getBoundingClientRect();
-    const x = event.clientX - rect.left + dom.viewContainer.scrollLeft;
-    const y = event.clientY - rect.top + dom.viewContainer.scrollTop;
-
-    const col = Math.floor(x / currentPalette.tileWidth);
-    const row = Math.floor(y / currentPalette.tileHeight);
-
-    if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
-        const clickedId = row * currentPalette.columns + col;
-        selectedTileId = (selectedTileId === clickedId) ? -1 : clickedId;
-        dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : selectedTileId;
-        drawGrid(); // Redraw selection highlight
-    }
+    return {
+        spriteName: selectedSpriteName,
+        spriteAssetPath: `Assets/${dom.spriteAssetName.textContent}`, // Simplified
+        sourceImagePath: currentSpriteAsset.sourceImagePath
+    };
 }

@@ -132,67 +132,50 @@ export class Renderer {
         this.ctx.fillText(transformedText, x, y);
     }
 
-    drawTilemap(tilemapRenderer) {
-        const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const transform = tilemapRenderer.materia.getComponent(Transform);
+    async drawTilemap(tilemapRenderer) {
+        const tilemap = tilemapRenderer.materia.getComponent(Components.Tilemap);
+        const grid = tilemapRenderer.materia.parent?.getComponent(Components.Grid) || tilemapRenderer.materia.getComponent(Components.Grid);
+        const transform = tilemapRenderer.materia.getComponent(Components.Transform);
 
-        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
-            return;
-        }
+        if (!tilemap || !grid || !transform) return;
 
-        const { tileWidth, tileHeight, columns, rows, layers } = tilemap;
-        const { tileSheet } = tilemapRenderer;
-        // Get the number of columns in the source tilesheet from the palette info
-        const paletteCols = tilemapRenderer.palette.columns;
+        const { cellWidth, cellHeight } = grid;
 
-        if (!paletteCols) return;
-
-        // Save context state before applying tilemap-specific transform
         this.ctx.save();
-
-        // Position the tilemap based on its transform component
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        // Note: Tilemap scale is not directly supported for performance reasons.
-        // It would require scaling the context or each tile individually.
 
-        const mapWidth = columns * tileWidth;
-        const mapHeight = rows * tileHeight;
+        for (const [key, spriteInfo] of tilemap.tileData.entries()) {
+            const [x, y] = key.split(',').map(Number);
 
-        // Offset by half the map size so the transform's (x,y) is the center, like other objects
-        this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
+            try {
+                const spriteAsset = await tilemapRenderer.loadSpriteAsset(spriteInfo.spriteAssetPath);
+                if (!spriteAsset) continue;
 
-        // Iterate through each layer object and draw its data grid
-        for (const layer of layers) {
-            const gridData = layer.data;
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < columns; c++) {
-                    const tileId = gridData[r][c];
+                const sourceImage = await tilemapRenderer.getSourceImage(spriteAsset.sourceImagePath);
+                if (!sourceImage) continue;
 
-                    if (tileId === -1) {
-                        continue; // Skip empty tiles
-                    }
+                const spriteData = spriteAsset.sprites.find(s => s.name === spriteInfo.spriteName);
+                if (!spriteData) continue;
 
-                    // Calculate the source x/y on the tilesheet based on the tile ID
-                    const sx = (tileId % paletteCols) * tileWidth;
-                    const sy = Math.floor(tileId / paletteCols) * tileHeight;
+                const rect = spriteData.rect;
+                const dx = x * cellWidth;
+                const dy = y * cellHeight;
 
-                    // Calculate the destination x/y on the canvas
-                    const dx = c * tileWidth;
-                    const dy = r * tileHeight;
+                this.ctx.drawImage(
+                    sourceImage,
+                    rect.x, rect.y, rect.w, rect.h,
+                    dx, dy, cellWidth, cellHeight
+                );
 
-                    this.ctx.drawImage(
-                        tileSheet,
-                        sx, sy,           // Source x, y on the tilesheet
-                        tileWidth, tileHeight, // Source width, height
-                        dx, dy,           // Destination x, y on the canvas
-                        tileWidth, tileHeight  // Destination width, height
-                    );
-                }
+            } catch (error) {
+                console.error(`Error rendering tile at ${key}:`, error);
+                // Optionally draw a placeholder for missing tiles
+                this.ctx.fillStyle = 'magenta';
+                this.ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
             }
         }
 
-        // Restore context state
         this.ctx.restore();
     }
 

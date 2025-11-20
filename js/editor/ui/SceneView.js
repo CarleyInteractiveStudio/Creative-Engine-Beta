@@ -143,107 +143,26 @@ function paintTile(e) {
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     if (!tilemap) return;
 
-    const grid = findParentGrid(selectedMateria);
+    // The grid component is now only for visual alignment, but we still need its cell size.
+    const grid = findParentGrid(selectedMateria) || getSelectedMateria().getComponent(Components.Grid);
     if (!grid) {
-        console.warn("Selected Tilemap does not have a Grid parent.");
+        console.warn("No Grid component found on the selected object or its parent.");
         return;
     }
 
     const worldPos = screenToWorld(e.clientX, e.clientY);
+    const gridX = Math.floor(worldPos.x / grid.cellSize.x);
+    const gridY = Math.floor(worldPos.y / grid.cellSize.y);
 
-    // Convert world position to grid cell coordinates
-    const gridX = Math.floor(worldPos.x / grid.cellWidth);
-    const gridY = Math.floor(worldPos.y / grid.cellHeight);
-    const tileKey = `${gridX},${gridY}`;
+    const activeTool = getActiveTool(); // Use the general active tool
 
-    const tool = TilePaletteWindow.getActiveTool();
-    const selectedTileId = TilePaletteWindow.getSelectedTile();
-
-    switch (tool) {
-        case 'tile-brush':
-            if (selectedTileId !== -1) {
-                if (tilemap.tileData.get(tileKey) !== selectedTileId) {
-                    tilemap.tileData.set(tileKey, selectedTileId);
-                }
-            }
-            break;
-        case 'tile-bucket-fill':
-            if (selectedTileId !== -1) {
-                floodFill(tilemap, gridX, gridY, selectedTileId);
-            }
-            break;
-        case 'tile-eraser':
-            if (tilemap.tileData.has(tileKey)) {
-                tilemap.tileData.delete(tileKey);
-                console.log(`Erased tile at ${tileKey}`);
-            }
-            break;
-        case 'tile-rect-fill':
-            // This would require more state (start/end points)
-            // For now, it will act like the brush.
-            if (selectedTileId !== -1) {
-                tilemap.tileData.set(tileKey, selectedTileId);
-            }
-            break;
-    }
-    // Need a way to signal that the scene needs redrawing
-    // For now, the render loop will handle it.
-}
-
-function floodFill(tilemap, startX, startY, newTileId) {
-    const targetTileId = tilemap.tileData.get(`${startX},${startY}`) || undefined;
-
-    if (newTileId === targetTileId) return; // No need to fill if the tile is the same
-
-    const queue = [[startX, startY]];
-    const visited = new Set([`${startX},${startY}`]);
-
-    while (queue.length > 0) {
-        const [x, y] = queue.shift();
-        const currentTileKey = `${x},${y}`;
-        const currentTileId = tilemap.tileData.get(currentTileKey) || undefined;
-
-        if (currentTileId === targetTileId) {
-            tilemap.tileData.set(currentTileKey, newTileId);
-
-            // Check neighbors
-            const neighbors = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
-            for (const [nx, ny] of neighbors) {
-                const neighborKey = `${nx},${ny}`;
-                if (!visited.has(neighborKey)) {
-                    visited.add(neighborKey);
-                    queue.push([nx, ny]);
-                }
-            }
+    if (activeTool === 'tile-brush') {
+        const spriteInfo = TilePaletteWindow.getSelectedSpriteInfo();
+        if (spriteInfo) {
+            tilemap.setTile(gridX, gridY, spriteInfo);
         }
-    }
-}
-
-function fillTileRect(endWorldPos) {
-    const tilemap = getSelectedMateria() ? getSelectedMateria().getComponent(Components.Tilemap) : null;
-    const grid = getSelectedGrid();
-    if (!tilemap || !grid) {
-        isDrawingRect = false;
-        return;
-    }
-
-    const endGridPos = worldToGrid(endWorldPos, grid);
-    const selectedTileId = TilePaletteWindow.getSelectedTile();
-    if (selectedTileId === -1) return;
-
-    const startX = Math.min(rectStartGridPos.x, endGridPos.x);
-    const startY = Math.min(rectStartGridPos.y, endGridPos.y);
-    const endX = Math.max(rectStartGridPos.x, endGridPos.x);
-    const endY = Math.max(rectStartGridPos.y, endGridPos.y);
-
-    for (let x = startX; x <= endX; x++) {
-        for (let y = startY; y <= endY; y++) {
-            tilemap.tileData.set(`${x},${y}`, selectedTileId);
-        }
-    }
-    console.log(`Filled rectangle from (${startX},${startY}) to (${endX},${endY})`);
-}
-
+    } else if (activeTool === 'tile-eraser') {
+        tilemap.setTile(gridX, gridY, null); // Set to null to erase
 function getSelectedGrid() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return null;
@@ -283,6 +202,46 @@ function screenToWorld(screenX, screenY) {
 export function drawOverlay() {
     if (!renderer) return;
 
+    // --- 1. Dibujar la Rejilla Infinita ---
+    const grid = getSelectedGrid();
+    if (grid) {
+        const ctx = renderer.ctx;
+        const cam = renderer.camera;
+
+        const viewWidth = renderer.canvas.width / cam.effectiveZoom;
+        const viewHeight = renderer.canvas.height / cam.effectiveZoom;
+
+        const startX = cam.x - viewWidth / 2;
+        const startY = cam.y - viewHeight / 2;
+        const endX = cam.x + viewWidth / 2;
+        const endY = cam.y + viewHeight / 2;
+
+        const gridStartX = Math.floor(startX / grid.cellWidth) * grid.cellWidth;
+        const gridStartY = Math.floor(startY / grid.cellHeight) * grid.cellHeight;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 1 / cam.effectiveZoom;
+
+        // Vertical lines
+        for (let x = gridStartX; x < endX; x += grid.cellWidth) {
+            ctx.beginPath();
+            ctx.moveTo(x, startY);
+            ctx.lineTo(x, endY);
+            ctx.stroke();
+        }
+
+        // Horizontal lines
+        for (let y = gridStartY; y < endY; y += grid.cellHeight) {
+            ctx.beginPath();
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    // --- 2. Dibujar el Rectángulo de Relleno ---
     if (isDrawingRect) {
         const grid = getSelectedGrid();
         if (!grid) return;

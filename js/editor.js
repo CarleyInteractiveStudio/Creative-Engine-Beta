@@ -1614,12 +1614,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
-            'palette-file-name', 'palette-tools-vertical', 'palette-tileset-name', 'palette-assign-tileset-btn',
-            'palette-selected-tile-id',
-            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay', 'palette-cursor-overlay',
-            'palette-tile-width', 'palette-tile-height',
+            'palette-file-name', 'palette-sprite-asset-name', 'palette-load-sprite-asset-btn',
+            'palette-selected-sprite-name', 'palette-sprite-grid', 'palette-panel-overlay',
             // Sprite Slicer Panel Elements
-            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-save-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
@@ -1965,7 +1963,8 @@ public star() {
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,
-                saveAssetMetaCallback: saveAssetMeta
+                saveAssetMetaCallback: saveAssetMeta,
+                createAssetCallback: createAsset
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
@@ -1993,11 +1992,7 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize({
-                dom,
-                projectsDirHandle,
-                openAssetSelectorCallback: openAssetSelector
-            });
+            TilePalette.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();
