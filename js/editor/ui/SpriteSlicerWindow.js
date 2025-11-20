@@ -6,13 +6,16 @@ let generatedSlices = [];
 let saveCallback = null;
 let dirHandle = null;
 let openAssetSelectorCallback = null;
-let saveAssetMetaCallback = null;
+let createAssetCallback = null;
+let projectsDirHandle = null;
+
 
 // --- Initialization ---
 export function initialize(dependencies) {
     const cachedDom = dependencies.dom;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
-    saveAssetMetaCallback = dependencies.saveAssetMetaCallback; // Store the generic save callback
+    createAssetCallback = dependencies.createAssetCallback;
+    projectsDirHandle = dependencies.projectsDirHandle;
 
     localDom = {
         panel: cachedDom.spriteSlicerPanel,
@@ -42,28 +45,45 @@ export function initialize(dependencies) {
     // Setup Event Listeners
     localDom.sliceType.addEventListener('change', handleSliceTypeChange);
     localDom.pivotSelect.addEventListener('change', handlePivotChange);
-    localDom.sliceBtn.addEventListener('click', executeSlice);
-    localDom.applyBtn.addEventListener('click', applySlices);
+    localDom.sliceBtn.addEventListener('click', () => executeSlice(false)); // Explicitly not a preview
+    localDom.applyBtn.addEventListener('click', saveSpriteAsset);
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
             openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
                 // When an image is selected, load it.
-                // The saveAssetMetaCallback from initialization is used as the save callback.
-                loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
+                loadImageFromFileHandle(fileHandle, directoryHandle);
             });
         } else {
             console.error("Asset selector callback not initialized for Sprite Slicer.");
         }
     });
+
+    // Real-time preview for slicing options
+    const sliceInputs = [
+        localDom.pixelSizeX, localDom.pixelSizeY,
+        localDom.columnCount, localDom.rowCount,
+        localDom.offsetX, localDom.offsetY,
+        localDom.paddingX, localDom.paddingY,
+    ];
+    sliceInputs.forEach(input => {
+        input.addEventListener('input', () => executeSlice(true));
+    });
 }
 
 // --- Public API ---
-export async function open(fileHandle, directoryHandle, saveMetaCb) {
+export async function open(fileHandle, directoryHandle) {
     localDom.panel.classList.remove('hidden');
     resetToDefaultState();
 
     if (fileHandle) {
-        await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
+        const fileName = fileHandle.name.toLowerCase();
+        if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+            await loadImageFromFileHandle(fileHandle, directoryHandle);
+        } else if (fileName.endsWith('.cesprite')) {
+            await loadSpriteAsset(fileHandle);
+        } else {
+            window.Dialogs.showNotification("Error", "Tipo de archivo no soportado por el Editor de Sprites.");
+        }
     } else {
         // Opened from the Window menu, show overlay. User will use 'Load Image'.
         localDom.overlay.classList.remove('hidden');
@@ -74,10 +94,67 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
     }
 }
 
-async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) {
+async function getHandleFromPath(rootHandle, path) {
+    const parts = path.split('/').filter(p => p);
+    let currentHandle = rootHandle;
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        try {
+            if (i === parts.length - 1) { // It's the file
+                currentHandle = await currentHandle.getFileHandle(part);
+            } else { // It's a directory
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+        } catch (error) {
+            console.error(`No se pudo encontrar la ruta '${path}' en la parte '${part}'`, error);
+            return null;
+        }
+    }
+    return currentHandle;
+}
+
+
+async function loadSpriteAsset(spriteAssetHandle) {
+    try {
+        const file = await spriteAssetHandle.getFile();
+        const content = await file.text();
+        const spriteData = JSON.parse(content);
+
+        if (!spriteData.sourceImage || !spriteData.sprites) {
+            throw new Error("El archivo .ceSprite está malformado.");
+        }
+
+        // Get the project name from the URL to construct the full path handle
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+        const sourceImageHandle = await getHandleFromPath(projectHandle, spriteData.sourceImage);
+        if (!sourceImageHandle) {
+            throw new Error(`No se pudo encontrar la imagen de origen: ${spriteData.sourceImage}`);
+        }
+
+        // To call loadImageFromFileHandle, we also need the directory handle of the source image.
+        const pathParts = spriteData.sourceImage.split('/');
+        pathParts.pop(); // Remove file name to get dir path
+        const sourceDirHandle = await getHandleFromPath(projectHandle, pathParts.join('/'));
+
+
+        await loadImageFromFileHandle(sourceImageHandle, sourceDirHandle);
+
+        // Once the image is loaded, apply the slice data from the asset file
+        generatedSlices = spriteData.sprites.map(s => s.rect);
+        draw(); // Redraw with the slices
+
+    } catch (error) {
+        console.error("Error al cargar el asset de sprite:", error);
+        window.Dialogs.showNotification("Error", `No se pudo cargar el archivo .ceSprite: ${error.message}`);
+        resetToDefaultState();
+    }
+}
+
+async function loadImageFromFileHandle(fileHandle, directoryHandle) {
     currentFileHandle = fileHandle;
     dirHandle = directoryHandle;
-    saveCallback = saveMetaCb;
     generatedSlices = [];
 
     try {
@@ -135,67 +212,77 @@ function handleSliceTypeChange(e) {
     const type = e.target.value;
     localDom.gridCellSizeOptions.classList.toggle('hidden', type !== 'Grid by Cell Size');
     localDom.gridCellCountOptions.classList.toggle('hidden', type !== 'Grid by Cell Count');
+    executeSlice(true); // Update preview
 }
 
 function handlePivotChange(e) {
     localDom.customPivotContainer.classList.toggle('hidden', e.target.value !== 'Custom');
 }
 
-function executeSlice() {
+function executeSlice(isPreview = false) {
     if (!sourceImage) return;
 
     const type = localDom.sliceType.value;
     generatedSlices = [];
 
     switch (type) {
-        case 'Automatic': sliceAutomatic(); break;
-        case 'Grid by Cell Size': sliceByCellSize(); break;
-        case 'Grid by Cell Count': sliceByCellCount(); break;
+        case 'Automatic':
+            // Automatic is expensive, only run it on explicit button click, not preview
+            if (!isPreview) {
+                sliceAutomatic();
+            }
+            break;
+        case 'Grid by Cell Size':
+            sliceByCellSize();
+            break;
+        case 'Grid by Cell Count':
+            sliceByCellCount();
+            break;
     }
 
     draw();
-    console.log(`Generated ${generatedSlices.length} slices.`);
+
+    if (!isPreview) {
+        console.log(`Generated ${generatedSlices.length} slices.`);
+    }
 }
 
-async function applySlices() {
+async function saveSpriteAsset() {
     if (generatedSlices.length === 0) {
-        window.Dialogs.showNotification("Aviso", "No hay slices para aplicar. Usa el botón 'Slice' primero.");
+        window.Dialogs.showNotification("Aviso", "No hay slices para guardar. Usa el botón 'Slice' primero.");
         return;
     }
-    if (!saveCallback || !dirHandle || !currentFileHandle) {
-        window.Dialogs.showNotification("Error", "No se puede aplicar cambios. Asegúrate de haber cargado la imagen a través del Inspector.");
-        console.error("Error al aplicar: Faltan dependencias de guardado. Esto puede ocurrir si la imagen se cargó manualmente.");
+    if (!createAssetCallback || !currentFileHandle) {
+        window.Dialogs.showNotification("Error", "No se puede guardar el asset. La función de guardado no está disponible.");
         return;
     }
 
-    try {
-        let metaData = {};
-        try {
-            const metaFileHandle = await dirHandle.getFileHandle(`${currentFileHandle.name}.meta`);
-            const metaFile = await metaFileHandle.getFile();
-            metaData = JSON.parse(await metaFile.text());
-        } catch (e) { /* Meta file doesn't exist, we'll create it. */ }
+    // 1. Define the .ceSprite structure
+    const spriteAsset = {
+        sourceImage: `Assets/${currentFileHandle.name}`, // Assuming assets are in Assets/
+        sprites: []
+    };
 
-        metaData.sprites = {};
-
-        generatedSlices.forEach((rect, index) => {
-            const spriteName = `${currentFileHandle.name.split('.')[0]}_${index}`;
-            metaData.sprites[spriteName] = {
-                name: spriteName,
-                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-                pivot: { x: 0.5, y: 0.5 },
-                border: { left: 0, top: 0, right: 0, bottom: 0 }
-            };
+    generatedSlices.forEach((rect, index) => {
+        const spriteName = `${currentFileHandle.name.split('.')[0]}_${index}`;
+        spriteAsset.sprites.push({
+            name: spriteName,
+            rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+            pivot: { x: 0.5, y: 0.5 }, // Default pivot, can be customized later
+            border: { left: 0, top: 0, right: 0, bottom: 0 } // Default border
         });
+    });
 
-        await saveCallback(currentFileHandle.name, metaData, dirHandle);
-        window.Dialogs.showNotification("Éxito", `Se han guardado ${generatedSlices.length} sprites en el archivo .meta.`);
-        localDom.panel.classList.add('hidden'); // Close on success
+    // 2. Use the callback to save the new asset
+    const defaultName = `${currentFileHandle.name.split('.')[0]}.ceSprite`;
+    try {
+        await createAssetCallback(defaultName, spriteAsset);
+        window.Dialogs.showNotification("Éxito", `Se ha guardado el archivo ${defaultName}.`);
+        localDom.panel.classList.add('hidden');
         resetToDefaultState();
-
     } catch (error) {
-        console.error("Error al guardar los metadatos de los sprites:", error);
-        window.Dialogs.showNotification("Error", "No se pudieron guardar los sprites.");
+        console.error("Error al guardar el asset de sprite:", error);
+        window.Dialogs.showNotification("Error", "No se pudo guardar el archivo de sprite.");
     }
 }
 

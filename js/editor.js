@@ -1938,10 +1938,11 @@ public star() {
                             await loadSceneAction(); // Proceed immediately if no changes
                         }
                         break;
+                    case 'cesprite':
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
-                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
+                        SpriteSlicer.open(fileHandle, dirHandle);
                         break;
                     default:
                         console.log(`No double-click action defined for file: ${name}`);
@@ -1961,10 +1962,33 @@ public star() {
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
             CodeEditor.initialize(dom);
+            const createRootAsset = async (fileName, content) => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const assetsDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+
+                    const fileHandle = await assetsDirHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    const contentToWrite = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+                    await writable.write(contentToWrite);
+                    await writable.close();
+
+                    console.log(`Asset '${fileName}' creado en /Assets.`);
+                    updateAssetBrowser();
+                    return fileHandle;
+
+                } catch (error) {
+                    console.error(`No se pudo crear el asset '${fileName}':`, error);
+                    showNotificationDialog('Error de Creación', `No se pudo crear el asset: ${error.message}`);
+                    throw error;
+                }
+            };
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,
-                saveAssetMetaCallback: saveAssetMeta
+                createAssetCallback: createRootAsset,
+                projectsDirHandle: projectsDirHandle
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
