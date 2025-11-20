@@ -1992,7 +1992,11 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
+            TilePalette.initialize({
+                dom,
+                projectsDirHandle,
+                openAssetSelectorCallback: openAssetSelector
+            });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();
