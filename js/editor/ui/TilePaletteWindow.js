@@ -17,6 +17,8 @@ export function initialize(dependencies) {
         loadBtn: dependencies.dom.paletteLoadBtn,
         tilesetNameSpan: dependencies.dom.paletteTilesetName,
         assignTilesetBtn: dependencies.dom.paletteAssignTilesetBtn,
+        tileWidthInput: dependencies.dom.paletteTileWidth,
+        tileHeightInput: dependencies.dom.paletteTileHeight,
         selectedTileIdSpan: dependencies.dom.paletteSelectedTileId,
         viewContainer: dependencies.dom.paletteViewContainer,
         gridCanvas: dependencies.dom.paletteGridCanvas,
@@ -69,6 +71,9 @@ export async function openPalette(fileHandle) {
         dom.selectedTileIdSpan.textContent = '-';
         dom.saveBtn.style.display = 'inline-block';
 
+        dom.tileWidthInput.value = currentPalette.tileWidth;
+        dom.tileHeightInput.value = currentPalette.tileHeight;
+
         if (currentPalette.imagePath) {
             dom.tilesetNameSpan.textContent = currentPalette.imagePath.split('/').pop();
             await loadImage(currentPalette.imagePath);
@@ -114,12 +119,32 @@ function setupEventListeners() {
             showNotification('Aviso', 'Por favor, carga primero un archivo de paleta.');
             return;
         }
-        openAssetSelectorCallback('image', (fileHandle, dirHandle) => {
-            // We need to determine the relative path from the project root
-            // This is a simplification; a more robust solution would trace the path.
+        openAssetSelectorCallback('image', async (fileHandle, dirHandle) => {
             const imagePath = `Assets/${fileHandle.name}`;
             currentPalette.imagePath = imagePath;
             dom.tilesetNameSpan.textContent = fileHandle.name;
+
+            // --- Nueva Lógica ---
+            try {
+                const metaFileHandle = await dirHandle.getFileHandle(`${fileHandle.name}.meta`, { create: false });
+                const metaFile = await metaFileHandle.getFile();
+                const metaContent = await metaFile.text();
+                const metaData = JSON.parse(metaContent);
+
+                if (metaData && metaData.sprites && metaData.sprites.length > 0) {
+                    const firstSprite = metaData.sprites[0];
+                    if (firstSprite.rect && firstSprite.rect.w > 0 && firstSprite.rect.h > 0) {
+                        currentPalette.tileWidth = firstSprite.rect.w;
+                        currentPalette.tileHeight = firstSprite.rect.h;
+                        console.log(`Dimensiones de tile actualizadas desde .meta: ${firstSprite.rect.w}x${firstSprite.rect.h}`);
+                        saveCurrentPalette();
+                    }
+                }
+            } catch (error) {
+                console.log(`No se encontró o no se pudo leer el archivo .meta para ${fileHandle.name}. Se usarán las dimensiones existentes.`);
+            }
+            // --- Fin de la Nueva Lógica ---
+
             loadImage(imagePath);
         });
     });
@@ -136,6 +161,26 @@ function setupEventListeners() {
     dom.viewContainer.addEventListener('mousemove', handleMouseMoveInPalette);
     dom.viewContainer.addEventListener('mouseleave', handleMouseLeavePalette);
     dom.viewContainer.addEventListener('mousedown', handleCanvasClick);
+
+    dom.tileWidthInput.addEventListener('change', (e) => {
+        if (!currentPalette) return;
+        const newWidth = parseInt(e.target.value, 10);
+        if (newWidth > 0) {
+            currentPalette.tileWidth = newWidth;
+            drawGrid();
+            saveCurrentPalette();
+        }
+    });
+
+    dom.tileHeightInput.addEventListener('change', (e) => {
+        if (!currentPalette) return;
+        const newHeight = parseInt(e.target.value, 10);
+        if (newHeight > 0) {
+            currentPalette.tileHeight = newHeight;
+            drawGrid();
+            saveCurrentPalette();
+        }
+    });
 }
 
 async function saveCurrentPalette() {
@@ -164,6 +209,10 @@ async function loadImage(imagePath) {
             dom.tilesetImage.onload = resolve;
             dom.tilesetImage.onerror = reject;
         });
+
+        // Sincronizar inputs en caso de que el meta haya cambiado los valores
+        dom.tileWidthInput.value = currentPalette.tileWidth;
+        dom.tileHeightInput.value = currentPalette.tileHeight;
 
         drawGrid();
 

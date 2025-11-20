@@ -1615,8 +1615,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
             'palette-file-name', 'palette-tools-vertical', 'palette-tileset-name', 'palette-assign-tileset-btn',
-            'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
+            'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay', 'palette-cursor-overlay',
+            'palette-tile-width', 'palette-tile-height',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
