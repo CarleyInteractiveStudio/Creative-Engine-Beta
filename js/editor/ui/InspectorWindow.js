@@ -1447,9 +1447,61 @@ async function updateInspectorForAsset(assetName, assetPath) {
             } catch (e) { /* No meta file, use defaults */ }
 
             // Save metadata button event
+            // Add optimization section (placeholder)
+            const optimizationContainer = document.createElement('div');
+            optimizationContainer.className = 'inspector-section';
+            optimizationContainer.innerHTML = `
+                <fieldset>
+                    <legend>Optimization</legend>
+                    <div class="inspector-row">
+                        <label for="sprite-max-size">Max Size</label>
+                        <select id="sprite-max-size">
+                            <option value="32">32</option>
+                            <option value="64">64</option>
+                            <option value="128">128</option>
+                            <option value="256">256</option>
+                            <option value="512">512</option>
+                            <option value="1024">1024</option>
+                            <option value="2048" selected>2048</option>
+                            <option value="4096">4096</option>
+                            <option value="8192">8192</option>
+                        </select>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="sprite-compression">Compression</label>
+                        <select id="sprite-compression">
+                            <option value="None">None</option>
+                            <option value="Low">Low Quality</option>
+                            <option value="Normal" selected>Normal Quality</option>
+                            <option value="High">High Quality</option>
+                        </select>
+                    </div>
+                </fieldset>
+            `;
+            dom.inspectorContent.appendChild(optimizationContainer);
+
+            const maxSizeSelect = optimizationContainer.querySelector('#sprite-max-size');
+            const compressionSelect = optimizationContainer.querySelector('#sprite-compression');
+
+
+            // Load existing meta
+            let metaData = {};
+            try {
+                const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
+                const metaFile = await metaFileHandle.getFile();
+                metaData = JSON.parse(await metaFile.text());
+                if (metaData.defaultTag) tagSelect.value = metaData.defaultTag;
+                if (metaData.defaultLayer) layerSelect.value = metaData.defaultLayer;
+                if (metaData.maxSize) maxSizeSelect.value = metaData.maxSize;
+                if (metaData.compression) compressionSelect.value = metaData.compression;
+            } catch (e) { /* No meta file, use defaults */ }
+
+            // Save metadata button event
             document.getElementById('save-sprite-meta-btn').addEventListener('click', async () => {
                 metaData.defaultTag = tagSelect.value;
                 metaData.defaultLayer = layerSelect.value;
+                metaData.maxSize = maxSizeSelect.value;
+                metaData.compression = compressionSelect.value;
                 await saveAssetMetaCallback(assetName, metaData, dirHandle);
                 window.Dialogs.showNotification('Éxito', 'Metadatos guardados.');
             });

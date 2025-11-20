@@ -1,3 +1,5 @@
+import { getHandleFromPath } from '../../engine/AssetUtils.js';
+
 // --- Module for Scene View Interactions and Gizmos ---
 
 // Dependencies from editor.js
@@ -789,19 +791,20 @@ async function handleDropOnScene(e) {
 
         // Apply default tag and layer from metadata
         try {
-            const dirHandle = await HierarchyWindow.getProjectDirectoryHandle();
-            const assetsDir = await dirHandle.getDirectoryHandle('Assets');
-            // Construct meta file name from the sprite asset path
-            const metaFileName = `${data.spriteAssetPath}.meta`;
-            const metaFileHandle = await assetsDir.getFileHandle(metaFileName);
-            const metaFile = await metaFileHandle.getFile();
-            const metaData = JSON.parse(await metaFile.text());
+            const projectHandle = await HierarchyWindow.getProjectDirectoryHandle();
+            const metaFilePath = `${data.spriteAssetPath}.meta`;
+            const metaFileHandle = await getHandleFromPath(projectHandle, metaFilePath);
 
-            if (metaData.defaultTag) newMateria.tag = metaData.defaultTag;
-            if (metaData.defaultLayer) newMateria.layer = parseInt(metaData.defaultLayer, 10);
+            if (metaFileHandle) {
+                const metaFile = await metaFileHandle.getFile();
+                const metaData = JSON.parse(await metaFile.text());
+
+                if (metaData.defaultTag) newMateria.tag = metaData.defaultTag;
+                if (metaData.defaultLayer) newMateria.layer = parseInt(metaData.defaultLayer, 10);
+            }
 
         } catch(err) {
-            console.warn("No .meta file found for sprite, using default tag/layer.", err);
+            console.warn("Could not read .meta file for sprite, using default tag/layer.", err);
         }
 
         HierarchyWindow.updateHierarchy();

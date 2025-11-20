@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedMateria = materiaToSelect;
 
         // Update UI that depends on selection
-        updateHierarchy();
+        HierarchyWindow.updateHierarchy();
         updateInspector();
     };
 
@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const idToDelete = selectedMateria.id;
                         selectMateria(null); // Deselect first
                         SceneManager.currentScene.removeMateria(idToDelete);
-                        updateHierarchy();
+                        HierarchyWindow.updateHierarchy();
                         updateInspector();
                     }
                     break;
@@ -1923,7 +1923,7 @@ public star() {
                                 SceneManager.setCurrentSceneFileHandle(fileHandle);
                                 dom.currentSceneName.textContent = name.replace('.ceScene', '');
                                 SceneManager.setSceneDirty(false);
-                                updateHierarchy();
+                                HierarchyWindow.updateHierarchy();
                                 selectMateria(null);
                             } else {
                                 showNotificationDialog('Error', `Failed to load scene: ${name}`);
@@ -2022,7 +2022,7 @@ public star() {
             await loadProjectConfig();
 
             updateLoadingProgress(85, "Actualizando paneles...");
-            updateHierarchy();
+            HierarchyWindow.updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();

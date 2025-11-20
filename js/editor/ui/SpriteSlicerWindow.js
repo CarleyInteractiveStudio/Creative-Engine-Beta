@@ -1,3 +1,5 @@
+import { getHandleFromPath } from '../../engine/AssetUtils.js';
+
 // --- Module State ---
 let localDom = {};
 let currentFileHandle = null;
@@ -88,26 +90,6 @@ export async function open(fileHandle, directoryHandle) {
         localDom.applyBtn.disabled = true;
     }
 }
-
-async function getHandleFromPath(rootHandle, path) {
-    const parts = path.split('/').filter(p => p);
-    let currentHandle = rootHandle;
-    for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        try {
-            if (i === parts.length - 1) { // It's the file
-                currentHandle = await currentHandle.getFileHandle(part);
-            } else { // It's a directory
-                currentHandle = await currentHandle.getDirectoryHandle(part);
-            }
-        } catch (error) {
-            console.error(`No se pudo encontrar la ruta '${path}' en la parte '${part}'`, error);
-            return null;
-        }
-    }
-    return currentHandle;
-}
-
 
 async function loadSpriteAsset(spriteAssetHandle) {
     try {

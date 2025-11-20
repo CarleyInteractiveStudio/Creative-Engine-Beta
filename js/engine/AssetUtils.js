@@ -1,3 +1,22 @@
+export async function getHandleFromPath(rootHandle, path) {
+    const parts = path.split('/').filter(p => p);
+    let currentHandle = rootHandle;
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        try {
+            if (i === parts.length - 1) { // It's the file
+                currentHandle = await currentHandle.getFileHandle(part);
+            } else { // It's a directory
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            }
+        } catch (error) {
+            console.error(`Could not find path '${path}' at segment '${part}'`, error);
+            return null;
+        }
+    }
+    return currentHandle;
+}
+
 async function generateSpritePreview(spriteFile, projectHandle) {
     try {
         const content = await spriteFile.text();
@@ -52,19 +71,11 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
-        let currentHandle = projectHandle;
-        const parts = path.split('/').filter(p => p);
-        if (parts.length === 0) return null;
-        const fileName = parts.pop();
-        if (!fileName) return null;
+        const fileHandle = await getHandleFromPath(projectHandle, path);
+        if (!fileHandle) return null;
 
-        for (const part of parts) {
-            currentHandle = await currentHandle.getDirectoryHandle(part);
-        }
-
-        const fileHandle = await currentHandle.getFileHandle(fileName);
         const file = await fileHandle.getFile();
-        const extension = fileName.split('.').pop().toLowerCase();
+        const extension = file.name.split('.').pop().toLowerCase();
 
         if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)) {
              return URL.createObjectURL(file);
