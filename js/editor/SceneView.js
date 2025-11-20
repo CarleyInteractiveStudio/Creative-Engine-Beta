@@ -13,6 +13,7 @@ let getActiveView;
 let SceneManager;
 let getPreferences;
 let getSelectedTile;
+let HierarchyWindow;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -368,10 +369,14 @@ export function initialize(dependencies) {
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;
     getPreferences = dependencies.getPreferences;
-    getSelectedTile = dependencies.getSelectedTile; // New dependency
+    getSelectedTile = dependencies.getSelectedTile;
+    HierarchyWindow = dependencies.HierarchyWindow;
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
+    dom.sceneCanvas.addEventListener('dragover', e => e.preventDefault());
+    dom.sceneCanvas.addEventListener('drop', handleDropOnScene);
+
 
     dom.sceneCanvas.addEventListener('wheel', (event) => {
         event.preventDefault(); // Stop the browser from scrolling the page
@@ -758,6 +763,50 @@ function drawTilemapGrid() {
 
     ctx.stroke();
     ctx.restore();
+}
+
+async function handleDropOnScene(e) {
+    e.preventDefault();
+    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+    if (data.type === 'sprite') {
+        const rect = dom.sceneCanvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const worldPos = screenToWorld(mouseX, mouseY);
+
+        const newMateria = SceneManager.currentScene.createMateria(data.spriteName);
+        newMateria.getComponent(Components.Transform).x = worldPos.x;
+        newMateria.getComponent(Components.Transform).y = worldPos.y;
+
+        const spriteRenderer = new Components.SpriteRenderer(newMateria);
+        spriteRenderer.spriteSheetPath = data.spriteAssetPath;
+        spriteRenderer.spriteName = data.spriteName;
+        newMateria.addComponent(spriteRenderer);
+
+        await spriteRenderer.loadSpriteSheet();
+
+        // Apply default tag and layer from metadata
+        try {
+            const dirHandle = await HierarchyWindow.getProjectDirectoryHandle();
+            const assetsDir = await dirHandle.getDirectoryHandle('Assets');
+            // Construct meta file name from the sprite asset path
+            const metaFileName = `${data.spriteAssetPath}.meta`;
+            const metaFileHandle = await assetsDir.getFileHandle(metaFileName);
+            const metaFile = await metaFileHandle.getFile();
+            const metaData = JSON.parse(await metaFile.text());
+
+            if (metaData.defaultTag) newMateria.tag = metaData.defaultTag;
+            if (metaData.defaultLayer) newMateria.layer = parseInt(metaData.defaultLayer, 10);
+
+        } catch(err) {
+            console.warn("No .meta file found for sprite, using default tag/layer.", err);
+        }
+
+        HierarchyWindow.updateHierarchy();
+        selectMateria(newMateria);
+    }
 }
 
 function drawTilemapColliders() {

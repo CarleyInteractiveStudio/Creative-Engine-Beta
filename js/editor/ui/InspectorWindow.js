@@ -1319,6 +1319,141 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             previewContainer.appendChild(spriteGrid);
             dom.inspectorContent.appendChild(previewContainer);
+        } else if (assetName.endsWith('.cesprite')) {
+            const spriteData = JSON.parse(content);
+            const galleryContainer = document.createElement('div');
+            galleryContainer.className = 'sprite-gallery-container';
+
+            const reconstructionBtn = document.createElement('button');
+            reconstructionBtn.id = 'reconstruct-sprite-btn';
+            reconstructionBtn.textContent = 'Reconstruir Vista Original';
+            reconstructionBtn.className = 'primary-btn';
+            reconstructionBtn.style.width = '100%';
+            reconstructionBtn.style.marginBottom = '10px';
+            dom.inspectorContent.appendChild(reconstructionBtn);
+
+            const imagePath = `Assets/${spriteData.sourceImage}`;
+            const imageUrl = await getURLForAssetPath(imagePath, projectsDirHandle);
+
+            reconstructionBtn.addEventListener('click', () => {
+                if (!imageUrl) {
+                    window.Dialogs.showNotification("Error", "No se puede reconstruir porque la imagen de origen no se encontró.");
+                    return;
+                }
+                const modal = dom.spriteReconstructionModal;
+                const canvas = dom.reconstructionCanvas;
+                const ctx = canvas.getContext('2d');
+
+                const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    // Draw each sprite slice in its original position
+                    spriteData.sprites.forEach(sprite => {
+                        const rect = sprite.rect;
+                        ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, rect.x, rect.y, rect.width, rect.height);
+                    });
+                     modal.classList.add('is-open');
+                };
+                img.src = imageUrl;
+            });
+
+            if (imageUrl) {
+                const sourceImg = new Image();
+                sourceImg.onload = () => {
+                    spriteData.sprites.forEach(sprite => {
+                        const item = document.createElement('div');
+                        item.className = 'sprite-gallery-item';
+                        item.draggable = true;
+                        item.addEventListener('dragstart', (e) => {
+                            const dragData = {
+                                type: 'sprite',
+                                spriteAssetPath: assetPath,
+                                spriteName: sprite.name,
+                                sourceImage: spriteData.sourceImage
+                            };
+                            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                        });
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const rect = sprite.rect;
+                        canvas.width = rect.width;
+                        canvas.height = rect.height;
+
+                        ctx.drawImage(sourceImg, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+
+                        const name = document.createElement('span');
+                        name.textContent = sprite.name;
+
+                        item.appendChild(canvas);
+                        item.appendChild(name);
+                        galleryContainer.appendChild(item);
+                    });
+                };
+                sourceImg.src = imageUrl;
+            } else {
+                galleryContainer.innerHTML = `<p class="error-message">No se pudo cargar la imagen de origen: ${spriteData.sourceImage}</p>`;
+            }
+
+            dom.inspectorContent.appendChild(galleryContainer);
+
+            // Add fields for metadata
+            const metadataContainer = document.createElement('div');
+            metadataContainer.className = 'inspector-section';
+            metadataContainer.innerHTML = `
+                <fieldset>
+                    <legend>Default Properties</legend>
+                    <div class="inspector-row">
+                        <label for="sprite-default-tag">Tag</label>
+                        <select id="sprite-default-tag"></select>
+                    </div>
+                    <div class="inspector-row">
+                        <label for="sprite-default-layer">Layer</label>
+                        <select id="sprite-default-layer"></select>
+                    </div>
+                    <button id="save-sprite-meta-btn" class="primary-btn" style="width: 100%; margin-top: 10px;">Save Metadata</button>
+                </fieldset>
+            `;
+            dom.inspectorContent.appendChild(metadataContainer);
+
+            // Populate dropdowns and load existing metadata
+            const config = getCurrentProjectConfig();
+            const tagSelect = metadataContainer.querySelector('#sprite-default-tag');
+            const layerSelect = metadataContainer.querySelector('#sprite-default-layer');
+
+            config.tags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                tagSelect.appendChild(option);
+            });
+
+            config.layers.sortingLayers.forEach((layerName, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${index}: ${layerName}`;
+                layerSelect.appendChild(option);
+            });
+
+            // Load existing meta
+            let metaData = {};
+            try {
+                const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
+                const metaFile = await metaFileHandle.getFile();
+                metaData = JSON.parse(await metaFile.text());
+                if (metaData.defaultTag) tagSelect.value = metaData.defaultTag;
+                if (metaData.defaultLayer) layerSelect.value = metaData.defaultLayer;
+            } catch (e) { /* No meta file, use defaults */ }
+
+            // Save metadata button event
+            document.getElementById('save-sprite-meta-btn').addEventListener('click', async () => {
+                metaData.defaultTag = tagSelect.value;
+                metaData.defaultLayer = layerSelect.value;
+                await saveAssetMetaCallback(assetName, metaData, dirHandle);
+                window.Dialogs.showNotification('Éxito', 'Metadatos guardados.');
+            });
+
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }

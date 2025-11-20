@@ -2654,6 +2654,62 @@ body {
     text-align: center;
 }
 
+/* Styles for .ceSprite gallery in Inspector */
+.sprite-gallery-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 15px;
+    padding: 10px;
+    background-color: var(--color-background-deep);
+    border-radius: 5px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.sprite-gallery-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sprite-gallery-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border-color: var(--color-accent);
+}
+
+.sprite-gallery-item canvas {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    background-image:
+        linear-gradient(45deg, #444 25%, transparent 25%),
+        linear-gradient(-45deg, #444 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #444 75%),
+        linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.sprite-gallery-item span {
+    font-size: 0.85em;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background-light);
+    padding: 2px 6px;
+    border-radius: 3px;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 #palette-view-container {
     flex-grow: 1;
     position: relative;

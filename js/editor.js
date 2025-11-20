@@ -11,7 +11,7 @@ import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFrom
 import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
+import * as HierarchyWindow from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
@@ -1630,7 +1630,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
-            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search'
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
+            // Sprite Reconstruction Modal
+            'sprite-reconstruction-modal', 'reconstruction-canvas'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1989,7 +1991,7 @@ public star() {
                 projectsDirHandle: projectsDirHandle
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, HierarchyWindow });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -1999,7 +2001,7 @@ public star() {
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
 
             updateLoadingProgress(70, "Construyendo interfaz...");
-            initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
+            HierarchyWindow.initialize({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
             const libraryModule = initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
 
             const assetBrowserCallbacks = {

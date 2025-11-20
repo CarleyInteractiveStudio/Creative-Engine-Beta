@@ -155,6 +155,10 @@ export function duplicateSelectedMateria() {
 
 
 // Initialization function, called from editor.js
+export function getProjectDirectoryHandle() {
+    return projectsDirHandle;
+}
+
 export function initialize(dependencies) {
     dom = dependencies.dom;
     SceneManager = dependencies.SceneManager;
