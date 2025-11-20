@@ -61,10 +61,14 @@ function handleMouseDown(e) {
         return;
     }
 
-    const tileTools = ['tile-brush', 'tile-eraser'];
+    const tileTools = ['tile-brush', 'tile-eraser', 'tile-bucket-fill'];
     if (tileTools.includes(paletteTool)) {
-        isPainting = true;
-        paintTile(e); // Paint on the first click
+        if (paletteTool === 'tile-bucket-fill') {
+            paintTile(e); // Paint only once for bucket fill
+        } else {
+            isPainting = true;
+            paintTile(e); // Paint on first click for brush/eraser
+        }
         return;
     }
 
@@ -158,8 +162,14 @@ function paintTile(e) {
     switch (tool) {
         case 'tile-brush':
             if (selectedTileId !== -1) {
-                tilemap.tileData.set(tileKey, selectedTileId);
-                console.log(`Painted tile ${selectedTileId} at ${tileKey}`);
+                if (tilemap.tileData.get(tileKey) !== selectedTileId) {
+                    tilemap.tileData.set(tileKey, selectedTileId);
+                }
+            }
+            break;
+        case 'tile-bucket-fill':
+            if (selectedTileId !== -1) {
+                floodFill(tilemap, gridX, gridY, selectedTileId);
             }
             break;
         case 'tile-eraser':
@@ -178,6 +188,35 @@ function paintTile(e) {
     }
     // Need a way to signal that the scene needs redrawing
     // For now, the render loop will handle it.
+}
+
+function floodFill(tilemap, startX, startY, newTileId) {
+    const targetTileId = tilemap.tileData.get(`${startX},${startY}`) || undefined;
+
+    if (newTileId === targetTileId) return; // No need to fill if the tile is the same
+
+    const queue = [[startX, startY]];
+    const visited = new Set([`${startX},${startY}`]);
+
+    while (queue.length > 0) {
+        const [x, y] = queue.shift();
+        const currentTileKey = `${x},${y}`;
+        const currentTileId = tilemap.tileData.get(currentTileKey) || undefined;
+
+        if (currentTileId === targetTileId) {
+            tilemap.tileData.set(currentTileKey, newTileId);
+
+            // Check neighbors
+            const neighbors = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+            for (const [nx, ny] of neighbors) {
+                const neighborKey = `${nx},${ny}`;
+                if (!visited.has(neighborKey)) {
+                    visited.add(neighborKey);
+                    queue.push([nx, ny]);
+                }
+            }
+        }
+    }
 }
 
 function fillTileRect(endWorldPos) {

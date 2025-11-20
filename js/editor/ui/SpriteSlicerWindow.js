@@ -2,9 +2,7 @@
 let localDom = {};
 let currentFileHandle = null;
 let sourceImage = null;
-let generatedSlices = []; // Array of { id, name, rect }
-let selectedSliceId = null;
-let nextSliceId = 0;
+let generatedSlices = [];
 let saveCallback = null;
 let dirHandle = null;
 let openAssetSelectorCallback = null;
@@ -39,13 +37,6 @@ export function initialize(dependencies) {
         offsetY: cachedDom.sliceOffsetY,
         paddingX: cachedDom.slicePaddingX,
         paddingY: cachedDom.slicePaddingY,
-        spriteList: cachedDom.slicerSpriteList,
-        spriteProperties: cachedDom.slicerSpriteProperties,
-        propName: cachedDom.spritePropName,
-        propX: cachedDom.spritePropX,
-        propY: cachedDom.spritePropY,
-        propW: cachedDom.spritePropW,
-        propH: cachedDom.spritePropH,
     };
 
     // Setup Event Listeners
@@ -53,18 +44,11 @@ export function initialize(dependencies) {
     localDom.pivotSelect.addEventListener('change', handlePivotChange);
     localDom.sliceBtn.addEventListener('click', executeSlice);
     localDom.applyBtn.addEventListener('click', applySlices);
-    localDom.canvas.addEventListener('mousedown', handleCanvasMouseDown);
-
-    // Properties Panel Listeners
-    localDom.propName.addEventListener('change', updateSliceFromProperties);
-    localDom.propX.addEventListener('change', updateSliceFromProperties);
-    localDom.propY.addEventListener('change', updateSliceFromProperties);
-    localDom.propW.addEventListener('change', updateSliceFromProperties);
-    localDom.propH.addEventListener('change', updateSliceFromProperties);
-
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
             openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
+                // When an image is selected, load it.
+                // The saveAssetMetaCallback from initialization is used as the save callback.
                 loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
             });
         } else {
@@ -81,8 +65,10 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
     if (fileHandle) {
         await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
     } else {
+        // Opened from the Window menu, show overlay. User will use 'Load Image'.
         localDom.overlay.classList.remove('hidden');
         localDom.mainContent.classList.add('hidden');
+        // Ensure buttons that require a loaded image are disabled
         localDom.sliceBtn.disabled = true;
         localDom.applyBtn.disabled = true;
     }
@@ -92,8 +78,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
     currentFileHandle = fileHandle;
     dirHandle = directoryHandle;
     saveCallback = saveMetaCb;
-
-    resetToDefaultState(); // Reset before loading new image
+    generatedSlices = [];
 
     try {
         const file = await fileHandle.getFile();
@@ -123,244 +108,31 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
 }
 
 // --- Internal Logic ---
-
 function resetToDefaultState() {
-    // sourceImage is NOT reset here, only on new load
+    sourceImage = null;
+    currentFileHandle = null;
+    dirHandle = null;
+    saveCallback = null;
     generatedSlices = [];
-    selectedSliceId = null;
-    nextSliceId = 0;
-
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
-    if(localDom.spriteList) localDom.spriteList.innerHTML = '';
-    if(localDom.spriteProperties) localDom.spriteProperties.classList.add('hidden');
-
-    if (!sourceImage) {
-        localDom.overlay.classList.remove('hidden');
-        localDom.mainContent.classList.add('hidden');
-    }
+    localDom.overlay.classList.remove('hidden');
+    localDom.mainContent.classList.add('hidden');
 }
-
-function selectSlice(sliceId) {
-    selectedSliceId = sliceId;
-    updateSpriteList();
-    populateProperties();
-    draw();
-}
-
-function updateSpriteList() {
-    localDom.spriteList.innerHTML = '';
-    if (!sourceImage) return;
-
-    generatedSlices.forEach(slice => {
-        const item = document.createElement('div');
-        item.className = 'sprite-list-item';
-        item.dataset.sliceId = slice.id;
-        if (slice.id === selectedSliceId) {
-            item.classList.add('selected');
-        }
-
-        const preview = document.createElement('canvas');
-        preview.className = 'preview-canvas';
-        preview.width = 40;
-        preview.height = 40;
-        const pctx = preview.getContext('2d');
-        // Clear and draw with a fixed aspect ratio
-        pctx.clearRect(0, 0, 40, 40);
-        const aspect = slice.rect.width / slice.rect.height;
-        let drawW = 40, drawH = 40;
-        if (aspect > 1) {
-            drawH = 40 / aspect;
-        } else {
-            drawW = 40 * aspect;
-        }
-        pctx.drawImage(sourceImage, slice.rect.x, slice.rect.y, slice.rect.width, slice.rect.height, (40 - drawW) / 2, (40 - drawH) / 2, drawW, drawH);
-
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'sprite-name';
-        nameSpan.textContent = slice.name;
-
-        item.appendChild(preview);
-        item.appendChild(nameSpan);
-
-        item.addEventListener('click', () => selectSlice(slice.id));
-        localDom.spriteList.appendChild(item);
-    });
-}
-
-
-function populateProperties() {
-    if (selectedSliceId === null) {
-        localDom.spriteProperties.classList.add('hidden');
-        return;
-    }
-    const slice = generatedSlices.find(s => s.id === selectedSliceId);
-    if (!slice) return;
-
-    localDom.spriteProperties.classList.remove('hidden');
-    localDom.propName.value = slice.name;
-    localDom.propX.value = slice.rect.x;
-    localDom.propY.value = slice.rect.y;
-    localDom.propW.value = slice.rect.width;
-    localDom.propH.value = slice.rect.height;
-}
-
-function handleCanvasMouseDown(e) {
-    if (!sourceImage) return;
-
-    const canvasRect = localDom.canvas.getBoundingClientRect();
-    const startX = e.clientX - canvasRect.left;
-    const startY = e.clientY - canvasRect.top;
-
-    let selectedSlice = generatedSlices.find(s => s.id === selectedSliceId);
-    let action = 'none';
-    let originalRect = null;
-
-    if (selectedSlice) {
-        action = getDragAction(startX, startY, selectedSlice.rect);
-        originalRect = { ...selectedSlice.rect };
-    }
-
-    // If an action on the selected slice is detected (move or resize)
-    if (selectedSlice && action !== 'none') {
-        const onMouseMove = (moveEvent) => {
-            const currentX = moveEvent.clientX - canvasRect.left;
-            const currentY = moveEvent.clientY - canvasRect.top;
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-
-            let newRect = { ...selectedSlice.rect };
-
-            if (action === 'move') {
-                newRect.x = Math.round(originalRect.x + deltaX);
-                newRect.y = Math.round(originalRect.y + deltaY);
-            } else { // It's a resize action
-                if (action.includes('l')) { newRect.x = Math.round(originalRect.x + deltaX); newRect.width = Math.round(originalRect.width - deltaX); }
-                if (action.includes('r')) { newRect.width = Math.round(originalRect.width + deltaX); }
-                if (action.includes('t')) { newRect.y = Math.round(originalRect.y + deltaY); newRect.height = Math.round(originalRect.height - deltaY); }
-                if (action.includes('b')) { newRect.height = Math.round(originalRect.height + deltaY); }
-
-                // Prevent inverted rectangles
-                if (newRect.width < 0) { newRect.x += newRect.width; newRect.width *= -1; }
-                if (newRect.height < 0) { newRect.y += newRect.height; newRect.height *= -1; }
-            }
-
-            selectedSlice.rect = newRect;
-            populateProperties(); // Update inspector in real-time
-            draw();
-        };
-
-        const onMouseUp = () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('mouseup', onMouseUp);
-            updateSpriteList(); // Update the preview thumbnail
-        };
-
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-        return;
-    }
-
-    // Check if clicking inside any other slice to select it
-    for (let i = generatedSlices.length - 1; i >= 0; i--) {
-        const slice = generatedSlices[i];
-        if (startX >= slice.rect.x && startX < slice.rect.x + slice.rect.width && startY >= slice.rect.y && startY < slice.rect.y + slice.rect.height) {
-            selectSlice(slice.id);
-            return;
-        }
-    }
-
-    // If in manual mode and not clicking any slice, start drawing a new one
-    if (localDom.sliceType.value === 'Manual') {
-        selectSlice(null);
-        const onDrawMove = (moveEvent) => {
-            draw();
-            const currentX = moveEvent.clientX - canvasRect.left;
-            const currentY = moveEvent.clientY - canvasRect.top;
-            localDom.ctx.strokeStyle = 'rgba(255, 255, 0, 0.9)';
-            localDom.ctx.lineWidth = 2;
-            localDom.ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
-        };
-        const onDrawUp = (upEvent) => {
-            window.removeEventListener('mousemove', onDrawMove);
-            window.removeEventListener('mouseup', onDrawUp);
-            const endX = upEvent.clientX - canvasRect.left;
-            const endY = upEvent.clientY - canvasRect.top;
-            const newRect = {
-                x: Math.round(Math.min(startX, endX)),
-                y: Math.round(Math.min(startY, endY)),
-                width: Math.round(Math.abs(endX - startX)),
-                height: Math.round(Math.abs(endY - startY))
-            };
-            if (newRect.width > 2 && newRect.height > 2) {
-                const baseName = currentFileHandle.name.split('.')[0];
-                const newSlice = { id: nextSliceId++, name: `${baseName}_${nextSliceId - 1}`, rect: newRect };
-                generatedSlices.push(newSlice);
-                selectSlice(newSlice.id);
-            } else {
-                draw();
-            }
-        };
-        window.addEventListener('mousemove', onDrawMove);
-        window.addEventListener('mouseup', onDrawUp);
-    }
-}
-
-function getDragAction(x, y, rect) {
-    const handleSize = 8;
-    const handles = {
-        'tl': { x: rect.x, y: rect.y }, 't': { x: rect.x + rect.width / 2, y: rect.y }, 'tr': { x: rect.x + rect.width, y: rect.y },
-        'l': { x: rect.x, y: rect.y + rect.height / 2 }, 'r': { x: rect.x + rect.width, y: rect.y + rect.height / 2 },
-        'bl': { x: rect.x, y: rect.y + rect.height }, 'b': { x: rect.x + rect.width / 2, y: rect.y + rect.height }, 'br': { x: rect.x + rect.width, y: rect.y + rect.height }
-    };
-    for (const [key, pos] of Object.entries(handles)) {
-        if (Math.abs(x - pos.x) < handleSize && Math.abs(y - pos.y) < handleSize) return key;
-    }
-    if (x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height) return 'move';
-    return 'none';
-}
-
 
 function draw() {
     if (!sourceImage) return;
     localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.ctx.drawImage(sourceImage, 0, 0);
 
-    generatedSlices.forEach(slice => {
-        if (slice.id === selectedSliceId) {
-            localDom.ctx.strokeStyle = 'yellow';
-            localDom.ctx.lineWidth = 2;
-        } else {
-            localDom.ctx.strokeStyle = 'rgba(0, 255, 25, 0.75)';
-            localDom.ctx.lineWidth = 1;
-        }
-        localDom.ctx.strokeRect(slice.rect.x, slice.rect.y, slice.rect.width, slice.rect.height);
-
-        if (slice.id === selectedSliceId) {
-            drawResizeHandles(slice.rect);
-        }
-    });
-}
-
-function drawResizeHandles(rect) {
-    const handleSize = 8;
-    localDom.ctx.fillStyle = 'yellow';
-    const handles = [
-        { x: rect.x, y: rect.y }, { x: rect.x + rect.width / 2, y: rect.y }, { x: rect.x + rect.width, y: rect.y },
-        { x: rect.x, y: rect.y + rect.height / 2 }, { x: rect.x + rect.width, y: rect.y + rect.height / 2 },
-        { x: rect.x, y: rect.y + rect.height }, { x: rect.x + rect.width / 2, y: rect.y + rect.height }, { x: rect.x + rect.width, y: rect.y + rect.height }
-    ];
-    handles.forEach(handle => {
-        localDom.ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+    localDom.ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+    localDom.ctx.lineWidth = 2;
+    generatedSlices.forEach(rect => {
+        localDom.ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     });
 }
 
 function handleSliceTypeChange(e) {
     const type = e.target.value;
-    const optionsContainer = document.getElementById('slice-options-dynamic-container');
-    if (optionsContainer) {
-        optionsContainer.classList.toggle('hidden', type === 'Manual');
-    }
     localDom.gridCellSizeOptions.classList.toggle('hidden', type !== 'Grid by Cell Size');
     localDom.gridCellCountOptions.classList.toggle('hidden', type !== 'Grid by Cell Count');
 }
@@ -373,29 +145,14 @@ function executeSlice() {
     if (!sourceImage) return;
 
     const type = localDom.sliceType.value;
-    let rects = [];
+    generatedSlices = [];
 
     switch (type) {
-        case 'Automatic': rects = sliceAutomatic(); break;
-        case 'Grid by Cell Size': rects = sliceByCellSize(); break;
-        case 'Grid by Cell Count': rects = sliceByCellCount(); break;
+        case 'Automatic': sliceAutomatic(); break;
+        case 'Grid by Cell Size': sliceByCellSize(); break;
+        case 'Grid by Cell Count': sliceByCellCount(); break;
     }
 
-    generatedSlices = [];
-    selectedSliceId = null;
-    nextSliceId = 0;
-    const baseName = currentFileHandle.name.split('.')[0];
-
-    rects.forEach(rect => {
-         generatedSlices.push({
-            id: nextSliceId++,
-            name: `${baseName}_${nextSliceId - 1}`,
-            rect: rect
-        });
-    });
-
-    updateSpriteList();
-    populateProperties(); // Hides properties since no slice is selected
     draw();
     console.log(`Generated ${generatedSlices.length} slices.`);
 }
@@ -407,6 +164,7 @@ async function applySlices() {
     }
     if (!saveCallback || !dirHandle || !currentFileHandle) {
         window.Dialogs.showNotification("Error", "No se puede aplicar cambios. Asegúrate de haber cargado la imagen a través del Inspector.");
+        console.error("Error al aplicar: Faltan dependencias de guardado. Esto puede ocurrir si la imagen se cargó manualmente.");
         return;
     }
 
@@ -420,10 +178,11 @@ async function applySlices() {
 
         metaData.sprites = {};
 
-        generatedSlices.forEach(slice => {
-            metaData.sprites[slice.name] = {
-                name: slice.name,
-                rect: slice.rect,
+        generatedSlices.forEach((rect, index) => {
+            const spriteName = `${currentFileHandle.name.split('.')[0]}_${index}`;
+            metaData.sprites[spriteName] = {
+                name: spriteName,
+                rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
                 pivot: { x: 0.5, y: 0.5 },
                 border: { left: 0, top: 0, right: 0, bottom: 0 }
             };
@@ -431,9 +190,8 @@ async function applySlices() {
 
         await saveCallback(currentFileHandle.name, metaData, dirHandle);
         window.Dialogs.showNotification("Éxito", `Se han guardado ${generatedSlices.length} sprites en el archivo .meta.`);
-        localDom.panel.classList.add('hidden');
+        localDom.panel.classList.add('hidden'); // Close on success
         resetToDefaultState();
-        sourceImage = null; // Fully reset after saving
 
     } catch (error) {
         console.error("Error al guardar los metadatos de los sprites:", error);
@@ -442,7 +200,6 @@ async function applySlices() {
 }
 
 function sliceAutomatic() {
-    const rects = [];
     const width = localDom.canvas.width;
     const height = localDom.canvas.height;
     const imageData = localDom.ctx.getImageData(0, 0, width, height);
@@ -459,37 +216,11 @@ function sliceAutomatic() {
             if (alpha > alphaThreshold) {
                 const bounds = findSpriteBounds(x, y, width, height, data, visited, alphaThreshold);
                 if (bounds.width > 5 && bounds.height > 5) {
-                    rects.push(bounds);
+                    generatedSlices.push(bounds);
                 }
             }
         }
     }
-    return rects;
-}
-
-function updateSliceFromProperties() {
-    if (selectedSliceId === null) return;
-    const slice = generatedSlices.find(s => s.id === selectedSliceId);
-    if (!slice) return;
-
-    // Update name
-    const newName = localDom.propName.value.trim();
-    if (newName && !generatedSlices.some(s => s.name === newName && s.id !== slice.id)) {
-        slice.name = newName;
-    } else {
-        // Revert if name is empty or already exists
-        localDom.propName.value = slice.name;
-    }
-
-    // Update rect properties
-    slice.rect.x = parseInt(localDom.propX.value, 10) || 0;
-    slice.rect.y = parseInt(localDom.propY.value, 10) || 0;
-    slice.rect.width = parseInt(localDom.propW.value, 10) || 0;
-    slice.rect.height = parseInt(localDom.propH.value, 10) || 0;
-
-    // Refresh UI
-    updateSpriteList();
-    draw();
 }
 
 function findSpriteBounds(startX, startY, width, height, data, visited, alphaThreshold) {
@@ -519,7 +250,6 @@ function findSpriteBounds(startX, startY, width, height, data, visited, alphaThr
 }
 
 function sliceByCellSize() {
-    const rects = [];
     const cellWidth = parseInt(localDom.pixelSizeX.value, 10);
     const cellHeight = parseInt(localDom.pixelSizeY.value, 10);
     const offsetX = parseInt(localDom.offsetX.value, 10);
@@ -527,23 +257,21 @@ function sliceByCellSize() {
     const paddingX = parseInt(localDom.paddingX.value, 10);
     const paddingY = parseInt(localDom.paddingY.value, 10);
 
-    if (cellWidth <= 0 || cellHeight <= 0) return rects;
+    if (cellWidth <= 0 || cellHeight <= 0) return;
 
     for (let y = offsetY; y < sourceImage.height; y += cellHeight + paddingY) {
         for (let x = offsetX; x < sourceImage.width; x += cellWidth + paddingX) {
             if (x + cellWidth > sourceImage.width || y + cellHeight > sourceImage.height) continue;
-            rects.push({ x, y, width: cellWidth, height: cellHeight });
+            generatedSlices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }
-    return rects;
 }
 
 function sliceByCellCount() {
-    const rects = [];
     const cols = parseInt(localDom.columnCount.value, 10);
     const rows = parseInt(localDom.rowCount.value, 10);
 
-    if (cols <= 0 || rows <= 0) return rects;
+    if (cols <= 0 || rows <= 0) return;
 
     const cellWidth = Math.floor(sourceImage.width / cols);
     const cellHeight = Math.floor(sourceImage.height / rows);
@@ -552,8 +280,7 @@ function sliceByCellCount() {
         for (let c = 0; c < cols; c++) {
             const x = c * cellWidth;
             const y = r * cellHeight;
-            rects.push({ x, y, width: cellWidth, height: cellHeight });
+            generatedSlices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }
-    return rects;
 }

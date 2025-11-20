@@ -1614,17 +1614,16 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
-            'palette-file-name', 'palette-tools-vertical',
+            'palette-file-name', 'palette-tools-vertical', 'palette-tileset-name', 'palette-assign-tileset-btn',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
-            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
+            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay', 'palette-cursor-overlay',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
             'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
-            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-sprite-list', 'slicer-sprite-properties',
-            'sprite-prop-name', 'sprite-prop-x', 'sprite-prop-y', 'sprite-prop-w', 'sprite-prop-h',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
@@ -1993,7 +1992,11 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
+            TilePalette.initialize({
+                dom,
+                projectsDirHandle,
+                openAssetSelectorCallback: openAssetSelector
+            });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

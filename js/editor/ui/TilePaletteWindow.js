@@ -3,30 +3,31 @@ import { showNotification, showConfirmation } from './DialogWindow.js';
 
 let dom = {};
 let projectsDirHandle = null;
-let currentPalette = null; // Will hold the entire loaded palette asset content
+let openAssetSelectorCallback = null;
+let currentPalette = null;
 let currentFileHandle = null;
 let selectedTileId = -1;
-let activeTool = 'tile-brush'; // Default tool
+let activeTool = 'tile-brush';
 
-// --- Public API ---
-
-export function initialize(editorDom, projDirHandle) {
+export function initialize(dependencies) {
     dom = {
-        panel: editorDom.tilePalettePanel,
-        assetName: editorDom.paletteAssetName, // This is now palette-file-name
-        fileNameSpan: editorDom.paletteFileName,
-        saveBtn: editorDom.paletteSaveBtn,
-        loadBtn: editorDom.paletteLoadBtn,
-        selectedTileIdSpan: editorDom.paletteSelectedTileId,
-        viewContainer: editorDom.paletteViewContainer,
-        gridCanvas: editorDom.paletteGridCanvas,
-        tilesetImage: editorDom.paletteTilesetImage,
-        overlay: editorDom.palettePanelOverlay,
-        verticalToolbar: editorDom.paletteToolsVertical,
+        panel: dependencies.dom.tilePalettePanel,
+        fileNameSpan: dependencies.dom.paletteFileName,
+        saveBtn: dependencies.dom.paletteSaveBtn,
+        loadBtn: dependencies.dom.paletteLoadBtn,
+        tilesetNameSpan: dependencies.dom.paletteTilesetName,
+        assignTilesetBtn: dependencies.dom.paletteAssignTilesetBtn,
+        selectedTileIdSpan: dependencies.dom.paletteSelectedTileId,
+        viewContainer: dependencies.dom.paletteViewContainer,
+        gridCanvas: dependencies.dom.paletteGridCanvas,
+        cursorOverlay: dependencies.dom.paletteCursorOverlay,
+        tilesetImage: dependencies.dom.paletteTilesetImage,
+        overlay: dependencies.dom.palettePanelOverlay,
+        verticalToolbar: dependencies.dom.paletteToolsVertical,
     };
-    projectsDirHandle = projDirHandle;
+    projectsDirHandle = dependencies.projectsDirHandle;
+    openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
 
-    // Initially, the panel is in its "empty" state
     dom.overlay.style.display = 'flex';
     dom.saveBtn.style.display = 'none';
 
@@ -69,10 +70,11 @@ export async function openPalette(fileHandle) {
         dom.saveBtn.style.display = 'inline-block';
 
         if (currentPalette.imagePath) {
+            dom.tilesetNameSpan.textContent = currentPalette.imagePath.split('/').pop();
             await loadImage(currentPalette.imagePath);
         } else {
+            dom.tilesetNameSpan.textContent = 'Ninguno';
             dom.tilesetImage.style.display = 'none';
-            showNotification('Paleta Inválida', 'El archivo de paleta no especifica una imagen de tileset.');
             clearGrid();
         }
     } catch (error) {
@@ -96,41 +98,47 @@ export function getActiveTool() {
 // --- Internal Logic ---
 
 function setupEventListeners() {
-    // dom.saveBtn.addEventListener('click', saveCurrentPalette);
-    dom.loadBtn.addEventListener('click', async () => {
-        try {
-            const [fileHandle] = await window.showOpenFilePicker({
-                types: [{
-                    description: 'Creative Engine Palette',
-                    accept: { 'application/json': ['.cepalette'] }
-                }],
-                multiple: false,
-            });
-            await openPalette(fileHandle);
-        } catch (err) {
-            console.log("User cancelled file picker or error occurred:", err);
+    dom.saveBtn.addEventListener('click', saveCurrentPalette);
+    dom.loadBtn.addEventListener('click', () => {
+        openAssetSelectorCallback('file', (fileHandle) => {
+            if (fileHandle.name.endsWith('.cepalette')) {
+                openPalette(fileHandle);
+            } else {
+                showNotification('Error', 'Por favor, selecciona un archivo .cepalette.');
+            }
+        });
+    });
+
+    dom.assignTilesetBtn.addEventListener('click', () => {
+        if (!currentPalette) {
+            showNotification('Aviso', 'Por favor, carga primero un archivo de paleta.');
+            return;
         }
+        openAssetSelectorCallback('image', (fileHandle, dirHandle) => {
+            // We need to determine the relative path from the project root
+            // This is a simplification; a more robust solution would trace the path.
+            const imagePath = `Assets/${fileHandle.name}`;
+            currentPalette.imagePath = imagePath;
+            dom.tilesetNameSpan.textContent = fileHandle.name;
+            loadImage(imagePath);
+        });
     });
 
     dom.verticalToolbar.addEventListener('click', (e) => {
         const toolBtn = e.target.closest('.tool-btn');
         if (toolBtn) {
-            // Remove active class from all buttons
             dom.verticalToolbar.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
             toolBtn.classList.add('active');
-            // Update the active tool state
             activeTool = toolBtn.dataset.tool;
-            console.log(`Tile palette tool changed to: ${activeTool}`);
         }
     });
 
-    dom.gridCanvas.addEventListener('mousedown', handleCanvasClick);
+    dom.viewContainer.addEventListener('mousemove', handleMouseMoveInPalette);
+    dom.viewContainer.addEventListener('mouseleave', handleMouseLeavePalette);
+    dom.viewContainer.addEventListener('mousedown', handleCanvasClick);
 }
 
 async function saveCurrentPalette() {
-    // This function is kept for future use but is not active in this iteration.
-    // The save button is hidden by default.
     if (!currentFileHandle || !currentPalette) return;
     try {
         const writable = await currentFileHandle.createWritable();
@@ -168,38 +176,31 @@ async function loadImage(imagePath) {
 
 function drawGrid() {
     const img = dom.tilesetImage;
-    if (!img.src || !img.complete || img.naturalWidth === 0 || !currentPalette) {
-        clearGrid();
-        return;
-    }
+    if (!img.src || !img.complete || img.naturalWidth === 0 || !currentPalette) return;
 
     const { naturalWidth, naturalHeight } = img;
     const { tileWidth, tileHeight } = currentPalette;
+    currentPalette.columns = Math.floor(naturalWidth / tileWidth);
+    currentPalette.rows = Math.floor(naturalHeight / tileHeight);
 
+    // The grid is now just a selection highlight, so clear and redraw only that.
+    const ctx = dom.gridCanvas.getContext('2d');
     dom.gridCanvas.width = naturalWidth;
     dom.gridCanvas.height = naturalHeight;
-
-    const ctx = dom.gridCanvas.getContext('2d');
-    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
-
-    // Calculate grid columns and rows and store them for selection logic
-    const columns = Math.floor(naturalWidth / tileWidth);
-    const rows = Math.floor(naturalHeight / tileHeight);
-    currentPalette.columns = columns; // Cache for use in click handler
-    currentPalette.rows = rows;
+    ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 
     // Draw grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.lineWidth = 1;
 
-    for (let i = 0; i <= columns; i++) {
+    for (let i = 0; i <= currentPalette.columns; i++) {
         const x = i * tileWidth;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, naturalHeight);
         ctx.stroke();
     }
-    for (let i = 0; i <= rows; i++) {
+    for (let i = 0; i <= currentPalette.rows; i++) {
         const y = i * tileHeight;
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -207,14 +208,13 @@ function drawGrid() {
         ctx.stroke();
     }
 
-    // Highlight selected tile
     if (selectedTileId !== -1) {
-        const col = selectedTileId % columns;
-        const row = Math.floor(selectedTileId / columns);
+        const col = selectedTileId % currentPalette.columns;
+        const row = Math.floor(selectedTileId / currentPalette.columns);
         const x = col * tileWidth;
         const y = row * tileHeight;
 
-        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold color
+        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold
         ctx.lineWidth = 3;
         ctx.strokeRect(x + 1.5, y + 1.5, tileWidth - 3, tileHeight - 3);
     }
@@ -222,29 +222,48 @@ function drawGrid() {
 
 function clearGrid() {
     dom.gridCanvas.getContext('2d').clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
+    dom.cursorOverlay.style.display = 'none';
+}
+
+function handleMouseMoveInPalette(event) {
+    if (!currentPalette) return;
+    const { tileWidth, tileHeight } = currentPalette;
+    const rect = dom.viewContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left + dom.viewContainer.scrollLeft;
+    const y = event.clientY - rect.top + dom.viewContainer.scrollTop;
+
+    const col = Math.floor(x / tileWidth);
+    const row = Math.floor(y / tileHeight);
+
+    if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
+        dom.cursorOverlay.style.display = 'block';
+        dom.cursorOverlay.style.left = `${col * tileWidth}px`;
+        dom.cursorOverlay.style.top = `${row * tileHeight}px`;
+        dom.cursorOverlay.style.width = `${tileWidth}px`;
+        dom.cursorOverlay.style.height = `${tileHeight}px`;
+    } else {
+        dom.cursorOverlay.style.display = 'none';
+    }
+}
+
+function handleMouseLeavePalette() {
+    dom.cursorOverlay.style.display = 'none';
 }
 
 function handleCanvasClick(event) {
     if (!currentPalette || !currentPalette.columns || !currentPalette.rows) return;
 
-    const rect = dom.gridCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const rect = dom.viewContainer.getBoundingClientRect();
+    const x = event.clientX - rect.left + dom.viewContainer.scrollLeft;
+    const y = event.clientY - rect.top + dom.viewContainer.scrollTop;
 
-    // Adjust for the scroll position of the container
-    const viewContainer = dom.viewContainer;
-    const scrollX = viewContainer.scrollLeft;
-    const scrollY = viewContainer.scrollTop;
-
-    const col = Math.floor((x + scrollX) / currentPalette.tileWidth);
-    const row = Math.floor((y + scrollY) / currentPalette.tileHeight);
-
+    const col = Math.floor(x / currentPalette.tileWidth);
+    const row = Math.floor(y / currentPalette.tileHeight);
 
     if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
         const clickedId = row * currentPalette.columns + col;
-        selectedTileId = (selectedTileId === clickedId) ? -1 : clickedId; // Toggle selection
+        selectedTileId = (selectedTileId === clickedId) ? -1 : clickedId;
         dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : selectedTileId;
-        console.log(`Selected tile ID: ${selectedTileId}`);
-        drawGrid(); // Redraw to show selection change
+        drawGrid(); // Redraw selection highlight
     }
 }
