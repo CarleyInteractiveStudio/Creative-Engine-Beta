@@ -1618,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // Sprite Slicer Panel Elements
-            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
