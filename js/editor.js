@@ -1964,7 +1964,14 @@ public star() {
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,
-                saveAssetMetaCallback: saveAssetMeta
+                saveAssetMetaCallback: saveAssetMeta,
+                createAssetCallback: createAsset,
+                updateAssetBrowserCallback: updateAssetBrowser,
+                getAssetsDirectoryHandle: async () => {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    return await projectHandle.getDirectoryHandle('Assets');
+                }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
