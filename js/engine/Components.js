@@ -187,66 +187,69 @@ export class BoxCollider2D extends Leyes {
 export class SpriteRenderer extends Leyes {
     constructor(materia) {
         super(materia);
-        this.sprite = new Image(); // The actual texture/spritesheet image
-        this.source = ''; // Path to the image file
-        this.spriteName = ''; // Name of the specific sprite to render from the sheet
+        this.sprite = new Image();
+        this.source = ''; // Path to the source image file (e.g., player.png)
+        this.spriteAssetPath = ''; // Path to the .ceSprite asset
+        this.spriteName = ''; // Name of the specific sprite from the .ceSprite asset
         this.color = '#ffffff';
-        this.spriteSheet = null; // Will hold the loaded SpriteSheet data object
+        this.spriteSheet = null; // Holds the loaded .ceSprite data
     }
 
-    setSourcePath(path) {
-        this.source = path;
-        // When source changes, reset spriteName and spriteSheet
-        this.spriteName = '';
-        this.spriteSheet = null;
+    setSourcePath(path, projectsDirHandle) {
+        if (path.endsWith('.ceSprite')) {
+            this.spriteAssetPath = path;
+            this.loadSpriteSheet(projectsDirHandle);
+        } else {
+            this.source = path;
+            this.spriteAssetPath = '';
+            this.spriteSheet = null;
+            this.spriteName = '';
+            this.loadSprite(projectsDirHandle);
+        }
+    }
+
+    async loadSpriteSheet(projectsDirHandle) {
+        if (!this.spriteAssetPath) return;
+
+        try {
+            const url = await getURLForAssetPath(this.spriteAssetPath, projectsDirHandle);
+            if (!url) throw new Error('Could not get URL for .ceSprite asset');
+
+            const response = await fetch(url);
+            this.spriteSheet = await response.json();
+
+            // Set source from the sheet and load the actual image
+            this.source = `Assets/${this.spriteSheet.sourceImage}`;
+            await this.loadSprite(projectsDirHandle);
+
+            // Default to the first sprite if none is selected
+            if (!this.spriteName && this.spriteSheet.sprites && Object.keys(this.spriteSheet.sprites).length > 0) {
+                this.spriteName = Object.keys(this.spriteSheet.sprites)[0];
+            }
+        } catch (error) {
+            console.error(`Failed to load sprite sheet at '${this.spriteAssetPath}':`, error);
+        }
     }
 
     async loadSprite(projectsDirHandle) {
-        // Reset state
-        this.spriteSheet = null;
-        this.sprite.src = '';
-
         if (!this.source) {
-            return Promise.resolve();
+            this.sprite.src = '';
+            return;
         }
 
-        // 1. Load the image texture itself
         const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
         if (!imageUrl) {
             console.error(`Could not get URL for sprite source: ${this.source}`);
-            return Promise.reject(new Error(`Could not get URL for sprite source: ${this.source}`));
+            return;
         }
 
-        const imagePromise = new Promise((resolve, reject) => {
-            this.sprite.onload = () => resolve();
-            this.sprite.onerror = () => reject(new Error(`Failed to load sprite image at: ${this.source}`));
-            this.sprite.src = imageUrl;
-        });
-
-        // 2. Try to load the corresponding .meta metadata file
-        const metaPath = this.source + '.meta';
-        try {
-            const metaUrl = await getURLForAssetPath(metaPath, projectsDirHandle);
-            if (metaUrl) {
-                const response = await fetch(metaUrl);
-                if (response.ok) {
-                    const metaData = await response.json();
-                    this.spriteSheet = metaData; // The .meta file now directly contains the sprite data
-                    console.log(`Loaded sprite sheet data for: ${this.source}`);
-                    // If no sprite is selected, default to the first one in the sheet
-                    if (!this.spriteName && this.spriteSheet && this.spriteSheet.sprites && Object.keys(this.spriteSheet.sprites).length > 0) {
-                        this.spriteName = Object.keys(this.spriteSheet.sprites)[0];
-                    }
-                }
-            }
-        } catch (error) {
-            // It's okay if the meta file doesn't exist. It just means it's a simple sprite.
-            console.log(`No sprite sheet data found for ${this.source}. Treating as a single image.`);
-            this.spriteSheet = null;
+        if (this.sprite.src !== imageUrl) {
+            await new Promise((resolve, reject) => {
+                this.sprite.onload = resolve;
+                this.sprite.onerror = reject;
+                this.sprite.src = imageUrl;
+            }).catch(e => console.error(`Failed to load image: ${imageUrl}`, e));
         }
-
-        // Wait for the image to finish loading before resolving the whole process
-        await imagePromise;
     }
     clone() {
         const newRenderer = new SpriteRenderer(null);

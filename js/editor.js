@@ -695,25 +695,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
                     const img = spriteRenderer.sprite;
 
-                    let sx, sy, sWidth, sHeight;
-                    let pivotX = 0.5, pivotY = 0.5; // Default pivot is center
+                    let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+                    let pivotX = 0.5, pivotY = 0.5;
 
-                    const spriteData = spriteRenderer.spriteSheet?.sprites[spriteRenderer.spriteName];
-
-                    if (spriteData && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                        // Use data from the sprite sheet
-                        sx = spriteData.rect.x;
-                        sy = spriteData.rect.y;
-                        sWidth = spriteData.rect.width;
-                        sHeight = spriteData.rect.height;
-                        pivotX = spriteData.pivot.x;
-                        pivotY = spriteData.pivot.y;
-                    } else {
-                        // Fallback to treating as a single, full image
-                        sx = 0;
-                        sy = 0;
-                        sWidth = img.naturalWidth;
-                        sHeight = img.naturalHeight;
+                    // If a sprite sheet is loaded and a specific sprite is named, use its data
+                    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                        if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
+                            sx = spriteData.rect.x;
+                            sy = spriteData.rect.y;
+                            sWidth = spriteData.rect.width;
+                            sHeight = spriteData.rect.height;
+                            pivotX = spriteData.pivot.x;
+                            pivotY = spriteData.pivot.y;
+                        }
                     }
 
                     const dWidth = sWidth * transform.scale.x;

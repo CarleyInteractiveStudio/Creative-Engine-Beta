@@ -3009,3 +3009,37 @@ body {
     color: white;
     border-color: var(--accent-color);
 }
+
+
+.cesprite-inspector {
+    padding: 10px;
+}
+.cesprite-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    background-color: var(--color-background-light);
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.gallery-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.gallery-item canvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    background-color: var(--color-background-deep);
+}
+.gallery-item span {
+    font-size: 0.8em;
+    margin-top: 5px;
+    word-break: break-all;
+}

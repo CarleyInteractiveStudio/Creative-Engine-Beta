@@ -159,6 +159,15 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ceanim')) {
                 imgIcon.src = 'image/animacion_controler.svg';
                 iconContainer.appendChild(imgIcon);
+            } else if (entry.name.endsWith('.ceSprite')) {
+                getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                    if (url) {
+                        imgIcon.src = url;
+                        iconContainer.appendChild(imgIcon);
+                    } else {
+                        iconContainer.textContent = '🖼️'; // Fallback icon
+                    }
+                });
             } else if (entry.name.endsWith('.cep')) {
                 imgIcon.src = 'image/Paquete.png';
                 iconContainer.appendChild(imgIcon);

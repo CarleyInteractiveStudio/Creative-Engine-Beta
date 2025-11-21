@@ -161,15 +161,21 @@ function handleInspectorClick(e) {
             ev.preventDefault();
             dropper.classList.remove('drag-over');
             const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
-            const expectedType = dropper.dataset.assetType;
+            const expectedTypes = dropper.dataset.assetType.split(',');
+            const fileExtension = `.${data.name.split('.').pop()}`;
 
-            if (data.name.endsWith(expectedType)) {
+            if (expectedTypes.includes(fileExtension)) {
                 if (selectedMateria) {
                     const componentName = dropper.dataset.component;
-                    const propName = dropper.dataset.prop;
                     const component = selectedMateria.getComponent(Components[componentName]);
                     if (component) {
-                        component[propName] = data.path; // Set the asset path
+                        // Special handling for SpriteRenderer
+                        if (component instanceof Components.SpriteRenderer) {
+                            await component.setSourcePath(data.path, projectsDirHandle);
+                        } else {
+                            const propName = dropper.dataset.prop;
+                            component[propName] = data.path;
+                        }
 
                         // If it's a tilemap, trigger the palette reload
                         if (component instanceof Components.Tilemap) {
@@ -179,11 +185,12 @@ function handleInspectorClick(e) {
                             }
                         }
 
-                        updateInspector(); // Redraw the inspector to show the new path
+                        updateInspector();
+                        updateSceneCallback();
                     }
                 }
             } else {
-                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedType}.`);
+                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedTypes.join(', ')}.`);
             }
         };
     }
@@ -463,42 +470,38 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         }
         else if (ley instanceof Components.SpriteRenderer) {
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             let spriteSelectorHTML = '';
-
-            // Si hay una hoja de sprites cargada, muestra el desplegable para seleccionar un sprite
-            if (ley.spriteSheet && Object.keys(ley.spriteSheet.sprites).length > 0) {
-                const options = Object.keys(ley.spriteSheet.sprites).map(spriteName =>
-                    `<option value="${spriteName}" ${ley.spriteName === spriteName ? 'selected' : ''}>${spriteName}</option>`
-                ).join('');
+            // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
+            if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {
+                const options = Object.keys(ley.spriteSheet.sprites)
+                    .map(spriteName => `<option value="${spriteName}" ${ley.spriteName === spriteName ? 'selected' : ''}>${spriteName}</option>`)
+                    .join('');
 
                 spriteSelectorHTML = `
-                    <div class="prop-row-multi">
+                    <div class="inspector-row">
                         <label for="sprite-name-select">Sprite</label>
-                        <div class="prop-inputs">
-                            <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
-                                ${options}
-                            </select>
-                        </div>
+                        <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
+                            ${options}
+                        </select>
                     </div>
                 `;
             }
 
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
-             <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Source</label>
-                    <div class="sprite-dropper">
-                        <div class="sprite-preview">${previewImg}</div>
-                        <button class="sprite-select-btn" data-component="SpriteRenderer">🎯</button>
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Source</label>
+                        <div class="asset-dropper" data-component="SpriteRenderer" data-prop="source" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
+                            <span class="asset-dropper-text">${ley.spriteAssetPath || ley.source || 'None'}</span>
+                        </div>
                     </div>
-                </div>
-                ${spriteSelectorHTML}
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
-                </div>
-            </div>`;
+                    ${spriteSelectorHTML}
+                    <div class="inspector-row">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                    </div>
+                </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
@@ -1319,6 +1322,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             previewContainer.appendChild(spriteGrid);
             dom.inspectorContent.appendChild(previewContainer);
+        } else if (assetName.endsWith('.ceSprite')) {
+            await renderCeSpriteInspector(content, dirHandle);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
@@ -1468,4 +1473,60 @@ function extractFramesFromImage(imageUrl, cols, rows) {
         };
         img.onerror = () => reject(new Error("No se pudo cargar la imagen para extraer los fotogramas."));
     });
+}
+
+async function renderCeSpriteInspector(content, dirHandle) {
+    try {
+        const spriteAsset = JSON.parse(content);
+        const sourceImageName = spriteAsset.sourceImage;
+        const sprites = spriteAsset.sprites;
+
+        const container = document.createElement('div');
+        container.className = 'cesprite-inspector';
+
+        const sourceImageLabel = document.createElement('p');
+        sourceImageLabel.innerHTML = `<strong>Source Image:</strong> ${sourceImageName}`;
+        container.appendChild(sourceImageLabel);
+
+        const gallery = document.createElement('div');
+        gallery.className = 'cesprite-gallery';
+        container.appendChild(gallery);
+
+        dom.inspectorContent.appendChild(container);
+
+        const sourceImageUrl = await getURLForAssetPath(`Assets/${sourceImageName}`, projectsDirHandle);
+        if (!sourceImageUrl) {
+            gallery.innerHTML = '<p class="error-message">Could not load source image.</p>';
+            return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            for (const spriteName in sprites) {
+                const spriteData = sprites[spriteName];
+                const rect = spriteData.rect;
+
+                const spriteItem = document.createElement('div');
+                spriteItem.className = 'gallery-item';
+
+                const canvas = document.createElement('canvas');
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+
+                const nameLabel = document.createElement('span');
+                nameLabel.textContent = spriteName;
+
+                spriteItem.appendChild(canvas);
+                spriteItem.appendChild(nameLabel);
+                gallery.appendChild(spriteItem);
+            }
+        };
+        img.src = sourceImageUrl;
+
+    } catch (error) {
+        console.error("Failed to render .ceSprite inspector:", error);
+        dom.inspectorContent.innerHTML += `<p class="error-message">Failed to parse .ceSprite file.</p>`;
+    }
 }
