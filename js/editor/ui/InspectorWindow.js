@@ -1580,9 +1580,6 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     const modal = dom.animationFromSpriteModal;
     const gallery = dom.animSpriteSelectionGallery;
     const timeline = dom.animSpriteTimeline;
-    const modal = dom.animationFromSpriteModal;
-    const gallery = dom.animSpriteSelectionGallery;
-    const timeline = dom.animSpriteTimeline;
     const createBtn = dom.animSpriteCreateBtn;
     const clearBtn = dom.animSpriteClearBtn;
     const closeBtn = modal.querySelector('.close-panel-btn');
