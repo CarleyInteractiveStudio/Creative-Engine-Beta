@@ -26,6 +26,7 @@ export function initialize(dependencies) {
         gridCanvas: dependencies.dom.paletteGridCanvas,
         tilesetImage: dependencies.dom.paletteTilesetImage,
         overlay: dependencies.dom.palettePanelOverlay,
+        emptyMessage: dependencies.dom.paletteEmptyMessage,
         verticalToolbar: dependencies.dom.paletteToolsVertical,
     };
     projectsDirHandle = dependencies.projectsDirHandle;
@@ -67,7 +68,7 @@ export async function openPalette(fileHandle) {
         selectedTileId = -1; // Reset selection
 
         dom.panel.classList.remove('hidden');
-        dom.overlay.style.display = 'none';
+        dom.overlay.classList.add('hidden'); // Always hide the main overlay
         dom.fileNameSpan.textContent = file.name;
         dom.selectedTileIdSpan.textContent = '-';
         dom.saveBtn.style.display = 'inline-block';
@@ -76,6 +77,8 @@ export async function openPalette(fileHandle) {
             await loadAndDisplaySpritePacks();
         } else {
             // Handle legacy palette formats or empty palettes
+            dom.gridCanvas.classList.add('hidden');
+            dom.emptyMessage.classList.remove('hidden');
             clearGrid();
         }
     } catch (error) {

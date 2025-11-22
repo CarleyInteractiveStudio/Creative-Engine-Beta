@@ -1128,11 +1128,15 @@ public star() {
                 <div id="palette-view-container">
                     <canvas id="palette-grid-canvas"></canvas>
                     <img id="palette-tileset-image" src="" alt="Tileset" style="display: none;">
+                    <div id="palette-empty-message" class="panel-overlay-message hidden">
+                        <p>Esta paleta está vacía.</p>
+                        <p>Usa el botón ➕ para añadir un paquete de sprites.</p>
+                    </div>
                 </div>
             </div>
         </div>
-        <div id="palette-panel-overlay">
-            <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
+        <div id="palette-panel-overlay" class="panel-overlay-message">
+            <p>Carga un asset de paleta (.cepalette) para empezar.</p>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>
