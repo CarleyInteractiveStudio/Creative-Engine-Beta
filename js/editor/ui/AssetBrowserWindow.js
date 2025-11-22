@@ -305,6 +305,10 @@ async function handleGridDblClick(e) {
         } else {
             console.warn("La funcionalidad de doble clic para librerías no está conectada.");
         }
+    } else if (name.endsWith('.ceSprite')) {
+        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+        // Special case to open .ceSprite files in the Sprite Slicer for editing
+        onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { openIn: 'SpriteSlicer' });
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle);

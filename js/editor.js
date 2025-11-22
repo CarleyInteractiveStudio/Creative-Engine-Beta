@@ -1618,7 +1618,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
             'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
-            'slice-custom-pivot-x', 'slice-custom-pivot-y',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-delete-sprite-btn',
+            // Animation from Sprites Modal
+            'animation-from-sprite-modal', 'anim-sprite-selection-gallery', 'anim-sprite-timeline',
+            'anim-sprite-clear-btn', 'anim-sprite-create-btn',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
@@ -1876,7 +1879,12 @@ public star() {
                 // Always update the inspector to reflect the change (or lack of selection)
                 updateInspector();
             };
-            const onAssetOpened = async (name, fileHandle, dirHandle) => {
+            const onAssetOpened = async (name, fileHandle, dirHandle, options = {}) => {
+                if (options.openIn === 'SpriteSlicer') {
+                    SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
+                    return;
+                }
+
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 

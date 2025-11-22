@@ -992,6 +992,45 @@ async function updateInspectorForAsset(assetName, assetPath) {
             }
 
             document.getElementById('save-meta-btn').addEventListener('click', async () => {
+                const maxSize = parseInt(document.getElementById('max-size').value, 10);
+                const compressionQuality = document.getElementById('compression-quality').value;
+
+                // --- Image Optimization Logic ---
+                if (typeof imageCompression !== 'undefined' && compressionQuality !== 'None') {
+                    try {
+                        const originalFileHandle = await dirHandle.getFileHandle(assetName);
+                        const originalFile = await originalFileHandle.getFile();
+
+                        const options = {
+                            maxSizeMB: 2, // A reasonable default limit
+                            maxWidthOrHeight: maxSize,
+                            useWebWorker: true,
+                        };
+
+                        switch(compressionQuality) {
+                            case 'Low': options.initialQuality = 0.4; break;
+                            case 'Normal': options.initialQuality = 0.6; break;
+                            case 'High': options.initialQuality = 0.8; break;
+                        }
+
+                        console.log(`Comprimiendo '${assetName}' con las opciones:`, options);
+                        const compressedFile = await imageCompression(originalFile, options);
+                        console.log(`Compresión finalizada. Tamaño original: ${originalFile.size / 1024} KB, Tamaño comprimido: ${compressedFile.size / 1024} KB`);
+
+                        // Overwrite the original file with the compressed version
+                        const writable = await originalFileHandle.createWritable();
+                        await writable.write(compressedFile);
+                        await writable.close();
+                        console.log(`Archivo '${assetName}' sobrescrito con la versión optimizada.`);
+
+                    } catch (error) {
+                        console.error("Error durante la optimización de la imagen:", error);
+                        window.Dialogs.showNotification('Error de Optimización', `No se pudo optimizar la imagen: ${error.message}`);
+                        return; // Stop if optimization fails
+                    }
+                }
+
+                // --- Metadata Saving Logic (runs after optimization) ---
                 let currentMetaData = {};
                 try {
                     const metaFileHandle = await dirHandle.getFileHandle(`${assetName}.meta`);
@@ -999,7 +1038,6 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     currentMetaData = JSON.parse(await metaFile.text());
                 } catch (e) { /* no-op, will create a new one */ }
 
-                // Collect all values from the UI
                 currentMetaData.textureType = document.getElementById('texture-type').value;
 
                 if (currentMetaData.textureType === 'Sprite (2D and UI)') {
@@ -1009,8 +1047,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     currentMetaData.tag = document.getElementById('texture-tag').value;
                     currentMetaData.filterMode = document.getElementById('filter-mode').value;
                     currentMetaData.wrapMode = document.getElementById('wrap-mode').value;
-                    currentMetaData.maxSize = parseInt(document.getElementById('max-size').value, 10);
-                    currentMetaData.compression = document.getElementById('compression-quality').value;
+                    currentMetaData.maxSize = maxSize;
+                    currentMetaData.compression = compressionQuality;
                 } else {
                     currentMetaData.animSpeed = parseInt(document.getElementById('anim-preview-speed').value, 10) || 10;
                     currentMetaData.animColumns = parseInt(document.getElementById('anim-columns').value, 10) || 1;
@@ -1018,7 +1056,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 }
 
                 await saveAssetMetaCallback(assetName, currentMetaData, dirHandle);
-                window.Dialogs.showNotification('Éxito', 'Metadatos del asset guardados.');
+                window.Dialogs.showNotification('Éxito', 'Optimización y metadatos del asset aplicados.');
+
+                // Refresh the asset browser and inspector to show the new file size/preview
+                updateAssetBrowserCallback();
+                updateInspector();
             });
 
             // --- Animation Preview Logic ---
@@ -1488,6 +1530,14 @@ async function renderCeSpriteInspector(content, dirHandle) {
         sourceImageLabel.innerHTML = `<strong>Source Image:</strong> ${sourceImageName}`;
         container.appendChild(sourceImageLabel);
 
+        const createAnimButton = document.createElement('button');
+        createAnimButton.textContent = 'Crear Animación';
+        createAnimButton.className = 'primary-btn';
+        createAnimButton.style.width = '100%';
+        createAnimButton.style.marginTop = '10px';
+        createAnimButton.addEventListener('click', () => openAnimationCreatorModal(spriteAsset, sourceImageUrl));
+        container.appendChild(createAnimButton);
+
         const gallery = document.createElement('div');
         gallery.className = 'cesprite-gallery';
         container.appendChild(gallery);
@@ -1525,4 +1575,94 @@ async function renderCeSpriteInspector(content, dirHandle) {
         console.error("Failed to render .ceSprite inspector:", error);
         dom.inspectorContent.innerHTML += `<p class="error-message">Failed to parse .ceSprite file.</p>`;
     }
+}
+function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
+    const modal = dom.animationFromSpriteModal;
+    const gallery = dom.animSpriteSelectionGallery;
+    const timeline = dom.animSpriteTimeline;
+    const createBtn = dom.animSpriteCreateBtn;
+    const clearBtn = dom.animSpriteClearBtn;
+    const closeBtn = modal.querySelector('.close-panel-btn');
+
+    gallery.innerHTML = '';
+    timeline.innerHTML = '';
+    let selectedFrames = [];
+
+    const sourceImage = new Image();
+    sourceImage.onload = () => {
+        // Populate the selection gallery
+        for (const spriteName in spriteAsset.sprites) {
+            const spriteData = spriteAsset.sprites[spriteName];
+            const rect = spriteData.rect;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(sourceImage, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
+
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+            galleryItem.appendChild(canvas);
+            galleryItem.addEventListener('click', () => {
+                addFrameToTimeline(canvas.toDataURL(), spriteName);
+            });
+            gallery.appendChild(galleryItem);
+        }
+    };
+    sourceImage.src = sourceImageUrl;
+
+    function addFrameToTimeline(imageDataUrl, spriteName) {
+        const frameDiv = document.createElement('div');
+        frameDiv.className = 'timeline-frame';
+        const img = document.createElement('img');
+        img.src = imageDataUrl;
+        frameDiv.appendChild(img);
+        timeline.appendChild(frameDiv);
+        selectedFrames.push({ spriteName: spriteName, dataUrl: imageDataUrl });
+    }
+
+    // --- Event Listeners (cloned to avoid duplicates) ---
+    const newCreateBtn = createBtn.cloneNode(true);
+    createBtn.parentNode.replaceChild(newCreateBtn, createBtn);
+    newCreateBtn.addEventListener('click', async () => {
+        if (selectedFrames.length === 0) {
+            window.Dialogs.showNotification("Aviso", "Añade al menos un frame a la animación.");
+            return;
+        }
+
+        const animName = prompt("Nombre para el nuevo clip de animación:", "New Animation");
+        if (!animName) return;
+
+        const animClipAsset = {
+            name: animName,
+            speed: 10, // Default speed
+            loop: true,
+            frames: selectedFrames.map(frame => ({
+                spriteAssetPath: `Assets/${spriteAsset.sourceImage.replace(/\.[^/.]+$/, ".ceSprite")}`,
+                spriteName: frame.spriteName
+            }))
+        };
+
+        const assetName = `${animName}.ceanimclip`;
+        const dirHandle = currentDirectoryHandle();
+        await createAssetCallback(assetName, JSON.stringify(animClipAsset, null, 2), dirHandle);
+        updateAssetBrowserCallback();
+        modal.classList.add('hidden');
+    });
+
+    const newClearBtn = clearBtn.cloneNode(true);
+    clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
+    newClearBtn.addEventListener('click', () => {
+        timeline.innerHTML = '';
+        selectedFrames = [];
+    });
+
+    const newCloseBtn = closeBtn.cloneNode(true);
+    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+    newCloseBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.classList.remove('hidden');
 }
