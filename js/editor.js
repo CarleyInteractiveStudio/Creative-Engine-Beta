@@ -1616,9 +1616,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
             'palette-file-name', 'palette-tools-vertical',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
-            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
+            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay', 'palette-empty-message',
+            'palette-add-sprite-btn', 'palette-edit-btn', 'palette-delete-sprite-btn',
             // Sprite Slicer Panel Elements
-            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'slicer-delete-sprite-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
