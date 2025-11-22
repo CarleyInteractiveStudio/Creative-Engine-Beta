@@ -1580,6 +1580,9 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     const modal = dom.animationFromSpriteModal;
     const gallery = dom.animSpriteSelectionGallery;
     const timeline = dom.animSpriteTimeline;
+    const modal = dom.animationFromSpriteModal;
+    const gallery = dom.animSpriteSelectionGallery;
+    const timeline = dom.animSpriteTimeline;
     const createBtn = dom.animSpriteCreateBtn;
     const clearBtn = dom.animSpriteClearBtn;
     const closeBtn = modal.querySelector('.close-panel-btn');
@@ -1588,9 +1591,20 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     timeline.innerHTML = '';
     let selectedFrames = [];
 
+    // Define handlers in a scope that persists
+    let handleCreate, handleClear, handleClose;
+
+    // Use AbortController for robust event listener management
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const cleanup = () => {
+        // This function will remove all listeners added with this signal
+        controller.abort();
+    };
+
     const sourceImage = new Image();
     sourceImage.onload = () => {
-        // Populate the selection gallery
         for (const spriteName in spriteAsset.sprites) {
             const spriteData = spriteAsset.sprites[spriteName];
             const rect = spriteData.rect;
@@ -1606,7 +1620,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
             galleryItem.appendChild(canvas);
             galleryItem.addEventListener('click', () => {
                 addFrameToTimeline(canvas.toDataURL(), spriteName);
-            });
+            }, { signal }); // Add signal to gallery items too
             gallery.appendChild(galleryItem);
         }
     };
@@ -1622,10 +1636,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
         selectedFrames.push({ spriteName: spriteName, dataUrl: imageDataUrl });
     }
 
-    // --- Event Listeners (cloned to avoid duplicates) ---
-    const newCreateBtn = createBtn.cloneNode(true);
-    createBtn.parentNode.replaceChild(newCreateBtn, createBtn);
-    newCreateBtn.addEventListener('click', async () => {
+    handleCreate = async () => {
         if (selectedFrames.length === 0) {
             window.Dialogs.showNotification("Aviso", "Añade al menos un frame a la animación.");
             return;
@@ -1636,7 +1647,7 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
 
         const animClipAsset = {
             name: animName,
-            speed: 10, // Default speed
+            speed: 10,
             loop: true,
             frames: selectedFrames.map(frame => ({
                 spriteAssetPath: `Assets/${spriteAsset.sourceImage.replace(/\.[^/.]+$/, ".ceSprite")}`,
@@ -1648,21 +1659,25 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
         const dirHandle = currentDirectoryHandle();
         await createAssetCallback(assetName, JSON.stringify(animClipAsset, null, 2), dirHandle);
         updateAssetBrowserCallback();
-        modal.classList.add('hidden');
-    });
 
-    const newClearBtn = clearBtn.cloneNode(true);
-    clearBtn.parentNode.replaceChild(newClearBtn, clearBtn);
-    newClearBtn.addEventListener('click', () => {
+        cleanup(); // Clean up listeners
+        modal.classList.add('hidden');
+    };
+
+    handleClear = () => {
         timeline.innerHTML = '';
         selectedFrames = [];
-    });
+    };
 
-    const newCloseBtn = closeBtn.cloneNode(true);
-    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-    newCloseBtn.addEventListener('click', () => {
+    handleClose = () => {
+        cleanup(); // Clean up listeners
         modal.classList.add('hidden');
-    });
+    };
+
+    // Attach event listeners using the signal
+    createBtn.addEventListener('click', handleCreate, { signal });
+    clearBtn.addEventListener('click', handleClear, { signal });
+    closeBtn.addEventListener('click', handleClose, { signal });
 
     modal.classList.remove('hidden');
 }

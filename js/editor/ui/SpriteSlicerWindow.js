@@ -5,7 +5,6 @@ let editingCeSpriteFileHandle = null; // Handle of the .ceSprite asset being edi
 let sourceImage = null;
 let generatedSlices = [];
 let selectedSliceIndex = -1;
-let saveCallback = null;
 let dirHandle = null;
 let openAssetSelectorCallback = null;
 let saveAssetMetaCallback = null;
@@ -83,7 +82,7 @@ export function initialize(dependencies) {
 }
 
 // --- Public API ---
-export async function open(fileHandle, directoryHandle, saveMetaCb) {
+export async function open(fileHandle, directoryHandle) {
     localDom.panel.classList.remove('hidden');
     resetToDefaultState();
 
@@ -92,7 +91,7 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
             await loadCeSpriteForEditing(fileHandle, directoryHandle);
         } else {
             // It's a regular image file
-            await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
+            await loadImageFromFileHandle(fileHandle, directoryHandle);
         }
     } else {
         // Opened from the Window menu, show overlay. User will use 'Load Image'.
@@ -103,10 +102,9 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
     }
 }
 
-async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) {
+async function loadImageFromFileHandle(fileHandle, directoryHandle) {
     currentFileHandle = fileHandle;
     dirHandle = directoryHandle;
-    saveCallback = saveMetaCb;
     generatedSlices = [];
 
     try {
@@ -145,7 +143,6 @@ function resetToDefaultState() {
     currentFileHandle = null;
     editingCeSpriteFileHandle = null;
     dirHandle = null;
-    saveCallback = null;
     generatedSlices = [];
     selectedSliceIndex = -1;
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
@@ -401,7 +398,6 @@ function sliceByCellCount(isPreview = false) {
 async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
     editingCeSpriteFileHandle = ceSpriteFileHandle;
     dirHandle = directoryHandle;
-    saveCallback = null; // Not needed in edit mode
 
     try {
         const file = await ceSpriteFileHandle.getFile();
@@ -415,7 +411,7 @@ async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
 
         // A bit of a workaround: use loadImageFromFileHandle for the image loading part
         // but prevent it from setting top-level state we're managing here.
-        await loadImageFromFileHandle(sourceImageFileHandle, assetsDir, null);
+        await loadImageFromFileHandle(sourceImageFileHandle, assetsDir);
 
         // Populate existing slices
         generatedSlices = Object.values(spriteAssetData.sprites).map(s => s.rect);

@@ -104,20 +104,16 @@ export function getActiveTool() {
 
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
-    dom.loadBtn.addEventListener('click', async () => {
-        try {
-            // This should use the custom asset selector, not the OS picker.
-            // For now, leaving it as is, but this is a point for future improvement.
-            const [fileHandle] = await window.showOpenFilePicker({
-                types: [{
-                    description: 'Creative Engine Palette',
-                    accept: { 'application/json': ['.cepalette'] }
-                }],
-                multiple: false,
+
+    dom.loadBtn.addEventListener('click', () => {
+        if (openAssetSelectorCallback) {
+            // Use the engine's asset selector to pick a palette file
+            openAssetSelectorCallback('.cepalette', async (fileHandle) => {
+                await openPalette(fileHandle);
             });
-            await openPalette(fileHandle);
-        } catch (err) {
-            console.log("User cancelled file picker or error occurred:", err);
+        } else {
+            console.error("Asset selector callback is not available.");
+            showNotification('Error', 'El selector de assets no está disponible.');
         }
     });
 
@@ -217,7 +213,15 @@ async function loadAndDisplaySpritePacks() {
 
     for (const packPath of currentPalette.spritePacks) {
         try {
-            const packFileHandle = await projectsDirHandle.getFileHandle(packPath, { create: false });
+            // Correctly resolve the file handle by traversing the directory structure
+            const pathParts = packPath.split('/').filter(p => p);
+            const fileName = pathParts.pop();
+            let currentDirHandle = projectsDirHandle;
+            for (const part of pathParts) {
+                currentDirHandle = await currentDirHandle.getDirectoryHandle(part);
+            }
+            const packFileHandle = await currentDirHandle.getFileHandle(fileName);
+
             const packFile = await packFileHandle.getFile();
             const packContent = await packFile.text();
             const packData = JSON.parse(packContent);
