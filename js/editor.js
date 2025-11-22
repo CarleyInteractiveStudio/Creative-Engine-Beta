@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     uiItem.addEventListener('dblclick', async () => {
                         const fileHandle = isProjectView ? item.handle : await displayDirHandle.getFileHandle(name);
-                        callback(fileHandle, displayDirHandle);
+                        callback(fileHandle, fullPath, displayDirHandle); // Pass fullPath
                         selectorPanel.classList.add('hidden');
                     });
                 }
@@ -1609,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
-            'palette-file-name', 'palette-tools-vertical',
+            'palette-file-name', 'palette-tools-vertical', 'palette-add-sprite-btn', 'palette-edit-btn', 'palette-delete-sprite-btn',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // Sprite Slicer Panel Elements
@@ -2002,7 +2002,7 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
+            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

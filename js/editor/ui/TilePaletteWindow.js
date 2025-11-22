@@ -1,8 +1,10 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+let allTiles = [];
 import { showNotification, showConfirmation } from './DialogWindow.js';
 
 let dom = {};
 let projectsDirHandle = null;
+let openAssetSelectorCallback = null;
 let currentPalette = null; // Will hold the entire loaded palette asset content
 let currentFileHandle = null;
 let selectedTileId = -1;
@@ -10,34 +12,36 @@ let activeTool = 'tile-brush'; // Default tool
 
 // --- Public API ---
 
-export function initialize(editorDom, projDirHandle) {
+export function initialize(dependencies) {
     dom = {
-        panel: editorDom.tilePalettePanel,
-        assetName: editorDom.paletteAssetName, // This is now palette-file-name
-        fileNameSpan: editorDom.paletteFileName,
-        saveBtn: editorDom.paletteSaveBtn,
-        loadBtn: editorDom.paletteLoadBtn,
-        selectedTileIdSpan: editorDom.paletteSelectedTileId,
-        viewContainer: editorDom.paletteViewContainer,
-        gridCanvas: editorDom.paletteGridCanvas,
-        tilesetImage: editorDom.paletteTilesetImage,
-        overlay: editorDom.palettePanelOverlay,
-        verticalToolbar: editorDom.paletteToolsVertical,
+        panel: dependencies.dom.tilePalettePanel,
+        fileNameSpan: dependencies.dom.paletteFileName,
+        saveBtn: dependencies.dom.paletteSaveBtn,
+        loadBtn: dependencies.dom.paletteLoadBtn,
+        addSpriteBtn: dependencies.dom.paletteAddSpriteBtn,
+        editBtn: dependencies.dom.paletteEditBtn,
+        deleteBtn: dependencies.dom.paletteDeleteSpriteBtn,
+        selectedTileIdSpan: dependencies.dom.paletteSelectedTileId,
+        viewContainer: dependencies.dom.paletteViewContainer,
+        gridCanvas: dependencies.dom.paletteGridCanvas,
+        tilesetImage: dependencies.dom.paletteTilesetImage,
+        overlay: dependencies.dom.palettePanelOverlay,
+        verticalToolbar: dependencies.dom.paletteToolsVertical,
     };
-    projectsDirHandle = projDirHandle;
+    projectsDirHandle = dependencies.projectsDirHandle;
+    openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
 
     // Initially, the panel is in its "empty" state
     dom.overlay.style.display = 'flex';
-    dom.saveBtn.style.display = 'none';
+    dom.saveBtn.style.display = 'none'; // Will be shown when a palette is open
 
     setupEventListeners();
 }
 
 export async function createNewPalette(name, dirHandle) {
     const content = {
-        imagePath: "",
-        tileWidth: 32,
-        tileHeight: 32
+        name: name.replace('.cepalette', ''),
+        spritePacks: [] // This will hold paths to .ceSprite files
     };
 
     try {
@@ -68,11 +72,10 @@ export async function openPalette(fileHandle) {
         dom.selectedTileIdSpan.textContent = '-';
         dom.saveBtn.style.display = 'inline-block';
 
-        if (currentPalette.imagePath) {
-            await loadImage(currentPalette.imagePath);
+        if (currentPalette.spritePacks && Array.isArray(currentPalette.spritePacks)) {
+            await loadAndDisplaySpritePacks();
         } else {
-            dom.tilesetImage.style.display = 'none';
-            showNotification('Paleta Inválida', 'El archivo de paleta no especifica una imagen de tileset.');
+            // Handle legacy palette formats or empty palettes
             clearGrid();
         }
     } catch (error) {
@@ -85,7 +88,8 @@ export async function openPalette(fileHandle) {
 }
 
 export function getSelectedTile() {
-    return selectedTileId;
+    // Return the full tile object, which is more useful for the scene view painter
+    return selectedTileId !== -1 ? allTiles[selectedTileId] : null;
 }
 
 export function getActiveTool() {
@@ -96,9 +100,11 @@ export function getActiveTool() {
 // --- Internal Logic ---
 
 function setupEventListeners() {
-    // dom.saveBtn.addEventListener('click', saveCurrentPalette);
+    dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.loadBtn.addEventListener('click', async () => {
         try {
+            // This should use the custom asset selector, not the OS picker.
+            // For now, leaving it as is, but this is a point for future improvement.
             const [fileHandle] = await window.showOpenFilePicker({
                 types: [{
                     description: 'Creative Engine Palette',
@@ -110,6 +116,23 @@ function setupEventListeners() {
         } catch (err) {
             console.log("User cancelled file picker or error occurred:", err);
         }
+    });
+
+    dom.addSpriteBtn.addEventListener('click', () => {
+        if (!currentPalette || !openAssetSelectorCallback) {
+            showNotification('Error', 'Carga una paleta antes de añadir sprites.');
+            return;
+        }
+        openAssetSelectorCallback('.ceSprite', async (fileHandle, fullPath) => {
+            if (!currentPalette.spritePacks.includes(fullPath)) {
+                currentPalette.spritePacks.push(fullPath);
+                await saveCurrentPalette();
+                // Reload the palette to show the new sprites
+                await openPalette(currentFileHandle);
+            } else {
+                showNotification('Aviso', 'Este paquete de sprites ya está en la paleta.');
+            }
+        });
     });
 
     dom.verticalToolbar.addEventListener('click', (e) => {
@@ -143,108 +166,128 @@ async function saveCurrentPalette() {
     }
 }
 
-async function loadImage(imagePath) {
-    try {
-        const imageUrl = await getURLForAssetPath(imagePath, projectsDirHandle);
-        if (!imageUrl) throw new Error(`Could not create URL for ${imagePath}`);
-
-        dom.tilesetImage.src = imageUrl;
-        dom.tilesetImage.style.display = 'block';
-
-        // Wait for the image to load to get its dimensions
-        await new Promise((resolve, reject) => {
-            dom.tilesetImage.onload = resolve;
-            dom.tilesetImage.onerror = reject;
-        });
-
-        drawGrid();
-
-    } catch (error) {
-        console.error(`Error loading tileset image '${imagePath}':`, error);
-        showNotification('Error', `Could not load image: ${error.message}`);
-        dom.tilesetImage.style.display = 'none';
-    }
-}
-
-function drawGrid() {
-    const img = dom.tilesetImage;
-    if (!img.src || !img.complete || img.naturalWidth === 0 || !currentPalette) {
-        clearGrid();
-        return;
-    }
-
-    const { naturalWidth, naturalHeight } = img;
-    const { tileWidth, tileHeight } = currentPalette;
-
-    dom.gridCanvas.width = naturalWidth;
-    dom.gridCanvas.height = naturalHeight;
-
-    const ctx = dom.gridCanvas.getContext('2d');
-    ctx.clearRect(0, 0, naturalWidth, naturalHeight);
-
-    // Calculate grid columns and rows and store them for selection logic
-    const columns = Math.floor(naturalWidth / tileWidth);
-    const rows = Math.floor(naturalHeight / tileHeight);
-    currentPalette.columns = columns; // Cache for use in click handler
-    currentPalette.rows = rows;
-
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i <= columns; i++) {
-        const x = i * tileWidth;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, naturalHeight);
-        ctx.stroke();
-    }
-    for (let i = 0; i <= rows; i++) {
-        const y = i * tileHeight;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(naturalWidth, y);
-        ctx.stroke();
-    }
-
-    // Highlight selected tile
-    if (selectedTileId !== -1) {
-        const col = selectedTileId % columns;
-        const row = Math.floor(selectedTileId / columns);
-        const x = col * tileWidth;
-        const y = row * tileHeight;
-
-        ctx.strokeStyle = 'rgba(255, 215, 0, 1)'; // Gold color
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 1.5, y + 1.5, tileWidth - 3, tileHeight - 3);
-    }
-}
-
 function clearGrid() {
     dom.gridCanvas.getContext('2d').clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 }
 
 function handleCanvasClick(event) {
-    if (!currentPalette || !currentPalette.columns || !currentPalette.rows) return;
+    const TILE_SIZE = 64;
+    const PADDING = 5;
+    const canvasWidth = dom.viewContainer.clientWidth;
+    // Ensure tilesPerRow is at least 1 to avoid division by zero
+    const tilesPerRow = Math.max(1, Math.floor(canvasWidth / (TILE_SIZE + PADDING)));
 
     const rect = dom.gridCanvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Adjust for the scroll position of the container
-    const viewContainer = dom.viewContainer;
-    const scrollX = viewContainer.scrollLeft;
-    const scrollY = viewContainer.scrollTop;
+    const scrollX = dom.viewContainer.scrollLeft;
+    const scrollY = dom.viewContainer.scrollTop;
 
-    const col = Math.floor((x + scrollX) / currentPalette.tileWidth);
-    const row = Math.floor((y + scrollY) / currentPalette.tileHeight);
+    const col = Math.floor((x + scrollX) / (TILE_SIZE + PADDING));
+    const row = Math.floor((y + scrollY) / (TILE_SIZE + PADDING));
 
+    const clickedIndex = row * tilesPerRow + col;
 
-    if (col >= 0 && col < currentPalette.columns && row >= 0 && row < currentPalette.rows) {
-        const clickedId = row * currentPalette.columns + col;
-        selectedTileId = (selectedTileId === clickedId) ? -1 : clickedId; // Toggle selection
-        dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : selectedTileId;
-        console.log(`Selected tile ID: ${selectedTileId}`);
-        drawGrid(); // Redraw to show selection change
+    if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
+        selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
+        dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : allTiles[selectedTileId].spriteName;
+        console.log(`Selected tile index: ${selectedTileId}`);
+        drawTiles(); // Redraw to show selection change
     }
+}
+
+async function loadAndDisplaySpritePacks() {
+    allTiles = [];
+    const ctx = dom.gridCanvas.getContext('2d');
+    ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
+
+    if (currentPalette.spritePacks.length === 0) {
+        dom.overlay.style.display = 'flex';
+        return;
+    } else {
+        dom.overlay.style.display = 'none';
+    }
+
+    // Create a cache for source images to avoid reloading them multiple times
+    const imageCache = new Map();
+
+    for (const packPath of currentPalette.spritePacks) {
+        try {
+            const packFileHandle = await projectsDirHandle.getFileHandle(packPath, { create: false });
+            const packFile = await packFileHandle.getFile();
+            const packContent = await packFile.text();
+            const packData = JSON.parse(packContent);
+
+            // Load the source image for this pack if not already cached
+            if (!imageCache.has(packData.sourceImage)) {
+                const sourceImagePath = `Assets/${packData.sourceImage}`;
+                const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
+                if (!imageUrl) continue;
+
+                const image = new Image();
+                await new Promise((resolve, reject) => {
+                    image.onload = resolve;
+                    image.onerror = reject;
+                    image.src = imageUrl;
+                });
+                imageCache.set(packData.sourceImage, image);
+            }
+
+            const sourceImage = imageCache.get(packData.sourceImage);
+
+            // Add all sprites from this pack to the flat list
+            for (const spriteName in packData.sprites) {
+                const spriteData = packData.sprites[spriteName];
+                allTiles.push({
+                    id: `${packPath}|${spriteName}`, // Unique ID for the tile
+                    spriteAssetPath: packPath,
+                    spriteName: spriteName,
+                    sourceImage: sourceImage,
+                    rect: spriteData.rect
+                });
+            }
+        } catch (error) {
+            console.error(`Error loading sprite pack '${packPath}':`, error);
+            showNotification('Error', `Could not load sprite pack: ${packPath}`);
+        }
+    }
+
+    drawTiles();
+}
+
+function drawTiles() {
+    const ctx = dom.gridCanvas.getContext('2d');
+    const TILE_SIZE = 64; // Display size in the palette
+    const PADDING = 5;
+    const canvasWidth = dom.viewContainer.clientWidth;
+    const tilesPerRow = Math.floor(canvasWidth / (TILE_SIZE + PADDING));
+
+    const numRows = Math.ceil(allTiles.length / tilesPerRow);
+    const canvasHeight = numRows * (TILE_SIZE + PADDING);
+
+    dom.gridCanvas.width = canvasWidth;
+    dom.gridCanvas.height = canvasHeight;
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    allTiles.forEach((tile, index) => {
+        const row = Math.floor(index / tilesPerRow);
+        const col = index % tilesPerRow;
+        const x = col * (TILE_SIZE + PADDING);
+        const y = row * (TILE_SIZE + PADDING);
+
+        // Draw the sprite clipped from its source image
+        ctx.drawImage(
+            tile.sourceImage,
+            tile.rect.x, tile.rect.y, tile.rect.width, tile.rect.height,
+            x, y, TILE_SIZE, TILE_SIZE
+        );
+
+        // Draw selection highlight
+        if (index === selectedTileId) {
+            ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+        }
+    });
 }

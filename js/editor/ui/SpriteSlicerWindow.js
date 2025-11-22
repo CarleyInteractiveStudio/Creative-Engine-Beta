@@ -61,7 +61,7 @@ export function initialize(dependencies) {
     localDom.deleteBtn.addEventListener('click', deleteSelectedSlice);
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
-            openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
+            openAssetSelectorCallback('image', (fileHandle, fullPath, directoryHandle) => {
                 loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
             });
         } else {
