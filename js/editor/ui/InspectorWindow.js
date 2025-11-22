@@ -1515,11 +1515,7 @@ async function renderCeSpriteInspector(content, dirHandle) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, rect.width, rect.height);
 
-                const nameLabel = document.createElement('span');
-                nameLabel.textContent = spriteName;
-
                 spriteItem.appendChild(canvas);
-                spriteItem.appendChild(nameLabel);
                 gallery.appendChild(spriteItem);
             }
         };
