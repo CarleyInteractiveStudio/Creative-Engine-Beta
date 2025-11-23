@@ -159,6 +159,15 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ceanim')) {
                 imgIcon.src = 'image/animacion_controler.svg';
                 iconContainer.appendChild(imgIcon);
+            } else if (entry.name.endsWith('.ceSprite')) {
+                getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                    if (url) {
+                        imgIcon.src = url;
+                        iconContainer.appendChild(imgIcon);
+                    } else {
+                        iconContainer.textContent = '🖼️'; // Fallback icon
+                    }
+                });
             } else if (entry.name.endsWith('.cep')) {
                 imgIcon.src = 'image/Paquete.png';
                 iconContainer.appendChild(imgIcon);
@@ -296,6 +305,10 @@ async function handleGridDblClick(e) {
         } else {
             console.warn("La funcionalidad de doble clic para librerías no está conectada.");
         }
+    } else if (name.endsWith('.ceSprite')) {
+        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+        // Special case to open .ceSprite files in the Sprite Slicer for editing
+        onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { openIn: 'SpriteSlicer' });
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle);

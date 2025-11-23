@@ -1,18 +1,27 @@
 // --- Module State ---
 let localDom = {};
-let currentFileHandle = null;
+let currentFileHandle = null; // Handle of the source image being displayed
+let editingCeSpriteFileHandle = null; // Handle of the .ceSprite asset being edited
 let sourceImage = null;
 let generatedSlices = [];
+let selectedSliceIndex = -1;
 let saveCallback = null;
 let dirHandle = null;
 let openAssetSelectorCallback = null;
 let saveAssetMetaCallback = null;
+let createAssetCallback = null;
+let updateAssetBrowserCallback = null;
+let getAssetsDirectoryHandle = null;
 
 // --- Initialization ---
 export function initialize(dependencies) {
     const cachedDom = dependencies.dom;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
-    saveAssetMetaCallback = dependencies.saveAssetMetaCallback; // Store the generic save callback
+    saveAssetMetaCallback = dependencies.saveAssetMetaCallback;
+    createAssetCallback = dependencies.createAssetCallback;
+    updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
+    getAssetsDirectoryHandle = dependencies.getAssetsDirectoryHandle;
+
 
     localDom = {
         panel: cachedDom.spriteSlicerPanel,
@@ -26,7 +35,8 @@ export function initialize(dependencies) {
         pivotSelect: cachedDom.slicePivot,
         customPivotContainer: cachedDom.sliceCustomPivotContainer,
         sliceBtn: cachedDom.sliceBtn,
-        applyBtn: cachedDom.slicerApplyBtn,
+        applyBtn: cachedDom.slicerCreateAssetBtn,
+        deleteBtn: cachedDom.slicerDeleteSpriteBtn,
         loadImageBtn: cachedDom.slicerLoadImageBtn,
         closeBtn: cachedDom.spriteSlicerPanel.querySelector('.close-panel-btn'),
         pixelSizeX: cachedDom.slicePixelSizeX,
@@ -40,20 +50,35 @@ export function initialize(dependencies) {
     };
 
     // Setup Event Listeners
-    localDom.sliceType.addEventListener('change', handleSliceTypeChange);
+    localDom.canvas.addEventListener('mousedown', handleCanvasClick);
+    localDom.sliceType.addEventListener('change', (e) => {
+        handleSliceTypeChange(e);
+        drawSlicePreview();
+    });
     localDom.pivotSelect.addEventListener('change', handlePivotChange);
     localDom.sliceBtn.addEventListener('click', executeSlice);
-    localDom.applyBtn.addEventListener('click', applySlices);
+    localDom.applyBtn.addEventListener('click', createSpriteAsset);
+    localDom.deleteBtn.addEventListener('click', deleteSelectedSlice);
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
-            openAssetSelectorCallback('image', (fileHandle, directoryHandle) => {
-                // When an image is selected, load it.
-                // The saveAssetMetaCallback from initialization is used as the save callback.
+            openAssetSelectorCallback('image', (fileHandle, fullPath, directoryHandle) => {
                 loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
             });
         } else {
             console.error("Asset selector callback not initialized for Sprite Slicer.");
         }
+    });
+
+    // Listen for real-time input on all slicing parameter fields
+    const fieldsToListen = [
+        localDom.pixelSizeX, localDom.pixelSizeY,
+        localDom.columnCount, localDom.rowCount,
+        localDom.offsetX, localDom.offsetY,
+        localDom.paddingX, localDom.paddingY
+    ];
+
+    fieldsToListen.forEach(field => {
+        field.addEventListener('input', () => drawSlicePreview());
     });
 }
 
@@ -63,12 +88,16 @@ export async function open(fileHandle, directoryHandle, saveMetaCb) {
     resetToDefaultState();
 
     if (fileHandle) {
-        await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
+        if (fileHandle.name.endsWith('.ceSprite')) {
+            await loadCeSpriteForEditing(fileHandle, directoryHandle);
+        } else {
+            // It's a regular image file
+            await loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb);
+        }
     } else {
         // Opened from the Window menu, show overlay. User will use 'Load Image'.
         localDom.overlay.classList.remove('hidden');
         localDom.mainContent.classList.add('hidden');
-        // Ensure buttons that require a loaded image are disabled
         localDom.sliceBtn.disabled = true;
         localDom.applyBtn.disabled = true;
     }
@@ -96,6 +125,9 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
                 draw();
                 localDom.overlay.classList.add('hidden');
                 localDom.mainContent.classList.remove('hidden');
+                // Enable controls now that an image is loaded
+                localDom.sliceBtn.disabled = false;
+                localDom.applyBtn.disabled = false;
             };
             sourceImage.src = e.target.result;
         };
@@ -111,25 +143,77 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
 function resetToDefaultState() {
     sourceImage = null;
     currentFileHandle = null;
+    editingCeSpriteFileHandle = null;
     dirHandle = null;
     saveCallback = null;
     generatedSlices = [];
+    selectedSliceIndex = -1;
     if(localDom.ctx) localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.overlay.classList.remove('hidden');
     localDom.mainContent.classList.add('hidden');
+    localDom.applyBtn.textContent = 'Crear Asset de Sprite';
+    localDom.deleteBtn.disabled = true;
 }
 
-function draw() {
+function draw(previewSlices = []) {
     if (!sourceImage) return;
     localDom.ctx.clearRect(0, 0, localDom.canvas.width, localDom.canvas.height);
     localDom.ctx.drawImage(sourceImage, 0, 0);
 
-    localDom.ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
-    localDom.ctx.lineWidth = 2;
-    generatedSlices.forEach(rect => {
+    // Draw existing, confirmed slices
+    generatedSlices.forEach((rect, index) => {
+        if (index === selectedSliceIndex) {
+            // Highlight selected slice in red
+            localDom.ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
+            localDom.ctx.lineWidth = 3;
+        } else {
+            // Default color for confirmed slices
+            localDom.ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+            localDom.ctx.lineWidth = 2;
+        }
         localDom.ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     });
+
+    // Draw preview slices in a different color (e.g., blue dashed line)
+    if (previewSlices.length > 0) {
+        localDom.ctx.strokeStyle = 'rgba(0, 150, 255, 0.75)';
+        localDom.ctx.lineWidth = 1;
+        localDom.ctx.setLineDash([5, 3]); // Dashed line for previews
+        previewSlices.forEach(rect => {
+            localDom.ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        });
+        localDom.ctx.setLineDash([]); // Reset line dash
+    }
 }
+
+
+function drawSlicePreview() {
+    if (!sourceImage) return;
+    const previewSlices = calculatePreviewSlices();
+    draw(previewSlices);
+}
+
+function calculatePreviewSlices() {
+    if (!sourceImage) return [];
+
+    const type = localDom.sliceType.value;
+    let slices = [];
+
+    switch (type) {
+        case 'Automatic':
+            // Automatic is expensive, so we don't preview it in real-time.
+            // It will only be calculated when the "Slice" button is pressed.
+            break;
+        case 'Grid by Cell Size':
+            slices = sliceByCellSize(true); // isPreview = true
+            break;
+        case 'Grid by Cell Count':
+            slices = sliceByCellCount(true); // isPreview = true
+            break;
+    }
+    return slices;
+}
+
 
 function handleSliceTypeChange(e) {
     const type = e.target.value;
@@ -145,42 +229,44 @@ function executeSlice() {
     if (!sourceImage) return;
 
     const type = localDom.sliceType.value;
-    generatedSlices = [];
 
-    switch (type) {
-        case 'Automatic': sliceAutomatic(); break;
-        case 'Grid by Cell Size': sliceByCellSize(); break;
-        case 'Grid by Cell Count': sliceByCellCount(); break;
+    // For automatic, we calculate it now since it's not previewed
+    if (type === 'Automatic') {
+        generatedSlices = sliceAutomatic();
+    } else {
+        // For grid types, the preview is what we want to confirm
+        generatedSlices = calculatePreviewSlices();
     }
 
-    draw();
-    console.log(`Generated ${generatedSlices.length} slices.`);
+    draw(); // Redraw to show the confirmed slices in yellow
+    console.log(`Confirmed ${generatedSlices.length} slices.`);
 }
 
-async function applySlices() {
+async function createSpriteAsset() {
     if (generatedSlices.length === 0) {
         window.Dialogs.showNotification("Aviso", "No hay slices para aplicar. Usa el botón 'Slice' primero.");
         return;
     }
-    if (!saveCallback || !dirHandle || !currentFileHandle) {
-        window.Dialogs.showNotification("Error", "No se puede aplicar cambios. Asegúrate de haber cargado la imagen a través del Inspector.");
-        console.error("Error al aplicar: Faltan dependencias de guardado. Esto puede ocurrir si la imagen se cargó manualmente.");
+    if (!createAssetCallback || !getAssetsDirectoryHandle || !updateAssetBrowserCallback || !currentFileHandle) {
+        window.Dialogs.showNotification("Error", "Faltan funciones esenciales del editor para crear el asset.");
+        console.error("Error al crear/guardar asset: Faltan dependencias.");
         return;
     }
 
-    try {
-        let metaData = {};
-        try {
-            const metaFileHandle = await dirHandle.getFileHandle(`${currentFileHandle.name}.meta`);
-            const metaFile = await metaFileHandle.getFile();
-            metaData = JSON.parse(await metaFile.text());
-        } catch (e) { /* Meta file doesn't exist, we'll create it. */ }
+    const isEditing = !!editingCeSpriteFileHandle;
 
-        metaData.sprites = {};
+    try {
+        const baseName = currentFileHandle.name.substring(0, currentFileHandle.name.lastIndexOf('.'));
+        const assetName = isEditing ? editingCeSpriteFileHandle.name : `${baseName}.ceSprite`;
+
+        const spriteAssetContent = {
+            sourceImage: currentFileHandle.name,
+            sprites: {}
+        };
 
         generatedSlices.forEach((rect, index) => {
-            const spriteName = `${currentFileHandle.name.split('.')[0]}_${index}`;
-            metaData.sprites[spriteName] = {
+            const spriteName = `${baseName}_${index}`;
+            spriteAssetContent.sprites[spriteName] = {
                 name: spriteName,
                 rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
                 pivot: { x: 0.5, y: 0.5 },
@@ -188,14 +274,35 @@ async function applySlices() {
             };
         });
 
-        await saveCallback(currentFileHandle.name, metaData, dirHandle);
-        window.Dialogs.showNotification("Éxito", `Se han guardado ${generatedSlices.length} sprites en el archivo .meta.`);
-        localDom.panel.classList.add('hidden'); // Close on success
-        resetToDefaultState();
+        const jsonContent = JSON.stringify(spriteAssetContent, null, 2);
+        const assetsDirHandle = await getAssetsDirectoryHandle();
+
+        let fileHandle;
+        if (isEditing) {
+            // Overwrite the existing file
+            fileHandle = editingCeSpriteFileHandle;
+            const writable = await fileHandle.createWritable();
+            await writable.write(jsonContent);
+            await writable.close();
+        } else {
+            // Create a new file
+            fileHandle = await createAssetCallback(assetName, jsonContent, assetsDirHandle);
+        }
+
+        if (fileHandle) {
+            const message = isEditing
+                ? `Asset '${assetName}' guardado con ${generatedSlices.length} sprites.`
+                : `Asset '${assetName}' creado con ${generatedSlices.length} sprites.`;
+            window.Dialogs.showNotification("Éxito", message);
+
+            await updateAssetBrowserCallback(); // Refresh to show new/updated file
+            localDom.panel.classList.add('hidden');
+            resetToDefaultState();
+        }
 
     } catch (error) {
-        console.error("Error al guardar los metadatos de los sprites:", error);
-        window.Dialogs.showNotification("Error", "No se pudieron guardar los sprites.");
+        console.error(`Error al ${isEditing ? 'guardar' : 'crear'} el asset de sprite:`, error);
+        window.Dialogs.showNotification("Error", `No se pudo ${isEditing ? 'guardar' : 'crear'} el archivo .ceSprite: ${error.message}`);
     }
 }
 
@@ -206,6 +313,7 @@ function sliceAutomatic() {
     const data = imageData.data;
     const visited = new Array(width * height).fill(false);
     const alphaThreshold = 10;
+    const slices = [];
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -216,11 +324,12 @@ function sliceAutomatic() {
             if (alpha > alphaThreshold) {
                 const bounds = findSpriteBounds(x, y, width, height, data, visited, alphaThreshold);
                 if (bounds.width > 5 && bounds.height > 5) {
-                    generatedSlices.push(bounds);
+                    slices.push(bounds);
                 }
             }
         }
     }
+    return slices;
 }
 
 function findSpriteBounds(startX, startY, width, height, data, visited, alphaThreshold) {
@@ -249,7 +358,8 @@ function findSpriteBounds(startX, startY, width, height, data, visited, alphaThr
     return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
-function sliceByCellSize() {
+function sliceByCellSize(isPreview = false) {
+    const slices = [];
     const cellWidth = parseInt(localDom.pixelSizeX.value, 10);
     const cellHeight = parseInt(localDom.pixelSizeY.value, 10);
     const offsetX = parseInt(localDom.offsetX.value, 10);
@@ -257,30 +367,102 @@ function sliceByCellSize() {
     const paddingX = parseInt(localDom.paddingX.value, 10);
     const paddingY = parseInt(localDom.paddingY.value, 10);
 
-    if (cellWidth <= 0 || cellHeight <= 0) return;
+    if (cellWidth <= 0 || cellHeight <= 0) return slices;
 
     for (let y = offsetY; y < sourceImage.height; y += cellHeight + paddingY) {
         for (let x = offsetX; x < sourceImage.width; x += cellWidth + paddingX) {
             if (x + cellWidth > sourceImage.width || y + cellHeight > sourceImage.height) continue;
-            generatedSlices.push({ x, y, width: cellWidth, height: cellHeight });
+            slices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }
+    return slices;
 }
 
-function sliceByCellCount() {
+function sliceByCellCount(isPreview = false) {
+    const slices = [];
     const cols = parseInt(localDom.columnCount.value, 10);
     const rows = parseInt(localDom.rowCount.value, 10);
 
-    if (cols <= 0 || rows <= 0) return;
+    if (cols <= 0 || rows <= 0) return slices;
 
     const cellWidth = Math.floor(sourceImage.width / cols);
     const cellHeight = Math.floor(sourceImage.height / rows);
 
-     for (let r = 0; r < rows; r++) {
+    for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             const x = c * cellWidth;
             const y = r * cellHeight;
-            generatedSlices.push({ x, y, width: cellWidth, height: cellHeight });
+            slices.push({ x, y, width: cellWidth, height: cellHeight });
         }
     }
+    return slices;
+}
+
+async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
+    editingCeSpriteFileHandle = ceSpriteFileHandle;
+    dirHandle = directoryHandle;
+    saveCallback = null; // Not needed in edit mode
+
+    try {
+        const file = await ceSpriteFileHandle.getFile();
+        const content = await file.text();
+        const spriteAssetData = JSON.parse(content);
+
+        // Find and load the source image
+        const sourceImageName = spriteAssetData.sourceImage;
+        const assetsDir = await getAssetsDirectoryHandle();
+        const sourceImageFileHandle = await assetsDir.getFileHandle(sourceImageName);
+
+        // A bit of a workaround: use loadImageFromFileHandle for the image loading part
+        // but prevent it from setting top-level state we're managing here.
+        await loadImageFromFileHandle(sourceImageFileHandle, assetsDir, null);
+
+        // Populate existing slices
+        generatedSlices = Object.values(spriteAssetData.sprites).map(s => s.rect);
+
+        // Update UI for editing mode
+        localDom.applyBtn.textContent = 'Guardar Cambios';
+        draw(); // Redraw with the loaded slices
+
+    } catch (error) {
+        console.error("Error loading .ceSprite for editing:", error);
+        window.Dialogs.showNotification("Error", `Could not load ${ceSpriteFileHandle.name} for editing.`);
+        resetToDefaultState();
+    }
+}
+
+function handleCanvasClick(e) {
+    if (!sourceImage || generatedSlices.length === 0) return;
+
+    const rect = localDom.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Find if a slice was clicked
+    const clickedSliceIndex = generatedSlices.findIndex(slice =>
+        x >= slice.x && x <= slice.x + slice.width &&
+        y >= slice.y && y <= slice.y + slice.height
+    );
+
+    if (clickedSliceIndex !== -1) {
+        selectedSliceIndex = clickedSliceIndex;
+        localDom.deleteBtn.disabled = false;
+        console.log(`Selected slice index: ${selectedSliceIndex}`);
+    } else {
+        selectedSliceIndex = -1;
+        localDom.deleteBtn.disabled = true;
+    }
+
+    draw(); // Redraw to show selection highlight
+}
+
+function deleteSelectedSlice() {
+    if (selectedSliceIndex === -1) return;
+
+    generatedSlices.splice(selectedSliceIndex, 1);
+    selectedSliceIndex = -1;
+    localDom.deleteBtn.disabled = true;
+
+    draw(); // Redraw without the deleted slice
+    console.log("Slice deleted.");
 }

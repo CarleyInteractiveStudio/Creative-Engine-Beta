@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     uiItem.addEventListener('dblclick', async () => {
                         const fileHandle = isProjectView ? item.handle : await displayDirHandle.getFileHandle(name);
-                        callback(fileHandle, displayDirHandle);
+                        callback(fileHandle, fullPath, displayDirHandle); // Pass fullPath
                         selectorPanel.classList.add('hidden');
                     });
                 }
@@ -695,25 +695,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
                     const img = spriteRenderer.sprite;
 
-                    let sx, sy, sWidth, sHeight;
-                    let pivotX = 0.5, pivotY = 0.5; // Default pivot is center
+                    let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+                    let pivotX = 0.5, pivotY = 0.5;
 
-                    const spriteData = spriteRenderer.spriteSheet?.sprites[spriteRenderer.spriteName];
-
-                    if (spriteData && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                        // Use data from the sprite sheet
-                        sx = spriteData.rect.x;
-                        sy = spriteData.rect.y;
-                        sWidth = spriteData.rect.width;
-                        sHeight = spriteData.rect.height;
-                        pivotX = spriteData.pivot.x;
-                        pivotY = spriteData.pivot.y;
-                    } else {
-                        // Fallback to treating as a single, full image
-                        sx = 0;
-                        sy = 0;
-                        sWidth = img.naturalWidth;
-                        sHeight = img.naturalHeight;
+                    // If a sprite sheet is loaded and a specific sprite is named, use its data
+                    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                        if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
+                            sx = spriteData.rect.x;
+                            sy = spriteData.rect.y;
+                            sWidth = spriteData.rect.width;
+                            sHeight = spriteData.rect.height;
+                            pivotX = spriteData.pivot.x;
+                            pivotY = spriteData.pivot.y;
+                        }
                     }
 
                     const dWidth = sWidth * transform.scale.x;
@@ -1614,16 +1609,19 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
-            'palette-file-name', 'palette-tools-vertical',
+            'palette-file-name', 'palette-tools-vertical', 'palette-add-sprite-btn', 'palette-edit-btn', 'palette-delete-sprite-btn',
             'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
             // Sprite Slicer Panel Elements
-            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-apply-btn', 'sprite-slicer-overlay',
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
             'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
             'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
             'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
-            'slice-custom-pivot-x', 'slice-custom-pivot-y',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-delete-sprite-btn',
+            // Animation from Sprites Modal
+            'animation-from-sprite-modal', 'anim-sprite-selection-gallery', 'anim-sprite-timeline',
+            'anim-sprite-clear-btn', 'anim-sprite-create-btn',
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
@@ -1881,7 +1879,12 @@ public star() {
                 // Always update the inspector to reflect the change (or lack of selection)
                 updateInspector();
             };
-            const onAssetOpened = async (name, fileHandle, dirHandle) => {
+            const onAssetOpened = async (name, fileHandle, dirHandle, options = {}) => {
+                if (options.openIn === 'SpriteSlicer') {
+                    SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
+                    return;
+                }
+
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 
@@ -1964,7 +1967,14 @@ public star() {
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,
-                saveAssetMetaCallback: saveAssetMeta
+                saveAssetMetaCallback: saveAssetMeta,
+                createAssetCallback: createAsset,
+                updateAssetBrowserCallback: updateAssetBrowser,
+                getAssetsDirectoryHandle: async () => {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    return await projectHandle.getDirectoryHandle('Assets');
+                }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
@@ -1992,7 +2002,7 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize(dom, projectsDirHandle);
+            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

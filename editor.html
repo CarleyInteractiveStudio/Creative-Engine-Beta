@@ -1109,6 +1109,11 @@ public star() {
                     <span id="palette-file-name">Ninguna</span>
                     <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
+                <div class="toolbar-group">
+                    <button id="palette-add-sprite-btn" class="panel-tool-btn" title="Añadir Sprites">➕</button>
+                    <button id="palette-edit-btn" class="panel-tool-btn" title="Ordenar Sprites" disabled>✏️</button>
+                    <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite Seleccionado" disabled>🗑️</button>
+                </div>
                  <div class="toolbar-group">
                     <label>Tile:</label>
                     <span id="palette-selected-tile-id">-</span>
@@ -1169,14 +1174,41 @@ public star() {
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script type="module" src="js/editor.js?v=1.0"></script>
+
+    <div id="animation-from-sprite-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 600px; height: 450px;">
+        <div class="panel-header">
+            <span>Crear Animación desde Sprites</span>
+            <button class="close-panel-btn">&times;</button>
+        </div>
+        <div class="panel-content" style="display: flex; flex-direction: column; gap: 10px;">
+            <fieldset class="inspector-section">
+                <legend>Sprites Disponibles</legend>
+                <div id="anim-sprite-selection-gallery" class="cesprite-gallery" style="height: 150px; overflow-y: auto;">
+                    <!-- Sprites from the .ceSprite file will be populated here -->
+                </div>
+            </fieldset>
+            <fieldset class="inspector-section">
+                <legend>Frames de la Animación</legend>
+                <div id="anim-sprite-timeline" class="mini-timeline" style="height: 100px; overflow-x: auto;">
+                    <!-- Selected frames will appear here -->
+                </div>
+            </fieldset>
+            <div class="modal-footer">
+                <button id="anim-sprite-clear-btn" class="secondary-btn">Limpiar</button>
+                <button id="anim-sprite-create-btn" class="primary-btn">Crear Animación</button>
+            </div>
+        </div>
+    </div>
 
     <div id="sprite-slicer-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
         <div class="panel-header">
             <span>Editor de Sprites</span>
             <div class="panel-header-controls">
                 <button id="slicer-load-image-btn" class="panel-tool-btn">Cargar Imagen</button>
-                <button id="slicer-apply-btn" class="panel-tool-btn primary-btn">Aplicar</button>
+                <button id="slicer-delete-sprite-btn" class="panel-tool-btn danger-btn">Eliminar Sprite</button>
+                <button id="slicer-create-asset-btn" class="panel-tool-btn primary-btn">Crear Asset de Sprite</button>
                 <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
             </div>
         </div>
