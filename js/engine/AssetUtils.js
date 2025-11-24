@@ -86,3 +86,27 @@ async function generateSpritePreview(spriteFile, directoryHandle) {
         }
     });
 }
+
+export async function getFileHandleForPath(path, rootDirHandle) {
+    if (!rootDirHandle || !path) return null;
+
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+
+        let currentHandle = projectHandle;
+        const parts = path.split('/').filter(p => p);
+        const fileName = parts.pop();
+
+        for (const part of parts) {
+            currentHandle = await currentHandle.getDirectoryHandle(part);
+        }
+
+        const fileHandle = await currentHandle.getFileHandle(fileName);
+        return fileHandle;
+
+    } catch (error) {
+        console.error(`Could not get file handle for path: ${path}`, error);
+        return null; // Return null to indicate failure
+    }
+}
