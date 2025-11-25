@@ -173,15 +173,18 @@ function setupEventListeners() {
     });
 
     dom.deleteSpriteBtn.addEventListener('click', () => {
-        if (isOrganizeMode && selectedGridCoord && currentPalette.tiles[selectedGridCoord]) {
-            delete currentPalette.tiles[selectedGridCoord];
-            const tileIndex = allTiles.findIndex(t => t.coord === selectedGridCoord);
-            if (tileIndex > -1) {
-                allTiles.splice(tileIndex, 1);
-            }
-            selectedGridCoord = null;
-            dom.deleteSpriteBtn.disabled = true;
-            drawTiles();
+        if (!isOrganizeMode) return;
+
+        // Toggle active tool state
+        const isDeleting = dom.deleteSpriteBtn.classList.toggle('active');
+
+        if (isDeleting) {
+            activeTool = 'delete';
+            dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => img.classList.remove('selected'));
+             dom.gridCanvas.style.cursor = 'crosshair'; // Indicate deletion cursor
+        } else {
+            activeTool = null; // No tool selected
+             dom.gridCanvas.style.cursor = 'grab';
         }
     });
 
@@ -224,6 +227,11 @@ function setupEventListeners() {
         if (e.target.matches('.sidebar-sprite-preview')) {
             dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => img.classList.remove('selected'));
             e.target.classList.add('selected');
+
+            // Deactivate delete tool when a new sprite is selected for painting
+            activeTool = null;
+            dom.deleteSpriteBtn.classList.remove('active');
+            dom.gridCanvas.style.cursor = 'grab';
         }
     });
 
@@ -322,17 +330,34 @@ function clearGrid() {
 }
 
 function getTileIndexFromEvent(event) {
-    const PADDING = 0;
-    const canvasWidth = dom.viewContainer.clientWidth;
-    const tilesPerRow = Math.max(1, Math.floor(canvasWidth / (PALETTE_TILE_SIZE + PADDING)));
+    if (allTiles.length === 0) return -1;
+
+    const TILE_SIZE = PALETTE_TILE_SIZE;
+    const PADDING = 2;
+    const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    allTiles.forEach(tile => {
+        const [x, y] = tile.coord.split(',').map(Number);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+    });
+
     const rect = dom.gridCanvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const scrollX = dom.viewContainer.scrollLeft;
     const scrollY = dom.viewContainer.scrollTop;
-    const col = Math.floor((x + scrollX) / (PALETTE_TILE_SIZE + PADDING));
-    const row = Math.floor((y + scrollY) / (PALETTE_TILE_SIZE + PADDING));
-    return row * tilesPerRow + col;
+
+    const col = Math.floor((x + scrollX) / TOTAL_CELL_SIZE);
+    const row = Math.floor((y + scrollY) / TOTAL_CELL_SIZE);
+
+    const gridX = col + minX;
+    const gridY = row + minY;
+    const coord = `${gridX},${gridY}`;
+
+    return allTiles.findIndex(tile => tile.coord === coord);
 }
 
 function handleCanvasMouseDown(event) {
@@ -346,7 +371,7 @@ function handleCanvasMouseDown(event) {
 
     if (event.button === 0) {
         if (isOrganizeMode) {
-            const gridSize = 32 * cameraZoom;
+            const gridSize = PALETTE_TILE_SIZE * cameraZoom;
             const rect = dom.gridCanvas.getBoundingClientRect();
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
@@ -356,10 +381,20 @@ function handleCanvasMouseDown(event) {
             const gridY = Math.floor(worldY / gridSize);
             const coord = `${gridX},${gridY}`;
 
-            const selectedSprite = dom.spritePackList.querySelector('.selected');
+            if (activeTool === 'delete') {
+                if (currentPalette.tiles[coord]) {
+                    delete currentPalette.tiles[coord];
+                    const tileIndex = allTiles.findIndex(t => t.coord === coord);
+                    if (tileIndex > -1) {
+                        allTiles.splice(tileIndex, 1);
+                    }
+                    drawTiles();
+                }
+                return;
+            }
 
+            const selectedSprite = dom.spritePackList.querySelector('.selected');
             if (selectedSprite) {
-                // Place a new tile
                 const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
                 currentPalette.tiles[coord] = newTileData;
                 const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
@@ -371,15 +406,7 @@ function handleCanvasMouseDown(event) {
                     drawTiles();
                 };
             } else {
-                // Select an existing tile
-                if (currentPalette.tiles[coord]) {
-                    selectedGridCoord = coord;
-                    dom.deleteSpriteBtn.disabled = false;
-                } else {
-                    selectedGridCoord = null;
-                    dom.deleteSpriteBtn.disabled = true;
-                }
-                drawTiles();
+                // If no tool is active, do nothing on click
             }
         } else {
             // Paint mode selection logic
@@ -511,32 +538,57 @@ function drawTiles() {
 
 function drawPaintMode() {
     const ctx = dom.gridCanvas.getContext('2d');
-    const PADDING = 0;
-    const canvasWidth = dom.viewContainer.clientWidth;
-    const tilesPerRow = Math.max(1, Math.floor(canvasWidth / (PALETTE_TILE_SIZE + PADDING)));
+    const TILE_SIZE = PALETTE_TILE_SIZE;
+    const PADDING = 2;
+    const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
 
-    const numRows = Math.ceil(allTiles.length / tilesPerRow);
-    const canvasHeight = numRows * (PALETTE_TILE_SIZE + PADDING);
+    if (allTiles.length === 0) {
+        ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
+        dom.gridCanvas.width = dom.viewContainer.clientWidth;
+        dom.gridCanvas.height = dom.viewContainer.clientHeight;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.textAlign = 'center';
+        ctx.fillText("Esta paleta está vacía.", dom.gridCanvas.width / 2, 50);
+        ctx.fillText("Entra en 'Modo Edición' para asociar sprites y añadirlos.", dom.gridCanvas.width / 2, 70);
+        return;
+    }
 
-    dom.gridCanvas.width = canvasWidth;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    allTiles.forEach(tile => {
+        const [x, y] = tile.coord.split(',').map(Number);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+    });
+
+    const gridWidth = (maxX - minX + 1);
+    const gridHeight = (maxY - minY + 1);
+    const canvasWidth = gridWidth * TOTAL_CELL_SIZE;
+    const canvasHeight = gridHeight * TOTAL_CELL_SIZE;
+
+    dom.gridCanvas.width = Math.max(dom.viewContainer.clientWidth, canvasWidth);
     dom.gridCanvas.height = Math.max(dom.viewContainer.clientHeight, canvasHeight);
     ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 
-    allTiles.forEach((tile, index) => {
-        const row = Math.floor(index / tilesPerRow);
-        const col = index % tilesPerRow;
-        const x = col * (PALETTE_TILE_SIZE + PADDING);
-        const y = row * (PALETTE_TILE_SIZE + PADDING);
+    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
 
-        ctx.drawImage(
-            tile.image, // Use the pre-loaded image object
-            x, y, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE
-        );
+    allTiles.forEach((tile, index) => {
+        const [gridX, gridY] = tile.coord.split(',').map(Number);
+        const x = (gridX - minX) * TOTAL_CELL_SIZE;
+        const y = (gridY - minY) * TOTAL_CELL_SIZE;
+
+        // Draw grid cell background/border
+        ctx.strokeRect(x + 0.5, y + 0.5, TOTAL_CELL_SIZE, TOTAL_CELL_SIZE);
+
+        ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
         if (index === selectedTileId) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
             ctx.lineWidth = 3;
-            ctx.strokeRect(x + 1.5, y + 1.5, PALETTE_TILE_SIZE - 3, PALETTE_TILE_SIZE - 3);
+            ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
         }
     });
 }
@@ -555,7 +607,7 @@ function drawOrganizeMode() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // --- Grid Drawing ---
-    const gridSize = 32 * cameraZoom;
+    const gridSize = PALETTE_TILE_SIZE * cameraZoom;
     const gridColor = 'rgba(255, 255, 255, 0.1)';
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;

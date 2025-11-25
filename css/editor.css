@@ -2953,7 +2953,6 @@ body {
 .custom-dialog {
     position: fixed;
     z-index: 1001;
-    background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 12px; /* Rounded corners for the bubble effect */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
@@ -2962,6 +2961,15 @@ body {
     display: none; /* Initially hidden */
     flex-direction: column;
     overflow: hidden; /* Ensures child elements respect the border radius */
+}
+
+.dialog-container {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure it fills the parent dialog */
+    overflow: hidden; /* This is crucial to make children respect the border-radius */
 }
 
 .dialog-header {
