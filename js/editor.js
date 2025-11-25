@@ -238,7 +238,14 @@ document.addEventListener('DOMContentLoaded', () => {
         allProjectFiles = [];
         await findAllFiles(assetsHandle, 'Assets', allProjectFiles);
 
-        titleEl.textContent = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+        let titleText = 'Seleccionar Archivo';
+        if (typeof filter === 'string') {
+            titleText = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+        } else if (Array.isArray(filter) && filter.length > 0) {
+            const extensions = filter.join(' / ');
+            titleText = `Seleccionar Archivo ${extensions}`;
+        }
+        titleEl.textContent = titleText;
         selectorPanel.classList.remove('hidden');
 
         const highestZ = Array.from(document.querySelectorAll('.floating-panel'))

@@ -157,19 +157,19 @@ function setupEventListeners() {
     dom.loadBtn.addEventListener('click', async () => {
         openAssetSelectorCallback(async (fileHandle) => {
             await openPalette(fileHandle);
-        }, '.cepalette');
+        }, ['.cepalette']);
     });
 
     dom.associateSpriteBtn.addEventListener('click', () => {
         if (!currentPalette) return;
-        openAssetSelectorCallback(['.ceSprite'], async (fileHandle, fullPath) => {
+        openAssetSelectorCallback(async (fileHandle, fullPath) => {
             if (!currentPalette.associatedSpritePacks.includes(fullPath)) {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
                 showNotification('Aviso', 'Este paquete de sprites ya está asociado.');
             }
-        });
+        }, ['.ceSprite']);
     });
 
     dom.deleteSpriteBtn.addEventListener('click', () => {
