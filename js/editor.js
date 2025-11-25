@@ -1608,10 +1608,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
-            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn',
-            'palette-file-name', 'palette-tools-vertical', 'palette-add-sprite-btn', 'palette-edit-btn', 'palette-delete-sprite-btn',
-            'palette-image-name', 'palette-tile-width', 'palette-tile-height', 'palette-selected-tile-id',
-            'palette-view-container', 'palette-grid-canvas', 'palette-tileset-image', 'palette-panel-overlay',
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
+            'palette-file-name', 'palette-tools-vertical', 'palette-selected-tile-id',
+            'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
+            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
