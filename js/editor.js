@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector;
 
-    openAssetSelector = async function(filter, callback) {
+    openAssetSelector = async function(callback, filter) {
         const selectorPanel = dom.assetSelectorBubble;
         const titleEl = dom.assetSelectorTitle;
         const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
@@ -185,10 +185,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 itemsToRender = entries.filter(entry => {
                     if (entry.kind === 'directory') return true;
                     const lowerName = entry.name.toLowerCase();
+                    if (Array.isArray(filter)) {
+                        return filter.some(ext => lowerName.endsWith(ext));
+                    }
                     switch (filter) {
                         case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
                         case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
-                        default: return true;
+                        default: return true; // No filter or unknown filter shows all files
                     }
                 });
 
@@ -197,6 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 breadcrumbsEl.style.display = 'none';
                 itemsToRender = allProjectFiles.filter(fileInfo => {
                     const lowerName = fileInfo.handle.name.toLowerCase();
+                    if (Array.isArray(filter)) {
+                        return filter.some(ext => lowerName.endsWith(ext));
+                    }
                     switch (filter) {
                         case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
                         case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
