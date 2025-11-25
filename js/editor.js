@@ -182,33 +182,64 @@ document.addEventListener('DOMContentLoaded', () => {
                     entries.push(entry);
                 }
 
-                itemsToRender = entries.filter(entry => {
-                    if (entry.kind === 'directory') return true;
+                const filteredEntries = [];
+                for (const entry of entries) {
+                    if (entry.kind === 'directory') {
+                        filteredEntries.push(entry);
+                        continue;
+                    }
+
                     const lowerName = entry.name.toLowerCase();
+                    let shouldRender = false;
                     if (Array.isArray(filter)) {
-                        return filter.some(ext => lowerName.endsWith(ext));
+                        for (const ext of filter) {
+                            if (lowerName.endsWith(ext.toLowerCase())) {
+                                shouldRender = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        switch (filter) {
+                            case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
+                            case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
+                            default: shouldRender = true; break;
+                        }
                     }
-                    switch (filter) {
-                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
-                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
-                        default: return true; // No filter or unknown filter shows all files
+                    if (shouldRender) {
+                        filteredEntries.push(entry);
                     }
-                });
+                }
+                itemsToRender = filteredEntries;
 
                 itemsToRender.sort((a, b) => (a.kind === b.kind) ? a.name.localeCompare(b.name) : (a.kind === 'directory' ? -1 : 1));
             } else { // 'project' view
                 breadcrumbsEl.style.display = 'none';
-                itemsToRender = allProjectFiles.filter(fileInfo => {
+
+                const filteredFiles = [];
+                for (const fileInfo of allProjectFiles) {
                     const lowerName = fileInfo.handle.name.toLowerCase();
-                    if (Array.isArray(filter)) {
-                        return filter.some(ext => lowerName.endsWith(ext));
+                    let shouldRender = false;
+
+                     if (Array.isArray(filter)) {
+                        for (const ext of filter) {
+                            if (lowerName.endsWith(ext.toLowerCase())) {
+                                shouldRender = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        switch (filter) {
+                            case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
+                            case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
+                            default: shouldRender = true; break;
+                        }
                     }
-                    switch (filter) {
-                        case 'image': return lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
-                        case 'audio': return lowerName.endsWith('.mp3') || lowerName.endsWith('.wav');
-                        default: return true;
+
+                    if (shouldRender) {
+                        filteredFiles.push(fileInfo);
                     }
-                });
+                }
+                itemsToRender = filteredFiles;
             }
             renderItems(itemsToRender);
         }
