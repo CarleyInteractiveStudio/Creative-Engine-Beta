@@ -139,45 +139,42 @@ function paintTile(e) {
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     if (!tilemap) return;
 
-    const grid = findParentGrid(selectedMateria);
+    // In the new system, the Tilemap must be a child of a Grid Materia.
+    const gridMateria = SceneManager.currentScene.getMateriaById(selectedMateria.parent);
+    const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
+
     if (!grid) {
-        console.warn("Selected Tilemap does not have a Grid parent.");
+        console.warn("Selected Tilemap is not a child of a Materia with a Grid component.");
         return;
     }
 
     const worldPos = screenToWorld(e.clientX, e.clientY);
-
-    // Convert world position to grid cell coordinates
-    const gridX = Math.floor(worldPos.x / grid.cellWidth);
-    const gridY = Math.floor(worldPos.y / grid.cellHeight);
-    const tileKey = `${gridX},${gridY}`;
+    const gridPos = worldToGrid(worldPos, grid);
+    const tileKey = `${gridPos.x},${gridPos.y}`;
 
     const tool = TilePaletteWindow.getActiveTool();
-    const selectedTileId = TilePaletteWindow.getSelectedTile();
+    const selectedTileData = TilePaletteWindow.getSelectedTile(); // This now returns an object
 
     switch (tool) {
         case 'tile-brush':
-            if (selectedTileId !== -1) {
-                tilemap.tileData.set(tileKey, selectedTileId);
-                console.log(`Painted tile ${selectedTileId} at ${tileKey}`);
+            if (selectedTileData) {
+                // The new format requires storing the necessary data directly.
+                // For now, we'll store the object returned by the palette.
+                tilemap.tileData.set(tileKey, selectedTileData);
             }
             break;
         case 'tile-eraser':
             if (tilemap.tileData.has(tileKey)) {
                 tilemap.tileData.delete(tileKey);
-                console.log(`Erased tile at ${tileKey}`);
-            }
-            break;
-        case 'tile-rect-fill':
-            // This would require more state (start/end points)
-            // For now, it will act like the brush.
-            if (selectedTileId !== -1) {
-                tilemap.tileData.set(tileKey, selectedTileId);
             }
             break;
     }
-    // Need a way to signal that the scene needs redrawing
-    // For now, the render loop will handle it.
+
+    // Manually trigger a re-render of the tilemap component to see changes immediately.
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (tilemapRenderer) {
+        tilemapRenderer.setDirty();
+    }
 }
 
 function fillTileRect(endWorldPos) {

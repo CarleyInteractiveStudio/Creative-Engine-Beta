@@ -136,63 +136,33 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        if (!tilemap || !transform || !tilemapRenderer.tileSheet || !tilemapRenderer.palette) {
+        const gridMateria = SceneManager.currentScene.getMateriaById(tilemapRenderer.materia.parent);
+        const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
+
+        if (!tilemap || !transform || !grid) {
             return;
         }
 
-        const { tileWidth, tileHeight, columns, rows, layers } = tilemap;
-        const { tileSheet } = tilemapRenderer;
-        // Get the number of columns in the source tilesheet from the palette info
-        const paletteCols = tilemapRenderer.palette.columns;
-
-        if (!paletteCols) return;
-
-        // Save context state before applying tilemap-specific transform
         this.ctx.save();
-
-        // Position the tilemap based on its transform component
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
-        // Note: Tilemap scale is not directly supported for performance reasons.
-        // It would require scaling the context or each tile individually.
 
-        const mapWidth = columns * tileWidth;
-        const mapHeight = rows * tileHeight;
+        for (const [coord, tileData] of tilemap.tileData.entries()) {
+            const image = tilemapRenderer.getImageForTile(tileData);
+            if (image && image.complete && image.naturalWidth > 0) {
+                const [x, y] = coord.split(',').map(Number);
 
-        // Offset by half the map size so the transform's (x,y) is the center, like other objects
-        this.ctx.translate(-mapWidth / 2, -mapHeight / 2);
+                const dx = x * grid.cellSize.x;
+                const dy = y * grid.cellSize.y;
 
-        // Iterate through each layer object and draw its data grid
-        for (const layer of layers) {
-            const gridData = layer.data;
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < columns; c++) {
-                    const tileId = gridData[r][c];
-
-                    if (tileId === -1) {
-                        continue; // Skip empty tiles
-                    }
-
-                    // Calculate the source x/y on the tilesheet based on the tile ID
-                    const sx = (tileId % paletteCols) * tileWidth;
-                    const sy = Math.floor(tileId / paletteCols) * tileHeight;
-
-                    // Calculate the destination x/y on the canvas
-                    const dx = c * tileWidth;
-                    const dy = r * tileHeight;
-
-                    this.ctx.drawImage(
-                        tileSheet,
-                        sx, sy,           // Source x, y on the tilesheet
-                        tileWidth, tileHeight, // Source width, height
-                        dx, dy,           // Destination x, y on the canvas
-                        tileWidth, tileHeight  // Destination width, height
-                    );
-                }
+                this.ctx.drawImage(
+                    image,
+                    dx, dy,
+                    grid.cellSize.x, grid.cellSize.y
+                );
             }
         }
 
-        // Restore context state
         this.ctx.restore();
     }
 

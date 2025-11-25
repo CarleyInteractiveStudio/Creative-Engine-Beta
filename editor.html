@@ -1110,9 +1110,7 @@ public star() {
                     <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                 <div class="toolbar-group">
-                    <button id="palette-add-sprite-btn" class="panel-tool-btn" title="Añadir Sprites">➕</button>
-                    <button id="palette-edit-btn" class="panel-tool-btn" title="Ordenar Sprites" disabled>✏️</button>
-                    <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite Seleccionado" disabled>🗑️</button>
+                    <button id="palette-edit-btn" class="panel-tool-btn" title="Modo Organizar">✏️</button>
                 </div>
                  <div class="toolbar-group">
                     <label>Tile:</label>
@@ -1120,14 +1118,23 @@ public star() {
                 </div>
             </div>
             <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
+                <div id="palette-organize-sidebar" class="hidden" style="width: 200px; background-color: var(--color-background-deep); padding: 5px; display: flex; flex-direction: column;">
+                    <div class="sidebar-header" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                        <button id="palette-associate-sprite-btn" class="panel-tool-btn" title="Asociar Spritesheet">+</button>
+                        <button id="palette-disassociate-sprite-btn" class="panel-tool-btn" title="Desasociar Spritesheet">-</button>
+                        <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite de la Paleta" disabled>🗑️</button>
+                    </div>
+                    <div id="palette-sprite-pack-list" style="overflow-y: auto; flex-grow: 1;">
+                        <!-- Associated sprite previews will be here -->
+                    </div>
+                </div>
                 <div id="palette-tools-vertical" class="vertical-toolbar">
                     <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
                     <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
                     <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
                 </div>
-                <div id="palette-view-container">
+                <div id="palette-view-container" style="flex-grow: 1;">
                     <canvas id="palette-grid-canvas"></canvas>
-                    <img id="palette-tileset-image" src="" alt="Tileset" style="display: none;">
                 </div>
             </div>
         </div>

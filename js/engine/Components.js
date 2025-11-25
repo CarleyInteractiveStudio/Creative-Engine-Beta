@@ -577,78 +577,14 @@ registerComponent('AudioSource', AudioSource);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.columns = 20;
-        this.rows = 20;
-        this.palettePath = ''; // Path to the .cepalette asset
-        this.activeLayerIndex = 0;
-
-        // Layers are now objects with a name and data grid.
-        this.layers = [{
-            name: 'Capa 1',
-            data: this.createGridData(this.columns, this.rows)
-        }];
-    }
-
-    createGridData(cols, rows) {
-        return Array(rows).fill(null).map(() => Array(cols).fill(-1)); // -1 means empty tile
-    }
-
-    addLayer(name = `Capa ${this.layers.length + 1}`) {
-        this.layers.push({
-            name: name,
-            data: this.createGridData(this.columns, this.rows)
-        });
-        this.activeLayerIndex = this.layers.length - 1; // Set new layer as active
-    }
-
-    removeLayer(index) {
-        if (this.layers.length > 1 && index >= 0 && index < this.layers.length) {
-            this.layers.splice(index, 1);
-            // Adjust active layer if necessary
-            if (this.activeLayerIndex >= index) {
-                this.activeLayerIndex = Math.max(0, this.activeLayerIndex - 1);
-            }
-        }
-    }
-
-    setTile(layerIndex, x, y, tileId) {
-        const layer = this.layers[layerIndex];
-        if (layer && layer.data[y] && layer.data[y][x] !== undefined) {
-            layer.data[y][x] = tileId;
-        }
-    }
-
-    getTile(layerIndex, x, y) {
-        return this.layers[layerIndex]?.data?.[y]?.[x] ?? -1;
-    }
-
-    resize(newCols, newRows) {
-        this.columns = newCols;
-        this.rows = newRows;
-        // Resize all existing layers
-        this.layers.forEach(layer => {
-            const newGrid = this.createGridData(newCols, newRows);
-            const oldGrid = layer.data;
-            // Copy old data over
-            for (let r = 0; r < Math.min(oldGrid.length, newRows); r++) {
-                for (let c = 0; c < Math.min(oldGrid[r].length, newCols); c++) {
-                    newGrid[r][c] = oldGrid[r][c];
-                }
-            }
-            layer.data = newGrid;
-        });
+        // The tileData is now a Map where keys are "x,y" and values are { spriteName, imageData }
+        this.tileData = new Map();
     }
 
     clone() {
         const newTilemap = new Tilemap(null);
-        newTilemap.tileWidth = this.tileWidth;
-        newTilemap.tileHeight = this.tileHeight;
-        newTilemap.columns = this.columns;
-        newTilemap.rows = this.rows;
-        newTilemap.palettePath = this.palettePath;
-        newTilemap.activeLayerIndex = this.activeLayerIndex;
-        // Deep copy layers
-        newTilemap.layers = JSON.parse(JSON.stringify(this.layers));
+        // Deep copy the map
+        newTilemap.tileData = new Map(JSON.parse(JSON.stringify(Array.from(this.tileData))));
         return newTilemap;
     }
 }
@@ -656,43 +592,26 @@ export class Tilemap extends Leyes {
 export class TilemapRenderer extends Leyes {
     constructor(materia) {
         super(materia);
-        this.palette = null; // Loaded palette asset
-        this.tileSheet = null; // The Image object for the tiles
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
+        this.imageCache = new Map(); // Cache for Image objects from imageData
+        this.isDirty = true; // Flag to know when to re-render
     }
 
-    async loadPalette(projectsDirHandle) {
-        const tilemap = this.materia.getComponent(Tilemap);
-        if (!tilemap || !tilemap.palettePath) {
-            this.palette = null;
-            this.tileSheet = null;
-            return;
-        }
+    setDirty() {
+        this.isDirty = true;
+    }
 
-        try {
-            // Load palette JSON
-            const paletteUrl = await getURLForAssetPath(tilemap.palettePath, projectsDirHandle);
-            if (!paletteUrl) throw new Error(`Could not get URL for palette: ${tilemap.palettePath}`);
-            const response = await fetch(paletteUrl);
-            this.palette = await response.json();
-
-            // Load tile sheet image
-            if (this.palette.imagePath) {
-                const imageUrl = await getURLForAssetPath(this.palette.imagePath, projectsDirHandle);
-                if (imageUrl) {
-                    this.tileSheet = new Image();
-                    await new Promise((resolve, reject) => {
-                        this.tileSheet.onload = resolve;
-                        this.tileSheet.onerror = reject;
-                        this.tileSheet.src = imageUrl;
-                    });
-                }
-            }
-        } catch (error) {
-            console.error(`Failed to load palette or associated tilesheet for '${tilemap.palettePath}':`, error);
-            this.palette = null;
-            this.tileSheet = null;
+    getImageForTile(tileData) {
+        if (this.imageCache.has(tileData.imageData)) {
+            return this.imageCache.get(tileData.imageData);
+        } else {
+            const image = new Image();
+            image.src = tileData.imageData;
+            this.imageCache.set(tileData.imageData, image);
+            // The image will be drawn on the next frame when it's loaded.
+            // For immediate drawing, we would need to handle the onload event.
+            return image;
         }
     }
 
@@ -700,7 +619,6 @@ export class TilemapRenderer extends Leyes {
         const newRenderer = new TilemapRenderer(null);
         newRenderer.sortingLayer = this.sortingLayer;
         newRenderer.orderInLayer = this.orderInLayer;
-        // The palette will be reloaded based on the Tilemap's path.
         return newRenderer;
     }
 }
