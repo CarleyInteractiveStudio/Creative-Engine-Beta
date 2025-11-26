@@ -218,10 +218,13 @@ function setupEventListeners() {
             selectBtn.className = 'dialog-button select-button';
             selectBtn.textContent = 'Seleccionar';
             selectBtn.onclick = () => {
+                // Ocultar el modal actual ANTES de mostrar la confirmación
+                dom.disassociateModal.classList.add('hidden');
+
                 showConfirmation(
                     'Confirmar Desasociación',
                     `¿Estás seguro de que quieres desasociar '${shortName}'? Los tiles de este paquete se eliminarán de la paleta.`,
-                    () => {
+                    () => { // onConfirm
                         // Lógica de desasociación
                         currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== packPath);
 
@@ -244,8 +247,12 @@ function setupEventListeners() {
                         loadAndDisplayAssociatedSprites();
                         drawTiles();
 
-                        dom.disassociateModal.classList.add('hidden');
+                        // El modal ya está oculto, solo mostramos la notificación
                         showNotification('Éxito', `'${shortName}' ha sido desasociado.`);
+                    },
+                    () => { // onCancel
+                        // Si el usuario cancela, volvemos a mostrar el modal de selección
+                        dom.disassociateModal.classList.remove('hidden');
                     }
                 );
             };
