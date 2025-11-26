@@ -189,48 +189,70 @@ function setupEventListeners() {
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
-        if (!currentPalette || !currentPalette.associatedSpritePacks) {
+        if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
             showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
             return;
         }
 
-        // Filter out any null, undefined, or empty string paths before processing.
-        const validPacks = currentPalette.associatedSpritePacks.filter(path => path && typeof path === 'string');
+        const validPacks = currentPalette.associatedSpritePacks.filter(pack => pack && typeof pack === 'string' && pack.trim() !== '');
 
         if (validPacks.length === 0) {
-            showNotification('Aviso', 'No hay paquetes de sprites asociados válidos para eliminar.');
-            // Also, good practice to clean up the original array if it only contained invalid data.
-            if (currentPalette.associatedSpritePacks.length > 0) {
-                currentPalette.associatedSpritePacks = [];
-            }
+            showNotification('Limpieza de Datos', 'Se encontraron y eliminaron asociaciones de sprites no válidas. No hay paquetes válidos para desasociar.');
+            currentPalette.associatedSpritePacks = []; // Clean the array
             return;
         }
 
-        const displayItems = validPacks.map(path =>
-            path.split('/').pop().replace(/\.ceSprite$/i, '')
-        );
-
-        showSelection('Desasociar Paquete de Sprites', 'Selecciona el paquete que quieres desasociar:', displayItems, (selectedValue, selectedIndex) => {
-            const shortName = selectedValue;
-            // Get the full path from the *filtered* list. This is safe.
-            const pathToDisassociate = validPacks[selectedIndex];
-
-            showConfirmation(
-                'Confirmar Desasociación',
-                `¿Estás seguro de que quieres desasociar '${shortName}'? Esta acción no se puede deshacer.`,
-                () => {
-                    // Now, find the actual index in the *original* array to remove the correct item.
-                    const originalIndex = currentPalette.associatedSpritePacks.indexOf(pathToDisassociate);
-                    if (originalIndex > -1) {
-                        currentPalette.associatedSpritePacks.splice(originalIndex, 1);
-                    }
-
-                    // Refresh the sprite display
-                    loadAndDisplayAssociatedSprites();
-                    showNotification('Éxito', `'${shortName}' ha sido desasociado. Guarda la paleta para aplicar los cambios.`);
-                }
-            );
+        const displayItems = validPacks.map(path => {
+            try {
+                return path.split('/').pop().replace(/\.ceSprite$/i, '');
+            } catch (e) {
+                return 'Entrada no válida';
+            }
         });
+
+        showSelection(
+            'Desasociar Paquete de Sprites',
+            'Selecciona el paquete que quieres desasociar:',
+            displayItems,
+            (selectedValue, selectedIndex) => {
+                if (selectedIndex < 0 || selectedIndex >= validPacks.length) return;
+
+                const pathToDisassociate = validPacks[selectedIndex];
+                const shortName = selectedValue;
+
+                showConfirmation(
+                    'Confirmar Desasociación',
+                    `¿Estás seguro de que quieres desasociar '${shortName}'? Los tiles de este paquete se eliminarán de la paleta. Esta acción no se puede deshacer.`,
+                    () => {
+                        currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(
+                            p => p !== pathToDisassociate
+                        );
+
+                        const tilesToRemove = [];
+                        dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => {
+                            if (img.dataset.spritePackPath === pathToDisassociate) {
+                                tilesToRemove.push(img.dataset.spriteName);
+                            }
+                        });
+
+                        const newTiles = {};
+                        for (const coord in currentPalette.tiles) {
+                            if (!tilesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
+                                newTiles[coord] = currentPalette.tiles[coord];
+                            }
+                        }
+                        currentPalette.tiles = newTiles;
+
+                        allTiles = allTiles.filter(tile => !tilesToRemove.includes(tile.spriteName));
+
+                        loadAndDisplayAssociatedSprites();
+                        drawTiles();
+
+                        showNotification('Éxito', `'${shortName}' ha sido desasociado. Guarda la paleta para aplicar los cambios.`);
+                    }
+                );
+            }
+        );
     });
 
     dom.editBtn.addEventListener('click', toggleOrganizeMode);
