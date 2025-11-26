@@ -189,23 +189,42 @@ function setupEventListeners() {
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
-        if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
+        if (!currentPalette || !currentPalette.associatedSpritePacks) {
             showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
             return;
         }
 
-        const displayItems = currentPalette.associatedSpritePacks.map(path =>
+        // Filter out any null, undefined, or empty string paths before processing.
+        const validPacks = currentPalette.associatedSpritePacks.filter(path => path && typeof path === 'string');
+
+        if (validPacks.length === 0) {
+            showNotification('Aviso', 'No hay paquetes de sprites asociados válidos para eliminar.');
+            // Also, good practice to clean up the original array if it only contained invalid data.
+            if (currentPalette.associatedSpritePacks.length > 0) {
+                currentPalette.associatedSpritePacks = [];
+            }
+            return;
+        }
+
+        const displayItems = validPacks.map(path =>
             path.split('/').pop().replace(/\.ceSprite$/i, '')
         );
 
         showSelection('Desasociar Paquete de Sprites', 'Selecciona el paquete que quieres desasociar:', displayItems, (selectedValue, selectedIndex) => {
-            const shortName = selectedValue; // selectedValue is now the clean name
+            const shortName = selectedValue;
+            // Get the full path from the *filtered* list. This is safe.
+            const pathToDisassociate = validPacks[selectedIndex];
+
             showConfirmation(
                 'Confirmar Desasociación',
                 `¿Estás seguro de que quieres desasociar '${shortName}'? Esta acción no se puede deshacer.`,
                 () => {
-                    // On confirmation, remove the item from the original array using the index
-                    currentPalette.associatedSpritePacks.splice(selectedIndex, 1);
+                    // Now, find the actual index in the *original* array to remove the correct item.
+                    const originalIndex = currentPalette.associatedSpritePacks.indexOf(pathToDisassociate);
+                    if (originalIndex > -1) {
+                        currentPalette.associatedSpritePacks.splice(originalIndex, 1);
+                    }
+
                     // Refresh the sprite display
                     loadAndDisplayAssociatedSprites();
                     showNotification('Éxito', `'${shortName}' ha sido desasociado. Guarda la paleta para aplicar los cambios.`);
