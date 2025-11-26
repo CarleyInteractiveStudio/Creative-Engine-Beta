@@ -194,15 +194,17 @@ function setupEventListeners() {
             return;
         }
 
-        const items = currentPalette.associatedSpritePacks;
-        showSelection('Desasociar Paquete de Sprites', 'Selecciona el paquete que quieres desasociar:', items, (selectedValue, selectedIndex) => {
-            // After an item is selected, ask for final confirmation
-            const shortName = selectedValue.split('/').pop();
+        const displayItems = currentPalette.associatedSpritePacks.map(path =>
+            path.split('/').pop().replace(/\.ceSprite$/i, '')
+        );
+
+        showSelection('Desasociar Paquete de Sprites', 'Selecciona el paquete que quieres desasociar:', displayItems, (selectedValue, selectedIndex) => {
+            const shortName = selectedValue; // selectedValue is now the clean name
             showConfirmation(
                 'Confirmar Desasociación',
                 `¿Estás seguro de que quieres desasociar '${shortName}'? Esta acción no se puede deshacer.`,
                 () => {
-                    // On confirmation, remove the item from the array
+                    // On confirmation, remove the item from the original array using the index
                     currentPalette.associatedSpritePacks.splice(selectedIndex, 1);
                     // Refresh the sprite display
                     loadAndDisplayAssociatedSprites();
@@ -393,11 +395,13 @@ function handleCanvasMouseDown(event) {
 
             if (activeTool === 'delete') {
                 if (currentPalette.tiles[coord]) {
+                    // Delete from the source data
                     delete currentPalette.tiles[coord];
-                    const tileIndex = allTiles.findIndex(t => t.coord === coord);
-                    if (tileIndex > -1) {
-                        allTiles.splice(tileIndex, 1);
-                    }
+
+                    // Rebuild the renderable array to ensure consistency
+                    allTiles = allTiles.filter(tile => tile.coord !== coord);
+
+                    // Redraw the canvas to reflect the deletion
                     drawTiles();
                 }
                 return;
