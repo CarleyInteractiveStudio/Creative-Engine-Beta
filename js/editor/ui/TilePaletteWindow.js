@@ -208,6 +208,7 @@ function setupEventListeners() {
 
         showSelection(
             'Desasociar Paquete de Sprites',
+            'Selecciona el paquete que quieres desasociar:',
             packShortNames,
             (selectedShortName) => {
                 const packPath = validPacks.find(p => p.split('/').pop().replace(/\.ceSprite$/i, '') === selectedShortName);
