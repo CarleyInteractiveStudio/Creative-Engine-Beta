@@ -55,6 +55,13 @@ class DialogWindow {
     }
 
     show() {
+        // Calculate the highest z-index currently in use by panels or other dialogs
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open'))
+            .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), 0);
+
+        // Set the new dialog's z-index to be on top of everything else
+        this.dialogElement.style.zIndex = highestZ + 1;
+
         // Use class-based visibility
         this.dialogElement.classList.add('is-open');
     }
