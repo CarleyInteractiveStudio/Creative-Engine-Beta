@@ -2966,6 +2966,12 @@ body {
     overflow: hidden; /* Ensures child elements respect the border radius */
 }
 
+.custom-dialog.is-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .dialog-container {
     background-color: var(--bg-secondary);
     border-radius: 12px;
