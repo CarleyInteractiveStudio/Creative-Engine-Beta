@@ -191,18 +191,29 @@ function setupEventListeners() {
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
+        console.log("--- Botón Desasociar Presionado ---");
+        console.log("1. Verificando 'currentPalette':", currentPalette);
+        if (currentPalette) {
+            console.log("2. Verificando 'currentPalette.associatedSpritePacks':", currentPalette.associatedSpritePacks);
+        }
+
         if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
+            console.log("-> Condición 1 CUMPLIDA. Saliendo de la función. Razón: La paleta no existe, no tiene 'associatedSpritePacks' o está vacío.");
             showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
             return;
         }
+        console.log("-> Condición 1 SUPERADA.");
 
         const validPacks = currentPalette.associatedSpritePacks.filter(pack => pack && typeof pack === 'string' && pack.trim() !== '');
+        console.log("3. Paquetes de sprites válidos encontrados:", validPacks);
 
         if (validPacks.length === 0) {
+            console.log("-> Condición 2 CUMPLIDA. Saliendo de la función. Razón: El array de paquetes asociados solo contiene entradas inválidas (null, undefined, vacías).");
             showNotification('Aviso', 'No hay paquetes de sprites válidos para desasociar.');
             currentPalette.associatedSpritePacks = []; // Limpiar el array
             return;
         }
+        console.log("-> Condición 2 SUPERADA. Procediendo a mostrar la ventana de selección.");
 
         const packShortNames = validPacks.map(packPath => packPath.split('/').pop().replace(/\.ceSprite$/i, ''));
 
