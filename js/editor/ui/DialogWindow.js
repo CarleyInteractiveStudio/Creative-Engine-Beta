@@ -134,9 +134,52 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
 }
 
 
+/**
+ * Displays a dialog with a list of items for the user to select one.
+ * @param {string} title The title of the dialog.
+ * @param {string} message The message to display above the list.
+ * @param {Array<string>} items An array of strings to display as selectable items.
+ * @param {function} onSelect The callback to execute with the selected item's value and index.
+ */
+export function showSelection(title, message, items, onSelect) {
+    let listHtml = `<p>${message}</p><div class="dialog-selection-list">`;
+    items.forEach((item, index) => {
+        // Sanitize item content to prevent HTML injection if item names are user-generated
+        const sanitizedItem = item.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        listHtml += `
+            <div class="dialog-selection-item">
+                <span>${sanitizedItem}</span>
+                <button class="dialog-button select-button" data-index="${index}" data-value="${sanitizedItem}">Seleccionar</button>
+            </div>
+        `;
+    });
+    listHtml += `</div>`;
+
+    const dialog = new DialogWindow(title, listHtml, [{ text: 'Cancelar' }]);
+
+    // Add event listener for the select buttons
+    const listContainer = dialog.dialogElement.querySelector('.dialog-selection-list');
+    if (listContainer) {
+        listContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('select-button')) {
+                const index = parseInt(e.target.dataset.index, 10);
+                const value = e.target.dataset.value;
+                if (onSelect) {
+                    onSelect(value, index);
+                }
+                dialog.hide();
+            }
+        });
+    }
+
+    dialog.show();
+}
+
+
 // Expose functions to the global scope for non-module scripts
 window.Dialogs = {
     showNotification,
     showConfirmation,
-    showPrompt
+    showPrompt,
+    showSelection
 };

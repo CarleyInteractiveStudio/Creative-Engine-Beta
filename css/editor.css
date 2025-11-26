@@ -3018,6 +3018,36 @@ body {
     border-color: var(--accent-color);
 }
 
+.dialog-input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.dialog-selection-list {
+    margin-top: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-background-light);
+}
+
+.dialog-selection-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--color-background-light);
+}
+
+.dialog-selection-item span {
+    word-break: break-all;
+    margin-right: 15px;
+}
 
 .cesprite-inspector {
     padding: 10px;

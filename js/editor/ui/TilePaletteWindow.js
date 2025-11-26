@@ -1,6 +1,6 @@
 import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
 let allTiles = [];
-import { showNotification, showConfirmation } from './DialogWindow.js';
+import { showNotification, showConfirmation, showSelection } from './DialogWindow.js';
 
 const PALETTE_TILE_SIZE = 32;
 let dom = {};
@@ -189,16 +189,26 @@ function setupEventListeners() {
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
-        if (!currentPalette || currentPalette.associatedSpritePacks.length === 0) {
+        if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
             showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
             return;
         }
 
-        // For simplicity, we'll just remove the last one for now.
-        // A better implementation would show a list to the user.
-        showConfirmation('Desasociar Sprite', `¿Estás seguro de que quieres desasociar el último paquete de sprites añadido?`, () => {
-            currentPalette.associatedSpritePacks.pop();
-            loadAndDisplayAssociatedSprites();
+        const items = currentPalette.associatedSpritePacks;
+        showSelection('Desasociar Paquete de Sprites', 'Selecciona el paquete que quieres desasociar:', items, (selectedValue, selectedIndex) => {
+            // After an item is selected, ask for final confirmation
+            const shortName = selectedValue.split('/').pop();
+            showConfirmation(
+                'Confirmar Desasociación',
+                `¿Estás seguro de que quieres desasociar '${shortName}'? Esta acción no se puede deshacer.`,
+                () => {
+                    // On confirmation, remove the item from the array
+                    currentPalette.associatedSpritePacks.splice(selectedIndex, 1);
+                    // Refresh the sprite display
+                    loadAndDisplayAssociatedSprites();
+                    showNotification('Éxito', `'${shortName}' ha sido desasociado. Guarda la paleta para aplicar los cambios.`);
+                }
+            );
         });
     });
 
