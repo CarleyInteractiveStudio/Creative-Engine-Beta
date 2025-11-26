@@ -2955,7 +2955,7 @@ body {
 /* --- Custom Dialog Windows --- */
 .custom-dialog {
     position: fixed;
-    z-index: 1001;
+    z-index: 2600; /* Debe ser más alto que el z-index de .floating-panel (1500) */
     border: 1px solid var(--border-color);
     border-radius: 12px; /* Rounded corners for the bubble effect */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
