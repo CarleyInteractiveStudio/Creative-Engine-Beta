@@ -1766,12 +1766,15 @@ body {
 }
 
 .panel-tool-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1em;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    padding: 0 5px;
+    padding: 5px 10px; /* Aumentamos el padding para un mejor área de clic */
+    font-size: 14px;
+    min-width: 32px; /* Aseguramos un ancho mínimo */
+    text-align: center;
 }
 .panel-tool-btn:hover {
     color: var(--text-primary);
