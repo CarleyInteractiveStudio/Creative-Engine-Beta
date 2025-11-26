@@ -204,23 +204,23 @@ function setupEventListeners() {
             return;
         }
 
-        dom.disassociateList.innerHTML = ''; // Limpiar la lista anterior
+        const packShortNames = validPacks.map(packPath => packPath.split('/').pop().replace(/\.ceSprite$/i, ''));
 
-        validPacks.forEach(packPath => {
-            const shortName = packPath.split('/').pop().replace(/\.ceSprite$/i, '');
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'dialog-selection-item';
+        showSelection(
+            'Desasociar Paquete de Sprites',
+            packShortNames,
+            (selectedShortName) => {
+                const packPath = validPacks.find(p => p.split('/').pop().replace(/\.ceSprite$/i, '') === selectedShortName);
 
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = shortName;
+                if (!packPath) {
+                    console.error("No se pudo encontrar la ruta completa para el paquete de sprites seleccionado:", selectedShortName);
+                    showNotification('Error', 'No se pudo encontrar el paquete de sprites seleccionado.');
+                    return;
+                }
 
-            const selectBtn = document.createElement('button');
-            selectBtn.className = 'dialog-button select-button';
-            selectBtn.textContent = 'Seleccionar';
-            selectBtn.onclick = () => {
                 showConfirmation(
                     'Confirmar Desasociación',
-                    `¿Estás seguro de que quieres desasociar '${shortName}'? Los tiles de este paquete se eliminarán de la paleta.`,
+                    `¿Estás seguro de que quieres desasociar '${selectedShortName}'? Los tiles de este paquete se eliminarán de la paleta.`,
                     () => { // onConfirm
                         // Lógica de desasociación
                         currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== packPath);
@@ -244,21 +244,11 @@ function setupEventListeners() {
                         loadAndDisplayAssociatedSprites();
                         drawTiles();
 
-                        // Ahora simplemente cerramos el modal principal
-                        dom.disassociateModal.classList.add('hidden');
-                        showNotification('Éxito', `'${shortName}' ha sido desasociado.`);
+                        showNotification('Éxito', `'${selectedShortName}' ha sido desasociado.`);
                     }
-                    // No se necesita onCancel, porque el diálogo de confirmación aparecerá encima.
                 );
-            };
-
-            itemDiv.appendChild(nameSpan);
-            itemDiv.appendChild(selectBtn);
-            dom.disassociateList.appendChild(itemDiv);
-        });
-
-        // Mostrar el modal
-        dom.disassociateModal.classList.remove('hidden');
+            }
+        );
     });
 
     dom.editBtn.addEventListener('click', toggleOrganizeMode);
