@@ -1313,5 +1313,18 @@ public star() {
         <div class="resize-handle" data-direction="w"></div>
         <div class="resize-handle" data-direction="nw"></div>
     </div>
+
+    <div id="disassociate-sprite-modal" class="editor-panel floating-panel bubble-style hidden" style="width: 400px; height: 300px; z-index: 2700;">
+        <div class="panel-header">
+            <span>Desasociar Paquete de Sprites</span>
+            <button class="close-panel-btn" data-panel="disassociate-sprite-modal">&times;</button>
+        </div>
+        <div class="panel-content">
+            <p>Selecciona el paquete que quieres desasociar:</p>
+            <div id="disassociate-sprite-list" class="dialog-selection-list" style="border-top: none; margin-top: 10px;">
+                <!-- Items will be populated by JS -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -1672,7 +1672,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
-            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search'
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
+            // Disassociate Sprite Modal
+            'disassociate-sprite-modal', 'disassociate-sprite-list'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
