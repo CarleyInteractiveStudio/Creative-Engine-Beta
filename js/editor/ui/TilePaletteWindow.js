@@ -272,7 +272,7 @@ function setupEventListeners() {
             activeTool = newTool;
 
             // Update UI
-            toolBubble.querySelectorAll('.tool-btn[data-tool!="organize"]').forEach(btn => btn.classList.remove('active'));
+            toolBubble.querySelectorAll('.tool-btn:not([data-tool="organize"])').forEach(btn => btn.classList.remove('active'));
             toolBtn.classList.add('active');
 
             // Redraw to clear visual selection artifacts
