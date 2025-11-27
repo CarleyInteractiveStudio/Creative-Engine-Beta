@@ -773,6 +773,9 @@ function drawPaintMode() {
             isSelected = selectedTileIds.includes(index);
         }
 
+        // DEBUGGING: Log selection state for each tile
+        console.log(`Tile Index: ${index}, Active Tool: ${activeTool}, IsSelected: ${isSelected}, Brush ID: ${selectedTileId}, Rect IDs: [${selectedTileIds.join(',')}]`);
+
         if (isSelected) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
             ctx.lineWidth = 2;
