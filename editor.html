@@ -1110,6 +1110,13 @@ public star() {
                     <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                 </div>
                 <div class="toolbar-group">
+                    <div class="tool-bubble">
+                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
+                        <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                    </div>
+                </div>
+                <div class="toolbar-group">
                     <button id="palette-edit-btn" class="panel-tool-btn" title="Modo Organizar">✏️</button>
                 </div>
                  <div class="toolbar-group">
@@ -1127,11 +1134,6 @@ public star() {
                     <div id="palette-sprite-pack-list" style="overflow-y: auto; flex-grow: 1;">
                         <!-- Associated sprite previews will be here -->
                     </div>
-                </div>
-                <div id="palette-tools-vertical" class="vertical-toolbar">
-                    <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
-                    <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
-                    <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
                 </div>
                 <div id="palette-view-container" style="flex-grow: 1;">
                     <canvas id="palette-grid-canvas"></canvas>
