@@ -266,7 +266,7 @@ function setupEventListeners() {
                 // Reset selections when tool changes
                 selectedTileId = -1;
                 selectedTileIds = [];
-                dom.selectedTileIdSpan.textContent = '-';
+                dom.selectedTileIdSpan.textContent = '-'; // Update counter on tool change
             }
 
             activeTool = newTool;
@@ -489,7 +489,12 @@ function handleCanvasMouseDown(event) {
                 const clickedIndex = getTileIndexFromEvent(event);
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : (allTiles[selectedTileId]?.spriteName || '-');
+                    // Update counter
+                    if (selectedTileId === -1) {
+                        dom.selectedTileIdSpan.textContent = '-';
+                    } else {
+                        dom.selectedTileIdSpan.textContent = `1 Tile`;
+                    }
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {
@@ -656,7 +661,13 @@ function handleCanvasMouseUp(event) {
             }
         });
 
-        dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} tiles`;
+        // Update counter
+        if (selectedTileIds.length === 0) {
+            dom.selectedTileIdSpan.textContent = '-';
+        } else {
+            dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} Tiles`;
+        }
+
         rectStartPoint = null;
         rectCurrentPoint = null;
         drawTiles();
