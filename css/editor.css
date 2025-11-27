@@ -1766,12 +1766,15 @@ body {
 }
 
 .panel-tool-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1em;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-text-secondary);
     cursor: pointer;
-    padding: 0 5px;
+    padding: 5px 10px; /* Aumentamos el padding para un mejor área de clic */
+    font-size: 14px;
+    min-width: 32px; /* Aseguramos un ancho mínimo */
+    text-align: center;
 }
 .panel-tool-btn:hover {
     color: var(--text-primary);
@@ -2952,8 +2955,7 @@ body {
 /* --- Custom Dialog Windows --- */
 .custom-dialog {
     position: fixed;
-    z-index: 1001;
-    background-color: var(--bg-secondary);
+    z-index: 2600; /* Debe ser más alto que el z-index de .floating-panel (1500) */
     border: 1px solid var(--border-color);
     border-radius: 12px; /* Rounded corners for the bubble effect */
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
@@ -2962,6 +2964,15 @@ body {
     display: none; /* Initially hidden */
     flex-direction: column;
     overflow: hidden; /* Ensures child elements respect the border radius */
+}
+
+.dialog-container {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure it fills the parent dialog */
+    overflow: hidden; /* This is crucial to make children respect the border-radius */
 }
 
 .dialog-header {
@@ -3010,6 +3021,36 @@ body {
     border-color: var(--accent-color);
 }
 
+.dialog-input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.dialog-selection-list {
+    margin-top: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-background-light);
+}
+
+.dialog-selection-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--color-background-light);
+}
+
+.dialog-selection-item span {
+    word-break: break-all;
+    margin-right: 15px;
+}
 
 .cesprite-inspector {
     padding: 10px;

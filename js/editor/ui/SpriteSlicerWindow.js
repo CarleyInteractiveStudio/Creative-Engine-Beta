@@ -61,9 +61,9 @@ export function initialize(dependencies) {
     localDom.deleteBtn.addEventListener('click', deleteSelectedSlice);
     localDom.loadImageBtn.addEventListener('click', () => {
         if (openAssetSelectorCallback) {
-            openAssetSelectorCallback('image', (fileHandle, fullPath, directoryHandle) => {
+            openAssetSelectorCallback((fileHandle, fullPath, directoryHandle) => {
                 loadImageFromFileHandle(fileHandle, directoryHandle, saveAssetMetaCallback);
-            });
+            }, 'image');
         } else {
             console.error("Asset selector callback not initialized for Sprite Slicer.");
         }

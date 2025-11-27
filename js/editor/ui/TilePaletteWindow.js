@@ -1,6 +1,6 @@
 import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
 let allTiles = [];
-import { showNotification, showConfirmation } from './DialogWindow.js';
+import { showNotification, showConfirmation, showSelection } from './DialogWindow.js';
 
 const PALETTE_TILE_SIZE = 32;
 let dom = {};
@@ -38,6 +38,8 @@ export function initialize(dependencies) {
         disassociateSpriteBtn: dependencies.dom.paletteDisassociateSpriteBtn,
         deleteSpriteBtn: dependencies.dom.paletteDeleteSpriteBtn,
         spritePackList: dependencies.dom.paletteSpritePackList,
+        disassociateModal: dependencies.dom.disassociateSpriteModal,
+        disassociateList: dependencies.dom.disassociateSpriteList,
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
@@ -155,48 +157,87 @@ export function getActiveTool() {
 function setupEventListeners() {
     dom.saveBtn.addEventListener('click', saveCurrentPalette);
     dom.loadBtn.addEventListener('click', async () => {
-        openAssetSelectorCallback('.cepalette', async (fileHandle) => {
+        openAssetSelectorCallback(async (fileHandle) => {
             await openPalette(fileHandle);
-        });
+        }, ['.cepalette']);
     });
 
     dom.associateSpriteBtn.addEventListener('click', () => {
         if (!currentPalette) return;
-        openAssetSelectorCallback('.ceSprite', async (fileHandle, fullPath) => {
+        openAssetSelectorCallback(async (fileHandle, fullPath) => {
             if (!currentPalette.associatedSpritePacks.includes(fullPath)) {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
                 showNotification('Aviso', 'Este paquete de sprites ya está asociado.');
             }
-        });
+        }, ['.ceSprite']);
     });
 
     dom.deleteSpriteBtn.addEventListener('click', () => {
-        if (isOrganizeMode && selectedGridCoord && currentPalette.tiles[selectedGridCoord]) {
-            delete currentPalette.tiles[selectedGridCoord];
-            const tileIndex = allTiles.findIndex(t => t.coord === selectedGridCoord);
-            if (tileIndex > -1) {
-                allTiles.splice(tileIndex, 1);
-            }
-            selectedGridCoord = null;
-            dom.deleteSpriteBtn.disabled = true;
-            drawTiles();
+        if (!isOrganizeMode) return;
+
+        // Toggle active tool state
+        const isDeleting = dom.deleteSpriteBtn.classList.toggle('active');
+
+        if (isDeleting) {
+            activeTool = 'delete';
+            dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => img.classList.remove('selected'));
+             dom.gridCanvas.style.cursor = 'crosshair'; // Indicate deletion cursor
+        } else {
+            activeTool = null; // No tool selected
+             dom.gridCanvas.style.cursor = 'grab';
         }
     });
 
     dom.disassociateSpriteBtn.addEventListener('click', () => {
-        if (!currentPalette || currentPalette.associatedSpritePacks.length === 0) {
+        if (!currentPalette || !currentPalette.associatedSpritePacks || currentPalette.associatedSpritePacks.length === 0) {
             showNotification('Aviso', 'No hay paquetes de sprites asociados para eliminar.');
             return;
         }
 
-        // For simplicity, we'll just remove the last one for now.
-        // A better implementation would show a list to the user.
-        showConfirmation('Desasociar Sprite', `¿Estás seguro de que quieres desasociar el último paquete de sprites añadido?`, () => {
-            currentPalette.associatedSpritePacks.pop();
-            loadAndDisplayAssociatedSprites();
-        });
+        // Use the new fileList option in the asset selector
+        openAssetSelectorCallback(
+            async (fileHandle, fullPath) => {
+                // This callback executes when the user selects a pack to disassociate.
+                try {
+                    const shortName = fullPath.split('/').pop();
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    const packData = JSON.parse(content);
+                    const spritesToRemove = Object.keys(packData.sprites);
+
+                    // 1. Remove the pack from the association list
+                    currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== fullPath);
+
+                    // 2. Filter out tiles from the palette that belong to this pack
+                    const newTiles = {};
+                    for (const coord in currentPalette.tiles) {
+                        if (!spritesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
+                            newTiles[coord] = currentPalette.tiles[coord];
+                        }
+                    }
+                    currentPalette.tiles = newTiles;
+
+                    // 3. Rebuild the `allTiles` array for rendering paint mode
+                    allTiles = allTiles.filter(tile => !spritesToRemove.includes(tile.spriteName));
+
+                    // 4. Refresh the UI
+                    await loadAndDisplayAssociatedSprites(); // Refresh sidebar
+                    drawTiles(); // Refresh canvas
+
+                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado.`);
+                } catch (error) {
+                    console.error(`Error during disassociation of ${fullPath}:`, error);
+                    showNotification('Error', `No se pudo desasociar el paquete: ${error.message}`);
+                }
+            },
+            {
+                title: 'Seleccionar Pack para Desasociar',
+                fileList: currentPalette.associatedSpritePacks,
+                filter: ['.ceSprite'] // Although fileList is used, filter can be good practice
+            }
+        );
     });
 
     dom.editBtn.addEventListener('click', toggleOrganizeMode);
@@ -224,6 +265,11 @@ function setupEventListeners() {
         if (e.target.matches('.sidebar-sprite-preview')) {
             dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => img.classList.remove('selected'));
             e.target.classList.add('selected');
+
+            // Deactivate delete tool when a new sprite is selected for painting
+            activeTool = null;
+            dom.deleteSpriteBtn.classList.remove('active');
+            dom.gridCanvas.style.cursor = 'grab';
         }
     });
 
@@ -322,17 +368,34 @@ function clearGrid() {
 }
 
 function getTileIndexFromEvent(event) {
-    const PADDING = 0;
-    const canvasWidth = dom.viewContainer.clientWidth;
-    const tilesPerRow = Math.max(1, Math.floor(canvasWidth / (PALETTE_TILE_SIZE + PADDING)));
+    if (allTiles.length === 0) return -1;
+
+    const TILE_SIZE = PALETTE_TILE_SIZE;
+    const PADDING = 2;
+    const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    allTiles.forEach(tile => {
+        const [x, y] = tile.coord.split(',').map(Number);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+    });
+
     const rect = dom.gridCanvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const scrollX = dom.viewContainer.scrollLeft;
     const scrollY = dom.viewContainer.scrollTop;
-    const col = Math.floor((x + scrollX) / (PALETTE_TILE_SIZE + PADDING));
-    const row = Math.floor((y + scrollY) / (PALETTE_TILE_SIZE + PADDING));
-    return row * tilesPerRow + col;
+
+    const col = Math.floor((x + scrollX) / TOTAL_CELL_SIZE);
+    const row = Math.floor((y + scrollY) / TOTAL_CELL_SIZE);
+
+    const gridX = col + minX;
+    const gridY = row + minY;
+    const coord = `${gridX},${gridY}`;
+
+    return allTiles.findIndex(tile => tile.coord === coord);
 }
 
 function handleCanvasMouseDown(event) {
@@ -346,7 +409,7 @@ function handleCanvasMouseDown(event) {
 
     if (event.button === 0) {
         if (isOrganizeMode) {
-            const gridSize = 32 * cameraZoom;
+            const gridSize = PALETTE_TILE_SIZE * cameraZoom;
             const rect = dom.gridCanvas.getBoundingClientRect();
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
@@ -356,10 +419,22 @@ function handleCanvasMouseDown(event) {
             const gridY = Math.floor(worldY / gridSize);
             const coord = `${gridX},${gridY}`;
 
-            const selectedSprite = dom.spritePackList.querySelector('.selected');
+            if (activeTool === 'delete') {
+                if (currentPalette.tiles[coord]) {
+                    // Delete from the source data
+                    delete currentPalette.tiles[coord];
 
+                    // Rebuild the renderable array to ensure consistency
+                    allTiles = allTiles.filter(tile => tile.coord !== coord);
+
+                    // Redraw the canvas to reflect the deletion
+                    drawTiles();
+                }
+                return;
+            }
+
+            const selectedSprite = dom.spritePackList.querySelector('.selected');
             if (selectedSprite) {
-                // Place a new tile
                 const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
                 currentPalette.tiles[coord] = newTileData;
                 const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
@@ -371,15 +446,7 @@ function handleCanvasMouseDown(event) {
                     drawTiles();
                 };
             } else {
-                // Select an existing tile
-                if (currentPalette.tiles[coord]) {
-                    selectedGridCoord = coord;
-                    dom.deleteSpriteBtn.disabled = false;
-                } else {
-                    selectedGridCoord = null;
-                    dom.deleteSpriteBtn.disabled = true;
-                }
-                drawTiles();
+                // If no tool is active, do nothing on click
             }
         } else {
             // Paint mode selection logic
@@ -398,23 +465,42 @@ async function loadAndDisplayAssociatedSprites() {
     if (!currentPalette || !currentPalette.associatedSpritePacks) return;
 
     const imageCache = new Map();
+    const validSpritePacks = [];
+    let wasCleaned = false;
 
     for (const packPath of currentPalette.associatedSpritePacks) {
+        let isValid = true;
         try {
+            // Validation 1: Must be a .ceSprite file
+            if (!packPath.toLowerCase().endsWith('.cesprite')) {
+                console.warn(`Invalid association removed: '${packPath}' is not a .ceSprite file.`);
+                isValid = false;
+                wasCleaned = true;
+                continue;
+            }
+
             const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
             const packFile = await packFileHandle.getFile();
-            const packData = JSON.parse(await packFile.text());
+            const packData = JSON.parse(await packFile.text()); // This will fail for non-JSON files
 
             let sourceImage = imageCache.get(packData.sourceImage);
             if (!sourceImage) {
                 const sourceImagePath = `Assets/${packData.sourceImage}`;
                 const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
-                if (!imageUrl) continue;
+                if (!imageUrl) {
+                    console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);
+                    isValid = false;
+                    wasCleaned = true;
+                    continue; // Skip this pack if source image is missing
+                }
                 sourceImage = new Image();
                 sourceImage.src = imageUrl;
                 await sourceImage.decode();
                 imageCache.set(packData.sourceImage, sourceImage);
             }
+
+            // If we've reached here, the pack is valid for processing
+            validSpritePacks.push(packPath);
 
             for (const spriteName in packData.sprites) {
                 const spriteData = packData.sprites[spriteName];
@@ -442,8 +528,19 @@ async function loadAndDisplayAssociatedSprites() {
             }
 
         } catch (error) {
-            console.error(`Error loading associated sprite pack ${packPath}:`, error);
+            console.error(`Error loading associated sprite pack '${packPath}'. Removing invalid association.`, error);
+            wasCleaned = true;
+            isValid = false;
         }
+    }
+
+    // After iterating, if any invalid packs were found and removed, update the main palette object.
+    if (wasCleaned) {
+        currentPalette.associatedSpritePacks = validSpritePacks;
+        showNotification(
+            'Paleta Limpiada',
+            'Se eliminaron las asociaciones de sprites no válidas o corruptas. Guarda la paleta para aplicar los cambios.'
+        );
     }
 }
 
@@ -511,32 +608,57 @@ function drawTiles() {
 
 function drawPaintMode() {
     const ctx = dom.gridCanvas.getContext('2d');
-    const PADDING = 0;
-    const canvasWidth = dom.viewContainer.clientWidth;
-    const tilesPerRow = Math.max(1, Math.floor(canvasWidth / (PALETTE_TILE_SIZE + PADDING)));
+    const TILE_SIZE = PALETTE_TILE_SIZE;
+    const PADDING = 2;
+    const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
 
-    const numRows = Math.ceil(allTiles.length / tilesPerRow);
-    const canvasHeight = numRows * (PALETTE_TILE_SIZE + PADDING);
+    if (allTiles.length === 0) {
+        ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
+        dom.gridCanvas.width = dom.viewContainer.clientWidth;
+        dom.gridCanvas.height = dom.viewContainer.clientHeight;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.textAlign = 'center';
+        ctx.fillText("Esta paleta está vacía.", dom.gridCanvas.width / 2, 50);
+        ctx.fillText("Entra en 'Modo Edición' para asociar sprites y añadirlos.", dom.gridCanvas.width / 2, 70);
+        return;
+    }
 
-    dom.gridCanvas.width = canvasWidth;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    allTiles.forEach(tile => {
+        const [x, y] = tile.coord.split(',').map(Number);
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+    });
+
+    const gridWidth = (maxX - minX + 1);
+    const gridHeight = (maxY - minY + 1);
+    const canvasWidth = gridWidth * TOTAL_CELL_SIZE;
+    const canvasHeight = gridHeight * TOTAL_CELL_SIZE;
+
+    dom.gridCanvas.width = Math.max(dom.viewContainer.clientWidth, canvasWidth);
     dom.gridCanvas.height = Math.max(dom.viewContainer.clientHeight, canvasHeight);
     ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 
-    allTiles.forEach((tile, index) => {
-        const row = Math.floor(index / tilesPerRow);
-        const col = index % tilesPerRow;
-        const x = col * (PALETTE_TILE_SIZE + PADDING);
-        const y = row * (PALETTE_TILE_SIZE + PADDING);
+    const gridColor = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
 
-        ctx.drawImage(
-            tile.image, // Use the pre-loaded image object
-            x, y, PALETTE_TILE_SIZE, PALETTE_TILE_SIZE
-        );
+    allTiles.forEach((tile, index) => {
+        const [gridX, gridY] = tile.coord.split(',').map(Number);
+        const x = (gridX - minX) * TOTAL_CELL_SIZE;
+        const y = (gridY - minY) * TOTAL_CELL_SIZE;
+
+        // Draw grid cell background/border
+        ctx.strokeRect(x + 0.5, y + 0.5, TOTAL_CELL_SIZE, TOTAL_CELL_SIZE);
+
+        ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
         if (index === selectedTileId) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
             ctx.lineWidth = 3;
-            ctx.strokeRect(x + 1.5, y + 1.5, PALETTE_TILE_SIZE - 3, PALETTE_TILE_SIZE - 3);
+            ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
         }
     });
 }
@@ -555,7 +677,7 @@ function drawOrganizeMode() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // --- Grid Drawing ---
-    const gridSize = 32 * cameraZoom;
+    const gridSize = PALETTE_TILE_SIZE * cameraZoom;
     const gridColor = 'rgba(255, 255, 255, 0.1)';
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
