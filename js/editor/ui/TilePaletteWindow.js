@@ -9,9 +9,13 @@ let openAssetSelectorCallback = null;
 let currentPalette = null; // Will hold the entire loaded palette asset content
 let currentFileHandle = null;
 let selectedTileId = -1;
+let selectedTileIds = []; // For multi-tile selection
 let selectedGridCoord = null; // For deleting tiles in organize mode
 let activeTool = 'tile-brush'; // Default tool
 let isOrganizeMode = false;
+let isDrawingRect = false;
+let rectStartPoint = { x: 0, y: 0 };
+
 
 // Viewport state for the infinite grid
 let cameraOffset = { x: 0, y: 0 };
@@ -32,7 +36,7 @@ export function initialize(dependencies) {
         viewContainer: dependencies.dom.paletteViewContainer,
         gridCanvas: dependencies.dom.paletteGridCanvas,
         overlay: dependencies.dom.palettePanelOverlay,
-        verticalToolbar: dependencies.dom.paletteToolsVertical,
+        toolsBubble: dependencies.dom.paletteToolsBubble,
         organizeSidebar: dependencies.dom.paletteOrganizeSidebar,
         associateSpriteBtn: dependencies.dom.paletteAssociateSpriteBtn,
         disassociateSpriteBtn: dependencies.dom.paletteDisassociateSpriteBtn,
@@ -196,83 +200,45 @@ function setupEventListeners() {
             return;
         }
 
-        const validPacks = currentPalette.associatedSpritePacks.filter(pack => pack && typeof pack === 'string' && pack.trim() !== '');
+        // Use the asset selector to pick which sprite pack to disassociate.
+        openAssetSelectorCallback(
+            async (fileHandle, fullPath) => {
+                try {
+                    const shortName = fullPath.split('/').pop();
 
-        if (validPacks.length === 0) {
-            showNotification('Aviso', 'No hay paquetes de sprites válidos para desasociar.');
-            currentPalette.associatedSpritePacks = []; // Limpiar el array
-            return;
-        }
+                    // CORRECT LOGIC: Only remove the pack from the association list.
+                    // The tiles already placed in the palette are independent because their
+                    // imageData is stored directly. They should NOT be removed.
+                    currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== fullPath);
 
-        dom.disassociateList.innerHTML = ''; // Limpiar la lista anterior
+                    // Refresh the UI. The sidebar will update to remove the pack,
+                    // but the tiles on the canvas will correctly remain.
+                    await loadAndDisplayAssociatedSprites();
+                    drawTiles(); // Redraw canvas to ensure UI consistency.
 
-        validPacks.forEach(packPath => {
-            const shortName = packPath.split('/').pop().replace(/\.ceSprite$/i, '');
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'dialog-selection-item';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = shortName;
-
-            const selectBtn = document.createElement('button');
-            selectBtn.className = 'dialog-button select-button';
-            selectBtn.textContent = 'Seleccionar';
-            selectBtn.onclick = () => {
-                showConfirmation(
-                    'Confirmar Desasociación',
-                    `¿Estás seguro de que quieres desasociar '${shortName}'? Los tiles de este paquete se eliminarán de la paleta.`,
-                    () => { // onConfirm
-                        // Lógica de desasociación
-                        currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== packPath);
-
-                        const tilesToRemove = [];
-                        document.querySelectorAll('#palette-sprite-pack-list .sidebar-sprite-preview').forEach(img => {
-                            if (img.dataset.spritePackPath === packPath) {
-                                tilesToRemove.push(img.dataset.spriteName);
-                            }
-                        });
-
-                        const newTiles = {};
-                        for (const coord in currentPalette.tiles) {
-                            if (!tilesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
-                                newTiles[coord] = currentPalette.tiles[coord];
-                            }
-                        }
-                        currentPalette.tiles = newTiles;
-                        allTiles = allTiles.filter(tile => !tilesToRemove.includes(tile.spriteName));
-
-                        loadAndDisplayAssociatedSprites();
-                        drawTiles();
-
-                        // Ahora simplemente cerramos el modal principal
-                        dom.disassociateModal.classList.add('hidden');
-                        showNotification('Éxito', `'${shortName}' ha sido desasociado.`);
-                    }
-                    // No se necesita onCancel, porque el diálogo de confirmación aparecerá encima.
-                );
-            };
-
-            itemDiv.appendChild(nameSpan);
-            itemDiv.appendChild(selectBtn);
-            dom.disassociateList.appendChild(itemDiv);
-        });
-
-        // Mostrar el modal
-        dom.disassociateModal.classList.remove('hidden');
+                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.`);
+                } catch (error) {
+                    console.error(`Error during disassociation of ${fullPath}:`, error);
+                    showNotification('Error', `No se pudo desasociar el paquete: ${error.message}`);
+                }
+            },
+            {
+                title: 'Seleccionar Pack para Desasociar',
+                fileList: currentPalette.associatedSpritePacks,
+                filter: ['.ceSprite']
+            }
+        );
     });
 
     dom.editBtn.addEventListener('click', toggleOrganizeMode);
 
-    dom.verticalToolbar.addEventListener('click', (e) => {
+    dom.toolsBubble.addEventListener('click', (e) => {
         const toolBtn = e.target.closest('.tool-btn');
         if (toolBtn) {
-            // Remove active class from all buttons
-            dom.verticalToolbar.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
+            dom.toolsBubble.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             toolBtn.classList.add('active');
-            // Update the active tool state
             activeTool = toolBtn.dataset.tool;
-            console.log(`Tile palette tool changed to: ${activeTool}`);
+            console.log(`Herramienta de paleta cambiada a: ${activeTool}`);
         }
     });
 
@@ -351,7 +317,7 @@ function toggleOrganizeMode() {
     dom.editBtn.classList.toggle('active', isOrganizeMode);
 
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
-    dom.verticalToolbar.classList.toggle('hidden', isOrganizeMode);
+    dom.toolsBubble.classList.toggle('hidden', isOrganizeMode);
 
     dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
 
@@ -359,9 +325,11 @@ function toggleOrganizeMode() {
         activeTool = null;
         loadAndDisplayAssociatedSprites(); // Load sprites when entering mode
     } else {
-        const defaultTool = dom.verticalToolbar.querySelector('[data-tool="tile-brush"]');
-        if (defaultTool) {
-            defaultTool.classList.add('active');
+        // Al volver al modo pintura, selecciona el pincel por defecto
+        const brushTool = dom.toolsBubble.querySelector('[data-tool="tile-brush"]');
+        if (brushTool) {
+            dom.toolsBubble.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            brushTool.classList.add('active');
             activeTool = 'tile-brush';
         }
     }
@@ -420,64 +388,68 @@ function getTileIndexFromEvent(event) {
 }
 
 function handleCanvasMouseDown(event) {
-    if (event.button === 1 && isOrganizeMode) {
-        isPanning = true;
-        lastPanPosition = { x: event.clientX, y: event.clientY };
-        dom.gridCanvas.style.cursor = 'move';
-        event.preventDefault();
-        return;
-    }
-
-    if (event.button === 0) {
-        if (isOrganizeMode) {
-            const gridSize = PALETTE_TILE_SIZE * cameraZoom;
-            const rect = dom.gridCanvas.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-            const worldX = (mouseX - cameraOffset.x);
-            const worldY = (mouseY - cameraOffset.y);
-            const gridX = Math.floor(worldX / gridSize);
-            const gridY = Math.floor(worldY / gridSize);
+    if (isOrganizeMode) {
+        if (event.button === 1) { // Pan with middle mouse button
+            isPanning = true;
+            lastPanPosition = { x: event.clientX, y: event.clientY };
+            dom.gridCanvas.style.cursor = 'move';
+            event.preventDefault();
+        } else if (event.button === 0) { // Place or delete tiles
+            const { gridX, gridY } = getGridCoordinatesFromEvent(event);
             const coord = `${gridX},${gridY}`;
 
             if (activeTool === 'delete') {
                 if (currentPalette.tiles[coord]) {
-                    // Delete from the source data
                     delete currentPalette.tiles[coord];
-
-                    // Rebuild the renderable array to ensure consistency
                     allTiles = allTiles.filter(tile => tile.coord !== coord);
-
-                    // Redraw the canvas to reflect the deletion
                     drawTiles();
                 }
-                return;
-            }
-
-            const selectedSprite = dom.spritePackList.querySelector('.selected');
-            if (selectedSprite) {
-                const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
-                currentPalette.tiles[coord] = newTileData;
-                const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
-                if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
-                const image = new Image();
-                image.src = newTileData.imageData;
-                image.onload = () => {
-                    allTiles.push({ ...newTileData, coord, image });
-                    drawTiles();
-                };
             } else {
-                // If no tool is active, do nothing on click
-            }
-        } else {
-            // Paint mode selection logic
-            const clickedIndex = getTileIndexFromEvent(event);
-            if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
-                 selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                 dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : (allTiles[selectedTileId]?.spriteName || '-');
-                 drawTiles();
+                const selectedSprite = dom.spritePackList.querySelector('.selected');
+                if (selectedSprite) {
+                    const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
+                    currentPalette.tiles[coord] = newTileData;
+                    const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
+                    if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
+                    const image = new Image();
+                    image.src = newTileData.imageData;
+                    image.onload = () => {
+                        allTiles.push({ ...newTileData, coord, image });
+                        drawTiles();
+                    };
+                }
             }
         }
+        return;
+    }
+
+    // --- PAINT MODE LOGIC ---
+    if (event.button !== 0) return;
+
+    switch (activeTool) {
+        case 'tile-brush':
+            const clickedIndex = getTileIndexFromEvent(event);
+            if (clickedIndex !== -1) {
+                selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
+                selectedTileIds = selectedTileId === -1 ? [] : [selectedTileId];
+                updateSelectedTileUI();
+                drawTiles();
+            }
+            break;
+        case 'tile-rectangle-fill':
+            isDrawingRect = true;
+            const { x, y } = getCanvasCoordinatesFromEvent(event);
+            rectStartPoint = { x, y };
+            selectedTileIds = []; // Clear previous selection
+            drawTiles(); // Redraw to clear old selection visuals
+            break;
+        case 'tile-eraser':
+            // Eraser is for the scene, so we deselect everything in the palette
+            selectedTileId = -1;
+            selectedTileIds = [];
+            updateSelectedTileUI();
+            drawTiles();
+            break;
     }
 }
 
@@ -565,17 +537,51 @@ async function loadAndDisplayAssociatedSprites() {
     }
 }
 
+function getCanvasCoordinatesFromEvent(event) {
+    const rect = dom.gridCanvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    return { x, y };
+}
+
+function getGridCoordinatesFromEvent(event) {
+    const gridSize = PALETTE_TILE_SIZE * cameraZoom;
+    const { x: mouseX, y: mouseY } = getCanvasCoordinatesFromEvent(event);
+    const worldX = (mouseX - cameraOffset.x);
+    const worldY = (mouseY - cameraOffset.y);
+    const gridX = Math.floor(worldX / gridSize);
+    const gridY = Math.floor(worldY / gridSize);
+    return { gridX, gridY };
+}
+
+function updateSelectedTileUI() {
+    if (selectedTileIds.length === 0) {
+        dom.selectedTileIdSpan.textContent = '-';
+    } else if (selectedTileIds.length === 1) {
+        dom.selectedTileIdSpan.textContent = allTiles[selectedTileIds[0]]?.spriteName || '-';
+    } else {
+        dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} tiles`;
+    }
+}
+
 function handleCanvasMouseMove(event) {
     if (isPanning) {
         const dx = event.clientX - lastPanPosition.x;
         const dy = event.clientY - lastPanPosition.y;
         lastPanPosition = { x: event.clientX, y: event.clientY };
-
         cameraOffset.x += dx;
         cameraOffset.y += dy;
-
-        drawTiles(); // Redraw with the new offset
+        drawTiles();
         return;
+    }
+
+    if (isDrawingRect) {
+        drawTiles(); // Redraw to clear previous rect
+        const { x: currentX, y: currentY } = getCanvasCoordinatesFromEvent(event);
+        const ctx = dom.gridCanvas.getContext('2d');
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rectStartPoint.x, rectStartPoint.y, currentX - rectStartPoint.x, currentY - rectStartPoint.y);
     }
 }
 
@@ -585,6 +591,42 @@ function handleCanvasMouseUp(event) {
         dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
         event.preventDefault();
         return;
+    }
+
+    if (isDrawingRect) {
+        isDrawingRect = false;
+        const { x: endX, y: endY } = getCanvasCoordinatesFromEvent(event);
+
+        // Determine selection box, correcting for inverted drawing
+        const startX = Math.min(rectStartPoint.x, endX);
+        const startY = Math.min(rectStartPoint.y, endY);
+        const finalWidth = Math.abs(rectStartPoint.x - endX);
+        const finalHeight = Math.abs(rectStartPoint.y - endY);
+
+        const TOTAL_CELL_SIZE = PALETTE_TILE_SIZE + 2;
+        let minX = Infinity, minY = Infinity;
+        allTiles.forEach(tile => {
+            const [x, y] = tile.coord.split(',').map(Number);
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+        });
+
+        selectedTileIds = [];
+        allTiles.forEach((tile, index) => {
+            const [gridX, gridY] = tile.coord.split(',').map(Number);
+            const tileX = (gridX - minX) * TOTAL_CELL_SIZE;
+            const tileY = (gridY - minY) * TOTAL_CELL_SIZE;
+
+            // Check for intersection
+            if (tileX < startX + finalWidth && tileX + PALETTE_TILE_SIZE > startX &&
+                tileY < startY + finalHeight && tileY + PALETTE_TILE_SIZE > startY) {
+                selectedTileIds.push(index);
+            }
+        });
+
+        selectedTileId = selectedTileIds.length > 0 ? selectedTileIds[0] : -1;
+        updateSelectedTileUI();
+        drawTiles(); // Final redraw with selection highlights
     }
 }
 
@@ -676,10 +718,10 @@ function drawPaintMode() {
 
         ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
-        if (index === selectedTileId) {
+        if (selectedTileIds.includes(index)) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 1, y + 1, TOTAL_CELL_SIZE - 2, TOTAL_CELL_SIZE - 2);
         }
     });
 }

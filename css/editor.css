@@ -23,38 +23,47 @@ body.is-dragging-panel {
     align-items: center;
 }
 
-/* --- Vertical Toolbar Styles (e.g., for Tile Palette) --- */
-.vertical-toolbar {
+/* --- Floating Tools Bubble (for Tile Palette) --- */
+.tools-bubble {
+    position: absolute;
+    top: 10px;
+    left: 10px;
     display: flex;
-    flex-direction: column;
     gap: 5px;
-    padding: 5px;
-    background-color: var(--color-background-deep);
-    border-right: 1px solid var(--color-border-dark);
+    padding: 6px;
+    background-color: rgba(45, 45, 48, 0.9); /* Semi-transparent background */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    z-index: 10;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-.vertical-toolbar .tool-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+.tools-bubble .tool-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
     background-color: var(--color-background-light);
     border: 1px solid var(--color-border);
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, border-color 0.2s;
+    color: var(--color-text-primary);
+    transition: all 0.2s ease-in-out;
 }
 
-.vertical-toolbar .tool-btn:hover {
+.tools-bubble .tool-btn:hover {
     background-color: var(--color-background-hover);
+    border-color: var(--color-accent);
 }
 
-.vertical-toolbar .tool-btn.active {
+.tools-bubble .tool-btn.active {
     background-color: var(--color-accent);
     border-color: var(--color-accent-dark);
     color: white;
+    transform: scale(1.1); /* Animation for active button */
+    box-shadow: 0 0 8px var(--color-accent);
 }
 
 .menubar-center {
