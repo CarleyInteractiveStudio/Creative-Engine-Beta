@@ -650,13 +650,16 @@ function handleCanvasMouseUp(event) {
         selectedTileIds = [];
         allTiles.forEach((tile, index) => {
             const [gridX, gridY] = tile.coord.split(',').map(Number);
-            const tileX = (gridX - minX) * TOTAL_CELL_SIZE;
-            const tileY = (gridY - minY) * TOTAL_CELL_SIZE;
-            const tileCenterX = tileX + (TOTAL_CELL_SIZE / 2);
-            const tileCenterY = tileY + (TOTAL_CELL_SIZE / 2);
+            const tileRect = {
+                x1: (gridX - minX) * TOTAL_CELL_SIZE,
+                y1: (gridY - minY) * TOTAL_CELL_SIZE,
+                x2: ((gridX - minX) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE,
+                y2: ((gridY - minY) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE
+            };
 
-            if (tileCenterX >= selectionRect.x1 && tileCenterX <= selectionRect.x2 &&
-                tileCenterY >= selectionRect.y1 && tileCenterY <= selectionRect.y2) {
+            // Check for intersection instead of center point
+            if (selectionRect.x1 < tileRect.x2 && selectionRect.x2 > tileRect.x1 &&
+                selectionRect.y1 < tileRect.y2 && selectionRect.y2 > tileRect.y1) {
                 selectedTileIds.push(index);
             }
         });
@@ -762,12 +765,17 @@ function drawPaintMode() {
 
         ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
-        const isSelected = (activeTool === 'tile-brush' && index === selectedTileId) ||
-                           (activeTool === 'tile-rectangle-fill' && selectedTileIds.includes(index));
+        // --- Visual Selection Logic ---
+        let isSelected = false;
+        if (activeTool === 'tile-brush') {
+            isSelected = (index === selectedTileId);
+        } else if (activeTool === 'tile-rectangle-fill') {
+            isSelected = selectedTileIds.includes(index);
+        }
 
         if (isSelected) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
-            ctx.lineWidth = 2; // A bit thinner for multi-selection
+            ctx.lineWidth = 2;
             ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
         }
     });
