@@ -196,69 +196,48 @@ function setupEventListeners() {
             return;
         }
 
-        const validPacks = currentPalette.associatedSpritePacks.filter(pack => pack && typeof pack === 'string' && pack.trim() !== '');
+        // Use the new fileList option in the asset selector
+        openAssetSelectorCallback(
+            async (fileHandle, fullPath) => {
+                // This callback executes when the user selects a pack to disassociate.
+                try {
+                    const shortName = fullPath.split('/').pop();
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    const packData = JSON.parse(content);
+                    const spritesToRemove = Object.keys(packData.sprites);
 
-        if (validPacks.length === 0) {
-            showNotification('Aviso', 'No hay paquetes de sprites válidos para desasociar.');
-            currentPalette.associatedSpritePacks = []; // Limpiar el array
-            return;
-        }
+                    // 1. Remove the pack from the association list
+                    currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== fullPath);
 
-        dom.disassociateList.innerHTML = ''; // Limpiar la lista anterior
-
-        validPacks.forEach(packPath => {
-            const shortName = packPath.split('/').pop().replace(/\.ceSprite$/i, '');
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'dialog-selection-item';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = shortName;
-
-            const selectBtn = document.createElement('button');
-            selectBtn.className = 'dialog-button select-button';
-            selectBtn.textContent = 'Seleccionar';
-            selectBtn.onclick = () => {
-                showConfirmation(
-                    'Confirmar Desasociación',
-                    `¿Estás seguro de que quieres desasociar '${shortName}'? Los tiles de este paquete se eliminarán de la paleta.`,
-                    () => { // onConfirm
-                        // Lógica de desasociación
-                        currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== packPath);
-
-                        const tilesToRemove = [];
-                        document.querySelectorAll('#palette-sprite-pack-list .sidebar-sprite-preview').forEach(img => {
-                            if (img.dataset.spritePackPath === packPath) {
-                                tilesToRemove.push(img.dataset.spriteName);
-                            }
-                        });
-
-                        const newTiles = {};
-                        for (const coord in currentPalette.tiles) {
-                            if (!tilesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
-                                newTiles[coord] = currentPalette.tiles[coord];
-                            }
+                    // 2. Filter out tiles from the palette that belong to this pack
+                    const newTiles = {};
+                    for (const coord in currentPalette.tiles) {
+                        if (!spritesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
+                            newTiles[coord] = currentPalette.tiles[coord];
                         }
-                        currentPalette.tiles = newTiles;
-                        allTiles = allTiles.filter(tile => !tilesToRemove.includes(tile.spriteName));
-
-                        loadAndDisplayAssociatedSprites();
-                        drawTiles();
-
-                        // Ahora simplemente cerramos el modal principal
-                        dom.disassociateModal.classList.add('hidden');
-                        showNotification('Éxito', `'${shortName}' ha sido desasociado.`);
                     }
-                    // No se necesita onCancel, porque el diálogo de confirmación aparecerá encima.
-                );
-            };
+                    currentPalette.tiles = newTiles;
 
-            itemDiv.appendChild(nameSpan);
-            itemDiv.appendChild(selectBtn);
-            dom.disassociateList.appendChild(itemDiv);
-        });
+                    // 3. Rebuild the `allTiles` array for rendering paint mode
+                    allTiles = allTiles.filter(tile => !spritesToRemove.includes(tile.spriteName));
 
-        // Mostrar el modal
-        dom.disassociateModal.classList.remove('hidden');
+                    // 4. Refresh the UI
+                    await loadAndDisplayAssociatedSprites(); // Refresh sidebar
+                    drawTiles(); // Refresh canvas
+
+                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado.`);
+                } catch (error) {
+                    console.error(`Error during disassociation of ${fullPath}:`, error);
+                    showNotification('Error', `No se pudo desasociar el paquete: ${error.message}`);
+                }
+            },
+            {
+                title: 'Seleccionar Pack para Desasociar',
+                fileList: currentPalette.associatedSpritePacks,
+                filter: ['.ceSprite'] // Although fileList is used, filter can be good practice
+            }
+        );
     });
 
     dom.editBtn.addEventListener('click', toggleOrganizeMode);

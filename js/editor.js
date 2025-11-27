@@ -73,7 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector;
 
-    openAssetSelector = async function(callback, filter) {
+    openAssetSelector = async function(callback, options) {
+        // For backwards compatibility, if the second argument isn't an object, treat it as the old 'filter'.
+        if (typeof options !== 'object' || options === null) {
+            options = { filter: options };
+        }
+
         const selectorPanel = dom.assetSelectorBubble;
         const titleEl = dom.assetSelectorTitle;
         const breadcrumbsEl = dom.assetSelectorBreadcrumbs;
@@ -81,15 +86,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchInput = dom.assetSelectorSearch;
         const viewModesContainer = dom.assetSelectorViewModes;
 
+        // NEW: Check if we're in file list mode.
+        const isFileListMode = options && options.fileList && Array.isArray(options.fileList);
+        const filter = (options && options.filter) ? options.filter : null;
+
         let currentDirHandle;
         let currentPath;
         let allProjectFiles = []; // Cache for "Project" view
-        let currentViewMode = 'folders'; // 'folders' or 'project'
+        let currentViewMode = 'folders'; // Default view mode
+
+        // NEW HELPER: To get a file handle from a full path. Needed for fileList mode.
+        async function getHandleForPath(fullPath) {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            let currentHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const parts = fullPath.split('/');
+
+            // Traverse directories
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (parts[i]) { // Skip empty parts (like leading '/')
+                    try {
+                        currentHandle = await currentHandle.getDirectoryHandle(parts[i]);
+                    } catch (e) {
+                        console.error(`Could not get directory handle for part '${parts[i]}' in path '${fullPath}'`);
+                        return null; // Directory not found
+                    }
+                }
+            }
+
+            // Get the file handle
+            const fileName = parts[parts.length - 1];
+            try {
+                 // Return both file and its parent directory handle
+                return {
+                    fileHandle: await currentHandle.getFileHandle(fileName),
+                    dirHandle: currentHandle
+                };
+            } catch (e) {
+                console.error(`Could not get file handle for '${fileName}' in path '${fullPath}'`);
+                return null; // File not found
+            }
+        }
+
 
         async function findAllFiles(dirHandle, path, fileList) {
             for await (const entry of dirHandle.values()) {
                 const entryPath = `${path}/${entry.name}`;
                 if (entry.kind === 'file') {
+                    // Store more info for project view
                     fileList.push({ handle: entry, path: entryPath, dirHandle: dirHandle });
                 } else if (entry.kind === 'directory') {
                     await findAllFiles(entry, entryPath, fileList);
@@ -101,8 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
             gridView.innerHTML = '';
             const searchTerm = searchInput.value.toLowerCase();
 
-            if (currentViewMode === 'folders' && currentPath !== 'Assets') {
-                const upItem = document.createElement('div');
+            // "Up" button logic for folder navigation
+            if (currentViewMode === 'folders' && !isFileListMode && currentPath !== 'Assets') {
+                 const upItem = document.createElement('div');
                 upItem.className = 'grid-item';
                 upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
                 upItem.addEventListener('dblclick', async () => {
@@ -110,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const projectName = new URLSearchParams(window.location.search).get('project');
                     const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
                     let parentHandle = projectHandle;
+                    // Reconstruct handle from path
                     for (const part of parentPath.split('/')) {
                         if (part) parentHandle = await parentHandle.getDirectoryHandle(part);
                     }
@@ -121,14 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const filteredItems = items.filter(item => {
-                const name = (currentViewMode === 'project') ? item.handle.name : item.name;
+                // Adjust for different item structures
+                const name = item.name || (item.handle ? item.handle.name : '');
                 return name.toLowerCase().includes(searchTerm);
             });
 
+
             for (const item of filteredItems) {
-                const isProjectView = currentViewMode === 'project';
-                const name = isProjectView ? item.handle.name : item.name;
-                const kind = isProjectView ? item.handle.kind : item.kind;
+                // Adapt to handle both FileSystemHandle objects and our custom file info objects
+                const name = item.name || item.handle.name;
+                const kind = item.kind || (item.handle ? item.handle.kind : 'file'); // Assume file if kind unknown
+                const fullPath = item.path || `${currentPath}/${name}`;
+                const displayDirHandle = item.dirHandle || currentDirHandle;
+
 
                 const uiItem = document.createElement('div');
                 uiItem.className = 'grid-item';
@@ -142,28 +192,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         populateSelector();
                     });
                 } else { // It's a file
-                    const fullPath = isProjectView ? item.path : `${currentPath}/${name}`;
-                    const displayDirHandle = isProjectView ? item.dirHandle : currentDirHandle;
-
                     const iconContainer = document.createElement('div');
                     iconContainer.className = 'icon';
                     const imgIcon = document.createElement('img');
                     imgIcon.className = 'icon-preview';
                     getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
-                        imgIcon.src = url || '📄';
+                        imgIcon.src = url || '📄'; // Default icon
                         iconContainer.appendChild(imgIcon);
                     });
 
+
                     const nameDiv = document.createElement('div');
                     nameDiv.className = 'name';
+                    // Clean name for display
                     nameDiv.textContent = name.substring(0, name.lastIndexOf('.')) || name;
 
                     uiItem.appendChild(iconContainer);
                     uiItem.appendChild(nameDiv);
 
+
                     uiItem.addEventListener('dblclick', async () => {
-                        const fileHandle = isProjectView ? item.handle : await displayDirHandle.getFileHandle(name);
-                        callback(fileHandle, fullPath, displayDirHandle); // Pass fullPath
+                        // Get the file handle, which might be nested inside the item object
+                        const fileHandle = item.handle || await displayDirHandle.getFileHandle(name);
+                        callback(fileHandle, fullPath, displayDirHandle);
                         selectorPanel.classList.add('hidden');
                     });
                 }
@@ -171,76 +222,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+
         async function populateSelector() {
             let itemsToRender = [];
-            if (currentViewMode === 'folders') {
-                breadcrumbsEl.textContent = `Ruta: /${currentPath}`;
-                breadcrumbsEl.style.display = 'block';
 
+            // NEW LOGIC: If we're in file list mode, prepare the list of handles
+            if (isFileListMode) {
+                const fileInfos = await Promise.all(options.fileList.map(async path => {
+                    const handleInfo = await getHandleForPath(path);
+                    if (!handleInfo) return null;
+                    return { handle: handleInfo.fileHandle, path: path, name: path.split('/').pop(), dirHandle: handleInfo.dirHandle };
+                }));
+                itemsToRender = fileInfos.filter(Boolean); // Filter out any nulls from failed handle lookups
+            } else if (currentViewMode === 'folders') {
+                breadcrumbsEl.textContent = `Ruta: /${currentPath}`;
                 const entries = [];
-                for await (const entry of currentDirHandle.values()) {
-                    entries.push(entry);
-                }
+                for await (const entry of currentDirHandle.values()) { entries.push(entry); }
 
                 const filteredEntries = [];
                 for (const entry of entries) {
-                    if (entry.kind === 'directory') {
-                        filteredEntries.push(entry);
-                        continue;
-                    }
+                    if (entry.kind === 'directory') { filteredEntries.push(entry); continue; }
 
                     const lowerName = entry.name.toLowerCase();
-                    let shouldRender = false;
+                    let shouldRender = !filter; // Render if no filter
+
                     if (Array.isArray(filter)) {
-                        for (const ext of filter) {
-                            if (lowerName.endsWith(ext.toLowerCase())) {
-                                shouldRender = true;
-                                break;
-                            }
-                        }
-                    } else {
+                        for (const ext of filter) { if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; } }
+                    } else if (typeof filter === 'string') {
+                        // Handle simple string filters like 'image'
                         switch (filter) {
                             case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
                             case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
-                            default: shouldRender = true; break;
                         }
                     }
-                    if (shouldRender) {
-                        filteredEntries.push(entry);
-                    }
+                    if (shouldRender) { filteredEntries.push(entry); }
                 }
                 itemsToRender = filteredEntries;
-
+                // Sort folders first, then alphabetically
                 itemsToRender.sort((a, b) => (a.kind === b.kind) ? a.name.localeCompare(b.name) : (a.kind === 'directory' ? -1 : 1));
             } else { // 'project' view
-                breadcrumbsEl.style.display = 'none';
-
+                // Filter the cached list of all project files
                 const filteredFiles = [];
                 for (const fileInfo of allProjectFiles) {
                     const lowerName = fileInfo.handle.name.toLowerCase();
-                    let shouldRender = false;
-
-                     if (Array.isArray(filter)) {
-                        for (const ext of filter) {
-                            if (lowerName.endsWith(ext.toLowerCase())) {
-                                shouldRender = true;
-                                break;
-                            }
-                        }
-                    } else {
+                    let shouldRender = !filter;
+                    if (Array.isArray(filter)) {
+                        for (const ext of filter) { if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; } }
+                    } else if (typeof filter === 'string') {
                         switch (filter) {
                             case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
                             case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
-                            default: shouldRender = true; break;
                         }
                     }
-
-                    if (shouldRender) {
-                        filteredFiles.push(fileInfo);
-                    }
+                     if (shouldRender) { filteredFiles.push(fileInfo); }
                 }
                 itemsToRender = filteredFiles;
             }
+
             renderItems(itemsToRender);
         }
 
@@ -251,41 +289,58 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.matches('.view-mode-btn')) {
                 const newMode = e.target.dataset.mode;
                 if (newMode === currentViewMode) return;
-
                 currentViewMode = newMode;
+                // Update UI
                 viewModesContainer.querySelectorAll('.view-mode-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 populateSelector();
             }
         });
 
+
         // --- Initialization ---
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        // NEW: Hide folder-specific UI in file list mode
+        if (isFileListMode) {
+             viewModesContainer.style.display = 'none';
+             breadcrumbsEl.style.display = 'none';
+        } else {
+            viewModesContainer.style.display = 'flex';
+            breadcrumbsEl.style.display = 'block';
+            // Normal initialization for folder browsing
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+            currentDirHandle = assetsHandle;
+            currentPath = 'Assets';
 
-        currentDirHandle = assetsHandle;
-        currentPath = 'Assets';
-        allProjectFiles = [];
-        await findAllFiles(assetsHandle, 'Assets', allProjectFiles);
+            // Pre-cache all files for the "Project" view
+            allProjectFiles = [];
+            await findAllFiles(assetsHandle, 'Assets', allProjectFiles);
+        }
 
-        let titleText = 'Seleccionar Archivo';
-        if (typeof filter === 'string') {
-            titleText = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
-        } else if (Array.isArray(filter) && filter.length > 0) {
-            const extensions = filter.join(' / ');
-            titleText = `Seleccionar Archivo ${extensions}`;
+
+        // Dynamic title generation
+        let titleText = (options && options.title) ? options.title : 'Seleccionar Archivo';
+        if (!options.title && !isFileListMode) { // Don't override title in file list mode unless specified
+            if (typeof filter === 'string') {
+                titleText = `Seleccionar ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+            } else if (Array.isArray(filter) && filter.length > 0) {
+                const extensions = filter.join(' / ');
+                titleText = `Seleccionar Archivo (${extensions})`;
+            }
         }
         titleEl.textContent = titleText;
         selectorPanel.classList.remove('hidden');
 
+        // Ensure the selector bubble appears on top of other floating panels
         const highestZ = Array.from(document.querySelectorAll('.floating-panel'))
             .reduce((maxZ, p) => Math.max(maxZ, parseInt(p.style.zIndex || '1500')), 1500);
         selectorPanel.style.zIndex = highestZ + 1;
 
-        // Initial population
+
         await populateSelector();
 
+        // Re-attach close button listener to prevent duplicates
         const closeBtn = selectorPanel.querySelector('.close-panel-btn');
         const newCloseBtn = closeBtn.cloneNode(true);
         closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
