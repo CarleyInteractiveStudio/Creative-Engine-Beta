@@ -3086,13 +3086,24 @@ body {
 }
 
 /* --- Tile Palette Toolbar Bubble --- */
+.toolbar-bubble-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    gap: 15px;
+}
+
 .tool-bubble {
     display: flex;
     gap: 4px;
-    background-color: var(--bg-primary);
+    background-color: var(--bg-tertiary);
     border-radius: 6px;
     padding: 3px;
-    border: 1px solid var(--border-color);
 }
 
 .tool-bubble .tool-btn {

@@ -1104,24 +1104,22 @@ public star() {
         </div>
         <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
             <div id="palette-toolbar">
-                <div class="toolbar-group">
-                    <label>Paleta:</label>
-                    <span id="palette-file-name">Ninguna</span>
-                    <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
-                </div>
-                <div class="toolbar-group">
+                <div class="toolbar-bubble-container">
+                    <div class="toolbar-group">
+                        <label>Paleta:</label>
+                        <span id="palette-file-name">Ninguna</span>
+                        <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
+                    </div>
                     <div class="tool-bubble">
                         <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
                         <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
                         <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Modo Organizar">✏️</button>
                     </div>
-                </div>
-                <div class="toolbar-group">
-                    <button id="palette-edit-btn" class="panel-tool-btn" title="Modo Organizar">✏️</button>
-                </div>
-                 <div class="toolbar-group">
-                    <label>Tile:</label>
-                    <span id="palette-selected-tile-id">-</span>
+                    <div class="toolbar-group">
+                        <label>Tile:</label>
+                        <span id="palette-selected-tile-id">-</span>
+                    </div>
                 </div>
             </div>
             <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">

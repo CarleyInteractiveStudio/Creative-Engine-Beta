@@ -247,20 +247,36 @@ function setupEventListeners() {
         );
     });
 
-    dom.editBtn.addEventListener('click', toggleOrganizeMode);
-
     const toolBubble = dom.panel.querySelector('.tool-bubble');
     if (toolBubble) {
         toolBubble.addEventListener('click', (e) => {
             const toolBtn = e.target.closest('.tool-btn');
-            if (toolBtn) {
-                // Remove active class from all buttons within the bubble
-                toolBubble.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-                // Add active class to the clicked button
-                toolBtn.classList.add('active');
-                // Update the active tool state
-                activeTool = toolBtn.dataset.tool;
+            if (!toolBtn) return;
+
+            const newTool = toolBtn.dataset.tool;
+
+            // If the organize button is clicked, just toggle the mode
+            if (newTool === 'organize') {
+                toggleOrganizeMode();
+                return; // Stop further processing for this click
             }
+
+            // --- Logic for tool switching ---
+            if (newTool !== activeTool) {
+                // Reset selections when tool changes
+                selectedTileId = -1;
+                selectedTileIds = [];
+                dom.selectedTileIdSpan.textContent = '-';
+            }
+
+            activeTool = newTool;
+
+            // Update UI
+            toolBubble.querySelectorAll('.tool-btn[data-tool!="organize"]').forEach(btn => btn.classList.remove('active'));
+            toolBtn.classList.add('active');
+
+            // Redraw to clear visual selection artifacts
+            drawTiles();
         });
     }
 
@@ -335,11 +351,21 @@ function setupEventListeners() {
 
 function toggleOrganizeMode() {
     isOrganizeMode = !isOrganizeMode;
+
+    // Reset selections when changing mode
+    selectedTileId = -1;
+    selectedTileIds = [];
+    dom.selectedTileIdSpan.textContent = '-';
+
     dom.panel.classList.toggle('organize-mode-active', isOrganizeMode);
     dom.editBtn.classList.toggle('active', isOrganizeMode);
 
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
-    dom.panel.querySelector('.tool-bubble').style.display = isOrganizeMode ? 'none' : 'flex';
+
+    // Hide/show relevant parts of the main toolbar bubble
+    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-eraser"]').forEach(btn => {
+        btn.style.display = isOrganizeMode ? 'none' : 'flex';
+    });
 
     dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
 
