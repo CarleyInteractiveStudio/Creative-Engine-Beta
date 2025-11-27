@@ -1711,6 +1711,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'palette-file-name', 'palette-tools-vertical', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
             'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
+            'palette-tool-brush', 'palette-tool-rect', 'palette-tool-eraser',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
