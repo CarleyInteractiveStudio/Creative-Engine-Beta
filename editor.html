@@ -1128,12 +1128,12 @@ public star() {
                         <!-- Associated sprite previews will be here -->
                     </div>
                 </div>
-                <div id="palette-tools-vertical" class="vertical-toolbar">
-                    <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
-                    <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
-                    <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
-                </div>
-                <div id="palette-view-container" style="flex-grow: 1;">
+                <div id="palette-view-container" style="flex-grow: 1; position: relative;">
+                    <div id="palette-tools-bubble" class="tools-bubble">
+                        <button class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
+                        <button class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                        <button class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                    </div>
                     <canvas id="palette-grid-canvas"></canvas>
                 </div>
             </div>
