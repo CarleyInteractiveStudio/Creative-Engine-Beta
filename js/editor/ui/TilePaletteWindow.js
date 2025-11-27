@@ -196,37 +196,23 @@ function setupEventListeners() {
             return;
         }
 
-        // Use the new fileList option in the asset selector
+        // Use the asset selector to pick which sprite pack to disassociate.
         openAssetSelectorCallback(
             async (fileHandle, fullPath) => {
-                // This callback executes when the user selects a pack to disassociate.
                 try {
                     const shortName = fullPath.split('/').pop();
-                    const file = await fileHandle.getFile();
-                    const content = await file.text();
-                    const packData = JSON.parse(content);
-                    const spritesToRemove = Object.keys(packData.sprites);
 
-                    // 1. Remove the pack from the association list
+                    // CORRECT LOGIC: Only remove the pack from the association list.
+                    // The tiles already placed in the palette are independent because their
+                    // imageData is stored directly. They should NOT be removed.
                     currentPalette.associatedSpritePacks = currentPalette.associatedSpritePacks.filter(p => p !== fullPath);
 
-                    // 2. Filter out tiles from the palette that belong to this pack
-                    const newTiles = {};
-                    for (const coord in currentPalette.tiles) {
-                        if (!spritesToRemove.includes(currentPalette.tiles[coord].spriteName)) {
-                            newTiles[coord] = currentPalette.tiles[coord];
-                        }
-                    }
-                    currentPalette.tiles = newTiles;
+                    // Refresh the UI. The sidebar will update to remove the pack,
+                    // but the tiles on the canvas will correctly remain.
+                    await loadAndDisplayAssociatedSprites();
+                    drawTiles(); // Redraw canvas to ensure UI consistency.
 
-                    // 3. Rebuild the `allTiles` array for rendering paint mode
-                    allTiles = allTiles.filter(tile => !spritesToRemove.includes(tile.spriteName));
-
-                    // 4. Refresh the UI
-                    await loadAndDisplayAssociatedSprites(); // Refresh sidebar
-                    drawTiles(); // Refresh canvas
-
-                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado.`);
+                    showNotification('Éxito', `El paquete '${shortName}' ha sido desasociado. Los tiles existentes en la paleta no han sido modificados.`);
                 } catch (error) {
                     console.error(`Error during disassociation of ${fullPath}:`, error);
                     showNotification('Error', `No se pudo desasociar el paquete: ${error.message}`);
@@ -235,7 +221,7 @@ function setupEventListeners() {
             {
                 title: 'Seleccionar Pack para Desasociar',
                 fileList: currentPalette.associatedSpritePacks,
-                filter: ['.ceSprite'] // Although fileList is used, filter can be good practice
+                filter: ['.ceSprite']
             }
         );
     });
