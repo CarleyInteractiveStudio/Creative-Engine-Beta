@@ -483,7 +483,9 @@ function handleCanvasMouseDown(event) {
             }
         } else { // Paint Mode
             if (activeTool === 'tile-brush') {
+                // Ensure multi-selection is cleared before single selection
                 selectedTileIds = [];
+
                 const clickedIndex = getTileIndexFromEvent(event);
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
@@ -491,13 +493,15 @@ function handleCanvasMouseDown(event) {
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {
+                // Ensure single-selection is cleared before multi-selection
+                selectedTileId = -1;
+                selectedTileIds = [];
+
                 isDrawingRect = true;
                 const rect = dom.gridCanvas.getBoundingClientRect();
                 const scrollX = dom.viewContainer.scrollLeft;
                 const scrollY = dom.viewContainer.scrollTop;
                 rectStartPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
-                selectedTileId = -1;
-                selectedTileIds = [];
                 dom.selectedTileIdSpan.textContent = '-';
                 drawTiles();
             }
