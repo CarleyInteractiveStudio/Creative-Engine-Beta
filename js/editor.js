@@ -1708,10 +1708,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
-            'palette-file-name', 'palette-tools-vertical', 'palette-selected-tile-id',
+            'palette-file-name', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
             'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
-            'palette-tool-brush', 'palette-tool-rect', 'palette-tool-eraser',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
@@ -1770,7 +1769,12 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
             if (!projectsDirHandle) {
-                throw new Error("No se encontró el directorio de proyectos. Por favor, vuelve al inicio y selecciona un directorio.");
+                // In a test environment or if DB is cleared, this might be null.
+                // Don't throw a fatal error; allow the editor to load partially.
+                // The user will be unable to save/load, but the UI can still be tested.
+                console.warn("No se encontró el directorio de proyectos. La funcionalidad de archivos estará deshabilitada.");
+                displayCriticalError(new Error("No se encontró el directorio de proyectos."), "Continuando en modo de funcionalidad limitada.");
+                // We don't return or throw, allowing the rest of the script to run.
             }
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;

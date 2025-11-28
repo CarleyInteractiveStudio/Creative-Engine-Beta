@@ -247,20 +247,36 @@ function setupEventListeners() {
         );
     });
 
-    dom.editBtn.addEventListener('click', toggleOrganizeMode);
-
     const toolBubble = dom.panel.querySelector('.tool-bubble');
     if (toolBubble) {
         toolBubble.addEventListener('click', (e) => {
             const toolBtn = e.target.closest('.tool-btn');
-            if (toolBtn) {
-                // Remove active class from all buttons within the bubble
-                toolBubble.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-                // Add active class to the clicked button
-                toolBtn.classList.add('active');
-                // Update the active tool state
-                activeTool = toolBtn.dataset.tool;
+            if (!toolBtn) return;
+
+            const newTool = toolBtn.dataset.tool;
+
+            // If the organize button is clicked, just toggle the mode
+            if (newTool === 'organize') {
+                toggleOrganizeMode();
+                return; // Stop further processing for this click
             }
+
+            // --- Logic for tool switching ---
+            if (newTool !== activeTool) {
+                // Reset selections when tool changes
+                selectedTileId = -1;
+                selectedTileIds = [];
+                dom.selectedTileIdSpan.textContent = '-'; // Update counter on tool change
+            }
+
+            activeTool = newTool;
+
+            // Update UI
+            toolBubble.querySelectorAll('.tool-btn:not([data-tool="organize"])').forEach(btn => btn.classList.remove('active'));
+            toolBtn.classList.add('active');
+
+            // Redraw to clear visual selection artifacts
+            drawTiles();
         });
     }
 
@@ -335,11 +351,21 @@ function setupEventListeners() {
 
 function toggleOrganizeMode() {
     isOrganizeMode = !isOrganizeMode;
+
+    // Reset selections when changing mode
+    selectedTileId = -1;
+    selectedTileIds = [];
+    dom.selectedTileIdSpan.textContent = '-';
+
     dom.panel.classList.toggle('organize-mode-active', isOrganizeMode);
     dom.editBtn.classList.toggle('active', isOrganizeMode);
 
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
-    dom.panel.querySelector('.tool-bubble').style.display = isOrganizeMode ? 'none' : 'flex';
+
+    // Hide/show relevant parts of the main toolbar bubble
+    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-eraser"]').forEach(btn => {
+        btn.style.display = isOrganizeMode ? 'none' : 'flex';
+    });
 
     dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
 
@@ -396,14 +422,18 @@ function getTileIndexFromEvent(event) {
         minY = Math.min(minY, y);
     });
 
-    const rect = dom.gridCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const scrollX = dom.viewContainer.scrollLeft;
-    const scrollY = dom.viewContainer.scrollTop;
+    // This is the robust way to calculate mouse coords inside a scrolled element.
+    // 1. Get the bounding box of the scrollable container.
+    const rect = dom.viewContainer.getBoundingClientRect();
+    // 2. Calculate mouse position relative to the container's top-left corner.
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    // 3. Add the container's scroll offsets to get the absolute position on the canvas.
+    const canvasX = mouseX + dom.viewContainer.scrollLeft;
+    const canvasY = mouseY + dom.viewContainer.scrollTop;
 
-    const col = Math.floor((x + scrollX) / TOTAL_CELL_SIZE);
-    const row = Math.floor((y + scrollY) / TOTAL_CELL_SIZE);
+    const col = Math.floor(canvasX / TOTAL_CELL_SIZE);
+    const row = Math.floor(canvasY / TOTAL_CELL_SIZE);
 
     const gridX = col + minX;
     const gridY = row + minY;
@@ -457,21 +487,31 @@ function handleCanvasMouseDown(event) {
             }
         } else { // Paint Mode
             if (activeTool === 'tile-brush') {
+                // MY CHANGE: Clear multi-select when using single-select brush
                 selectedTileIds = [];
+
                 const clickedIndex = getTileIndexFromEvent(event);
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : (allTiles[selectedTileId]?.spriteName || '-');
+                    // Use "1 Tile" for consistency with rectangle selection counter
+                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : '1 Tile';
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {
-                isDrawingRect = true;
-                const rect = dom.gridCanvas.getBoundingClientRect();
-                const scrollX = dom.viewContainer.scrollLeft;
-                const scrollY = dom.viewContainer.scrollTop;
-                rectStartPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+                // MY CHANGE: Clear single-select when using multi-select rect
                 selectedTileId = -1;
                 selectedTileIds = [];
+
+                isDrawingRect = true;
+                // Manual calculation for scroll-proof coordinates
+                const rect = dom.viewContainer.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                rectStartPoint = {
+                    x: mouseX + dom.viewContainer.scrollLeft,
+                    y: mouseY + dom.viewContainer.scrollTop
+                };
+
                 dom.selectedTileIdSpan.textContent = '-';
                 drawTiles();
             }
@@ -572,10 +612,13 @@ function handleCanvasMouseMove(event) {
     }
 
     if (isDrawingRect) {
-        const rect = dom.gridCanvas.getBoundingClientRect();
-        const scrollX = dom.viewContainer.scrollLeft;
-        const scrollY = dom.viewContainer.scrollTop;
-        rectCurrentPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+        const rect = dom.viewContainer.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        rectCurrentPoint = {
+            x: mouseX + dom.viewContainer.scrollLeft,
+            y: mouseY + dom.viewContainer.scrollTop
+        };
         drawTiles();
     }
 }
@@ -590,10 +633,13 @@ function handleCanvasMouseUp(event) {
 
     if (isDrawingRect) {
         isDrawingRect = false;
-        const rect = dom.gridCanvas.getBoundingClientRect();
-        const scrollX = dom.viewContainer.scrollLeft;
-        const scrollY = dom.viewContainer.scrollTop;
-        const rectEndPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+        const rect = dom.viewContainer.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const rectEndPoint = {
+            x: mouseX + dom.viewContainer.scrollLeft,
+            y: mouseY + dom.viewContainer.scrollTop
+        };
 
         const selectionRect = {
             x1: Math.min(rectStartPoint.x, rectEndPoint.x),
@@ -615,18 +661,27 @@ function handleCanvasMouseUp(event) {
         selectedTileIds = [];
         allTiles.forEach((tile, index) => {
             const [gridX, gridY] = tile.coord.split(',').map(Number);
-            const tileX = (gridX - minX) * TOTAL_CELL_SIZE;
-            const tileY = (gridY - minY) * TOTAL_CELL_SIZE;
-            const tileCenterX = tileX + (TOTAL_CELL_SIZE / 2);
-            const tileCenterY = tileY + (TOTAL_CELL_SIZE / 2);
+            const tileRect = {
+                x1: (gridX - minX) * TOTAL_CELL_SIZE,
+                y1: (gridY - minY) * TOTAL_CELL_SIZE,
+                x2: ((gridX - minX) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE,
+                y2: ((gridY - minY) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE
+            };
 
-            if (tileCenterX >= selectionRect.x1 && tileCenterX <= selectionRect.x2 &&
-                tileCenterY >= selectionRect.y1 && tileCenterY <= selectionRect.y2) {
+            // MY CHANGE: Use intersection for selection
+            if (selectionRect.x1 < tileRect.x2 && selectionRect.x2 > tileRect.x1 &&
+                selectionRect.y1 < tileRect.y2 && selectionRect.y2 > tileRect.y1) {
                 selectedTileIds.push(index);
             }
         });
 
-        dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} tiles`;
+        // MY CHANGE: Use "Tiles" for counter consistency
+        if (selectedTileIds.length === 0) {
+            dom.selectedTileIdSpan.textContent = '-';
+        } else {
+            dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} Tiles`;
+        }
+
         rectStartPoint = null;
         rectCurrentPoint = null;
         drawTiles();
@@ -708,25 +763,26 @@ function drawPaintMode() {
     ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 
     const gridColor = 'rgba(255, 255, 255, 0.1)';
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
 
     allTiles.forEach((tile, index) => {
         const [gridX, gridY] = tile.coord.split(',').map(Number);
         const x = (gridX - minX) * TOTAL_CELL_SIZE;
         const y = (gridY - minY) * TOTAL_CELL_SIZE;
 
-        // Draw grid cell background/border
+        // Reset stroke style for every tile to draw the grid border correctly
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
         ctx.strokeRect(x + 0.5, y + 0.5, TOTAL_CELL_SIZE, TOTAL_CELL_SIZE);
 
         ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
+        // MERGED CHANGE: Using concise version from main but with my multi-tool logic
         const isSelected = (activeTool === 'tile-brush' && index === selectedTileId) ||
                            (activeTool === 'tile-rectangle-fill' && selectedTileIds.includes(index));
 
         if (isSelected) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
-            ctx.lineWidth = 2; // A bit thinner for multi-selection
+            ctx.lineWidth = 2;
             ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
         }
     });
