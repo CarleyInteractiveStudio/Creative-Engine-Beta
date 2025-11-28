@@ -19,6 +19,13 @@ let cameraZoom = 1.0;
 let isPanning = false;
 let lastPanPosition = { x: 0, y: 0 };
 
+// Rectangle selection state
+let isDrawingRect = false;
+let rectStartPoint = null;
+let rectCurrentPoint = null;
+let selectedTileIds = [];
+
+
 // --- Public API ---
 
 export function initialize(dependencies) {
@@ -32,7 +39,6 @@ export function initialize(dependencies) {
         viewContainer: dependencies.dom.paletteViewContainer,
         gridCanvas: dependencies.dom.paletteGridCanvas,
         overlay: dependencies.dom.palettePanelOverlay,
-        verticalToolbar: dependencies.dom.paletteToolsVertical,
         organizeSidebar: dependencies.dom.paletteOrganizeSidebar,
         associateSpriteBtn: dependencies.dom.paletteAssociateSpriteBtn,
         disassociateSpriteBtn: dependencies.dom.paletteDisassociateSpriteBtn,
@@ -137,13 +143,28 @@ export async function openPalette(fileHandle) {
 }
 
 export function getSelectedTile() {
-    if (selectedTileId !== -1 && allTiles[selectedTileId]) {
-        const tile = allTiles[selectedTileId];
-        return {
-            spriteName: tile.spriteName,
-            imageData: tile.imageData
-        };
+    // For rectangle tool, return all selected tiles
+    if (activeTool === 'tile-rectangle-fill' && selectedTileIds.length > 0) {
+        return selectedTileIds.map(id => {
+            const tile = allTiles[id];
+            if (!tile) return null;
+            return {
+                spriteName: tile.spriteName,
+                imageData: tile.imageData,
+                coord: tile.coord // Keep original coord for placement logic
+            };
+        }).filter(Boolean); // Filter out any nulls if an ID was invalid
     }
+    // For brush tool, return the single selected tile in an array for consistency
+    else if (activeTool === 'tile-brush' && selectedTileId !== -1 && allTiles[selectedTileId]) {
+        const tile = allTiles[selectedTileId];
+        return [{
+            spriteName: tile.spriteName,
+            imageData: tile.imageData,
+            coord: tile.coord
+        }];
+    }
+    // No valid selection
     return null;
 }
 
@@ -226,20 +247,38 @@ function setupEventListeners() {
         );
     });
 
-    dom.editBtn.addEventListener('click', toggleOrganizeMode);
+    const toolBubble = dom.panel.querySelector('.tool-bubble');
+    if (toolBubble) {
+        toolBubble.addEventListener('click', (e) => {
+            const toolBtn = e.target.closest('.tool-btn');
+            if (!toolBtn) return;
 
-    dom.verticalToolbar.addEventListener('click', (e) => {
-        const toolBtn = e.target.closest('.tool-btn');
-        if (toolBtn) {
-            // Remove active class from all buttons
-            dom.verticalToolbar.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            // Add active class to the clicked button
+            const newTool = toolBtn.dataset.tool;
+
+            // If the organize button is clicked, just toggle the mode
+            if (newTool === 'organize') {
+                toggleOrganizeMode();
+                return; // Stop further processing for this click
+            }
+
+            // --- Logic for tool switching ---
+            if (newTool !== activeTool) {
+                // Reset selections when tool changes
+                selectedTileId = -1;
+                selectedTileIds = [];
+                dom.selectedTileIdSpan.textContent = '-'; // Update counter on tool change
+            }
+
+            activeTool = newTool;
+
+            // Update UI
+            toolBubble.querySelectorAll('.tool-btn:not([data-tool="organize"])').forEach(btn => btn.classList.remove('active'));
             toolBtn.classList.add('active');
-            // Update the active tool state
-            activeTool = toolBtn.dataset.tool;
-            console.log(`Tile palette tool changed to: ${activeTool}`);
-        }
-    });
+
+            // Redraw to clear visual selection artifacts
+            drawTiles();
+        });
+    }
 
     dom.gridCanvas.addEventListener('mousedown', handleCanvasMouseDown);
     dom.gridCanvas.addEventListener('mousemove', handleCanvasMouseMove);
@@ -312,23 +351,38 @@ function setupEventListeners() {
 
 function toggleOrganizeMode() {
     isOrganizeMode = !isOrganizeMode;
+
+    // Reset selections when changing mode
+    selectedTileId = -1;
+    selectedTileIds = [];
+    dom.selectedTileIdSpan.textContent = '-';
+
     dom.panel.classList.toggle('organize-mode-active', isOrganizeMode);
     dom.editBtn.classList.toggle('active', isOrganizeMode);
 
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
-    dom.verticalToolbar.classList.toggle('hidden', isOrganizeMode);
+
+    // Hide/show relevant parts of the main toolbar bubble
+    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-eraser"]').forEach(btn => {
+        btn.style.display = isOrganizeMode ? 'none' : 'flex';
+    });
 
     dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
 
     if (isOrganizeMode) {
-        activeTool = null;
+        activeTool = null; // No tool is active in organize mode initially
         loadAndDisplayAssociatedSprites(); // Load sprites when entering mode
     } else {
-        const defaultTool = dom.verticalToolbar.querySelector('[data-tool="tile-brush"]');
-        if (defaultTool) {
-            defaultTool.classList.add('active');
-            activeTool = 'tile-brush';
+        // When returning to Paint Mode, select the brush by default
+        const toolBubble = dom.panel.querySelector('.tool-bubble');
+        if (toolBubble) {
+            toolBubble.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            const brushBtn = toolBubble.querySelector('[data-tool="tile-brush"]');
+            if (brushBtn) {
+                brushBtn.classList.add('active');
+            }
         }
+        activeTool = 'tile-brush';
     }
     drawTiles();
 }
@@ -407,13 +461,8 @@ function handleCanvasMouseDown(event) {
 
             if (activeTool === 'delete') {
                 if (currentPalette.tiles[coord]) {
-                    // Delete from the source data
                     delete currentPalette.tiles[coord];
-
-                    // Rebuild the renderable array to ensure consistency
                     allTiles = allTiles.filter(tile => tile.coord !== coord);
-
-                    // Redraw the canvas to reflect the deletion
                     drawTiles();
                 }
                 return;
@@ -431,16 +480,35 @@ function handleCanvasMouseDown(event) {
                     allTiles.push({ ...newTileData, coord, image });
                     drawTiles();
                 };
-            } else {
-                // If no tool is active, do nothing on click
             }
-        } else {
-            // Paint mode selection logic
-            const clickedIndex = getTileIndexFromEvent(event);
-            if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
-                 selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                 dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : (allTiles[selectedTileId]?.spriteName || '-');
-                 drawTiles();
+        } else { // Paint Mode
+            if (activeTool === 'tile-brush') {
+                // Ensure multi-selection is cleared before single selection
+                selectedTileIds = [];
+
+                const clickedIndex = getTileIndexFromEvent(event);
+                if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
+                    selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
+                    // Update counter
+                    if (selectedTileId === -1) {
+                        dom.selectedTileIdSpan.textContent = '-';
+                    } else {
+                        dom.selectedTileIdSpan.textContent = `1 Tile`;
+                    }
+                    drawTiles();
+                }
+            } else if (activeTool === 'tile-rectangle-fill') {
+                // Ensure single-selection is cleared before multi-selection
+                selectedTileId = -1;
+                selectedTileIds = [];
+
+                isDrawingRect = true;
+                const rect = dom.gridCanvas.getBoundingClientRect();
+                const scrollX = dom.viewContainer.scrollLeft;
+                const scrollY = dom.viewContainer.scrollTop;
+                rectStartPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+                dom.selectedTileIdSpan.textContent = '-';
+                drawTiles();
             }
         }
     }
@@ -457,7 +525,6 @@ async function loadAndDisplayAssociatedSprites() {
     for (const packPath of currentPalette.associatedSpritePacks) {
         let isValid = true;
         try {
-            // Validation 1: Must be a .ceSprite file
             if (!packPath.toLowerCase().endsWith('.cesprite')) {
                 console.warn(`Invalid association removed: '${packPath}' is not a .ceSprite file.`);
                 isValid = false;
@@ -467,7 +534,7 @@ async function loadAndDisplayAssociatedSprites() {
 
             const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
             const packFile = await packFileHandle.getFile();
-            const packData = JSON.parse(await packFile.text()); // This will fail for non-JSON files
+            const packData = JSON.parse(await packFile.text());
 
             let sourceImage = imageCache.get(packData.sourceImage);
             if (!sourceImage) {
@@ -477,7 +544,7 @@ async function loadAndDisplayAssociatedSprites() {
                     console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);
                     isValid = false;
                     wasCleaned = true;
-                    continue; // Skip this pack if source image is missing
+                    continue;
                 }
                 sourceImage = new Image();
                 sourceImage.src = imageUrl;
@@ -485,13 +552,12 @@ async function loadAndDisplayAssociatedSprites() {
                 imageCache.set(packData.sourceImage, sourceImage);
             }
 
-            // If we've reached here, the pack is valid for processing
             validSpritePacks.push(packPath);
 
             for (const spriteName in packData.sprites) {
                 const spriteData = packData.sprites[spriteName];
                 const canvas = document.createElement('canvas');
-                const tempSize = 64; // Sidebar preview size
+                const tempSize = 64;
                 canvas.width = tempSize;
                 canvas.height = tempSize;
                 const ctx = canvas.getContext('2d');
@@ -509,7 +575,7 @@ async function loadAndDisplayAssociatedSprites() {
                 img.dataset.spritePackPath = packPath;
                 img.dataset.imageData = img.src;
                 img.classList.add('sidebar-sprite-preview');
-                img.draggable = true; // Enable dragging
+                img.draggable = true;
                 dom.spritePackList.appendChild(img);
             }
 
@@ -520,7 +586,6 @@ async function loadAndDisplayAssociatedSprites() {
         }
     }
 
-    // After iterating, if any invalid packs were found and removed, update the main palette object.
     if (wasCleaned) {
         currentPalette.associatedSpritePacks = validSpritePacks;
         showNotification(
@@ -535,12 +600,18 @@ function handleCanvasMouseMove(event) {
         const dx = event.clientX - lastPanPosition.x;
         const dy = event.clientY - lastPanPosition.y;
         lastPanPosition = { x: event.clientX, y: event.clientY };
-
         cameraOffset.x += dx;
         cameraOffset.y += dy;
-
-        drawTiles(); // Redraw with the new offset
+        drawTiles();
         return;
+    }
+
+    if (isDrawingRect) {
+        const rect = dom.gridCanvas.getBoundingClientRect();
+        const scrollX = dom.viewContainer.scrollLeft;
+        const scrollY = dom.viewContainer.scrollTop;
+        rectCurrentPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+        drawTiles();
     }
 }
 
@@ -550,6 +621,59 @@ function handleCanvasMouseUp(event) {
         dom.gridCanvas.style.cursor = isOrganizeMode ? 'grab' : 'crosshair';
         event.preventDefault();
         return;
+    }
+
+    if (isDrawingRect) {
+        isDrawingRect = false;
+        const rect = dom.gridCanvas.getBoundingClientRect();
+        const scrollX = dom.viewContainer.scrollLeft;
+        const scrollY = dom.viewContainer.scrollTop;
+        const rectEndPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+
+        const selectionRect = {
+            x1: Math.min(rectStartPoint.x, rectEndPoint.x),
+            y1: Math.min(rectStartPoint.y, rectEndPoint.y),
+            x2: Math.max(rectStartPoint.x, rectEndPoint.x),
+            y2: Math.max(rectStartPoint.y, rectEndPoint.y)
+        };
+
+        const TILE_SIZE = PALETTE_TILE_SIZE;
+        const PADDING = 2;
+        const TOTAL_CELL_SIZE = TILE_SIZE + PADDING;
+        let minX = Infinity, minY = Infinity;
+        allTiles.forEach(t => {
+            const [x, y] = t.coord.split(',').map(Number);
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+        });
+
+        selectedTileIds = [];
+        allTiles.forEach((tile, index) => {
+            const [gridX, gridY] = tile.coord.split(',').map(Number);
+            const tileRect = {
+                x1: (gridX - minX) * TOTAL_CELL_SIZE,
+                y1: (gridY - minY) * TOTAL_CELL_SIZE,
+                x2: ((gridX - minX) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE,
+                y2: ((gridY - minY) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE
+            };
+
+            // Check for intersection instead of center point
+            if (selectionRect.x1 < tileRect.x2 && selectionRect.x2 > tileRect.x1 &&
+                selectionRect.y1 < tileRect.y2 && selectionRect.y2 > tileRect.y1) {
+                selectedTileIds.push(index);
+            }
+        });
+
+        // Update counter
+        if (selectedTileIds.length === 0) {
+            dom.selectedTileIdSpan.textContent = '-';
+        } else {
+            dom.selectedTileIdSpan.textContent = `${selectedTileIds.length} Tiles`;
+        }
+
+        rectStartPoint = null;
+        rectCurrentPoint = null;
+        drawTiles();
     }
 }
 
@@ -628,25 +752,44 @@ function drawPaintMode() {
     ctx.clearRect(0, 0, dom.gridCanvas.width, dom.gridCanvas.height);
 
     const gridColor = 'rgba(255, 255, 255, 0.1)';
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
 
     allTiles.forEach((tile, index) => {
         const [gridX, gridY] = tile.coord.split(',').map(Number);
         const x = (gridX - minX) * TOTAL_CELL_SIZE;
         const y = (gridY - minY) * TOTAL_CELL_SIZE;
 
-        // Draw grid cell background/border
+        // Reset stroke style for every tile to draw the grid border correctly
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
         ctx.strokeRect(x + 0.5, y + 0.5, TOTAL_CELL_SIZE, TOTAL_CELL_SIZE);
 
         ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
-        if (index === selectedTileId) {
+        // --- Visual Selection Logic ---
+        let isSelected = false;
+        if (activeTool === 'tile-brush') {
+            isSelected = (index === selectedTileId);
+        } else if (activeTool === 'tile-rectangle-fill') {
+            isSelected = selectedTileIds.includes(index);
+        }
+
+        if (isSelected) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.strokeRect(x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
         }
     });
+
+    // Draw the selection rectangle preview
+    if (isDrawingRect && rectStartPoint && rectCurrentPoint) {
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]); // Dashed line for preview
+        const rectWidth = rectCurrentPoint.x - rectStartPoint.x;
+        const rectHeight = rectCurrentPoint.y - rectStartPoint.y;
+        ctx.strokeRect(rectStartPoint.x, rectStartPoint.y, rectWidth, rectHeight);
+        ctx.setLineDash([]); // Reset line dash
+    }
 }
 
 function drawOrganizeMode() {
