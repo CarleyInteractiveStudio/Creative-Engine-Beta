@@ -100,6 +100,7 @@ function generateUniqueName(baseName) {
 
 function createBaseMateria(name, parent = null) {
     const newMateria = new Materia(name);
+    // Every Materia must have a Transform.
     newMateria.addComponent(new Components.Transform(newMateria));
 
     if (parent) {
@@ -107,21 +108,19 @@ function createBaseMateria(name, parent = null) {
     } else {
         SceneManager.currentScene.addMateria(newMateria);
     }
-    // La actualización y selección se harán centralmente
     return newMateria;
 }
 
 function createTilemapObject(parent = null) {
     // Create the parent Grid object
     const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
-    gridMateria.addComponent(new Components.Grid(gridMateria));
+    gridMateria.addComponent(new Components.Grid(gridMateria)); // This was missing
 
     // Create the child Tilemap object
-    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
+    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria);
     tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
     tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
 
-    // The function returns the parent Grid, which is what should be selected
     return gridMateria;
 }
 
