@@ -554,128 +554,6 @@ export class AudioSource extends Leyes {
     }
 }
 
-// --- NEW/REWRITTEN TILEMAP COMPONENTS ---
-
-// The Grid component defines the grid's properties for its children.
-export class Grid extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.cellSize = { x: 32, y: 32 };
-        this.cellLayout = 'Rectangular'; // Future support: Isometric, Hexagonal
-    }
-
-    clone() {
-        const newGrid = new Grid(null);
-        newGrid.cellSize = { ...this.cellSize };
-        newGrid.cellLayout = this.cellLayout;
-        return newGrid;
-    }
-}
-
-
-// The Tilemap component holds the data for the tiles.
-export class Tilemap extends Leyes {
-    constructor(materia) {
-        super(materia);
-        // tileData is a Map where keys are coordinate strings "x,y"
-        // and values are objects { spriteName, imageData }.
-        // imageData (a base64 data URL) makes the tilemap self-contained.
-        this.tileData = new Map();
-    }
-
-    clone() {
-        const newTilemap = new Tilemap(null);
-        // Deep copy the map for true duplication
-        newTilemap.tileData = new Map(JSON.parse(JSON.stringify(Array.from(this.tileData.entries()))));
-        return newTilemap;
-    }
-}
-
-// The TilemapRenderer is responsible for drawing the Tilemap.
-export class TilemapRenderer extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.sortingLayer = 'Default';
-        this.orderInLayer = 0;
-        // Internal cache to hold loaded Image objects from base64 data
-        this.imageCache = new Map();
-        // A dirty flag is useful for performance, so we only re-render when needed.
-        this.isDirty = true;
-    }
-
-    // Call this whenever the tilemap data changes to schedule a redraw.
-    setDirty() {
-        this.isDirty = true;
-    }
-
-    // Helper to get or create an Image object from tile data.
-    getImageForTile(tileData) {
-        if (this.imageCache.has(tileData.imageData)) {
-            return this.imageCache.get(tileData.imageData);
-        } else {
-            const image = new Image();
-            image.src = tileData.imageData;
-            // The image might not be loaded yet. The renderer will handle this.
-            // We set the dirty flag to true when an image loads to force a redraw.
-            image.onload = () => this.setDirty();
-            this.imageCache.set(tileData.imageData, image);
-            return image;
-        }
-    }
-
-    clone() {
-        const newRenderer = new TilemapRenderer(null);
-        newRenderer.sortingLayer = this.sortingLayer;
-        newRenderer.orderInLayer = this.orderInLayer;
-        return newRenderer;
-    }
-}
-
-export class TilemapCollider2D extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.usedByComposite = false;
-        // Removed unused properties and simplified for now
-        this.isTrigger = false;
-        this.offset = { x: 0, y: 0 };
-    }
-
-    // The generation logic will be handled by the physics engine later.
-    // For now, it just holds the properties.
-
-    clone() {
-        const newCollider = new TilemapCollider2D(null);
-        newCollider.usedByComposite = this.usedByComposite;
-        newCollider.isTrigger = this.isTrigger;
-        newCollider.offset = { ...this.offset };
-        return newCollider;
-    }
-}
-
-export class CompositeCollider2D extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.physicsMaterial = null;
-        this.isTrigger = false;
-        this.usedByEffector = false;
-        this.offset = { x: 0, y: 0 };
-        this.geometryType = 'Outlines'; // 'Outlines' or 'Polygons'
-        this.generationType = 'Synchronous'; // 'Synchronous' or 'Asynchronous'
-    }
-
-    clone() {
-        const newCollider = new CompositeCollider2D(null);
-        newCollider.physicsMaterial = this.physicsMaterial;
-        newCollider.isTrigger = this.isTrigger;
-        newCollider.usedByEffector = this.usedByEffector;
-        newCollider.offset = { ...this.offset };
-        newCollider.geometryType = this.geometryType;
-        newCollider.generationType = this.generationType;
-        return newCollider;
-    }
-}
-
-
 // --- Component Registration ---
 
 registerComponent('CreativeScript', CreativeScript);
@@ -693,8 +571,194 @@ registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
-registerComponent('Grid', Grid);
+
+// --- Tilemap Components ---
+
+export class Tilemap extends Leyes {
+    constructor(materia) {
+        super(materia);
+        // The tileData is now a Map where keys are "x,y" and values are { spriteName, imageData }
+        this.tileData = new Map();
+    }
+
+    clone() {
+        const newTilemap = new Tilemap(null);
+        // Deep copy the map
+        newTilemap.tileData = new Map(JSON.parse(JSON.stringify(Array.from(this.tileData))));
+        return newTilemap;
+    }
+}
+
+export class TilemapRenderer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sortingLayer = 'Default';
+        this.orderInLayer = 0;
+        this.imageCache = new Map(); // Cache for Image objects from imageData
+        this.isDirty = true; // Flag to know when to re-render
+    }
+
+    setDirty() {
+        this.isDirty = true;
+    }
+
+    getImageForTile(tileData) {
+        if (this.imageCache.has(tileData.imageData)) {
+            return this.imageCache.get(tileData.imageData);
+        } else {
+            const image = new Image();
+            image.src = tileData.imageData;
+            this.imageCache.set(tileData.imageData, image);
+            // The image will be drawn on the next frame when it's loaded.
+            // For immediate drawing, we would need to handle the onload event.
+            return image;
+        }
+    }
+
+    clone() {
+        const newRenderer = new TilemapRenderer(null);
+        newRenderer.sortingLayer = this.sortingLayer;
+        newRenderer.orderInLayer = this.orderInLayer;
+        return newRenderer;
+    }
+}
+
 registerComponent('Tilemap', Tilemap);
 registerComponent('TilemapRenderer', TilemapRenderer);
+
+export class TilemapCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.usedByComposite = false;
+        this.usedByEffector = false;
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.sourceLayerIndex = 0; // Which layer to use for collision
+        this.generatedColliders = []; // Array of {x, y, width, height} objects
+    }
+
+    generate() {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap || !tilemap.layers[this.sourceLayerIndex]) {
+            this.generatedColliders = [];
+            return;
+        }
+
+        const grid = tilemap.layers[this.sourceLayerIndex].data;
+        const { columns, rows, tileWidth, tileHeight } = tilemap;
+
+        const visited = Array(rows).fill(null).map(() => Array(columns).fill(false));
+        const rects = [];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < columns; c++) {
+                if (grid[r][c] !== -1 && !visited[r][c]) {
+                    let currentWidth = 1;
+                    while (c + currentWidth < columns && grid[r][c + currentWidth] !== -1 && !visited[r][c + currentWidth]) {
+                        currentWidth++;
+                    }
+
+                    let currentHeight = 1;
+                    while (r + currentHeight < rows) {
+                        let canExpandDown = true;
+                        for (let i = 0; i < currentWidth; i++) {
+                            if (grid[r + currentHeight][c + i] === -1 || visited[r + currentHeight][c + i]) {
+                                canExpandDown = false;
+                                break;
+                            }
+                        }
+                        if (canExpandDown) {
+                            currentHeight++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    for (let y = 0; y < currentHeight; y++) {
+                        for (let x = 0; x < currentWidth; x++) {
+                            visited[r + y][c + x] = true;
+                        }
+                    }
+
+                    const mapTotalWidth = columns * tileWidth;
+                    const mapTotalHeight = rows * tileHeight;
+                    const rectWidth_pixels = currentWidth * tileWidth;
+                    const rectHeight_pixels = currentHeight * tileHeight;
+                    const rectCenterX = (c * tileWidth) + (rectWidth_pixels / 2);
+                    const rectCenterY = (r * tileHeight) + (rectHeight_pixels / 2);
+
+                    const relativeX = rectCenterX - (mapTotalWidth / 2);
+                    const relativeY = rectCenterY - (mapTotalHeight / 2);
+
+                    rects.push({
+                        x: relativeX,
+                        y: relativeY,
+                        width: rectWidth_pixels,
+                        height: rectHeight_pixels
+                    });
+                }
+            }
+        }
+
+        this.generatedColliders = rects;
+        console.log(`Generados ${rects.length} colisionadores optimizados.`);
+    }
+
+    clone() {
+        const newCollider = new TilemapCollider2D(null);
+        newCollider.usedByComposite = this.usedByComposite;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.sourceLayerIndex = this.sourceLayerIndex;
+        // The colliders themselves are not copied; they should be regenerated.
+        return newCollider;
+    }
+}
+
+export class Grid extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.cellSize = { x: 32, y: 32 };
+        this.cellLayout = 'Rectangular'; // Future: Isometric, Hexagonal
+    }
+
+    clone() {
+        const newGrid = new Grid(null);
+        newGrid.cellSize = { ...this.cellSize };
+        newGrid.cellLayout = this.cellLayout;
+        return newGrid;
+    }
+}
+
+registerComponent('Grid', Grid);
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+
+export class CompositeCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.physicsMaterial = null;
+        this.isTrigger = false;
+        this.usedByEffector = false;
+        this.offset = { x: 0, y: 0 };
+        this.geometryType = 'Outlines'; // 'Outlines' or 'Polygons'
+        this.generationType = 'Synchronous'; // 'Synchronous' or 'Asynchronous'
+        this.vertexDistance = 0.005;
+        this.offsetDistance = 0.025; // Replaces Edge Radius in some contexts
+    }
+
+    clone() {
+        const newCollider = new CompositeCollider2D(null);
+        newCollider.physicsMaterial = this.physicsMaterial;
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.usedByEffector = this.usedByEffector;
+        newCollider.offset = { ...this.offset };
+        newCollider.geometryType = this.geometryType;
+        newCollider.generationType = this.generationType;
+        newCollider.vertexDistance = this.vertexDistance;
+        newCollider.offsetDistance = this.offsetDistance;
+        return newCollider;
+    }
+}
+
 registerComponent('CompositeCollider2D', CompositeCollider2D);

@@ -156,21 +156,28 @@ function drawEditorGrid() {
     if (!camera) return;
 
     const zoom = camera.effectiveZoom;
-    let gridStepX = 0;
-    let gridStepY = 0;
 
-    // Check if there's a selected materia with a Grid component (or parent with one)
-    const selected = getSelectedMateria();
-    let gridComponent = null;
-    if (selected) {
-        gridComponent = selected.getComponent(Components.Grid) || selected.parent?.getComponent(Components.Grid);
-    }
+    // --- Adaptive Grid Algorithm ---
+    const TARGET_SPACING_PX = 80;
+    const SUBDIVISIONS = 10;
+    const MIN_SPACING_PX_MINOR = 8;
 
-    // If a contextual grid is found, use its cell size.
-    if (gridComponent) {
-        gridStepX = gridComponent.cellSize.x;
-        gridStepY = gridComponent.cellSize.y;
-    }
+    // 1. Calculate ideal world step
+    const idealWorldStep = TARGET_SPACING_PX / zoom;
+
+    // 2. Find the "nicest" number
+    const magnitude = Math.pow(10, Math.floor(Math.log10(idealWorldStep)));
+    const normalizedStep = idealWorldStep / magnitude;
+
+    let multiplier = 1;
+    if (normalizedStep < 1.5) multiplier = 1;
+    else if (normalizedStep < 3.5) multiplier = 2;
+    else if (normalizedStep < 7.5) multiplier = 5;
+    else multiplier = 10;
+
+    // 3. Determine final grid spacing
+    const majorGridStep = multiplier * magnitude;
+    const minorGridStep = majorGridStep / SUBDIVISIONS;
 
     // --- Drawing Logic ---
     const viewLeft = camera.x - (canvas.width / 2 / zoom);
@@ -182,45 +189,31 @@ function drawEditorGrid() {
     ctx.lineWidth = 1 / zoom;
 
     // Function to draw a set of grid lines
-    const drawLines = (stepX, stepY, color) => {
-        if (stepX <= 0 || stepY <= 0) return;
+    const drawLines = (step, color) => {
         ctx.strokeStyle = color;
         ctx.beginPath();
-        const startX = Math.floor(viewLeft / stepX) * stepX;
-        const endX = Math.ceil(viewRight / stepX) * stepX;
-        for (let x = startX; x <= endX; x += stepX) {
+        const startX = Math.floor(viewLeft / step) * step;
+        const endX = Math.ceil(viewRight / step) * step;
+        for (let x = startX; x <= endX; x += step) {
             ctx.moveTo(x, viewTop);
             ctx.lineTo(x, viewBottom);
         }
-        const startY = Math.floor(viewTop / stepY) * stepY;
-        const endY = Math.ceil(viewBottom / stepY) * stepY;
-        for (let y = startY; y <= endY; y += stepY) {
+        const startY = Math.floor(viewTop / step) * step;
+        const endY = Math.ceil(viewBottom / step) * step;
+        for (let y = startY; y <= endY; y += step) {
             ctx.moveTo(viewLeft, y);
             ctx.lineTo(viewRight, y);
         }
         ctx.stroke();
     };
 
-    // Draw the infinite, adaptive grid in the background
-    const TARGET_SPACING_PX = 80;
-    const idealWorldStep = TARGET_SPACING_PX / zoom;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(idealWorldStep)));
-    let multiplier = 1;
-    if (idealWorldStep / magnitude < 1.5) multiplier = 1;
-    else if (idealWorldStep / magnitude < 3.5) multiplier = 2;
-    else if (idealWorldStep / magnitude < 7.5) multiplier = 5;
-    else multiplier = 10;
-    const majorGridStep = multiplier * magnitude;
-    drawLines(majorGridStep, majorGridStep, 'rgba(255, 255, 255, 0.1)');
-
-
-    // If we have a contextual grid, draw it on top more prominently.
-    if (gridComponent) {
-        // Only draw the tilemap grid if it's not too dense to see
-        if (gridStepX * zoom > 4 && gridStepY * zoom > 4) {
-            drawLines(gridStepX, gridStepY, 'rgba(255, 255, 255, 0.25)');
-        }
+    // Draw minor grid lines (if they are not too crowded)
+    if (minorGridStep * zoom > MIN_SPACING_PX_MINOR) {
+        drawLines(minorGridStep, 'rgba(255, 255, 255, 0.05)');
     }
+
+    // Draw major grid lines
+    drawLines(majorGridStep, 'rgba(255, 255, 255, 0.1)');
 
     // Draw world origin axes (X and Y)
     ctx.lineWidth = 2 / zoom;
@@ -635,51 +628,54 @@ function drawTileCursor() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    let tilemap = selectedMateria.getComponent(Components.Tilemap);
-    let grid = selectedMateria.getComponent(Components.Grid);
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
 
-    if (grid && !tilemap) {
-        const childWithTilemap = selectedMateria.children.find(c => c.getComponent(Components.Tilemap));
-        if (childWithTilemap) tilemap = childWithTilemap.getComponent(Components.Tilemap);
-    } else if (tilemap && !grid) {
-        grid = selectedMateria.parent?.getComponent(Components.Grid);
-    }
-
-    if (!tilemap || !grid) return; // Can't draw cursor without both
-
-    const gridTransform = grid.materia.getComponent(Components.Transform);
-    if (!gridTransform) return;
+    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
+    if (!grid) return; // No grid, no cursor
 
     const { ctx } = renderer;
     const { cellSize } = grid;
+    const { columns, rows } = tilemap;
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // Transform mouse to grid's local space
-    const localMouse = {
-        x: worldMouse.x - gridTransform.x,
-        y: worldMouse.y - gridTransform.y
-    };
+    // The grid's transform is the reference for positioning
+    const gridTransform = grid.materia.getComponent(Components.Transform);
+    if (!gridTransform) return;
 
-    const col = Math.floor(localMouse.x / cellSize.x);
-    const row = Math.floor(localMouse.y / cellSize.y);
+    // Calculate mouse position relative to the tilemap's origin (top-left corner)
+    const mapWidth = columns * cellSize.x;
+    const mapHeight = rows * cellSize.y;
+    const mapTopLeftX = gridTransform.x - mapWidth / 2;
+    const mapTopLeftY = gridTransform.y - mapHeight / 2;
 
-    // Calculate world position of the top-left corner of the target cell
-    const cursorX = gridTransform.x + col * cellSize.x;
-    const cursorY = gridTransform.y + row * cellSize.y;
+    const mouseInMapX = worldMouse.x - mapTopLeftX;
+    const mouseInMapY = worldMouse.y - mapTopLeftY;
 
-    ctx.save();
-    if (activeTool === 'tile-brush') {
-        ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-    } else { // Eraser
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    // Calculate the column and row under the cursor
+    const col = Math.floor(mouseInMapX / cellSize.x);
+    const row = Math.floor(mouseInMapY / cellSize.y);
+
+    // Check if the cursor is within the tilemap bounds
+    if (col >= 0 && col < columns && row >= 0 && row < rows) {
+        const cursorX = mapTopLeftX + col * cellSize.x;
+        const cursorY = mapTopLeftY + row * cellSize.y;
+
+        ctx.save();
+        if (activeTool === 'tile-brush') {
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+        } else { // Eraser
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        }
+        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+        ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+        ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+        ctx.restore();
     }
-    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-    ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-    ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
-    ctx.restore();
 }
 
 export function drawOverlay() {
@@ -795,100 +791,49 @@ function paintTile(event) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    // Find the relevant Tilemap and Grid components
-    let tilemap = selectedMateria.getComponent(Components.Tilemap);
-    let grid = selectedMateria.getComponent(Components.Grid);
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    if (!tilemap) return;
 
-    if (grid && !tilemap) {
-        // If Grid is selected, find the first child with a Tilemap
-        const childWithTilemap = selectedMateria.children.find(c => c.getComponent(Components.Tilemap));
-        if (childWithTilemap) tilemap = childWithTilemap.getComponent(Components.Tilemap);
-    } else if (tilemap && !grid) {
-        // If Tilemap is selected, find the parent Grid
-        grid = selectedMateria.parent?.getComponent(Components.Grid);
-    }
-
-    if (!tilemap || !grid) return;
+    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
+    if (!grid) return;
 
     const gridTransform = grid.materia.getComponent(Components.Transform);
     if (!gridTransform) return;
 
     const { cellSize } = grid;
+    const { columns, rows } = tilemap;
+
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    // Transform mouse coordinates to the Grid's local space
-    const localMouse = {
-        x: worldMouse.x - gridTransform.x,
-        y: worldMouse.y - gridTransform.y
-    };
-    // TODO: Account for grid rotation if necessary in the future.
+    const mapWidth = columns * cellSize.x;
+    const mapHeight = rows * cellSize.y;
+    const mapTopLeftX = gridTransform.x - mapWidth / 2;
+    const mapTopLeftY = gridTransform.y - mapHeight / 2;
 
-    // Calculate grid coordinates from local mouse position
-    const col = Math.floor(localMouse.x / cellSize.x);
-    const row = Math.floor(localMouse.y / cellSize.y);
+    const mouseInMapX = worldMouse.x - mapTopLeftX;
+    const mouseInMapY = worldMouse.y - mapTopLeftY;
+
+    const col = Math.floor(mouseInMapX / cellSize.x);
+    const row = Math.floor(mouseInMapY / cellSize.y);
 
     // Prevent re-painting the same tile in a single drag motion
     if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
         return;
     }
 
-    const coordString = `${col},${row}`;
-    const tileToPaint = getSelectedTile(); // This now returns an array or null
-    const renderer = tilemap.materia.getComponent(Components.TilemapRenderer);
+    if (col >= 0 && col < columns && row >= 0 && row < rows) {
+        const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : -1;
 
-    if (activeTool === 'tile-brush') {
-        if (!tileToPaint || tileToPaint.length === 0) {
+        if (tileIdToPaint === undefined || tileIdToPaint === null) {
             console.warn("No tile selected in the palette to paint with.");
             return;
         }
-        const singleTileData = {
-            spriteName: tileToPaint[0].spriteName,
-            imageData: tileToPaint[0].imageData
-        };
-        tilemap.tileData.set(coordString, singleTileData);
-        if(renderer) renderer.setDirty();
 
-    } else if (activeTool === 'tile-rectangle-fill') {
-        if (!tileToPaint || tileToPaint.length === 0) {
-            console.warn("No rectangle of tiles selected in the palette.");
-            return;
-        }
-
-        // Find the top-left corner of the selection to use as an anchor
-        let minX = Infinity, minY = Infinity;
-        tileToPaint.forEach(t => {
-            const [x, y] = t.coord.split(',').map(Number);
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-        });
-
-        // Place each tile relative to the clicked grid cell
-        tileToPaint.forEach(t => {
-            const [localX, localY] = t.coord.split(',').map(Number);
-            const offsetX = localX - minX;
-            const offsetY = localY - minY;
-
-            const targetCol = col + offsetX;
-            const targetRow = row + offsetY;
-            const targetCoordString = `${targetCol},${targetRow}`;
-
-            const tileData = {
-                spriteName: t.spriteName,
-                imageData: t.imageData
-            };
-            tilemap.tileData.set(targetCoordString, tileData);
-        });
-        if(renderer) renderer.setDirty();
-
-    } else if (activeTool === 'tile-eraser') {
-        tilemap.tileData.delete(coordString);
-        if(renderer) renderer.setDirty();
+        // Use the active layer index from the component
+        tilemap.setTile(tilemap.activeLayerIndex, col, row, tileIdToPaint);
+        lastPaintedCoords = { col, row };
+        SceneManager.setSceneDirty(true);
     }
-
-    // Mark for redraw
-    if(renderer) renderer.setDirty();
-    lastPaintedCoords = { col, row };
-    SceneManager.setSceneDirty(true); // Mark the whole scene as needing a potential save
 }

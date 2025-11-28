@@ -829,23 +829,21 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of tilemapsToRender) {
                 if (!materia.isActive) continue;
 
+                // Culling for tilemaps can be more complex (chunk-based),
+                // for now, we'll do a simple bounds check on the whole map.
+                // A proper implementation would be more performant.
+                if (cameraForCulling) {
+                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
+                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
+                    // Layer culling
+                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                    const objectLayerBit = 1 << materia.layer;
+                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+                }
+
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-
-                // A Tilemap should always have a Grid as a parent.
-                const grid = materia.parent?.getComponent(Components.Grid);
-
-                if (tilemapRenderer && grid) {
-                    // Simple culling for the whole grid object
-                    if (cameraForCulling) {
-                        const gridBounds = MathUtils.getOOB(grid.materia);
-                        if (gridBounds && !MathUtils.checkIntersection(cameraViewBox, gridBounds)) continue;
-
-                        const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                        const objectLayerBit = 1 << materia.layer;
-                        if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                    }
-
-                    rendererInstance.drawTilemap(tilemapRenderer, grid);
+                if (tilemapRenderer) {
+                    rendererInstance.drawTilemap(tilemapRenderer);
                 }
             }
         };
@@ -1710,7 +1708,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
-            'palette-file-name', 'palette-selected-tile-id',
+            'palette-file-name', 'palette-tools-vertical', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
             'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
             // Sprite Slicer Panel Elements
@@ -1771,12 +1769,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
             if (!projectsDirHandle) {
-                // In a test environment or if DB is cleared, this might be null.
-                // Don't throw a fatal error; allow the editor to load partially.
-                // The user will be unable to save/load, but the UI can still be tested.
-                console.warn("No se encontró el directorio de proyectos. La funcionalidad de archivos estará deshabilitada.");
-                displayCriticalError(new Error("No se encontró el directorio de proyectos."), "Continuando en modo de funcionalidad limitada.");
-                // We don't return or throw, allowing the rest of the script to run.
+                throw new Error("No se encontró el directorio de proyectos. Por favor, vuelve al inicio y selecciona un directorio.");
             }
             const projectName = new URLSearchParams(window.location.search).get('project');
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;

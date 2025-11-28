@@ -112,17 +112,16 @@ function createBaseMateria(name, parent = null) {
 }
 
 function createTilemapObject(parent = null) {
-    // Create the parent Grid object, ensuring it's not a child of another selection if we're creating a root object
-    const gridParent = parent || null;
-    const gridMateria = createBaseMateria(generateUniqueName('Grid'), gridParent);
+    // Create the parent Grid object
+    const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
     gridMateria.addComponent(new Components.Grid(gridMateria));
 
-    // Create the child Tilemap object, making it a child of the Grid object
-    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria);
+    // Create the child Tilemap object
+    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
     tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
     tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
 
-    // When a new tilemap is created, the grid should be returned so it can be selected.
+    // The function returns the parent Grid, which is what should be selected
     return gridMateria;
 }
 
