@@ -422,10 +422,18 @@ function getTileIndexFromEvent(event) {
         minY = Math.min(minY, y);
     });
 
-    // Use offsetX/Y which are relative to the target element (the canvas),
-    // correctly handling any scrolling of parent containers.
-    const col = Math.floor(event.offsetX / TOTAL_CELL_SIZE);
-    const row = Math.floor(event.offsetY / TOTAL_CELL_SIZE);
+    // This is the robust way to calculate mouse coords inside a scrolled element.
+    // 1. Get the bounding box of the scrollable container.
+    const rect = dom.viewContainer.getBoundingClientRect();
+    // 2. Calculate mouse position relative to the container's top-left corner.
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    // 3. Add the container's scroll offsets to get the absolute position on the canvas.
+    const canvasX = mouseX + dom.viewContainer.scrollLeft;
+    const canvasY = mouseY + dom.viewContainer.scrollTop;
+
+    const col = Math.floor(canvasX / TOTAL_CELL_SIZE);
+    const row = Math.floor(canvasY / TOTAL_CELL_SIZE);
 
     const gridX = col + minX;
     const gridY = row + minY;
@@ -495,8 +503,14 @@ function handleCanvasMouseDown(event) {
                 selectedTileIds = [];
 
                 isDrawingRect = true;
-                // Use offsetX/Y for scroll-proof coordinates
-                rectStartPoint = { x: event.offsetX, y: event.offsetY };
+                // Manual calculation for scroll-proof coordinates
+                const rect = dom.viewContainer.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+                rectStartPoint = {
+                    x: mouseX + dom.viewContainer.scrollLeft,
+                    y: mouseY + dom.viewContainer.scrollTop
+                };
 
                 dom.selectedTileIdSpan.textContent = '-';
                 drawTiles();
@@ -598,7 +612,13 @@ function handleCanvasMouseMove(event) {
     }
 
     if (isDrawingRect) {
-        rectCurrentPoint = { x: event.offsetX, y: event.offsetY };
+        const rect = dom.viewContainer.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        rectCurrentPoint = {
+            x: mouseX + dom.viewContainer.scrollLeft,
+            y: mouseY + dom.viewContainer.scrollTop
+        };
         drawTiles();
     }
 }
@@ -613,7 +633,13 @@ function handleCanvasMouseUp(event) {
 
     if (isDrawingRect) {
         isDrawingRect = false;
-        const rectEndPoint = { x: event.offsetX, y: event.offsetY };
+        const rect = dom.viewContainer.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const rectEndPoint = {
+            x: mouseX + dom.viewContainer.scrollLeft,
+            y: mouseY + dom.viewContainer.scrollTop
+        };
 
         const selectionRect = {
             x1: Math.min(rectStartPoint.x, rectEndPoint.x),
