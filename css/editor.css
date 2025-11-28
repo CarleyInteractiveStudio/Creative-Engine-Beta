@@ -3084,3 +3084,49 @@ body {
     margin-top: 5px;
     word-break: break-all;
 }
+
+/* --- Tile Palette Toolbar Bubble --- */
+.toolbar-bubble-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background-color: var(--bg-primary);
+    border-radius: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    gap: 15px;
+}
+
+.tool-bubble {
+    display: flex;
+    gap: 4px;
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 3px;
+}
+
+.tool-bubble .tool-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 1em;
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+    width: 36px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-bubble .tool-btn:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.tool-bubble .tool-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
