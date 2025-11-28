@@ -151,21 +151,21 @@ export function getSelectedTile() {
             return {
                 spriteName: tile.spriteName,
                 imageData: tile.imageData,
-                coord: tile.coord // Keep original coord for placement logic
+                coord: tile.coord
             };
-        }).filter(Boolean); // Filter out any nulls if an ID was invalid
+        }).filter(Boolean);
     }
-    // For brush tool, return the single selected tile in an array for consistency
+    // For brush tool, CONSISTENTLY return the single selected tile in an array
     else if (activeTool === 'tile-brush' && selectedTileId !== -1 && allTiles[selectedTileId]) {
         const tile = allTiles[selectedTileId];
-        return [{
+        return [{ // Always return an array
             spriteName: tile.spriteName,
             imageData: tile.imageData,
             coord: tile.coord
         }];
     }
     // No valid selection
-    return null;
+    return []; // Return an empty array instead of null for consistency
 }
 
 export function getActiveTool() {

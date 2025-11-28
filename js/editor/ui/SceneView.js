@@ -139,12 +139,9 @@ function paintTile(e) {
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     if (!tilemap) return;
 
-    // In the new system, the Tilemap must be a child of a Grid Materia.
-    const gridMateria = SceneManager.currentScene.getMateriaById(selectedMateria.parent);
-    const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
-
+    const grid = findParentGrid(selectedMateria);
     if (!grid) {
-        console.warn("Selected Tilemap is not a child of a Materia with a Grid component.");
+        // No need to warn every mouse move, just exit.
         return;
     }
 
@@ -153,32 +150,32 @@ function paintTile(e) {
     const tileKey = `${gridPos.x},${gridPos.y}`;
 
     const tool = TilePaletteWindow.getActiveTool();
-    const selectedTileData = TilePaletteWindow.getSelectedTile(); // This now returns an object
 
-    switch (tool) {
-        case 'tile-brush':
-            if (selectedTileData) {
-                // The new format requires storing the necessary data directly.
-                // For now, we'll store the object returned by the palette.
-                tilemap.tileData.set(tileKey, selectedTileData);
-            }
-            break;
-        case 'tile-eraser':
-            if (tilemap.tileData.has(tileKey)) {
-                tilemap.tileData.delete(tileKey);
-            }
-            break;
+    if (tool === 'tile-brush') {
+        const selectedTiles = TilePaletteWindow.getSelectedTile(); // Returns an array of tiles
+        if (selectedTiles && selectedTiles.length > 0) {
+            // For the brush, we only use the first selected tile.
+            const tileToPaint = selectedTiles[0];
+            tilemap.tileData.set(tileKey, {
+                spriteName: tileToPaint.spriteName,
+                imageData: tileToPaint.imageData
+            });
+        }
+    } else if (tool === 'tile-eraser') {
+        if (tilemap.tileData.has(tileKey)) {
+            tilemap.tileData.delete(tileKey);
+        }
     }
 
-    // Manually trigger a re-render of the tilemap component to see changes immediately.
     const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
     if (tilemapRenderer) {
         tilemapRenderer.setDirty();
     }
 }
 
+
 function fillTileRect(endWorldPos) {
-    const tilemap = getSelectedMateria() ? getSelectedMateria().getComponent(Components.Tilemap) : null;
+    const tilemap = getSelectedMateria()?.getComponent(Components.Tilemap);
     const grid = getSelectedGrid();
     if (!tilemap || !grid) {
         isDrawingRect = false;
@@ -186,8 +183,15 @@ function fillTileRect(endWorldPos) {
     }
 
     const endGridPos = worldToGrid(endWorldPos, grid);
-    const selectedTileId = TilePaletteWindow.getSelectedTile();
-    if (selectedTileId === -1) return;
+    const selectedTiles = TilePaletteWindow.getSelectedTile(); // This is now an array
+    if (!selectedTiles || selectedTiles.length === 0) {
+        isDrawingRect = false;
+        return;
+    }
+
+    // For the rectangle fill, we will only use the first tile in the selection.
+    // The multi-tile "stamp" tool will be implemented separately.
+    const tileToPaint = selectedTiles[0];
 
     const startX = Math.min(rectStartGridPos.x, endGridPos.x);
     const startY = Math.min(rectStartGridPos.y, endGridPos.y);
@@ -196,9 +200,18 @@ function fillTileRect(endWorldPos) {
 
     for (let x = startX; x <= endX; x++) {
         for (let y = startY; y <= endY; y++) {
-            tilemap.tileData.set(`${x},${y}`, selectedTileId);
+            tilemap.tileData.set(`${x},${y}`, {
+                spriteName: tileToPaint.spriteName,
+                imageData: tileToPaint.imageData
+            });
         }
     }
+
+    const tilemapRenderer = getSelectedMateria()?.getComponent(Components.TilemapRenderer);
+    if (tilemapRenderer) {
+        tilemapRenderer.setDirty();
+    }
+
     console.log(`Filled rectangle from (${startX},${startY}) to (${endX},${endY})`);
 }
 
@@ -222,8 +235,9 @@ function findParentGrid(materia) {
 }
 
 function worldToGrid(worldPos, grid) {
-    const gridX = Math.floor(worldPos.x / grid.cellWidth);
-    const gridY = Math.floor(worldPos.y / grid.cellHeight);
+    // Correctly reference the cellSize object properties
+    const gridX = Math.floor(worldPos.x / grid.cellSize.x);
+    const gridY = Math.floor(worldPos.y / grid.cellSize.y);
     return { x: gridX, y: gridY };
 }
 
@@ -240,41 +254,63 @@ function screenToWorld(screenX, screenY) {
 
 export function drawOverlay() {
     if (!renderer) return;
+    const ctx = renderer.ctx;
+    const grid = getSelectedGrid();
+    const paletteTool = TilePaletteWindow.getActiveTool();
+    const tileTools = ['tile-brush', 'tile-eraser', 'tile-rect-fill'];
 
-    if (isDrawingRect) {
-        const grid = getSelectedGrid();
-        if (!grid) return;
 
-        // Start position is already in grid coordinates. Convert back to world space for drawing.
-        const startWorldX = rectStartGridPos.x * grid.cellWidth;
-        const startWorldY = rectStartGridPos.y * grid.cellHeight;
+    // --- Draw Rectangle Selection Preview ---
+    if (isDrawingRect && grid) {
+        // Correctly use cellSize.x and cellSize.y
+        const startWorldX = rectStartGridPos.x * grid.cellSize.x;
+        const startWorldY = rectStartGridPos.y * grid.cellSize.y;
 
-        // Current mouse position is in screen space. Convert to world, then to grid.
         const currentWorldPos = screenToWorld(currentMousePosition.x, currentMousePosition.y);
         const currentGridPos = worldToGrid(currentWorldPos, grid);
 
-        // End position of the rectangle is the corner of the grid cell under the mouse.
-        const endWorldX = (currentGridPos.x + 1) * grid.cellWidth;
-        const endWorldY = (currentGridPos.y + 1) * grid.cellHeight;
+        const endWorldX = (currentGridPos.x + (currentGridPos.x >= rectStartGridPos.x ? 1 : 0)) * grid.cellSize.x;
+        const endWorldY = (currentGridPos.y + (currentGridPos.y >= rectStartGridPos.y ? 1 : 0)) * grid.cellSize.y;
 
-        // Determine top-left and bottom-right corners for drawing
+
         const rectX = Math.min(startWorldX, endWorldX);
         const rectY = Math.min(startWorldY, endWorldY);
         const rectWidth = Math.abs(startWorldX - endWorldX);
         const rectHeight = Math.abs(startWorldY - endWorldY);
 
-        // Use renderer's context to draw directly on the canvas
-        const ctx = renderer.ctx;
         ctx.save();
-        ctx.fillStyle = 'rgba(100, 150, 255, 0.4)'; // Semi-transparent blue
-        ctx.strokeStyle = 'rgba(180, 210, 255, 1)'; // Lighter blue for border
-        ctx.lineWidth = 2 / renderer.camera.zoom; // Make line width scale with zoom
+        ctx.fillStyle = 'rgba(100, 150, 255, 0.4)';
+        ctx.strokeStyle = 'rgba(180, 210, 255, 1)';
+        ctx.lineWidth = 2 / renderer.camera.zoom;
 
         ctx.beginPath();
         ctx.rect(rectX, rectY, rectWidth, rectHeight);
         ctx.fill();
         ctx.stroke();
+        ctx.restore();
+    }
+    // --- Draw Hover Highlight for Brush and Eraser ---
+    else if (tileTools.includes(paletteTool) && grid && !isDrawingRect) {
+        const worldPos = screenToWorld(currentMousePosition.x, currentMousePosition.y);
+        const gridPos = worldToGrid(worldPos, grid);
 
+        const cellWorldX = gridPos.x * grid.cellSize.x;
+        const cellWorldY = gridPos.y * grid.cellSize.y;
+
+        ctx.save();
+        if (paletteTool === 'tile-eraser') {
+            ctx.fillStyle = 'rgba(255, 80, 80, 0.4)'; // Red for eraser
+            ctx.strokeStyle = 'rgba(255, 150, 150, 1)';
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 100, 0.4)'; // Yellow for brush
+            ctx.strokeStyle = 'rgba(255, 255, 180, 1)';
+        }
+        ctx.lineWidth = 2 / renderer.camera.zoom;
+
+        ctx.beginPath();
+        ctx.rect(cellWorldX, cellWorldY, grid.cellSize.x, grid.cellSize.y);
+        ctx.fill();
+        ctx.stroke();
         ctx.restore();
     }
 }

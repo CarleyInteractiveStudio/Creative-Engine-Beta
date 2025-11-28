@@ -719,7 +719,7 @@ export class TilemapCollider2D extends Leyes {
 export class Grid extends Leyes {
     constructor(materia) {
         super(materia);
-        this.cellSize = { x: 32, y: 32 };
+        this.cellSize = { x: 32, y: 32 }; // Changed from cellWidth/cellHeight
         this.cellLayout = 'Rectangular'; // Future: Isometric, Hexagonal
     }
 
