@@ -483,22 +483,18 @@ function handleCanvasMouseDown(event) {
             }
         } else { // Paint Mode
             if (activeTool === 'tile-brush') {
-                // Ensure multi-selection is cleared before single selection
+                // MY CHANGE: Clear multi-select when using single-select brush
                 selectedTileIds = [];
 
                 const clickedIndex = getTileIndexFromEvent(event);
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                    // Update counter
-                    if (selectedTileId === -1) {
-                        dom.selectedTileIdSpan.textContent = '-';
-                    } else {
-                        dom.selectedTileIdSpan.textContent = `1 Tile`;
-                    }
+                    // MAIN's CHANGE: Display sprite name instead of count.
+                    dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : (allTiles[selectedTileId]?.spriteName || '1 Tile');
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {
-                // Ensure single-selection is cleared before multi-selection
+                // MY CHANGE: Clear single-select when using multi-select rect
                 selectedTileId = -1;
                 selectedTileIds = [];
 
@@ -507,6 +503,7 @@ function handleCanvasMouseDown(event) {
                 const scrollX = dom.viewContainer.scrollLeft;
                 const scrollY = dom.viewContainer.scrollTop;
                 rectStartPoint = { x: event.clientX - rect.left + scrollX, y: event.clientY - rect.top + scrollY };
+
                 dom.selectedTileIdSpan.textContent = '-';
                 drawTiles();
             }
@@ -657,14 +654,14 @@ function handleCanvasMouseUp(event) {
                 y2: ((gridY - minY) * TOTAL_CELL_SIZE) + TOTAL_CELL_SIZE
             };
 
-            // Check for intersection instead of center point
+            // MY CHANGE: Use intersection for selection
             if (selectionRect.x1 < tileRect.x2 && selectionRect.x2 > tileRect.x1 &&
                 selectionRect.y1 < tileRect.y2 && selectionRect.y2 > tileRect.y1) {
                 selectedTileIds.push(index);
             }
         });
 
-        // Update counter
+        // MY CHANGE: Use "Tiles" for counter consistency
         if (selectedTileIds.length === 0) {
             dom.selectedTileIdSpan.textContent = '-';
         } else {
@@ -765,13 +762,9 @@ function drawPaintMode() {
 
         ctx.drawImage(tile.image, x + PADDING / 2, y + PADDING / 2, TILE_SIZE, TILE_SIZE);
 
-        // --- Visual Selection Logic ---
-        let isSelected = false;
-        if (activeTool === 'tile-brush') {
-            isSelected = (index === selectedTileId);
-        } else if (activeTool === 'tile-rectangle-fill') {
-            isSelected = selectedTileIds.includes(index);
-        }
+        // MERGED CHANGE: Using concise version from main but with my multi-tool logic
+        const isSelected = (activeTool === 'tile-brush' && index === selectedTileId) ||
+                           (activeTool === 'tile-rectangle-fill' && selectedTileIds.includes(index));
 
         if (isSelected) {
             ctx.strokeStyle = 'rgba(255, 215, 0, 1)';
