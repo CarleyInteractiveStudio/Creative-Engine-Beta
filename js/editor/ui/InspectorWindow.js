@@ -713,13 +713,53 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
                 </div>
             `;
+        } else if (ley instanceof Components.Grid) {
+            componentHTML = `
+                <div class="component-inspector">
+                    <div class="component-header"><span class="component-icon">⊞</span><h4>Grid</h4></div>
+                    <div class="component-content">
+                        <div class="prop-row-multi">
+                            <label>Cell Size</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" step="1" data-component="Grid" data-prop="cellSize.x" value="${ley.cellSize.x}" title="Cell Width">
+                                <input type="number" class="prop-input" step="1" data-component="Grid" data-prop="cellSize.y" value="${ley.cellSize.y}" title="Cell Height">
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.Tilemap) {
+             componentHTML = `
+                <div class="component-inspector">
+                    <div class="component-header"><span class="component-icon">🗺️</span><h4>Tilemap</h4></div>
+                    <div class="component-content">
+                         <p class="field-description">Este componente almacena los datos de los tiles. Se edita pintando en la vista de escena.</p>
+                         <p class="field-description" style="margin-top: 8px;"><strong>Tiles pintados:</strong> ${ley.tileData.size}</p>
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.TilemapRenderer) {
+            componentHTML = `
+                <div class="component-inspector">
+                    <div class="component-header"><span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4></div>
+                    <div class="component-content">
+                        <div class="prop-row-multi">
+                            <label>Sorting Layer</label>
+                            <div class="prop-inputs">
+                                <input type="text" class="prop-input" data-component="TilemapRenderer" data-prop="sortingLayer" value="${ley.sortingLayer}">
+                            </div>
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Order in Layer</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" data-component="TilemapRenderer" data-prop="orderInLayer" value="${ley.orderInLayer}">
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
         } else if (ley instanceof Components.TilemapCollider2D) {
             const tilemap = selectedMateria.getComponent(Components.Tilemap);
             let layerOptions = '<option value="-1">Ninguna</option>';
             if (tilemap) {
-                layerOptions = tilemap.layers.map((layer, index) =>
-                    `<option value="${index}" ${ley.sourceLayerIndex === index ? 'selected' : ''}>${index}: ${layer.name}</option>`
-                ).join('');
+                // This logic is now obsolete as tilemap doesn't have layers
             }
 
             componentHTML = `
@@ -727,15 +767,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
                 </div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label for="collider-source-layer">Capa de Origen</label>
-                        <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
-                            ${layerOptions}
-                        </select>
-                    </div>
-                    <hr>
-                    <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
-                    <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
+                    <p class="field-description">Las propiedades de colisión se configurarán aquí en el futuro.</p>
                 </div>
             `;
         } else if (ley instanceof Components.SpriteLight2D) {
