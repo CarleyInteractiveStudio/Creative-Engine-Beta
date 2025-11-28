@@ -136,8 +136,8 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        const gridMateria = SceneManager.currentScene.getMateriaById(tilemapRenderer.materia.parent);
-        const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
+        const gridMateria = SceneManager.currentScene.findMateriaById(tilemapRenderer.materia.parent);
+        const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
 
         if (!tilemap || !transform || !grid) {
             return;
@@ -152,6 +152,7 @@ export class Renderer {
             if (image && image.complete && image.naturalWidth > 0) {
                 const [x, y] = coord.split(',').map(Number);
 
+                // Correctly use the cellSize object
                 const dx = x * grid.cellSize.x;
                 const dy = y * grid.cellSize.y;
 

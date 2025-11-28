@@ -227,7 +227,7 @@ function getSelectedGrid() {
 
 function findParentGrid(materia) {
     if (!materia.parent) return null;
-    const parentMateria = SceneManager.currentScene.getMateriaById(materia.parent);
+    const parentMateria = SceneManager.currentScene.findMateriaById(materia.parent);
     if (!parentMateria) return null;
 
     const grid = parentMateria.getComponent(Components.Grid);
