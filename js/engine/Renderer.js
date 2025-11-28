@@ -132,38 +132,42 @@ export class Renderer {
         this.ctx.fillText(transformedText, x, y);
     }
 
-    drawTilemap(tilemapRenderer) {
+    drawTilemap(tilemapRenderer, grid) {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const transform = tilemapRenderer.materia.getComponent(Transform);
-
-        const gridMateria = SceneManager.currentScene.getMateriaById(tilemapRenderer.materia.parent);
-        const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
+        const transform = grid.materia.getComponent(Transform); // The Grid's transform is the origin
 
         if (!tilemap || !transform || !grid) {
+            console.warn("Attempted to draw a tilemap without a valid Tilemap, Transform, or Grid component.", {tilemap, transform, grid});
             return;
         }
 
         this.ctx.save();
+
+        // The origin for drawing is the Grid's position.
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
 
+        const { cellSize } = grid;
+
+        // Iterate over the tile data and draw each tile
         for (const [coord, tileData] of tilemap.tileData.entries()) {
             const image = tilemapRenderer.getImageForTile(tileData);
+
+            // Only draw if the image is loaded and valid
             if (image && image.complete && image.naturalWidth > 0) {
                 const [x, y] = coord.split(',').map(Number);
 
-                const dx = x * grid.cellSize.x;
-                const dy = y * grid.cellSize.y;
+                // Calculate the top-left position of the tile based on its grid coordinates
+                const drawX = x * cellSize.x;
+                const drawY = y * cellSize.y;
 
-                this.ctx.drawImage(
-                    image,
-                    dx, dy,
-                    grid.cellSize.x, grid.cellSize.y
-                );
+                this.ctx.drawImage(image, drawX, drawY, cellSize.x, cellSize.y);
             }
         }
 
         this.ctx.restore();
+        // Mark as no longer dirty after rendering
+        tilemapRenderer.isDirty = false;
     }
 
     // --- Lighting Methods ---
