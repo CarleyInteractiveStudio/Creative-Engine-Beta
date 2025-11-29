@@ -117,6 +117,12 @@ async function handleInspectorChange(e) {
             grid.isSimplified = e.target.checked;
             needsUpdate = true;
         }
+    } else if (e.target.matches('#tilemap-manual-size-toggle')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            tilemap.manualSize = e.target.checked;
+            needsUpdate = true;
+        }
     } else if (e.target.matches('#materia-active-toggle')) {
         selectedMateria.isActive = e.target.checked;
         updateSceneCallback(); // This triggers a visual update in the scene/hierarchy
@@ -672,49 +678,39 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Tilemap) {
+            let sizeInputHTML = '';
+            if (ley.manualSize) {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                `;
+            } else {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
+                            <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                        </div>
+                    </div>
+                `;
+            }
+
             componentHTML = `
                 <div class="component-header">
                     <span class="component-icon">🗺️</span><h4>Tilemap</h4>
                 </div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Palette</label>
-                        <div class="asset-dropper" data-component="Tilemap" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
-                            <span class="asset-dropper-text">${ley.palettePath || 'None'}</span>
-                        </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
+                        <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
                     </div>
-                    <hr>
-                    <div class="prop-row-multi">
-                        <label>Tile Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileWidth" value="${ley.tileWidth}" title="Tile Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileHeight" value="${ley.tileHeight}" title="Tile Height">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Grid Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="columns" value="${ley.columns}" title="Columns">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="rows" value="${ley.rows}" title="Rows">
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="layer-manager-ui">
-                        <div class="layer-list-header">
-                            <h5>Capas</h5>
-                            <div class="layer-controls">
-                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
-                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
-                            </div>
-                        </div>
-                        <div class="layer-list">
-                            ${ley.layers.map((layer, index) => `
-                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>${layer.name}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                    ${sizeInputHTML}
                 </div>
             `;
         } else if (ley instanceof Components.TilemapRenderer) {

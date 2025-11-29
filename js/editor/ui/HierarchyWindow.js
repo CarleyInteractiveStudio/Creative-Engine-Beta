@@ -12,6 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
+import { createBaseMateria, generateUniqueName } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -81,36 +82,6 @@ export function updateHierarchy() {
 }
 
 // --- Hierarchy Creation Functions ---
-function generateUniqueName(baseName) {
-    const allMaterias = SceneManager.currentScene.getAllMaterias();
-    const existingNames = new Set(allMaterias.map(m => m.name));
-
-    if (!existingNames.has(baseName)) {
-        return baseName;
-    }
-
-    let counter = 1;
-    let newName = `${baseName} (${counter})`;
-    while (existingNames.has(newName)) {
-        counter++;
-        newName = `${baseName} (${counter})`;
-    }
-    return newName;
-}
-
-function createBaseMateria(name, parent = null) {
-    const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
-
-    if (parent) {
-        parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
-    }
-    // La actualización y selección se harán centralmente
-    return newMateria;
-}
-
 function createTilemapObject(parent = null) {
     // Create the parent Grid object
     const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);

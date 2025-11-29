@@ -756,66 +756,48 @@ export function drawOverlay() {
     // Draw tilemap colliders
     drawTilemapColliders();
 
-    // Draw grid for selected Tilemap
-    drawTilemapGrid();
+    // Draw outline for selected Tilemap
+    drawTilemapOutline();
 }
 
-function drawTilemapGrid() {
+function drawTilemapOutline() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    // Find the Grid component, either on the selected object or its parent
-    let grid = selectedMateria.getComponent(Components.Grid);
-    if (!grid && selectedMateria.parent) {
-        grid = selectedMateria.parent.getComponent(Components.Grid);
-    }
-    if (!grid) return;
-
-    // Find the Tilemap component to get dimensions
+    // Find the Tilemap component on the selected object or its children
     let tilemap = selectedMateria.getComponent(Components.Tilemap);
+    let tilemapMateria = selectedMateria;
     if (!tilemap) {
-        // If we selected the Grid, find the Tilemap in its children
         const childWithTilemap = selectedMateria.children.find(c => c.getComponent(Components.Tilemap));
         if (childWithTilemap) {
             tilemap = childWithTilemap.getComponent(Components.Tilemap);
+            tilemapMateria = childWithTilemap;
         }
     }
-    if (!tilemap) return; // Cannot draw grid without tilemap dimensions
+    if (!tilemap) return;
 
-    // Find the transform of the Grid object
-    const gridMateria = grid.materia;
-    const transform = gridMateria.getComponent(Components.Transform);
+    // Find the Grid component in the parent
+    const grid = tilemapMateria.parent?.getComponent(Components.Grid);
+    if (!grid) return;
+
+    const transform = tilemapMateria.getComponent(Components.Transform);
     if (!transform) return;
 
     const { ctx, camera } = renderer;
     const { cellSize } = grid;
-    const { columns, rows } = tilemap;
+    const { width, height } = tilemap;
 
-    const mapWidth = columns * cellSize.x;
-    const mapHeight = rows * cellSize.y;
-    const mapTopLeftX = transform.x - mapWidth / 2;
-    const mapTopLeftY = transform.y - mapHeight / 2;
+    const mapWidth = width * cellSize.x;
+    const mapHeight = height * cellSize.y;
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.lineWidth = 1 / camera.effectiveZoom;
-    ctx.beginPath();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
 
-    // Draw vertical lines
-    for (let i = 0; i <= columns; i++) {
-        const x = mapTopLeftX + i * cellSize.x;
-        ctx.moveTo(x, mapTopLeftY);
-        ctx.lineTo(x, mapTopLeftY + mapHeight);
-    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.strokeRect(-mapWidth / 2, -mapHeight / 2, mapWidth, mapHeight);
 
-    // Draw horizontal lines
-    for (let i = 0; i <= rows; i++) {
-        const y = mapTopLeftY + i * cellSize.y;
-        ctx.moveTo(mapTopLeftX, y);
-        ctx.lineTo(mapTopLeftX + mapWidth, y);
-    }
-
-    ctx.stroke();
     ctx.restore();
 }
 

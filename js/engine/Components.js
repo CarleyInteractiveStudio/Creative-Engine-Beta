@@ -577,12 +577,18 @@ registerComponent('AudioSource', AudioSource);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
+        this.width = 20;
+        this.height = 30;
+        this.manualSize = false;
         // The tileData is now a Map where keys are "x,y" and values are { spriteName, imageData }
         this.tileData = new Map();
     }
 
     clone() {
         const newTilemap = new Tilemap(null);
+        newTilemap.width = this.width;
+        newTilemap.height = this.height;
+        newTilemap.manualSize = this.manualSize;
         // Deep copy the map
         newTilemap.tileData = new Map(JSON.parse(JSON.stringify(Array.from(this.tileData))));
         return newTilemap;
