@@ -21,7 +21,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
-    'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
+    'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
