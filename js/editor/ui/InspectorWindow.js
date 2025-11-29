@@ -16,6 +16,7 @@ let updateAssetBrowserCallback;
 let createAssetCallback;
 let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
+let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
 const markdownConverter = new showdown.Converter();
 
@@ -45,6 +46,7 @@ export function initialize(dependencies) {
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
     createAssetCallback = dependencies.createAssetCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
+    enterAddTilemapLayerMode = dependencies.enterAddTilemapLayerMode;
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
     dom.inspectorContent.addEventListener('input', handleInspectorInput);
@@ -267,10 +269,7 @@ function handleInspectorClick(e) {
     if (e.target.matches('[data-action="add-layer"]')) {
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
         if (tilemap) {
-            // For now, add a new layer to the right of the last one
-            const lastLayer = tilemap.layers[tilemap.layers.length - 1];
-            tilemap.addLayer(lastLayer.position.x + 1, lastLayer.position.y);
-            updateInspector();
+            enterAddTilemapLayerMode();
         }
     }
 

@@ -16,6 +16,7 @@ let getSelectedTile;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
+let isAddingLayer = false;
 let isDragging = false;
 let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
@@ -376,6 +377,12 @@ export function initialize(dependencies) {
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isAddingLayer) {
+            exitAddLayerMode();
+        }
+    });
+
     dom.sceneCanvas.addEventListener('wheel', (event) => {
         event.preventDefault(); // Stop the browser from scrolling the page
 
@@ -395,6 +402,56 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        // --- Layer Placement Logic ---
+        if (isAddingLayer) {
+            e.stopPropagation();
+            if (e.button === 0) { // Left-click to place
+                // Find where the preview would place the layer and add it
+                // (This re-uses the preview logic, which could be optimized later)
+                const selectedMateria = getSelectedMateria();
+                const tilemap = selectedMateria?.getComponent(Components.Tilemap);
+                const transform = selectedMateria?.getComponent(Components.Transform);
+                const grid = selectedMateria?.parent?.getComponent(Components.Grid);
+
+                if (tilemap && transform && grid) {
+                    const layerWidth = tilemap.width * grid.cellSize.x;
+                    const layerHeight = tilemap.height * grid.cellSize.y;
+                    const mousePos = InputManager.getMousePositionInCanvas();
+                    const worldMouse = screenToWorld(mousePos.x, mousePos.y);
+
+                    let closestSnap = null;
+                    let minDistance = Infinity;
+
+                    for (const layer of tilemap.layers) {
+                        const snapPositions = [
+                            { x: layer.position.x, y: layer.position.y - 1 },
+                            { x: layer.position.x, y: layer.position.y + 1 },
+                            { x: layer.position.x - 1, y: layer.position.y },
+                            { x: layer.position.x + 1, y: layer.position.y }
+                        ];
+
+                        for (const pos of snapPositions) {
+                            if (tilemap.layers.some(l => l.position.x === pos.x && l.position.y === pos.y)) continue;
+                            const snapWorldX = transform.x + pos.x * layerWidth;
+                            const snapWorldY = transform.y + pos.y * layerHeight;
+                            const distance = Math.hypot(worldMouse.x - snapWorldX, worldMouse.y - snapWorldY);
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestSnap = pos;
+                            }
+                        }
+                    }
+                    if (closestSnap) {
+                        tilemap.addLayer(closestSnap.x, closestSnap.y);
+                        updateInspector();
+                    }
+                }
+            }
+            // Exit mode on any click (left or right)
+            exitAddLayerMode();
+            return;
+        }
+
         // --- Panning Logic (Middle or Right-click) ---
         if (e.button === 1 || e.button === 2) {
             e.preventDefault();
@@ -518,6 +575,16 @@ export function initialize(dependencies) {
     document.getElementById('tool-rotate').addEventListener('click', () => setActiveTool('rotate'));
     document.getElementById('tool-tile-brush').addEventListener('click', () => setActiveTool('tile-brush'));
     document.getElementById('tool-tile-eraser').addEventListener('click', () => setActiveTool('tile-eraser'));
+}
+
+export function enterAddLayerMode() {
+    isAddingLayer = true;
+    dom.sceneCanvas.style.cursor = 'copy';
+}
+
+function exitAddLayerMode() {
+    isAddingLayer = false;
+    dom.sceneCanvas.style.cursor = 'default';
 }
 
 export function update() {
@@ -741,11 +808,85 @@ function drawComponentGrids() {
     ctx.restore();
 }
 
+function drawLayerPlacementPreview() {
+    if (!isAddingLayer) return;
+
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const tilemap = selectedMateria.getComponent(Components.Tilemap);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
+
+    const grid = selectedMateria.parent?.getComponent(Components.Grid);
+    if (!grid) return;
+
+    const { ctx, camera } = renderer;
+    const { cellSize } = grid;
+    const { width, height, layers } = tilemap;
+
+    const layerWidth = width * cellSize.x;
+    const layerHeight = height * cellSize.y;
+
+    const mousePos = InputManager.getMousePositionInCanvas();
+    const worldMouse = screenToWorld(mousePos.x, mousePos.y);
+
+    // Find the closest layer and the snap position
+    let closestSnap = null;
+    let minDistance = Infinity;
+
+    for (const layer of layers) {
+        const layerCenterX = transform.x + layer.position.x * layerWidth;
+        const layerCenterY = transform.y + layer.position.y * layerHeight;
+
+        const snapPositions = [
+            { x: layer.position.x, y: layer.position.y - 1 }, // Top
+            { x: layer.position.x, y: layer.position.y + 1 }, // Bottom
+            { x: layer.position.x - 1, y: layer.position.y }, // Left
+            { x: layer.position.x + 1, y: layer.position.y }  // Right
+        ];
+
+        for (const pos of snapPositions) {
+            // Check if a layer already exists at this position
+            if (layers.some(l => l.position.x === pos.x && l.position.y === pos.y)) {
+                continue;
+            }
+
+            const snapWorldX = transform.x + pos.x * layerWidth;
+            const snapWorldY = transform.y + pos.y * layerHeight;
+            const distance = Math.hypot(worldMouse.x - snapWorldX, worldMouse.y - snapWorldY);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestSnap = pos;
+            }
+        }
+    }
+
+    if (closestSnap) {
+        const previewX = transform.x + closestSnap.x * layerWidth;
+        const previewY = transform.y + closestSnap.y * layerHeight;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+
+        ctx.beginPath();
+        ctx.rect(previewX - layerWidth / 2, previewY - layerHeight / 2, layerWidth, layerHeight);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
     drawEditorGrid();
     drawComponentGrids();
+    drawLayerPlacementPreview();
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
