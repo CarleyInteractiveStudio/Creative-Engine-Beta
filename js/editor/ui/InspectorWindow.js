@@ -664,43 +664,12 @@ async function updateInspectorForMateria(selectedMateria) {
                     <span class="component-icon">🗺️</span><h4>Tilemap</h4>
                 </div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Palette</label>
-                        <div class="asset-dropper" data-component="Tilemap" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
-                            <span class="asset-dropper-text">${ley.palettePath || 'None'}</span>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="prop-row-multi">
-                        <label>Tile Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileWidth" value="${ley.tileWidth}" title="Tile Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileHeight" value="${ley.tileHeight}" title="Tile Height">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Grid Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="columns" value="${ley.columns}" title="Columns">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="rows" value="${ley.rows}" title="Rows">
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="layer-manager-ui">
-                        <div class="layer-list-header">
-                            <h5>Capas</h5>
-                            <div class="layer-controls">
-                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
-                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
-                            </div>
-                        </div>
-                        <div class="layer-list">
-                            ${ley.layers.map((layer, index) => `
-                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>${layer.name}</span>
-                                </div>
-                            `).join('')}
-                        </div>
+                    <p class="field-description">
+                        Este componente almacena los datos de los tiles para ser dibujados por un TilemapRenderer.
+                    </p>
+                    <div class="inspector-row">
+                        <label>Tiles Pintados</label>
+                        <input type="text" value="${ley.tileData.size}" readonly>
                     </div>
                 </div>
             `;
