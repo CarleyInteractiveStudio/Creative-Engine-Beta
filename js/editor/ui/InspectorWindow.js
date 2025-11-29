@@ -25,7 +25,7 @@ const availableComponents = {
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody, Components.BoxCollider, Components.TilemapCollider2D],
+    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
