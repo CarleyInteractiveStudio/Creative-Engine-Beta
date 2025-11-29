@@ -818,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dy = -dHeight * pivotY;
 
                     ctx.save();
-                    ctx.translate(transform.x, transform.y);
+                    ctx.translate(transform.position.x, transform.position.y);
                     ctx.rotate(transform.rotation * Math.PI / 180);
                     ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
                     ctx.restore();

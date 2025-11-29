@@ -12,10 +12,10 @@ export class PhysicsSystem {
             const rigidbody = materia.getComponent(Rigidbody2D);
             const transform = materia.getComponent(Transform);
 
-            if (rigidbody && transform && rigidbody.bodyType === 'dynamic') {
+            if (rigidbody && transform && rigidbody.bodyType === 'Dynamic') {
                 rigidbody.velocity.y += this.gravity.y * deltaTime;
-                transform.x += rigidbody.velocity.x * deltaTime;
-                transform.y += rigidbody.velocity.y * deltaTime;
+                transform.position.x += rigidbody.velocity.x * deltaTime;
+                transform.position.y += rigidbody.velocity.y * deltaTime;
             }
         }
 
@@ -31,15 +31,15 @@ export class PhysicsSystem {
                 const transformB = materiaB.getComponent(Transform);
                 const colliderB = materiaB.getComponent(BoxCollider2D);
 
-                const leftA = transformA.x - colliderA.width / 2;
-                const rightA = transformA.x + colliderA.width / 2;
-                const topA = transformA.y - colliderA.height / 2;
-                const bottomA = transformA.y + colliderA.height / 2;
+                const leftA = transformA.position.x - colliderA.size.x / 2;
+                const rightA = transformA.position.x + colliderA.size.x / 2;
+                const topA = transformA.position.y - colliderA.size.y / 2;
+                const bottomA = transformA.position.y + colliderA.size.y / 2;
 
-                const leftB = transformB.x - colliderB.width / 2;
-                const rightB = transformB.x + colliderB.width / 2;
-                const topB = transformB.y - colliderB.height / 2;
-                const bottomB = transformB.y + colliderB.height / 2;
+                const leftB = transformB.position.x - colliderB.size.x / 2;
+                const rightB = transformB.position.x + colliderB.size.x / 2;
+                const topB = transformB.position.y - colliderB.size.y / 2;
+                const bottomB = transformB.position.y + colliderB.size.y / 2;
 
                 if (rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB) {
                     console.log(`Colisión detectada entre: ${materiaA.name} y ${materiaB.name}`);

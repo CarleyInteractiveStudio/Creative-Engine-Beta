@@ -46,8 +46,8 @@ export function getOOB(materia) {
 
         // Apply translation
         return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
+            x: rotatedX + transform.position.x,
+            y: rotatedY + transform.position.y
         };
     });
 
@@ -100,8 +100,8 @@ export function getCameraViewBox(cameraMateria, aspect) {
         const rotatedX = corner.x * cosA - corner.y * sinA;
         const rotatedY = corner.x * sinA + corner.y * cosA;
         return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
+            x: rotatedX + transform.position.x,
+            y: rotatedY + transform.position.y
         };
     });
 

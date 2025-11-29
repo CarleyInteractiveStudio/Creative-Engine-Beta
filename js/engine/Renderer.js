@@ -65,7 +65,7 @@ export class Renderer {
                 effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
             }
 
-            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom };
+            activeCamera = { x: cameraTransform.position.x, y: cameraTransform.position.y, effectiveZoom };
             transform = cameraTransform;
 
         } else if (this.isEditor) { // Editor view rendering with its own navigation camera
@@ -144,7 +144,7 @@ export class Renderer {
         }
 
         this.ctx.save();
-        this.ctx.translate(transform.x, transform.y);
+        this.ctx.translate(transform.position.x, transform.position.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
 
         for (const [coord, tileData] of tilemap.tileData.entries()) {
@@ -185,7 +185,7 @@ export class Renderer {
         const color = light.color; // Assuming hex format for now
         const intensity = light.intensity;
 
-        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
+        const gradient = ctx.createRadialGradient(transform.position.x, transform.position.y, 0, transform.position.x, transform.position.y, radius);
 
         // This creates a standard additive light falloff
         gradient.addColorStop(0, `${color}FF`); // Full color at center
@@ -202,7 +202,8 @@ export class Renderer {
 
     drawSpotLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation } = transform;
+        const { position, rotation } = transform;
+        const { x, y } = position;
         const { radius, color, intensity, angle } = light;
 
         // Convert angles to radians for canvas API
@@ -235,7 +236,8 @@ export class Renderer {
 
     drawFreeformLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation } = transform;
+        const { position, rotation } = transform;
+        const { x, y } = position;
         const { vertices, color, intensity } = light;
 
         if (!vertices || vertices.length < 3) return;
@@ -263,7 +265,8 @@ export class Renderer {
 
     drawSpriteLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation, scale } = transform;
+        const { position, rotation, scale } = transform;
+        const { x, y } = position;
         const { sprite, color, intensity } = light;
 
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;

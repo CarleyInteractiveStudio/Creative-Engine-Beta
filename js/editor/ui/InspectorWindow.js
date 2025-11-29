@@ -433,8 +433,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Position</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x}" title="Position X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y}" title="Position Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="position.x" value="${ley.position.x}" title="Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="position.y" value="${ley.position.y}" title="Position Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -658,6 +658,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description">La edición de vértices se implementará en una futura actualización.</p>
                 </div>
             </div>`;
+        } else if (ley instanceof Components.Grid) {
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">GRID</span><h4>Grid</h4>
+                </div>
+                <div class="component-content">
+                     <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${ley.cellSize.x}" title="Cell Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${ley.cellSize.y}" title="Cell Height">
+                        </div>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.Tilemap) {
             componentHTML = `
                 <div class="component-header">

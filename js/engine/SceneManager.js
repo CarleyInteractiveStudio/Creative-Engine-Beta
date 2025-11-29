@@ -38,6 +38,15 @@ export class Scene {
         return findRecursive(id, this.materias);
     }
 
+    findMateriaByComponent(componentInstance) {
+        for (const materia of this.getAllMaterias()) {
+            if (materia.leyes.includes(componentInstance)) {
+                return materia;
+            }
+        }
+        return null;
+    }
+
     getRootMaterias() {
         return this.materias.filter(m => m.parent === null);
     }
