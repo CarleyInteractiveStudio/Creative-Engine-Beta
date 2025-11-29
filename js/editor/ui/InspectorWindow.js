@@ -664,9 +664,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     <span class="component-icon">🗺️</span><h4>Tilemap</h4>
                 </div>
                 <div class="component-content">
-                    <p class="field-description">
-                        Este componente almacena los datos de los tiles para ser dibujados por un TilemapRenderer.
-                    </p>
+                     <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
                     <div class="inspector-row">
                         <label>Tiles Pintados</label>
                         <input type="text" value="${ley.tileData.size}" readonly>
