@@ -1689,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
             'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
-            'prefs-save-btn', 'prefs-script-lang', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
+            'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
             'prefs-show-terminal',

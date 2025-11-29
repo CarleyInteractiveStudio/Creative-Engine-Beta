@@ -152,6 +152,9 @@ function handleEditorInteractions() {
 }
 
 function drawEditorGrid() {
+    const prefs = getPreferences();
+    if (!prefs.showSceneGrid) return;
+
     const { ctx, camera, canvas } = renderer;
     if (!camera) return;
 
@@ -678,10 +681,61 @@ function drawTileCursor() {
     }
 }
 
+function drawComponentGrids() {
+    if (!SceneManager || !renderer) return;
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
+
+    const materiasWithGrid = scene.getAllMaterias().filter(m => m.getComponent(Components.Grid));
+    if (materiasWithGrid.length === 0) return;
+
+    const { ctx, camera, canvas } = renderer;
+    const zoom = camera.effectiveZoom;
+    const prefs = getPreferences();
+    const isSceneGridVisible = prefs.showSceneGrid;
+
+    materiasWithGrid.forEach(materia => {
+        const grid = materia.getComponent(Components.Grid);
+        const transform = materia.getComponent(Components.Transform);
+        if (!grid || !transform) return;
+
+        const { cellSize } = grid;
+        if (cellSize <= 0) return;
+
+        const viewLeft = camera.x - (canvas.width / 2 / zoom);
+        const viewRight = camera.x + (canvas.width / 2 / zoom);
+        const viewTop = camera.y - (canvas.height / 2 / zoom);
+        const viewBottom = camera.y + (canvas.height / 2 / zoom);
+
+        ctx.save();
+        ctx.lineWidth = 1 / zoom;
+        ctx.strokeStyle = isSceneGridVisible ? 'rgba(0, 100, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+
+        const startX = Math.floor((viewLeft - transform.x) / cellSize) * cellSize + transform.x;
+        const endX = Math.ceil((viewRight - transform.x) / cellSize) * cellSize + transform.x;
+        for (let x = startX; x <= endX; x += cellSize) {
+            ctx.moveTo(x, viewTop);
+            ctx.lineTo(x, viewBottom);
+        }
+
+        const startY = Math.floor((viewTop - transform.y) / cellSize) * cellSize + transform.y;
+        const endY = Math.ceil((viewBottom - transform.y) / cellSize) * cellSize + transform.y;
+        for (let y = startY; y <= endY; y += cellSize) {
+            ctx.moveTo(viewLeft, y);
+            ctx.lineTo(viewRight, y);
+        }
+
+        ctx.stroke();
+        ctx.restore();
+    });
+}
+
 export function drawOverlay() {
     // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
     drawEditorGrid();
+    drawComponentGrids();
 
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {

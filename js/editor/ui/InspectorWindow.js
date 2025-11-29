@@ -21,7 +21,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
-    'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
+    'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
@@ -406,7 +406,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        Grid: '▦'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -738,6 +739,19 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
                 </div>
             `;
+        } else if (ley instanceof Components.Grid) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Grid</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize" value="${ley.cellSize}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
             console.log('  - Is SpriteLight2D component.');
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
