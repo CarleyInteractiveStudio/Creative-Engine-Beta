@@ -719,12 +719,12 @@ export class TilemapCollider2D extends Leyes {
 export class Grid extends Leyes {
     constructor(materia) {
         super(materia);
-        this.cellSize = 32;
+        this.cellSize = { x: 32, y: 32 };
     }
 
     clone() {
         const newGrid = new Grid(null);
-        newGrid.cellSize = this.cellSize;
+        newGrid.cellSize = { ...this.cellSize };
         return newGrid;
     }
 }

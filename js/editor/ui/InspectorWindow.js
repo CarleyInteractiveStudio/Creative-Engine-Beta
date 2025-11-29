@@ -69,6 +69,12 @@ function handleInspectorInput(e) {
     const component = selectedMateria.getComponent(ComponentClass);
     if (!component) return;
 
+    if (propPath === 'simplifiedSize') {
+        component.cellSize.x = value;
+        component.cellSize.y = value;
+        return; // Early return to avoid nested property logic
+    }
+
     // Handle nested properties like scale.x
     const props = propPath.split('.');
     let current = component;
@@ -105,7 +111,13 @@ async function handleInspectorChange(e) {
 
     let needsUpdate = false;
 
-    if (e.target.matches('#materia-active-toggle')) {
+    if (e.target.matches('#grid-simplified-toggle')) {
+        const grid = selectedMateria.getComponent(Components.Grid);
+        if (grid) {
+            grid.isSimplified = e.target.checked;
+            needsUpdate = true;
+        }
+    } else if (e.target.matches('#materia-active-toggle')) {
         selectedMateria.isActive = e.target.checked;
         updateSceneCallback(); // This triggers a visual update in the scene/hierarchy
         needsUpdate = true;
@@ -740,16 +752,42 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Grid) {
+            // Add a temporary, UI-only property to the component instance for the toggle state
+            if (ley.isSimplified === undefined) {
+                ley.isSimplified = (ley.cellSize.x === ley.cellSize.y);
+            }
+
+            let sizeInputHTML = '';
+            if (ley.isSimplified) {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${ley.cellSize.x}">
+                        </div>
+                    </div>
+                `;
+            } else {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${ley.cellSize.x}" title="X">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${ley.cellSize.y}" title="Y">
+                        </div>
+                    </div>
+                `;
+            }
+
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Grid</h4></div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Cell Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize" value="${ley.cellSize}">
-                        </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
+                        <label for="grid-simplified-toggle">Simplificado</label>
                     </div>
+                    ${sizeInputHTML}
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
