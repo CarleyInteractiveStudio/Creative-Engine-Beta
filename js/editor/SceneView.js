@@ -635,49 +635,54 @@ function drawTileCursor() {
     const transform = selectedMateria.getComponent(Components.Transform);
     if (!tilemap || !transform) return;
 
-    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
-    if (!grid) return; // No grid, no cursor
+    const grid = selectedMateria.parent?.getComponent(Components.Grid);
+    if (!grid) return;
 
     const { ctx } = renderer;
     const { cellSize } = grid;
-    const { columns, rows } = tilemap;
+    const { width, height } = tilemap;
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // The grid's transform is the reference for positioning
-    const gridTransform = grid.materia.getComponent(Components.Transform);
-    if (!gridTransform) return;
+    // World position of the tilemap's center
+    const tilemapCenterX = transform.x;
+    const tilemapCenterY = transform.y;
 
-    // Calculate mouse position relative to the tilemap's origin (top-left corner)
-    const mapWidth = columns * cellSize.x;
-    const mapHeight = rows * cellSize.y;
-    const mapTopLeftX = gridTransform.x - mapWidth / 2;
-    const mapTopLeftY = gridTransform.y - mapHeight / 2;
+    const layerWidth = width * cellSize.x;
+    const layerHeight = height * cellSize.y;
 
-    const mouseInMapX = worldMouse.x - mapTopLeftX;
-    const mouseInMapY = worldMouse.y - mapTopLeftY;
+    for (const layer of tilemap.layers) {
+        const layerOffsetX = layer.position.x * layerWidth;
+        const layerOffsetY = layer.position.y * layerHeight;
 
-    // Calculate the column and row under the cursor
-    const col = Math.floor(mouseInMapX / cellSize.x);
-    const row = Math.floor(mouseInMapY / cellSize.y);
+        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
 
-    // Check if the cursor is within the tilemap bounds
-    if (col >= 0 && col < columns && row >= 0 && row < rows) {
-        const cursorX = mapTopLeftX + col * cellSize.x;
-        const cursorY = mapTopLeftY + row * cellSize.y;
+        const mouseInLayerX = worldMouse.x - layerTopLeftX;
+        const mouseInLayerY = worldMouse.y - layerTopLeftY;
 
-        ctx.save();
-        if (activeTool === 'tile-brush') {
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)'; // Green for brush
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-        } else { // Eraser
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red for eraser
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        const col = Math.floor(mouseInLayerX / cellSize.x);
+        const row = Math.floor(mouseInLayerY / cellSize.y);
+
+        if (col >= 0 && col < width && row >= 0 && row < height) {
+            const cursorX = layerTopLeftX + col * cellSize.x;
+            const cursorY = layerTopLeftY + row * cellSize.y;
+
+            ctx.save();
+            if (activeTool === 'tile-brush') {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+            } else {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            }
+            ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+            ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+            ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+            ctx.restore();
+            // Stop after finding the first layer under the cursor
+            break;
         }
-        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-        ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-        ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
-        ctx.restore();
     }
 }
 
@@ -787,8 +792,8 @@ function drawTilemapOutline() {
     const { cellSize } = grid;
     const { width, height } = tilemap;
 
-    const mapWidth = width * cellSize.x;
-    const mapHeight = height * cellSize.y;
+    const layerWidth = width * cellSize.x;
+    const layerHeight = height * cellSize.y;
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
@@ -796,7 +801,12 @@ function drawTilemapOutline() {
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.strokeRect(-mapWidth / 2, -mapHeight / 2, mapWidth, mapHeight);
+
+    for (const layer of tilemap.layers) {
+        const offsetX = layer.position.x * layerWidth;
+        const offsetY = layer.position.y * layerHeight;
+        ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
+    }
 
     ctx.restore();
 }
@@ -833,48 +843,61 @@ function paintTile(event) {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    if (!tilemap) return;
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
 
-    const grid = selectedMateria.parent?.getComponent(Components.Grid) || selectedMateria.getComponent(Components.Grid);
+    const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
 
-    const gridTransform = grid.materia.getComponent(Components.Transform);
-    if (!gridTransform) return;
-
     const { cellSize } = grid;
-    const { columns, rows } = tilemap;
+    const { width, height } = tilemap;
 
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const mapWidth = columns * cellSize.x;
-    const mapHeight = rows * cellSize.y;
-    const mapTopLeftX = gridTransform.x - mapWidth / 2;
-    const mapTopLeftY = gridTransform.y - mapHeight / 2;
+    const tilemapCenterX = transform.x;
+    const tilemapCenterY = transform.y;
 
-    const mouseInMapX = worldMouse.x - mapTopLeftX;
-    const mouseInMapY = worldMouse.y - mapTopLeftY;
+    const layerWidth = width * cellSize.x;
+    const layerHeight = height * cellSize.y;
 
-    const col = Math.floor(mouseInMapX / cellSize.x);
-    const row = Math.floor(mouseInMapY / cellSize.y);
+    for (const layer of tilemap.layers) {
+        const layerOffsetX = layer.position.x * layerWidth;
+        const layerOffsetY = layer.position.y * layerHeight;
 
-    // Prevent re-painting the same tile in a single drag motion
-    if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
-        return;
-    }
+        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
 
-    if (col >= 0 && col < columns && row >= 0 && row < rows) {
-        const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : -1;
+        const mouseInLayerX = worldMouse.x - layerTopLeftX;
+        const mouseInLayerY = worldMouse.y - layerTopLeftY;
 
-        if (tileIdToPaint === undefined || tileIdToPaint === null) {
-            console.warn("No tile selected in the palette to paint with.");
+        const col = Math.floor(mouseInLayerX / cellSize.x);
+        const row = Math.floor(mouseInLayerY / cellSize.y);
+
+        if (col >= 0 && col < width && row >= 0 && row < height) {
+            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
+                return;
+            }
+
+            const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
+            const key = `${col},${row}`;
+
+            if (activeTool === 'tile-brush') {
+                if (tileIdToPaint !== null) {
+                    layer.tileData.set(key, tileIdToPaint);
+                } else {
+                    console.warn("No tile selected in the palette to paint with.");
+                    return;
+                }
+            } else if (activeTool === 'tile-eraser') {
+                layer.tileData.delete(key);
+            }
+
+            lastPaintedCoords = { col, row };
+            SceneManager.setSceneDirty(true);
+            // We found the correct layer, stop iterating
             return;
         }
-
-        // Use the active layer index from the component
-        tilemap.setTile(tilemap.activeLayerIndex, col, row, tileIdToPaint);
-        lastPaintedCoords = { col, row };
-        SceneManager.setSceneDirty(true);
     }
 }

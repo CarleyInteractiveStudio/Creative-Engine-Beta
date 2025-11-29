@@ -577,20 +577,45 @@ registerComponent('AudioSource', AudioSource);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 20;
-        this.height = 30;
-        this.manualSize = false;
-        // The tileData is now a Map where keys are "x,y" and values are { spriteName, imageData }
-        this.tileData = new Map();
+        this.width = 30;
+        this.height = 20;
+        this.layers = [{
+            position: { x: 0, y: 0 },
+            tileData: new Map()
+        }];
+        this.activeLayerIndex = 0;
+    }
+
+    addLayer(x, y) {
+        this.layers.push({
+            position: { x, y },
+            tileData: new Map()
+        });
+    }
+
+    removeLayer(index) {
+        if (index > 0 && index < this.layers.length) {
+            this.layers.splice(index, 1);
+            if (this.activeLayerIndex >= index) {
+                this.activeLayerIndex = Math.max(0, this.activeLayerIndex - 1);
+            }
+        }
     }
 
     clone() {
         const newTilemap = new Tilemap(null);
         newTilemap.width = this.width;
         newTilemap.height = this.height;
-        newTilemap.manualSize = this.manualSize;
-        // Deep copy the map
-        newTilemap.tileData = new Map(JSON.parse(JSON.stringify(Array.from(this.tileData))));
+        newTilemap.layers = JSON.parse(JSON.stringify(this.layers, (key, value) => {
+            if (value instanceof Map) {
+                return { dataType: 'Map', value: Array.from(value.entries()) };
+            }
+            return value;
+        }));
+        newTilemap.layers.forEach(layer => {
+            layer.tileData = new Map(layer.tileData.value);
+        });
+        newTilemap.activeLayerIndex = this.activeLayerIndex;
         return newTilemap;
     }
 }
