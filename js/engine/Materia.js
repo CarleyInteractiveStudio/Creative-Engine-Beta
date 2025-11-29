@@ -1,7 +1,7 @@
 // Materia.js
 // This file contains the Materia class.
 
-import { Transform } from './Components.js';
+import * as Components from './Components.js'; // Import all of Components
 import { currentScene } from './SceneManager.js';
 
 let MATERIA_ID_COUNTER = 0;
@@ -17,6 +17,10 @@ export class Materia {
         this.leyes = [];
         this.parent = null;
         this.children = [];
+
+        // --- FIX ---
+        // Ensure every Materia always has a Transform component upon creation.
+        this.addComponent(new Components.Transform(this));
     }
 
     setFlag(key, value) {
@@ -41,6 +45,11 @@ export class Materia {
     }
 
     removeComponent(ComponentClass) {
+        // Prevent removing the mandatory Transform component
+        if (ComponentClass === Components.Transform) {
+            console.warn("Cannot remove the Transform component.");
+            return;
+        }
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {
             this.leyes.splice(index, 1);
@@ -89,13 +98,15 @@ export class Materia {
     }
 
     clone() {
-        // Create a new Materia with a unique ID. We append '(Clone)' to the name for clarity.
+        // Create a new Materia. The constructor will automatically add a Transform.
         const newMateria = new Materia(`${this.name}`);
+        newMateria.leyes = []; // Clear the default transform to add the cloned ones.
+
         newMateria.isActive = this.isActive;
-        newMateria.isCollapsed = this.isCollapsed; // Copy collapsed state
+        newMateria.isCollapsed = this.isCollapsed;
         newMateria.layer = this.layer;
         newMateria.tag = this.tag;
-        newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy flags
+        newMateria.flags = JSON.parse(JSON.stringify(this.flags));
 
         // Clone each component
         for (const component of this.leyes) {
@@ -105,9 +116,10 @@ export class Materia {
             }
         }
 
-        // Note: Children are not cloned here. The duplication logic should handle
-        // whether to do a deep (recursive) clone or a shallow one. For now, we
-        // only clone the object itself.
+        // Ensure a transform exists if the original somehow didn't have one (legacy safety)
+        if (!newMateria.getComponent(Components.Transform)) {
+             newMateria.addComponent(new Components.Transform(newMateria));
+        }
 
         return newMateria;
     }
