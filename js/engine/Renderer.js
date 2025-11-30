@@ -136,7 +136,16 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        const gridMateria = tilemapRenderer.materia.parent;
+        // Robustly find the parent Grid object, whether it's a direct reference or an ID
+        let gridMateria = null;
+        const parent = tilemapRenderer.materia.parent;
+        if (parent) {
+            if (typeof parent === 'object' && typeof parent.getComponent === 'function') {
+                gridMateria = parent; // Parent is already a Materia object
+            } else if (typeof parent === 'number') {
+                gridMateria = SceneManager.currentScene.findMateriaById(parent); // Parent is an ID
+            }
+        }
         const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
 
         if (!tilemap || !transform || !grid) {
