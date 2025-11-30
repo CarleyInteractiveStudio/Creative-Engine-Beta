@@ -216,9 +216,13 @@ function handleContextMenuAction(action) {
 
     // Centralized update for creation and rename actions
     if (newMateria) {
-        // For new objects, update hierarchy and select the new one.
+        // For new objects, update hierarchy and then select the new one.
+        // A timeout is used to prevent a race condition where the Inspector tries
+        // to render the new object before the editor state is fully updated.
         updateHierarchy();
-        selectMateriaCallback(newMateria.id);
+        setTimeout(() => {
+            selectMateriaCallback(newMateria.id);
+        }, 16); // A small delay, roughly one frame.
     } else if (shouldUpdate) {
         // For other actions like rename, just update the UI.
         updateHierarchy();
