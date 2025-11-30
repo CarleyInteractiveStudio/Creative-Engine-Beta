@@ -579,6 +579,7 @@ export class Tilemap extends Leyes {
         super(materia);
         this.width = 30;
         this.height = 20;
+        this.manualSize = false;
         this.layers = [{
             position: { x: 0, y: 0 },
             tileData: new Map()
@@ -606,6 +607,7 @@ export class Tilemap extends Leyes {
         const newTilemap = new Tilemap(null);
         newTilemap.width = this.width;
         newTilemap.height = this.height;
+        newTilemap.manualSize = this.manualSize;
         newTilemap.layers = JSON.parse(JSON.stringify(this.layers, (key, value) => {
             if (value instanceof Map) {
                 return { dataType: 'Map', value: Array.from(value.entries()) };
