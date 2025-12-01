@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -136,7 +136,16 @@ export class Renderer {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
 
-        const gridMateria = SceneManager.currentScene.getMateriaById(tilemapRenderer.materia.parent);
+        // Robustly find the parent Grid object, whether it's a direct reference or an ID
+        let gridMateria = null;
+        const parent = tilemapRenderer.materia.parent;
+        if (parent) {
+            if (typeof parent === 'object' && typeof parent.getComponent === 'function') {
+                gridMateria = parent; // Parent is already a Materia object
+            } else if (typeof parent === 'number') {
+                gridMateria = SceneManager.currentScene.findMateriaById(parent); // Parent is an ID
+            }
+        }
         const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
 
         if (!tilemap || !transform || !grid) {
@@ -147,19 +156,27 @@ export class Renderer {
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
 
-        for (const [coord, tileData] of tilemap.tileData.entries()) {
-            const image = tilemapRenderer.getImageForTile(tileData);
-            if (image && image.complete && image.naturalWidth > 0) {
-                const [x, y] = coord.split(',').map(Number);
+        const mapTotalWidth = tilemap.width * grid.cellSize.x;
+        const mapTotalHeight = tilemap.height * grid.cellSize.y;
 
-                const dx = x * grid.cellSize.x;
-                const dy = y * grid.cellSize.y;
+        for (const layer of tilemap.layers) {
+            const layerOffsetX = layer.position.x * mapTotalWidth;
+            const layerOffsetY = layer.position.y * mapTotalHeight;
 
-                this.ctx.drawImage(
-                    image,
-                    dx, dy,
-                    grid.cellSize.x, grid.cellSize.y
-                );
+            for (const [coord, tileData] of layer.tileData.entries()) {
+                const image = tilemapRenderer.getImageForTile(tileData);
+                if (image && image.complete && image.naturalWidth > 0) {
+                    const [x, y] = coord.split(',').map(Number);
+
+                    const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
+                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
+
+                    this.ctx.drawImage(
+                        image,
+                        dx, dy,
+                        grid.cellSize.x, grid.cellSize.y
+                    );
+                }
             }
         }
 

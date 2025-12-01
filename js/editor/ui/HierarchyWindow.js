@@ -12,6 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
+import { createBaseMateria, generateUniqueName } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -81,36 +82,6 @@ export function updateHierarchy() {
 }
 
 // --- Hierarchy Creation Functions ---
-function generateUniqueName(baseName) {
-    const allMaterias = SceneManager.currentScene.getAllMaterias();
-    const existingNames = new Set(allMaterias.map(m => m.name));
-
-    if (!existingNames.has(baseName)) {
-        return baseName;
-    }
-
-    let counter = 1;
-    let newName = `${baseName} (${counter})`;
-    while (existingNames.has(newName)) {
-        counter++;
-        newName = `${baseName} (${counter})`;
-    }
-    return newName;
-}
-
-function createBaseMateria(name, parent = null) {
-    const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
-
-    if (parent) {
-        parent.addChild(newMateria);
-    } else {
-        SceneManager.currentScene.addMateria(newMateria);
-    }
-    // La actualización y selección se harán centralmente
-    return newMateria;
-}
-
 function createTilemapObject(parent = null) {
     // Create the parent Grid object
     const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
@@ -245,9 +216,13 @@ function handleContextMenuAction(action) {
 
     // Centralized update for creation and rename actions
     if (newMateria) {
-        // For new objects, update hierarchy and select the new one.
+        // For new objects, update hierarchy and then select the new one.
+        // A timeout is used to prevent a race condition where the Inspector tries
+        // to render the new object before the editor state is fully updated.
         updateHierarchy();
-        selectMateriaCallback(newMateria.id);
+        setTimeout(() => {
+            selectMateriaCallback(newMateria.id);
+        }, 16); // A small delay, roughly one frame.
     } else if (shouldUpdate) {
         // For other actions like rename, just update the UI.
         updateHierarchy();

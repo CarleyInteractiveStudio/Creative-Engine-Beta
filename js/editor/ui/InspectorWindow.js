@@ -16,16 +16,17 @@ let updateAssetBrowserCallback;
 let createAssetCallback;
 let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
+let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer],
-    'Tilemap': [Components.Tilemap, Components.TilemapRenderer],
+    'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody, Components.BoxCollider, Components.TilemapCollider2D],
+    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
@@ -45,6 +46,7 @@ export function initialize(dependencies) {
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
     createAssetCallback = dependencies.createAssetCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
+    enterAddTilemapLayerMode = dependencies.enterAddTilemapLayerMode;
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
     dom.inspectorContent.addEventListener('input', handleInspectorInput);
@@ -68,6 +70,12 @@ function handleInspectorInput(e) {
 
     const component = selectedMateria.getComponent(ComponentClass);
     if (!component) return;
+
+    if (propPath === 'simplifiedSize') {
+        component.cellSize.x = value;
+        component.cellSize.y = value;
+        return; // Early return to avoid nested property logic
+    }
 
     // Handle nested properties like scale.x
     const props = propPath.split('.');
@@ -105,7 +113,19 @@ async function handleInspectorChange(e) {
 
     let needsUpdate = false;
 
-    if (e.target.matches('#materia-active-toggle')) {
+    if (e.target.matches('#grid-simplified-toggle')) {
+        const grid = selectedMateria.getComponent(Components.Grid);
+        if (grid) {
+            grid.isSimplified = e.target.checked;
+            needsUpdate = true;
+        }
+    } else if (e.target.matches('#tilemap-manual-size-toggle')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            tilemap.manualSize = e.target.checked;
+            needsUpdate = true;
+        }
+    } else if (e.target.matches('#materia-active-toggle')) {
         selectedMateria.isActive = e.target.checked;
         updateSceneCallback(); // This triggers a visual update in the scene/hierarchy
         needsUpdate = true;
@@ -251,6 +271,34 @@ function handleInspectorClick(e) {
             updateInspector(); // Refresh to show new collider count and for visualizer
         }
     }
+
+    if (e.target.matches('[data-action="add-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            enterAddTilemapLayerMode();
+        }
+    }
+
+    if (e.target.matches('[data-action="remove-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        if (tilemap) {
+            if (tilemap.layers.length > 1) {
+                tilemap.removeLayer(tilemap.activeLayerIndex);
+                updateInspector();
+            } else {
+                window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
+            }
+        }
+    }
+
+    if (e.target.matches('[data-action="select-layer"]')) {
+        const tilemap = selectedMateria.getComponent(Components.Tilemap);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (tilemap && !isNaN(index)) {
+            tilemap.activeLayerIndex = index;
+            updateInspector();
+        }
+    }
 }
 
 function getCullingMaskText(mask) {
@@ -353,9 +401,6 @@ export async function updateInspector() {
 }
 
 async function updateInspectorForMateria(selectedMateria) {
-    console.log('--- INSPECTOR UPDATE ---');
-    console.log('1. Updating for Materia:', selectedMateria.name, `(ID: ${selectedMateria.id})`);
-
     const config = getCurrentProjectConfig();
 
     // Name input and active toggle
@@ -406,7 +451,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇'
+        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        Grid: '▦'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -414,7 +460,7 @@ async function updateInspectorForMateria(selectedMateria) {
     console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
-        console.log(`3. Processing component #${index}: ${ley.constructor.name}`);
+        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
@@ -659,32 +705,39 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Tilemap) {
+            let sizeInputHTML = '';
+            if (ley.manualSize) {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                `;
+            } else {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
+                            <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                        </div>
+                    </div>
+                `;
+            }
+
             componentHTML = `
                 <div class="component-header">
                     <span class="component-icon">🗺️</span><h4>Tilemap</h4>
                 </div>
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Palette</label>
-                        <div class="asset-dropper" data-component="Tilemap" data-prop="palettePath" data-asset-type=".cepalette" title="Arrastra un asset de Paleta de Tiles (.cepalette) aquí">
-                            <span class="asset-dropper-text">${ley.palettePath || 'None'}</span>
-                        </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
+                        <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
                     </div>
-                    <hr>
-                    <div class="prop-row-multi">
-                        <label>Tile Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileWidth" value="${ley.tileWidth}" title="Tile Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="tileHeight" value="${ley.tileHeight}" title="Tile Height">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Grid Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="columns" value="${ley.columns}" title="Columns">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="rows" value="${ley.rows}" title="Rows">
-                        </div>
-                    </div>
+                    ${sizeInputHTML}
                     <hr>
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">
@@ -697,7 +750,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="layer-list">
                             ${ley.layers.map((layer, index) => `
                                 <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>${layer.name}</span>
+                                    <span>Capa ${index} (X: ${layer.position.x}, Y: ${layer.position.y})</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -738,6 +791,48 @@ async function updateInspectorForMateria(selectedMateria) {
                     <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
                 </div>
             `;
+        } else if (ley instanceof Components.Grid) {
+            // Ensure cellSize exists before trying to access its properties
+            const cellSize = ley.cellSize || { x: 32, y: 32 };
+
+            // Add a temporary, UI-only property to the component instance for the toggle state
+            if (ley.isSimplified === undefined) {
+                ley.isSimplified = (cellSize.x === cellSize.y);
+            }
+
+            let sizeInputHTML = '';
+            if (ley.isSimplified) {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
+                        </div>
+                    </div>
+                `;
+            } else {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
+                        </div>
+                    </div>
+                `;
+            }
+
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Grid</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
+                        <label for="grid-simplified-toggle">Simplificado</label>
+                    </div>
+                    ${sizeInputHTML}
+                </div>
+            </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
             console.log('  - Is SpriteLight2D component.');
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';

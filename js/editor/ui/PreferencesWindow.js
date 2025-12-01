@@ -19,6 +19,7 @@ const defaultPrefs = {
     autosave: false,
     autosaveInterval: 30,
     scriptLang: 'ces',
+    showSceneGrid: true,
     snapping: false,
     gridSize: 25,
     zoomSpeed: 1.1,
@@ -103,6 +104,7 @@ function savePreferences() {
     currentPreferences.autosave = _dom.prefsAutosaveToggle.checked;
     currentPreferences.autosaveInterval = _dom.prefsAutosaveInterval.value;
     currentPreferences.scriptLang = _dom.prefsScriptLang.value;
+    currentPreferences.showSceneGrid = _dom.prefsShowSceneGrid.checked;
     currentPreferences.snapping = _dom.prefsSnappingToggle.checked;
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
@@ -138,6 +140,7 @@ function loadPreferences() {
     if (_dom.prefsAutosaveToggle) _dom.prefsAutosaveToggle.checked = currentPreferences.autosave;
     if (_dom.prefsAutosaveInterval) _dom.prefsAutosaveInterval.value = currentPreferences.autosaveInterval;
     if (_dom.prefsScriptLang) _dom.prefsScriptLang.value = currentPreferences.scriptLang;
+    if (_dom.prefsShowSceneGrid) _dom.prefsShowSceneGrid.checked = currentPreferences.showSceneGrid;
     if (_dom.prefsSnappingToggle) _dom.prefsSnappingToggle.checked = currentPreferences.snapping;
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
