@@ -13,6 +13,7 @@ let getActiveView;
 let SceneManager;
 let getPreferences;
 let getSelectedTile;
+let setPaletteActiveTool;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -358,6 +359,14 @@ export function setActiveTool(toolName) {
         toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
         toolActiveBtn.title = activeBtnInDropdown.title;
     }
+
+    // Sync with Tile Palette if a tile tool is selected
+    if (toolName === 'tile-brush' || toolName === 'tile-eraser') {
+        if (setPaletteActiveTool) {
+            setPaletteActiveTool(toolName);
+        }
+    }
+
     console.log(`Herramienta activa: ${activeTool}`);
 }
 
@@ -373,7 +382,8 @@ export function initialize(dependencies) {
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;
     getPreferences = dependencies.getPreferences;
-    getSelectedTile = dependencies.getSelectedTile; // New dependency
+    getSelectedTile = dependencies.getSelectedTile;
+    setPaletteActiveTool = dependencies.setPaletteActiveTool; // New dependency
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());

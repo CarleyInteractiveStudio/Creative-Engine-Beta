@@ -172,6 +172,38 @@ export function getActiveTool() {
     return activeTool;
 }
 
+export function setActiveTool(toolName) {
+    // This function allows external modules to set the palette's active tool.
+    // Ensure the tool is valid for the palette.
+    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-eraser', 'organize'];
+    if (!validTools.includes(toolName)) return;
+
+    // Don't do anything if organize mode is active and a paint tool is selected
+    if (isOrganizeMode && toolName !== 'organize') return;
+
+    activeTool = toolName;
+
+    // Update the UI of the tool bubble inside the palette
+    const toolBubble = dom.panel.querySelector('.tool-bubble');
+    if (toolBubble) {
+        toolBubble.querySelectorAll('.tool-btn').forEach(btn => {
+            if (btn.dataset.tool === toolName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // Reset selections if the tool changes to a paint tool
+    if (toolName === 'tile-brush' || toolName === 'tile-rectangle-fill') {
+        selectedTileId = -1;
+        selectedTileIds = [];
+        dom.selectedTileIdSpan.textContent = '-';
+        drawTiles();
+    }
+}
+
 
 // --- Internal Logic ---
 
