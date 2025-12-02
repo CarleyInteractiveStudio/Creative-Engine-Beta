@@ -705,16 +705,29 @@ function drawCameraGizmos(renderer) {
 
 function drawTileCursor() {
     if (activeTool !== 'tile-brush' && activeTool !== 'tile-eraser') return;
+    console.log("[Debug] Iniciando drawTileCursor...");
 
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+    if (!selectedMateria) {
+        console.log("[Debug] No hay Materia seleccionada. Saliendo.");
+        return;
+    }
+    console.log("[Debug] Materia seleccionada:", selectedMateria.name);
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    if (!tilemap || !transform) {
+        console.log("[Debug] El objeto seleccionado no tiene un componente Tilemap o Transform. Saliendo.");
+        return;
+    }
+    console.log("[Debug] Componente Tilemap y Transform encontrados.");
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) return;
+    if (!grid) {
+        console.error("[Debug] ¡ERROR CRÍTICO! No se encontró el componente Grid en el padre del Tilemap. Esta es la causa probable del problema.");
+        return;
+    }
+    console.log("[Debug] Componente Grid encontrado en el padre.");
 
     const { ctx } = renderer;
     const { cellSize } = grid;
@@ -729,7 +742,12 @@ function drawTileCursor() {
 
     // Find the active layer to draw on
     const activeLayer = tilemap.layers[tilemap.activeLayerIndex];
-    if (!activeLayer) return;
+    if (!activeLayer) {
+        console.log("[Debug] No hay una capa activa seleccionada en el Tilemap. Saliendo.");
+        return;
+    }
+    console.log("[Debug] Capa activa encontrada:", tilemap.activeLayerIndex);
+
 
     const layerOffsetX = activeLayer.position.x * layerWidth;
     const layerOffsetY = activeLayer.position.y * layerHeight;
@@ -743,6 +761,7 @@ function drawTileCursor() {
     const row = Math.floor(mouseInLayerY / cellSize.y);
 
     if (col >= 0 && col < width && row >= 0 && row < height) {
+        console.log(`[Debug] Coordenadas calculadas: Col ${col}, Row ${row}`);
         const cursorX = layerTopLeftX + col * cellSize.x;
         const cursorY = layerTopLeftY + row * cellSize.y;
 
@@ -1015,15 +1034,31 @@ function drawTilemapColliders() {
 }
 
 function paintTile(event) {
+    console.log("[Debug-Paint] Iniciando paintTile...");
+
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+    if (!selectedMateria) {
+        console.log("[Debug-Paint] No hay Materia seleccionada. Saliendo.");
+        return;
+    }
+    console.log("[Debug-Paint] Materia seleccionada:", selectedMateria.name);
+
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    if (!tilemap || !transform) {
+        console.log("[Debug-Paint] El objeto seleccionado no tiene un componente Tilemap o Transform. Saliendo.");
+        return;
+    }
+    console.log("[Debug-Paint] Componente Tilemap y Transform encontrados.");
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) return;
+    if (!grid) {
+        console.error("[Debug-Paint] ¡ERROR CRÍTICO! No se encontró el componente Grid en el padre del Tilemap.");
+        return;
+    }
+    console.log("[Debug-Paint] Componente Grid encontrado en el padre.");
+
 
     const { cellSize } = grid;
     const { width, height } = tilemap;
@@ -1040,9 +1075,10 @@ function paintTile(event) {
     // Target the active layer
     const activeLayer = tilemap.layers[tilemap.activeLayerIndex];
     if (!activeLayer) {
-        console.warn("No active layer to paint on.");
+        console.warn("[Debug-Paint] No hay capa activa para pintar. Saliendo.");
         return;
     }
+    console.log("[Debug-Paint] Capa activa encontrada:", tilemap.activeLayerIndex);
 
     const layerOffsetX = activeLayer.position.x * layerWidth;
     const layerOffsetY = activeLayer.position.y * layerHeight;
@@ -1056,6 +1092,7 @@ function paintTile(event) {
     const row = Math.floor(mouseInLayerY / cellSize.y);
 
     if (col >= 0 && col < width && row >= 0 && row < height) {
+        console.log(`[Debug-Paint] Coordenadas en la capa: Col ${col}, Row ${row}`);
         // Prevent re-painting the same tile repeatedly while dragging
         if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
             return;
@@ -1064,22 +1101,26 @@ function paintTile(event) {
         const key = `${col},${row}`;
 
         if (activeTool === 'tile-brush') {
+            console.log("[Debug-Paint] Herramienta pincel activa. Obteniendo tile...");
             const selectedTiles = getSelectedTile(); // Returns an array
             const tileToPaint = selectedTiles && selectedTiles.length > 0 ? selectedTiles[0] : null;
 
             if (tileToPaint) {
-                // The tilemap only needs the sprite name and image data
+                console.log("[Debug-Paint] Tile válido recibido de la paleta:", tileToPaint);
                 const tileDataForMap = {
                     spriteName: tileToPaint.spriteName,
                     imageData: tileToPaint.imageData
                 };
                 activeLayer.tileData.set(key, tileDataForMap);
+                console.log(`[Debug-Paint] Tile pintado en la capa ${tilemap.activeLayerIndex} en la posición ${key}`);
             } else {
-                console.warn("No tile selected in the palette to paint with.");
+                console.warn("[Debug-Paint] No hay tile seleccionado en la paleta para pintar.");
                 return; // Don't paint if no tile is selected
             }
         } else if (activeTool === 'tile-eraser') {
+            console.log("[Debug-Paint] Herramienta goma activa.");
             activeLayer.tileData.delete(key);
+            console.log(`[Debug-Paint] Tile borrado en la capa ${tilemap.activeLayerIndex} en la posición ${key}`);
         }
 
         lastPaintedCoords = { col, row };
