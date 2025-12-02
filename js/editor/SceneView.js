@@ -13,7 +13,6 @@ let getActiveView;
 let SceneManager;
 let getPreferences;
 let getSelectedTile;
-let setPaletteActiveTool;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -21,7 +20,6 @@ let isAddingLayer = false;
 let isDragging = false;
 let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
-let tilePreviewCache = new Map();
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
 let dragState = {}; // To hold info about the current drag operation
@@ -359,15 +357,8 @@ export function setActiveTool(toolName) {
         toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
         toolActiveBtn.title = activeBtnInDropdown.title;
     }
-
-    // Sync with Tile Palette if a tile tool is selected
-    if (toolName === 'tile-brush' || toolName === 'tile-eraser') {
-        if (setPaletteActiveTool) {
-            setPaletteActiveTool(toolName);
-        }
-    }
-
-    console.log(`Herramienta activa: ${activeTool}`);
+    console.log(`[DIAGNÓSTICO] setActiveTool llamada. Nueva herramienta: ${toolName}`);
+    activeTool = toolName; // Asegurémonos de que se asigna aquí.
 }
 
 export function initialize(dependencies) {
@@ -382,8 +373,7 @@ export function initialize(dependencies) {
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;
     getPreferences = dependencies.getPreferences;
-    getSelectedTile = dependencies.getSelectedTile;
-    setPaletteActiveTool = dependencies.setPaletteActiveTool; // New dependency
+    getSelectedTile = dependencies.getSelectedTile; // New dependency
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -413,6 +403,7 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        console.log(`[DIAGNÓSTICO] Mousedown detectado en sceneCanvas. Herramienta activa: '${activeTool}'`);
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
             e.stopPropagation();
@@ -705,29 +696,16 @@ function drawCameraGizmos(renderer) {
 
 function drawTileCursor() {
     if (activeTool !== 'tile-brush' && activeTool !== 'tile-eraser') return;
-    console.log("[Debug] Iniciando drawTileCursor...");
 
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) {
-        console.log("[Debug] No hay Materia seleccionada. Saliendo.");
-        return;
-    }
-    console.log("[Debug] Materia seleccionada:", selectedMateria.name);
+    if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) {
-        console.log("[Debug] El objeto seleccionado no tiene un componente Tilemap o Transform. Saliendo.");
-        return;
-    }
-    console.log("[Debug] Componente Tilemap y Transform encontrados.");
+    if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) {
-        console.error("[Debug] ¡ERROR CRÍTICO! No se encontró el componente Grid en el padre del Tilemap. Esta es la causa probable del problema.");
-        return;
-    }
-    console.log("[Debug] Componente Grid encontrado en el padre.");
+    if (!grid) return;
 
     const { ctx } = renderer;
     const { cellSize } = grid;
@@ -735,75 +713,45 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
+    // World position of the tilemap's center
     const tilemapCenterX = transform.x;
     const tilemapCenterY = transform.y;
+
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    // Find the active layer to draw on
-    const activeLayer = tilemap.layers[tilemap.activeLayerIndex];
-    if (!activeLayer) {
-        console.log("[Debug] No hay una capa activa seleccionada en el Tilemap. Saliendo.");
-        return;
-    }
-    console.log("[Debug] Capa activa encontrada:", tilemap.activeLayerIndex);
+    for (const layer of tilemap.layers) {
+        const layerOffsetX = layer.position.x * layerWidth;
+        const layerOffsetY = layer.position.y * layerHeight;
 
+        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
 
-    const layerOffsetX = activeLayer.position.x * layerWidth;
-    const layerOffsetY = activeLayer.position.y * layerHeight;
-    const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-    const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+        const mouseInLayerX = worldMouse.x - layerTopLeftX;
+        const mouseInLayerY = worldMouse.y - layerTopLeftY;
 
-    const mouseInLayerX = worldMouse.x - layerTopLeftX;
-    const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const col = Math.floor(mouseInLayerX / cellSize.x);
+        const row = Math.floor(mouseInLayerY / cellSize.y);
 
-    const col = Math.floor(mouseInLayerX / cellSize.x);
-    const row = Math.floor(mouseInLayerY / cellSize.y);
+        if (col >= 0 && col < width && row >= 0 && row < height) {
+            const cursorX = layerTopLeftX + col * cellSize.x;
+            const cursorY = layerTopLeftY + row * cellSize.y;
 
-    if (col >= 0 && col < width && row >= 0 && row < height) {
-        console.log(`[Debug] Coordenadas calculadas: Col ${col}, Row ${row}`);
-        const cursorX = layerTopLeftX + col * cellSize.x;
-        const cursorY = layerTopLeftY + row * cellSize.y;
-
-        ctx.save();
-        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-
-        if (activeTool === 'tile-brush') {
-            const selectedTiles = getSelectedTile(); // This now comes from TilePalette via editor.js
-            const tileToDraw = selectedTiles && selectedTiles.length > 0 ? selectedTiles[0] : null;
-
-            if (tileToDraw && tileToDraw.imageData) {
-                let previewImage = tilePreviewCache.get(tileToDraw.imageData);
-                if (!previewImage) {
-                    previewImage = new Image();
-                    previewImage.src = tileToDraw.imageData;
-                    tilePreviewCache.set(tileToDraw.imageData, previewImage);
-                }
-
-                if (previewImage.complete && previewImage.naturalWidth > 0) {
-                    ctx.globalAlpha = 0.6; // Semi-transparent preview
-                    ctx.drawImage(previewImage, cursorX, cursorY, cellSize.x, cellSize.y);
-                    ctx.globalAlpha = 1.0;
-                }
-                // Draw a border anyway to show the grid cell
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
-
-            } else {
-                // Fallback if no tile is selected
+            ctx.save();
+            if (activeTool === 'tile-brush') {
                 ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
                 ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-                ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+            } else {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
             }
-
-        } else { // tile-eraser
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+            ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
             ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
             ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+            ctx.restore();
+            // Stop after finding the first layer under the cursor
+            break;
         }
-        ctx.restore();
     }
 }
 
@@ -1034,31 +982,15 @@ function drawTilemapColliders() {
 }
 
 function paintTile(event) {
-    console.log("[Debug-Paint] Iniciando paintTile...");
-
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) {
-        console.log("[Debug-Paint] No hay Materia seleccionada. Saliendo.");
-        return;
-    }
-    console.log("[Debug-Paint] Materia seleccionada:", selectedMateria.name);
-
+    if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) {
-        console.log("[Debug-Paint] El objeto seleccionado no tiene un componente Tilemap o Transform. Saliendo.");
-        return;
-    }
-    console.log("[Debug-Paint] Componente Tilemap y Transform encontrados.");
+    if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) {
-        console.error("[Debug-Paint] ¡ERROR CRÍTICO! No se encontró el componente Grid en el padre del Tilemap.");
-        return;
-    }
-    console.log("[Debug-Paint] Componente Grid encontrado en el padre.");
-
+    if (!grid) return;
 
     const { cellSize } = grid;
     const { width, height } = tilemap;
@@ -1069,67 +1001,46 @@ function paintTile(event) {
 
     const tilemapCenterX = transform.x;
     const tilemapCenterY = transform.y;
+
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    // Target the active layer
-    const activeLayer = tilemap.layers[tilemap.activeLayerIndex];
-    if (!activeLayer) {
-        console.warn("[Debug-Paint] No hay capa activa para pintar. Saliendo.");
-        return;
-    }
-    console.log("[Debug-Paint] Capa activa encontrada:", tilemap.activeLayerIndex);
+    for (const layer of tilemap.layers) {
+        const layerOffsetX = layer.position.x * layerWidth;
+        const layerOffsetY = layer.position.y * layerHeight;
 
-    const layerOffsetX = activeLayer.position.x * layerWidth;
-    const layerOffsetY = activeLayer.position.y * layerHeight;
-    const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-    const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
 
-    const mouseInLayerX = worldMouse.x - layerTopLeftX;
-    const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const mouseInLayerX = worldMouse.x - layerTopLeftX;
+        const mouseInLayerY = worldMouse.y - layerTopLeftY;
 
-    const col = Math.floor(mouseInLayerX / cellSize.x);
-    const row = Math.floor(mouseInLayerY / cellSize.y);
+        const col = Math.floor(mouseInLayerX / cellSize.x);
+        const row = Math.floor(mouseInLayerY / cellSize.y);
 
-    if (col >= 0 && col < width && row >= 0 && row < height) {
-        console.log(`[Debug-Paint] Coordenadas en la capa: Col ${col}, Row ${row}`);
-        // Prevent re-painting the same tile repeatedly while dragging
-        if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
-            return;
-        }
-
-        const key = `${col},${row}`;
-
-        if (activeTool === 'tile-brush') {
-            console.log("[Debug-Paint] Herramienta pincel activa. Obteniendo tile...");
-            const selectedTiles = getSelectedTile(); // Returns an array
-            const tileToPaint = selectedTiles && selectedTiles.length > 0 ? selectedTiles[0] : null;
-
-            if (tileToPaint) {
-                console.log("[Debug-Paint] Tile válido recibido de la paleta:", tileToPaint);
-                const tileDataForMap = {
-                    spriteName: tileToPaint.spriteName,
-                    imageData: tileToPaint.imageData
-                };
-                activeLayer.tileData.set(key, tileDataForMap);
-                console.log(`[Debug-Paint] Tile pintado en la capa ${tilemap.activeLayerIndex} en la posición ${key}`);
-            } else {
-                console.warn("[Debug-Paint] No hay tile seleccionado en la paleta para pintar.");
-                return; // Don't paint if no tile is selected
+        if (col >= 0 && col < width && row >= 0 && row < height) {
+            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
+                return;
             }
-        } else if (activeTool === 'tile-eraser') {
-            console.log("[Debug-Paint] Herramienta goma activa.");
-            activeLayer.tileData.delete(key);
-            console.log(`[Debug-Paint] Tile borrado en la capa ${tilemap.activeLayerIndex} en la posición ${key}`);
-        }
 
-        lastPaintedCoords = { col, row };
-        SceneManager.setSceneDirty(true);
+            const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
+            const key = `${col},${row}`;
 
-        // Also mark the tilemap renderer as dirty to force a redraw
-        const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
-        if (tilemapRenderer) {
-            tilemapRenderer.setDirty();
+            if (activeTool === 'tile-brush') {
+                if (tileIdToPaint !== null) {
+                    layer.tileData.set(key, tileIdToPaint);
+                } else {
+                    console.warn("No tile selected in the palette to paint with.");
+                    return;
+                }
+            } else if (activeTool === 'tile-eraser') {
+                layer.tileData.delete(key);
+            }
+
+            lastPaintedCoords = { col, row };
+            SceneManager.setSceneDirty(true);
+            // We found the correct layer, stop iterating
+            return;
         }
     }
 }
