@@ -357,8 +357,8 @@ export function setActiveTool(toolName) {
         toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
         toolActiveBtn.title = activeBtnInDropdown.title;
     }
-    console.log(`[DIAGNÓSTICO] setActiveTool llamada. Nueva herramienta: ${toolName}`);
-    activeTool = toolName; // Asegurémonos de que se asigna aquí.
+    console.log(`Herramienta activa: ${toolName}`);
+    activeTool = toolName;
 }
 
 export function initialize(dependencies) {
@@ -403,7 +403,6 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
-        console.log(`[DIAGNÓSTICO] Mousedown detectado en sceneCanvas. Herramienta activa: '${activeTool}'`);
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
             e.stopPropagation();
