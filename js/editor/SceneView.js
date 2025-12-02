@@ -709,7 +709,8 @@ function drawTileCursor() {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -1045,7 +1046,7 @@ function paintTile(event) {
             }
 
             lastPaintedCoords = { col, row };
-            SceneManager.setSceneDirty(true);
+            tilemapRenderer.setDirty(); // ¡Importante! Notifica al renderizador que el tilemap ha cambiado.
             // We found the correct layer, stop iterating
             return;
         }
