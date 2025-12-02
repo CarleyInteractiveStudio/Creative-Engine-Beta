@@ -1000,7 +1000,8 @@ function paintTile(event) {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
