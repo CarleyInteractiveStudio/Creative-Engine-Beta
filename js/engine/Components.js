@@ -576,6 +576,7 @@ registerComponent('AudioSource', AudioSource);
 
 export class Tilemap extends Leyes {
     constructor(materia) {
+        console.log("[CHIVATO] Ejecutando constructor de Tilemap...");
         super(materia);
         this.width = 30;
         this.height = 20;
@@ -624,6 +625,7 @@ export class Tilemap extends Leyes {
 
 export class TilemapRenderer extends Leyes {
     constructor(materia) {
+        console.log("[CHIVATO] Ejecutando constructor de TilemapRenderer...");
         super(materia);
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
