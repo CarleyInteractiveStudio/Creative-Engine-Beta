@@ -636,14 +636,19 @@ export class TilemapRenderer extends Leyes {
     }
 
     getImageForTile(tileData) {
+        if (!tileData || !tileData.imageData) {
+            console.error("[CHIVATO] getImageForTile: Se recibió tileData inválido o sin imageData.", tileData);
+            return null; // Devuelve nulo si los datos son incorrectos
+        }
+
         if (this.imageCache.has(tileData.imageData)) {
+            console.log(`[CHIVATO] getImageForTile: Imagen para '${tileData.spriteName}' encontrada en caché.`);
             return this.imageCache.get(tileData.imageData);
         } else {
+            console.log(`[CHIVATO] getImageForTile: Imagen para '${tileData.spriteName}' no encontrada en caché. Creando nueva imagen.`);
             const image = new Image();
             image.src = tileData.imageData;
             this.imageCache.set(tileData.imageData, image);
-            // The image will be drawn on the next frame when it's loaded.
-            // For immediate drawing, we would need to handle the onload event.
             return image;
         }
     }

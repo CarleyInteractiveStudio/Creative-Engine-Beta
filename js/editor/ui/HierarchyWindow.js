@@ -83,14 +83,23 @@ export function updateHierarchy() {
 
 // --- Hierarchy Creation Functions ---
 function createTilemapObject(parent = null) {
+    console.log("[CHIVATO] Iniciando creación de Tilemap...");
+
     // Create the parent Grid object
     const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
     gridMateria.addComponent(new Components.Grid(gridMateria));
+    console.log("[CHIVATO] Objeto 'Grid' creado:", gridMateria);
 
     // Create the child Tilemap object
     const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
-    tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
-    tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
+    const tilemapComponent = new Components.Tilemap(tilemapMateria);
+    const tilemapRenderer = new Components.TilemapRenderer(tilemapMateria);
+    tilemapMateria.addComponent(tilemapComponent);
+    tilemapMateria.addComponent(tilemapRenderer);
+    console.log("[CHIVATO] Objeto 'Tilemap' creado como hijo de 'Grid':", tilemapMateria);
+    console.log("[CHIVATO] Componente 'Tilemap' añadido:", tilemapComponent);
+    console.log("[CHIVATO] Componente 'TilemapRenderer' añadido:", tilemapRenderer);
+
 
     // The function returns the parent Grid, which is what should be selected
     return gridMateria;

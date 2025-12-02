@@ -831,8 +831,7 @@ function drawLayerPlacementPreview() {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
-    if (!tilemap || !transform || !tilemapRenderer) return;
+    if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -996,15 +995,26 @@ function drawTilemapColliders() {
 }
 
 function paintTile(event) {
+    console.log("[CHIVATO] paintTile: Ejecutando en respuesta a un evento de ratón.");
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+    if (!selectedMateria) {
+        console.warn("[CHIVATO] paintTile: Abortado - No hay Materia seleccionada.");
+        return;
+    }
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) {
+        console.warn("[CHIVATO] paintTile: Abortado - El Materia seleccionado no tiene los componentes necesarios (Tilemap, Transform, TilemapRenderer).");
+        return;
+    }
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) return;
+    if (!grid) {
+        console.warn("[CHIVATO] paintTile: Abortado - El objeto padre del Tilemap no tiene un componente 'Grid'.");
+        return;
+    }
 
     const { cellSize } = grid;
     const { width, height } = tilemap;
@@ -1033,29 +1043,36 @@ function paintTile(event) {
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
+            console.log(`[CHIVATO] paintTile: Clic detectado en la celda [${col}, ${row}].`);
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
+                console.log("[CHIVATO] paintTile: Ignorando pintura en la misma celda repetidamente.");
                 return;
             }
 
-            let tilesToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
+            const tilesToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
+             console.log("[CHIVATO] paintTile: Datos de tile recibidos de la paleta:", JSON.parse(JSON.stringify(tilesToPaint)));
             const key = `${col},${row}`;
 
             if (activeTool === 'tile-brush') {
                 if (tilesToPaint && tilesToPaint.length > 0) {
-                    // Correctly extract the single tile object from the array
-                    layer.tileData.set(key, tilesToPaint[0]);
+                    const tileObject = tilesToPaint[0]; // Extract the object from the array
+                    console.log(`[CHIVATO] paintTile: Intentando establecer tile en [${key}] con datos:`, tileObject);
+                    layer.tileData.set(key, tileObject);
+                    console.log(`[CHIVATO] paintTile: Verificación - Datos en [${key}] después de set:`, layer.tileData.get(key));
                 } else {
-                    console.warn("No tile selected in the palette to paint with.");
+                    console.warn("[CHIVATO] paintTile: No hay tile seleccionado en la paleta para pintar.");
                     return;
                 }
             } else if (activeTool === 'tile-eraser') {
+                 console.log(`[CHIVATO] paintTile: Intentando borrar tile en [${key}].`);
                 layer.tileData.delete(key);
             }
 
             lastPaintedCoords = { col, row };
-            tilemapRenderer.setDirty(); // ¡Importante! Notifica al renderizador que el tilemap ha cambiado.
-            // We found the correct layer, stop iterating
+            console.log("[CHIVATO] paintTile: Llamando a tilemapRenderer.setDirty().");
+            tilemapRenderer.setDirty();
             return;
         }
     }
+     console.log("[CHIVATO] paintTile: El clic no cayó dentro de ninguna capa del tilemap.");
 }
