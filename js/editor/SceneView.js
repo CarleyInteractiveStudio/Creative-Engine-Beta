@@ -831,7 +831,8 @@ function drawLayerPlacementPreview() {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -1000,8 +1001,7 @@ function paintTile(event) {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
-    if (!tilemap || !transform || !tilemapRenderer) return;
+    if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -1037,12 +1037,13 @@ function paintTile(event) {
                 return;
             }
 
-            const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
+            let tilesToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
             const key = `${col},${row}`;
 
             if (activeTool === 'tile-brush') {
-                if (tileIdToPaint !== null) {
-                    layer.tileData.set(key, tileIdToPaint);
+                if (tilesToPaint && tilesToPaint.length > 0) {
+                    // Correctly extract the single tile object from the array
+                    layer.tileData.set(key, tilesToPaint[0]);
                 } else {
                     console.warn("No tile selected in the palette to paint with.");
                     return;
