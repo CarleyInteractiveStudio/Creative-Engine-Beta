@@ -378,6 +378,20 @@ export function initialize(dependencies) {
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+    // Event Delegation for Toolbar Tools
+    const toolDropdown = document.querySelector('.tool-dropdown-content');
+    if (toolDropdown) {
+        toolDropdown.addEventListener('click', (e) => {
+            const toolBtn = e.target.closest('.toolbar-btn');
+            if (toolBtn && toolBtn.id.startsWith('tool-')) {
+                const toolName = toolBtn.id.substring('tool-'.length);
+                console.log(`[DIAGNÓSTICO] Clic en botón de herramienta detectado. Herramienta: '${toolName}'`);
+                setActiveTool(toolName);
+            }
+        });
+    }
+
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isAddingLayer) {
             exitAddLayerMode();
@@ -570,12 +584,6 @@ export function initialize(dependencies) {
         }
     });
 
-    document.getElementById('tool-move').addEventListener('click', () => setActiveTool('move'));
-    document.getElementById('tool-pan').addEventListener('click', () => setActiveTool('pan'));
-    document.getElementById('tool-scale').addEventListener('click', () => setActiveTool('scale'));
-    document.getElementById('tool-rotate').addEventListener('click', () => setActiveTool('rotate'));
-    document.getElementById('tool-tile-brush').addEventListener('click', () => setActiveTool('tile-brush'));
-    document.getElementById('tool-tile-eraser').addEventListener('click', () => setActiveTool('tile-eraser'));
 }
 
 export function enterAddLayerMode() {
