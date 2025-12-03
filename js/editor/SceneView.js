@@ -422,8 +422,11 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        console.log(`[CHIVATO] mousedown en sceneCanvas. Botón: ${e.button}, Herramienta activa: ${activeTool}`);
+
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
+            console.log("[CHIVATO] mousedown: Condición 'isAddingLayer' cumplida.");
             e.stopPropagation();
             if (e.button === 0) { // Left-click to place
                 // Find where the preview would place the layer and add it
@@ -474,6 +477,7 @@ export function initialize(dependencies) {
 
         // --- Panning Logic (Middle or Right-click) ---
         if (e.button === 1 || e.button === 2) {
+            console.log("[CHIVATO] mousedown: Condición 'Panning Logic' (botón 1 o 2) cumplida.");
             e.preventDefault();
             dom.sceneCanvas.style.cursor = 'grabbing';
             let lastPos = { x: e.clientX, y: e.clientY };
@@ -501,6 +505,7 @@ export function initialize(dependencies) {
 
         // --- Tile Painting Logic (Left-click) ---
         if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+            console.log("[CHIVATO] mousedown: Condición 'Tile Painting Logic' cumplida. Llamando a paintTile().");
             e.stopPropagation();
             paintTile(e); // Paint on the first click
 
@@ -521,8 +526,12 @@ export function initialize(dependencies) {
 
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
+            console.log("[CHIVATO] mousedown: Condición 'Gizmo Dragging Logic' (botón 0) alcanzada.");
             const selectedMateria = getSelectedMateria();
-            if (!selectedMateria || activeTool === 'pan') return;
+            if (!selectedMateria || activeTool === 'pan') {
+                console.log("[CHIVATO] mousedown: Abortando Gizmo Logic - no hay materia seleccionada o la herramienta es 'pan'.");
+                return;
+            }
 
             const canvasPos = InputManager.getMousePositionInCanvas();
             const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos);
