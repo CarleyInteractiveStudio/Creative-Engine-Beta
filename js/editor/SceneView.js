@@ -347,6 +347,7 @@ export function getActiveTool() {
 }
 
 export function setActiveTool(toolName) {
+    if (toolName === activeTool) return;
     activeTool = toolName;
     const toolActiveBtn = document.getElementById('tool-active');
     const activeBtnInDropdown = document.getElementById(`tool-${toolName}`);
@@ -1003,11 +1004,22 @@ function paintTile(event) {
         return;
     }
 
-    const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    let tilemapMateria = selectedMateria;
+    let tilemap = tilemapMateria.getComponent(Components.Tilemap);
+
+    if (!tilemap) {
+        const childWithTilemap = tilemapMateria.children.find(c => c.getComponent(Components.Tilemap));
+        if (childWithTilemap) {
+            tilemapMateria = childWithTilemap;
+            tilemap = childWithTilemap.getComponent(Components.Tilemap);
+        }
+    }
+
+    const transform = tilemapMateria.getComponent(Components.Transform);
+    const tilemapRenderer = tilemapMateria.getComponent(Components.TilemapRenderer);
+
     if (!tilemap || !transform || !tilemapRenderer) {
-        VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado no es un Tilemap válido (faltan componentes).");
+        VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado o sus hijos no contienen un Tilemap válido.");
         return;
     }
 
