@@ -1,5 +1,7 @@
 // --- Module for Scene View Interactions and Gizmos ---
 
+import * as VerificationSystem from './ui/VerificationSystem.js';
+
 // Dependencies from editor.js
 let dom;
 let renderer;
@@ -13,6 +15,7 @@ let getActiveView;
 let SceneManager;
 let getPreferences;
 let getSelectedTile;
+let setPaletteActiveTool = null;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -357,7 +360,11 @@ export function setActiveTool(toolName) {
         toolActiveBtn.innerHTML = activeBtnInDropdown.innerHTML.split(' ')[0];
         toolActiveBtn.title = activeBtnInDropdown.title;
     }
-    console.log(`Herramienta activa: ${activeTool}`);
+    activeTool = toolName;
+    // Notify the TilePaletteWindow of the change, if the function is available
+    if (setPaletteActiveTool) {
+        setPaletteActiveTool(toolName);
+    }
 }
 
 export function initialize(dependencies) {
@@ -372,10 +379,25 @@ export function initialize(dependencies) {
     getActiveView = dependencies.getActiveView;
     SceneManager = dependencies.SceneManager;
     getPreferences = dependencies.getPreferences;
-    getSelectedTile = dependencies.getSelectedTile; // New dependency
+    getSelectedTile = dependencies.getSelectedTile;
+    setPaletteActiveTool = dependencies.setPaletteActiveTool;
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Event Delegation for Toolbar Tools
+    const toolDropdown = document.querySelector('.tool-dropdown-content');
+    if (toolDropdown) {
+        toolDropdown.addEventListener('click', (e) => {
+            const toolBtn = e.target.closest('.toolbar-btn');
+            if (toolBtn && toolBtn.id.startsWith('tool-')) {
+                const toolName = toolBtn.id.substring('tool-'.length);
+                console.log(`[DIAGNÓSTICO] Clic en botón de herramienta detectado. Herramienta: '${toolName}'`);
+                setActiveTool(toolName);
+            }
+        });
+    }
+
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isAddingLayer) {
@@ -569,12 +591,6 @@ export function initialize(dependencies) {
         }
     });
 
-    document.getElementById('tool-move').addEventListener('click', () => setActiveTool('move'));
-    document.getElementById('tool-pan').addEventListener('click', () => setActiveTool('pan'));
-    document.getElementById('tool-scale').addEventListener('click', () => setActiveTool('scale'));
-    document.getElementById('tool-rotate').addEventListener('click', () => setActiveTool('rotate'));
-    document.getElementById('tool-tile-brush').addEventListener('click', () => setActiveTool('tile-brush'));
-    document.getElementById('tool-tile-eraser').addEventListener('click', () => setActiveTool('tile-eraser'));
 }
 
 export function enterAddLayerMode() {
@@ -700,7 +716,8 @@ function drawTileCursor() {
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -981,64 +998,68 @@ function drawTilemapColliders() {
 
 function paintTile(event) {
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+    if (!selectedMateria) {
+        VerificationSystem.updateStatus(null, false, "Error: No hay ningún objeto seleccionado.");
+        return;
+    }
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!tilemap || !transform) return;
+    const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
+    if (!tilemap || !transform || !tilemapRenderer) {
+        VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado no es un Tilemap válido (faltan componentes).");
+        return;
+    }
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
-    if (!grid) return;
+    if (!grid) {
+        VerificationSystem.updateStatus(null, false, "Error: El objeto padre del Tilemap no tiene un componente Grid.");
+        return;
+    }
 
     const { cellSize } = grid;
     const { width, height } = tilemap;
-
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
     const tilemapCenterX = transform.x;
     const tilemapCenterY = transform.y;
-
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
     for (const layer of tilemap.layers) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
-
         const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
         const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
-
         const mouseInLayerX = worldMouse.x - layerTopLeftX;
         const mouseInLayerY = worldMouse.y - layerTopLeftY;
-
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
-            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
-                return;
-            }
+            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
-            const tileIdToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
             const key = `${col},${row}`;
-
             if (activeTool === 'tile-brush') {
-                if (tileIdToPaint !== null) {
-                    layer.tileData.set(key, tileIdToPaint);
+                const tilesToPaint = getSelectedTile();
+                if (tilesToPaint && tilesToPaint.length > 0) {
+                    const tileObject = tilesToPaint[0];
+                    layer.tileData.set(key, tileObject);
+                    VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nDatos: ${tileObject.spriteName}`);
                 } else {
-                    console.warn("No tile selected in the palette to paint with.");
+                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
                     return;
                 }
             } else if (activeTool === 'tile-eraser') {
                 layer.tileData.delete(key);
+                VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
             }
 
             lastPaintedCoords = { col, row };
-            SceneManager.setSceneDirty(true);
-            // We found the correct layer, stop iterating
+            tilemapRenderer.setDirty();
             return;
         }
     }
+    VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
 }

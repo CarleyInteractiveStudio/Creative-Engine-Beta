@@ -33,6 +33,7 @@ import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
+import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -454,7 +455,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'animator-controller-panel': 'menu-window-animator',
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
-            'asset-store-panel': 'menu-window-asset-store'
+            'asset-store-panel': 'menu-window-asset-store',
+            'verification-system-panel': 'menu-window-verification-system'
         };
         const checkmark = '✅ ';
 
@@ -1313,8 +1315,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateEditorLayout();
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'tile-palette' || panelName === 'sprite-editor') {
-                const panelId = panelName === 'sprite-editor' ? 'sprite-slicer-panel' : 'tile-palette-panel';
+            } else if (panelName === 'tile-palette' || panelName === 'sprite-editor' || panelName === 'verification-system') {
+                let panelId;
+                if (panelName === 'sprite-editor') {
+                    panelId = 'sprite-slicer-panel';
+                } else if (panelName === 'verification-system') {
+                    panelId = 'verification-system-panel';
+                } else {
+                    panelId = 'tile-palette-panel';
+                }
                 const panel = document.getElementById(panelId);
                 if (panel) {
                     panel.classList.toggle('hidden');
@@ -1729,7 +1738,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
             // Disassociate Sprite Modal
-            'disassociate-sprite-modal', 'disassociate-sprite-list'
+            'disassociate-sprite-modal', 'disassociate-sprite-list',
+            // Verification System Panel
+            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -2087,7 +2098,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -2112,7 +2123,8 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector });
+            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
+            VerificationSystem.initialize({ dom });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
             await loadProjectConfig();

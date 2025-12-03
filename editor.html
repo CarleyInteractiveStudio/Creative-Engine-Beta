@@ -70,6 +70,8 @@
                         <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
                         <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
                         <hr>
+                        <a href="#" id="menu-window-verification-system">Sistema de Verificación</a>
+                        <hr>
                         <a href="#" id="menu-window-asset-store">Tienda de asset</a>
                         <hr>
                         <a href="#" id="menu-window-lib" class="disabled">Lib</a>
@@ -1074,6 +1076,29 @@ public star() {
             <span>Reproductor de Música</span>
             <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
         </div>
+    </div>
+
+    <!-- Floating Verification System Panel -->
+    <div id="verification-system-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span>Sistema de Verificación</span>
+            <button class="close-panel-btn" data-panel="verification-system-panel" title="Cerrar Panel">✖</button>
+        </div>
+        <div class="panel-content">
+            <div id="verification-tile-preview">
+                <p>Último Tile Seleccionado:</p>
+                <img id="verification-tile-image" src="" alt="Tile Preview" style="width: 64px; height: 64px; border: 1px solid #ccc;">
+            </div>
+            <div id="verification-status" style="margin-top: 10px;">
+                <p>Estado:</p>
+                <span id="verification-status-text">Esperando acción...</span>
+            </div>
+            <div id="verification-details" style="margin-top: 10px;">
+                <p>Detalles:</p>
+                <pre id="verification-details-text" style="white-space: pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
         <div class="panel-content no-padding">
             <div id="now-playing-bar">
                 <span id="now-playing-title">Nada en reproducción</span>
@@ -1187,7 +1212,7 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-    <script type="module" src="js/editor.js?v=1.1"></script>
+    <script type="module" src="js/editor.js?v=1.2"></script>
 
     <div id="animation-from-sprite-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 600px; height: 450px;">
         <div class="panel-header">

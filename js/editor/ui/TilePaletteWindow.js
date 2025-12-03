@@ -6,6 +6,7 @@ const PALETTE_TILE_SIZE = 32;
 let dom = {};
 let projectsDirHandle = null;
 let openAssetSelectorCallback = null;
+let setActiveToolCallback = null;
 let currentPalette = null; // Will hold the entire loaded palette asset content
 let currentFileHandle = null;
 let selectedTileId = -1;
@@ -49,6 +50,8 @@ export function initialize(dependencies) {
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
+    setActiveToolCallback = dependencies.setActiveToolCallback;
+
 
     // Initially, the panel is in its "empty" state
     dom.overlay.style.display = 'flex';
@@ -170,6 +173,38 @@ export function getSelectedTile() {
 
 export function getActiveTool() {
     return activeTool;
+}
+
+export function setActiveTool(toolName) {
+    // This function allows external modules to set the palette's active tool.
+    // Ensure the tool is valid for the palette.
+    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-eraser', 'organize'];
+    if (!validTools.includes(toolName)) return;
+
+    // Don't do anything if organize mode is active and a paint tool is selected
+    if (isOrganizeMode && toolName !== 'organize') return;
+
+    activeTool = toolName;
+
+    // Update the UI of the tool bubble inside the palette
+    const toolBubble = dom.panel.querySelector('.tool-bubble');
+    if (toolBubble) {
+        toolBubble.querySelectorAll('.tool-btn').forEach(btn => {
+            if (btn.dataset.tool === toolName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // Reset selections if the tool changes to a paint tool
+    if (toolName === 'tile-brush' || toolName === 'tile-rectangle-fill') {
+        selectedTileId = -1;
+        selectedTileIds = [];
+        dom.selectedTileIdSpan.textContent = '-';
+        drawTiles();
+    }
 }
 
 
@@ -495,6 +530,9 @@ function handleCanvasMouseDown(event) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
                     // Use "1 Tile" for consistency with rectangle selection counter
                     dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : '1 Tile';
+                    if (selectedTileId !== -1 && setActiveToolCallback) {
+                        setActiveToolCallback('tile-brush');
+                    }
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {
