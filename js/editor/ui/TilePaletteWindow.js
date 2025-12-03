@@ -6,6 +6,7 @@ const PALETTE_TILE_SIZE = 32;
 let dom = {};
 let projectsDirHandle = null;
 let openAssetSelectorCallback = null;
+let setActiveToolCallback = null;
 let currentPalette = null; // Will hold the entire loaded palette asset content
 let currentFileHandle = null;
 let selectedTileId = -1;
@@ -49,6 +50,8 @@ export function initialize(dependencies) {
     };
     projectsDirHandle = dependencies.projectsDirHandle;
     openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
+    setActiveToolCallback = dependencies.setActiveToolCallback;
+
 
     // Initially, the panel is in its "empty" state
     dom.overlay.style.display = 'flex';
@@ -527,6 +530,9 @@ function handleCanvasMouseDown(event) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
                     // Use "1 Tile" for consistency with rectangle selection counter
                     dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : '1 Tile';
+                    if (selectedTileId !== -1 && setActiveToolCallback) {
+                        setActiveToolCallback('tile-brush');
+                    }
                     drawTiles();
                 }
             } else if (activeTool === 'tile-rectangle-fill') {

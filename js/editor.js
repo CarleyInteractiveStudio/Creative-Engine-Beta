@@ -2123,7 +2123,7 @@ public star() {
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
-            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector });
+            TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
