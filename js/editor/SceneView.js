@@ -1,5 +1,7 @@
 // --- Module for Scene View Interactions and Gizmos ---
 
+import * as VerificationSystem from './ui/VerificationSystem.js';
+
 // Dependencies from editor.js
 let dom;
 let renderer;
@@ -422,11 +424,8 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
-        console.log(`[CHIVATO] mousedown en sceneCanvas. Botón: ${e.button}, Herramienta activa: ${activeTool}`);
-
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
-            console.log("[CHIVATO] mousedown: Condición 'isAddingLayer' cumplida.");
             e.stopPropagation();
             if (e.button === 0) { // Left-click to place
                 // Find where the preview would place the layer and add it
@@ -477,7 +476,6 @@ export function initialize(dependencies) {
 
         // --- Panning Logic (Middle or Right-click) ---
         if (e.button === 1 || e.button === 2) {
-            console.log("[CHIVATO] mousedown: Condición 'Panning Logic' (botón 1 o 2) cumplida.");
             e.preventDefault();
             dom.sceneCanvas.style.cursor = 'grabbing';
             let lastPos = { x: e.clientX, y: e.clientY };
@@ -505,7 +503,6 @@ export function initialize(dependencies) {
 
         // --- Tile Painting Logic (Left-click) ---
         if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
-            console.log("[CHIVATO] mousedown: Condición 'Tile Painting Logic' cumplida. Llamando a paintTile().");
             e.stopPropagation();
             paintTile(e); // Paint on the first click
 
@@ -526,12 +523,8 @@ export function initialize(dependencies) {
 
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
-            console.log("[CHIVATO] mousedown: Condición 'Gizmo Dragging Logic' (botón 0) alcanzada.");
             const selectedMateria = getSelectedMateria();
-            if (!selectedMateria || activeTool === 'pan') {
-                console.log("[CHIVATO] mousedown: Abortando Gizmo Logic - no hay materia seleccionada o la herramienta es 'pan'.");
-                return;
-            }
+            if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
             const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos);
@@ -1004,10 +997,9 @@ function drawTilemapColliders() {
 }
 
 function paintTile(event) {
-    console.log("[CHIVATO] paintTile: Ejecutando en respuesta a un evento de ratón.");
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) {
-        console.warn("[CHIVATO] paintTile: Abortado - No hay Materia seleccionada.");
+        VerificationSystem.updateStatus(null, false, "Error: No hay ningún objeto seleccionado.");
         return;
     }
 
@@ -1015,73 +1007,59 @@ function paintTile(event) {
     const transform = selectedMateria.getComponent(Components.Transform);
     const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
     if (!tilemap || !transform || !tilemapRenderer) {
-        console.warn("[CHIVATO] paintTile: Abortado - El Materia seleccionado no tiene los componentes necesarios (Tilemap, Transform, TilemapRenderer).");
+        VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado no es un Tilemap válido (faltan componentes).");
         return;
     }
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) {
-        console.warn("[CHIVATO] paintTile: Abortado - El objeto padre del Tilemap no tiene un componente 'Grid'.");
+        VerificationSystem.updateStatus(null, false, "Error: El objeto padre del Tilemap no tiene un componente Grid.");
         return;
     }
 
     const { cellSize } = grid;
     const { width, height } = tilemap;
-
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
     const tilemapCenterX = transform.x;
     const tilemapCenterY = transform.y;
-
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
     for (const layer of tilemap.layers) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
-
         const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
         const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
-
         const mouseInLayerX = worldMouse.x - layerTopLeftX;
         const mouseInLayerY = worldMouse.y - layerTopLeftY;
-
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
-            console.log(`[CHIVATO] paintTile: Clic detectado en la celda [${col}, ${row}].`);
-            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) {
-                console.log("[CHIVATO] paintTile: Ignorando pintura en la misma celda repetidamente.");
-                return;
-            }
+            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
-            const tilesToPaint = (activeTool === 'tile-brush') ? getSelectedTile() : null;
-             console.log("[CHIVATO] paintTile: Datos de tile recibidos de la paleta:", JSON.parse(JSON.stringify(tilesToPaint)));
             const key = `${col},${row}`;
-
             if (activeTool === 'tile-brush') {
+                const tilesToPaint = getSelectedTile();
                 if (tilesToPaint && tilesToPaint.length > 0) {
-                    const tileObject = tilesToPaint[0]; // Extract the object from the array
-                    console.log(`[CHIVATO] paintTile: Intentando establecer tile en [${key}] con datos:`, tileObject);
+                    const tileObject = tilesToPaint[0];
                     layer.tileData.set(key, tileObject);
-                    console.log(`[CHIVATO] paintTile: Verificación - Datos en [${key}] después de set:`, layer.tileData.get(key));
+                    VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nDatos: ${tileObject.spriteName}`);
                 } else {
-                    console.warn("[CHIVATO] paintTile: No hay tile seleccionado en la paleta para pintar.");
+                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
                     return;
                 }
             } else if (activeTool === 'tile-eraser') {
-                 console.log(`[CHIVATO] paintTile: Intentando borrar tile en [${key}].`);
                 layer.tileData.delete(key);
+                VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
             }
 
             lastPaintedCoords = { col, row };
-            console.log("[CHIVATO] paintTile: Llamando a tilemapRenderer.setDirty().");
             tilemapRenderer.setDirty();
             return;
         }
     }
-     console.log("[CHIVATO] paintTile: El clic no cayó dentro de ninguna capa del tilemap.");
+    VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
 }

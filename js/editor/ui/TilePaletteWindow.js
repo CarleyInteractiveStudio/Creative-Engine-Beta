@@ -525,7 +525,6 @@ function handleCanvasMouseDown(event) {
                 const clickedIndex = getTileIndexFromEvent(event);
                 if (clickedIndex >= 0 && clickedIndex < allTiles.length) {
                     selectedTileId = (selectedTileId === clickedIndex) ? -1 : clickedIndex;
-                    console.log(`[CHIVATO] Selección de tile en paleta (Pincel). ID: ${selectedTileId}`, selectedTileId !== -1 ? allTiles[selectedTileId] : 'Ninguno');
                     // Use "1 Tile" for consistency with rectangle selection counter
                     dom.selectedTileIdSpan.textContent = selectedTileId === -1 ? '-' : '1 Tile';
                     drawTiles();

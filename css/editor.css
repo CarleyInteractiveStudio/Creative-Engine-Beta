@@ -3130,3 +3130,39 @@ body {
     background-color: var(--accent-color);
     color: white;
 }
+
+#verification-system-panel {
+    width: 300px;
+    height: 400px;
+    top: 150px;
+    left: calc(50% - 150px);
+}
+
+#verification-tile-preview img {
+    background-color: #222;
+    border: 1px solid var(--color-border);
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+#verification-status-text.success {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+#verification-status-text.error {
+    color: #F44336;
+    font-weight: bold;
+}
+
+#verification-details-text {
+    background-color: var(--color-background-deep);
+    border: 1px solid var(--color-border);
+    padding: 5px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 150px;
+    overflow-y: auto;
+}
