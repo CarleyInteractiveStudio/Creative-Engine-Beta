@@ -69,6 +69,7 @@
                         <a href="#" id="menu-window-animator">Controlador de Animación</a>
                         <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
                         <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
+                        <a href="#" id="menu-window-ambiente-control">Control de Ambiente</a>
                         <hr>
                         <a href="#" id="menu-window-verification-system">Sistema de Verificación</a>
                         <hr>
@@ -620,6 +621,55 @@ public star() {
                         <textarea id="carl-ia-input" placeholder="Escribe tu mensaje..." style="flex-grow: 1; resize: none; height: 40px; border-radius: 5px; border: 1px solid var(--color-border); background: var(--color-background-light); color: var(--color-text-primary); padding: 5px;"></textarea>
                         <button id="carl-ia-send-btn" style="margin-left: 8px; font-size: 20px; background: none; border: none; color: var(--color-accent); cursor: pointer;">➤</button>
                     </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+
+            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 450px;">
+                <div class="panel-header">
+                    <span>Control de Ambiente</span>
+                    <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
+                </div>
+                <div class="panel-content">
+                    <fieldset class="inspector-section">
+                        <legend>Ciclo Día/Noche</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-luz-ambiental">Luz Ambiental</label>
+                            <input type="color" id="ambiente-luz-ambiental" value="#1a1a2a">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-tiempo">Hora del Día</label>
+                            <input type="range" id="ambiente-tiempo" min="0" max="23" value="6" style="flex-grow: 1;">
+                            <span id="ambiente-tiempo-valor" style="margin-left: 10px; min-width: 40px;">06:00</span>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-ciclo-automatico">
+                            <label for="ambiente-ciclo-automatico">Ciclo Automático</label>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-duracion-dia">Duración del Día (segs)</label>
+                            <input type="number" id="ambiente-duracion-dia" min="1" value="60">
+                        </div>
+                    </fieldset>
+                    <fieldset class="inspector-section">
+                        <legend>Máscaras de Iluminación</legend>
+                        <p class="field-description">Usa Layers o Tags para controlar qué luces afectan a qué objetos.</p>
+                        <div class="inspector-row">
+                            <label for="ambiente-mascara-tipo">Tipo de Máscara</label>
+                            <select id="ambiente-mascara-tipo">
+                                <option value="ninguna">Ninguna</option>
+                                <option value="layers">Basado en Layers</option>
+                                <option value="tags">Basado en Tags</option>
+                            </select>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
