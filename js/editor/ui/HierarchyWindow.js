@@ -139,7 +139,7 @@ export function initialize(dependencies) {
     setupEventListeners();
 }
 
-function handleContextMenuAction(action) {
+export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     // For actions on existing items, we MUST use the materia that was under the cursor
     // when the context menu was opened. This prevents race conditions if selection changes.
@@ -376,15 +376,5 @@ function setupEventListeners() {
         showContextMenuCallback(menu, e);
     });
 
-    // --- Menu click listener ---
-    const hierarchyMenu = document.getElementById('hierarchy-context-menu');
-    if (hierarchyMenu) {
-        hierarchyMenu.addEventListener('mousedown', (e) => { // Changed to mousedown
-            e.stopPropagation(); // Stop the event from bubbling up to the window listener
-            const action = e.target.dataset.action;
-            if (!action || e.target.classList.contains('disabled')) return;
-            showContextMenuCallback(null);
-            handleContextMenuAction(action);
-        });
-    }
+    // --- Menu click listener is now centralized in editor.js ---
 }

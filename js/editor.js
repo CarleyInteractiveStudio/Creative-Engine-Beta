@@ -11,9 +11,9 @@ import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFrom
 import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
-import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
+import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
@@ -1153,10 +1153,27 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Global listener to hide context menus
-        window.addEventListener('mousedown', (e) => {
-            // Hide if the click is not on a context menu itself
-            if (!e.target.closest('.context-menu')) {
+        // Centralized context menu click handler
+        document.body.addEventListener('mousedown', (e) => {
+            const target = e.target;
+            const contextMenu = target.closest('.context-menu');
+
+            if (contextMenu) {
+                e.stopPropagation(); // Prevent the global hider from closing the menu
+                const action = target.dataset.action;
+                if (action && !target.classList.contains('disabled')) {
+                    // Determine which context menu was clicked and delegate
+                    if (contextMenu.id === 'context-menu') {
+                        handleAssetContextMenuAction(action);
+                    } else if (contextMenu.id === 'hierarchy-context-menu') {
+                        handleHierarchyContextMenuAction(action);
+                    }
+                    // Add other context menus here as needed...
+
+                    hideContextMenus(); // Hide after action
+                }
+            } else {
+                // If the click is anywhere else, hide all menus
                 hideContextMenus();
             }
         });
