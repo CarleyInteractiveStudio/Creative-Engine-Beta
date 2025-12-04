@@ -40,9 +40,10 @@ class DialogWindow {
             const button = document.createElement('button');
             button.textContent = btnInfo.text;
             button.className = 'dialog-button';
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 if (btnInfo.callback) {
-                    btnInfo.callback();
+                    await btnInfo.callback();
                 }
                 this.hide();
             });

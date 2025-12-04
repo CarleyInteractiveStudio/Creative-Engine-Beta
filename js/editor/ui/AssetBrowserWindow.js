@@ -485,42 +485,36 @@ async function handleContextMenuClick(e) {
         }
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
-            console.log("CHIVATO: Acción 'delete' seleccionada en Asset Browser.");
             if (selectedAsset) {
-                console.log(`CHIVATO: Asset seleccionado para borrar: ${selectedAsset.name}`);
                 showConfirmation(
                     'Confirmar Borrado',
                     `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
                     async () => {
-                        console.log("CHIVATO: Confirmación de borrado aceptada.");
                         try {
-                            console.log(`CHIVATO: Intentando borrar '${selectedAsset.name}' desde el handle...`);
                             // Delete the main asset
                             await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
-                            console.log(`CHIVATO: Éxito al borrar '${selectedAsset.name}'.`);
+                            console.log(`'${selectedAsset.name}' borrado.`);
 
                             // Also try to delete a corresponding .meta file, if one exists
                             if (selectedAsset.kind === 'file') {
                                 const metaName = `${selectedAsset.name}.meta`;
                                 try {
                                     await currentDirectoryHandle.handle.removeEntry(metaName);
-                                    console.log(`CHIVATO: Metadatos '${metaName}' borrados.`);
+                                    console.log(`Metadatos '${metaName}' borrados.`);
                                 } catch (metaErr) {
                                     // This is not a critical error, the meta file might not exist.
-                                    console.log(`CHIVATO: No se encontraron metadatos para '${selectedAsset.name}'.`);
+                                    console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
                                 }
                             }
-                            console.log("CHIVATO: Llamando a updateAssetBrowserCallback...");
+
                             await updateAssetBrowserCallback();
-                            console.log("CHIVATO: updateAssetBrowserCallback completado.");
                         } catch (err) {
-                            console.error(`CHIVATO: Error CATCH al borrar '${selectedAsset.name}':`, err);
+                            console.error(`Error al borrar '${selectedAsset.name}':`, err);
                             showNotification('Error', 'No se pudo borrar el asset.');
                         }
                     }
                 );
             } else {
-                console.log("CHIVATO: No se seleccionó ningún asset para borrar.");
                 showNotification('Error', 'Por favor, selecciona un archivo o carpeta para borrar.');
             }
             break;

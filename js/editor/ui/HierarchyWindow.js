@@ -185,33 +185,24 @@ function handleContextMenuAction(action) {
             }
             break;
         case 'delete':
-            console.log("CHIVATO: Acción 'delete' seleccionada en Hierarchy.");
             if (contextMateria) { // Use contextMateria
-                console.log(`CHIVATO: Materia seleccionada para eliminar: ${contextMateria.name} (ID: ${contextMateria.id})`);
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
                     () => {
-                        console.log("CHIVATO: Confirmación de eliminación aceptada.");
                         const idToDelete = contextMateria.id;
 
                         // If the currently selected materia is the one being deleted, deselect it.
                         const selectedMateria = getSelectedMateria();
                         if (selectedMateria && selectedMateria.id === idToDelete) {
-                            console.log("CHIVATO: Deseleccionando la materia eliminada.");
                             selectMateriaCallback(null);
                         }
 
-                        console.log(`CHIVATO: Llamando a SceneManager.currentScene.removeMateria con ID ${idToDelete}`);
                         SceneManager.currentScene.removeMateria(idToDelete);
-                        console.log("CHIVATO: removeMateria completado. Llamando a updateHierarchy y updateInspector.");
                         updateHierarchy();
                         updateInspector(); // Refresh inspector, which will show empty state
-                        console.log("CHIVATO: Actualización de UI completada.");
                     }
                 );
-            } else {
-                console.log("CHIVATO: No se seleccionó ninguna materia para eliminar.");
             }
             break;
         case 'duplicate':
@@ -363,21 +354,24 @@ function setupEventListeners() {
     hierarchyContent.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
+
+        // Determine the contextMateriaId from the right-clicked item
         if (item) {
-            const materiaId = parseInt(item.dataset.id, 10);
-            selectMateriaCallback(materiaId);
-            contextMateriaId = materiaId; // Store ID for the action
+            contextMateriaId = parseInt(item.dataset.id, 10);
         } else {
-            selectMateriaCallback(null);
-            contextMateriaId = null; // No item was clicked
+            contextMateriaId = null; // Clicked on empty space
         }
 
-        const menu = document.getElementById('hierarchy-context-menu');
-        const hasSelection = !!getSelectedMateria();
+        // Update selection to match the right-clicked item
+        selectMateriaCallback(contextMateriaId);
 
-        menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasSelection);
+        const menu = document.getElementById('hierarchy-context-menu');
+        const hasContext = contextMateriaId !== null;
+
+        // Enable/disable options based on whether an item was right-clicked
+        menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasContext);
+        menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
+        menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
         showContextMenuCallback(menu, e);
     });
