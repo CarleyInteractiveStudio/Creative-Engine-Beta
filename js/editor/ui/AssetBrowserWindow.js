@@ -43,8 +43,7 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
-    dom.contextMenu.addEventListener('click', handleContextMenuClick);
-    console.log("CHIVATO INIT: Event listener para el menú contextual del Asset Browser añadido.");
+    dom.contextMenu.addEventListener('mousedown', handleContextMenuClick);
 }
 
 // --- Core Functions ---

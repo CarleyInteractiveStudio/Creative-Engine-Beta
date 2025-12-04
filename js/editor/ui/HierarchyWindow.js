@@ -379,13 +379,12 @@ function setupEventListeners() {
     // --- Menu click listener ---
     const hierarchyMenu = document.getElementById('hierarchy-context-menu');
     if (hierarchyMenu) {
-        hierarchyMenu.addEventListener('click', (e) => {
+        hierarchyMenu.addEventListener('mousedown', (e) => { // Changed to mousedown
             e.stopPropagation(); // Stop the event from bubbling up to the window listener
             const action = e.target.dataset.action;
             if (!action || e.target.classList.contains('disabled')) return;
             showContextMenuCallback(null);
             handleContextMenuAction(action);
         });
-        console.log("CHIVATO INIT: Event listener para el menú contextual de la Jerarquía añadido.");
     }
 }
