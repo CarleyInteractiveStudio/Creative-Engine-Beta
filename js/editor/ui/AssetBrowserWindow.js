@@ -48,7 +48,11 @@ export function initialize(dependencies) {
 
 // --- Core Functions ---
 export async function updateAssetBrowser() {
-    if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
+    console.log("CHIVATO CORE: updateAssetBrowser llamado.");
+    if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) {
+        console.log("CHIVATO CORE: updateAssetBrowser abortado por falta de dependencias (projectsDirHandle, dom...).");
+        return;
+    }
 
     const folderTreeContainer = dom.assetFolderTree;
     const gridViewContainer = dom.assetGridView;

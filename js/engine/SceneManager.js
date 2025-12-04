@@ -79,23 +79,31 @@ export class Scene {
     }
 
     removeMateria(materiaId) {
+        console.log(`CHIVATO CORE: Scene.removeMateria llamado para el ID: ${materiaId}`);
         const materiaToRemove = this.findMateriaById(materiaId);
         if (!materiaToRemove) {
-            console.warn(`Materia with id ${materiaId} not found for removal.`);
+            console.warn(`CHIVATO CORE: Materia con id ${materiaId} no encontrada para eliminar.`);
             return;
         }
 
+        console.log(`CHIVATO CORE: Materia encontrada: ${materiaToRemove.name}`);
+
         // If it's a child, simply remove it from its parent's list of children.
-        // The object and its descendants will be garbage collected if not referenced elsewhere.
         if (materiaToRemove.parent) {
+            console.log(`CHIVATO CORE: Es una materia hija. Eliminando del padre: ${materiaToRemove.parent.name}`);
             materiaToRemove.parent.removeChild(materiaToRemove);
         } else {
             // If it's a root object, remove it from the scene's main list.
+            console.log("CHIVATO CORE: Es una materia raíz. Eliminando de la lista de la escena.");
             const index = this.materias.findIndex(m => m.id === materiaId);
             if (index > -1) {
                 this.materias.splice(index, 1);
+                console.log("CHIVATO CORE: Materia eliminada de la lista de la escena.");
+            } else {
+                console.warn("CHIVATO CORE: La materia raíz no se encontró en la lista principal de la escena para eliminar.");
             }
         }
+        console.log("CHIVATO CORE: removeMateria completado.");
     }
 }
 
