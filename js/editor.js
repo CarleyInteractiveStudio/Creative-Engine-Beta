@@ -1155,9 +1155,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Global listener to hide context menus
         window.addEventListener('mousedown', (e) => {
+            const closestMenu = e.target.closest('.context-menu');
+            console.log("CHIVATO GLOBAL: Mousedown event en window. El target es:", e.target, "El menú más cercano es:", closestMenu);
             // Hide if the click is not on a context menu itself
-            if (!e.target.closest('.context-menu')) {
+            if (!closestMenu) {
+                console.log("CHIVATO GLOBAL: El clic fue fuera de un menú. Ocultando todos los menús.");
                 hideContextMenus();
+            } else {
+                console.log("CHIVATO GLOBAL: El clic fue DENTRO de un menú. No se debería ocultar por el listener global.");
             }
         });
 

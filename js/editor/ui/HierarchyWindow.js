@@ -386,5 +386,6 @@ function setupEventListeners() {
             showContextMenuCallback(null);
             handleContextMenuAction(action);
         });
+        console.log("CHIVATO INIT: Event listener para el menú contextual de la Jerarquía añadido.");
     }
 }
