@@ -54,8 +54,8 @@ const AmbienteControlWindow = (() => {
         }
     }
 
-    function update(deltaTime) {
-        if (!isCicloAutomatico) return;
+    function update(deltaTime, isGameRunning) {
+        if (!isCicloAutomatico || !isGameRunning) return;
 
         const dayDurationInSeconds = parseFloat(dom.ambienteDuracionDia.value) || 60;
         const secondsPerHour = dayDurationInSeconds / 24;
@@ -108,9 +108,25 @@ const AmbienteControlWindow = (() => {
     }
 
 
+    function iniciarCiclo() {
+        isCicloAutomatico = true;
+        if (dom.ambienteCicloAutomatico) {
+            dom.ambienteCicloAutomatico.checked = true;
+        }
+    }
+
+    function detenerCiclo() {
+        isCicloAutomatico = false;
+        if (dom.ambienteCicloAutomatico) {
+            dom.ambienteCicloAutomatico.checked = false;
+        }
+    }
+
     return {
         initialize,
-        update
+        update,
+        iniciarCiclo,
+        detenerCiclo
     };
 })();
 

@@ -666,7 +666,7 @@ public star() {
                             <select id="ambiente-mascara-tipo">
                                 <option value="ninguna">Ninguna</option>
                                 <option value="layers">Basado en Layers</option>
-                                <option value="tags">Basado en Tags</option>
+                                <option value="tags" disabled>Basado en Tags (Próximamente)</option>
                             </select>
                         </div>
                     </fieldset>
@@ -836,6 +836,15 @@ public star() {
 
                 <fieldset class="settings-section">
                     <legend>Visual</legend>
+                    <div class="inspector-row">
+                        <label for="settings-renderer-mode">Modo de Renderizado</label>
+                        <select id="settings-renderer-mode">
+                            <option value="canvas2d">Simple (Canvas2D)</option>
+                            <option value="realista">Realista (PixiRenderer)</option>
+                        </select>
+                    </div>
+                    <p class="field-description">Elige el motor gráfico para tu proyecto. 'Simple' para 2D puro, 'Realista' para efectos de iluminación.</p>
+                    <hr>
                     <label>Icono del Ejecutable</label>
                     <div class="image-picker">
                         <img id="settings-icon-preview" src="image/Paquete.png" alt="Vista previa del icono" style="display:none;">
@@ -1262,7 +1271,7 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-    <script type="module" src="js/editor.js?v=1.2"></script>
+    <script type="module" src="js/editor.js?v=1.3"></script>
 
     <div id="animation-from-sprite-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 600px; height: 450px;">
         <div class="panel-header">

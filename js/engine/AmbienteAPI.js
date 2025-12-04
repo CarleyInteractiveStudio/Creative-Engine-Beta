@@ -3,11 +3,15 @@
 let editorRenderer = null;
 let gameRenderer = null;
 let dom = null;
+let iniciarCicloCallback = () => {};
+let detenerCicloCallback = () => {};
 
 function initialize(dependencies) {
     editorRenderer = dependencies.editorRenderer;
     gameRenderer = dependencies.gameRenderer;
     dom = dependencies.dom;
+    iniciarCicloCallback = dependencies.iniciarCiclo;
+    detenerCicloCallback = dependencies.detenerCiclo;
 }
 
 function setLuzAmbiental(color) {
@@ -31,11 +35,21 @@ function activarDia() {
 }
 
 
+function iniciarCiclo() {
+    if (iniciarCicloCallback) iniciarCicloCallback();
+}
+
+function detenerCiclo() {
+    if (detenerCicloCallback) detenerCicloCallback();
+}
+
 // The object that will be exposed to the .ces scripts
 const AmbienteAPI = {
     setLuzAmbiental,
     activarNoche,
-    activarDia
+    activarDia,
+    iniciarCiclo,
+    detenerCiclo
 };
 
 export { initialize, AmbienteAPI };

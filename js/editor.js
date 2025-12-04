@@ -779,11 +779,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const spriteLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
 
-        const drawObjects = (ctx, cameraForCulling) => {
+        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
-            for (const materia of materiasToRender) {
+            for (const materia of objectsToRender) {
                 if (!materia.isActive) continue;
 
                 if (cameraForCulling) {
@@ -831,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Draw tilemaps
-            for (const materia of tilemapsToRender) {
+            for (const materia of tilemapsToDraw) {
                 if (!materia.isActive) continue;
 
                 // Culling for tilemaps can be more complex (chunk-based),
@@ -853,32 +853,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const drawLights = () => {
+        const drawLights = (lights) => {
             // NEW: Only run the lighting pass if the renderer mode is 'realista'
-            if (currentProjectConfig.rendererMode !== 'realista') {
+            if (currentProjectConfig.rendererMode !== 'realista' || !lights) {
                 return;
             }
 
             rendererInstance.beginLights();
-            for (const lightMateria of pointLights) {
+            for (const lightMateria of lights.point) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.PointLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawPointLight(light, transform);
             }
-            for (const lightMateria of spotLights) {
+            for (const lightMateria of lights.spot) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpotLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawSpotLight(light, transform);
             }
-            for (const lightMateria of freeformLights) {
+            for (const lightMateria of lights.freeform) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.FreeformLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawFreeformLight(light, transform);
             }
-            for (const lightMateria of spriteLights) {
+            for (const lightMateria of lights.sprite) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpriteLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
@@ -886,6 +886,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             rendererInstance.endLights();
         };
+
+        const allLights = {
+            point: pointLights,
+            spot: spotLights,
+            freeform: freeformLights,
+            sprite: spriteLights
+        };
+
+        const handleRender = (camera) => {
+            rendererInstance.beginWorld(camera);
+
+            const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
+
+            if (useLayerMasks) {
+                const allObjects = [...materiasToRender, ...tilemapsToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+                const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
+
+                uniqueLayers.forEach(layer => {
+                    const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
+                    const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
+                    const lightsInLayer = {
+                        point: pointLights.filter(l => l.layer === layer),
+                        spot: spotLights.filter(l => l.layer === layer),
+                        freeform: freeformLights.filter(l => l.layer === layer),
+                        sprite: spriteLights.filter(l => l.layer === layer)
+                    };
+
+                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer);
+                    drawLights(lightsInLayer);
+                });
+
+            } else {
+                // Original behavior: draw all objects, then all lights
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
+                drawLights(allLights);
+            }
+
+
+            if (!isGameView) {
+                SceneView.drawOverlay();
+            }
+            rendererInstance.end();
+        };
+
 
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
@@ -895,30 +939,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 rendererInstance.clear();
                 return;
             }
-
-            cameras.forEach(cameraMateria => {
-                // Pass 1: Draw objects
-                rendererInstance.beginWorld(cameraMateria);
-                drawObjects(rendererInstance.ctx, cameraMateria);
-
-                // Pass 2: Draw lights and composite (now conditional)
-                drawLights();
-
-                rendererInstance.end();
-            });
-
+            cameras.forEach(handleRender);
         } else { // Editor Scene View
-            // Pass 1: Draw objects
-            rendererInstance.beginWorld();
-            drawObjects(rendererInstance.ctx, null);
-
-            // Pass 2: Draw lights and composite (now conditional)
-            drawLights();
-
-            // Pass 3: Draw editor overlays
-            SceneView.drawOverlay();
-
-            rendererInstance.end();
+            handleRender(null);
         }
     }
 
@@ -931,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
-        AmbienteControlWindow.update(deltaTime);
+        AmbienteControlWindow.update(deltaTime, isGameRunning);
 
         if (isGameRunning) {
         }
@@ -1089,6 +1112,24 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
     }
+
+    saveScene = async function() {
+        if (!SceneManager.currentSceneFileHandle) {
+            showNotificationDialog('Error', 'No hay ninguna escena abierta para guardar.');
+            return;
+        }
+        try {
+            const writable = await SceneManager.currentSceneFileHandle.createWritable();
+            const sceneData = SceneManager.serializeScene(SceneManager.currentScene, dom);
+            await writable.write(JSON.stringify(sceneData, null, 2));
+            await writable.close();
+            SceneManager.setSceneDirty(false);
+            showNotificationDialog('Éxito', '¡Escena guardada!');
+        } catch (error) {
+            console.error("Error al guardar la escena:", error);
+            showNotificationDialog('Error', 'No se pudo guardar la escena.');
+        }
+    };
 
     // --- 6. Event Listeners & Handlers ---
     let createNewScript; // To be defined
@@ -1683,6 +1724,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateAmbientePanelFromScene() {
+        if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
+
+        const ambiente = SceneManager.currentScene.ambiente;
+        dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental;
+        dom.ambienteTiempo.value = ambiente.hora;
+        dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico;
+        dom.ambienteDuracionDia.value = ambiente.duracionDia;
+        dom.ambienteMascaraTipo.value = ambiente.mascaraTipo;
+
+        // Trigger input events to update UI text and renderer color
+        dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
+        dom.ambienteTiempo.dispatchEvent(new Event('input'));
+    }
+
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // --- 7a. Cache DOM elements, including the new loading panel ---
@@ -2070,6 +2126,7 @@ public star() {
                                 SceneManager.setSceneDirty(false);
                                 updateHierarchy();
                                 selectMateria(null);
+                                updateAmbientePanelFromScene(); // Sync UI
                             } else {
                                 showNotificationDialog('Error', `Failed to load scene: ${name}`);
                             }
@@ -2149,7 +2206,13 @@ public star() {
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
             AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
-            AmbienteAPI.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
+            AmbienteAPI.initialize({
+                dom,
+                editorRenderer: renderer,
+                gameRenderer: gameRenderer,
+                iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
+                detenerCiclo: AmbienteControlWindow.detenerCiclo
+            });
             RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
 
 
@@ -2179,6 +2242,7 @@ public star() {
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
+            updateAmbientePanelFromScene(); // Sync UI on initial load
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();

@@ -613,7 +613,15 @@ export function update() {
 
     // Check if selection has changed
     if (currentSelectedId !== lastSelectedId) {
-        const hasTilemap = selectedMateria && selectedMateria.getComponent(Components.Tilemap);
+        let hasTilemap = false;
+        if (selectedMateria) {
+            // Check the selected materia itself
+            hasTilemap = selectedMateria.getComponent(Components.Tilemap) !== null;
+            // If not found, check its direct children
+            if (!hasTilemap && selectedMateria.children) {
+                hasTilemap = selectedMateria.children.some(child => child.getComponent(Components.Tilemap) !== null);
+            }
+        }
 
         // Show/hide tilemap-specific tools
         document.querySelectorAll('.tilemap-tool, .tilemap-tool-divider').forEach(el => {
