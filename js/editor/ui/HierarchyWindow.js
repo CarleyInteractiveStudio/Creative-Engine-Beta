@@ -189,7 +189,7 @@ function handleContextMenuAction(action) {
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
-                    () => {
+                    async () => {
                         const idToDelete = contextMateria.id;
 
                         // If the currently selected materia is the one being deleted, deselect it.
@@ -380,6 +380,7 @@ function setupEventListeners() {
     const hierarchyMenu = document.getElementById('hierarchy-context-menu');
     if (hierarchyMenu) {
         hierarchyMenu.addEventListener('click', (e) => {
+            e.stopPropagation(); // Stop the event from bubbling up to the window listener
             const action = e.target.dataset.action;
             if (!action || e.target.classList.contains('disabled')) return;
             showContextMenuCallback(null);

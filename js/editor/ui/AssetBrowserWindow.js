@@ -48,11 +48,7 @@ export function initialize(dependencies) {
 
 // --- Core Functions ---
 export async function updateAssetBrowser() {
-    console.log("CHIVATO CORE: updateAssetBrowser llamado.");
-    if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) {
-        console.log("CHIVATO CORE: updateAssetBrowser abortado por falta de dependencias (projectsDirHandle, dom...).");
-        return;
-    }
+    if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
     const folderTreeContainer = dom.assetFolderTree;
     const gridViewContainer = dom.assetGridView;
@@ -431,6 +427,7 @@ async function handleExternalFileDrop(e) {
 }
 
 async function handleContextMenuClick(e) {
+    e.stopPropagation(); // Stop the event from bubbling up to the window listener
     const action = e.target.dataset.action;
     if (!action) return;
 
@@ -497,17 +494,14 @@ async function handleContextMenuClick(e) {
                         try {
                             // Delete the main asset
                             await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
-                            console.log(`'${selectedAsset.name}' borrado.`);
 
                             // Also try to delete a corresponding .meta file, if one exists
                             if (selectedAsset.kind === 'file') {
                                 const metaName = `${selectedAsset.name}.meta`;
                                 try {
                                     await currentDirectoryHandle.handle.removeEntry(metaName);
-                                    console.log(`Metadatos '${metaName}' borrados.`);
                                 } catch (metaErr) {
                                     // This is not a critical error, the meta file might not exist.
-                                    console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
                                 }
                             }
 
