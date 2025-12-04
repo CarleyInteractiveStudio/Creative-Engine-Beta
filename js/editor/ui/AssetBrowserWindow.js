@@ -7,6 +7,7 @@ let dom;
 let projectsDirHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
+let contextAsset = null; // Asset under the right-click context menu
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -325,14 +326,19 @@ async function handleGridContextMenu(e) {
         // Select the item that was right-clicked
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind);
+        const assetName = item.dataset.name;
+        const assetKind = item.dataset.kind;
+        onAssetSelected(assetName, item.dataset.path, assetKind);
 
-        exportOption.style.display = item.dataset.kind === 'directory' ? 'block' : 'none';
-        exportDivider.style.display = item.dataset.kind === 'directory' ? 'block' : 'none';
+        contextAsset = { name: assetName, kind: assetKind }; // Store asset for context action
+
+        exportOption.style.display = assetKind === 'directory' ? 'block' : 'none';
+        exportDivider.style.display = assetKind === 'directory' ? 'block' : 'none';
     } else {
         // Right-clicked on empty space, deselect all
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         onAssetSelected(null, null, null);
+        contextAsset = null; // Clear context asset
         exportOption.style.display = 'none';
         exportDivider.style.display = 'none';
     }
@@ -427,8 +433,8 @@ async function handleContextMenuClick(e) {
     // The context menu is global, so we hide it from here
     dom.contextMenu.style.display = 'none';
 
-    const selectedAssetEl = dom.assetGridView.querySelector('.grid-item.active');
-    const selectedAsset = selectedAssetEl ? { name: selectedAssetEl.dataset.name, kind: selectedAssetEl.dataset.kind } : null;
+    // Use the asset stored at the time the context menu was opened
+    const selectedAsset = contextAsset;
 
     switch(action) {
         case 'create-folder': {

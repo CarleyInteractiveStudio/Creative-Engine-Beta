@@ -191,10 +191,16 @@ function handleContextMenuAction(action) {
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
                     () => {
                         const idToDelete = contextMateria.id;
-                        selectMateriaCallback(null);
+
+                        // If the currently selected materia is the one being deleted, deselect it.
+                        const selectedMateria = getSelectedMateria();
+                        if (selectedMateria && selectedMateria.id === idToDelete) {
+                            selectMateriaCallback(null);
+                        }
+
                         SceneManager.currentScene.removeMateria(idToDelete);
                         updateHierarchy();
-                        updateInspector();
+                        updateInspector(); // Refresh inspector, which will show empty state
                     }
                 );
             }
