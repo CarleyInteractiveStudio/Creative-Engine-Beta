@@ -7,6 +7,7 @@ let dom;
 let projectsDirHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
+let contextAsset = null; // Asset under the right-click context menu
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -42,7 +43,136 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
-    dom.contextMenu.addEventListener('click', handleContextMenuClick);
+    // The event listener is now centralized in editor.js
+}
+
+export async function handleContextMenuAction(action) {
+    // This function is now called from editor.js
+    const selectedAsset = contextAsset;
+
+    switch(action) {
+        case 'create-folder': {
+            const folderName = prompt("Nombre de la nueva carpeta:");
+            if (folderName) {
+                try {
+                    await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error al crear la carpeta:", err);
+                    showNotification('Error', 'No se pudo crear la carpeta.');
+                }
+            }
+            break;
+        }
+        case 'create-script': {
+            const scriptName = prompt("Nombre del nuevo script (.ces):");
+            if (scriptName) {
+                const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
+                const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
+                try {
+                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(defaultContent);
+                    await writable.close();
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error al crear el script:", err);
+                    showNotification('Error', 'No se pudo crear el script.');
+                }
+            }
+            break;
+        }
+        case 'create-ui-system': {
+            if (createUiSystemFile) {
+                createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
+            }
+            break;
+        }
+        case 'create-tile-palette': {
+            const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
+            if (paletteName) {
+                const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
+                await createNewPalette(fileName, currentDirectoryHandle.handle);
+                await updateAssetBrowserCallback();
+            }
+            break;
+        }
+        // Add other cases for create-scene, create-animation, etc.
+        case 'delete': {
+            if (selectedAsset) {
+                alert(`[CHIVATO AssetBrowser] Preparando para borrar: ${selectedAsset.name}`);
+                showConfirmation(
+                    'Confirmar Borrado',
+                    `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
+                    async () => {
+                        try {
+                            // Delete the main asset
+                            await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
+
+                            // Also try to delete a corresponding .meta file, if one exists
+                            if (selectedAsset.kind === 'file') {
+                                const metaName = `${selectedAsset.name}.meta`;
+                                try {
+                                    await currentDirectoryHandle.handle.removeEntry(metaName);
+                                } catch (metaErr) {
+                                    // This is not a critical error, the meta file might not exist.
+                                }
+                            }
+
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error(`Error al borrar '${selectedAsset.name}':`, err);
+                            showNotification('Error', 'No se pudo borrar el asset.');
+                        }
+                    }
+                );
+            } else {
+                showNotification('Error', 'Por favor, selecciona un archivo o carpeta para borrar.');
+            }
+            break;
+        }
+        case 'rename': {
+            if (selectedAsset) {
+                const oldName = selectedAsset.name;
+                const newName = prompt(`Renombrar '${oldName}':`, oldName);
+
+                if (newName && newName !== oldName) {
+                    try {
+                        if (selectedAsset.kind === 'directory') {
+                            showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
+                            return;
+                        }
+                        const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
+                        const content = await (await oldFileHandle.getFile()).text();
+
+                        const newFileHandle = await currentDirectoryHandle.handle.getFileHandle(newName, { create: true });
+                        const writable = await newFileHandle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+
+                        await currentDirectoryHandle.handle.removeEntry(oldName);
+
+                        console.log(`'${oldName}' renombrado a '${newName}'.`);
+                        await updateAssetBrowserCallback();
+                    } catch (err) {
+                        console.error(`Error al renombrar '${oldName}':`, err);
+                        showNotification('Error', 'No se pudo renombrar el asset.');
+                    }
+                }
+            } else {
+                showNotification('Error', 'Por favor, selecciona un archivo para renombrar.');
+            }
+            break;
+        }
+        case 'export-package': {
+             if (selectedAsset && selectedAsset.kind === 'directory') {
+                onExportPackage(selectedAsset.name);
+             } else {
+                showNotification('Error', 'Por favor, selecciona una carpeta para exportar.');
+             }
+            break;
+        }
+    }
 }
 
 // --- Core Functions ---
@@ -325,14 +455,19 @@ async function handleGridContextMenu(e) {
         // Select the item that was right-clicked
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        onAssetSelected(item.dataset.name, item.dataset.path, item.dataset.kind);
+        const assetName = item.dataset.name;
+        const assetKind = item.dataset.kind;
+        onAssetSelected(assetName, item.dataset.path, assetKind);
 
-        exportOption.style.display = item.dataset.kind === 'directory' ? 'block' : 'none';
-        exportDivider.style.display = item.dataset.kind === 'directory' ? 'block' : 'none';
+        contextAsset = { name: assetName, kind: assetKind }; // Store asset for context action
+
+        exportOption.style.display = assetKind === 'directory' ? 'block' : 'none';
+        exportDivider.style.display = assetKind === 'directory' ? 'block' : 'none';
     } else {
         // Right-clicked on empty space, deselect all
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         onAssetSelected(null, null, null);
+        contextAsset = null; // Clear context asset
         exportOption.style.display = 'none';
         exportDivider.style.display = 'none';
     }
@@ -416,143 +551,6 @@ async function handleExternalFileDrop(e) {
             if (refreshLibraryListCallback) {
                 refreshLibraryListCallback();
             }
-        }
-    }
-}
-
-async function handleContextMenuClick(e) {
-    const action = e.target.dataset.action;
-    if (!action) return;
-
-    // The context menu is global, so we hide it from here
-    dom.contextMenu.style.display = 'none';
-
-    const selectedAssetEl = dom.assetGridView.querySelector('.grid-item.active');
-    const selectedAsset = selectedAssetEl ? { name: selectedAssetEl.dataset.name, kind: selectedAssetEl.dataset.kind } : null;
-
-    switch(action) {
-        case 'create-folder': {
-            const folderName = prompt("Nombre de la nueva carpeta:");
-            if (folderName) {
-                try {
-                    await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
-                    await updateAssetBrowserCallback();
-                } catch (err) {
-                    console.error("Error al crear la carpeta:", err);
-                    showNotification('Error', 'No se pudo crear la carpeta.');
-                }
-            }
-            break;
-        }
-        case 'create-script': {
-            const scriptName = prompt("Nombre del nuevo script (.ces):");
-            if (scriptName) {
-                const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
-                const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
-                try {
-                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(defaultContent);
-                    await writable.close();
-                    await updateAssetBrowserCallback();
-                } catch (err) {
-                    console.error("Error al crear el script:", err);
-                    showNotification('Error', 'No se pudo crear el script.');
-                }
-            }
-            break;
-        }
-        case 'create-ui-system': {
-            if (createUiSystemFile) {
-                createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
-            }
-            break;
-        }
-        case 'create-tile-palette': {
-            const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
-            if (paletteName) {
-                const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                await createNewPalette(fileName, currentDirectoryHandle.handle);
-                await updateAssetBrowserCallback();
-            }
-            break;
-        }
-        // Add other cases for create-scene, create-animation, etc.
-        case 'delete': {
-            if (selectedAsset) {
-                showConfirmation(
-                    'Confirmar Borrado',
-                    `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
-                    async () => {
-                        try {
-                            // Delete the main asset
-                            await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
-                            console.log(`'${selectedAsset.name}' borrado.`);
-
-                            // Also try to delete a corresponding .meta file, if one exists
-                            if (selectedAsset.kind === 'file') {
-                                const metaName = `${selectedAsset.name}.meta`;
-                                try {
-                                    await currentDirectoryHandle.handle.removeEntry(metaName);
-                                    console.log(`Metadatos '${metaName}' borrados.`);
-                                } catch (metaErr) {
-                                    // This is not a critical error, the meta file might not exist.
-                                    console.log(`No se encontraron metadatos para '${selectedAsset.name}' o no se pudieron borrar.`);
-                                }
-                            }
-
-                            await updateAssetBrowserCallback();
-                        } catch (err) {
-                            console.error(`Error al borrar '${selectedAsset.name}':`, err);
-                            showNotification('Error', 'No se pudo borrar el asset.');
-                        }
-                    }
-                );
-            } else {
-                showNotification('Error', 'Por favor, selecciona un archivo o carpeta para borrar.');
-            }
-            break;
-        }
-        case 'rename': {
-            if (selectedAsset) {
-                const oldName = selectedAsset.name;
-                const newName = prompt(`Renombrar '${oldName}':`, oldName);
-
-                if (newName && newName !== oldName) {
-                    try {
-                        if (selectedAsset.kind === 'directory') {
-                            showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
-                            return;
-                        }
-                        const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
-                        const content = await (await oldFileHandle.getFile()).text();
-
-                        const newFileHandle = await currentDirectoryHandle.handle.getFileHandle(newName, { create: true });
-                        const writable = await newFileHandle.createWritable();
-                        await writable.write(content);
-                        await writable.close();
-
-                        await currentDirectoryHandle.handle.removeEntry(oldName);
-
-                        console.log(`'${oldName}' renombrado a '${newName}'.`);
-                        await updateAssetBrowserCallback();
-                    } catch (err) {
-                        console.error(`Error al renombrar '${oldName}':`, err);
-                        showNotification('Error', 'No se pudo renombrar el asset.');
-                    }
-                }
-            } else {
-                showNotification('Error', 'Por favor, selecciona un archivo para renombrar.');
-            }
-            break;
-        }
-        case 'export-package': {
-             if (selectedAsset && selectedAsset.kind === 'directory') {
-                onExportPackage(selectedAsset.name);
-             } else {
-                showNotification('Error', 'Por favor, selecciona una carpeta para exportar.');
-             }
-            break;
         }
     }
 }

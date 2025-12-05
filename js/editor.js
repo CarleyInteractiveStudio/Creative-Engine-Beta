@@ -11,9 +11,9 @@ import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFrom
 import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
-import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle } from './editor/ui/AssetBrowserWindow.js';
+import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
@@ -34,6 +34,8 @@ import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
+import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
+import * as AmbienteAPI from './engine/AmbienteAPI.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -456,7 +458,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'asset-store-panel': 'menu-window-asset-store',
-            'verification-system-panel': 'menu-window-verification-system'
+            'verification-system-panel': 'menu-window-verification-system',
+            'ambiente-control-panel': 'menu-window-ambiente-control'
         };
         const checkmark = '✅ ';
 
@@ -776,11 +779,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const spriteLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
 
-        const drawObjects = (ctx, cameraForCulling) => {
+        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
-            for (const materia of materiasToRender) {
+            for (const materia of objectsToRender) {
                 if (!materia.isActive) continue;
 
                 if (cameraForCulling) {
@@ -828,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Draw tilemaps
-            for (const materia of tilemapsToRender) {
+            for (const materia of tilemapsToDraw) {
                 if (!materia.isActive) continue;
 
                 // Culling for tilemaps can be more complex (chunk-based),
@@ -850,27 +853,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const drawLights = () => {
+        const drawLights = (lights) => {
+            // NEW: Only run the lighting pass if the renderer mode is 'realista'
+            if (currentProjectConfig.rendererMode !== 'realista' || !lights) {
+                return;
+            }
+
             rendererInstance.beginLights();
-            for (const lightMateria of pointLights) {
+            for (const lightMateria of lights.point) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.PointLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawPointLight(light, transform);
             }
-            for (const lightMateria of spotLights) {
+            for (const lightMateria of lights.spot) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpotLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawSpotLight(light, transform);
             }
-            for (const lightMateria of freeformLights) {
+            for (const lightMateria of lights.freeform) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.FreeformLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
                 rendererInstance.drawFreeformLight(light, transform);
             }
-            for (const lightMateria of spriteLights) {
+            for (const lightMateria of lights.sprite) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpriteLight2D);
                 const transform = lightMateria.getComponent(Components.Transform);
@@ -878,6 +886,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             rendererInstance.endLights();
         };
+
+        const allLights = {
+            point: pointLights,
+            spot: spotLights,
+            freeform: freeformLights,
+            sprite: spriteLights
+        };
+
+        const handleRender = (camera) => {
+            rendererInstance.beginWorld(camera);
+
+            const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
+
+            if (useLayerMasks) {
+                const allObjects = [...materiasToRender, ...tilemapsToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+                const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
+
+                uniqueLayers.forEach(layer => {
+                    const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
+                    const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
+                    const lightsInLayer = {
+                        point: pointLights.filter(l => l.layer === layer),
+                        spot: spotLights.filter(l => l.layer === layer),
+                        freeform: freeformLights.filter(l => l.layer === layer),
+                        sprite: spriteLights.filter(l => l.layer === layer)
+                    };
+
+                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer);
+                    drawLights(lightsInLayer);
+                });
+
+            } else {
+                // Original behavior: draw all objects, then all lights
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
+                drawLights(allLights);
+            }
+
+
+            if (!isGameView) {
+                SceneView.drawOverlay();
+            }
+            rendererInstance.end();
+        };
+
 
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
@@ -887,30 +939,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 rendererInstance.clear();
                 return;
             }
-
-            cameras.forEach(cameraMateria => {
-                // Pass 1: Draw objects
-                rendererInstance.beginWorld(cameraMateria);
-                drawObjects(rendererInstance.ctx, cameraMateria);
-
-                // Pass 2: Draw lights and composite
-                drawLights();
-
-                rendererInstance.end();
-            });
-
+            cameras.forEach(handleRender);
         } else { // Editor Scene View
-            // Pass 1: Draw objects
-            rendererInstance.beginWorld();
-            drawObjects(rendererInstance.ctx, null);
-
-            // Pass 2: Draw lights and composite
-            drawLights();
-
-            // Pass 3: Draw editor overlays
-            SceneView.drawOverlay();
-
-            rendererInstance.end();
+            handleRender(null);
         }
     }
 
@@ -923,6 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         InputManager.update();
         SceneView.update(); // Handle all editor input logic
+        AmbienteControlWindow.update(deltaTime, isGameRunning);
 
         if (isGameRunning) {
         }
@@ -1081,6 +1113,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    saveScene = async function() {
+        if (!SceneManager.currentSceneFileHandle) {
+            showNotificationDialog('Error', 'No hay ninguna escena abierta para guardar.');
+            return;
+        }
+        try {
+            const writable = await SceneManager.currentSceneFileHandle.createWritable();
+            const sceneData = SceneManager.serializeScene(SceneManager.currentScene, dom);
+            await writable.write(JSON.stringify(sceneData, null, 2));
+            await writable.close();
+            SceneManager.setSceneDirty(false);
+            showNotificationDialog('Éxito', '¡Escena guardada!');
+        } catch (error) {
+            console.error("Error al guardar la escena:", error);
+            showNotificationDialog('Error', 'No se pudo guardar la escena.');
+        }
+    };
+
     // --- 6. Event Listeners & Handlers ---
     let createNewScript; // To be defined
 
@@ -1103,10 +1153,44 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Global listener to hide context menus
-        window.addEventListener('mousedown', (e) => {
-            // Hide if the click is not on a context menu itself
-            if (!e.target.closest('.context-menu')) {
+        // Centralized context menu click handler
+        document.body.addEventListener('mousedown', (e) => {
+            const target = e.target;
+            // Only act on left clicks
+            if (e.button !== 0) return;
+
+            const contextMenu = target.closest('.context-menu');
+
+            if (contextMenu) {
+                e.stopPropagation();
+                const action = target.dataset.action;
+
+                if (action && !target.classList.contains('disabled')) {
+                    console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                    try {
+                        let handled = false;
+                        if (contextMenu.id === 'context-menu') {
+                            console.log(`[Director] Delegando al manejador de AssetBrowser...`);
+                            handleAssetContextMenuAction(action);
+                            handled = true;
+                        } else if (contextMenu.id === 'hierarchy-context-menu') {
+                            console.log(`[Director] Delegando al manejador de Hierarchy...`);
+                            handleHierarchyContextMenuAction(action);
+                            handled = true;
+                        }
+
+                        if (handled) {
+                            console.log(`[Director] Acción '${action}' delegada exitosamente.`);
+                        } else {
+                            console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                        }
+                    } catch (error) {
+                        console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                    } finally {
+                        hideContextMenus(); // Asegurarnos de que el menú siempre se oculte
+                    }
+                }
+            } else {
                 hideContextMenus();
             }
         });
@@ -1329,8 +1413,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     panel.classList.toggle('hidden');
                     updateWindowMenuUI();
                 }
-            } else if (panelName === 'asset-store') {
-                const panel = document.getElementById('asset-store-panel');
+            } else if (panelName === 'asset-store' || panelName === 'ambiente-control') {
+                 let panelId = panelName === 'asset-store' ? 'asset-store-panel' : 'ambiente-control-panel';
+                const panel = document.getElementById(panelId);
                 if (panel) {
                     panel.classList.toggle('hidden');
                     updateWindowMenuUI();
@@ -1673,6 +1758,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateAmbientePanelFromScene() {
+        if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
+
+        const ambiente = SceneManager.currentScene.ambiente;
+        dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental;
+        dom.ambienteTiempo.value = ambiente.hora;
+        dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico;
+        dom.ambienteDuracionDia.value = ambiente.duracionDia;
+        dom.ambienteMascaraTipo.value = ambiente.mascaraTipo;
+
+        // Trigger input events to update UI text and renderer color
+        dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
+        dom.ambienteTiempo.dispatchEvent(new Event('input'));
+    }
+
     // --- 7. Initial Setup ---
     async function initializeEditor() {
         // --- 7a. Cache DOM elements, including the new loading panel ---
@@ -1688,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -1740,7 +1840,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Disassociate Sprite Modal
             'disassociate-sprite-modal', 'disassociate-sprite-list',
             // Verification System Panel
-            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text'
+            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
+            // Ambiente Control Panel
+            'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -1787,20 +1890,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayCriticalError(new Error("No se encontró el directorio de proyectos."), "Continuando en modo de funcionalidad limitada.");
                 // We don't return or throw, allowing the rest of the script to run.
             }
-            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
-            // Ensure the 'lib' directory exists for the current project
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            try {
-                const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
-                console.log("Directorio 'lib' asegurado. Verificando README...");
-
-                // --- Create README.md in /lib if it doesn't exist ---
+            if (projectsDirHandle) {
+                // Ensure the 'lib' directory exists for the current project
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
                 try {
-                    await libDirHandle.getFileHandle('README.md', { create: false });
-                    // File exists, do nothing.
-                } catch (e) {
+                    const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+                    console.log("Directorio 'lib' asegurado. Verificando README...");
+
+                    // --- Create README.md in /lib if it doesn't exist ---
+                    try {
+                        await libDirHandle.getFileHandle('README.md', { create: false });
+                        // File exists, do nothing.
+                    } catch (e) {
                     // File does not exist, so we create it.
                     console.log("Creando README.md para librerías...");
                     const readmeContent = `
@@ -1962,20 +2066,29 @@ public star() {
             } catch (libError) {
                 console.error("No se pudo crear o verificar el directorio 'lib':", libError);
             }
+        }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas);
 
             updateLoadingProgress(30, "Cargando escena principal...");
-            const sceneData = await SceneManager.initialize(projectsDirHandle);
-            if (sceneData) {
-                SceneManager.setCurrentScene(sceneData.scene);
-                SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
-                dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
-                SceneManager.setSceneDirty(false);
+            // Only initialize scene from file system if handle is available
+            if (projectsDirHandle) {
+                const sceneData = await SceneManager.initialize(projectsDirHandle);
+                if (sceneData) {
+                    SceneManager.setCurrentScene(sceneData.scene);
+                    SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
+                    dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
+                    SceneManager.setSceneDirty(false);
+                } else {
+                    throw new Error("¡Fallo crítico! No se pudo cargar o crear una escena.");
+                }
             } else {
-                throw new Error("¡Fallo crítico! No se pudo cargar o crear una escena.");
+                // In test/no-handle mode, create a default empty scene
+                SceneManager.setCurrentScene(new SceneManager.Scene());
+                dom.currentSceneName.textContent = 'Escena de Prueba';
+                SceneManager.setSceneDirty(false);
             }
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
@@ -2047,6 +2160,7 @@ public star() {
                                 SceneManager.setSceneDirty(false);
                                 updateHierarchy();
                                 selectMateria(null);
+                                updateAmbientePanelFromScene(); // Sync UI
                             } else {
                                 showNotificationDialog('Error', `Failed to load scene: ${name}`);
                             }
@@ -2125,15 +2239,44 @@ public star() {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
+            AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
+            AmbienteAPI.initialize({
+                dom,
+                editorRenderer: renderer,
+                gameRenderer: gameRenderer,
+                iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
+                detenerCiclo: AmbienteControlWindow.detenerCiclo
+            });
+            RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
+
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
-            await loadProjectConfig();
+            if (projectsDirHandle) {
+                await loadProjectConfig();
+            } else {
+                // In test mode, populate with a full default config to prevent errors
+                const defaultConfig = {
+                    appName: 'TestProject',
+                    authorName: 'Test Author',
+                    appVersion: '1.0.0',
+                    rendererMode: 'canvas2d',
+                    showEngineLogo: true,
+                    keystore: { path: '', pass: '', alias: '', aliasPass: '' },
+                    iconPath: '',
+                    splashLogos: [],
+                    layers: { sortingLayers: ['Default'], collisionLayers: ['Default'] },
+                    tags: ['Untagged']
+                };
+                currentProjectConfig = defaultConfig; // Also set the global config
+                populateProjectSettingsUI(defaultConfig, null);
+            }
 
             updateLoadingProgress(85, "Actualizando paneles...");
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
+            updateAmbientePanelFromScene(); // Sync UI on initial load
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();

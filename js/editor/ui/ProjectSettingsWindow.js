@@ -27,6 +27,8 @@ async function saveProjectConfig(showAlert = true) {
         currentProjectConfig.appName = dom.settingsAppName.value;
         currentProjectConfig.authorName = dom.settingsAuthorName.value;
         currentProjectConfig.appVersion = dom.settingsAppVersion.value;
+        currentProjectConfig.rendererMode = dom.settingsRendererMode.value;
+        // Note: The mask type is saved via the AmbienteControlWindow, not here.
         currentProjectConfig.showEngineLogo = dom.settingsShowEngineLogo.checked;
         currentProjectConfig.keystore.pass = dom.settingsKeystorePass.value;
         currentProjectConfig.keystore.alias = dom.settingsKeyAlias.value;
@@ -309,9 +311,15 @@ function setupEventListeners() {
 export function populateUI(config) {
     currentProjectConfig = config;
 
+    // Add default rendererMode if not present (for backward compatibility)
+    if (!currentProjectConfig.rendererMode) {
+        currentProjectConfig.rendererMode = 'canvas2d'; // Default to simple mode
+    }
+
     if (dom.settingsAppName) dom.settingsAppName.value = currentProjectConfig.appName;
     if (dom.settingsAuthorName) dom.settingsAuthorName.value = currentProjectConfig.authorName;
     if (dom.settingsAppVersion) dom.settingsAppVersion.value = currentProjectConfig.appVersion;
+    if (dom.settingsRendererMode) dom.settingsRendererMode.value = currentProjectConfig.rendererMode;
     if (dom.settingsShowEngineLogo) dom.settingsShowEngineLogo.checked = currentProjectConfig.showEngineLogo;
     if (dom.settingsKeystorePath) dom.settingsKeystorePath.value = currentProjectConfig.keystore.path;
 

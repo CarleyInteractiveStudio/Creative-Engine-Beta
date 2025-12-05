@@ -139,7 +139,7 @@ export function initialize(dependencies) {
     setupEventListeners();
 }
 
-function handleContextMenuAction(action) {
+export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     // For actions on existing items, we MUST use the materia that was under the cursor
     // when the context menu was opened. This prevents race conditions if selection changes.
@@ -186,15 +186,22 @@ function handleContextMenuAction(action) {
             break;
         case 'delete':
             if (contextMateria) { // Use contextMateria
+                alert(`[CHIVATO Hierarchy] Preparando para borrar: ${contextMateria.name} (ID: ${contextMateria.id})`);
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
-                    () => {
+                    async () => {
                         const idToDelete = contextMateria.id;
-                        selectMateriaCallback(null);
+
+                        // If the currently selected materia is the one being deleted, deselect it.
+                        const selectedMateria = getSelectedMateria();
+                        if (selectedMateria && selectedMateria.id === idToDelete) {
+                            selectMateriaCallback(null);
+                        }
+
                         SceneManager.currentScene.removeMateria(idToDelete);
                         updateHierarchy();
-                        updateInspector();
+                        updateInspector(); // Refresh inspector, which will show empty state
                     }
                 );
             }
@@ -348,33 +355,27 @@ function setupEventListeners() {
     hierarchyContent.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
+
+        // Determine the contextMateriaId from the right-clicked item
         if (item) {
-            const materiaId = parseInt(item.dataset.id, 10);
-            selectMateriaCallback(materiaId);
-            contextMateriaId = materiaId; // Store ID for the action
+            contextMateriaId = parseInt(item.dataset.id, 10);
         } else {
-            selectMateriaCallback(null);
-            contextMateriaId = null; // No item was clicked
+            contextMateriaId = null; // Clicked on empty space
         }
 
-        const menu = document.getElementById('hierarchy-context-menu');
-        const hasSelection = !!getSelectedMateria();
+        // Update selection to match the right-clicked item
+        selectMateriaCallback(contextMateriaId);
 
-        menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasSelection);
-        menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasSelection);
+        const menu = document.getElementById('hierarchy-context-menu');
+        const hasContext = contextMateriaId !== null;
+
+        // Enable/disable options based on whether an item was right-clicked
+        menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasContext);
+        menu.querySelector('[data-action="rename"]').classList.toggle('disabled', !hasContext);
+        menu.querySelector('[data-action="delete"]').classList.toggle('disabled', !hasContext);
 
         showContextMenuCallback(menu, e);
     });
 
-    // --- Menu click listener ---
-    const hierarchyMenu = document.getElementById('hierarchy-context-menu');
-    if (hierarchyMenu) {
-        hierarchyMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            if (!action || e.target.classList.contains('disabled')) return;
-            showContextMenuCallback(null);
-            handleContextMenuAction(action);
-        });
-    }
+    // --- Menu click listener is now centralized in editor.js ---
 }

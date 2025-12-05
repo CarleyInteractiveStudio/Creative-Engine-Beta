@@ -27,6 +27,10 @@ export class Renderer {
         this.resize();
     }
 
+    setAmbientLight(color) {
+        this.ambientLight = color;
+    }
+
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;

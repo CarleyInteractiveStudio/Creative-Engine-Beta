@@ -10,6 +10,13 @@ import { Materia } from './Materia.js';
 export class Scene {
     constructor() {
         this.materias = [];
+        this.ambiente = {
+            luzAmbiental: '#1a1a2a',
+            hora: '6',
+            cicloAutomatico: false,
+            duracionDia: '60',
+            mascaraTipo: 'ninguna'
+        };
     }
 
     addMateria(materia) {
@@ -79,7 +86,6 @@ export class Scene {
         }
 
         // If it's a child, simply remove it from its parent's list of children.
-        // The object and its descendants will be garbage collected if not referenced elsewhere.
         if (materiaToRemove.parent) {
             materiaToRemove.parent.removeChild(materiaToRemove);
         } else {
@@ -108,8 +114,15 @@ export function setSceneDirty(dirty) {
     isSceneDirty = dirty;
 }
 
-export function serializeScene(scene) {
+export function serializeScene(scene, dom) {
     const sceneData = {
+        ambiente: {
+            luzAmbiental: dom ? dom.ambienteLuzAmbiental.value : '#1a1a2a',
+            hora: dom ? dom.ambienteTiempo.value : '6',
+            cicloAutomatico: dom ? dom.ambienteCicloAutomatico.checked : false,
+            duracionDia: dom ? dom.ambienteDuracionDia.value : '60',
+            mascaraTipo: dom ? dom.ambienteMascaraTipo.value : 'ninguna'
+        },
         materias: []
     };
     for (const materia of scene.materias) {
@@ -142,6 +155,11 @@ import { getComponent } from './ComponentRegistry.js';
 export async function deserializeScene(sceneData, projectsDirHandle) {
     const newScene = new Scene();
     const materiaMap = new Map();
+
+    // Load ambiente settings, providing defaults for older scenes
+    if (sceneData.ambiente) {
+        newScene.ambiente = { ...newScene.ambiente, ...sceneData.ambiente };
+    }
 
     // Pass 1: Create all materias and map them by ID
     for (const materiaData of sceneData.materias) {
@@ -293,7 +311,8 @@ export async function initialize(projectsDirHandle) {
             const writable = await fileHandle.createWritable();
 
             const defaultScene = createDefaultScene();
-            const sceneData = serializeScene(defaultScene);
+            // Pass a null DOM object for default scene creation
+            const sceneData = serializeScene(defaultScene, null);
 
             await writable.write(JSON.stringify(sceneData, null, 2));
             await writable.close();
