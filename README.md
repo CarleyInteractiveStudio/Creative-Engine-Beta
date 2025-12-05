@@ -112,3 +112,48 @@ Este bug requirió un proceso de depuración de varias capas, ya que las causas 
 ## Estado Final
 
 **El problema ha sido resuelto de forma definitiva.** La refactorización hacia un sistema de gestión de eventos centralizado no solo ha corregido el fallo silencioso, sino que ha hecho que la arquitectura de la interfaz de usuario sea más robusta, predecible y fácil de mantener. Este caso de estudio demuestra la importancia de entender la propagación y el ciclo de vida de los eventos del navegador en aplicaciones complejas.
+
+---
+
+# Historial de Depuración: Fallo Silencioso en la Funcionalidad de Borrado (No Resuelto)
+
+Este documento detalla el exhaustivo proceso de depuración de un bug crítico y persistente que impide eliminar elementos del Navegador de Archivos y de la Jerarquía. El problema se manifiesta como un "fallo silencioso": la acción no se completa y no se genera ningún error en la consola, a pesar de que la traza de eventos indica que todo debería funcionar.
+
+## Descripción del Problema
+
+Al hacer clic derecho sobre un archivo o un objeto de la escena y seleccionar "Borrar" en el menú contextual, aparece el diálogo de confirmación. Sin embargo, al hacer clic en "Aceptar", el diálogo se cierra pero el elemento no se elimina. La operación falla sin dejar rastro de errores.
+
+## Proceso de Depuración y Soluciones Iterativas
+
+Este bug ha sido objeto de un intenso proceso de depuración. Cada paso resolvía un problema lógico, solo para revelar una capa más profunda del fallo.
+
+### 1. Intento: Refactorización de la Lógica de Selección
+*   **Hipótesis:** El sistema estaba perdiendo la referencia al objeto seleccionado entre el momento del clic derecho y la ejecución de la acción.
+*   **Solución Aplicada:** Se refactorizó la lógica para guardar una referencia al objeto contextual (`contextAsset` y `contextMateriaId`) en el momento del clic derecho, independizando la acción del estado de selección global.
+*   **Resultado:** El problema persistió.
+
+### 2. Intento: Análisis del Flujo de Eventos y Causa Raíz
+*   **Hipótesis:** Un evento `mousedown` global, destinado a cerrar menús, se disparaba antes que el evento `click` del botón del menú, ocultándolo y previniendo que la acción se registrara.
+*   **Solución Aplicada (Refactorización Estructural):** Se eliminaron todos los listeners de eventos de los menús individuales. Se creó un único **"Director" de eventos** centralizado en `editor.js` que escucha el `mousedown`, identifica la acción y delega la llamada a la función correcta en el módulo apropiado.
+*   **Resultado:** Esta refactorización corrigió el flujo de eventos. Los logs confirmaron que, tras este cambio, la función para mostrar el diálogo de confirmación (`showConfirmation`) se llamaba correctamente. Sin embargo, el borrado seguía sin producirse.
+
+### 3. Intento: Depuración del Diálogo de Confirmación
+*   **Hipótesis:** El problema residual debía estar en el `DialogWindow.js`. Podría no estar manejando bien las funciones `async` o el evento de clic en el botón "Aceptar" no se estaba registrando.
+*   **Solución Aplicada:** Se instrumentó `DialogWindow.js` con `console.log` ("chivatos") para verificar la creación de los botones y la ejecución de los callbacks.
+*   **Resultado (Diagnóstico Final):** Los logs de la consola mostraron un resultado desconcertante pero claro:
+    1.  El `event listener` del botón "Aceptar" se añade correctamente.
+    2.  El clic en el botón "Aceptar" **se registra correctamente**.
+    3.  El `callback` de borrado (la función `async () => { ... }` que contiene `currentDirectoryHandle.handle.removeEntry(...)`) **se ejecuta correctamente**.
+    4.  El `await` dentro del callback finaliza y el log de "Callback completado" se muestra en la consola.
+    5.  No se captura **ninguna excepción** en el bloque `try...catch` que envuelve la operación de borrado.
+
+## Estado Actual: Problema No Resuelto
+
+**El problema sigue sin resolverse.** La evidencia muestra que el flujo de ejecución es lógicamente perfecto de principio a fin. El evento se dispara, la función correcta es llamada, el callback de confirmación se ejecuta, y la operación de borrado finaliza sin lanzar errores.
+
+La única hipótesis restante es que la llamada a la API del sistema de archivos (`directoryHandle.removeEntry(...)`) está fallando de una manera completamente silenciosa que ni siquiera es capturada por un `try...catch`, lo cual es un comportamiento anómalo y extremadamente difícil de depurar.
+
+**Próximos Pasos Recomendados:**
+*   Investigar posibles bugs específicos del navegador relacionados con la File System Access API cuando se invoca desde un callback de un elemento DOM creado dinámicamente.
+*   Revisar si hay alguna política de seguridad o "sandbox" implícita que pueda estar bloqueando las operaciones de escritura/borrado iniciadas de esta manera.
+*   Considerar un rediseño del flujo de borrado que no dependa de un diálogo modal dinámico, como una "zona de borrado" a la que se puedan arrastrar los archivos.
