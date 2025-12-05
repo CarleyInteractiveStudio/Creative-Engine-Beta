@@ -41,20 +41,12 @@ class DialogWindow {
             button.textContent = btnInfo.text;
             button.className = 'dialog-button';
 
-            // CHIVATO #1: Confirmar que el listener se está añadiendo
-            console.log(`[Dialog] Añadiendo listener al botón '${btnInfo.text}'. ¿Tiene callback?`, !!btnInfo.callback);
-
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation();
-
-                // CHIVATO #2: Confirmar que el clic se ha registrado
-                console.log(`[Dialog] ¡Clic detectado en el botón '${btnInfo.text}'!`);
+            button.addEventListener('mousedown', async (e) => {
+                e.stopPropagation(); // Prevent any global listeners from acting on this event
 
                 if (btnInfo.callback) {
-                    console.log(`[Dialog] Ejecutando el callback para '${btnInfo.text}'...`);
                     try {
                         await btnInfo.callback();
-                        console.log(`[Dialog] Callback para '${btnInfo.text}' completado.`);
                     } catch (error) {
                         console.error(`[Dialog] El callback para '${btnInfo.text}' falló:`, error);
                     }
