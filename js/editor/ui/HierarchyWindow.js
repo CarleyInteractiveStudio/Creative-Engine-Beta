@@ -186,6 +186,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'delete':
             if (contextMateria) { // Use contextMateria
+                alert(`[CHIVATO Hierarchy] Preparando para borrar: ${contextMateria.name} (ID: ${contextMateria.id})`);
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,

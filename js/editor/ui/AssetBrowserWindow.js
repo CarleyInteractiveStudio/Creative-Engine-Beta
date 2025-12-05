@@ -100,6 +100,7 @@ export async function handleContextMenuAction(action) {
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
             if (selectedAsset) {
+                alert(`[CHIVATO AssetBrowser] Preparando para borrar: ${selectedAsset.name}`);
                 showConfirmation(
                     'Confirmar Borrado',
                     `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
