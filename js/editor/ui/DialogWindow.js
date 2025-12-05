@@ -21,6 +21,9 @@ class DialogWindow {
         const container = document.createElement('div');
         container.className = 'dialog-container';
 
+        // Shield against global event listeners (like context menu closers)
+        container.addEventListener('mousedown', (e) => e.stopPropagation());
+
         // Header
         const header = document.createElement('div');
         header.className = 'dialog-header';
