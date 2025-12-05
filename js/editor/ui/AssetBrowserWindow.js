@@ -8,6 +8,7 @@ let projectsDirHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
+let contextAssetDirHandle = null; // Directory handle for the context asset
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -99,23 +100,22 @@ export async function handleContextMenuAction(action) {
         }
         // Add other cases for create-scene, create-animation, etc.
         case 'delete': {
-            if (selectedAsset) {
-                alert(`[CHIVATO AssetBrowser] Preparando para borrar: ${selectedAsset.name}`);
+            if (selectedAsset && contextAssetDirHandle) {
                 showConfirmation(
                     'Confirmar Borrado',
                     `¿Estás seguro de que quieres borrar '${selectedAsset.name}'? Esta acción no se puede deshacer.`,
                     async () => {
                         try {
-                            // Delete the main asset
-                            await currentDirectoryHandle.handle.removeEntry(selectedAsset.name, { recursive: true });
+                            // Delete the main asset using the specific directory handle
+                            await contextAssetDirHandle.removeEntry(selectedAsset.name, { recursive: true });
 
-                            // Also try to delete a corresponding .meta file, if one exists
+                            // Also try to delete a corresponding .meta file
                             if (selectedAsset.kind === 'file') {
                                 const metaName = `${selectedAsset.name}.meta`;
                                 try {
-                                    await currentDirectoryHandle.handle.removeEntry(metaName);
+                                    await contextAssetDirHandle.removeEntry(metaName);
                                 } catch (metaErr) {
-                                    // This is not a critical error, the meta file might not exist.
+                                    // Not a critical error, the meta file might not exist.
                                 }
                             }
 
@@ -460,6 +460,7 @@ async function handleGridContextMenu(e) {
         onAssetSelected(assetName, item.dataset.path, assetKind);
 
         contextAsset = { name: assetName, kind: assetKind }; // Store asset for context action
+        contextAssetDirHandle = dom.assetGridView.directoryHandle; // Store the directory handle of the grid view
 
         exportOption.style.display = assetKind === 'directory' ? 'block' : 'none';
         exportDivider.style.display = assetKind === 'directory' ? 'block' : 'none';
@@ -468,6 +469,7 @@ async function handleGridContextMenu(e) {
         dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
         onAssetSelected(null, null, null);
         contextAsset = null; // Clear context asset
+        contextAssetDirHandle = null; // Clear context dir handle
         exportOption.style.display = 'none';
         exportDivider.style.display = 'none';
     }

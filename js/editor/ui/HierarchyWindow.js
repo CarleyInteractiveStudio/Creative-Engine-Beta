@@ -23,7 +23,7 @@ let isDraggingFromHierarchy = false;
 let showContextMenuCallback = () => {};
 let projectsDirHandle = null; // Needed for drag-drop from assets
 let updateInspector = () => {}; // To refresh inspector after rename/delete
-let contextMateriaId = null; // ID of the materia under the context menu
+let contextMateria = null; // The full Materia object under the context menu
 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
@@ -141,9 +141,6 @@ export function initialize(dependencies) {
 
 export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
-    // For actions on existing items, we MUST use the materia that was under the cursor
-    // when the context menu was opened. This prevents race conditions if selection changes.
-    const contextMateria = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
     let newMateria = null;
     let shouldUpdate = false;
 
@@ -186,7 +183,6 @@ export function handleContextMenuAction(action) {
             break;
         case 'delete':
             if (contextMateria) { // Use contextMateria
-                alert(`[CHIVATO Hierarchy] Preparando para borrar: ${contextMateria.name} (ID: ${contextMateria.id})`);
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
@@ -356,18 +352,19 @@ function setupEventListeners() {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
 
-        // Determine the contextMateriaId from the right-clicked item
+        // Store the full Materia object on right-click.
         if (item) {
-            contextMateriaId = parseInt(item.dataset.id, 10);
+            const materiaId = parseInt(item.dataset.id, 10);
+            contextMateria = SceneManager.currentScene.findMateriaById(materiaId);
         } else {
-            contextMateriaId = null; // Clicked on empty space
+            contextMateria = null; // Clicked on empty space
         }
 
-        // Update selection to match the right-clicked item
-        selectMateriaCallback(contextMateriaId);
+        // REGRESSION FIX: Do not update selection here, as it can interfere with the context menu display.
+        // The main click handler and the centralized mousedown director in editor.js are responsible for selection.
 
         const menu = document.getElementById('hierarchy-context-menu');
-        const hasContext = contextMateriaId !== null;
+        const hasContext = contextMateria !== null;
 
         // Enable/disable options based on whether an item was right-clicked
         menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasContext);
