@@ -1156,24 +1156,41 @@ document.addEventListener('DOMContentLoaded', () => {
         // Centralized context menu click handler
         document.body.addEventListener('mousedown', (e) => {
             const target = e.target;
+            // Only act on left clicks
+            if (e.button !== 0) return;
+
             const contextMenu = target.closest('.context-menu');
 
             if (contextMenu) {
-                e.stopPropagation(); // Prevent the global hider from closing the menu
+                e.stopPropagation();
                 const action = target.dataset.action;
-                if (action && !target.classList.contains('disabled')) {
-                    // Determine which context menu was clicked and delegate
-                    if (contextMenu.id === 'context-menu') {
-                        handleAssetContextMenuAction(action);
-                    } else if (contextMenu.id === 'hierarchy-context-menu') {
-                        handleHierarchyContextMenuAction(action);
-                    }
-                    // Add other context menus here as needed...
 
-                    hideContextMenus(); // Hide after action
+                if (action && !target.classList.contains('disabled')) {
+                    console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                    try {
+                        let handled = false;
+                        if (contextMenu.id === 'context-menu') {
+                            console.log(`[Director] Delegando al manejador de AssetBrowser...`);
+                            handleAssetContextMenuAction(action);
+                            handled = true;
+                        } else if (contextMenu.id === 'hierarchy-context-menu') {
+                            console.log(`[Director] Delegando al manejador de Hierarchy...`);
+                            handleHierarchyContextMenuAction(action);
+                            handled = true;
+                        }
+
+                        if (handled) {
+                            console.log(`[Director] Acción '${action}' delegada exitosamente.`);
+                        } else {
+                            console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                        }
+                    } catch (error) {
+                        console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                    } finally {
+                        hideContextMenus(); // Asegurarnos de que el menú siempre se oculte
+                    }
                 }
             } else {
-                // If the click is anywhere else, hide all menus
                 hideContextMenus();
             }
         });
