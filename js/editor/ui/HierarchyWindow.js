@@ -360,8 +360,9 @@ function setupEventListeners() {
             contextMateria = null; // Clicked on empty space
         }
 
-        // REGRESSION FIX: Do not update selection here, as it can interfere with the context menu display.
-        // The main click handler and the centralized mousedown director in editor.js are responsible for selection.
+        // REGRESSION FIX: Restore selection update. This is crucial for "create" actions
+        // to have the correct parent selected when the context action is triggered.
+        selectMateriaCallback(contextMateria ? contextMateria.id : null);
 
         const menu = document.getElementById('hierarchy-context-menu');
         const hasContext = contextMateria !== null;

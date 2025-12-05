@@ -584,7 +584,8 @@ footer {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     min-width: 300px;
     max-width: 500px;
-    display: none; /* Hidden by default */
+    display: flex; /* Make the container visible and use flexbox */
+    flex-direction: column; /* Stack header, content, and footer vertically */
     overflow: hidden;
 }
 

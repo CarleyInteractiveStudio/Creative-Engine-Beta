@@ -21,9 +21,6 @@ class DialogWindow {
         const container = document.createElement('div');
         container.className = 'dialog-container';
 
-        // Shield against global event listeners (like context menu closers)
-        container.addEventListener('mousedown', (e) => e.stopPropagation());
-
         // Header
         const header = document.createElement('div');
         header.className = 'dialog-header';
@@ -44,8 +41,8 @@ class DialogWindow {
             button.textContent = btnInfo.text;
             button.className = 'dialog-button';
 
-            button.addEventListener('mousedown', async (e) => {
-                e.stopPropagation(); // Prevent any global listeners from acting on this event
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
 
                 if (btnInfo.callback) {
                     try {
@@ -65,12 +62,12 @@ class DialogWindow {
     }
 
     show() {
-        // Calculate the highest z-index currently in use by panels or other dialogs
-        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open'))
+        // Calculate the highest z-index currently in use by ANY element in the body
+        const highestZ = Array.from(document.body.querySelectorAll('*'))
             .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), 0);
 
-        // Set the new dialog's z-index to be on top of everything else
-        this.dialogElement.style.zIndex = highestZ + 1;
+        // Set the new dialog's z-index to be aggressively on top of everything else
+        this.dialogElement.style.zIndex = highestZ + 999;
 
         // Use class-based visibility
         this.dialogElement.classList.add('is-open');
