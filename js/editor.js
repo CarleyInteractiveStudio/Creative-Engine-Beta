@@ -1174,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             handleAssetContextMenuAction(action);
                             handled = true;
                         } else if (contextMenu.id === 'hierarchy-context-menu') {
-                            console.log(`[Director] Delegando al manejador de Hierarchy...`);
+                            console.log(`[Director] Llamando a handleHierarchyContextMenuAction con acción: '${action}' y contextMateriaId:`, contextMateriaId);
                             handleHierarchyContextMenuAction(action);
                             handled = true;
                         }

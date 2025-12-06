@@ -2954,25 +2954,33 @@ body {
 
 /* --- Custom Dialog Windows --- */
 .custom-dialog {
-    position: fixed;
-    z-index: 2600; /* Debe ser más alto que el z-index de .floating-panel (1500) */
-    border: 1px solid var(--border-color);
-    border-radius: 12px; /* Rounded corners for the bubble effect */
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    min-width: 300px;
-    max-width: 500px;
-    display: none; /* Initially hidden */
-    flex-direction: column;
-    overflow: hidden; /* Ensures child elements respect the border radius */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 300px;
+  max-width: 400px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  background-color: #fff;
+  padding: 20px;
+  display: none; /* oculto por defecto */
+  z-index: 2701;
+}
+
+.custom-dialog.is-open {
+    display: flex;
 }
 
 .dialog-container {
     background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    height: 100%; /* Ensure it fills the parent dialog */
-    overflow: hidden; /* This is crucial to make children respect the border-radius */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    min-width: 300px;
+    max-width: 500px;
+    overflow: hidden;
 }
 
 .dialog-header {

@@ -144,6 +144,7 @@ export function handleContextMenuAction(action) {
     // For actions on existing items, we MUST use the materia that was under the cursor
     // when the context menu was opened. This prevents race conditions if selection changes.
     const contextMateria = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
+    console.log("[HierarchyWindow] handleContextMenuAction - contextMateria (después de findMateriaById):", contextMateria);
     let newMateria = null;
     let shouldUpdate = false;
 
@@ -186,7 +187,7 @@ export function handleContextMenuAction(action) {
             break;
         case 'delete':
             if (contextMateria) { // Use contextMateria
-                alert(`[CHIVATO Hierarchy] Preparando para borrar: ${contextMateria.name} (ID: ${contextMateria.id})`);
+                console.log("[HierarchyWindow] ANTES de showConfirmation para:", contextMateria.name);
                 showConfirmation(
                     'Confirmar Eliminación',
                     `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
