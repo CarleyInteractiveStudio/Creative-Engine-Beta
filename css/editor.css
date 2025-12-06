@@ -2961,7 +2961,7 @@ body {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     min-width: 300px;
     max-width: 500px;
-    display: none; /* Initially hidden */
+    display: flex; /* Make it visible and use flex for centering */
     flex-direction: column;
     overflow: hidden; /* Ensures child elements respect the border radius */
 }
