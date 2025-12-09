@@ -26,7 +26,7 @@ class Collision {
     }
 }
 
-class PhysicsSystem {
+export class PhysicsSystem {
     /**
      * @param {Scene} scene
      */
