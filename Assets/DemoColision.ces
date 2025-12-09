@@ -1,0 +1,33 @@
+// DemoColision.ces
+//
+// Este script demuestra cómo usar la librería de colisiones.
+// Imprime un mensaje en la consola cuando detecta una nueva colisión
+// y modifica la posición del objeto con el que ha chocado.
+
+// Importamos la librería interna del motor para acceder a las físicas.
+go "ce.engine"
+
+public star() {
+    // Código que se ejecuta una sola vez al iniciar el juego.
+    consola.imprimir("Script de colisión iniciado en: " + this.materia.name);
+}
+
+public update(deltaTime) {
+    // Buscamos si hay una nueva colisión en este fotograma.
+    // getCollisionEnter() devuelve un array con todas las colisiones que acaban de ocurrir.
+    variable colisiones = getCollisionEnter();
+
+    // Recorremos el array, aunque normalmente solo haya una o dos colisiones nuevas por fotograma.
+    for (variable colision in colisiones) {
+
+        // Obtenemos el nombre del otro objeto con el que hemos chocado.
+        variable otroNombre = colision.gameObject.name;
+
+        // Imprimimos un mensaje en la consola del editor.
+        consola.imprimir(this.materia.name + " ha chocado con: " + otroNombre);
+
+        // Como demostración, modificamos la posición 'x' del otro objeto.
+        // Esto muestra que tenemos control total sobre el objeto de la colisión.
+        colision.transform.x = colision.transform.x + 10;
+    }
+}
