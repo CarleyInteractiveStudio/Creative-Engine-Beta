@@ -27,11 +27,8 @@ export function initialize(dependencies) {
         detenerCiclo: dependencies.detenerCiclo
     });
 
-    // Register APIs with the RuntimeAPIManager
-    RuntimeAPIManager.registerAPI('ce.engine', CEEngine.getAPIs());
-    RuntimeAPIManager.registerAPI('ce.ambiente', AmbienteAPI.AmbienteAPI);
-
-    // Future APIs can be initialized and registered here.
+    // NOTE: API registration is now handled centrally in editor.js before the
+    // play button is pressed to ensure correct initialization order.
 }
 
 /**
@@ -41,4 +38,17 @@ export function initialize(dependencies) {
 export function setCurrentMateria(materia) {
     CEEngine.engineAPI.setCurrentMateria(materia);
     // Future APIs that need context can have their context set here.
+}
+
+/**
+ * Retrieves all registered internal engine APIs.
+ * This is used by the editor to register them with the runtime manager before transpilation.
+ * @returns {object} An object where keys are API names (e.g., 'ce.engine') and values are the API objects.
+ */
+export function getAllInternalApis() {
+    return {
+        'ce.engine': CEEngine.getAPIs(),
+        'ce.ambiente': AmbienteAPI.AmbienteAPI
+        // Add future internal APIs here as well
+    };
 }

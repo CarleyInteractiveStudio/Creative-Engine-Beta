@@ -598,7 +598,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
             return;
         }
+
+        // --- 1. Clear and Load All APIs ---
+        // Clear previous runtime APIs to ensure a clean slate for every "Play"
+        RuntimeAPIManager.clearAPIs();
+
+        // Load external libraries first
         await loadRuntimeApis();
+
+        // Now, register the internal engine APIs
+        const internalApis = EngineAPI.getAllInternalApis();
+        for (const [name, apiObject] of Object.entries(internalApis)) {
+            RuntimeAPIManager.registerAPI(name, apiObject);
+        }
+        console.log("Registered internal and external runtime APIs.");
+
+
         console.log("Verificando todos los scripts del proyecto...");
         dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
         const allErrors = [];

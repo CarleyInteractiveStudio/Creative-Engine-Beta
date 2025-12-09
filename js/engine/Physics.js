@@ -203,37 +203,112 @@ export class PhysicsSystem {
         const transformB = materiaB.getComponent(Components.Transform);
         const colliderB = materiaB.getComponent(Components.BoxCollider2D);
 
-        const widthA = colliderA.size.x * transformA.scale.x;
-        const heightA = colliderA.size.y * transformA.scale.y;
-        const leftA = transformA.x + colliderA.offset.x - widthA / 2;
-        const rightA = transformA.x + colliderA.offset.x + widthA / 2;
-        const topA = transformA.y + colliderA.offset.y - heightA / 2;
-        const bottomA = transformA.y + colliderA.offset.y + heightA / 2;
+        const verticesA = this._getVertices(transformA, colliderA);
+        const verticesB = this._getVertices(transformB, colliderB);
 
-        const widthB = colliderB.size.x * transformB.scale.x;
-        const heightB = colliderB.size.y * transformB.scale.y;
-        const leftB = transformB.x + colliderB.offset.x - widthB / 2;
-        const rightB = transformB.x + colliderB.offset.x + widthB / 2;
-        const topB = transformB.y + colliderB.offset.y - heightB / 2;
-        const bottomB = transformB.y + colliderB.offset.y + heightB / 2;
+        const axes = [
+            ...this._getAxes(verticesA),
+            ...this._getAxes(verticesB)
+        ];
 
-        // Check for no overlap
-        if (rightA <= leftB || leftA >= rightB || bottomA <= topB || topA >= bottomB) {
-            return null; // No collision
+        let minOverlap = Infinity;
+        let mtvAxis = null;
+
+        for (const axis of axes) {
+            const projectionA = this._project(verticesA, axis);
+            const projectionB = this._project(verticesB, axis);
+
+            const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
+
+            if (overlap < 0) {
+                return null; // Separating axis found, no collision
+            }
+
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                mtvAxis = axis;
+            }
         }
 
-        // Calculate overlap on each axis
-        const overlapX = Math.min(rightA, rightB) - Math.max(leftA, leftB);
-        const overlapY = Math.min(bottomA, bottomB) - Math.max(topA, topB);
+        // Ensure MTV axis points from B to A
+        const centerA = { x: transformA.x, y: transformA.y };
+        const centerB = { x: transformB.x, y: transformB.y };
+        let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
-        // Determine the Minimum Translation Vector (MTV)
-        if (overlapX < overlapY) {
-            const mtvX = (transformA.x < transformB.x) ? -overlapX : overlapX;
-            return { x: mtvX, y: 0, magnitude: overlapX };
-        } else {
-            const mtvY = (transformA.y < transformB.y) ? -overlapY : overlapY;
-            return { x: 0, y: mtvY, magnitude: overlapY };
+        if (this._dot(direction, mtvAxis) < 0) {
+            mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
         }
+
+        return {
+            x: mtvAxis.x * minOverlap,
+            y: mtvAxis.y * minOverlap,
+            magnitude: minOverlap
+        };
+    }
+
+    _getVertices(transform, collider) {
+        const w = collider.size.x * transform.scale.x / 2;
+        const h = collider.size.y * transform.scale.y / 2;
+        const angle = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        const center = {
+            x: transform.x + collider.offset.x,
+            y: transform.y + collider.offset.y
+        };
+
+        // Local, unrotated corner positions relative to center
+        const corners = [
+            { x: -w, y: -h },
+            { x:  w, y: -h },
+            { x:  w, y:  h },
+            { x: -w, y:  h }
+        ];
+
+        // Rotate corners and translate to world position
+        return corners.map(corner => ({
+            x: center.x + (corner.x * cos - corner.y * sin),
+            y: center.y + (corner.x * sin + corner.y * cos)
+        }));
+    }
+
+    _getAxes(vertices) {
+        const axes = [];
+        for (let i = 0; i < vertices.length; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[i + 1] || vertices[0];
+
+            const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+            const normal = { x: -edge.y, y: edge.x };
+            const normalized = this._normalize(normal);
+            axes.push(normalized);
+        }
+        return axes;
+    }
+
+    _project(vertices, axis) {
+        let min = this._dot(vertices[0], axis);
+        let max = min;
+        for (let i = 1; i < vertices.length; i++) {
+            const p = this._dot(vertices[i], axis);
+            if (p < min) {
+                min = p;
+            } else if (p > max) {
+                max = p;
+            }
+        }
+        return { min, max };
+    }
+
+    _dot(v1, v2) {
+        return v1.x * v2.x + v1.y * v2.y;
+    }
+
+    _normalize(v) {
+        const mag = Math.sqrt(v.x * v.x + v.y * v.y);
+        if (mag === 0) return { x: 0, y: 0 };
+        return { x: v.x / mag, y: v.y / mag };
     }
 
     /**
