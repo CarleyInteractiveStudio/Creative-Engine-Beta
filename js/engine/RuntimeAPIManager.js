@@ -21,6 +21,22 @@ export function registerAPI(libraryName, apiObject) {
 }
 
 /**
+ * Finds which registered API (from a given list) contains a specific function.
+ * @param {string} functionName - The name of the function to search for.
+ * @param {string[]} importedAPIs - An array of API names that the script has imported.
+ * @returns {string|null} The name of the API that contains the function, or null if not found.
+ */
+export function findFunctionInAPIs(functionName, importedAPIs) {
+    for (const apiName of importedAPIs) {
+        const apiObject = registeredAPIs.get(apiName);
+        if (apiObject && typeof apiObject[functionName] === 'function') {
+            return apiName;
+        }
+    }
+    return null;
+}
+
+/**
  * Obtiene el objeto API para una librería específica.
  * @param {string} libraryName - El nombre de la librería.
  * @returns {object | undefined} El objeto API o undefined si no se encuentra.

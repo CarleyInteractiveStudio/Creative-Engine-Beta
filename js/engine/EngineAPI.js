@@ -29,7 +29,7 @@ export function initialize(dependencies) {
 
     // Register APIs with the RuntimeAPIManager
     RuntimeAPIManager.registerAPI('ce.engine', CEEngine.getAPIs());
-    RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
+    RuntimeAPIManager.registerAPI('ce.ambiente', AmbienteAPI.AmbienteAPI);
 
     // Future APIs can be initialized and registered here.
 }
