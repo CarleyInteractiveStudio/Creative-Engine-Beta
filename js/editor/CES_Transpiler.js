@@ -26,11 +26,12 @@ export function transpile(code, scriptName) {
 
     let unprocessedCode = code;
 
-    // 1.a: Parse and validate library imports (handles "libName" and "ce.libName")
-    const goRegex = /^\s*go\s+"((?:ce\.)?\w+)"/gm;
+    // 1.a: Parse and validate library imports. Handles both `go "libName"` and `go ce.libName`.
+    const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
     let goMatch;
     while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
-        const libName = goMatch[1];
+        // Match group 1 is for quoted strings, group 2 is for unquoted.
+        const libName = goMatch[1] || goMatch[2];
         if (!RuntimeAPIManager.getAPI(libName)) {
             errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
         } else {
@@ -67,7 +68,8 @@ export function transpile(code, scriptName) {
 
             const apiName = RuntimeAPIManager.findFunctionInAPIs(functionName, Array.from(importedLibs));
             if (apiName) {
-                return `RuntimeAPIManager.getAPI("${apiName}").${functionName}(`;
+                // For direct calls, we generate the full path.
+                return `RuntimeAPIManager.getAPI("${apiName}")["${functionName}"](`;
             }
             // If it's not a known API function, leave it as is. It might be a custom method.
             return match;

@@ -5,7 +5,7 @@
 // y modifica la posición del objeto con el que ha chocado.
 
 // Importamos la librería interna del motor para acceder a las físicas.
-go "ce.engine"
+go ce.engine
 
 public star() {
     // Código que se ejecuta una sola vez al iniciar el juego.
