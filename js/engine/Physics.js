@@ -76,7 +76,7 @@ class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.materias.filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D))
+            m.isActive && m.getComponent(Components.BoxCollider2D)
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -94,7 +94,9 @@ class PhysicsSystem {
                     continue;
                 }
 
-                if (this.checkCollision(materiaA, materiaB)) {
+                const collisionInfo = this.checkCollision(materiaA, materiaB);
+
+                if (collisionInfo) {
                     const key = this._generateCollisionKey(materiaA.id, materiaB.id);
                     const type = colliderA.isTrigger || colliderB.isTrigger ? 'trigger' : 'collision';
 
@@ -146,25 +148,53 @@ class PhysicsSystem {
      * Main collision check dispatcher.
      * @param {Materia} materiaA
      * @param {Materia} materiaB
-     * @returns {boolean}
+     * @returns {object|null} The MTV if a collision occurs, otherwise null.
      */
     checkCollision(materiaA, materiaB) {
         const colliderA = this.getCollider(materiaA);
         const colliderB = this.getCollider(materiaB);
 
-        if (!colliderA || !colliderB) return false;
+        if (!colliderA || !colliderB) return null;
 
-        // For now, we only have Box vs Box
+        let collisionInfo = null;
         if (colliderA instanceof Components.BoxCollider2D && colliderB instanceof Components.BoxCollider2D) {
-            return this.isBoxVsBox(materiaA, materiaB);
+            collisionInfo = this.isBoxVsBox(materiaA, materiaB);
         }
 
         // Future collision checks (Box vs Capsule, etc.) would go here
-        return false;
+
+        if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
+            this.resolveCollision(materiaA, materiaB, collisionInfo);
+        }
+
+        return collisionInfo;
+    }
+
+    resolveCollision(materiaA, materiaB, mtv) {
+        const rbA = materiaA.getComponent(Components.Rigidbody2D);
+        const rbB = materiaB.getComponent(Components.Rigidbody2D);
+        const transformA = materiaA.getComponent(Components.Transform);
+        const transformB = materiaB.getComponent(Components.Transform);
+
+        const isADynamic = rbA && rbA.bodyType === 'dynamic';
+        const isBDynamic = rbB && rbB.bodyType === 'dynamic';
+
+        if (isADynamic && !isBDynamic) { // A is dynamic, B is static/kinematic
+            transformA.x += mtv.x;
+            transformA.y += mtv.y;
+        } else if (!isADynamic && isBDynamic) { // B is dynamic, A is static/kinematic
+            transformB.x -= mtv.x;
+            transformB.y -= mtv.y;
+        } else if (isADynamic && isBDynamic) { // Both are dynamic
+            transformA.x += mtv.x / 2;
+            transformA.y += mtv.y / 2;
+            transformB.x -= mtv.x / 2;
+            transformB.y -= mtv.y / 2;
+        }
     }
 
     getCollider(materia) {
-        return materia.getComponent(Components.BoxCollider2D) || materia.getComponent(Components.CapsuleCollider2D);
+        return materia.getComponent(Components.BoxCollider2D);
     }
 
     isBoxVsBox(materiaA, materiaB) {
@@ -187,17 +217,34 @@ class PhysicsSystem {
         const topB = transformB.y + colliderB.offset.y - heightB / 2;
         const bottomB = transformB.y + colliderB.offset.y + heightB / 2;
 
-        return rightA > leftB && leftA < rightB && bottomA > topB && topA < bottomB;
+        // Check for no overlap
+        if (rightA <= leftB || leftA >= rightB || bottomA <= topB || topA >= bottomB) {
+            return null; // No collision
+        }
+
+        // Calculate overlap on each axis
+        const overlapX = Math.min(rightA, rightB) - Math.max(leftA, leftB);
+        const overlapY = Math.min(bottomA, bottomB) - Math.max(topA, topB);
+
+        // Determine the Minimum Translation Vector (MTV)
+        if (overlapX < overlapY) {
+            const mtvX = (transformA.x < transformB.x) ? -overlapX : overlapX;
+            return { x: mtvX, y: 0, magnitude: overlapX };
+        } else {
+            const mtvY = (transformA.y < transformB.y) ? -overlapY : overlapY;
+            return { x: 0, y: mtvY, magnitude: overlapY };
+        }
     }
 
     /**
-     * Gets collision info for a specific materia and state.
+     * Gets all collision infos for a specific materia and state.
      * @param {Materia} materia
      * @param {'enter'|'stay'|'exit'} state
      * @param {'collision'|'trigger'} type
-     * @returns {Collision|null}
+     * @returns {Collision[]} An array of collision objects.
      */
     getCollisionInfo(materia, state, type) {
+        const collisions = [];
         for (const [key, value] of this.collisionStates.entries()) {
             if (value.state === state && value.type === type && value.frame === this.currentFrame) {
                 const [id1, id2] = key.split('-').map(Number);
@@ -206,11 +253,11 @@ class PhysicsSystem {
                     const otherMateria = this.scene.findMateriaById(otherId);
                     if (otherMateria) {
                         const otherCollider = this.getCollider(otherMateria);
-                        return new Collision(materia, otherMateria, otherCollider);
+                        collisions.push(new Collision(materia, otherMateria, otherCollider));
                     }
                 }
             }
         }
-        return null;
+        return collisions;
     }
 }

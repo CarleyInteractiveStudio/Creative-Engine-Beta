@@ -35,7 +35,6 @@ import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
-import * as AmbienteAPI from './engine/AmbienteAPI.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 
 // --- Editor Logic ---
@@ -757,8 +756,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
-            // Set the context for the 'ce.engine' API before this materia's scripts run
-            EngineAPI.engineAPI.setCurrentMateria(materia);
+            // Set the context for all APIs before this materia's scripts run
+            EngineAPI.setCurrentMateria(materia);
 
             materia.update(deltaTime);
         }
@@ -2161,7 +2160,6 @@ public star() {
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
-            EngineAPI.engineAPI.initialize(physicsSystem); // Initialize ce.engine API
             InputManager.initialize(dom.sceneCanvas);
 
             // --- Define Callbacks & Helpers ---
@@ -2309,17 +2307,16 @@ public star() {
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
             AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
-            AmbienteAPI.initialize({
+
+            // Initialize all runtime APIs through the central manager
+            EngineAPI.initialize({
+                physicsSystem,
                 dom,
                 editorRenderer: renderer,
                 gameRenderer: gameRenderer,
                 iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
                 detenerCiclo: AmbienteControlWindow.detenerCiclo
             });
-            RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
-
-            console.log("Registrando la API 'ce.engine'...");
-            RuntimeAPIManager.registerAPI('ce.engine', EngineAPI.getAPIs());
 
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");

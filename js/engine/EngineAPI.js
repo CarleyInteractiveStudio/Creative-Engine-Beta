@@ -1,77 +1,44 @@
 // js/engine/EngineAPI.js
 
+import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import * as CEEngine from './CEEngine.js';
+import * as AmbienteAPI from './AmbienteAPI.js';
+
 /**
- * @typedef {import('../editor/ui/HierarchyWindow.js').Materia} Materia
- * @typedef {import('./Physics.js').PhysicsSystem} PhysicsSystem
+ * Initializes and registers all engine-level APIs for the scripting runtime.
+ * This acts as a central hub for all APIs that will be exposed to .ces scripts.
+ *
+ * @param {object} dependencies - An object containing dependencies needed by the APIs.
+ * @param {import('./Physics.js').PhysicsSystem} dependencies.physicsSystem - The main physics system instance.
+ * @param {object} dependencies.dom - A cache of DOM elements.
+ * @param {import('./Renderer.js').Renderer} dependencies.editorRenderer - The editor's renderer instance.
+ * @param {import('./Renderer.js').Renderer} dependencies.gameRenderer - The game's renderer instance.
+ * @param {function} dependencies.iniciarCiclo - Function to start the day/night cycle.
+ * @param {function} dependencies.detenerCiclo - Function to stop the day/night cycle.
  */
+export function initialize(dependencies) {
+    // Initialize individual APIs that require setup
+    CEEngine.engineAPI.initialize(dependencies.physicsSystem);
+    AmbienteAPI.initialize({
+        dom: dependencies.dom,
+        editorRenderer: dependencies.editorRenderer,
+        gameRenderer: dependencies.gameRenderer,
+        iniciarCiclo: dependencies.iniciarCiclo,
+        detenerCiclo: dependencies.detenerCiclo
+    });
 
-class EngineAPI {
-    constructor() {
-        /** @type {Materia} */
-        this.currentMateria = null;
-        /** @type {PhysicsSystem} */
-        this.physicsSystem = null;
-    }
+    // Register APIs with the RuntimeAPIManager
+    RuntimeAPIManager.registerAPI('ce.engine', CEEngine.getAPIs());
+    RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
 
-    /**
-     * Initializes the API with necessary engine systems.
-     * @param {PhysicsSystem} physicsSystem
-     */
-    initialize(physicsSystem) {
-        this.physicsSystem = physicsSystem;
-    }
-
-    /**
-     * Sets the current materia context for the API calls. This is called by the script engine before running a script's update.
-     * @param {Materia} materia
-     */
-    setCurrentMateria(materia) {
-        this.currentMateria = materia;
-    }
-
-    // --- Collision Methods ---
-
-    getCollisionEnter() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'enter', 'collision');
-    }
-
-    getCollisionStay() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'stay', 'collision');
-    }
-
-    getCollisionExit() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'exit', 'collision');
-    }
-
-    getTriggerEnter() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'enter', 'trigger');
-    }
-
-    getTriggerStay() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'stay', 'trigger');
-    }
-
-    getTriggerExit() {
-        if (!this.physicsSystem || !this.currentMateria) return null;
-        return this.physicsSystem.getCollisionInfo(this.currentMateria, 'exit', 'trigger');
-    }
+    // Future APIs can be initialized and registered here.
 }
 
-export const engineAPI = new EngineAPI();
-
-export function getAPIs() {
-    // These functions will have their context (`currentMateria`) set by the script runner before execution.
-    return {
-        'getCollisionEnter': () => engineAPI.getCollisionEnter(),
-        'getCollisionStay': () => engineAPI.getCollisionStay(),
-        'getCollisionExit': () => engineAPI.getCollisionExit(),
-        'getTriggerEnter': () => engineAPI.getTriggerEnter(),
-        'getTriggerStay': () => engineAPI.getTriggerStay(),
-        'getTriggerExit': () => engineAPI.getTriggerExit(),
-    };
+/**
+ * Sets the current Materia context for all relevant APIs before a script's update call.
+ * @param {import('./Materia.js').Materia} materia
+ */
+export function setCurrentMateria(materia) {
+    CEEngine.engineAPI.setCurrentMateria(materia);
+    // Future APIs that need context can have their context set here.
 }
