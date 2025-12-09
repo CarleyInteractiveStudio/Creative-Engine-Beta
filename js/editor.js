@@ -36,6 +36,7 @@ import { showNotification as showNotificationDialog, showConfirmation as showCon
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as AmbienteAPI from './engine/AmbienteAPI.js';
+import * as EngineAPI from './engine/EngineAPI.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -753,8 +754,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Update all game objects scripts
-        for (const materia of SceneManager.currentScene.materias) {
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
+
+            // Set the context for the 'ce.engine' API before this materia's scripts run
+            EngineAPI.engineAPI.setCurrentMateria(materia);
+
             materia.update(deltaTime);
         }
     };
@@ -2156,6 +2161,7 @@ public star() {
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+            EngineAPI.engineAPI.initialize(physicsSystem); // Initialize ce.engine API
             InputManager.initialize(dom.sceneCanvas);
 
             // --- Define Callbacks & Helpers ---
@@ -2311,6 +2317,9 @@ public star() {
                 detenerCiclo: AmbienteControlWindow.detenerCiclo
             });
             RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
+
+            console.log("Registrando la API 'ce.engine'...");
+            RuntimeAPIManager.registerAPI('ce.engine', EngineAPI.getAPIs());
 
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
