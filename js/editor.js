@@ -767,6 +767,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
+        const textureRenderersToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
+
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
 
@@ -796,38 +799,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const transform = materia.getComponent(Components.Transform);
-                if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                    const img = spriteRenderer.sprite;
 
-                    let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                    let pivotX = 0.5, pivotY = 0.5;
+                if (spriteRenderer) {
+                    if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+                        const img = spriteRenderer.sprite;
+                        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+                        let pivotX = 0.5, pivotY = 0.5;
 
-                    // If a sprite sheet is loaded and a specific sprite is named, use its data
-                    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-                        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-                        if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                            sx = spriteData.rect.x;
-                            sy = spriteData.rect.y;
-                            sWidth = spriteData.rect.width;
-                            sHeight = spriteData.rect.height;
-                            pivotX = spriteData.pivot.x;
-                            pivotY = spriteData.pivot.y;
+                        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                            if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
+                                sx = spriteData.rect.x;
+                                sy = spriteData.rect.y;
+                                sWidth = spriteData.rect.width;
+                                sHeight = spriteData.rect.height;
+                                pivotX = spriteData.pivot.x;
+                                pivotY = spriteData.pivot.y;
+                            }
                         }
+
+                        const dWidth = sWidth * transform.scale.x;
+                        const dHeight = sHeight * transform.scale.y;
+                        const dx = -dWidth * pivotX;
+                        const dy = -dHeight * pivotY;
+
+                        ctx.save();
+                        ctx.translate(transform.x, transform.y);
+                        ctx.rotate(transform.rotation * Math.PI / 180);
+                        ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                        ctx.restore();
+                    } else {
+                        // If there's a renderer but no sprite, draw a white box placeholder
+                        const dWidth = 50 * transform.scale.x; // Default size
+                        const dHeight = 50 * transform.scale.y; // Default size
+                        const dx = -dWidth * 0.5;
+                        const dy = -dHeight * 0.5;
+
+                        ctx.save();
+                        ctx.translate(transform.x, transform.y);
+                        ctx.rotate(transform.rotation * Math.PI / 180);
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(dx, dy, dWidth, dHeight);
+                        ctx.restore();
                     }
-
-                    const dWidth = sWidth * transform.scale.x;
-                    const dHeight = sHeight * transform.scale.y;
-
-                    // Calculate destination top-left corner based on pivot
-                    const dx = -dWidth * pivotX;
-                    const dy = -dHeight * pivotY;
-
-                    ctx.save();
-                    ctx.translate(transform.x, transform.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-                    ctx.restore();
                 }
+            }
+
+            for (const materia of textureRenderersToRender) {
+                if (!materia.isActive) continue;
+
+                const textureRender = materia.getComponent(Components.TextureRender);
+                const transform = materia.getComponent(Components.Transform);
+
+                ctx.save();
+                ctx.translate(transform.x, transform.y);
+                ctx.rotate(transform.rotation * Math.PI / 180);
+                ctx.scale(transform.scale.x, transform.scale.y);
+
+                if (textureRender.texture && textureRender.texture.complete) {
+                    const pattern = ctx.createPattern(textureRender.texture, 'repeat');
+                    ctx.fillStyle = pattern;
+                } else {
+                    ctx.fillStyle = textureRender.color;
+                }
+
+                if (textureRender.shape === 'Rectangle') {
+                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                } else if (textureRender.shape === 'Circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else if (textureRender.shape === 'Triangle') {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -textureRender.height / 2); // Top point
+                    ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
+                    ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (textureRender.shape === 'Capsule') {
+                    const width = textureRender.width;
+                    const height = textureRender.height;
+                    const radius = width / 2;
+                    const rectHeight = height - width;
+
+                    ctx.beginPath();
+                    // Start with the top semicircle
+                    ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
+                    // Draw the right side of the rectangle
+                    ctx.lineTo(width / 2, rectHeight / 2);
+                    // Draw the bottom semicircle
+                    ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
+                    // Draw the left side of the rectangle
+                    ctx.lineTo(-width / 2, -rectHeight / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
             }
 
             // Draw tilemaps
@@ -1156,41 +1224,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // Centralized context menu click handler
         document.body.addEventListener('mousedown', (e) => {
             const target = e.target;
-            // Only act on left clicks
-            if (e.button !== 0) return;
+            if (e.button !== 0) return; // Only act on left clicks
 
+            const menuItem = target.closest('[data-action]');
             const contextMenu = target.closest('.context-menu');
 
-            if (contextMenu) {
-                e.stopPropagation();
-                const action = target.dataset.action;
+            if (menuItem && contextMenu) {
+                e.stopPropagation(); // Stop propagation to prevent other listeners (like global deselection)
+                const action = menuItem.dataset.action;
 
-                if (action && !target.classList.contains('disabled')) {
-                    console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
-                    try {
-                        let handled = false;
-                        if (contextMenu.id === 'context-menu') {
-                            console.log(`[Director] Delegando al manejador de AssetBrowser...`);
-                            handleAssetContextMenuAction(action);
-                            handled = true;
-                        } else if (contextMenu.id === 'hierarchy-context-menu') {
-                            console.log(`[Director] Llamando a handleHierarchyContextMenuAction con acción: '${action}' y contextMateriaId:`, contextMateriaId);
-                            handleHierarchyContextMenuAction(action);
-                            handled = true;
-                        }
-
-                        if (handled) {
-                            console.log(`[Director] Acción '${action}' delegada exitosamente.`);
-                        } else {
-                            console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
-                        }
-                    } catch (error) {
-                        console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
-                    } finally {
-                        hideContextMenus(); // Asegurarnos de que el menú siempre se oculte
-                    }
+                if (menuItem.classList.contains('disabled')) {
+                    return; // Do nothing if the item is disabled
                 }
-            } else {
+
+                console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                try {
+                    if (contextMenu.id === 'context-menu') {
+                        handleAssetContextMenuAction(action);
+                    } else if (contextMenu.id === 'hierarchy-context-menu') {
+                        handleHierarchyContextMenuAction(action);
+                    } else {
+                         console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                    }
+                } catch (error) {
+                    console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                } finally {
+                    hideContextMenus(); // Always hide the menu after an action
+                }
+
+            } else if (!contextMenu) {
+                // If the click is outside any context menu, hide them all.
                 hideContextMenus();
             }
         });

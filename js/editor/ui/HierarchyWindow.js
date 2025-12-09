@@ -23,7 +23,7 @@ let isDraggingFromHierarchy = false;
 let showContextMenuCallback = () => {};
 let projectsDirHandle = null; // Needed for drag-drop from assets
 let updateInspector = () => {}; // To refresh inspector after rename/delete
-let contextMateriaId = null; // ID of the materia under the context menu
+let contextMateria = null; // DIRECT REFERENCE to the materia under the context menu
 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
@@ -143,8 +143,7 @@ export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
     // For actions on existing items, we MUST use the materia that was under the cursor
     // when the context menu was opened. This prevents race conditions if selection changes.
-    const contextMateria = contextMateriaId ? SceneManager.currentScene.findMateriaById(contextMateriaId) : null;
-    console.log("[HierarchyWindow] handleContextMenuAction - contextMateria (después de findMateriaById):", contextMateria);
+    // The `contextMateria` is now a direct reference, set during the 'contextmenu' event.
     let newMateria = null;
     let shouldUpdate = false;
 
@@ -159,6 +158,33 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
+            break;
+        case 'create-sprite':
+            newMateria = createBaseMateria(generateUniqueName('Sprite'), selectedMateria);
+            newMateria.addComponent(new Components.SpriteRenderer(newMateria));
+            break;
+        case 'create-rectangle':
+            newMateria = createBaseMateria(generateUniqueName('Rectangle'), selectedMateria);
+            newMateria.addComponent(new Components.TextureRender(newMateria));
+            break;
+        case 'create-circle':
+            newMateria = createBaseMateria(generateUniqueName('Circle'), selectedMateria);
+            const textureRender = new Components.TextureRender(newMateria);
+            textureRender.shape = 'Circle';
+            newMateria.addComponent(textureRender);
+            break;
+        case 'create-triangle':
+            newMateria = createBaseMateria(generateUniqueName('Triangle'), selectedMateria);
+            const textureRenderTri = new Components.TextureRender(newMateria);
+            textureRenderTri.shape = 'Triangle';
+            newMateria.addComponent(textureRenderTri);
+            break;
+        case 'create-capsule':
+            newMateria = createBaseMateria(generateUniqueName('Capsule'), selectedMateria);
+            const textureRenderCapsule = new Components.TextureRender(newMateria);
+            textureRenderCapsule.shape = 'Capsule';
+            newMateria.addComponent(textureRenderCapsule);
+            newMateria.addComponent(new Components.CapsuleCollider2D(newMateria));
             break;
         case 'create-tilemap':
             newMateria = createTilemapObject(selectedMateria);
@@ -186,25 +212,16 @@ export function handleContextMenuAction(action) {
             }
             break;
         case 'delete':
-            if (contextMateria) { // Use contextMateria
-                console.log("[HierarchyWindow] ANTES de showConfirmation para:", contextMateria.name);
-                showConfirmation(
-                    'Confirmar Eliminación',
-                    `¿Estás seguro de que quieres eliminar '${contextMateria.name}'? Esta acción no se puede deshacer.`,
-                    async () => {
-                        const idToDelete = contextMateria.id;
-
-                        // If the currently selected materia is the one being deleted, deselect it.
-                        const selectedMateria = getSelectedMateria();
-                        if (selectedMateria && selectedMateria.id === idToDelete) {
-                            selectMateriaCallback(null);
-                        }
-
-                        SceneManager.currentScene.removeMateria(idToDelete);
-                        updateHierarchy();
-                        updateInspector(); // Refresh inspector, which will show empty state
-                    }
-                );
+            if (contextMateria) {
+                // Direct deletion without confirmation as requested
+                const idToDelete = contextMateria.id;
+                const currentlySelected = getSelectedMateria();
+                if (currentlySelected && currentlySelected.id === idToDelete) {
+                    selectMateriaCallback(null);
+                }
+                SceneManager.currentScene.removeMateria(idToDelete);
+                updateHierarchy();
+                updateInspector();
             }
             break;
         case 'duplicate':
@@ -357,18 +374,20 @@ function setupEventListeners() {
         e.preventDefault();
         const item = e.target.closest('.hierarchy-item');
 
-        // Determine the contextMateriaId from the right-clicked item
+        // Determine the contextMateria from the right-clicked item. This is the crucial step.
         if (item) {
-            contextMateriaId = parseInt(item.dataset.id, 10);
+            const materiaId = parseInt(item.dataset.id, 10);
+            // Find the materia object *at the moment of the right-click* and store the reference
+            contextMateria = SceneManager.currentScene.findMateriaById(materiaId);
+            // Also update the selection to match the right-clicked item. This is intuitive for the user.
+            selectMateriaCallback(materiaId);
         } else {
-            contextMateriaId = null; // Clicked on empty space
+            contextMateria = null; // Clicked on empty space
+            selectMateriaCallback(null);
         }
 
-        // Update selection to match the right-clicked item
-        selectMateriaCallback(contextMateriaId);
-
         const menu = document.getElementById('hierarchy-context-menu');
-        const hasContext = contextMateriaId !== null;
+        const hasContext = contextMateria !== null;
 
         // Enable/disable options based on whether an item was right-clicked
         menu.querySelector('[data-action="duplicate"]').classList.toggle('disabled', !hasContext);

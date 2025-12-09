@@ -21,12 +21,12 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'Renderizado': [Components.SpriteRenderer],
+    'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.TilemapCollider2D],
+    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
@@ -93,11 +93,23 @@ async function handleInspectorChange(e) {
     // --- Asset Inspector Logic ---
     if (selectedAsset) {
         if (e.target.matches('#texture-type')) {
-            const isSprite = e.target.value === 'Sprite (2D and UI)';
+            const selectedType = e.target.value;
+            const isSprite = selectedType === 'Sprite (2D and UI)';
+            const isAnimSheet = selectedType === 'Animation Sheet';
+            const isTexture = selectedType === 'Texture';
+
             const spriteSettings = dom.inspectorContent.querySelector('#sprite-settings-container');
             const animSettings = dom.inspectorContent.querySelector('#animation-sheet-settings-container');
+
             if (spriteSettings) spriteSettings.classList.toggle('hidden', !isSprite);
-            if (animSettings) animSettings.classList.toggle('hidden', isSprite);
+            if (animSettings) animSettings.classList.toggle('hidden', !isAnimSheet);
+
+            // Textures reuse some of the advanced settings, so we don't hide the whole container,
+            // but we ensure specific parts are correctly shown/hidden.
+            if (isTexture) {
+                if (spriteSettings) spriteSettings.classList.remove('hidden');
+            }
+
             return;
         }
         if (e.target.matches('#sprite-mode')) {
@@ -449,7 +461,7 @@ async function updateInspectorForMateria(selectedMateria) {
     }
 
     const componentIcons = {
-        Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', SpriteRenderer: '🖼️',
+        Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
@@ -466,7 +478,59 @@ async function updateInspectorForMateria(selectedMateria) {
         const icon = componentIcons[componentName] || '⚙️';
         const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
 
-        if (ley instanceof Components.Transform) {
+        if (ley instanceof Components.TextureRender) {
+            let dimensionsHTML = '';
+            if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
+                dimensionsHTML = `
+                    <div class="prop-row-multi">
+                        <label>Dimensions</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                `;
+            } else if (ley.shape === 'Circle') {
+                dimensionsHTML = `
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="Radius">
+                        </div>
+                    </div>
+                `;
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Texture Render</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Shape</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
+                                <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
+                                <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''}>Circle</option>
+                                <option value="Triangle" ${ley.shape === 'Triangle' ? 'selected' : ''}>Triangle</option>
+                                <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''}>Capsule</option>
+                            </select>
+                        </div>
+                    </div>
+                    ${dimensionsHTML}
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="inspector-row">
+                        <label>Texture</label>
+                        <div class="asset-dropper" data-component="TextureRender" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
+                            <span class="asset-dropper-text">${ley.texturePath || 'None'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Transform) {
             console.log('  - Is Transform component.');
             if (selectedMateria.getComponent(Components.RectTransform)) {
                 console.log('  - RectTransform also exists, skipping render of Transform.');
@@ -833,6 +897,41 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${sizeInputHTML}
                 </div>
             </div>`;
+        } else if (ley instanceof Components.CapsuleCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Capsule Collider 2D</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Direction</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="CapsuleCollider2D" data-prop="direction">
+                                <option value="Vertical" ${ley.direction === 'Vertical' ? 'selected' : ''}>Vertical</option>
+                                <option value="Horizontal" ${ley.direction === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
             console.log('  - Is SpriteLight2D component.');
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
@@ -955,10 +1054,11 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     <select id="texture-type" class="inspector-re-render-asset">
                         <option value="Sprite (2D and UI)" ${metaData.textureType === 'Sprite (2D and UI)' ? 'selected' : ''}>Sprite (2D and UI)</option>
                         <option value="Animation Sheet" ${metaData.textureType === 'Animation Sheet' ? 'selected' : ''}>Animation Sheet</option>
+                        <option value="Texture" ${metaData.textureType === 'Texture' ? 'selected' : ''}>Texture</option>
                     </select>
                 </div>
 
-                <div id="sprite-settings-container" class="${metaData.textureType === 'Animation Sheet' ? 'hidden' : ''}">
+                <div id="sprite-settings-container" class="${metaData.textureType === 'Animation Sheet' || metaData.textureType === 'Texture' ? 'hidden' : ''}">
                     <fieldset class="inspector-section">
                         <legend>Sprite (2D and UI)</legend>
 
@@ -1135,7 +1235,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                 currentMetaData.textureType = document.getElementById('texture-type').value;
 
-                if (currentMetaData.textureType === 'Sprite (2D and UI)') {
+                if (currentMetaData.textureType === 'Texture') {
+                    currentMetaData.wrapMode = 'Repeat';
+                    // We can also save other relevant properties for textures here if needed in the future
+                } else if (currentMetaData.textureType === 'Sprite (2D and UI)') {
                     currentMetaData.spriteMode = document.getElementById('sprite-mode').value;
                     currentMetaData.pixelsPerUnit = parseFloat(document.getElementById('pixels-per-unit').value) || 100;
                     currentMetaData.meshType = document.getElementById('mesh-type').value;
@@ -1460,7 +1563,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             previewContainer.appendChild(spriteGrid);
             dom.inspectorContent.appendChild(previewContainer);
         } else if (assetName.endsWith('.ceSprite')) {
-            await renderCeSpriteInspector(content, dirHandle);
+            await renderCeSpriteInspector(content, dirHandle, assetPath);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
@@ -1612,7 +1715,7 @@ function extractFramesFromImage(imageUrl, cols, rows) {
     });
 }
 
-async function renderCeSpriteInspector(content, dirHandle) {
+async function renderCeSpriteInspector(content, dirHandle, assetPath) {
     try {
         const spriteAsset = JSON.parse(content);
         const sourceImageName = spriteAsset.sourceImage;
@@ -1653,6 +1756,16 @@ async function renderCeSpriteInspector(content, dirHandle) {
 
                 const spriteItem = document.createElement('div');
                 spriteItem.className = 'gallery-item';
+                spriteItem.draggable = true; // Make it draggable
+                spriteItem.addEventListener('dragstart', (e) => {
+                    const dragData = {
+                        type: 'sprite',
+                        assetPath: assetPath, // The path to the .ceSprite file
+                        spriteName: spriteName
+                    };
+                    e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+                });
+
 
                 const canvas = document.createElement('canvas');
                 canvas.width = rect.width;

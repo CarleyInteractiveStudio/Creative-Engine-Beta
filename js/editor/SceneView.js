@@ -386,6 +386,51 @@ export function initialize(dependencies) {
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+    // --- Drag and Drop Sprite Creation ---
+    dom.sceneCanvas.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Necessary to allow a drop
+        dom.sceneCanvas.classList.add('drag-over-scene');
+    });
+
+    dom.sceneCanvas.addEventListener('dragleave', () => {
+        dom.sceneCanvas.classList.remove('drag-over-scene');
+    });
+
+    dom.sceneCanvas.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dom.sceneCanvas.classList.remove('drag-over-scene');
+
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+            if (data.type === 'sprite') {
+                const rect = dom.sceneCanvas.getBoundingClientRect();
+                const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+                const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+
+                // Create a new Materia at the drop position
+                const newMateria = SceneManager.currentScene.createMateria(data.spriteName);
+                const transform = newMateria.getComponent(Components.Transform);
+                transform.x = worldPos.x;
+                transform.y = worldPos.y;
+
+                // Add and configure the SpriteRenderer
+                const spriteRenderer = new Components.SpriteRenderer(newMateria);
+                spriteRenderer.setSourcePath(data.assetPath); // This will load the .ceSprite
+                spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
+                newMateria.addComponent(spriteRenderer);
+
+
+                // Refresh UI
+                selectMateria(newMateria);
+                updateInspector();
+            }
+        } catch (error) {
+            console.error("Error al soltar el sprite:", error);
+        }
+    });
+
+
     // Event Delegation for Toolbar Tools
     const toolDropdown = document.querySelector('.tool-dropdown-content');
     if (toolDropdown) {

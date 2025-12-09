@@ -1,5 +1,5 @@
 // Contains all logic for the Package Import/Export modals and functionality
-import { showNotification } from './DialogWindow.js';
+import { showNotification, showPrompt } from './DialogWindow.js';
 
 let dom;
 let exportContext; // This will be passed from editor.js
@@ -240,25 +240,37 @@ function setupEventListeners() {
     });
 
     dom.exportConfirmBtn.addEventListener('click', async () => {
-        const filesToExport = [];
-        const checkboxes = dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked');
+        const defaultFilename = dom.exportFilename.value || 'package.cep';
 
-        checkboxes.forEach(cb => {
-            const path = cb.dataset.path;
-            const handle = exportFileHandleMap.get(path);
-            if (handle) {
-                filesToExport.push({ path: path, handle: handle });
-            }
-        });
+        showPrompt(
+            'Exportar Paquete',
+            'Introduce el nombre del archivo para el paquete:',
+            async (fileName) => {
+                if (!fileName || !fileName.endsWith('.cep')) {
+                    fileName = `${fileName.split('.')[0]}.cep`;
+                }
 
-        const manifest = {
-            type: exportContext.type,
-            description: exportContext.description,
-            fileList: filesToExport.map(f => f.path)
-        };
-        exportContext.fileName = dom.exportFilename.value || 'package.cep';
+                const filesToExport = [];
+                const checkboxes = dom.packageFileTreeContainer.querySelectorAll('input[type=checkbox]:checked');
+                checkboxes.forEach(cb => {
+                    const path = cb.dataset.path;
+                    const handle = exportFileHandleMap.get(path);
+                    if (handle) {
+                        filesToExport.push({ path: path, handle: handle });
+                    }
+                });
 
-        await exportPackage(filesToExport, manifest);
+                const manifest = {
+                    type: exportContext.type,
+                    description: exportContext.description,
+                    fileList: filesToExport.map(f => f.path)
+                };
+                exportContext.fileName = fileName;
+
+                await exportPackage(filesToExport, manifest);
+            },
+            defaultFilename
+        );
     });
 }
 

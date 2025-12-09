@@ -184,6 +184,24 @@ export class BoxCollider2D extends Leyes {
     }
 }
 
+export class CapsuleCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.size = { x: 1.0, y: 1.0 };
+        this.direction = 'Vertical'; // 'Vertical' or 'Horizontal'
+    }
+    clone() {
+        const newCollider = new CapsuleCollider2D(null);
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.size = { ...this.size };
+        newCollider.direction = this.direction;
+        return newCollider;
+    }
+}
+
 export class SpriteRenderer extends Leyes {
     constructor(materia) {
         super(materia);
@@ -556,9 +574,53 @@ export class AudioSource extends Leyes {
 
 // --- Component Registration ---
 
+export class TextureRender extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.shape = 'Rectangle'; // 'Rectangle', 'Circle', 'Triangle', 'Capsule'
+        this.width = 100;
+        this.height = 100;
+        this.radius = 50;
+        this.color = '#ffffff';
+        this.texturePath = '';
+        this.texture = null; // Will hold the Image object
+    }
+
+    async loadTexture(projectsDirHandle) {
+        if (this.texturePath) {
+            const url = await getURLForAssetPath(this.texturePath, projectsDirHandle);
+            if (url) {
+                this.texture = new Image();
+                this.texture.src = url;
+                // We might need to await loading if drawing happens immediately
+                await new Promise((resolve, reject) => {
+                    this.texture.onload = resolve;
+                    this.texture.onerror = reject;
+                }).catch(e => console.error(`Failed to load texture: ${this.texturePath}`, e));
+            }
+        } else {
+            this.texture = null;
+        }
+    }
+
+    clone() {
+        const newRender = new TextureRender(null);
+        newRender.shape = this.shape;
+        newRender.width = this.width;
+        newRender.height = this.height;
+        newRender.radius = this.radius;
+        newRender.color = this.color;
+        newRender.texturePath = this.texturePath;
+        // The texture itself will be loaded on demand.
+        return newRender;
+    }
+}
+registerComponent('TextureRender', TextureRender);
+
 registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);
 registerComponent('BoxCollider2D', BoxCollider2D);
+registerComponent('CapsuleCollider2D', CapsuleCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);

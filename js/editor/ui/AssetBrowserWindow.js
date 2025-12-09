@@ -1,6 +1,6 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
-import { showNotification, showConfirmation } from './DialogWindow.js';
+import { showNotification, showConfirmation, showPrompt } from './DialogWindow.js';
 
 // --- Module State ---
 let dom;
@@ -52,49 +52,135 @@ export async function handleContextMenuAction(action) {
 
     switch(action) {
         case 'create-folder': {
-            const folderName = prompt("Nombre de la nueva carpeta:");
-            if (folderName) {
-                try {
-                    await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
-                    await updateAssetBrowserCallback();
-                } catch (err) {
-                    console.error("Error al crear la carpeta:", err);
-                    showNotification('Error', 'No se pudo crear la carpeta.');
+            showPrompt(
+                'Crear Carpeta',
+                'Introduce el nombre de la nueva carpeta:',
+                async (folderName) => {
+                    if (folderName) {
+                        try {
+                            await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear la carpeta:", err);
+                            showNotification('Error', 'No se pudo crear la carpeta.');
+                        }
+                    }
                 }
-            }
+            );
             break;
         }
         case 'create-script': {
-            const scriptName = prompt("Nombre del nuevo script (.ces):");
-            if (scriptName) {
-                const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
-                const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
-                try {
-                    const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(defaultContent);
-                    await writable.close();
-                    await updateAssetBrowserCallback();
-                } catch (err) {
-                    console.error("Error al crear el script:", err);
-                    showNotification('Error', 'No se pudo crear el script.');
+            showPrompt(
+                'Crear Script',
+                'Introduce el nombre del nuevo script (.ces):',
+                async (scriptName) => {
+                    if (scriptName) {
+                        const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
+                        const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el script:", err);
+                            showNotification('Error', 'No se pudo crear el script.');
+                        }
+                    }
                 }
-            }
+            );
             break;
         }
-        case 'create-ui-system': {
-            if (createUiSystemFile) {
-                createUiSystemFile(currentDirectoryHandle.handle, updateAssetBrowserCallback);
-            }
+        case 'create-scene': {
+            showPrompt(
+                'Crear Escena',
+                'Introduce el nombre de la nueva escena (.ceScene):',
+                async (sceneName) => {
+                    console.log(`[AssetBrowser] Callback de showPrompt para 'create-scene' ejecutado. Nombre recibido: '${sceneName}'`);
+                    if (sceneName) {
+                        const fileName = sceneName.endsWith('.ceScene') ? sceneName : `${sceneName}.ceScene`;
+                        console.log(`[AssetBrowser] Creando archivo de escena con nombre: '${fileName}'`);
+                        // Default empty scene content
+                        const defaultContent = '{"materias": [], "ambiente": {"luzAmbiental":"#1a1a2a","hora":6,"cicloAutomatico":false,"duracionDia":60,"mascaraTipo":"ninguna"}}';
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            console.log(`[AssetBrowser] Archivo de escena '${fileName}' creado con éxito.`);
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear la escena:", err);
+                            showNotification('Error', 'No se pudo crear la escena.');
+                        }
+                    } else {
+                        console.log("[AssetBrowser] La creación de la escena fue cancelada o el nombre estaba vacío.");
+                    }
+                }
+            );
+            break;
+        }
+        case 'create-animation': {
+            showPrompt(
+                'Crear Asset de Animación',
+                'Introduce el nombre del nuevo asset (.cea):',
+                async (animName) => {
+                    if (animName) {
+                        const fileName = animName.endsWith('.cea') ? animName : `${animName}.cea`;
+                        // Default empty animation content
+                        const defaultContent = '{"name": "New Animation", "frames": []}';
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el asset de animación:", err);
+                            showNotification('Error', 'No se pudo crear el asset de animación.');
+                        }
+                    }
+                }
+            );
+            break;
+        }
+        case 'create-readme': {
+            showPrompt(
+                'Crear Archivo Léame',
+                'Introduce el nombre del archivo (.md):',
+                async (readmeName) => {
+                    if (readmeName) {
+                        const fileName = readmeName.endsWith('.md') ? readmeName : `${readmeName}.md`;
+                        const defaultContent = '# Nuevo Archivo Léame\n\nEscribe aquí la documentación...';
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el archivo Léame:", err);
+                            showNotification('Error', 'No se pudo crear el archivo.');
+                        }
+                    }
+                },
+                'README.md' // Default value
+            );
             break;
         }
         case 'create-tile-palette': {
-            const paletteName = prompt("Nombre de la nueva paleta (.cepalette):");
-            if (paletteName) {
-                const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                await createNewPalette(fileName, currentDirectoryHandle.handle);
-                await updateAssetBrowserCallback();
-            }
+            showPrompt(
+                'Crear Paleta de Tiles',
+                'Introduce el nombre de la nueva paleta (.cepalette):',
+                async (paletteName) => {
+                    if (paletteName) {
+                        const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
+                        await createNewPalette(fileName, currentDirectoryHandle.handle);
+                        await updateAssetBrowserCallback();
+                    }
+                }
+            );
             break;
         }
         // Add other cases for create-scene, create-animation, etc.
@@ -133,31 +219,36 @@ export async function handleContextMenuAction(action) {
         case 'rename': {
             if (selectedAsset) {
                 const oldName = selectedAsset.name;
-                const newName = prompt(`Renombrar '${oldName}':`, oldName);
+                showPrompt(
+                    'Renombrar Asset',
+                    `Introduce el nuevo nombre para '${oldName}':`,
+                    async (newName) => {
+                        if (newName && newName !== oldName) {
+                            try {
+                                if (selectedAsset.kind === 'directory') {
+                                    showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
+                                    return;
+                                }
+                                const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
+                                const content = await (await oldFileHandle.getFile()).text();
 
-                if (newName && newName !== oldName) {
-                    try {
-                        if (selectedAsset.kind === 'directory') {
-                            showNotification('No Implementado', 'El renombrado de carpetas aún no está implementado.');
-                            return;
+                                const newFileHandle = await currentDirectoryHandle.handle.getFileHandle(newName, { create: true });
+                                const writable = await newFileHandle.createWritable();
+                                await writable.write(content);
+                                await writable.close();
+
+                                await currentDirectoryHandle.handle.removeEntry(oldName);
+
+                                console.log(`'${oldName}' renombrado a '${newName}'.`);
+                                await updateAssetBrowserCallback();
+                            } catch (err) {
+                                console.error(`Error al renombrar '${oldName}':`, err);
+                                showNotification('Error', 'No se pudo renombrar el asset.');
+                            }
                         }
-                        const oldFileHandle = await currentDirectoryHandle.handle.getFileHandle(oldName);
-                        const content = await (await oldFileHandle.getFile()).text();
-
-                        const newFileHandle = await currentDirectoryHandle.handle.getFileHandle(newName, { create: true });
-                        const writable = await newFileHandle.createWritable();
-                        await writable.write(content);
-                        await writable.close();
-
-                        await currentDirectoryHandle.handle.removeEntry(oldName);
-
-                        console.log(`'${oldName}' renombrado a '${newName}'.`);
-                        await updateAssetBrowserCallback();
-                    } catch (err) {
-                        console.error(`Error al renombrar '${oldName}':`, err);
-                        showNotification('Error', 'No se pudo renombrar el asset.');
-                    }
-                }
+                    },
+                    oldName
+                );
             } else {
                 showNotification('Error', 'Por favor, selecciona un archivo para renombrar.');
             }

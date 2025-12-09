@@ -2953,26 +2953,33 @@ body {
 }
 
 /* --- Custom Dialog Windows --- */
+/*
+ * The .custom-dialog is the main overlay/wrapper. It handles positioning,
+ * visibility, and stacking order (z-index). It should NOT have visual styles
+ * like borders or backgrounds itself. It is a flex container to center its child.
+ */
 .custom-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 300px;
-  max-width: 400px;
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  background-color: #fff;
-  padding: 20px;
-  display: none; /* oculto por defecto */
-  z-index: 2701;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5); /* Add a backdrop */
+    z-index: 9998; /* High z-index, below loading overlay */
 }
 
+/* The .is-open class makes the dialog visible */
 .custom-dialog.is-open {
     display: flex;
 }
 
+/*
+ * The .dialog-container is the actual visible dialog "bubble".
+ * It contains all the visual styling.
+ */
 .dialog-container {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -2981,6 +2988,17 @@ body {
     min-width: 300px;
     max-width: 500px;
     overflow: hidden;
+    /* Add animation for appearing */
+    transform: scale(0.95);
+    opacity: 0;
+    animation: dialog-appear 0.2s ease-out forwards;
+}
+
+@keyframes dialog-appear {
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .dialog-header {
@@ -3173,4 +3191,9 @@ body {
     word-break: break-all;
     max-height: 150px;
     overflow-y: auto;
+}
+#scene-canvas.drag-over-scene {
+    outline: 3px dashed var(--color-accent);
+    outline-offset: -5px;
+    background-color: rgba(0, 150, 255, 0.1);
 }
