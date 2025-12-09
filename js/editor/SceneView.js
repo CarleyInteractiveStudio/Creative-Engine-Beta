@@ -973,9 +973,51 @@ export function drawOverlay() {
     // Draw tilemap colliders
     drawTilemapColliders();
 
+    // Draw physics colliders for selected object
+    drawPhysicsGizmos();
+
     // Draw outline for selected Tilemap
     drawTilemapOutline();
 }
+
+function drawPhysicsGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const { ctx, camera } = renderer;
+    if (!ctx || !camera) return;
+
+    // We can draw gizmos for all colliders on a selected object, or all in scene.
+    // Let's stick to the selected object for now to avoid clutter.
+    const materiasToCheck = [selectedMateria]; // Or SceneManager.currentScene.getAllMaterias() for all
+
+    materiasToCheck.forEach(materia => {
+        const boxCollider = materia.getComponent(Components.BoxCollider2D);
+        const transform = materia.getComponent(Components.Transform);
+
+        if (boxCollider && transform) {
+            const width = boxCollider.size.x * transform.scale.x;
+            const height = boxCollider.size.y * transform.scale.y;
+            const centerX = transform.x + boxCollider.offset.x;
+            const centerY = transform.y + boxCollider.offset.y;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // Bright green for physics shapes
+            ctx.lineWidth = 2 / camera.effectiveZoom;
+            ctx.setLineDash([]); // Solid line
+
+            ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+            ctx.restore();
+        }
+
+        // Future: Add logic for CapsuleCollider2D gizmos here
+    });
+}
+
 
 function drawTilemapOutline() {
     const selectedMateria = getSelectedMateria();
