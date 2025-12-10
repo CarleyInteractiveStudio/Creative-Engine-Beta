@@ -461,7 +461,7 @@ async function updateInspectorForMateria(selectedMateria) {
     }
 
     const componentIcons = {
-        Transform: '✥', Rigidbody: '🏋️', BoxCollider: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
+        Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
@@ -960,7 +960,57 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
+        } else if (ley instanceof Components.Rigidbody2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Body Type</label>
+                        <select class="prop-input" data-component="Rigidbody2D" data-prop="bodyType">
+                            <option value="Dynamic" ${ley.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
+                            <option value="Kinematic" ${ley.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
+                            <option value="Static" ${ley.bodyType === 'Static' ? 'selected' : ''}>Static</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Gravity Scale</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${ley.gravityScale}">
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${ley.simulated ? 'checked' : ''}>
+                        <label>Simulated</label>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.BoxCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Box Collider 2D</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         }
+
 
         if (componentHTML) {
             const componentWrapper = document.createElement('div');

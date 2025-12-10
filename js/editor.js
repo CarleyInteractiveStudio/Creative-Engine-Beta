@@ -35,7 +35,7 @@ import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
-import * as AmbienteAPI from './engine/AmbienteAPI.js';
+import * as EngineAPI from './engine/EngineAPI.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -598,7 +598,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
             return;
         }
+
+        // --- 1. Clear and Load All APIs ---
+        // Clear previous runtime APIs to ensure a clean slate for every "Play"
+        RuntimeAPIManager.clearAPIs();
+
+        // Load external libraries first
         await loadRuntimeApis();
+
+        // Now, register the internal engine APIs
+        const internalApis = EngineAPI.getAllInternalApis();
+        for (const [name, apiObject] of Object.entries(internalApis)) {
+            RuntimeAPIManager.registerAPI(name, apiObject);
+        }
+        console.log("Registered internal and external runtime APIs.");
+
+
         console.log("Verificando todos los scripts del proyecto...");
         dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
         const allErrors = [];
@@ -753,8 +768,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Update all game objects scripts
-        for (const materia of SceneManager.currentScene.materias) {
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
+
+            // Set the context for all APIs before this materia's scripts run
+            EngineAPI.setCurrentMateria(materia);
+
             materia.update(deltaTime);
         }
     };
@@ -2303,14 +2322,16 @@ public star() {
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
             AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
-            AmbienteAPI.initialize({
+
+            // Initialize all runtime APIs through the central manager
+            EngineAPI.initialize({
+                physicsSystem,
                 dom,
                 editorRenderer: renderer,
                 gameRenderer: gameRenderer,
                 iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
                 detenerCiclo: AmbienteControlWindow.detenerCiclo
             });
-            RuntimeAPIManager.registerAPI('ambiente', AmbienteAPI.AmbienteAPI);
 
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
