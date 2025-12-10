@@ -58,22 +58,26 @@ export function transpile(code, scriptName) {
 
         // --- Phase 2: Transpile method bodies ---
         // Replace function calls with their fully qualified API calls.
-        const functionCallRegex = /(\w+)\s*\(/g;
-        body = body.replace(functionCallRegex, (match, functionName) => {
-            // Don't replace method declarations or known keywords.
-            const keywords = ['if', 'for', 'while', 'switch', 'new', 'return'];
-            if (keywords.includes(functionName)) {
-                return match;
-            }
 
-            const apiName = RuntimeAPIManager.findFunctionInAPIs(functionName, Array.from(importedLibs));
-            if (apiName) {
-                // For direct calls, we generate the full path.
-                return `RuntimeAPIManager.getAPI("${apiName}")["${functionName}"](`;
+        // This is a more robust way to replace function calls. Instead of a generic
+        // regex, we iterate through the imported libraries and create specific regex
+        // for each function available in them.
+        for (const libName of importedLibs) {
+            const api = RuntimeAPIManager.getAPI(libName);
+            if (!api) continue;
+
+            for (const functionName in api) {
+                // Create a regex that finds the function name as a whole word,
+                // NOT preceded by a dot (to avoid replacing method calls like `myObject.myFunction`),
+                // and followed by an opening parenthesis.
+                const regex = new RegExp(`(?<!\\.)\\b${functionName}\\b\\s*\\(`, 'g');
+
+                // The replacement string points to the correct function within the API.
+                const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"](`;
+
+                body = body.replace(regex, replacement);
             }
-            // If it's not a known API function, leave it as is. It might be a custom method.
-            return match;
-        });
+        }
 
         if (name === 'star') {
             starMethod = body;
