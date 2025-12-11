@@ -1397,7 +1397,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuOpenScene.addEventListener('click', async (e) => {
             e.preventDefault();
-            if (SceneManager.isSceneDirty()) {
+            if (SceneManager.isSceneDirty) {
                 const confirmed = await new Promise(resolve => {
                     showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de abrir una nueva escena?', () => saveScene().then(() => resolve(true)), () => resolve(true), () => resolve(false));
                 });
@@ -1419,7 +1419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuNewScene.addEventListener('click', async (e) => {
             e.preventDefault();
-            if (SceneManager.isSceneDirty()) {
+            if (SceneManager.isSceneDirty) {
                 const confirmed = await new Promise(resolve => {
                     showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de crear una nueva escena?', () => saveScene().then(() => resolve(true)), () => resolve(true), () => resolve(false));
                 });
@@ -2290,68 +2290,38 @@ public star() {
                         openUiAsset(fileHandle);
                         break;
                     case 'ceScene':
-                        const loadSceneAction = async () => {
-                            console.log(`Loading scene: ${name}`);
-                            const newScene = await SceneManager.loadScene(fileHandle);
-                            if (newScene) {
-                                SceneManager.setCurrentScene(newScene);
-                                SceneManager.setCurrentSceneFileHandle(fileHandle);
-                                dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                                SceneManager.setSceneDirty(false);
-                                updateHierarchy();
-                                selectMateria(null);
-                                updateAmbientePanelFromScene(); // Sync UI
-                            } else {
-                                showNotificationDialog('Error', `Failed to load scene: ${name}`);
-                            }
-                        };
-
-                        if (SceneManager.isSceneDirty()) {
-                            showConfirmationDialog(
-                                'Cambios sin Guardar',
-                                'Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?',
-                                loadSceneAction // Proceed only if confirmed
-                            );
-                        } else {
-                            await loadSceneAction(); // Proceed immediately if no changes
-                        }
-                        break;
-                    case 'ceScene':
-                        if (SceneManager.isSceneDirty()) {
+                        if (SceneManager.isSceneDirty) {
                             showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de abrir la nueva escena?',
-                                async () => {
+                                async () => { // On 'Yes' (Save)
                                     await saveScene();
-                                    const newScene = await SceneManager.loadScene(fileHandle);
+                                    const newScene = await SceneManager.loadScene(fileHandle, projectsDirHandle);
                                     if (newScene) {
-                                        SceneManager.setCurrentScene(newScene);
-                                        SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                        SceneManager.setCurrentScene(newScene.scene);
+                                        SceneManager.setCurrentSceneFileHandle(newScene.fileHandle);
                                         dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                                        SceneManager.setSceneDirty(false);
                                         updateHierarchy();
                                         selectMateria(null);
                                         updateAmbientePanelFromScene();
                                     }
                                 },
-                                async () => {
-                                    const newScene = await SceneManager.loadScene(fileHandle);
+                                async () => { // On 'No' (Don't Save)
+                                    const newScene = await SceneManager.loadScene(fileHandle, projectsDirHandle);
                                     if (newScene) {
-                                        SceneManager.setCurrentScene(newScene);
-                                        SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                        SceneManager.setCurrentScene(newScene.scene);
+                                        SceneManager.setCurrentSceneFileHandle(newScene.fileHandle);
                                         dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                                        SceneManager.setSceneDirty(false);
                                         updateHierarchy();
                                         selectMateria(null);
                                         updateAmbientePanelFromScene();
                                     }
                                 }
                             );
-                        } else {
-                            const newScene = await SceneManager.loadScene(fileHandle);
+                        } else { // No dirty scene, just load
+                            const newScene = await SceneManager.loadScene(fileHandle, projectsDirHandle);
                             if (newScene) {
-                                SceneManager.setCurrentScene(newScene);
-                                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                SceneManager.setCurrentScene(newScene.scene);
+                                SceneManager.setCurrentSceneFileHandle(newScene.fileHandle);
                                 dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                                SceneManager.setSceneDirty(false);
                                 updateHierarchy();
                                 selectMateria(null);
                                 updateAmbientePanelFromScene();
