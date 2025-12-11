@@ -66,7 +66,7 @@ export class PhysicsSystem {
             const rigidbody = materia.getComponent(Components.Rigidbody2D);
             const transform = materia.getComponent(Components.Transform);
 
-            if (rigidbody && transform && rigidbody.bodyType === 'dynamic' && rigidbody.simulated) {
+            if (rigidbody && transform && rigidbody.bodyType === 'Dynamic' && rigidbody.simulated) {
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
                 transform.x += rigidbody.velocity.x * deltaTime;
                 transform.y += rigidbody.velocity.y * deltaTime;
@@ -90,7 +90,7 @@ export class PhysicsSystem {
                 const colliderA = this.getCollider(materiaA);
                 const colliderB = this.getCollider(materiaB);
 
-                if (rbA && rbB && rbA.bodyType === 'static' && rbB.bodyType === 'static' && !colliderA.isTrigger && !colliderB.isTrigger) {
+                if (rbA && rbB && rbA.bodyType === 'Static' && rbB.bodyType === 'Static' && !colliderA.isTrigger && !colliderB.isTrigger) {
                     continue;
                 }
 
