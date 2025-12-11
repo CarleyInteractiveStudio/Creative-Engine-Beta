@@ -2334,7 +2334,7 @@ public star() {
                         console.log(`Opening UI asset: ${name}`);
                         openUiAsset(fileHandle);
                         break;
-                    case 'ceScene':
+                    case 'cescene':
                         (async () => {
                             const proceed = await confirmSceneChange();
                             if (!proceed) return;
