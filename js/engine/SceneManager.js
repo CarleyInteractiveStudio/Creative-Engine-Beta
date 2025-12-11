@@ -280,7 +280,8 @@ export async function initialize(projectsDirHandle) {
 
     if (sceneFileToLoad) {
         console.log(`Encontrada escena existente: ${sceneFileToLoad}. Cargando...`);
-        return await loadScene(sceneFileToLoad, assetsHandle, projectsDirHandle);
+        const fileHandle = await assetsHandle.getFileHandle(sceneFileToLoad);
+        return await loadScene(fileHandle, projectsDirHandle);
     } else {
         // If no scene files exist, create a default one with a camera
         console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
@@ -296,7 +297,8 @@ export async function initialize(projectsDirHandle) {
             await writable.close();
 
             console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
-            return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
+            const newFileHandle = await assetsHandle.getFileHandle(defaultSceneName);
+            return await loadScene(newFileHandle, projectsDirHandle);
         } catch (createError) {
             console.error(`Error al crear la escena por defecto:`, createError);
         }
