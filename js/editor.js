@@ -1389,6 +1389,62 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.settingsLogoList.appendChild(listItem);
         }
 
+        // --- Menubar Scene Actions ---
+        dom.menuSaveScene.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveScene();
+        });
+
+        dom.menuOpenScene.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (SceneManager.isSceneDirty()) {
+                const confirmed = await new Promise(resolve => {
+                    showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de abrir una nueva escena?', () => saveScene().then(() => resolve(true)), () => resolve(true), () => resolve(false));
+                });
+                if (!confirmed) return;
+            }
+            openAssetSelector(async (fileHandle) => {
+                const newScene = await SceneManager.loadScene(fileHandle);
+                if (newScene) {
+                    SceneManager.setCurrentScene(newScene);
+                    SceneManager.setCurrentSceneFileHandle(fileHandle);
+                    dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
+                    SceneManager.setSceneDirty(false);
+                    updateHierarchy();
+                    selectMateria(null);
+                    updateAmbientePanelFromScene();
+                }
+            }, { filter: ['.ceScene'], title: 'Abrir Escena' });
+        });
+
+        dom.menuNewScene.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (SceneManager.isSceneDirty()) {
+                const confirmed = await new Promise(resolve => {
+                    showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de crear una nueva escena?', () => saveScene().then(() => resolve(true)), () => resolve(true), () => resolve(false));
+                });
+                if (!confirmed) return;
+            }
+            try {
+                const assetsHandle = await (await projectsDirHandle.getDirectoryHandle(new URLSearchParams(window.location.search).get('project'))).getDirectoryHandle('Assets');
+                const fileHandle = await window.showSaveFilePicker({ suggestedName: 'NuevaEscena.ceScene', startIn: assetsHandle, types: [{ description: 'Creative Engine Scene', accept: { 'application/json': ['.ceScene'] } }] });
+                const newScene = new SceneManager.Scene();
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(SceneManager.serializeScene(newScene, dom), null, 2));
+                await writable.close();
+                SceneManager.setCurrentScene(newScene);
+                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
+                SceneManager.setSceneDirty(false);
+                updateHierarchy();
+                selectMateria(null);
+                updateAmbientePanelFromScene();
+                updateAssetBrowser();
+            } catch (error) {
+                if (error.name !== 'AbortError') console.error("Error al crear la nueva escena:", error);
+            }
+        });
+
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', handleKeyboardShortcuts);
 
@@ -1916,6 +1972,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop',
+            // Menubar scene options
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2256,6 +2314,48 @@ public star() {
                             );
                         } else {
                             await loadSceneAction(); // Proceed immediately if no changes
+                        }
+                        break;
+                    case 'ceScene':
+                        if (SceneManager.isSceneDirty()) {
+                            showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de abrir la nueva escena?',
+                                async () => {
+                                    await saveScene();
+                                    const newScene = await SceneManager.loadScene(fileHandle);
+                                    if (newScene) {
+                                        SceneManager.setCurrentScene(newScene);
+                                        SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                        dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                                        SceneManager.setSceneDirty(false);
+                                        updateHierarchy();
+                                        selectMateria(null);
+                                        updateAmbientePanelFromScene();
+                                    }
+                                },
+                                async () => {
+                                    const newScene = await SceneManager.loadScene(fileHandle);
+                                    if (newScene) {
+                                        SceneManager.setCurrentScene(newScene);
+                                        SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                        dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                                        SceneManager.setSceneDirty(false);
+                                        updateHierarchy();
+                                        selectMateria(null);
+                                        updateAmbientePanelFromScene();
+                                    }
+                                }
+                            );
+                        } else {
+                            const newScene = await SceneManager.loadScene(fileHandle);
+                            if (newScene) {
+                                SceneManager.setCurrentScene(newScene);
+                                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                                dom.currentSceneName.textContent = name.replace('.ceScene', '');
+                                SceneManager.setSceneDirty(false);
+                                updateHierarchy();
+                                selectMateria(null);
+                                updateAmbientePanelFromScene();
+                            }
                         }
                         break;
                     case 'png':
