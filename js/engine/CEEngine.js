@@ -60,6 +60,28 @@ class CEEngineAPI {
         if (!this.physicsSystem || !this.currentMateria) return [];
         return this.physicsSystem.getCollisionInfo(this.currentMateria, 'exit', 'trigger');
     }
+
+    // --- Rigidbody2D Methods ---
+
+    applyImpulse(x, y) {
+        if (!this.currentMateria) return;
+        const rb = this.currentMateria.getComponent('Rigidbody2D');
+        if (rb) {
+            // In a real physics engine, this would be impulse = force * time, and a force would be mass * acceleration.
+            // For now, we'll treat this as a direct velocity change, which is technically an impulse.
+            rb.velocity.x += x;
+            rb.velocity.y += y;
+        }
+    }
+
+    setVelocity(x, y) {
+        if (!this.currentMateria) return;
+        const rb = this.currentMateria.getComponent('Rigidbody2D');
+        if (rb) {
+            rb.velocity.x = x;
+            rb.velocity.y = y;
+        }
+    }
 }
 
 export const engineAPI = new CEEngineAPI();
@@ -73,5 +95,7 @@ export function getAPIs() {
         'getTriggerEnter': () => engineAPI.getTriggerEnter(),
         'getTriggerStay': () => engineAPI.getTriggerStay(),
         'getTriggerExit': () => engineAPI.getTriggerExit(),
+        'applyImpulse': (x, y) => engineAPI.applyImpulse(x, y),
+        'setVelocity': (x, y) => engineAPI.setVelocity(x, y),
     };
 }
