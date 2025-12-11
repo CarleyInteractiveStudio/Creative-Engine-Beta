@@ -1404,10 +1404,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!confirmed) return;
             }
             openAssetSelector(async (fileHandle) => {
-                const newScene = await SceneManager.loadScene(fileHandle);
-                if (newScene) {
-                    SceneManager.setCurrentScene(newScene);
-                    SceneManager.setCurrentSceneFileHandle(fileHandle);
+                const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
+                if (newSceneData) {
+                    SceneManager.setCurrentScene(newSceneData.scene);
+                    SceneManager.setCurrentSceneFileHandle(newSceneData.fileHandle);
                     dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
                     SceneManager.setSceneDirty(false);
                     updateHierarchy();

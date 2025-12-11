@@ -176,8 +176,9 @@ export class PhysicsSystem {
         const transformA = materiaA.getComponent(Components.Transform);
         const transformB = materiaB.getComponent(Components.Transform);
 
-        const isADynamic = rbA && rbA.bodyType === 'dynamic';
-        const isBDynamic = rbB && rbB.bodyType === 'dynamic';
+        // --- 1. Position Correction ---
+        const isADynamic = rbA && rbA.bodyType === 'Dynamic';
+        const isBDynamic = rbB && rbB.bodyType === 'Dynamic';
 
         if (isADynamic && !isBDynamic) { // A is dynamic, B is static/kinematic
             transformA.x += mtv.x;
@@ -190,6 +191,27 @@ export class PhysicsSystem {
             transformA.y += mtv.y / 2;
             transformB.x -= mtv.x / 2;
             transformB.y -= mtv.y / 2;
+        }
+
+        // --- 2. Velocity Correction (Impulse Resolution) ---
+        const normal = this._normalize({ x: mtv.x, y: mtv.y });
+
+        // For simplicity, we'll just stop the velocity along the normal for now.
+        // A full impulse-based resolution would be more accurate.
+        if (isADynamic && rbA.velocity) {
+            const velDotNormal = this._dot(rbA.velocity, normal);
+            if (velDotNormal < 0) { // Only resolve if moving towards each other
+                 rbA.velocity.x -= velDotNormal * normal.x;
+                 rbA.velocity.y -= velDotNormal * normal.y;
+            }
+        }
+
+        if (isBDynamic && rbB.velocity) {
+             const velDotNormal = this._dot(rbB.velocity, normal);
+             if (velDotNormal > 0) { // Only resolve if moving towards each other (opposite direction)
+                rbB.velocity.x += velDotNormal * normal.x;
+                rbB.velocity.y += velDotNormal * normal.y;
+             }
         }
     }
 
