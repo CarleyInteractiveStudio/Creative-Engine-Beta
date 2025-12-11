@@ -2335,9 +2335,9 @@ public star() {
                         openUiAsset(fileHandle);
                         break;
                     case 'ceScene':
-                        {
+                        (async () => {
                             const proceed = await confirmSceneChange();
-                            if (!proceed) break;
+                            if (!proceed) return;
 
                             const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
                             if (newSceneData) {
@@ -2349,7 +2349,7 @@ public star() {
                                 selectMateria(null);
                                 updateAmbientePanelFromScene();
                             }
-                        }
+                        })();
                         break;
                     case 'png':
                     case 'jpg':
