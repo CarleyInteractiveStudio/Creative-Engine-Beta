@@ -1462,19 +1462,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuNewScene.addEventListener('click', async (e) => {
             e.preventDefault();
-            if (SceneManager.isSceneDirty) {
-                const confirmed = await new Promise(resolve => {
-                    showConfirmationDialog('Cambios sin Guardar', '¿Guardar los cambios antes de crear una nueva escena?', () => saveScene().then(() => resolve(true)), () => resolve(true), () => resolve(false));
-                });
-                if (!confirmed) return;
-            }
+            const proceed = await confirmSceneChange();
+            if (!proceed) return;
+
             try {
                 const assetsHandle = await (await projectsDirHandle.getDirectoryHandle(new URLSearchParams(window.location.search).get('project'))).getDirectoryHandle('Assets');
-                const fileHandle = await window.showSaveFilePicker({ suggestedName: 'NuevaEscena.ceScene', startIn: assetsHandle, types: [{ description: 'Creative Engine Scene', accept: { 'application/json': ['.ceScene'] } }] });
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: 'NuevaEscena.ceScene',
+                    startIn: assetsHandle,
+                    types: [{ description: 'Creative Engine Scene', accept: { 'application/json': ['.ceScene'] } }]
+                });
                 const newScene = new SceneManager.Scene();
                 const writable = await fileHandle.createWritable();
                 await writable.write(JSON.stringify(SceneManager.serializeScene(newScene, dom), null, 2));
                 await writable.close();
+
                 SceneManager.setCurrentScene(newScene);
                 SceneManager.setCurrentSceneFileHandle(fileHandle);
                 dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
