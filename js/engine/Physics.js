@@ -66,7 +66,7 @@ export class PhysicsSystem {
             const rigidbody = materia.getComponent(Components.Rigidbody2D);
             const transform = materia.getComponent(Components.Transform);
 
-            if (rigidbody && transform && rigidbody.bodyType === 'Dynamic' && rigidbody.simulated) {
+            if (rigidbody && transform && rigidbody.bodyType.toLowerCase() === 'dynamic' && rigidbody.simulated) {
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
                 transform.x += rigidbody.velocity.x * deltaTime;
                 transform.y += rigidbody.velocity.y * deltaTime;

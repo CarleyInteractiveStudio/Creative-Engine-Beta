@@ -1,0 +1,92 @@
+{
+    "name": "New Scene",
+    "children": [
+        {
+            "name": "Ground",
+            "id": 1,
+            "parent": null,
+            "children": [],
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": {
+                        "x": 361,
+                        "y": 422
+                    },
+                    "rotation": 0,
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "type": "BoxCollider2D",
+                    "size": {
+                        "x": 500,
+                        "y": 50
+                    },
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "isTrigger": false
+                },
+                {
+                    "type": "TextureRender",
+                    "size": {
+                        "x": 500,
+                        "y": 50
+                    },
+                    "color": "#00ff00"
+                }
+            ]
+        },
+        {
+            "name": "FallingBox",
+            "id": 2,
+            "parent": null,
+            "children": [],
+            "components": [
+                {
+                    "type": "Transform",
+                    "position": {
+                        "x": 361,
+                        "y": 150
+                    },
+                    "rotation": 0,
+                    "scale": {
+                        "x": 1,
+                        "y": 1
+                    }
+                },
+                {
+                    "type": "Rigidbody2D",
+                    "bodyType": "dynamic",
+                    "simulated": true,
+                    "mass": 1,
+                    "gravityScale": 1
+                },
+                {
+                    "type": "BoxCollider2D",
+                    "size": {
+                        "x": 50,
+                        "y": 50
+                    },
+                    "offset": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "isTrigger": false
+                },
+                {
+                    "type": "TextureRender",
+                    "size": {
+                        "x": 50,
+                        "y": 50
+                    },
+                    "color": "#ff0000"
+                }
+            ]
+        }
+    ]
+}
