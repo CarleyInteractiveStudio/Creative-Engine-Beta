@@ -2304,61 +2304,48 @@ public star() {
                     return;
                 }
 
-                const lowerName = name.toLowerCase();
-                const extension = lowerName.split('.').pop();
+                const extension = name.split('.').pop()?.toLowerCase() || '';
 
                 // Handle text-based files first
                 const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
-                if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
+                if (textExtensions.includes(extension) || name.toLowerCase() === 'license' || name.toLowerCase().startsWith('readme')) {
                     console.log(`Opening text-based asset: ${name}`);
-                    // FIX: Called the correct function name 'openScriptInEditor'
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
                 }
 
-                // Handle other specific asset types
-                switch (extension) {
-                    case 'cea':
-                        console.log(`Opening animation asset: ${name}`);
-                        openAnimationAssetFromModule(fileHandle, dirHandle);
-                        break;
-                    case 'cepalette':
-                        console.log(`Opening tile palette: ${name}`);
-                        TilePalette.openPalette(fileHandle);
-                        break;
-                    case 'ceanim':
-                        console.log(`Opening animation controller: ${name}`);
-                        openAnimatorController(fileHandle, dirHandle);
-                        break;
-                    case 'ceui':
-                        console.log(`Opening UI asset: ${name}`);
-                        openUiAsset(fileHandle);
-                        break;
-                    case 'cescene':
-                        (async () => {
-                            const proceed = await confirmSceneChange();
-                            if (!proceed) return;
+                if (extension === 'cea') {
+                    console.log(`Opening animation asset: ${name}`);
+                    openAnimationAssetFromModule(fileHandle, dirHandle);
+                } else if (extension === 'cepalette') {
+                    console.log(`Opening tile palette: ${name}`);
+                    TilePalette.openPalette(fileHandle);
+                } else if (extension === 'ceanim') {
+                    console.log(`Opening animation controller: ${name}`);
+                    openAnimatorController(fileHandle, dirHandle);
+                } else if (extension === 'ceui') {
+                    console.log(`Opening UI asset: ${name}`);
+                    openUiAsset(fileHandle);
+                } else if (extension === 'cescene') {
+                    (async () => {
+                        const proceed = await confirmSceneChange();
+                        if (!proceed) return;
 
-                            const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
-                            if (newSceneData) {
-                                SceneManager.setCurrentScene(newSceneData.scene);
-                                SceneManager.setCurrentSceneFileHandle(newSceneData.fileHandle);
-                                dom.currentSceneName.textContent = name.replace('.ceScene', '');
-                                SceneManager.setSceneDirty(false);
-                                updateHierarchy();
-                                selectMateria(null);
-                                updateAmbientePanelFromScene();
-                            }
-                        })();
-                        break;
-                    case 'png':
-                    case 'jpg':
-                    case 'jpeg':
-                        SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
-                        break;
-                    default:
-                        console.log(`No double-click action defined for file: ${name}`);
-                        break;
+                        const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
+                        if (newSceneData) {
+                            SceneManager.setCurrentScene(newSceneData.scene);
+                            SceneManager.setCurrentSceneFileHandle(newSceneData.fileHandle);
+                            dom.currentSceneName.textContent = name.replace(/\.ceScene$/i, '');
+                            SceneManager.setSceneDirty(false);
+                            updateHierarchy();
+                            selectMateria(null);
+                            updateAmbientePanelFromScene();
+                        }
+                    })();
+                } else if (extension === 'png' || extension === 'jpg' || extension === 'jpeg') {
+                    SpriteSlicer.open(fileHandle, dirHandle, saveAssetMeta);
+                } else {
+                    console.log(`No double-click action defined for file: ${name}`);
                 }
             };
             const onExportPackage = async (assetName) => { /* ... (existing code) ... */ };
