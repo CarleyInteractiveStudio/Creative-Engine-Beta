@@ -114,6 +114,27 @@ export function setSceneDirty(dirty) {
     isSceneDirty = dirty;
 }
 
+// Este "replacer" se pasa a JSON.stringify para manejar tipos de datos especiales.
+function replacer(key, value) {
+    // Omite la referencia inversa a 'materia' para evitar bucles infinitos.
+    if (key === 'materia') {
+        return undefined;
+    }
+    // Omite elementos del DOM que no se pueden (ni deben) serializar.
+    if (value instanceof HTMLImageElement || value instanceof HTMLCanvasElement) {
+        return undefined;
+    }
+    // Convierte los objetos Map a un formato que JSON puede entender.
+    if (value instanceof Map) {
+        return {
+            dataType: 'Map',
+            value: Array.from(value.entries()),
+        };
+    }
+    // Para todo lo demás, usa el comportamiento por defecto.
+    return value;
+}
+
 export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {
@@ -126,7 +147,6 @@ export function serializeScene(scene, dom) {
         materias: []
     };
 
-    // Usar getAllMaterias para asegurar que todos los nodos, incluidos los hijos, se serializan.
     for (const materia of scene.getAllMaterias()) {
         const materiaData = {
             id: materia.id,
@@ -135,22 +155,14 @@ export function serializeScene(scene, dom) {
             leyes: []
         };
         for (const ley of materia.leyes) {
+            // Usar JSON.stringify/parse con el replacer es una forma robusta de clonar
+            // y limpiar el componente para la serialización en un solo paso.
+            const cleanProperties = JSON.parse(JSON.stringify(ley, replacer));
+
             const leyData = {
                 type: ley.constructor.name,
-                properties: {}
+                properties: cleanProperties
             };
-            for (const key in ley) {
-                if (key !== 'materia' && typeof ley[key] !== 'function') {
-                    const value = ley[key];
-                    if (value instanceof Map) {
-                        leyData.properties[key] = { dataType: 'Map', value: Array.from(value.entries()) };
-                    } else if (value instanceof HTMLImageElement) {
-                        // Las imágenes no se serializan, se recargan desde la ruta.
-                    } else {
-                        leyData.properties[key] = value;
-                    }
-                }
-            }
             materiaData.leyes.push(leyData);
         }
         sceneData.materias.push(materiaData);
@@ -160,51 +172,38 @@ export function serializeScene(scene, dom) {
 
 import { getComponent } from './ComponentRegistry.js';
 
+// Este "reviver" se pasa a JSON.parse para reconstruir tipos de datos especiales.
+function reviver(key, value) {
+    // Si encontramos un objeto que guardamos como Map, lo reconstruimos.
+    if (typeof value === 'object' && value !== null && value.dataType === 'Map') {
+        return new Map(value.value);
+    }
+    // Para todo lo demás, usa el comportamiento por defecto.
+    return value;
+}
+
 export async function deserializeScene(sceneData, projectsDirHandle) {
     const newScene = new Scene();
     const materiaMap = new Map();
 
-    // Load ambiente settings, providing defaults for older scenes
     if (sceneData.ambiente) {
         newScene.ambiente = { ...newScene.ambiente, ...sceneData.ambiente };
     }
 
-    // Pass 1: Create all materias and map them by ID
     for (const materiaData of sceneData.materias) {
         const newMateria = new Materia(materiaData.name);
         newMateria.id = materiaData.id;
-        newMateria.leyes = []; // Clear default transform
+        newMateria.leyes = [];
 
         for (const leyData of materiaData.leyes) {
             const ComponentClass = getComponent(leyData.type);
             if (ComponentClass) {
-                // --- Migration Logic for Tilemap ---
-                if (leyData.type === 'Tilemap' && leyData.properties.hasOwnProperty('layers')) {
-                    console.warn('Legacy Tilemap component found. Migrating to new format.');
-                    const newTilemap = new (getComponent('Tilemap'))(newMateria);
-                    // The actual tile data from the old format is lost in this migration,
-                    // as it was complex and tied to a palette. The user will need to repaint.
-                    // We just create an empty tileData map.
-                    newTilemap.tileData = new Map();
-                    newMateria.addComponent(newTilemap);
-                    continue; // Skip the Object.assign for this legacy component
-                }
-
                 const newLey = new ComponentClass(newMateria);
+                // Asigna las propiedades deserializadas, que ya han sido procesadas por el "reviver".
                 Object.assign(newLey, leyData.properties);
-
-                // Reconstruir Maps a partir del formato serializado
-                for (const key in newLey) {
-                    const value = newLey[key];
-                    if (value && value.dataType === 'Map') {
-                        newLey[key] = new Map(value.value);
-                    }
-                }
-
                 newMateria.addComponent(newLey);
 
-                // Post-creation loading for specific components
-                if (newLey instanceof SpriteRenderer) {
+                if (newLey instanceof SpriteRenderer || newLey instanceof SpriteLight2D) {
                     await newLey.loadSprite(projectsDirHandle);
                 }
                 if (newLey instanceof CreativeScript) {
@@ -213,16 +212,17 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 if (newLey instanceof Animator) {
                     await newLey.loadController(projectsDirHandle);
                 }
+                 if (newLey instanceof TextureRender) {
+                    await newLey.loadTexture(projectsDirHandle);
+                }
             }
         }
         materiaMap.set(newMateria.id, newMateria);
-        // Only add root materias to the scene's top-level array
         if (materiaData.parentId === null) {
             newScene.addMateria(newMateria);
         }
     }
 
-    // Pass 2: Re-establish parent-child relationships
     for (const materiaData of sceneData.materias) {
         if (materiaData.parentId !== null) {
             const child = materiaMap.get(materiaData.id);
@@ -240,7 +240,8 @@ export async function loadScene(fileHandle, projectsDirHandle) {
     try {
         const file = await fileHandle.getFile();
         const content = await file.text();
-        const sceneData = JSON.parse(content);
+        // Usa el "reviver" aquí para reconstruir los Maps inmediatamente.
+        const sceneData = JSON.parse(content, reviver);
 
         const scene = await deserializeScene(sceneData, projectsDirHandle);
 
