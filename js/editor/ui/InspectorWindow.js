@@ -220,6 +220,11 @@ function handleInspectorClick(e) {
                             component[propName] = data.path;
                         }
 
+                        // Special handling for Animator to reload the asset
+                        if (component instanceof Components.Animator) {
+                            await component.loadController(projectsDirHandle);
+                        }
+
                         // If it's a tilemap, trigger the palette reload
                         if (component instanceof Components.Tilemap) {
                             const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
@@ -627,7 +632,36 @@ async function updateInspectorForMateria(selectedMateria) {
         else if (ley instanceof Components.CreativeScript) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
         } else if (ley instanceof Components.Animator) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
+            let animatorDetailsHTML = '';
+            if (ley.assetType === 'Controller') {
+                animatorDetailsHTML = `
+                    <div class="inspector-row">
+                        <span><strong>Controller:</strong> ${ley.assetPath || 'None'}</span>
+                    </div>
+                    <p class="field-description">Gestiona estados y parámetros de animación complejos. (Más opciones próximamente).</p>
+                `;
+            } else if (ley.assetType === 'Clip') {
+                animatorDetailsHTML = `
+                    <div class="inspector-row">
+                        <span><strong>Clip:</strong> ${ley.assetPath || 'None'}</span>
+                    </div>
+                    <p class="field-description">Reproduce un único clip de animación. (Más opciones próximamente).</p>
+                `;
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Animator</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Animation Asset</label>
+                        <div class="asset-dropper" data-component="Animator" data-prop="assetPath" data-asset-type=".ceanim,.cea" title="Arrastra un asset .ceanim o .cea aquí">
+                            <span class="asset-dropper-text">${ley.assetPath || 'None'}</span>
+                        </div>
+                    </div>
+                    <hr>
+                    ${animatorDetailsHTML}
+                </div>
+            `;
         } else if (ley instanceof Components.Camera) {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';

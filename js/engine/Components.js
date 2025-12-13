@@ -291,46 +291,53 @@ export class Animation {
 export class Animator extends Leyes {
     constructor(materia) {
         super(materia);
-        this.controllerPath = ''; // Path to the .ceanim asset
-        this.controller = null; // The loaded controller data
-        this.states = new Map(); // Holds the runtime animation data, keyed by state name
-        this.parameters = new Map(); // Holds runtime parameter values
+        this.assetPath = ''; // Path to the .ceanim or .cea asset
+        this.assetType = null; // 'Controller' or 'Clip'
+        this.controller = null; // The loaded .ceanim controller data
+        this.clip = null; // The loaded .cea clip data
+        this.states = new Map(); // Holds runtime animation data for controllers
+        this.parameters = new Map(); // Holds runtime parameter values for controllers
 
-        this.currentState = null;
+        this.currentState = null; // For controllers
         this.currentFrame = 0;
         this.frameTimer = 0;
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
     }
 
     async loadController(projectsDirHandle) {
-        if (!this.controllerPath) return;
-        this.spriteRenderer = this.materia.getComponent(SpriteRenderer); // Ensure we have the renderer
+        if (!this.assetPath) return;
+        this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
 
         try {
-            const url = await getURLForAssetPath(this.controllerPath, projectsDirHandle);
-            if (!url) throw new Error(`Could not get URL for controller: ${this.controllerPath}`);
-
+            const url = await getURLForAssetPath(this.assetPath, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for asset: ${this.assetPath}`);
             const response = await fetch(url);
-            this.controller = await response.json();
+            const data = await response.json();
 
-            // Load all animations defined in the states
-            for (const state of this.controller.states) {
-                const animUrl = await getURLForAssetPath(state.animationAsset, projectsDirHandle);
-                if (animUrl) {
-                    const animResponse = await fetch(animUrl);
-                    const animData = await animResponse.json();
-                    // We assume the .cea file has an array of animations, we take the first one
-                    this.states.set(state.name, { ...state, ...animData.animations[0] });
+            if (this.assetPath.endsWith('.ceanim')) {
+                this.assetType = 'Controller';
+                this.controller = data;
+                this.clip = null;
+                // Load all animations defined in the states
+                for (const state of this.controller.states) {
+                    const animUrl = await getURLForAssetPath(state.animationAsset, projectsDirHandle);
+                    if (animUrl) {
+                        const animResponse = await fetch(animUrl);
+                        const animData = await animResponse.json();
+                        this.states.set(state.name, { ...state, ...animData.animations[0] });
+                    }
                 }
+                if (this.controller.entryState) {
+                    this.play(this.controller.entryState);
+                }
+            } else if (this.assetPath.endsWith('.cea')) {
+                this.assetType = 'Clip';
+                this.clip = data.animations[0]; // Assuming one animation per .cea file
+                this.controller = null;
+                this.states.clear();
             }
-
-            // Set initial state
-            if (this.controller.entryState) {
-                this.play(this.controller.entryState);
-            }
-
         } catch (error) {
-            console.error(`Failed to load Animator Controller at '${this.controllerPath}':`, error);
+            console.error(`Failed to load Animator asset at '${this.assetPath}':`, error);
         }
     }
 
@@ -343,35 +350,42 @@ export class Animator extends Leyes {
         }
     }
 
-    update(deltaTime) {
-        if (!this.currentState || !this.spriteRenderer) {
-            return;
-        }
-
-        const animation = this.currentState;
-        if (!animation.frames || animation.frames.length === 0) return;
+    _updateFrame(deltaTime, animation) {
+        if (!animation || !animation.frames || animation.frames.length === 0) return;
 
         this.frameTimer += deltaTime;
         const frameDuration = 1 / (animation.speed || 10);
 
         if (this.frameTimer >= frameDuration) {
-            this.frameTimer = 0; // Reset timer
+            this.frameTimer -= frameDuration;
             this.currentFrame++;
 
             if (this.currentFrame >= animation.frames.length) {
                 if (animation.loop) {
                     this.currentFrame = 0;
                 } else {
-                    this.currentFrame = animation.frames.length - 1; // Stay on last frame
+                    this.currentFrame = animation.frames.length - 1;
                 }
             }
             this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
         }
     }
+
+    update(deltaTime) {
+        if (!this.spriteRenderer) {
+            this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+            if (!this.spriteRenderer) return; // No renderer to update
+        }
+
+        if (this.assetType === 'Controller' && this.currentState) {
+            this._updateFrame(deltaTime, this.currentState);
+        } else if (this.assetType === 'Clip' && this.clip) {
+            this._updateFrame(deltaTime, this.clip);
+        }
+    }
     clone() {
         const newAnimator = new Animator(null);
-        newAnimator.controllerPath = this.controllerPath;
-        // Parameters could be deep copied if they are simple JSON objects
+        newAnimator.assetPath = this.assetPath;
         newAnimator.parameters = new Map(JSON.parse(JSON.stringify(Array.from(this.parameters))));
         return newAnimator;
     }

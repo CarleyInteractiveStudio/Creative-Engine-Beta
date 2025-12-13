@@ -248,27 +248,33 @@ export class PhysicsSystem {
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
 
         for (const rect of tilemapCollider.generatedColliders) {
-            // Crear un objeto 'Materia' temporal para representar el tile
-            const tileMateria = new Materia('tile_part');
-            const tileTransform = new Components.Transform(tileMateria);
-            tileTransform.x = tilemapTransform.x + rect.x;
-            tileTransform.y = tilemapTransform.y + rect.y;
-            tileMateria.addComponent(tileTransform);
-
-            const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
-            tileBoxCollider.size = { x: rect.width, y: rect.height };
-            tileMateria.addComponent(tileBoxCollider);
+            // Crear un objeto 'Materia' FALSO y ligero para la colisión.
+            // Esto evita la sobrecarga de crear un Materia real en cada fotograma.
+            const fakeTileMateria = {
+                getComponent: (type) => {
+                    if (type === Components.Transform) {
+                        const transform = new Components.Transform(null);
+                        transform.x = tilemapTransform.x + rect.x;
+                        transform.y = tilemapTransform.y + rect.y;
+                        return transform;
+                    }
+                    if (type === Components.BoxCollider2D) {
+                        const collider = new Components.BoxCollider2D(null);
+                        collider.size = { x: rect.width, y: rect.height };
+                        return collider;
+                    }
+                    return null;
+                }
+            };
 
             let collisionInfo = null;
             if (otherCollider instanceof Components.BoxCollider2D) {
-                collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
+                collisionInfo = this.isBoxVsBox(colliderMateria, fakeTileMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                // isBoxVsCapsule espera (box, capsule), así que invertimos el orden
-                collisionInfo = this.isBoxVsCapsule(tileMateria, colliderMateria);
+                collisionInfo = this.isBoxVsCapsule(fakeTileMateria, colliderMateria);
             }
 
             if (collisionInfo) {
-                // Se encontró una colisión, no necesitamos comprobar el resto de tiles
                 return collisionInfo;
             }
         }
