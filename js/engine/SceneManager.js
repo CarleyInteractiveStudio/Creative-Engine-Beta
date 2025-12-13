@@ -203,16 +203,16 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 Object.assign(newLey, leyData.properties);
                 newMateria.addComponent(newLey);
 
-                if (newLey instanceof SpriteRenderer || newLey instanceof SpriteLight2D) {
+                if (newLey instanceof Components.SpriteRenderer || newLey instanceof Components.SpriteLight2D) {
                     await newLey.loadSprite(projectsDirHandle);
                 }
-                if (newLey instanceof CreativeScript) {
+                if (newLey instanceof Components.CreativeScript) {
                     await newLey.load(projectsDirHandle);
                 }
-                if (newLey instanceof Animator) {
+                if (newLey instanceof Components.Animator) {
                     await newLey.loadController(projectsDirHandle);
                 }
-                 if (newLey instanceof TextureRender) {
+                 if (newLey instanceof Components.TextureRender) {
                     await newLey.loadTexture(projectsDirHandle);
                 }
             }
