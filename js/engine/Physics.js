@@ -76,7 +76,7 @@ export class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && m.getComponent(Components.BoxCollider2D)
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.TilemapCollider2D))
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -157,11 +157,30 @@ export class PhysicsSystem {
         if (!colliderA || !colliderB) return null;
 
         let collisionInfo = null;
-        if (colliderA instanceof Components.BoxCollider2D && colliderB instanceof Components.BoxCollider2D) {
-            collisionInfo = this.isBoxVsBox(materiaA, materiaB);
-        }
 
-        // Future collision checks (Box vs Capsule, etc.) would go here
+        // --- Dispatcher de Colisiones ---
+        if (colliderA instanceof Components.BoxCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D) {
+                collisionInfo = this.isBoxVsBox(materiaA, materiaB);
+            } else if (colliderB instanceof Components.CapsuleCollider2D) {
+                collisionInfo = this.isBoxVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.TilemapCollider2D) {
+                collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            }
+        } else if (colliderA instanceof Components.CapsuleCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D) {
+                collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertir orden
+            } else if (colliderB instanceof Components.CapsuleCollider2D) {
+                collisionInfo = this.isCapsuleVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.TilemapCollider2D) {
+                collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            }
+        } else if (colliderA instanceof Components.TilemapCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D) {
+                collisionInfo = this.isColliderVsTilemap(materiaB, materiaA); // Invertir orden
+            }
+            // No implementamos Tilemap vs Tilemap por ahora
+        }
 
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
             this.resolveCollision(materiaA, materiaB, collisionInfo);
@@ -216,7 +235,223 @@ export class PhysicsSystem {
     }
 
     getCollider(materia) {
-        return materia.getComponent(Components.BoxCollider2D);
+        return materia.getComponent(Components.BoxCollider2D) ||
+               materia.getComponent(Components.CapsuleCollider2D) ||
+               materia.getComponent(Components.TilemapCollider2D);
+    }
+
+    isColliderVsTilemap(colliderMateria, tilemapMateria) {
+        const otherCollider = this.getCollider(colliderMateria);
+        const tilemapCollider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+        const tilemapTransform = tilemapMateria.getComponent(Components.Transform);
+
+        if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
+
+        for (const rect of tilemapCollider.generatedColliders) {
+            // Crear un objeto 'Materia' temporal para representar el tile
+            const tileMateria = new Materia('tile_part');
+            const tileTransform = new Components.Transform(tileMateria);
+            tileTransform.x = tilemapTransform.x + rect.x;
+            tileTransform.y = tilemapTransform.y + rect.y;
+            tileMateria.addComponent(tileTransform);
+
+            const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
+            tileBoxCollider.size = { x: rect.width, y: rect.height };
+            tileMateria.addComponent(tileBoxCollider);
+
+            let collisionInfo = null;
+            if (otherCollider instanceof Components.BoxCollider2D) {
+                collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
+            } else if (otherCollider instanceof Components.CapsuleCollider2D) {
+                // isBoxVsCapsule espera (box, capsule), así que invertimos el orden
+                collisionInfo = this.isBoxVsCapsule(tileMateria, colliderMateria);
+            }
+
+            if (collisionInfo) {
+                // Se encontró una colisión, no necesitamos comprobar el resto de tiles
+                return collisionInfo;
+            }
+        }
+
+        return null;
+    }
+
+    isCapsuleVsCapsule(materiaA, materiaB) {
+        const transformA = materiaA.getComponent(Components.Transform);
+        const colliderA = materiaA.getComponent(Components.CapsuleCollider2D);
+        const transformB = materiaB.getComponent(Components.Transform);
+        const colliderB = materiaB.getComponent(Components.CapsuleCollider2D);
+
+        // Ignorando la rotación por simplicidad por ahora
+        const radiusA = colliderA.size.x / 2;
+        const heightA = Math.max(0, colliderA.size.y - colliderA.size.x);
+        const p1A = { x: transformA.x + colliderA.offset.x, y: transformA.y + colliderA.offset.y - heightA / 2 };
+        const p2A = { x: transformA.x + colliderA.offset.x, y: transformA.y + colliderA.offset.y + heightA / 2 };
+
+        const radiusB = colliderB.size.x / 2;
+        const heightB = Math.max(0, colliderB.size.y - colliderB.size.x);
+        const p1B = { x: transformB.x + colliderB.offset.x, y: transformB.y + colliderB.offset.y - heightB / 2 };
+        const p2B = { x: transformB.x + colliderB.offset.x, y: transformB.y + colliderB.offset.y + heightB / 2 };
+
+        // Encontrar los puntos más cercanos entre los dos segmentos de línea
+        const { a, b } = this._closestPointsOnTwoSegments(p1A, p2A, p1B, p2B);
+
+        const distance = Math.hypot(a.x - b.x, a.y - b.y);
+        const totalRadius = radiusA + radiusB;
+
+        if (distance < totalRadius) {
+            const overlap = totalRadius - distance;
+            const normal = distance > 0 ? { x: (b.x - a.x) / distance, y: (b.y - a.y) / distance } : { x: 1, y: 0 };
+
+            return {
+                x: normal.x * overlap,
+                y: normal.y * overlap,
+                magnitude: overlap
+            };
+        }
+
+        return null;
+    }
+
+    _closestPointsOnTwoSegments(p1, q1, p2, q2) {
+        // Adaptado de "Real-Time Collision Detection" by Christer Ericson
+        const d1 = { x: q1.x - p1.x, y: q1.y - p1.y };
+        const d2 = { x: q2.x - p2.x, y: q2.y - p2.y };
+        const r = { x: p1.x - p2.x, y: p1.y - p2.y };
+
+        const a = this._dot(d1, d1);
+        const e = this._dot(d2, d2);
+        const f = this._dot(d2, r);
+
+        let s = 0, t = 0;
+
+        if (a <= 1e-6 && e <= 1e-6) { // Ambos son puntos
+            return { a: p1, b: p2 };
+        }
+        if (a <= 1e-6) { // El primer segmento es un punto
+            s = 0;
+            t = this._clamp(f / e, 0, 1);
+        } else {
+            const c = this._dot(d1, r);
+            if (e <= 1e-6) { // El segundo segmento es un punto
+                t = 0;
+                s = this._clamp(-c / a, 0, 1);
+            } else {
+                const b = this._dot(d1, d2);
+                const denom = a * e - b * b;
+
+                if (denom !== 0) {
+                    s = this._clamp((b * f - c * e) / denom, 0, 1);
+                } else {
+                    s = 0;
+                }
+
+                t = (b * s + f) / e;
+
+                if (t < 0) {
+                    t = 0;
+                    s = this._clamp(-c / a, 0, 1);
+                } else if (t > 1) {
+                    t = 1;
+                    s = this._clamp((b - c) / a, 0, 1);
+                }
+            }
+        }
+
+        const closestPointA = { x: p1.x + d1.x * s, y: p1.y + d1.y * s };
+        const closestPointB = { x: p2.x + d2.x * t, y: p2.y + d2.y * t };
+        return { a: closestPointA, b: closestPointB };
+    }
+
+    isBoxVsCapsule(boxMateria, capsuleMateria) {
+        const transformB = boxMateria.getComponent(Components.Transform);
+        const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
+        const transformC = capsuleMateria.getComponent(Components.Transform);
+        const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
+
+        // --- 1. Simplificar a colisión Círculo vs AABB ---
+        // Para simplificar, trataremos la caja como un AABB (Axis-Aligned Bounding Box).
+        // Esto ignora la rotación de la caja, pero es un buen punto de partida.
+        const box = {
+            x: transformB.x + colliderB.offset.x - (colliderB.size.x / 2),
+            y: transformB.y + colliderB.offset.y - (colliderB.size.y / 2),
+            width: colliderB.size.x,
+            height: colliderB.size.y
+        };
+
+        // La cápsula es un segmento de línea con un radio.
+        // Por ahora, también ignoraremos la rotación de la cápsula.
+        const radius = colliderC.size.x / 2;
+        const segmentHeight = Math.max(0, colliderC.size.y - colliderC.size.x);
+        const p1 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y - segmentHeight / 2 };
+        const p2 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y + segmentHeight / 2 };
+
+        // --- 2. Encontrar el punto más cercano en la caja al segmento de la cápsula ---
+        // Esto es complejo. Un enfoque más simple es encontrar el punto más cercano
+        // en el segmento de la cápsula al centro de la caja.
+        const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+
+        const closestPointOnSegment = this._closestPointOnSegment(boxCenter, p1, p2);
+
+        // --- 3. Ahora tenemos una colisión Círculo vs AABB ---
+        const circle = {
+            x: closestPointOnSegment.x,
+            y: closestPointOnSegment.y,
+            radius: radius
+        };
+
+        // --- 4. Test de intersección Círculo-AABB ---
+        const closestPointInBox = {
+            x: this._clamp(circle.x, box.x, box.x + box.width),
+            y: this._clamp(circle.y, box.y, box.y + box.height)
+        };
+
+        const distance = Math.hypot(circle.x - closestPointInBox.x, circle.y - closestPointInBox.y);
+
+        if (distance < circle.radius) {
+            // Hay colisión. Calcular el vector de penetración (MTV).
+            const overlap = circle.radius - distance;
+            let normal = {
+                x: circle.x - closestPointInBox.x,
+                y: circle.y - closestPointInBox.y
+            };
+
+            // Si el centro del círculo está dentro de la caja, el cálculo del normal es diferente.
+            if (normal.x === 0 && normal.y === 0) {
+                 // Elige un eje, por ejemplo, el eje x
+                normal = { x: 1, y: 0 };
+            }
+
+            const normalizedNormal = this._normalize(normal);
+
+            return {
+                x: normalizedNormal.x * overlap,
+                y: normalizedNormal.y * overlap,
+                magnitude: overlap
+            };
+        }
+
+        return null;
+    }
+
+    _clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    _closestPointOnSegment(point, a, b) {
+        const ab = { x: b.x - a.x, y: b.y - a.y };
+        const ap = { x: point.x - a.x, y: point.y - a.y };
+
+        const dot_ab_ab = this._dot(ab, ab);
+        if (dot_ab_ab === 0) return a; // a y b son el mismo punto
+
+        const t = this._dot(ap, ab) / dot_ab_ab;
+        const clampedT = this._clamp(t, 0, 1);
+
+        return {
+            x: a.x + ab.x * clampedT,
+            y: a.y + ab.y * clampedT
+        };
     }
 
     isBoxVsBox(materiaA, materiaB) {
