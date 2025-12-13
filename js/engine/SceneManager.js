@@ -125,7 +125,9 @@ export function serializeScene(scene, dom) {
         },
         materias: []
     };
-    for (const materia of scene.materias) {
+
+    // Usar getAllMaterias para asegurar que todos los nodos, incluidos los hijos, se serializan.
+    for (const materia of scene.getAllMaterias()) {
         const materiaData = {
             id: materia.id,
             name: materia.name,
@@ -137,7 +139,6 @@ export function serializeScene(scene, dom) {
                 type: ley.constructor.name,
                 properties: {}
             };
-            // Copy properties, but not the 'materia' back-reference
             for (const key in ley) {
                 if (key !== 'materia' && typeof ley[key] !== 'function') {
                     leyData.properties[key] = ley[key];
@@ -198,8 +199,11 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 }
             }
         }
-        newScene.addMateria(newMateria);
         materiaMap.set(newMateria.id, newMateria);
+        // Only add root materias to the scene's top-level array
+        if (materiaData.parentId === null) {
+            newScene.addMateria(newMateria);
+        }
     }
 
     // Pass 2: Re-establish parent-child relationships
