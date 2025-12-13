@@ -4,7 +4,7 @@
 import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
+import * as Components from './Components.js';
 import { Materia } from './Materia.js';
 
 export class Scene {
@@ -51,11 +51,11 @@ export class Scene {
 
     findFirstCamera() {
         // This might still be useful for simple cases or editor preview.
-        return this.getAllMaterias().find(m => m.getComponent(Camera));
+        return this.getAllMaterias().find(m => m.getComponent(Components.Camera));
     }
 
     findAllCameras() {
-        return this.getAllMaterias().filter(m => m.getComponent(Camera));
+        return this.getAllMaterias().filter(m => m.getComponent(Components.Camera));
     }
 
     getAllMaterias() {
