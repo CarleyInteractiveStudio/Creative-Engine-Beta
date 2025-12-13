@@ -141,7 +141,14 @@ export function serializeScene(scene, dom) {
             };
             for (const key in ley) {
                 if (key !== 'materia' && typeof ley[key] !== 'function') {
-                    leyData.properties[key] = ley[key];
+                    const value = ley[key];
+                    if (value instanceof Map) {
+                        leyData.properties[key] = { dataType: 'Map', value: Array.from(value.entries()) };
+                    } else if (value instanceof HTMLImageElement) {
+                        // Las imágenes no se serializan, se recargan desde la ruta.
+                    } else {
+                        leyData.properties[key] = value;
+                    }
                 }
             }
             materiaData.leyes.push(leyData);
@@ -185,6 +192,15 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
 
                 const newLey = new ComponentClass(newMateria);
                 Object.assign(newLey, leyData.properties);
+
+                // Reconstruir Maps a partir del formato serializado
+                for (const key in newLey) {
+                    const value = newLey[key];
+                    if (value && value.dataType === 'Map') {
+                        newLey[key] = new Map(value.value);
+                    }
+                }
+
                 newMateria.addComponent(newLey);
 
                 // Post-creation loading for specific components
