@@ -1202,21 +1202,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveScene = async function() {
         if (!SceneManager.currentSceneFileHandle) {
-            showNotificationDialog('Error', 'No hay ninguna escena abierta para guardar.');
-            return;
-        }
-        try {
-            const writable = await SceneManager.currentSceneFileHandle.createWritable();
-            const sceneData = SceneManager.serializeScene(SceneManager.currentScene, dom);
-            await writable.write(JSON.stringify(sceneData, null, 2));
-            await writable.close();
-            SceneManager.setSceneDirty(false);
-            showNotificationDialog('Éxito', '¡Escena guardada!');
-        } catch (error) {
-            console.error("Error al guardar la escena:", error);
-            showNotificationDialog('Error', 'No se pudo guardar la escena.');
+            // If there's no handle, treat it as a "Save As..." operation
+            try {
+                const assetsHandle = await (await projectsDirHandle.getDirectoryHandle(new URLSearchParams(window.location.search).get('project'))).getDirectoryHandle('Assets');
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: 'NuevaEscena.ceScene',
+                    startIn: assetsHandle,
+                    types: [{ description: 'Creative Engine Scene', accept: { 'application/json': ['.ceScene'] } }]
+                });
+
+                // Now that we have a handle, we can proceed with the save.
+                const writable = await fileHandle.createWritable();
+                const sceneData = SceneManager.serializeScene(SceneManager.currentScene, dom);
+                await writable.write(JSON.stringify(sceneData, null, 2));
+                await writable.close();
+
+                // Update the current scene context
+                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
+                SceneManager.setSceneDirty(false);
+                showNotificationDialog('Éxito', '¡Escena guardada!');
+                updateAssetBrowser(); // Refresh to show the new file
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error("Error en 'Guardar Como':", error);
+                    showNotificationDialog('Error', 'No se pudo guardar la escena.');
+                }
+            }
+        } else {
+            // Regular save with an existing handle
+            try {
+                const writable = await SceneManager.currentSceneFileHandle.createWritable();
+                const sceneData = SceneManager.serializeScene(SceneManager.currentScene, dom);
+                await writable.write(JSON.stringify(sceneData, null, 2));
+                await writable.close();
+                SceneManager.setSceneDirty(false);
+                showNotificationDialog('Éxito', '¡Escena guardada!');
+            } catch (error) {
+                console.error("Error al guardar la escena:", error);
+                showNotificationDialog('Error', 'No se pudo guardar la escena.');
+            }
         }
     };
+
+    /**
+     * Checks if the scene is dirty and asks the user to save if it is.
+     * @returns {Promise<boolean>} True if the operation should proceed, false if cancelled.
+     */
+    async function confirmSceneChange() {
+        if (!SceneManager.isSceneDirty) {
+            return true;
+        }
+        return new Promise(resolve => {
+            showConfirmationDialog(
+                'Cambios sin Guardar',
+                'La escena actual tiene cambios sin guardar. ¿Quieres guardarlos antes de continuar?',
+                () => saveScene().then(() => resolve(true)), // Yes, save and continue
+                () => resolve(true), // No, don't save but continue
+                () => resolve(false) // Cancel
+            );
+        });
+    }
 
     // --- 6. Event Listeners & Handlers ---
     let createNewScript; // To be defined
@@ -1388,6 +1434,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
             dom.settingsLogoList.appendChild(listItem);
         }
+
+        // --- Menubar Scene Actions ---
+        dom.menuSaveScene.addEventListener('click', (e) => {
+            e.preventDefault();
+            saveScene();
+        });
+
+        dom.menuOpenScene.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAssetSelector(async (fileHandle) => {
+                const proceed = await confirmSceneChange();
+                if (!proceed) return;
+
+                const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
+                if (newSceneData) {
+                    SceneManager.setCurrentScene(newSceneData.scene);
+                    SceneManager.setCurrentSceneFileHandle(newSceneData.fileHandle);
+                    dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
+                    SceneManager.setSceneDirty(false);
+                    updateHierarchy();
+                    selectMateria(null);
+                    updateAmbientePanelFromScene();
+                }
+            }, { filter: ['.ceScene'], title: 'Abrir Escena' });
+        });
+
+        dom.menuNewScene.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const proceed = await confirmSceneChange();
+            if (!proceed) return;
+
+            try {
+                const assetsHandle = await (await projectsDirHandle.getDirectoryHandle(new URLSearchParams(window.location.search).get('project'))).getDirectoryHandle('Assets');
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: 'NuevaEscena.ceScene',
+                    startIn: assetsHandle,
+                    types: [{ description: 'Creative Engine Scene', accept: { 'application/json': ['.ceScene'] } }]
+                });
+                const newScene = new SceneManager.Scene();
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(SceneManager.serializeScene(newScene, dom), null, 2));
+                await writable.close();
+
+                SceneManager.setCurrentScene(newScene);
+                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                dom.currentSceneName.textContent = fileHandle.name.replace('.ceScene', '');
+                SceneManager.setSceneDirty(false);
+                updateHierarchy();
+                selectMateria(null);
+                updateAmbientePanelFromScene();
+                updateAssetBrowser();
+            } catch (error) {
+                if (error.name !== 'AbortError') console.error("Error al crear la nueva escena:", error);
+            }
+        });
 
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', handleKeyboardShortcuts);
@@ -1916,6 +2017,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop',
+            // Menubar scene options
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2231,32 +2334,22 @@ public star() {
                         console.log(`Opening UI asset: ${name}`);
                         openUiAsset(fileHandle);
                         break;
-                    case 'ceScene':
-                        const loadSceneAction = async () => {
-                            console.log(`Loading scene: ${name}`);
-                            const newScene = await SceneManager.loadScene(fileHandle);
-                            if (newScene) {
-                                SceneManager.setCurrentScene(newScene);
-                                SceneManager.setCurrentSceneFileHandle(fileHandle);
+                    case 'cescene':
+                        (async () => {
+                            const proceed = await confirmSceneChange();
+                            if (!proceed) return;
+
+                            const newSceneData = await SceneManager.loadScene(fileHandle, projectsDirHandle);
+                            if (newSceneData) {
+                                SceneManager.setCurrentScene(newSceneData.scene);
+                                SceneManager.setCurrentSceneFileHandle(newSceneData.fileHandle);
                                 dom.currentSceneName.textContent = name.replace('.ceScene', '');
                                 SceneManager.setSceneDirty(false);
                                 updateHierarchy();
                                 selectMateria(null);
-                                updateAmbientePanelFromScene(); // Sync UI
-                            } else {
-                                showNotificationDialog('Error', `Failed to load scene: ${name}`);
+                                updateAmbientePanelFromScene();
                             }
-                        };
-
-                        if (SceneManager.isSceneDirty()) {
-                            showConfirmationDialog(
-                                'Cambios sin Guardar',
-                                'Hay cambios sin guardar en la escena actual. ¿Descartar cambios y abrir la nueva escena?',
-                                loadSceneAction // Proceed only if confirmed
-                            );
-                        } else {
-                            await loadSceneAction(); // Proceed immediately if no changes
-                        }
+                        })();
                         break;
                     case 'png':
                     case 'jpg':

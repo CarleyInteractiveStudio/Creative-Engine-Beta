@@ -125,7 +125,9 @@ export function serializeScene(scene, dom) {
         },
         materias: []
     };
-    for (const materia of scene.materias) {
+
+    // Usar getAllMaterias para asegurar que todos los nodos, incluidos los hijos, se serializan.
+    for (const materia of scene.getAllMaterias()) {
         const materiaData = {
             id: materia.id,
             name: materia.name,
@@ -137,7 +139,6 @@ export function serializeScene(scene, dom) {
                 type: ley.constructor.name,
                 properties: {}
             };
-            // Copy properties, but not the 'materia' back-reference
             for (const key in ley) {
                 if (key !== 'materia' && typeof ley[key] !== 'function') {
                     leyData.properties[key] = ley[key];
@@ -198,8 +199,11 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 }
             }
         }
-        newScene.addMateria(newMateria);
         materiaMap.set(newMateria.id, newMateria);
+        // Only add root materias to the scene's top-level array
+        if (materiaData.parentId === null) {
+            newScene.addMateria(newMateria);
+        }
     }
 
     // Pass 2: Re-establish parent-child relationships
@@ -216,43 +220,21 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
     return newScene;
 }
 
-export async function loadScene(fileName, directoryHandle, projectsDirHandle) {
-    const loadAction = async () => {
-        try {
-            const fileHandle = await directoryHandle.getFileHandle(fileName);
-            const file = await fileHandle.getFile();
-            const content = await file.text();
-            const sceneData = JSON.parse(content);
+export async function loadScene(fileHandle, projectsDirHandle) {
+    try {
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        const sceneData = JSON.parse(content);
 
-            currentScene = await deserializeScene(sceneData, projectsDirHandle); // Await the async deserialization
-            currentSceneFileHandle = fileHandle;
+        const scene = await deserializeScene(sceneData, projectsDirHandle);
 
-            return {
-                scene: currentScene,
-                fileHandle: currentSceneFileHandle
-            }
-        } catch (error) {
-            console.error(`Error al cargar la escena '${fileName}':`, error);
-        }
-    };
-
-    if (isSceneDirty) {
-        showConfirmation(
-            'Cambios sin Guardar',
-            'Tienes cambios sin guardar en la escena actual. ¿Estás seguro de que quieres continuar? Se perderán los cambios.',
-            async () => {
-                // The user confirmed, so we need to call loadAction and handle the return
-                // Since this is async, we can't directly return from here.
-                // This will initiate the load but the calling function won't get the return value.
-                // This is a limitation of converting sync `confirm` to async dialogs without a larger refactor.
-                await loadAction();
-                // We might need to broadcast an event like 'scene-loaded' here.
-                // For now, this is the simplest conversion.
-            }
-        );
-        return; // Stop execution here, the callback will handle the loading.
-    } else {
-        return await loadAction();
+        return {
+            scene: scene,
+            fileHandle: fileHandle
+        };
+    } catch (error) {
+        console.error(`Error al cargar la escena '${fileHandle.name}':`, error);
+        return null;
     }
 }
 
@@ -302,7 +284,8 @@ export async function initialize(projectsDirHandle) {
 
     if (sceneFileToLoad) {
         console.log(`Encontrada escena existente: ${sceneFileToLoad}. Cargando...`);
-        return await loadScene(sceneFileToLoad, assetsHandle, projectsDirHandle);
+        const fileHandle = await assetsHandle.getFileHandle(sceneFileToLoad);
+        return await loadScene(fileHandle, projectsDirHandle);
     } else {
         // If no scene files exist, create a default one with a camera
         console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
@@ -318,7 +301,8 @@ export async function initialize(projectsDirHandle) {
             await writable.close();
 
             console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
-            return await loadScene(defaultSceneName, assetsHandle, projectsDirHandle);
+            const newFileHandle = await assetsHandle.getFileHandle(defaultSceneName);
+            return await loadScene(newFileHandle, projectsDirHandle);
         } catch (createError) {
             console.error(`Error al crear la escena por defecto:`, createError);
         }

@@ -247,7 +247,7 @@ export function handleContextMenuAction(action) {
         updateHierarchy();
         setTimeout(() => {
             selectMateriaCallback(newMateria.id);
-        }, 16); // A small delay, roughly one frame.
+        }, 0);
     } else if (shouldUpdate) {
         // For other actions like rename, just update the UI.
         updateHierarchy();

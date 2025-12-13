@@ -3197,3 +3197,14 @@ body {
     outline-offset: -5px;
     background-color: rgba(0, 150, 255, 0.1);
 }
+
+
+.inspector-field-group {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--bg-tertiary);
+}
+
+.padded-checkbox-field {
+    padding: 5px 0;
+}

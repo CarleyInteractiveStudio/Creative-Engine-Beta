@@ -50,7 +50,13 @@ export function initialize(dependencies) {
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
     dom.inspectorContent.addEventListener('input', handleInspectorInput);
-    dom.inspectorContent.addEventListener('change', handleInspectorChange); // For dropdowns/checkboxes
+    dom.inspectorContent.addEventListener('change', (e) => {
+        if (e.target.matches('.prop-input')) {
+            handleInspectorInput(e); // Route checkbox/select changes to the main handler
+        } else {
+            handleInspectorChange(e); // Handle other specific changes (toggles, etc.)
+        }
+    });
     dom.inspectorContent.addEventListener('click', handleInspectorClick);
 }
 
@@ -63,7 +69,12 @@ function handleInspectorInput(e) {
 
     const componentName = e.target.dataset.component;
     const propPath = e.target.dataset.prop;
-    let value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    let value;
+    if (e.target.type === 'checkbox') {
+        value = e.target.checked;
+    } else {
+        value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    }
 
     const ComponentClass = Components[componentName];
     if (!ComponentClass) return;
@@ -961,6 +972,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Rigidbody2D) {
+            const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
@@ -968,18 +980,31 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Body Type</label>
                         <select class="prop-input" data-component="Rigidbody2D" data-prop="bodyType">
-                            <option value="Dynamic" ${ley.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
-                            <option value="Kinematic" ${ley.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
-                            <option value="Static" ${ley.bodyType === 'Static' ? 'selected' : ''}>Static</option>
+                            <option value="Dynamic" ${rigidbody.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
+                            <option value="Kinematic" ${rigidbody.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
+                            <option value="Static" ${rigidbody.bodyType === 'Static' ? 'selected' : ''}>Static</option>
                         </select>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Gravity Scale</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${ley.gravityScale}">
-                    </div>
-                    <div class="checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${ley.simulated ? 'checked' : ''}>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${rigidbody.simulated ? 'checked' : ''}>
                         <label>Simulated</label>
+                    </div>
+                    <div class="inspector-field-group">
+                        <div class="prop-row-multi">
+                            <label>Mass</label>
+                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Gravity Scale</label>
+                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
+                        </div>
+                    </div>
+                    <div class="inspector-field-group">
+                        <label>Constraints</label>
+                        <div class="checkbox-field" style="padding-left: 10px;">
+                            <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="constraints.freezeRotation" ${rigidbody.constraints.freezeRotation ? 'checked' : ''}>
+                            <label>Freeze Rotation Z</label>
+                        </div>
                     </div>
                 </div>
             </div>`;

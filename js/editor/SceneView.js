@@ -573,7 +573,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -669,6 +669,35 @@ export function initialize(dependencies) {
                                 boxCollider.offset.y += localDy / 2;
                                 boxCollider.size.x -= localDx;
                                 boxCollider.offset.x += localDx / 2;
+                                break;
+                        }
+                    }
+
+                    // --- Capsule Collider Gizmo Logic ---
+                    const capsuleCollider = dragState.materia.getComponent(Components.CapsuleCollider2D);
+                    if (capsuleCollider && dragState.handle.startsWith('collider-capsule-')) {
+                        const rad = -transform.rotation * Math.PI / 180;
+                        const cos = Math.cos(rad);
+                        const sin = Math.sin(rad);
+                        const localDx = dx * cos - dy * sin;
+                        const localDy = dx * sin + dy * cos;
+
+                        switch (dragState.handle) {
+                            case 'collider-capsule-top':
+                                capsuleCollider.size.y += localDy;
+                                capsuleCollider.offset.y += localDy / 2;
+                                break;
+                            case 'collider-capsule-bottom':
+                                capsuleCollider.size.y -= localDy;
+                                capsuleCollider.offset.y += localDy / 2;
+                                break;
+                            case 'collider-capsule-right':
+                                capsuleCollider.size.x += localDx;
+                                capsuleCollider.offset.x += localDx / 2;
+                                break;
+                            case 'collider-capsule-left':
+                                capsuleCollider.size.x -= localDx;
+                                capsuleCollider.offset.x += localDx / 2;
                                 break;
                         }
                     }
@@ -1080,62 +1109,150 @@ function checkBoxColliderGizmoHit(canvasPos) {
     return null;
 }
 
+function checkCapsuleColliderGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!capsuleCollider || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos;
+
+    const width = capsuleCollider.size.x * transform.scale.x;
+    const height = capsuleCollider.size.y * transform.scale.y;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    let handles = [];
+    if (capsuleCollider.direction === 'Vertical') {
+        handles = [
+            { x: 0, y: height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' },
+            { x: width / 2, y: 0, name: 'collider-capsule-right' },
+            { x: -width / 2, y: 0, name: 'collider-capsule-left' }
+        ];
+    } else { // Horizontal
+        handles = [
+            { x: width / 2, y: 0, name: 'collider-capsule-right' },
+            { x: -width / 2, y: 0, name: 'collider-capsule-left' },
+            { x: 0, y: height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' }
+        ];
+    }
+
+    for (const handle of handles) {
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
+function drawCapsulePath(ctx, width, height, direction) {
+    ctx.beginPath();
+    if (direction === 'Vertical') {
+        const radius = width / 2;
+        const straightHeight = Math.max(0, height - width);
+        const halfStraight = straightHeight / 2;
+
+        ctx.arc(0, -halfStraight, radius, Math.PI, 0);
+        ctx.lineTo(radius, halfStraight);
+        ctx.arc(0, halfStraight, radius, 0, Math.PI);
+        ctx.closePath();
+    } else { // Horizontal
+        const radius = height / 2;
+        const straightWidth = Math.max(0, width - height);
+        const halfStraight = straightWidth / 2;
+
+        ctx.arc(halfStraight, 0, radius, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(-halfStraight, radius);
+        ctx.arc(-halfStraight, 0, radius, Math.PI / 2, -Math.PI / 2);
+        ctx.closePath();
+    }
+}
 
 function drawPhysicsGizmos() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!transform) return;
+
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
 
-    // We can draw gizmos for all colliders on a selected object, or all in scene.
-    // Let's stick to the selected object for now to avoid clutter.
-    const materiasToCheck = [selectedMateria]; // Or SceneManager.currentScene.getAllMaterias() for all
+    // Draw BoxCollider2D
+    const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
+    if (boxCollider) {
+        const width = boxCollider.size.x * transform.scale.x;
+        const height = boxCollider.size.y * transform.scale.y;
+        const centerX = transform.x + boxCollider.offset.x;
+        const centerY = transform.y + boxCollider.offset.y;
 
-    materiasToCheck.forEach(materia => {
-        const boxCollider = materia.getComponent(Components.BoxCollider2D);
-        const transform = materia.getComponent(Components.Transform);
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
-        if (boxCollider && transform) {
-            const width = boxCollider.size.x * transform.scale.x;
-            const height = boxCollider.size.y * transform.scale.y;
-            const centerX = transform.x + boxCollider.offset.x;
-            const centerY = transform.y + boxCollider.offset.y;
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([]);
+        ctx.strokeRect(-width / 2, -height / 2, width, height);
 
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(transform.rotation * Math.PI / 180);
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
 
-            ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // Bright green for physics shapes
-            ctx.lineWidth = 2 / camera.effectiveZoom;
-            ctx.setLineDash([]); // Solid line
-            ctx.strokeRect(-width / 2, -height / 2, width, height);
+        const handles = [
+            { x: 0, y: height / 2 }, { x: 0, y: -height / 2 },
+            { x: width / 2, y: 0 }, { x: -width / 2, y: 0 },
+            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 },
+            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 }
+        ];
+        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
-            // Draw the 8 handles for resizing
-            const handleSize = 8 / camera.effectiveZoom;
-            const halfHandle = handleSize / 2;
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+        ctx.restore();
+    }
 
-            const handles = [
-                { x: 0, y: height / 2 }, // Top
-                { x: 0, y: -height / 2 }, // Bottom
-                { x: width / 2, y: 0 }, // Right
-                { x: -width / 2, y: 0 }, // Left
-                { x: -width / 2, y: height / 2 }, // Top-Left
-                { x: width / 2, y: height / 2 }, // Top-Right
-                { x: -width / 2, y: -height / 2 }, // Bottom-Left
-                { x: width / 2, y: -height / 2 } // Bottom-Right
-            ];
+    // Draw CapsuleCollider2D
+    const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
+    if (capsuleCollider) {
+        const width = capsuleCollider.size.x * transform.scale.x;
+        const height = capsuleCollider.size.y * transform.scale.y;
+        const centerX = transform.x + capsuleCollider.offset.x;
+        const centerY = transform.y + capsuleCollider.offset.y;
 
-            handles.forEach(handle => {
-                ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
-            });
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
-            ctx.restore();
-        }
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([]);
+        drawCapsulePath(ctx, width, height, capsuleCollider.direction);
+        ctx.stroke();
 
-        // Future: Add logic for CapsuleCollider2D gizmos here
-    });
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+
+        let handles = (capsuleCollider.direction === 'Vertical')
+            ? [{ x: 0, y: height / 2 }, { x: 0, y: -height / 2 }, { x: width / 2, y: 0 }, { x: -width / 2, y: 0 }]
+            : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: height / 2 }, { x: 0, y: -height / 2 }];
+
+        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
+
+        ctx.restore();
+    }
 }
 
 
@@ -1189,26 +1306,59 @@ function drawTilemapColliders() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!collider || !transform) return;
+    let colliderMateria = null;
+    let collider = selectedMateria.getComponent(Components.TilemapCollider2D);
 
-    const { ctx } = renderer;
+    if (collider) {
+        colliderMateria = selectedMateria;
+    } else if (selectedMateria.children && selectedMateria.children.length > 0) {
+        const childWithCollider = selectedMateria.children.find(c => c.getComponent(Components.TilemapCollider2D));
+        if (childWithCollider) {
+            collider = childWithCollider.getComponent(Components.TilemapCollider2D);
+            colliderMateria = childWithCollider;
+        }
+    }
+
+    if (!collider || !colliderMateria) return;
+
+    const transform = colliderMateria.getComponent(Components.Transform);
+    const tilemap = colliderMateria.getComponent(Components.Tilemap);
+    const grid = colliderMateria.parent?.getComponent(Components.Grid);
+
+    if (!transform || !tilemap || !grid) return;
+
+    const { ctx, camera } = renderer;
+    const { cellSize } = grid;
 
     ctx.save();
-    // Apply the main transform of the tilemap object
     ctx.translate(transform.x, transform.y);
     ctx.rotate(transform.rotation * Math.PI / 180);
 
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; // Bright green for physics shapes
-    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-    ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]); // Dashed line
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
-    collider.generatedColliders.forEach(rect => {
-        // The rect coordinates are already relative to the tilemap's center
-        ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
-    });
+    const layerWidth = tilemap.width * cellSize.x;
+    const layerHeight = tilemap.height * cellSize.y;
 
+    for (let i = 0; i < tilemap.layers.length; i++) {
+        const layer = tilemap.layers[i];
+        // Use the cached mesh from the component
+        const rects = collider._cachedMesh.get(i) || [];
+
+        const layerOffsetX = layer.position.x * layerWidth;
+        const layerOffsetY = layer.position.y * layerHeight;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+
+        for (const rect of rects) {
+            const rectX = layerTopLeftX + rect.col * cellSize.x;
+            const rectY = layerTopLeftY + rect.row * cellSize.y;
+            const rectWidth = rect.width * cellSize.x;
+            const rectHeight = rect.height * cellSize.y;
+            ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
+        }
+    }
     ctx.restore();
 }
 
@@ -1285,6 +1435,13 @@ function paintTile(event) {
 
             lastPaintedCoords = { col, row };
             tilemapRenderer.setDirty();
+
+            // After painting, find the collider and regenerate its mesh
+            const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+            if (collider) {
+                collider.generateMesh();
+            }
+
             return;
         }
     }
