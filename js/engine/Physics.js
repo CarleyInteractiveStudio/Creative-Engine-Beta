@@ -62,7 +62,7 @@ export class PhysicsSystem {
         this.currentFrame++;
 
         // 1. Apply physics forces (gravity, velocity)
-        for (const materia of this.scene.materias) {
+        for (const materia of this.scene.getAllMaterias()) {
             const rigidbody = materia.getComponent(Components.Rigidbody2D);
             const transform = materia.getComponent(Components.Transform);
 
@@ -75,7 +75,7 @@ export class PhysicsSystem {
 
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
-        const collidables = this.scene.materias.filter(m =>
+        const collidables = this.scene.getAllMaterias().filter(m =>
             m.isActive && m.getComponent(Components.BoxCollider2D)
         );
 

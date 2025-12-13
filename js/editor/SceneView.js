@@ -1341,55 +1341,10 @@ function drawTilemapColliders() {
     const layerWidth = tilemap.width * cellSize.x;
     const layerHeight = tilemap.height * cellSize.y;
 
-    for (const layer of tilemap.layers) {
-        const tiles = new Set();
-        for (const [key, value] of layer.tileData.entries()) {
-            if (value) tiles.add(key);
-        }
-
-        if (tiles.size === 0) continue;
-
-        const visited = new Set();
-        const rects = [];
-
-        const sortedTiles = Array.from(tiles).sort((a, b) => {
-            const [ax, ay] = a.split(',').map(Number);
-            const [bx, by] = b.split(',').map(Number);
-            if (ay !== by) return ay - by;
-            return ax - bx;
-        });
-
-        for (const key of sortedTiles) {
-            if (visited.has(key)) continue;
-
-            const [c, r] = key.split(',').map(Number);
-
-            let currentWidth = 1;
-            while (tiles.has(`${c + currentWidth},${r}`) && !visited.has(`${c + currentWidth},${r}`)) {
-                currentWidth++;
-            }
-
-            let currentHeight = 1;
-            let canExpandDown = true;
-            while (canExpandDown) {
-                for (let i = 0; i < currentWidth; i++) {
-                    if (!tiles.has(`${c + i},${r + currentHeight}`)) {
-                        canExpandDown = false;
-                        break;
-                    }
-                }
-                if (canExpandDown) {
-                    currentHeight++;
-                }
-            }
-
-            for (let y = 0; y < currentHeight; y++) {
-                for (let x = 0; x < currentWidth; x++) {
-                    visited.add(`${c + x},${r + y}`);
-                }
-            }
-            rects.push({ col: c, row: r, width: currentWidth, height: currentHeight });
-        }
+    for (let i = 0; i < tilemap.layers.length; i++) {
+        const layer = tilemap.layers[i];
+        // Use the cached mesh from the component
+        const rects = collider._cachedMesh.get(i) || [];
 
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
@@ -1480,6 +1435,13 @@ function paintTile(event) {
 
             lastPaintedCoords = { col, row };
             tilemapRenderer.setDirty();
+
+            // After painting, find the collider and regenerate its mesh
+            const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+            if (collider) {
+                collider.generateMesh();
+            }
+
             return;
         }
     }

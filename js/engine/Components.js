@@ -730,73 +730,104 @@ export class TilemapCollider2D extends Leyes {
         this.offset = { x: 0, y: 0 };
         this.sourceLayerIndex = 0; // Which layer to use for collision
         this.generatedColliders = []; // Array of {x, y, width, height} objects
+        this._cachedMesh = new Map(); // Cache layer index -> rects[]
     }
 
-    generate() {
+    /**
+     * Generates an optimized mesh of rectangles for a specific layer using a greedy meshing algorithm.
+     * The result is cached.
+     */
+    generateMesh() {
         const tilemap = this.materia.getComponent(Tilemap);
-        if (!tilemap || !tilemap.layers[this.sourceLayerIndex]) {
+        const grid = this.materia.parent?.getComponent(Grid);
+
+        if (!tilemap || !grid) {
+            this._cachedMesh.clear();
             this.generatedColliders = [];
             return;
         }
 
-        const grid = tilemap.layers[this.sourceLayerIndex].data;
-        const { columns, rows, tileWidth, tileHeight } = tilemap;
+        this.generatedColliders = [];
+        const { cellSize } = grid;
+        const layerWidth = tilemap.width * cellSize.x;
+        const layerHeight = tilemap.height * cellSize.y;
 
-        const visited = Array(rows).fill(null).map(() => Array(columns).fill(false));
-        const rects = [];
+        for (let i = 0; i < tilemap.layers.length; i++) {
+            const layer = tilemap.layers[i];
+            const tiles = new Set();
+            for (const [key, value] of layer.tileData.entries()) {
+                if (value) tiles.add(key);
+            }
 
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < columns; c++) {
-                if (grid[r][c] !== -1 && !visited[r][c]) {
-                    let currentWidth = 1;
-                    while (c + currentWidth < columns && grid[r][c + currentWidth] !== -1 && !visited[r][c + currentWidth]) {
-                        currentWidth++;
-                    }
+            if (tiles.size === 0) {
+                this._cachedMesh.set(i, []);
+                continue;
+            }
 
-                    let currentHeight = 1;
-                    while (r + currentHeight < rows) {
-                        let canExpandDown = true;
-                        for (let i = 0; i < currentWidth; i++) {
-                            if (grid[r + currentHeight][c + i] === -1 || visited[r + currentHeight][c + i]) {
-                                canExpandDown = false;
-                                break;
-                            }
-                        }
-                        if (canExpandDown) {
-                            currentHeight++;
-                        } else {
+            const visited = new Set();
+            const rects = [];
+            const sortedTiles = Array.from(tiles).sort((a, b) => {
+                const [ax, ay] = a.split(',').map(Number);
+                const [bx, by] = b.split(',').map(Number);
+                if (ay !== by) return ay - by;
+                return ax - bx;
+            });
+
+            for (const key of sortedTiles) {
+                if (visited.has(key)) continue;
+                const [c, r] = key.split(',').map(Number);
+                let currentWidth = 1;
+                while (tiles.has(`${c + currentWidth},${r}`) && !visited.has(`${c + currentWidth},${r}`)) {
+                    currentWidth++;
+                }
+                let currentHeight = 1;
+                let canExpandDown = true;
+                while (canExpandDown) {
+                    for (let j = 0; j < currentWidth; j++) {
+                        if (!tiles.has(`${c + j},${r + currentHeight}`)) {
+                            canExpandDown = false;
                             break;
                         }
                     }
-
-                    for (let y = 0; y < currentHeight; y++) {
-                        for (let x = 0; x < currentWidth; x++) {
-                            visited[r + y][c + x] = true;
-                        }
+                    if (canExpandDown) currentHeight++;
+                }
+                for (let y = 0; y < currentHeight; y++) {
+                    for (let x = 0; x < currentWidth; x++) {
+                        visited.add(`${c + x},${r + y}`);
                     }
+                }
+                rects.push({ col: c, row: r, width: currentWidth, height: currentHeight });
+            }
+            this._cachedMesh.set(i, rects);
 
-                    const mapTotalWidth = columns * tileWidth;
-                    const mapTotalHeight = rows * tileHeight;
-                    const rectWidth_pixels = currentWidth * tileWidth;
-                    const rectHeight_pixels = currentHeight * tileHeight;
-                    const rectCenterX = (c * tileWidth) + (rectWidth_pixels / 2);
-                    const rectCenterY = (r * tileHeight) + (rectHeight_pixels / 2);
+            // Now, convert these rects to world-space colliders for the physics engine
+            // This is only done for the layer specified in the component's properties
+            if (i === this.sourceLayerIndex) {
+                const layerOffsetX = layer.position.x * layerWidth;
+                const layerOffsetY = layer.position.y * layerHeight;
+                const layerTopLeftX = layerOffsetX - layerWidth / 2;
+                const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
-                    const relativeX = rectCenterX - (mapTotalWidth / 2);
-                    const relativeY = rectCenterY - (mapTotalHeight / 2);
+                for (const rect of rects) {
+                    const rectWidth_pixels = rect.width * cellSize.x;
+                    const rectHeight_pixels = rect.height * cellSize.y;
+                    const rectTopLeftX = layerTopLeftX + rect.col * cellSize.x;
+                    const rectTopLeftY = layerTopLeftY + rect.row * cellSize.y;
 
-                    rects.push({
-                        x: relativeX,
-                        y: relativeY,
+                    this.generatedColliders.push({
+                        x: rectTopLeftX + rectWidth_pixels / 2,
+                        y: rectTopLeftY + rectHeight_pixels / 2,
                         width: rectWidth_pixels,
                         height: rectHeight_pixels
                     });
                 }
             }
         }
+    }
 
-        this.generatedColliders = rects;
-        console.log(`Generados ${rects.length} colisionadores optimizados.`);
+    generate() {
+        console.warn("El método 'generate()' de TilemapCollider2D está obsoleto. Usa 'generateMesh()' en su lugar.");
+        this.generateMesh();
     }
 
     clone() {
