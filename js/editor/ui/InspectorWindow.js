@@ -780,58 +780,70 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.Tilemap) {
-            let sizeInputHTML = '';
-            if (ley.manualSize) {
-                sizeInputHTML = `
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
-                        </div>
+            // Safeguard against corrupted layer data from old scene files
+            if (!ley.layers || !Array.isArray(ley.layers)) {
+                componentHTML = `
+                    <div class="component-header">
+                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
+                    </div>
+                    <div class="component-content">
+                        <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
                 `;
             } else {
-                sizeInputHTML = `
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
-                            <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                let sizeInputHTML = '';
+                if (ley.manualSize) {
+                    sizeInputHTML = `
+                        <div class="prop-row-multi">
+                            <label>Size</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    sizeInputHTML = `
+                        <div class="prop-row-multi">
+                            <label>Size</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
+                                <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                componentHTML = `
+                    <div class="component-header">
+                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
+                    </div>
+                    <div class="component-content">
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
+                            <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
+                        </div>
+                        ${sizeInputHTML}
+                        <hr>
+                        <div class="layer-manager-ui">
+                            <div class="layer-list-header">
+                                <h5>Capas</h5>
+                                <div class="layer-controls">
+                                    <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
+                                    <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
+                                </div>
+                            </div>
+                            <div class="layer-list">
+                                ${ley.layers.map((layer, index) => `
+                                    <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
+                                        <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
             }
-
-            componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                </div>
-                <div class="component-content">
-                    <div class="checkbox-field">
-                        <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
-                        <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
-                    </div>
-                    ${sizeInputHTML}
-                    <hr>
-                    <div class="layer-manager-ui">
-                        <div class="layer-list-header">
-                            <h5>Capas</h5>
-                            <div class="layer-controls">
-                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
-                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
-                            </div>
-                        </div>
-                        <div class="layer-list">
-                            ${ley.layers && Array.isArray(ley.layers) ? ley.layers.map((layer, index) => `
-                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
-                                </div>
-                            `).join('') : '<p class="error-message">Datos de capa inválidos</p>'}
-                        </div>
-                    </div>
-                </div>
-            `;
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
                 <div class="component-header">

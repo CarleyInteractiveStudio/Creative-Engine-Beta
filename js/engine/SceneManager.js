@@ -140,7 +140,10 @@ export function serializeScene(scene, dom) {
                 properties: {}
             };
             for (const key in ley) {
-                if (key !== 'materia' && typeof ley[key] !== 'function') {
+                // Exclude properties that shouldn't be saved:
+                // - 'materia' is a circular reference.
+                // - 'imageCache' is runtime-only and not serializable.
+                if (key !== 'materia' && key !== 'imageCache' && typeof ley[key] !== 'function') {
                     // Special handling for Tilemap to serialize Map objects
                     if (ley.constructor.name === 'Tilemap' && key === 'layers') {
                         leyData.properties[key] = ley[key].map(layer => ({
@@ -179,17 +182,6 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
         for (const leyData of materiaData.leyes) {
             const ComponentClass = getComponent(leyData.type);
             if (ComponentClass) {
-                // --- Migration Logic for Tilemap ---
-                if (leyData.type === 'Tilemap' && leyData.properties.hasOwnProperty('layers')) {
-                    console.warn('Legacy Tilemap component found. Migrating to new format.');
-                    const newTilemap = new (getComponent('Tilemap'))(newMateria);
-                    // The actual tile data from the old format is lost in this migration,
-                    // as it was complex and tied to a palette. The user will need to repaint.
-                    // We just create an empty tileData map.
-                    newTilemap.tileData = new Map();
-                    newMateria.addComponent(newTilemap);
-                    continue; // Skip the Object.assign for this legacy component
-                }
 
                 const newLey = new ComponentClass(newMateria);
 

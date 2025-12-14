@@ -689,8 +689,11 @@ export class TilemapRenderer extends Leyes {
         super(materia);
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
-        this.imageCache = new Map(); // Cache for Image objects from imageData
         this.isDirty = true; // Flag to know when to re-render
+
+        // Always initialize imageCache as a Map. This prevents corrupted data
+        // from scene deserialization from breaking the renderer.
+        this.imageCache = new Map();
     }
 
     setDirty() {
