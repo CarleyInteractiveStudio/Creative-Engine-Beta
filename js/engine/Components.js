@@ -670,16 +670,16 @@ export class Tilemap extends Leyes {
         newTilemap.width = this.width;
         newTilemap.height = this.height;
         newTilemap.manualSize = this.manualSize;
-        newTilemap.layers = JSON.parse(JSON.stringify(this.layers, (key, value) => {
-            if (value instanceof Map) {
-                return { dataType: 'Map', value: Array.from(value.entries()) };
-            }
-            return value;
-        }));
-        newTilemap.layers.forEach(layer => {
-            layer.tileData = new Map(layer.tileData.value);
-        });
         newTilemap.activeLayerIndex = this.activeLayerIndex;
+
+        // Deep copy layers and correctly clone the Map
+        newTilemap.layers = this.layers.map(layer => {
+            return {
+                position: { ...layer.position },
+                tileData: new Map(layer.tileData)
+            };
+        });
+
         return newTilemap;
     }
 }

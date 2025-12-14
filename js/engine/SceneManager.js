@@ -141,7 +141,15 @@ export function serializeScene(scene, dom) {
             };
             for (const key in ley) {
                 if (key !== 'materia' && typeof ley[key] !== 'function') {
-                    leyData.properties[key] = ley[key];
+                    // Special handling for Tilemap to serialize Map objects
+                    if (ley.constructor.name === 'Tilemap' && key === 'layers') {
+                        leyData.properties[key] = ley[key].map(layer => ({
+                            ...layer,
+                            tileData: Array.from(layer.tileData.entries())
+                        }));
+                    } else {
+                        leyData.properties[key] = ley[key];
+                    }
                 }
             }
             materiaData.leyes.push(leyData);
@@ -184,7 +192,26 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 }
 
                 const newLey = new ComponentClass(newMateria);
-                Object.assign(newLey, leyData.properties);
+
+                // Special handling for Tilemap to deserialize Map objects
+                if (leyData.type === 'Tilemap') {
+                    Object.assign(newLey, leyData.properties);
+                    if (newLey.layers && Array.isArray(newLey.layers)) {
+                        newLey.layers.forEach(layer => {
+                            // Check if tileData is in the serialized array format
+                            if (layer.tileData && Array.isArray(layer.tileData)) {
+                                layer.tileData = new Map(layer.tileData);
+                            } else {
+                                // If it's old data or corrupted, ensure it's a valid Map
+                                layer.tileData = new Map();
+                                console.warn(`TileData for a layer in Materia '${materiaData.name}' was invalid or in an old format. Initialized as empty.`);
+                            }
+                        });
+                    }
+                } else {
+                    Object.assign(newLey, leyData.properties);
+                }
+
                 newMateria.addComponent(newLey);
 
                 // Post-creation loading for specific components

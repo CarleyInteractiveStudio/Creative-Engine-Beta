@@ -823,11 +823,11 @@ async function updateInspectorForMateria(selectedMateria) {
                             </div>
                         </div>
                         <div class="layer-list">
-                            ${ley.layers.map((layer, index) => `
+                            ${ley.layers && Array.isArray(ley.layers) ? ley.layers.map((layer, index) => `
                                 <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>Capa ${index} (X: ${layer.position.x}, Y: ${layer.position.y})</span>
+                                    <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
                                 </div>
-                            `).join('')}
+                            `).join('') : '<p class="error-message">Datos de capa inválidos</p>'}
                         </div>
                     </div>
                 </div>
