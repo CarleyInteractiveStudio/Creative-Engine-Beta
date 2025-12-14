@@ -24,7 +24,7 @@ const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
-    'Animación': [Components.Animator],
+    'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
@@ -473,7 +473,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
-        Animator: '🏃', Camera: '📷', CreativeScript: 'image/Script.png',
+        Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: 'image/Script.png',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
     };
@@ -627,7 +627,51 @@ async function updateInspectorForMateria(selectedMateria) {
         else if (ley instanceof Components.CreativeScript) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
         } else if (ley instanceof Components.Animator) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Animator</h4></div><div class="component-content"><p>Controller: ${ley.controllerPath || 'None'}</p></div>`;
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Animator</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Animation Clip</label>
+                        <div class="asset-dropper" data-component="Animator" data-prop="animationClipPath" data-asset-type=".ceanimclip,.cea" title="Arrastra un .ceanimclip o .cea aquí">
+                            <span class="asset-dropper-text">${ley.animationClipPath || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Speed</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Animator" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label>Loop</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Animator" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label>Play On Awake</label>
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.AnimatorController) {
+            let statesListHTML = '<p class="field-description">Asigna un Controller para ver sus estados.</p>';
+            if (ley.controller && ley.states.size > 0) {
+                statesListHTML = '<ul>';
+                for (const stateName of ley.states.keys()) {
+                    statesListHTML += `<li>${stateName}</li>`;
+                }
+                statesListHTML += '</ul>';
+            }
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Animator Controller</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Controller</label>
+                        <div class="asset-dropper" data-component="AnimatorController" data-prop="controllerPath" data-asset-type=".ceanim" title="Arrastra un asset .ceanim aquí">
+                            <span class="asset-dropper-text">${ley.controllerPath || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="inspector-field-group">
+                        <label>States</label>
+                        ${statesListHTML}
+                    </div>
+                </div>`;
         } else if (ley instanceof Components.Camera) {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';

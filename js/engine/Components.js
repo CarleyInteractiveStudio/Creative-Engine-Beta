@@ -291,88 +291,108 @@ export class Animation {
 export class Animator extends Leyes {
     constructor(materia) {
         super(materia);
-        this.controllerPath = ''; // Path to the .ceanim asset
-        this.controller = null; // The loaded controller data
-        this.states = new Map(); // Holds the runtime animation data, keyed by state name
-        this.parameters = new Map(); // Holds runtime parameter values
+        this.animationClipPath = ''; // Path to the .ceanimclip or .cea asset
+        this.speed = 10;
+        this.loop = true;
+        this.playOnAwake = true;
 
-        this.currentState = null;
+        // Internal state
+        this.animationClip = null; // The loaded animation clip data
         this.currentFrame = 0;
+        this.startFrame = 0;
+        this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
+        this.isPlaying = false;
+        this.spriteRenderer = null;
+    }
+
+    async loadAnimationClip(projectsDirHandle) {
+        if (!this.animationClipPath) return;
+
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-    }
-
-    async loadController(projectsDirHandle) {
-        if (!this.controllerPath) return;
-        this.spriteRenderer = this.materia.getComponent(SpriteRenderer); // Ensure we have the renderer
-
-        try {
-            const url = await getURLForAssetPath(this.controllerPath, projectsDirHandle);
-            if (!url) throw new Error(`Could not get URL for controller: ${this.controllerPath}`);
-
-            const response = await fetch(url);
-            this.controller = await response.json();
-
-            // Load all animations defined in the states
-            for (const state of this.controller.states) {
-                const animUrl = await getURLForAssetPath(state.animationAsset, projectsDirHandle);
-                if (animUrl) {
-                    const animResponse = await fetch(animUrl);
-                    const animData = await animResponse.json();
-                    // We assume the .cea file has an array of animations, we take the first one
-                    this.states.set(state.name, { ...state, ...animData.animations[0] });
-                }
-            }
-
-            // Set initial state
-            if (this.controller.entryState) {
-                this.play(this.controller.entryState);
-            }
-
-        } catch (error) {
-            console.error(`Failed to load Animator Controller at '${this.controllerPath}':`, error);
-        }
-    }
-
-    play(stateName) {
-        if (this.currentState?.name !== stateName && this.states.has(stateName)) {
-            this.currentState = this.states.get(stateName);
-            this.currentFrame = 0;
-            this.frameTimer = 0;
-            console.log(`Animator state changed to: ${stateName}`);
-        }
-    }
-
-    update(deltaTime) {
-        if (!this.currentState || !this.spriteRenderer) {
+        if (!this.spriteRenderer) {
+            console.error('Animator requires a SpriteRenderer component on the same Materia.');
             return;
         }
 
-        const animation = this.currentState;
-        if (!animation.frames || animation.frames.length === 0) return;
+        try {
+            const url = await getURLForAssetPath(this.animationClipPath, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for animation clip: ${this.animationClipPath}`);
 
-        this.frameTimer += deltaTime;
-        const frameDuration = 1 / (animation.speed || 10);
+            const response = await fetch(url);
+            const data = await response.json();
 
-        if (this.frameTimer >= frameDuration) {
-            this.frameTimer = 0; // Reset timer
-            this.currentFrame++;
-
-            if (this.currentFrame >= animation.frames.length) {
-                if (animation.loop) {
-                    this.currentFrame = 0;
-                } else {
-                    this.currentFrame = animation.frames.length - 1; // Stay on last frame
-                }
+            // Handle both .cea and .ceanimclip formats
+            if (data.animations && data.animations.length > 0) {
+                // Legacy .cea format
+                this.animationClip = data.animations[0];
+            } else {
+                // New .ceanimclip format
+                this.animationClip = data;
             }
-            this.spriteRenderer.sprite.src = animation.frames[this.currentFrame];
+
+            if (this.playOnAwake) {
+                this.play();
+            }
+
+        } catch (error) {
+            console.error(`Failed to load animation clip at '${this.animationClipPath}':`, error);
         }
     }
+
+    play() {
+        this.isPlaying = true;
+        this.currentFrame = this.startFrame || 0;
+        this.frameTimer = 0;
+    }
+
+    stop() {
+        this.isPlaying = false;
+    }
+
+    update(deltaTime) {
+        if (!this.isPlaying || !this.animationClip || !this.spriteRenderer) {
+            return;
+        }
+
+        const clip = this.animationClip;
+        if (!clip.frames || clip.frames.length === 0) return;
+
+        this.frameTimer += deltaTime;
+        const frameDuration = 1 / (this.speed || 10);
+
+        if (this.frameTimer >= frameDuration) {
+            this.frameTimer %= frameDuration; // Keep the remainder for more accurate timing
+            this.currentFrame++;
+
+            const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length -1;
+
+            if (this.currentFrame > endFrame) {
+                if (this.loop) {
+                    this.currentFrame = this.startFrame || 0;
+                } else {
+                    this.currentFrame = endFrame; // Stay on last frame
+                    this.stop();
+                }
+            }
+
+            // Clamp the frame to be safe
+            this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
+
+            // Update the SpriteRenderer
+            const spriteName = clip.frames[this.currentFrame];
+            if (this.spriteRenderer.spriteName !== spriteName) {
+                this.spriteRenderer.spriteName = spriteName;
+            }
+        }
+    }
+
     clone() {
         const newAnimator = new Animator(null);
-        newAnimator.controllerPath = this.controllerPath;
-        // Parameters could be deep copied if they are simple JSON objects
-        newAnimator.parameters = new Map(JSON.parse(JSON.stringify(Array.from(this.parameters))));
+        newAnimator.animationClipPath = this.animationClipPath;
+        newAnimator.speed = this.speed;
+        newAnimator.loop = this.loop;
+        newAnimator.playOnAwake = this.playOnAwake;
         return newAnimator;
     }
 }
@@ -625,6 +645,89 @@ registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
 registerComponent('Animator', Animator);
+
+export class AnimatorController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.controllerPath = ''; // Path to the .ceanim asset
+
+        // Internal state
+        this.controller = null; // The loaded controller data
+        this.states = new Map(); // Holds the animation state data, keyed by name
+        this.currentStateName = '';
+        this.animator = null; // Reference to the Animator component
+        this.projectsDirHandle = null; // To load clips at runtime
+    }
+
+    // Called by the engine when the game starts
+    async initialize(projectsDirHandle) {
+        this.projectsDirHandle = projectsDirHandle;
+        this.animator = this.materia.getComponent(Animator);
+        if (!this.animator) {
+            console.error('AnimatorController requires an Animator component on the same Materia.');
+            return;
+        }
+        await this.loadController(projectsDirHandle);
+    }
+
+    async loadController(projectsDirHandle) {
+        if (!this.controllerPath) return;
+
+        try {
+            const url = await getURLForAssetPath(this.controllerPath, projectsDirHandle);
+            if (!url) throw new Error(`Could not get URL for controller: ${this.controllerPath}`);
+
+            const response = await fetch(url);
+            this.controller = await response.json();
+
+            this.states.clear();
+            for (const state of this.controller.states) {
+                this.states.set(state.name, state);
+            }
+
+            console.log(`AnimatorController loaded '${this.controller.name}' with ${this.states.size} states.`);
+
+        } catch (error) {
+            console.error(`Failed to load Animator Controller at '${this.controllerPath}':`, error);
+        }
+    }
+
+    play(stateName) {
+        // Do not restart the animation if it's already playing
+        if (!this.animator || !this.states.has(stateName) || this.currentStateName === stateName) {
+            return;
+        }
+
+        const state = this.states.get(stateName);
+        this.currentStateName = stateName;
+
+        // Configure the Animator component with the new state's data
+        this.animator.speed = state.speed || 10;
+        this.animator.loop = state.loop !== undefined ? state.loop : true;
+        this.animator.startFrame = state.startFrame || 0;
+        this.animator.endFrame = state.endFrame !== undefined ? state.endFrame : -1;
+
+        // If the clip path is different, tell the animator to load the new clip and play it
+        if (this.animator.animationClipPath !== state.animationClip) {
+            this.animator.animationClipPath = state.animationClip;
+            // The animator needs the handle to load the new clip
+            this.animator.loadAnimationClip(this.projectsDirHandle).then(() => {
+                this.animator.play();
+            });
+        } else {
+            // If it's the same clip, just restart it
+            this.animator.play();
+        }
+    }
+
+    clone() {
+        const newController = new AnimatorController(null);
+        newController.controllerPath = this.controllerPath;
+        return newController;
+    }
+}
+registerComponent('AnimatorController', AnimatorController);
+
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);

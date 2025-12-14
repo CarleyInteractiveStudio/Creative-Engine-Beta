@@ -3,6 +3,7 @@
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as CEEngine from './CEEngine.js';
 import * as AmbienteAPI from './AmbienteAPI.js';
+import * as AnimationAPI from './AnimationAPI.js';
 
 /**
  * Initializes and registers all engine-level APIs for the scripting runtime.
@@ -37,6 +38,7 @@ export function initialize(dependencies) {
  */
 export function setCurrentMateria(materia) {
     CEEngine.engineAPI.setCurrentMateria(materia);
+    AnimationAPI.setCurrentMateria(materia);
     // Future APIs that need context can have their context set here.
 }
 
@@ -48,7 +50,7 @@ export function setCurrentMateria(materia) {
 export function getAllInternalApis() {
     return {
         'ce.engine': CEEngine.getAPIs(),
-        'ce.ambiente': AmbienteAPI.AmbienteAPI
-        // Add future internal APIs here as well
+        'ce.ambiente': AmbienteAPI.AmbienteAPI,
+        'ce.animation': AnimationAPI.getAPIs()
     };
 }

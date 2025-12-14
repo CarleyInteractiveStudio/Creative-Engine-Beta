@@ -1103,6 +1103,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                         }
+
+                        // Handle Animator and AnimatorController initialization
+                        const animatorController = materia.getComponent(Components.AnimatorController);
+                        const animator = materia.getComponent(Components.Animator);
+
+                        if (animatorController) {
+                            // The controller will manage the animator, so we initialize it.
+                            // This is an async operation but we don't need to block the game start for it.
+                            animatorController.initialize(projectsDirHandle);
+                        } else if (animator) {
+                            // If there's no controller, the animator runs standalone.
+                            // This is also async and won't block.
+                            animator.loadAnimationClip(projectsDirHandle);
+                        }
                     }
                 }
             }
