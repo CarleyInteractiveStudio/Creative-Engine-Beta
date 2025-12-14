@@ -701,6 +701,12 @@ export class TilemapRenderer extends Leyes {
     }
 
     getImageForTile(tileData) {
+        // Self-healing: If imageCache was corrupted during deserialization, fix it.
+        if (!(this.imageCache instanceof Map)) {
+            console.warn('TilemapRenderer.imageCache was corrupted, re-initializing.');
+            this.imageCache = new Map();
+        }
+
         if (this.imageCache.has(tileData.imageData)) {
             return this.imageCache.get(tileData.imageData);
         } else {

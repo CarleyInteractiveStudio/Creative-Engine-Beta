@@ -140,10 +140,7 @@ export function serializeScene(scene, dom) {
                 properties: {}
             };
             for (const key in ley) {
-                // Exclude properties that shouldn't be saved:
-                // - 'materia' is a circular reference.
-                // - 'imageCache' is runtime-only and not serializable.
-                if (key !== 'materia' && key !== 'imageCache' && typeof ley[key] !== 'function') {
+                if (key !== 'materia' && typeof ley[key] !== 'function') {
                     // Special handling for Tilemap to serialize Map objects
                     if (ley.constructor.name === 'Tilemap' && key === 'layers') {
                         leyData.properties[key] = ley[key].map(layer => ({
