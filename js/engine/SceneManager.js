@@ -4,7 +4,7 @@
 import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer } from './Components.js';
 import { Materia } from './Materia.js';
 
 export class Scene {
@@ -240,6 +240,18 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
             const parent = materiaMap.get(materiaData.parentId);
             if (child && parent) {
                 parent.addChild(child);
+            }
+        }
+    }
+
+    // Pass 3: Final setup after all objects and relationships are established
+    for (const materia of materiaMap.values()) {
+        // If a materia has a Tilemap, its renderer needs to be marked as dirty
+        // to ensure it re-draws the loaded tiles on the next frame.
+        if (materia.getComponent(Tilemap)) {
+            const renderer = materia.getComponent(TilemapRenderer);
+            if (renderer) {
+                renderer.setDirty();
             }
         }
     }
