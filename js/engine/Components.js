@@ -909,6 +909,12 @@ export class TilemapCollider2D extends Leyes {
      * The result is cached.
      */
     generateMesh() {
+        // Self-healing: If _cachedMesh was corrupted during deserialization, fix it.
+        if (!(this._cachedMesh instanceof Map)) {
+            console.warn('TilemapCollider2D._cachedMesh was corrupted, re-initializing.');
+            this._cachedMesh = new Map();
+        }
+
         const tilemap = this.materia.getComponent(Tilemap);
         const grid = this.materia.parent?.getComponent(Grid);
 
