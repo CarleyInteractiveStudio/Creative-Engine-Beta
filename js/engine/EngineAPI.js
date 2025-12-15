@@ -2,6 +2,7 @@
 
 import * as CEEngine from './CEEngine.js';
 import * as SceneAPI from './SceneAPI.js';
+import * as InputAPI from './InputAPI.js';
 
 /**
  * Retrieves all registered internal engine APIs.
@@ -11,10 +12,15 @@ import * as SceneAPI from './SceneAPI.js';
 export function getAllInternalApis() {
     const engineAPIs = CEEngine.getAPIs();
     const sceneAPIs = SceneAPI.getAPIs();
+    const inputAPIs = InputAPI.getAPIs();
     return {
         'engine': engineAPIs,
         'motor': engineAPIs, // Spanish alias
         'scene': sceneAPIs,
-        'escena': sceneAPIs // Spanish alias
+        'escena': sceneAPIs, // Spanish alias
+        'input': inputAPIs,
+        'entrada': inputAPIs // Spanish alias
     };
 }
+
+export { CEEngine };

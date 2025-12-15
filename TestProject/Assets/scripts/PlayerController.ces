@@ -1,0 +1,31 @@
+// PlayerController.ces
+
+public class PlayerController {
+    // Public variables are editable from the Inspector
+    public speed = 5;
+    public jumpForce = 10;
+
+    private isGrounded = false;
+
+    public update() {
+        // --- Ground Check ---
+        const collisions = engine.getCollisionStay("suelo");
+        this.isGrounded = collisions.length > 0;
+
+        // --- Horizontal Movement ---
+        let moveX = 0;
+        if (input.isKeyPressed('a')) {
+            moveX = -1;
+        } else if (input.isKeyPressed('d')) {
+            moveX = 1;
+        }
+
+        // Apply horizontal velocity
+        this.rigidbody.velocity.x = moveX * this.speed;
+
+        // --- Jumping ---
+        if (this.isGrounded && input.isKeyJustPressed(' ')) {
+            this.rigidbody.addImpulse({ y: -this.jumpForce });
+        }
+    }
+}

@@ -2292,6 +2292,7 @@ public star() {
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+            EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas);
 
             // --- Define Callbacks & Helpers ---
@@ -2431,14 +2432,14 @@ public star() {
             AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
 
             // Initialize all runtime APIs through the central manager
-            EngineAPI.initialize({
-                physicsSystem,
-                dom,
-                editorRenderer: renderer,
-                gameRenderer: gameRenderer,
-                iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
-                detenerCiclo: AmbienteControlWindow.detenerCiclo
-            });
+            // EngineAPI.initialize({
+            //     physicsSystem,
+            //     dom,
+            //     editorRenderer: renderer,
+            //     gameRenderer: gameRenderer,
+            //     iniciarCiclo: AmbienteControlWindow.iniciarCiclo,
+            //     detenerCiclo: AmbienteControlWindow.detenerCiclo
+            // });
 
 
             updateLoadingProgress(80, "Cargando configuración del proyecto...");
