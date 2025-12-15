@@ -12,7 +12,27 @@ import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 export class CreativeScriptBehavior {
     constructor(materia) {
         this.materia = materia;
+
+        // --- Component Shortcuts ---
+        // Automatically find common components and create shortcuts in both English and Spanish.
+
+        // Transform (always present)
         this.transform = materia.getComponent(Transform);
+        this.transformacion = this.transform;
+
+        // Rigidbody2D
+        const rigidbody = materia.getComponent(Rigidbody2D);
+        if (rigidbody) {
+            this.rigidbody = rigidbody;
+            this.fisica = rigidbody;
+        }
+
+        // AnimatorController
+        const animator = materia.getComponent(AnimatorController);
+        if (animator) {
+            this.animator = animator;
+            this.animador = animator;
+        }
     }
     star() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ }
@@ -21,7 +41,25 @@ export class CreativeScriptBehavior {
 // --- Component Class Definitions ---
 
 export class Transform extends Leyes {
-    constructor(materia) { super(materia); this.x = 0; this.y = 0; this.rotation = 0; this.scale = { x: 1, y: 1 }; }
+    constructor(materia) {
+        super(materia);
+        this.x = 0;
+        this.y = 0;
+        this.rotation = 0;
+        this.scale = { x: 1, y: 1 };
+
+        // Define a getter/setter for 'position' to easily manipulate x and y
+        Object.defineProperty(this, 'position', {
+            get: () => ({ x: this.x, y: this.y }),
+            set: (value) => {
+                if (typeof value.x === 'number') this.x = value.x;
+                if (typeof value.y === 'number') this.y = value.y;
+            },
+            enumerable: true,
+            configurable: true
+        });
+    }
+
     clone() {
         const newTransform = new Transform(null);
         newTransform.x = this.x;
@@ -145,6 +183,27 @@ export class Rigidbody2D extends Leyes {
         // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
     }
+
+    addForce({ x = 0, y = 0 }) {
+        // In a simple physics model, addForce can be treated similarly to an impulse
+        // that's applied over a frame. For now, we directly modify velocity.
+        // A more complex engine would integrate this over time based on mass.
+        this.velocity.x += x;
+        this.velocity.y += y;
+    }
+
+    addImpulse({ x = 0, y = 0 }) {
+        // Impulse directly and instantly changes velocity.
+        this.velocity.x += x;
+        this.velocity.y += y;
+    }
+
+    setVelocity({ x = 0, y = 0 }) {
+        // Directly sets the velocity, ignoring current momentum.
+        this.velocity.x = x;
+        this.velocity.y = y;
+    }
+
     clone() {
         const newRb = new Rigidbody2D(null);
         newRb.bodyType = this.bodyType;
