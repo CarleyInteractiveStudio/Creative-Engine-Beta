@@ -1,19 +1,24 @@
 // PlayerController.ces
 
-// Public variables are editable from the Inspector
-public speed = 5;
-public jumpForce = 10;
-public groundTag = "suelo"; // Tag to identify ground objects
+// Public variables are editable from the Inspector.
+// They must be declared here and initialized inside a function like star().
+public speed;
+public jumpForce;
+public groundTag;
 
 private isGrounded = false;
 
 public star() {
+    // Initialize public variables with default values
+    speed = 5;
+    jumpForce = 10;
+    groundTag = "suelo";
     console.log("PlayerController iniciado.");
 }
 
 public update() {
     // --- Ground Check ---
-    // Get all collisions that are currently happening
+    // Get all collisions that are currently happening with objects tagged as ground
     const collisions = engine.getCollisionStay(this.groundTag);
     this.isGrounded = collisions.length > 0;
 
@@ -25,7 +30,7 @@ public update() {
         moveX = 1;
     }
 
-    // Get the current velocity and modify it
+    // Get the current velocity and modify only the x component
     let currentVelocity = this.rigidbody.velocity;
     this.rigidbody.setVelocity({ x: moveX * this.speed, y: currentVelocity.y });
 
