@@ -1,31 +1,37 @@
 // PlayerController.ces
 
-public class PlayerController {
-    // Public variables are editable from the Inspector
-    public speed = 5;
-    public jumpForce = 10;
+// Public variables are editable from the Inspector
+public speed = 5;
+public jumpForce = 10;
+public groundTag = "suelo"; // Tag to identify ground objects
 
-    private isGrounded = false;
+private isGrounded = false;
 
-    public update() {
-        // --- Ground Check ---
-        const collisions = engine.getCollisionStay("suelo");
-        this.isGrounded = collisions.length > 0;
+public star() {
+    console.log("PlayerController iniciado.");
+}
 
-        // --- Horizontal Movement ---
-        let moveX = 0;
-        if (input.isKeyPressed('a')) {
-            moveX = -1;
-        } else if (input.isKeyPressed('d')) {
-            moveX = 1;
-        }
+public update() {
+    // --- Ground Check ---
+    // Get all collisions that are currently happening
+    const collisions = engine.getCollisionStay(this.groundTag);
+    this.isGrounded = collisions.length > 0;
 
-        // Apply horizontal velocity
-        this.rigidbody.velocity.x = moveX * this.speed;
+    // --- Horizontal Movement ---
+    let moveX = 0;
+    if (input.isKeyPressed('a')) {
+        moveX = -1;
+    } else if (input.isKeyPressed('d')) {
+        moveX = 1;
+    }
 
-        // --- Jumping ---
-        if (this.isGrounded && input.isKeyJustPressed(' ')) {
-            this.rigidbody.addImpulse({ y: -this.jumpForce });
-        }
+    // Get the current velocity and modify it
+    let currentVelocity = this.rigidbody.velocity;
+    this.rigidbody.setVelocity({ x: moveX * this.speed, y: currentVelocity.y });
+
+    // --- Jumping ---
+    if (this.isGrounded && input.isKeyJustPressed(' ')) {
+        // We apply a negative impulse on Y because in 2D canvas, Y is inverted (down is positive)
+        this.rigidbody.addImpulse({ x: 0, y: -this.jumpForce });
     }
 }
