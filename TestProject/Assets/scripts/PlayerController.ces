@@ -6,15 +6,15 @@ public number speed;
 public number jumpForce;
 public string groundTag;
 
-// Private variables can be declared and initialized directly.
-private isGrounded = false;
-
 public star() {
     // Initialize public variables with default values.
     // These values can be overridden by the Inspector.
     speed = 5;
     jumpForce = 10;
     groundTag = "suelo";
+
+    // Initialize private-like state variables as properties of 'this'.
+    this.isGrounded = false;
 
     console.log("PlayerController iniciado.");
 }
@@ -23,7 +23,7 @@ public update(deltaTime) {
     // --- Ground Check ---
     // Get all collisions that are currently happening with objects tagged as ground.
     const collisions = engine.getCollisionStay(groundTag);
-    isGrounded = collisions.length > 0;
+    this.isGrounded = collisions.length > 0;
 
     // --- Horizontal Movement ---
     let moveX = 0;
@@ -39,7 +39,7 @@ public update(deltaTime) {
     this.rigidbody.setVelocity({ x: moveX * speed, y: currentVelocity.y });
 
     // --- Jumping ---
-    if (isGrounded && input.isKeyJustPressed(' ')) {
+    if (this.isGrounded && input.isKeyJustPressed(' ')) {
         // We apply a negative impulse on Y because in 2D canvas, Y is inverted (down is positive).
         this.rigidbody.addImpulse({ x: 0, y: -jumpForce });
     }
