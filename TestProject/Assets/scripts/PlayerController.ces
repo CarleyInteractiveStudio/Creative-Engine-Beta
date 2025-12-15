@@ -1,26 +1,29 @@
 // PlayerController.ces
 
 // Public variables are editable from the Inspector.
-// They must be declared here and initialized inside a function like star().
-public speed;
-public jumpForce;
-public groundTag;
+// They must be declared with a type and a name, and end with a semicolon.
+public number speed;
+public number jumpForce;
+public string groundTag;
 
+// Private variables can be declared and initialized directly.
 private isGrounded = false;
 
 public star() {
-    // Initialize public variables with default values
+    // Initialize public variables with default values.
+    // These values can be overridden by the Inspector.
     speed = 5;
     jumpForce = 10;
     groundTag = "suelo";
+
     console.log("PlayerController iniciado.");
 }
 
-public update() {
+public update(deltaTime) {
     // --- Ground Check ---
-    // Get all collisions that are currently happening with objects tagged as ground
-    const collisions = engine.getCollisionStay(this.groundTag);
-    this.isGrounded = collisions.length > 0;
+    // Get all collisions that are currently happening with objects tagged as ground.
+    const collisions = engine.getCollisionStay(groundTag);
+    isGrounded = collisions.length > 0;
 
     // --- Horizontal Movement ---
     let moveX = 0;
@@ -30,13 +33,14 @@ public update() {
         moveX = 1;
     }
 
-    // Get the current velocity and modify only the x component
+    // Get the current velocity and modify only the x component.
+    // This preserves vertical velocity (like from gravity or jumping).
     let currentVelocity = this.rigidbody.velocity;
-    this.rigidbody.setVelocity({ x: moveX * this.speed, y: currentVelocity.y });
+    this.rigidbody.setVelocity({ x: moveX * speed, y: currentVelocity.y });
 
     // --- Jumping ---
-    if (this.isGrounded && input.isKeyJustPressed(' ')) {
-        // We apply a negative impulse on Y because in 2D canvas, Y is inverted (down is positive)
-        this.rigidbody.addImpulse({ x: 0, y: -this.jumpForce });
+    if (isGrounded && input.isKeyJustPressed(' ')) {
+        // We apply a negative impulse on Y because in 2D canvas, Y is inverted (down is positive).
+        this.rigidbody.addImpulse({ x: 0, y: -jumpForce });
     }
 }
