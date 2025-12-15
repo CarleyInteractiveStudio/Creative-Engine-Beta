@@ -64,6 +64,7 @@ export function transpile(code, scriptName) {
     let remainingCode = unprocessedCode;
     let methodsCode = '';
 
+    let methodMatch;
     while ((methodMatch = methodHeaderRegex.exec(unprocessedCode)) !== null) {
         const name = methodMatch[1];
         const args = methodMatch[2];
