@@ -17,6 +17,7 @@ export function transpile(code, scriptName) {
     const className = scriptName.replace('.ces', '');
 
     let publicVars = [];
+    let privateVars = [];
     let starMethod = '';
     let updateMethod = '';
     let customMethods = '';
@@ -40,41 +41,67 @@ export function transpile(code, scriptName) {
     }
     unprocessedCode = unprocessedCode.replace(goRegex, '');
 
-    // 1.b: Parse and remove public variables
-    const publicVarRegex = /^\s*public\s+(\w+)\s+(\w+);/gm;
+    // 1.b: Parse and remove public and private variables
+    const varRegex = /^\s*(public|private)\s+(?:(\w+)\s+)?(\w+)(?:\s*=\s*(.+))?;/gm;
     let varMatch;
-    while ((varMatch = publicVarRegex.exec(unprocessedCode)) !== null) {
-        publicVars.push({ type: varMatch[1], name: varMatch[2] });
-    }
-    unprocessedCode = unprocessedCode.replace(publicVarRegex, '');
+    while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
+        const scope = varMatch[1]; // public or private
+        const type = varMatch[2];  // optional type
+        const name = varMatch[3];  // variable name
+        const value = varMatch[4]; // optional initial value
 
-    // 1.c: Parse and extract methods using a robust regex
-    const methodRegex = /public\s+(\w+)\s*\(([^)]*)\)\s*{((?:[^{}]|{[^{}]*})*)}/g;
-    let methodMatch;
-    while ((methodMatch = methodRegex.exec(unprocessedCode)) !== null) {
+        if (scope === 'public') {
+            publicVars.push({ type: type || 'any', name: name, value: value });
+        } else { // private
+            // Private variables with initial values can be set in the constructor
+            privateVars.push({ name: name, value: value });
+        }
+    }
+    unprocessedCode = unprocessedCode.replace(varRegex, '');
+
+    // 1.c: Parse and extract methods using a robust brace-counting loop
+    const methodHeaderRegex = /public\s+(\w+)\s*\(([^)]*)\)\s*{/g;
+    let remainingCode = unprocessedCode;
+    let methodsCode = '';
+
+    while ((methodMatch = methodHeaderRegex.exec(unprocessedCode)) !== null) {
         const name = methodMatch[1];
         const args = methodMatch[2];
-        let body = methodMatch[3];
+        const bodyStartIndex = methodMatch.index + methodMatch[0].length;
+
+        let braceCount = 1;
+        let bodyEndIndex = -1;
+        for (let i = bodyStartIndex; i < unprocessedCode.length; i++) {
+            if (unprocessedCode[i] === '{') {
+                braceCount++;
+            } else if (unprocessedCode[i] === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                    bodyEndIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (bodyEndIndex === -1) {
+            errors.push(`Error: Método '${name}' no tiene una llave de cierre correspondiente.`);
+            continue;
+        }
+
+        let body = unprocessedCode.substring(bodyStartIndex, bodyEndIndex);
+
+        // Mark this section of code as processed
+        const fullMethodText = unprocessedCode.substring(methodMatch.index, bodyEndIndex + 1);
+        methodsCode += fullMethodText;
+
 
         // --- Phase 2: Transpile method bodies ---
-        // Replace function calls with their fully qualified API calls.
-
-        // This is a more robust way to replace function calls. Instead of a generic
-        // regex, we iterate through the imported libraries and create specific regex
-        // for each function available in them.
         for (const libName of importedLibs) {
             const api = RuntimeAPIManager.getAPI(libName);
             if (!api) continue;
-
             for (const functionName in api) {
-                // Create a regex that finds the function name as a whole word,
-                // NOT preceded by a dot (to avoid replacing method calls like `myObject.myFunction`),
-                // and followed by an opening parenthesis.
-                const regex = new RegExp(`(?<!\\.)\\b${functionName}\\b\\s*\\(`, 'g');
-
-                // The replacement string points to the correct function within the API.
-                const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"](`;
-
+                const regex = new RegExp(`(?<![.\\w])\\b${functionName}\\b(?=\\s*\\()`, 'g');
+                const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"]`;
                 body = body.replace(regex, replacement);
             }
         }
@@ -87,7 +114,15 @@ export function transpile(code, scriptName) {
             customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
         }
     }
-    unprocessedCode = unprocessedCode.replace(methodRegex, '');
+    // Remove all processed method code at once
+    unprocessedCode = unprocessedCode.replace(methodHeaderRegex, (match, name, args, offset) => {
+        // This is a bit tricky, we need to remove the entire method body.
+        // The logic above already extracted it, here we just need to blank it out.
+        // We'll rebuild the code without the methods.
+        return '';
+    });
+    // A simpler way is just to remove what we found
+    unprocessedCode = unprocessedCode.replace(methodsCode, '');
 
     // 1.d: Final check for leftover code
     unprocessedCode = unprocessedCode.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -106,7 +141,10 @@ export function transpile(code, scriptName) {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = null; // Type: ${pv.type}\n`;
+        jsCode += `            this.${pv.name} = ${pv.value || 'null'}; // Type: ${pv.type}\n`;
+    });
+    privateVars.forEach(pv => {
+        jsCode += `            this.${pv.name} = ${pv.value || 'null'};\n`;
     });
     jsCode += `        }\n\n`;
 

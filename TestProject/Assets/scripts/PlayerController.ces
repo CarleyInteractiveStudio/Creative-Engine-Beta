@@ -1,31 +1,21 @@
 // PlayerController.ces
 
-// Public variables are editable from the Inspector.
-// They must be declared with a type and a name, and end with a semicolon.
-public number speed;
-public number jumpForce;
-public string groundTag;
+public number speed = 5;
+public number jumpForce = 10;
+public string groundTag = "suelo";
+
+private boolean isGrounded = false;
 
 public star() {
-    // Initialize public variables with default values.
-    // These values can be overridden by the Inspector.
-    speed = 5;
-    jumpForce = 10;
-    groundTag = "suelo";
-
-    // Initialize private-like state variables as properties of 'this'.
-    this.isGrounded = false;
-
     console.log("PlayerController iniciado.");
 }
 
 public update(deltaTime) {
-    // --- Ground Check ---
-    // Get all collisions that are currently happening with objects tagged as ground.
+    // Ground Check
     const collisions = engine.getCollisionStay(groundTag);
-    this.isGrounded = collisions.length > 0;
+    isGrounded = collisions.length > 0;
 
-    // --- Horizontal Movement ---
+    // Horizontal Movement
     let moveX = 0;
     if (input.isKeyPressed('a')) {
         moveX = -1;
@@ -33,14 +23,11 @@ public update(deltaTime) {
         moveX = 1;
     }
 
-    // Get the current velocity and modify only the x component.
-    // This preserves vertical velocity (like from gravity or jumping).
     let currentVelocity = this.rigidbody.velocity;
     this.rigidbody.setVelocity({ x: moveX * speed, y: currentVelocity.y });
 
-    // --- Jumping ---
-    if (this.isGrounded && input.isKeyJustPressed(' ')) {
-        // We apply a negative impulse on Y because in 2D canvas, Y is inverted (down is positive).
+    // Jumping
+    if (isGrounded && input.isKeyJustPressed(' ')) {
         this.rigidbody.addImpulse({ x: 0, y: -jumpForce });
     }
 }
