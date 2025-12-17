@@ -1,6 +1,7 @@
 import * as Components from '../../engine/Components.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
+import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 
 // --- Module State ---
 let dom;
@@ -74,6 +75,15 @@ function handleInspectorInput(e) {
         value = e.target.checked;
     } else {
         value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    }
+
+    if (componentName === 'CreativeScript') {
+        const scriptName = e.target.dataset.scriptName;
+        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+        if (script) {
+            script.publicVars[propPath] = value;
+        }
+        return;
     }
 
     const ComponentClass = Components[componentName];
@@ -423,6 +433,26 @@ export async function updateInspector() {
     }
 }
 
+function renderPublicVarInput(variable, currentValue, scriptName) {
+    const commonAttrs = `class="prop-input" data-component="CreativeScript" data-script-name="${scriptName}" data-prop="${variable.name}"`;
+
+    switch (variable.type) {
+        case 'numero':
+            return `<input type="number" ${commonAttrs} value="${currentValue}">`;
+        case 'texto':
+            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+        case 'booleano':
+            return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
+        case 'Materia':
+            // TODO: Implementar un campo para arrastrar y soltar objetos
+            return `<div class="asset-dropper" ${commonAttrs} data-asset-type="Materia">${currentValue || 'None (Materia)'}</div>`;
+        default:
+            // Para 'any' o tipos desconocidos, usar un campo de texto
+            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+    }
+}
+
+
 async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
 
@@ -473,7 +503,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
-        Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: 'image/Script.png',
+        Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
     };
@@ -487,7 +517,7 @@ async function updateInspectorForMateria(selectedMateria) {
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
-        const iconHTML = icon.includes('.png') ? `<img src="${icon}" class="component-icon">` : `<span class="component-icon">${icon}</span>`;
+        const iconHTML = `<span class="component-icon">${icon}</span>`;
 
         if (ley instanceof Components.TextureRender) {
             let dimensionsHTML = '';
@@ -625,7 +655,27 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>${ley.scriptName}</h4></div>`;
+            let publicVarsHTML = '';
+            const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+
+            if (metadata && metadata.publicVars) {
+                for (const pv of metadata.publicVars) {
+                    const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
+                    publicVarsHTML += `
+                        <div class="prop-row-multi">
+                            <label>${pv.name}</label>
+                            ${renderPublicVarInput(pv, currentValue, ley.scriptName)}
+                        </div>
+                    `;
+                }
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4><a href="#">${ley.scriptName}</a></h4></div>
+                <div class="component-content">
+                    ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
+                </div>
+            `;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `
                 <div class="component-header">${iconHTML}<h4>Animator</h4></div>

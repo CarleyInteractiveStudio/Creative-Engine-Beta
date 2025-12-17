@@ -3,8 +3,55 @@ import * as RuntimeAPIManager from '../engine/RuntimeAPIManager.js';
 
 // --- State ---
 const transpiledCodeMap = new Map();
+const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
+
+// --- Helper Functions ---
+
+function getDefaultValueForType(type) {
+    switch (type) {
+        case 'numero': return 0;
+        case 'texto': return "";
+        case 'booleano': return false;
+        case 'Materia': return null;
+        default: return null;
+    }
+}
+
+function parseInitialValue(value, type) {
+    switch (type) {
+        case 'numero':
+            return parseFloat(value) || 0;
+        case 'texto':
+            // Eliminar comillas si existen
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                return value.slice(1, -1);
+            }
+            return value;
+        case 'booleano':
+            return value.toLowerCase() === 'verdadero' || value.toLowerCase() === 'true';
+        case 'Materia':
+            return null; // Las referencias a objetos no se pueden establecer por defecto
+        default:
+            // Para 'any' o tipos desconocidos, intentar adivinar
+            if (!isNaN(parseFloat(value)) && isFinite(value)) return parseFloat(value);
+            if (value.toLowerCase() === 'true' || value.toLowerCase() === 'verdadero') return true;
+            if (value.toLowerCase() === 'false' || value.toLowerCase() === 'falso') return false;
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
+            return value;
+    }
+}
+
 
 // --- Public API ---
+
+/**
+ * Retrieves the metadata for a given script.
+ * @param {string} scriptName The name of the script file.
+ * @returns {object | undefined} The script's metadata or undefined.
+ */
+export function getScriptMetadata(scriptName) {
+    return scriptMetadataMap.get(scriptName);
+}
 
 /**
  * Transpiles a .ces script into an ES6 class.
@@ -46,17 +93,30 @@ export function transpile(code, scriptName) {
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scope = varMatch[1]; // public, private, publica, or privado
-        const type = varMatch[2];  // optional type
+        const type = varMatch[2] || 'any';  // optional type, default to 'any'
         const name = varMatch[3];  // variable name
         const value = varMatch[4]; // optional initial value
 
+        const parsedValue = value ? parseInitialValue(value.trim(), type) : getDefaultValueForType(type);
+
         if (scope === 'public' || scope === 'publica') {
-            publicVars.push({ type: type || 'any', name: name, value: value });
+            publicVars.push({ type: type, name: name, value: value, defaultValue: parsedValue });
         } else { // private or privado
             privateVars.push({ name: name, value: value });
         }
     }
     unprocessedCode = unprocessedCode.replace(varRegex, '');
+
+    // Almacenar los metadatos de las variables públicas
+    const metadata = {
+        publicVars: publicVars.map(pv => ({
+            name: pv.name,
+            type: pv.type,
+            defaultValue: pv.defaultValue
+        }))
+    };
+    scriptMetadataMap.set(scriptName, metadata);
+
 
     // 1.c: Parse and extract methods using a robust brace-counting loop (bilingual)
     const methodHeaderRegex = /(?:public|publica)\s+(\w+)\s*\(([^)]*)\)\s*{/g;
@@ -137,6 +197,7 @@ export function transpile(code, scriptName) {
 
     if (errors.length > 0) {
         transpiledCodeMap.delete(scriptName);
+        scriptMetadataMap.delete(scriptName); // Limpiar metadatos en caso de error
         return { errors, jsCode: null };
     }
 
@@ -145,7 +206,7 @@ export function transpile(code, scriptName) {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || 'null'}; // Type: ${pv.type}\n`;
+        jsCode += `            this.${pv.name} = ${pv.value || JSON.stringify(pv.defaultValue)}; // Type: ${pv.type}\n`;
     });
     privateVars.forEach(pv => {
         jsCode += `            this.${pv.name} = ${pv.value || 'null'};\n`;

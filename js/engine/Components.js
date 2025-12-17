@@ -133,6 +133,7 @@ export class CreativeScript extends Leyes {
     constructor(materia, scriptName) {
         super(materia);
         this.scriptName = scriptName;
+        this.publicVars = {}; // Nuevo: para almacenar los valores del Inspector
         this.instance = null;
         this.isInitialized = false;
     }
@@ -175,6 +176,14 @@ export class CreativeScript extends Leyes {
             const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
             if (ScriptClass) {
                 this.instance = new ScriptClass(this.materia);
+
+                // Asignar los valores del Inspector a la instancia
+                for (const [key, value] of Object.entries(this.publicVars)) {
+                    if (this.instance.hasOwnProperty(key)) {
+                        this.instance[key] = value;
+                    }
+                }
+
                 this.isInitialized = true;
                 console.log(`Script '${this.scriptName}' instanciado con éxito.`);
             } else {
