@@ -7,6 +7,29 @@ import { getURLForAssetPath } from './AssetUtils.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
+// --- Bilingual Component Aliases ---
+const componentAliases = {
+    'Transform': 'transformacion',
+    'Rigidbody2D': 'fisica',
+    'AnimatorController': 'controladorAnimacion',
+    'SpriteRenderer': 'renderizadorDeSprite',
+    'AudioSource': 'fuenteDeAudio',
+    'BoxCollider2D': 'colisionadorCaja2D',
+    'CapsuleCollider2D': 'colisionadorCapsula2D',
+    'Camera': 'camara',
+    'Animator': 'animador',
+    'PointLight2D': 'luzPuntual2D',
+    'SpotLight2D': 'luzFocal2D',
+    'Tilemap': 'mapaDeAzulejos',
+    'TilemapRenderer': 'renderizadorMapaDeAzulejos',
+    'TilemapCollider2D': 'colisionadorMapaDeAzulejos2D',
+    'Grid': 'rejilla',
+    'TextureRender': 'renderizadorDeTextura',
+    'UICanvas': 'lienzoUI',
+    'UIImage': 'imagenUI',
+    'RectTransform': 'transformacionRect',
+};
+
 
 // --- Base Behavior for Scripts ---
 export class CreativeScriptBehavior {
@@ -14,24 +37,31 @@ export class CreativeScriptBehavior {
         this.materia = materia;
 
         // --- Component Shortcuts ---
-        // Automatically find common components and create shortcuts in both English and Spanish.
+        this._initializeComponentShortcuts();
+    }
 
-        // Transform (always present)
-        this.transform = materia.getComponent(Transform);
-        this.transformacion = this.transform;
+    /**
+     * @private
+     * Initializes shortcuts to all components on the Materia in both English and Spanish.
+     * This makes 'SpriteRenderer' accessible via `this.spriteRenderer` and `this.renderizadorDeSprite`.
+     */
+    _initializeComponentShortcuts() {
+        if (!this.materia || !this.materia.leyes) return;
 
-        // Rigidbody2D
-        const rigidbody = materia.getComponent(Rigidbody2D);
-        if (rigidbody) {
-            this.rigidbody = rigidbody;
-            this.fisica = rigidbody;
-        }
+        for (const component of this.materia.leyes) {
+            const componentName = component.constructor.name;
+            const shortcutName = componentName.charAt(0).toLowerCase() + componentName.slice(1);
 
-        // AnimatorController
-        const animator = materia.getComponent(AnimatorController);
-        if (animator) {
-            this.animator = animator;
-            this.animador = animator;
+            // Create the primary (English) shortcut (e.g., this.spriteRenderer)
+            if (!this.hasOwnProperty(shortcutName)) {
+                this[shortcutName] = component;
+            }
+
+            // Create the Spanish alias if it exists in the map
+            const alias = componentAliases[componentName];
+            if (alias && !this.hasOwnProperty(alias)) {
+                this[alias] = component;
+            }
         }
     }
     star() { /* To be overridden by user scripts */ }

@@ -41,32 +41,31 @@ export function transpile(code, scriptName) {
     }
     unprocessedCode = unprocessedCode.replace(goRegex, '');
 
-    // 1.b: Parse and remove public and private variables
-    const varRegex = /^\s*(public|private)\s+(?:(\w+)\s+)?(\w+)(?:\s*=\s*(.+))?;/gm;
+    // 1.b: Parse and remove public and private variables (bilingual)
+    const varRegex = /^\s*(public|private|publica|privado)\s+(?:(\w+)\s+)?(\w+)(?:\s*=\s*(.+))?;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scope = varMatch[1]; // public or private
+        const scope = varMatch[1]; // public, private, publica, or privado
         const type = varMatch[2];  // optional type
         const name = varMatch[3];  // variable name
         const value = varMatch[4]; // optional initial value
 
-        if (scope === 'public') {
+        if (scope === 'public' || scope === 'publica') {
             publicVars.push({ type: type || 'any', name: name, value: value });
-        } else { // private
-            // Private variables with initial values can be set in the constructor
+        } else { // private or privado
             privateVars.push({ name: name, value: value });
         }
     }
     unprocessedCode = unprocessedCode.replace(varRegex, '');
 
-    // 1.c: Parse and extract methods using a robust brace-counting loop
-    const methodHeaderRegex = /public\s+(\w+)\s*\(([^)]*)\)\s*{/g;
+    // 1.c: Parse and extract methods using a robust brace-counting loop (bilingual)
+    const methodHeaderRegex = /(?:public|publica)\s+(\w+)\s*\(([^)]*)\)\s*{/g;
     let remainingCode = unprocessedCode;
     let methodsCode = '';
 
     let methodMatch;
     while ((methodMatch = methodHeaderRegex.exec(unprocessedCode)) !== null) {
-        const name = methodMatch[1];
+        let name = methodMatch[1];
         const args = methodMatch[2];
         const bodyStartIndex = methodMatch.index + methodMatch[0].length;
 
@@ -106,6 +105,10 @@ export function transpile(code, scriptName) {
                 body = body.replace(regex, replacement);
             }
         }
+
+        // Map Spanish lifecycle methods to their English counterparts
+        if (name === 'iniciar') name = 'star';
+        if (name === 'actualizar') name = 'update';
 
         if (name === 'star') {
             starMethod = body;
