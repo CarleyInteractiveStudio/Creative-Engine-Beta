@@ -7,9 +7,23 @@ const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
 
 // --- Helper Functions ---
 
-function getDefaultValueForType(type) {
-    switch (type) {
-        case 'numero': return 0;
+const typeMap = {
+    'number': 'numero',
+    'numero': 'numero',
+    'dnumber': 'dnumero',
+    'dnumero': 'dnumero',
+    'text': 'texto',
+    'texto': 'texto',
+    'boolean': 'booleano',
+    'booleano': 'booleano',
+    'Materia': 'Materia'
+};
+
+function getDefaultValueForType(canonicalType) {
+    switch (canonicalType) {
+        case 'numero':
+        case 'dnumero':
+             return 0;
         case 'texto': return "";
         case 'booleano': return false;
         case 'Materia': return null;
@@ -17,9 +31,10 @@ function getDefaultValueForType(type) {
     }
 }
 
-function parseInitialValue(value, type) {
-    switch (type) {
+function parseInitialValue(value, canonicalType) {
+    switch (canonicalType) {
         case 'numero':
+        case 'dnumero':
             return parseFloat(value) || 0;
         case 'texto':
             // Eliminar comillas si existen
@@ -32,7 +47,7 @@ function parseInitialValue(value, type) {
         case 'Materia':
             return null; // Las referencias a objetos no se pueden establecer por defecto
         default:
-            // Para 'any' o tipos desconocidos, intentar adivinar
+            // This case should not be hit with the new mandatory types, but kept as a fallback.
             if (!isNaN(parseFloat(value)) && isFinite(value)) return parseFloat(value);
             if (value.toLowerCase() === 'true' || value.toLowerCase() === 'verdadero') return true;
             if (value.toLowerCase() === 'false' || value.toLowerCase() === 'falso') return false;
@@ -88,20 +103,26 @@ export function transpile(code, scriptName) {
     }
     unprocessedCode = unprocessedCode.replace(goRegex, '');
 
-    // 1.b: Parse and remove public and private variables (bilingual)
-    const varRegex = /^\s*(public|private|publica|privado)\s+(?:(\w+)\s+)?(\w+)(?:\s*=\s*(.+))?;/gm;
+    // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
+    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scope = varMatch[1]; // public, private, publica, or privado
-        const type = varMatch[2] || 'any';  // optional type, default to 'any'
+        const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private'); // Normalize scope
+        const typeInput = varMatch[2]; // e.g., "numero", "dnumber", "text"
         const name = varMatch[3];  // variable name
         const value = varMatch[4]; // optional initial value
 
-        const parsedValue = value ? parseInitialValue(value.trim(), type) : getDefaultValueForType(type);
+        const canonicalType = typeMap[typeInput];
+        if (!canonicalType) {
+            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
+            continue;
+        }
 
-        if (scope === 'public' || scope === 'publica') {
-            publicVars.push({ type: type, name: name, value: value, defaultValue: parsedValue });
-        } else { // private or privado
+        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+
+        if (scope === 'public') {
+            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+        } else { // private
             privateVars.push({ name: name, value: value });
         }
     }
@@ -119,7 +140,7 @@ export function transpile(code, scriptName) {
 
 
     // 1.c: Parse and extract methods using a robust brace-counting loop (bilingual)
-    const methodHeaderRegex = /(?:public|publica)\s+(\w+)\s*\(([^)]*)\)\s*{/g;
+    const methodHeaderRegex = /(?:public|publico)\s+(\w+)\s*\(([^)]*)\)\s*{/g;
     let remainingCode = unprocessedCode;
     let methodsCode = '';
 

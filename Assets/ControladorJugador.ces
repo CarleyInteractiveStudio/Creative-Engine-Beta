@@ -1,20 +1,20 @@
 // ControladorJugador.ces
 // Mueve el objeto usando las teclas WASD.
 
-publica velocidad: numero = 5;
+publico numero velocidad = 5;
 
-privado velocidadX: numero = 0;
-privado velocidadY: numero = 0;
+privado numero velocidadX = 0;
+privado numero velocidadY = 0;
 
 // La función iniciar se llama una vez cuando el objeto entra en la escena.
-iniciar() {
+publico iniciar() {
     consola.imprimir("Controlador de jugador iniciado. Usa WASD para moverte.");
     // Asegurarnos de que el objeto tenga un Rigidbody2D es una buena práctica,
     // pero el script no fallará si no está, simplemente no se moverá.
 }
 
 // La función actualizar se llama en cada fotograma.
-actualizar() {
+publico actualizar() {
     // Reiniciamos la velocidad en cada fotograma
     velocidadX = 0;
     velocidadY = 0;
