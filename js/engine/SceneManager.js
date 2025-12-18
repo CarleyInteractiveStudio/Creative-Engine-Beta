@@ -150,6 +150,10 @@ export function serializeScene(scene, dom) {
                     } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
                         // Correctly serialize the _cachedMesh Map
                         leyData.properties[key] = Array.from(ley[key].entries());
+                    } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
+                        // imageCache can be large and isn't essential to save.
+                        // We'll save it as an empty array and let it rebuild at runtime.
+                        leyData.properties[key] = [];
                     } else {
                         leyData.properties[key] = ley[key];
                     }
@@ -207,6 +211,11 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                         // If it's old data or corrupted, ensure it's a valid Map
                         newLey._cachedMesh = new Map();
                     }
+                } else if (leyData.type === 'TilemapRenderer') {
+                    Object.assign(newLey, leyData.properties);
+                    // Always re-initialize imageCache as an empty Map on load.
+                    // It will be populated as tiles are rendered.
+                    newLey.imageCache = new Map();
                 } else {
                     Object.assign(newLey, leyData.properties);
                 }

@@ -908,9 +908,8 @@ export class TilemapRenderer extends Leyes {
     }
 
     getImageForTile(tileData) {
-        // Self-healing: If imageCache was corrupted during deserialization, fix it.
+        // Self-healing: SceneManager now ensures imageCache is a Map on load.
         if (!(this.imageCache instanceof Map)) {
-            console.warn('TilemapRenderer.imageCache was corrupted, re-initializing.');
             this.imageCache = new Map();
         }
 
