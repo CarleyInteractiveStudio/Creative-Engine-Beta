@@ -41,6 +41,7 @@ import * as EngineAPI from './engine/EngineAPI.js';
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. Editor State ---
+    let isEditorReady = false; // Nueva bandera para controlar el estado de carga
     let projectsDirHandle = null;
     let selectedMateria = null;
     let selectedAsset = null;
@@ -594,6 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runChecksAndPlay = async function() {
+        if (!isEditorReady) {
+            showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
+            return;
+        }
         if (!projectsDirHandle) {
             showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
             return;
@@ -1127,13 +1132,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    stopGame = function() {
+    stopGame = async function() {
         if (!isGameRunning) return;
         isGameRunning = false;
         console.log("Game Stopped");
+
+        // --- Scene Reload Logic ---
+        // This ensures that the scene is reset to its saved state and that
+        // all script instances are destroyed, forcing a re-transpile on next play.
+        if (SceneManager.currentSceneFileHandle) {
+            console.log(`Recargando escena '${SceneManager.currentSceneFileHandle.name}'...`);
+            const newSceneData = await SceneManager.loadScene(SceneManager.currentSceneFileHandle, projectsDirHandle);
+            if (newSceneData) {
+                SceneManager.setCurrentScene(newSceneData.scene);
+                // The file handle remains the same.
+                SceneManager.setSceneDirty(false); // Reloading resets the dirty state.
+
+                // --- UI Refresh ---
+                updateHierarchy();
+                selectMateria(null); // Deselect everything
+                updateInspector();
+            } else {
+                console.error("¡Fallo crítico! No se pudo recargar la escena. El estado del editor puede ser inestable.");
+                showNotificationDialog("Error de Recarga", "No se pudo recargar la escena. Se recomienda reiniciar el editor.");
+            }
+        } else {
+            console.warn("No hay un archivo de escena para recargar. El estado del juego no se ha reiniciado.");
+        }
+
         updateGameControlsUI();
-        // A full scene reload might be desired here to reset state.
-        // For now, we'll just stop the loop logic.
     };
 
 
@@ -2538,6 +2565,11 @@ public star() {
                 // Force a resize of the renderers now that the canvas is visible
                 if (renderer) renderer.resize();
                 if (gameRenderer) gameRenderer.resize();
+
+                // --- Habilitar el botón de Play y marcar el editor como listo ---
+                dom.btnPlay.disabled = false;
+                isEditorReady = true;
+
             }, 500);
 
         } catch (error) {
