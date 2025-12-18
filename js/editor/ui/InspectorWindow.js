@@ -59,9 +59,57 @@ export function initialize(dependencies) {
         }
     });
     dom.inspectorContent.addEventListener('click', handleInspectorClick);
+
+    // Add drag and drop listeners for Materia assignment
+    dom.inspectorContent.addEventListener('dragover', (e) => {
+        if (e.target.closest('.materia-dropper')) {
+            e.preventDefault();
+            e.target.closest('.materia-dropper').classList.add('drag-over');
+        }
+    });
+    dom.inspectorContent.addEventListener('dragleave', (e) => {
+        if (e.target.closest('.materia-dropper')) {
+            e.target.closest('.materia-dropper').classList.remove('drag-over');
+        }
+    });
+    dom.inspectorContent.addEventListener('drop', handleInspectorDrop);
 }
 
 // --- Event Handlers ---
+
+function handleInspectorDrop(e) {
+    const dropper = e.target.closest('.materia-dropper');
+    if (!dropper) return;
+
+    e.preventDefault();
+    dropper.classList.remove('drag-over');
+
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    let data;
+    try {
+        data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    } catch {
+        return; // Not valid JSON
+    }
+
+    if (data.type === 'Materia') {
+        const droppedMateriaId = parseInt(data.id, 10);
+
+        const scriptName = dropper.dataset.scriptName;
+        const propName = dropper.dataset.prop;
+
+        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+        if (script) {
+            script.publicVars[propName] = droppedMateriaId;
+        }
+
+        updateInspector(); // Re-render to show the new name
+    }
+}
+
+
 function handleInspectorInput(e) {
     if (!e.target.matches('.prop-input')) return;
 
@@ -444,8 +492,19 @@ function renderPublicVarInput(variable, currentValue, scriptName) {
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
         case 'Materia':
-            // TODO: Implementar un campo para arrastrar y soltar objetos
-            return `<div class="asset-dropper" ${commonAttrs} data-asset-type="Materia">${currentValue || 'None (Materia)'}</div>`;
+            {
+                let displayName = 'None (Materia)';
+                if (typeof currentValue === 'number') {
+                    // We need access to the SceneManager here. Let's assume it's available globally for now.
+                    // This is not ideal, but it's a quick solution for the UI.
+                    const SceneManager = window.SceneManager; // A bit of a hack, but necessary here.
+                    const materia = SceneManager.currentScene.findMateriaById(currentValue);
+                    if (materia) {
+                        displayName = materia.name;
+                    }
+                }
+                return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
+            }
         default:
             // Para 'any' o tipos desconocidos, usar un campo de texto
             return `<input type="text" ${commonAttrs} value="${currentValue}">`;

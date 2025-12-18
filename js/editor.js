@@ -1972,6 +1972,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        // Expose SceneManager globally for modules that need it (like InspectorWindow)
+        window.SceneManager = SceneManager;
+
         // --- 7a. Cache DOM elements, including the new loading panel ---
         const ids = [
             'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
@@ -2388,7 +2391,13 @@ public star() {
             initializeUIEditor(dom);
             initializeMusicPlayer(dom);
             const packageExporter = initializeImportExport({ dom, exportContext, getCurrentDirectoryHandle, updateAssetBrowser, projectsDirHandle });
-            CodeEditor.initialize(dom);
+            const showConsole = () => {
+                const consoleTab = dom.assetsPanel.querySelector('[data-tab="console-content"]');
+                if (consoleTab) {
+                    consoleTab.click();
+                }
+            };
+            CodeEditor.initialize(dom, showConsole);
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,

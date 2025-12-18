@@ -303,7 +303,12 @@ function setupEventListeners() {
     hierarchyContent.addEventListener('dragstart', (e) => {
         const item = e.target.closest('.hierarchy-item');
         if (item) {
-            e.dataTransfer.setData('text/plain', item.dataset.id);
+            const materiaId = item.dataset.id;
+            const dragData = {
+                type: 'Materia',
+                id: materiaId
+            };
+            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
             e.dataTransfer.effectAllowed = 'move';
             isDraggingFromHierarchy = true;
         }

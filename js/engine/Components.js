@@ -168,19 +168,25 @@ export class CreativeScript extends Leyes {
                 throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
 
-            // The transpiled code is now a factory function: (CreativeScriptBehavior, RuntimeAPIManager) => class {...}
-            // We need to evaluate it and then call it with the dependencies.
             const factory = (new Function(`return ${transpiledCode}`))();
-
-            // We need the actual CreativeScriptBehavior class and RuntimeAPIManager module.
             const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
+
             if (ScriptClass) {
                 this.instance = new ScriptClass(this.materia);
+                const metadata = CES_Transpiler.getScriptMetadata(this.scriptName);
 
                 // Asignar los valores del Inspector a la instancia
                 for (const [key, value] of Object.entries(this.publicVars)) {
                     if (this.instance.hasOwnProperty(key)) {
-                        this.instance[key] = value;
+                        let finalValue = value;
+                        const varInfo = metadata.publicVars.find(v => v.name === key);
+
+                        // Si es una variable de tipo Materia y el valor es un ID, resuélvelo
+                        if (varInfo && varInfo.type === 'Materia' && typeof value === 'number') {
+                            finalValue = this.materia.scene.findMateriaById(value);
+                        }
+
+                        this.instance[key] = finalValue;
                     }
                 }
 
