@@ -133,6 +133,7 @@ export function transpile(code, scriptName) {
 
     // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
     const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
+    let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
         const typeInput = varMatch[2];
@@ -157,6 +158,7 @@ export function transpile(code, scriptName) {
 
      // 1.c: Parse and validate library imports.
     const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
+    let goMatch;
     while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
         const libName = goMatch[1] || goMatch[2];
         if (!RuntimeAPIManager.getAPI(libName)) {
