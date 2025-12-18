@@ -771,9 +771,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
-            // Set the context for all APIs before this materia's scripts run
-            EngineAPI.setCurrentMateria(materia);
-
+            // The context is now handled automatically by the script instance itself.
+            // No need to set it globally anymore.
             materia.update(deltaTime);
         }
     };
