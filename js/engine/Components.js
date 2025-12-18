@@ -946,7 +946,24 @@ export class TilemapCollider2D extends Leyes {
         this.offset = { x: 0, y: 0 };
         this.sourceLayerIndex = 0; // Which layer to use for collision
         this.generatedColliders = []; // Array of {x, y, width, height} objects
-        this._cachedMesh = new Map(); // Cache layer index -> rects[]
+
+        // Always initialize _cachedMesh as a Map. This prevents corrupted data
+        // from scene deserialization from breaking the renderer.
+        this._cachedMesh = new Map();
+    }
+
+    /**
+     * Safely retrieves the cached mesh for a given layer, ensuring the cache is valid.
+     * @param {number} layerIndex The index of the layer to get the mesh for.
+     * @returns {Array} An array of rectangle data for the layer's mesh.
+     */
+    getMeshForLayer(layerIndex) {
+        // Self-healing: If _cachedMesh was corrupted during deserialization, fix it.
+        if (!(this._cachedMesh instanceof Map)) {
+            console.warn('TilemapCollider2D._cachedMesh was corrupted, re-initializing.');
+            this._cachedMesh = new Map();
+        }
+        return this._cachedMesh.get(layerIndex) || [];
     }
 
     /**
@@ -954,9 +971,8 @@ export class TilemapCollider2D extends Leyes {
      * The result is cached.
      */
     generateMesh() {
-        // Self-healing: If _cachedMesh was corrupted during deserialization, fix it.
+        // Self-healing is now handled by the constructor and getMeshForLayer
         if (!(this._cachedMesh instanceof Map)) {
-            console.warn('TilemapCollider2D._cachedMesh was corrupted, re-initializing.');
             this._cachedMesh = new Map();
         }
 

@@ -1343,8 +1343,8 @@ function drawTilemapColliders() {
 
     for (let i = 0; i < tilemap.layers.length; i++) {
         const layer = tilemap.layers[i];
-        // Use the cached mesh from the component
-        const rects = collider._cachedMesh.get(i) || [];
+        // Use the new safe accessor method to prevent crashes
+        const rects = collider.getMeshForLayer(i);
 
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
