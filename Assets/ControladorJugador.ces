@@ -1,0 +1,50 @@
+// ControladorJugador.ces
+// Mueve el objeto usando las teclas WASD.
+
+publica velocidad: numero = 5;
+
+privado velocidadX: numero = 0;
+privado velocidadY: numero = 0;
+
+// La función iniciar se llama una vez cuando el objeto entra en la escena.
+iniciar() {
+    consola.imprimir("Controlador de jugador iniciado. Usa WASD para moverte.");
+    // Asegurarnos de que el objeto tenga un Rigidbody2D es una buena práctica,
+    // pero el script no fallará si no está, simplemente no se moverá.
+}
+
+// La función actualizar se llama en cada fotograma.
+actualizar() {
+    // Reiniciamos la velocidad en cada fotograma
+    velocidadX = 0;
+    velocidadY = 0;
+
+    // Detectamos las teclas presionadas y ajustamos la velocidad
+    if (entrada.teclaPresionada("W")) {
+        velocidadY = -1;
+    }
+    if (entrada.teclaPresionada("S")) {
+        velocidadY = 1;
+    }
+    if (entrada.teclaPresionada("A")) {
+        velocidadX = -1;
+    }
+    if (entrada.teclaPresionada("D")) {
+        velocidadX = 1;
+    }
+
+    // Aplicamos la velocidad al Rigidbody2D
+    // Usamos el atajo en español 'this.fisica' que implementamos
+    if (this.fisica) {
+        // Normalizamos el vector para que el movimiento diagonal no sea más rápido
+        const magnitud = Math.sqrt(velocidadX * velocidadX + velocidadY * velocidadY);
+        if (magnitud > 0) {
+            const factor = this.velocidad / magnitud;
+            this.fisica.velocity.x = velocidadX * factor;
+            this.fisica.velocity.y = velocidadY * factor;
+        } else {
+            this.fisica.velocity.x = 0;
+            this.fisica.velocity.y = 0;
+        }
+    }
+}
