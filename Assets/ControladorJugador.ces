@@ -8,7 +8,7 @@ privado numero velocidadY = 0;
 
 // La función iniciar se llama una vez cuando el objeto entra en la escena.
 publico iniciar() {
-    consola.imprimir("Controlador de jugador iniciado. Usa WASD para moverte.");
+    imprimir("Controlador de jugador iniciado. Usa WASD para moverte.");
     // Asegurarnos de que el objeto tenga un Rigidbody2D es una buena práctica,
     // pero el script no fallará si no está, simplemente no se moverá.
 }

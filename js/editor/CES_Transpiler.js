@@ -85,77 +85,30 @@ export function transpile(code, scriptName) {
     let customMethods = '';
     const importedLibs = new Set();
 
-    // --- Phase 1: Parse top-level declarations ---
+    // --- Phase 1: Parse and Rip Declarations ---
+    // Order of operations is important here to avoid regex conflicts.
+    // 1. Rip out methods first.
+    // 2. Then rip out variables.
+    // 3. Finally, handle imports.
 
     let unprocessedCode = code;
 
-    // 1.a: Parse and validate library imports. Handles both `go "libName"` and `go ce.libName`.
-    const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
-    let goMatch;
-    while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
-        // Match group 1 is for quoted strings, group 2 is for unquoted.
-        const libName = goMatch[1] || goMatch[2];
-        if (!RuntimeAPIManager.getAPI(libName)) {
-            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
-        } else {
-            importedLibs.add(libName);
-        }
-    }
-    unprocessedCode = unprocessedCode.replace(goRegex, '');
-
-    // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
-    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
-    let varMatch;
-    while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private'); // Normalize scope
-        const typeInput = varMatch[2]; // e.g., "numero", "dnumber", "text"
-        const name = varMatch[3];  // variable name
-        const value = varMatch[4]; // optional initial value
-
-        const canonicalType = typeMap[typeInput];
-        if (!canonicalType) {
-            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
-            continue;
-        }
-
-        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
-
-        if (scope === 'public') {
-            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
-        } else { // private
-            privateVars.push({ name: name, value: value });
-        }
-    }
-    unprocessedCode = unprocessedCode.replace(varRegex, '');
-
-    // Almacenar los metadatos de las variables públicas
-    const metadata = {
-        publicVars: publicVars.map(pv => ({
-            name: pv.name,
-            type: pv.type,
-            defaultValue: pv.defaultValue
-        }))
-    };
-    scriptMetadataMap.set(scriptName, metadata);
-
-
-    // 1.c: Parse and extract methods using a robust brace-counting loop (bilingual)
-    const methodHeaderRegex = /(?:public|publico)\s+(\w+)\s*\(([^)]*)\)\s*{/g;
-    let remainingCode = unprocessedCode;
-    let methodsCode = '';
-
+    // 1.a: Parse and extract methods (bilingual)
+    const methodHeaderRegex = /^\s*(public|publico)\s+(\w+)\s*\(([^)]*)\)\s*{/gm;
+    const methodMatches = []; // Store matches to process later
+    let tempCode = unprocessedCode;
     let methodMatch;
-    while ((methodMatch = methodHeaderRegex.exec(unprocessedCode)) !== null) {
-        let name = methodMatch[1];
-        const args = methodMatch[2];
+
+    while ((methodMatch = methodHeaderRegex.exec(tempCode)) !== null) {
+        let name = methodMatch[2];
+        const args = methodMatch[3];
         const bodyStartIndex = methodMatch.index + methodMatch[0].length;
 
         let braceCount = 1;
         let bodyEndIndex = -1;
-        for (let i = bodyStartIndex; i < unprocessedCode.length; i++) {
-            if (unprocessedCode[i] === '{') {
-                braceCount++;
-            } else if (unprocessedCode[i] === '}') {
+        for (let i = bodyStartIndex; i < tempCode.length; i++) {
+            if (tempCode[i] === '{') braceCount++;
+            else if (tempCode[i] === '}') {
                 braceCount--;
                 if (braceCount === 0) {
                     bodyEndIndex = i;
@@ -169,14 +122,67 @@ export function transpile(code, scriptName) {
             continue;
         }
 
-        let body = unprocessedCode.substring(bodyStartIndex, bodyEndIndex);
+        const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
+        const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
+        methodMatches.push({ name, args, body });
 
-        // Mark this section of code as processed
-        const fullMethodText = unprocessedCode.substring(methodMatch.index, bodyEndIndex + 1);
-        methodsCode += fullMethodText;
+        // Blank out the matched method to prevent it from being processed again
+        unprocessedCode = unprocessedCode.replace(fullMethodText, '');
+    }
 
 
-        // --- Phase 2: Transpile method bodies ---
+    // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
+    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
+    while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
+        const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
+        const typeInput = varMatch[2];
+        const name = varMatch[3];
+        const value = varMatch[4];
+
+        const canonicalType = typeMap[typeInput];
+        if (!canonicalType) {
+            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
+            continue;
+        }
+
+        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+
+        if (scope === 'public') {
+            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+        } else {
+            privateVars.push({ name: name, value: value });
+        }
+    }
+    unprocessedCode = unprocessedCode.replace(varRegex, '');
+
+     // 1.c: Parse and validate library imports.
+    const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
+    while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
+        const libName = goMatch[1] || goMatch[2];
+        if (!RuntimeAPIManager.getAPI(libName)) {
+            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
+        } else {
+            importedLibs.add(libName);
+        }
+    }
+    unprocessedCode = unprocessedCode.replace(goRegex, '');
+
+
+    // Almacenar los metadatos de las variables públicas
+    const metadata = {
+        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue }))
+    };
+    scriptMetadataMap.set(scriptName, metadata);
+
+
+    // --- Phase 2: Transpile method bodies ---
+    for (const match of methodMatches) {
+        let { name, args, body } = match;
+
+        // 2.a: Replace console shortcuts
+        body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
+
+        // 2.b: Replace library function calls
         for (const libName of importedLibs) {
             const api = RuntimeAPIManager.getAPI(libName);
             if (!api) continue;
@@ -187,7 +193,7 @@ export function transpile(code, scriptName) {
             }
         }
 
-        // Map Spanish lifecycle methods to their English counterparts
+        // 2.c: Map Spanish lifecycle methods to their English counterparts
         if (name === 'iniciar') name = 'star';
         if (name === 'actualizar') name = 'update';
 
@@ -199,15 +205,6 @@ export function transpile(code, scriptName) {
             customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
         }
     }
-    // Remove all processed method code at once
-    unprocessedCode = unprocessedCode.replace(methodHeaderRegex, (match, name, args, offset) => {
-        // This is a bit tricky, we need to remove the entire method body.
-        // The logic above already extracted it, here we just need to blank it out.
-        // We'll rebuild the code without the methods.
-        return '';
-    });
-    // A simpler way is just to remove what we found
-    unprocessedCode = unprocessedCode.replace(methodsCode, '');
 
     // 1.d: Final check for leftover code
     unprocessedCode = unprocessedCode.replace(/\/\/.*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
