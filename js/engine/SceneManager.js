@@ -147,6 +147,9 @@ export function serializeScene(scene, dom) {
                             ...layer,
                             tileData: Array.from(layer.tileData.entries())
                         }));
+                    } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
+                        // Correctly serialize the _cachedMesh Map
+                        leyData.properties[key] = Array.from(ley[key].entries());
                     } else {
                         leyData.properties[key] = ley[key];
                     }
@@ -187,15 +190,22 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                     Object.assign(newLey, leyData.properties);
                     if (newLey.layers && Array.isArray(newLey.layers)) {
                         newLey.layers.forEach(layer => {
-                            // Check if tileData is in the serialized array format
                             if (layer.tileData && Array.isArray(layer.tileData)) {
                                 layer.tileData = new Map(layer.tileData);
                             } else {
-                                // If it's old data or corrupted, ensure it's a valid Map
                                 layer.tileData = new Map();
                                 console.warn(`TileData for a layer in Materia '${materiaData.name}' was invalid or in an old format. Initialized as empty.`);
                             }
                         });
+                    }
+                } else if (leyData.type === 'TilemapCollider2D') {
+                    Object.assign(newLey, leyData.properties);
+                    // Correctly deserialize the _cachedMesh back into a Map
+                    if (newLey._cachedMesh && Array.isArray(newLey._cachedMesh)) {
+                        newLey._cachedMesh = new Map(newLey._cachedMesh);
+                    } else {
+                        // If it's old data or corrupted, ensure it's a valid Map
+                        newLey._cachedMesh = new Map();
                     }
                 } else {
                     Object.assign(newLey, leyData.properties);

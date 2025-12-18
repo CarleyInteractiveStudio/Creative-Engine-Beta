@@ -958,9 +958,8 @@ export class TilemapCollider2D extends Leyes {
      * @returns {Array} An array of rectangle data for the layer's mesh.
      */
     getMeshForLayer(layerIndex) {
-        // Self-healing: If _cachedMesh was corrupted during deserialization, fix it.
+        // The SceneManager now handles correct serialization, so self-healing is a fallback.
         if (!(this._cachedMesh instanceof Map)) {
-            console.warn('TilemapCollider2D._cachedMesh was corrupted, re-initializing.');
             this._cachedMesh = new Map();
         }
         return this._cachedMesh.get(layerIndex) || [];
