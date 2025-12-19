@@ -88,7 +88,7 @@ export class Transform extends Leyes {
         }
         let parentMateria = this.materia.parent;
         if (typeof parentMateria === 'number') {
-            parentMateria = SceneManager.currentScene ? .findMateriaById(parentMateria);
+            parentMateria = SceneManager.currentScene && SceneManager.currentScene.findMateriaById(parentMateria);
             if (!parentMateria) return null;
             this.materia.parent = parentMateria;
         }
