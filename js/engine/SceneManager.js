@@ -96,6 +96,29 @@ export class Scene {
             }
         }
     }
+
+    clone() {
+        const newScene = new Scene();
+        newScene.ambiente = JSON.parse(JSON.stringify(this.ambiente));
+
+        // Clone all root materias. The Materia.clone method is recursive.
+        for (const rootMateria of this.getRootMaterias()) {
+            newScene.addMateria(rootMateria.clone(true)); // Preserve IDs
+        }
+
+        // After cloning, we need to re-establish the object references for parents.
+        const allNewMaterias = newScene.getAllMaterias();
+        const materiaMap = new Map(allNewMaterias.map(m => [m.id, m]));
+
+        for (const materia of allNewMaterias) {
+            if (materia.parent !== null && typeof materia.parent === 'number') {
+                materia.parent = materiaMap.get(materia.parent) || null;
+            }
+        }
+
+
+        return newScene;
+    }
 }
 
 export let currentScene = new Scene();

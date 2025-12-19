@@ -643,21 +643,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Position</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x}" title="Position X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y}" title="Position Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Rotation</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="rotation" value="${ley.rotation || 0}" title="Rotation Z">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Scale</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x}" title="Scale X">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y}" title="Scale Y">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
                         </div>
                     </div>
                 </div>

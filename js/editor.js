@@ -36,6 +36,7 @@ import { showNotification as showNotificationDialog, showConfirmation as showCon
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
+import * as MateriaFactory from './editor/MateriaFactory.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
+    let sceneSnapshotBeforePlay = null; // Para guardar el estado de la escena antes de "Play"
 
     // Project Settings State
     let currentProjectConfig = {};
@@ -386,6 +388,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function handleKeyboardShortcuts(e) {
+        // Si el juego está en marcha y la vista activa es la del juego, no procesar los atajos del editor.
+        if (isGameRunning && activeView === 'game-content') {
+            return;
+        }
+
         if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
             return;
         }
@@ -841,14 +848,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
 
-                        const dWidth = sWidth * transform.scale.x;
-                        const dHeight = sHeight * transform.scale.y;
+                        const worldScale = transform.scale;
+                        const worldPosition = transform.position;
+                        const worldRotation = transform.rotation;
+
+                        const dWidth = sWidth * worldScale.x;
+                        const dHeight = sHeight * worldScale.y;
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
                         ctx.save();
-                        ctx.translate(transform.x, transform.y);
-                        ctx.rotate(transform.rotation * Math.PI / 180);
+                        ctx.translate(worldPosition.x, worldPosition.y);
+                        ctx.rotate(worldRotation * Math.PI / 180);
                         ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
                         ctx.restore();
                     } else {
@@ -873,11 +884,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const textureRender = materia.getComponent(Components.TextureRender);
                 const transform = materia.getComponent(Components.Transform);
+                const worldPosition = transform.position;
+                const worldRotation = transform.rotation;
+                const worldScale = transform.scale;
 
                 ctx.save();
-                ctx.translate(transform.x, transform.y);
-                ctx.rotate(transform.rotation * Math.PI / 180);
-                ctx.scale(transform.scale.x, transform.scale.y);
+                ctx.translate(worldPosition.x, worldPosition.y);
+                ctx.rotate(worldRotation * Math.PI / 180);
+                ctx.scale(worldScale.x, worldScale.y);
 
                 if (textureRender.texture && textureRender.texture.complete) {
                     const pattern = ctx.createPattern(textureRender.texture, 'repeat');
@@ -1087,6 +1101,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startGame = async function() {
         if (isGameRunning) return;
+
+        // 1. Tomar una "snapshot" de la escena actual antes de modificarla
+        console.log("Creando snapshot de la escena antes de jugar...");
+        sceneSnapshotBeforePlay = SceneManager.currentScene.clone();
+
+
         isGameRunning = true;
         isGamePaused = false;
         lastFrameTime = performance.now();
@@ -1137,28 +1157,22 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = false;
         console.log("Game Stopped");
 
-        // --- Scene Reload Logic ---
-        // This ensures that the scene is reset to its saved state and that
-        // all script instances are destroyed, forcing a re-transpile on next play.
-        if (SceneManager.currentSceneFileHandle) {
-            console.log(`Recargando escena '${SceneManager.currentSceneFileHandle.name}'...`);
-            const newSceneData = await SceneManager.loadScene(SceneManager.currentSceneFileHandle, projectsDirHandle);
-            if (newSceneData) {
-                SceneManager.setCurrentScene(newSceneData.scene);
-                // The file handle remains the same.
-                SceneManager.setSceneDirty(false); // Reloading resets the dirty state.
+        // --- Scene Restoration Logic ---
+        if (sceneSnapshotBeforePlay) {
+            console.log("Restaurando la escena desde la snapshot...");
+            SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
+            physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
+            sceneSnapshotBeforePlay = null; // Clear the snapshot
 
-                // --- UI Refresh ---
-                updateHierarchy();
-                selectMateria(null); // Deselect everything
-                updateInspector();
-            } else {
-                console.error("¡Fallo crítico! No se pudo recargar la escena. El estado del editor puede ser inestable.");
-                showNotificationDialog("Error de Recarga", "No se pudo recargar la escena. Se recomienda reiniciar el editor.");
-            }
+            // --- UI Refresh ---
+            updateHierarchy();
+            selectMateria(null); // Deselect everything
+            updateInspector();
+            console.log("Escena restaurada.");
         } else {
-            console.warn("No hay un archivo de escena para recargar. El estado del juego no se ha reiniciado.");
+            console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
         }
+
 
         updateGameControlsUI();
     };
@@ -2000,6 +2014,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeEditor() {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
+        window.MateriaFactory = MateriaFactory;
+
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
         const ids = [
@@ -2322,7 +2338,7 @@ public star() {
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
-            InputManager.initialize(dom.sceneCanvas);
+            InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;

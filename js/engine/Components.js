@@ -73,29 +73,130 @@ export class CreativeScriptBehavior {
 export class Transform extends Leyes {
     constructor(materia) {
         super(materia);
-        this.x = 0;
-        this.y = 0;
-        this.rotation = 0;
-        this.scale = { x: 1, y: 1 };
-
-        // Define a getter/setter for 'position' to easily manipulate x and y
-        Object.defineProperty(this, 'position', {
-            get: () => ({ x: this.x, y: this.y }),
-            set: (value) => {
-                if (typeof value.x === 'number') this.x = value.x;
-                if (typeof value.y === 'number') this.y = value.y;
-            },
-            enumerable: true,
-            configurable: true
-        });
+        // Propiedades locales relativas al padre
+        this.localPosition = { x: 0, y: 0 };
+        this.localRotation = 0;
+        this.localScale = { x: 1, y: 1 };
     }
+
+    // --- Posición Global (World Position) ---
+    get position() {
+        if (!this.materia || !this.materia.parent) {
+            return { ...this.localPosition };
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) {
+            return { ...this.localPosition };
+        }
+
+        const parentPos = parentTransform.position;
+        const parentScale = parentTransform.scale;
+        const parentRotRad = parentTransform.rotation * (Math.PI / 180);
+        const cos = Math.cos(parentRotRad);
+        const sin = Math.sin(parentRotRad);
+
+        // Aplicar escala y rotación del padre a la posición local
+        const rotatedX = (this.localPosition.x * parentScale.x * cos) - (this.localPosition.y * parentScale.y * sin);
+        const rotatedY = (this.localPosition.x * parentScale.x * sin) + (this.localPosition.y * parentScale.y * cos);
+
+        return {
+            x: parentPos.x + rotatedX,
+            y: parentPos.y + rotatedY
+        };
+    }
+
+    set position(worldPosition) {
+        if (!this.materia || !this.materia.parent) {
+            this.localPosition = { ...worldPosition };
+            return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) {
+            this.localPosition = { ...worldPosition };
+            return;
+        }
+
+        const parentPos = parentTransform.position;
+        const parentScale = parentTransform.scale;
+        const parentRotRad = -parentTransform.rotation * (Math.PI / 180); // Rotación inversa
+        const cos = Math.cos(parentRotRad);
+        const sin = Math.sin(parentRotRad);
+
+        const relativeX = worldPosition.x - parentPos.x;
+        const relativeY = worldPosition.y - parentPos.y;
+
+        // Aplicar rotación y escala inversas
+        const unrotatedX = (relativeX * cos) - (relativeY * sin);
+        const unrotatedY = (relativeX * sin) + (relativeY * cos);
+
+        this.localPosition = {
+            x: parentScale.x !== 0 ? unrotatedX / parentScale.x : 0,
+            y: parentScale.y !== 0 ? unrotatedY / parentScale.y : 0
+        };
+    }
+
+    // --- Rotación Global (World Rotation) ---
+    get rotation() {
+        if (!this.materia || !this.materia.parent) {
+            return this.localRotation;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        return parentTransform ? parentTransform.rotation + this.localRotation : this.localRotation;
+    }
+
+    set rotation(worldRotation) {
+        if (!this.materia || !this.materia.parent) {
+            this.localRotation = worldRotation;
+            return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        this.localRotation = worldRotation - (parentTransform ? parentTransform.rotation : 0);
+    }
+
+    // --- Escala Global (World Scale) ---
+    get scale() {
+        if (!this.materia || !this.materia.parent) {
+            return { ...this.localScale };
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) {
+            return { ...this.localScale };
+        }
+        const parentScale = parentTransform.scale;
+        return {
+            x: parentScale.x * this.localScale.x,
+            y: parentScale.y * this.localScale.y
+        };
+    }
+
+    set scale(worldScale) {
+        if (!this.materia || !this.materia.parent) {
+            this.localScale = { ...worldScale };
+            return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) {
+             this.localScale = { ...worldScale };
+             return;
+        }
+        const parentScale = parentTransform.scale;
+        this.localScale = {
+            x: parentScale.x !== 0 ? worldScale.x / parentScale.x : 0,
+            y: parentScale.y !== 0 ? worldScale.y / parentScale.y : 0
+        };
+    }
+
+    // --- Acceso directo a x/y para compatibilidad ---
+    get x() { return this.position.x; }
+    set x(value) { this.position = { x: value, y: this.position.y }; }
+    get y() { return this.position.y; }
+    set y(value) { this.position = { x: this.position.x, y: value }; }
 
     clone() {
         const newTransform = new Transform(null);
-        newTransform.x = this.x;
-        newTransform.y = this.y;
-        newTransform.rotation = this.rotation;
-        newTransform.scale = { ...this.scale };
+        newTransform.localPosition = { ...this.localPosition };
+        newTransform.localRotation = this.localRotation;
+        newTransform.localScale = { ...this.localScale };
         return newTransform;
     }
 }

@@ -23,36 +23,43 @@ class InputManager {
     static LONG_PRESS_TOLERANCE = 10; // pixels
 
     /**
-     * Initializes the InputManager. Attaches listeners to the window.
-     * @param {HTMLCanvasElement} [canvas=null] Optional canvas element to calculate relative mouse positions.
+     * Initializes the InputManager. Attaches listeners to the window and canvas elements.
+     * @param {HTMLCanvasElement} [sceneCanvas=null] The canvas for the editor's scene view.
+     * @param {HTMLCanvasElement} [gameCanvas=null] The canvas for the game view.
      */
-    static initialize(canvas = null) {
+    static initialize(sceneCanvas = null, gameCanvas = null) {
         if (this.initialized) return;
 
-        // Keyboard
+        // Keyboard listeners are global
         window.addEventListener('keydown', this._onKeyDown.bind(this));
         window.addEventListener('keyup', this._onKeyUp.bind(this));
-
-        // Mouse
-        window.addEventListener('mousemove', this._onMouseMove.bind(this));
-        window.addEventListener('mousedown', this._onMouseDown.bind(this));
-        window.addEventListener('mouseup', this._onMouseUp.bind(this));
         window.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
 
-        // Touch
-        window.addEventListener('touchstart', this._onTouchStart.bind(this), { passive: false });
-        window.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
-        window.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
-        window.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
+        const setupCanvasListeners = (canvas) => {
+            if (!canvas) return;
+            // Mouse
+            canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
+            canvas.addEventListener('mousedown', this._onMouseDown.bind(this));
+            canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
 
+            // Touch
+            canvas.addEventListener('touchstart', this._onTouchStart.bind(this), { passive: false });
+            canvas.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
+            canvas.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
+            canvas.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
+        };
 
-        if (canvas) {
-            this._canvas = canvas; // Store canvas reference
-            this._canvasRect = canvas.getBoundingClientRect();
+        if (sceneCanvas) {
+            this._canvas = sceneCanvas; // Primary canvas for editor focus
+            setupCanvasListeners(sceneCanvas);
+        }
+        if (gameCanvas) {
+            setupCanvasListeners(gameCanvas);
         }
 
+
         this.initialized = true;
-        console.log("InputManager Initialized for Mouse and Touch.");
+        console.log("InputManager Initialized for Mouse and Touch on relevant canvases.");
     }
 
     /**
@@ -125,7 +132,9 @@ class InputManager {
     // --- Pointer (Mouse + Touch) Methods ---
 
     static _onMouseMove(event) {
-        this._updatePointerPosition(event.clientX, event.clientY);
+        const canvas = event.currentTarget;
+        const rect = canvas.getBoundingClientRect();
+        this._updatePointerPosition(event.clientX, event.clientY, rect);
     }
 
     static _onMouseDown(event) {
@@ -140,7 +149,9 @@ class InputManager {
         event.preventDefault();
         if (event.touches.length > 0) {
             const touch = event.touches[0];
-            this._updatePointerPosition(touch.clientX, touch.clientY);
+            const canvas = event.currentTarget;
+            const rect = canvas.getBoundingClientRect();
+            this._updatePointerPosition(touch.clientX, touch.clientY, rect);
             this._onPointerDown(0); // Treat all touches as left-click
 
             // Start long-press timer
@@ -156,7 +167,9 @@ class InputManager {
         event.preventDefault();
         if (event.touches.length > 0) {
             const touch = event.touches[0];
-            this._updatePointerPosition(touch.clientX, touch.clientY);
+            const canvas = event.currentTarget;
+            const rect = canvas.getBoundingClientRect();
+            this._updatePointerPosition(touch.clientX, touch.clientY, rect);
 
             // Cancel long press if finger moves too far
             const dx = Math.abs(touch.clientX - this._longPressStartPosition.x);
@@ -197,13 +210,13 @@ class InputManager {
     }
 
     // Unified handlers
-    static _updatePointerPosition(clientX, clientY) {
+    static _updatePointerPosition(clientX, clientY, canvasRect) {
         this._mousePosition.x = clientX;
         this._mousePosition.y = clientY;
 
-        if (this._canvasRect) {
-            this._mousePositionInCanvas.x = clientX - this._canvasRect.left;
-            this._mousePositionInCanvas.y = clientY - this._canvasRect.top;
+        if (canvasRect) {
+            this._mousePositionInCanvas.x = clientX - canvasRect.left;
+            this._mousePositionInCanvas.y = clientY - canvasRect.top;
         }
     }
 

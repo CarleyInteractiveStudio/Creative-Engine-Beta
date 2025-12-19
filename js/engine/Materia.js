@@ -88,16 +88,24 @@ export class Materia {
         }
     }
 
-    clone() {
-        // Create a new Materia with a unique ID. We append '(Clone)' to the name for clarity.
-        const newMateria = new Materia(`${this.name}`);
+    clone(preserveId = false) {
+        // When cloning for scene snapshots, we need to preserve IDs.
+        // When duplicating an object in the editor, we need a new ID.
+        const newMateria = new Materia(this.name);
+        if (preserveId) {
+            newMateria.id = this.id;
+        }
+
         newMateria.isActive = this.isActive;
-        newMateria.isCollapsed = this.isCollapsed; // Copy collapsed state
+        newMateria.isCollapsed = this.isCollapsed;
         newMateria.layer = this.layer;
         newMateria.tag = this.tag;
-        newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy flags
+        newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy
 
-        // Clone each component
+        // The parent ID is copied directly. The scene clone method will resolve this to an object reference.
+        newMateria.parent = this.parent ? (typeof this.parent === 'number' ? this.parent : this.parent.id) : null;
+
+        // Clone components
         for (const component of this.leyes) {
             if (typeof component.clone === 'function') {
                 const newComponent = component.clone();
@@ -105,9 +113,11 @@ export class Materia {
             }
         }
 
-        // Note: Children are not cloned here. The duplication logic should handle
-        // whether to do a deep (recursive) clone or a shallow one. For now, we
-        // only clone the object itself.
+        // Clone children recursively, preserving their IDs
+        for (const child of this.children) {
+            const newChild = child.clone(preserveId);
+            newMateria.addChild(newChild);
+        }
 
         return newMateria;
     }
