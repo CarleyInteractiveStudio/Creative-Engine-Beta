@@ -1,0 +1,6 @@
+publico numero score = 10;
+
+publico iniciar() {
+    // Aumenta el puntaje en 5 al iniciar el juego
+    this.score = this.score + 5;
+}
