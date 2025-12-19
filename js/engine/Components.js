@@ -1,15 +1,11 @@
 // Components.js
 // This file contains all the component classes.
 
-// Components.js
-// This file contains all the component classes.
-
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
-import * as SceneManager from './SceneManager.js';
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
@@ -77,26 +73,18 @@ export class CreativeScriptBehavior {
 export class Transform extends Leyes {
     constructor(materia) {
         super(materia);
+        // Propiedades locales relativas al padre
         this.localPosition = { x: 0, y: 0 };
         this.localRotation = 0;
         this.localScale = { x: 1, y: 1 };
     }
 
-    _getParentTransform() {
-        if (!this.materia || !this.materia.parent) {
-            return null;
-        }
-        let parentMateria = this.materia.parent;
-        if (typeof parentMateria === 'number') {
-            parentMateria = SceneManager.currentScene && SceneManager.currentScene.findMateriaById(parentMateria);
-            if (!parentMateria) return null;
-            this.materia.parent = parentMateria;
-        }
-        return parentMateria.getComponent(Transform);
-    }
-
+    // --- Posición Global (World Position) ---
     get position() {
-        const parentTransform = this._getParentTransform();
+        if (!this.materia || !this.materia.parent) {
+            return { ...this.localPosition };
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
             return { ...this.localPosition };
         }
@@ -107,6 +95,7 @@ export class Transform extends Leyes {
         const cos = Math.cos(parentRotRad);
         const sin = Math.sin(parentRotRad);
 
+        // Aplicar escala y rotación del padre a la posición local
         const rotatedX = (this.localPosition.x * parentScale.x * cos) - (this.localPosition.y * parentScale.y * sin);
         const rotatedY = (this.localPosition.x * parentScale.x * sin) + (this.localPosition.y * parentScale.y * cos);
 
@@ -117,7 +106,11 @@ export class Transform extends Leyes {
     }
 
     set position(worldPosition) {
-        const parentTransform = this._getParentTransform();
+        if (!this.materia || !this.materia.parent) {
+            this.localPosition = { ...worldPosition };
+            return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
             this.localPosition = { ...worldPosition };
             return;
@@ -125,13 +118,14 @@ export class Transform extends Leyes {
 
         const parentPos = parentTransform.position;
         const parentScale = parentTransform.scale;
-        const parentRotRad = -parentTransform.rotation * (Math.PI / 180);
+        const parentRotRad = -parentTransform.rotation * (Math.PI / 180); // Rotación inversa
         const cos = Math.cos(parentRotRad);
         const sin = Math.sin(parentRotRad);
 
         const relativeX = worldPosition.x - parentPos.x;
         const relativeY = worldPosition.y - parentPos.y;
 
+        // Aplicar rotación y escala inversas
         const unrotatedX = (relativeX * cos) - (relativeY * sin);
         const unrotatedY = (relativeX * sin) + (relativeY * cos);
 
@@ -141,18 +135,30 @@ export class Transform extends Leyes {
         };
     }
 
+    // --- Rotación Global (World Rotation) ---
     get rotation() {
-        const parentTransform = this._getParentTransform();
+        if (!this.materia || !this.materia.parent) {
+            return this.localRotation;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
         return parentTransform ? parentTransform.rotation + this.localRotation : this.localRotation;
     }
 
     set rotation(worldRotation) {
-        const parentTransform = this._getParentTransform();
+        if (!this.materia || !this.materia.parent) {
+            this.localRotation = worldRotation;
+            return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
         this.localRotation = worldRotation - (parentTransform ? parentTransform.rotation : 0);
     }
 
+    // --- Escala Global (World Scale) ---
     get scale() {
-        const parentTransform = this._getParentTransform();
+        if (!this.materia || !this.materia.parent) {
+            return { ...this.localScale };
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
         if (!parentTransform) {
             return { ...this.localScale };
         }
@@ -164,10 +170,14 @@ export class Transform extends Leyes {
     }
 
     set scale(worldScale) {
-        const parentTransform = this._getParentTransform();
-        if (!parentTransform) {
+        if (!this.materia || !this.materia.parent) {
             this.localScale = { ...worldScale };
             return;
+        }
+        const parentTransform = this.materia.parent.getComponent(Transform);
+        if (!parentTransform) {
+             this.localScale = { ...worldScale };
+             return;
         }
         const parentScale = parentTransform.scale;
         this.localScale = {
@@ -293,9 +303,7 @@ export class CreativeScript extends Leyes {
     }
 
     clone() {
-        const newScript = new CreativeScript(null, this.scriptName);
-        newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars)); // Deep copy
-        return newScript;
+        return new CreativeScript(null, this.scriptName);
     }
 }
 

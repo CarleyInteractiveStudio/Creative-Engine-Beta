@@ -133,17 +133,13 @@ export function transpile(code, scriptName) {
 
     // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
     const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
-    let varMatch;
-    while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
-        const typeInput = varMatch[2];
-        const name = varMatch[3];
-        const value = varMatch[4];
+    unprocessedCode = unprocessedCode.replace(varRegex, (match, scopeInput, typeInput, name, value) => {
+        const scope = scopeInput.replace('publico', 'public').replace('privado', 'private');
 
         const canonicalType = typeMap[typeInput];
         if (!canonicalType) {
             errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
-            continue;
+            return match; // Don't remove the line if there's an error
         }
 
         const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
@@ -153,8 +149,8 @@ export function transpile(code, scriptName) {
         } else {
             privateVars.push({ name: name, value: value });
         }
-    }
-    unprocessedCode = unprocessedCode.replace(varRegex, '');
+        return ''; // Remove the matched line by replacing it with an empty string
+    });
 
      // 1.c: Parse and validate library imports.
     const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
@@ -169,6 +165,8 @@ export function transpile(code, scriptName) {
     }
     unprocessedCode = unprocessedCode.replace(goRegex, '');
 
+    // Replace any top-level console shortcuts that might exist outside of methods
+    unprocessedCode = unprocessedCode.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
 
     // Almacenar los metadatos de las variables públicas
     const metadata = {

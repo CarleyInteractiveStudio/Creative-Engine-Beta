@@ -59,7 +59,7 @@ export class Materia {
     }
 
     addChild(child) {
-        if (child.parent && typeof child.parent.removeChild === 'function') {
+        if (child.parent) {
             child.parent.removeChild(child);
         }
         child.parent = this;

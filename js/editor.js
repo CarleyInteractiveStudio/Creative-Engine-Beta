@@ -1157,23 +1157,44 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = false;
         console.log("Game Stopped");
 
-        // --- Scene Restoration Logic ---
+        // --- Selective Transform Restoration Logic ---
         if (sceneSnapshotBeforePlay) {
-            console.log("Restaurando la escena desde la snapshot...");
-            SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
-            SceneManager.currentScene.resolveParentReferences(); // Re-link parent objects from IDs
-            physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
+            console.log("Restaurando solo las transformaciones desde la snapshot...");
+
+            const currentMaterias = SceneManager.currentScene.getAllMaterias();
+            const snapshotMaterias = sceneSnapshotBeforePlay.getAllMaterias();
+
+            // Create a map for quick lookup
+            const snapshotMateriaMap = new Map(snapshotMaterias.map(m => [m.id, m]));
+
+            for (const currentMateria of currentMaterias) {
+                const snapshotMateria = snapshotMateriaMap.get(currentMateria.id);
+                if (snapshotMateria) {
+                    const originalTransform = snapshotMateria.getComponent(Components.Transform);
+                    const currentTransform = currentMateria.getComponent(Components.Transform);
+
+                    if (originalTransform && currentTransform) {
+                        // Restore position, rotation, and scale by creating new objects
+                        // to avoid reference issues.
+                        currentTransform.localPosition = { ...originalTransform.localPosition };
+                        currentTransform.localRotation = originalTransform.localRotation;
+                        currentTransform.localScale = { ...originalTransform.localScale };
+                    }
+                }
+            }
+
+            // Re-initialize the physics system to reflect the restored positions
+            physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             sceneSnapshotBeforePlay = null; // Clear the snapshot
 
             // --- UI Refresh ---
             updateHierarchy();
-            selectMateria(null); // Deselect everything
+            // Don't deselect, so the user can inspect the final state of the script
             updateInspector();
-            console.log("Escena restaurada y referencias de padres resueltas.");
+            console.log("Transformaciones restauradas.");
         } else {
             console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
         }
-
 
         updateGameControlsUI();
     };
@@ -2454,7 +2475,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getIsGameRunning });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
