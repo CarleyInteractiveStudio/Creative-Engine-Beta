@@ -16,6 +16,7 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let getIsGameRunning = () => false; // Default to false
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -382,6 +383,7 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    getIsGameRunning = dependencies.getIsGameRunning;
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -452,6 +454,7 @@ export function initialize(dependencies) {
     });
 
     dom.sceneCanvas.addEventListener('wheel', (event) => {
+        if (getIsGameRunning()) return; // Ignore input if game is running
         event.preventDefault(); // Stop the browser from scrolling the page
 
         if (!renderer || !renderer.camera) return;
@@ -470,6 +473,7 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        if (getIsGameRunning()) return; // Ignore input if game is running
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
             e.stopPropagation();

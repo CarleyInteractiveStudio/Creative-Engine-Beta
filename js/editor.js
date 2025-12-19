@@ -1161,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sceneSnapshotBeforePlay) {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
+            SceneManager.currentScene.resolveParentReferences(); // Re-link parent objects from IDs
             physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
             sceneSnapshotBeforePlay = null; // Clear the snapshot
 
@@ -1168,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateHierarchy();
             selectMateria(null); // Deselect everything
             updateInspector();
-            console.log("Escena restaurada.");
+            console.log("Escena restaurada y referencias de padres resueltas.");
         } else {
             console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
         }
@@ -2453,7 +2454,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getIsGameRunning });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

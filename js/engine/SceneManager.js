@@ -119,6 +119,16 @@ export class Scene {
 
         return newScene;
     }
+
+    resolveParentReferences() {
+        const allMaterias = this.getAllMaterias();
+        const materiaMap = new Map(allMaterias.map(m => [m.id, m]));
+        for (const materia of allMaterias) {
+            if (materia.parent !== null && typeof materia.parent === 'number') {
+                materia.parent = materiaMap.get(materia.parent) || null;
+            }
+        }
+    }
 }
 
 export let currentScene = new Scene();
