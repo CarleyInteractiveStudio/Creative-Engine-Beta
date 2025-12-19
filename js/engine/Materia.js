@@ -59,16 +59,18 @@ export class Materia {
     }
 
     addChild(child) {
-        if (child.parent) {
+        if (child.parent && typeof child.parent.removeChild === 'function') {
             child.parent.removeChild(child);
         }
         child.parent = this;
         this.children.push(child);
 
         // A child should not be in the root list. Remove it.
-        const index = currentScene.materias.indexOf(child);
-        if (index > -1) {
-            currentScene.materias.splice(index, 1);
+        if (currentScene) {
+            const index = currentScene.materias.indexOf(child);
+            if (index > -1) {
+                currentScene.materias.splice(index, 1);
+            }
         }
     }
 
