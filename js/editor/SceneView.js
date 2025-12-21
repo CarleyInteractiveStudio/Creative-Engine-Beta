@@ -16,6 +16,8 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let getIsGameRunning = () => false;
+let getIsGameViewFocused = () => false;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -382,6 +384,8 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    getIsGameRunning = dependencies.getIsGameRunning;
+    getIsGameViewFocused = dependencies.getIsGameViewFocused;
 
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -470,6 +474,9 @@ export function initialize(dependencies) {
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
+        if (getIsGameRunning() && getIsGameViewFocused()) {
+            return; // Don't process editor interactions when game view is focused
+        }
         // --- Layer Placement Logic ---
         if (isAddingLayer) {
             e.stopPropagation();

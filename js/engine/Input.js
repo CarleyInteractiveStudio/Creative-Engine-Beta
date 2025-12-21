@@ -21,6 +21,11 @@ class InputManager {
     static _longPressStartPosition = { x: 0, y: 0 };
     static LONG_PRESS_DURATION = 750; // ms
     static LONG_PRESS_TOLERANCE = 10; // pixels
+    static isFocused = false;
+
+    static setFocus(isFocused) {
+        this.isFocused = isFocused;
+    }
 
     /**
      * Initializes the InputManager. Attaches listeners to the window.

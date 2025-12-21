@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isGameRunning = false;
     let isGamePaused = false;
+    let isGameViewFocused = false;
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
@@ -385,6 +386,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function handleKeyboardShortcuts(e) {
+        if (isGameRunning && isGameViewFocused) {
+            return; // Don't process editor shortcuts when game view is focused
+        }
         if (document.querySelector('.modal.is-open') || e.target.matches('input, textarea, select')) {
             return;
         }
@@ -762,19 +766,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runGameLoop = function() {
-        // Update physics
-        if (physicsSystem) {
-            physicsSystem.update(deltaTime);
-        }
+        // Only process game input and physics if the game view is focused
+        if (isGameViewFocused) {
+            InputManager.update(); // Update input state for this frame
 
-        // Update all game objects scripts
-        for (const materia of SceneManager.currentScene.getAllMaterias()) {
-            if (!materia.isActive) continue;
+            // Update physics
+            if (physicsSystem) {
+                physicsSystem.update(deltaTime);
+            }
 
-            // Set the context for all APIs before this materia's scripts run
-            EngineAPI.setCurrentMateria(materia);
+            // Update all game objects scripts
+            for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                if (!materia.isActive) continue;
 
-            materia.update(deltaTime);
+                // Set the context for all APIs before this materia's scripts run
+                EngineAPI.setCurrentMateria(materia);
+
+                materia.update(deltaTime);
+            }
+        } else {
+            // If the game is not focused, we still need to clear the input state
+            // to prevent stale inputs from being processed on the next focus.
+            InputManager.update();
         }
     };
 
@@ -817,7 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-                const transform = materia.getComponent(Components.Transform);
+                const transform = materia.getWorldTransform();
 
                 if (spriteRenderer) {
                     if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
@@ -868,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!materia.isActive) continue;
 
                 const textureRender = materia.getComponent(Components.TextureRender);
-                const transform = materia.getComponent(Components.Transform);
+                const transform = materia.getWorldTransform();
 
                 ctx.save();
                 ctx.translate(transform.x, transform.y);
@@ -950,25 +963,25 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const lightMateria of lights.point) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.PointLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
+                const transform = lightMateria.getWorldTransform();
                 rendererInstance.drawPointLight(light, transform);
             }
             for (const lightMateria of lights.spot) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpotLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
+                const transform = lightMateria.getWorldTransform();
                 rendererInstance.drawSpotLight(light, transform);
             }
             for (const lightMateria of lights.freeform) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.FreeformLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
+                const transform = lightMateria.getWorldTransform();
                 rendererInstance.drawFreeformLight(light, transform);
             }
             for (const lightMateria of lights.sprite) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.SpriteLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
+                const transform = lightMateria.getWorldTransform();
                 rendererInstance.drawSpriteLight(light, transform);
             }
             rendererInstance.endLights();
@@ -1039,7 +1052,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         lastFrameTime = timestamp;
 
-        InputManager.update();
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
 
@@ -1117,6 +1129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopGame = function() {
         if (!isGameRunning) return;
         isGameRunning = false;
+        InputManager.setFocus(false);
         console.log("Game Stopped");
         updateGameControlsUI();
         // A full scene reload might be desired here to reset state.
@@ -1492,6 +1505,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Global Keyboard Shortcuts
         window.addEventListener('keydown', handleKeyboardShortcuts);
+
+        // Game view focus listeners
+        dom.gameCanvas.addEventListener('mouseenter', () => {
+            isGameViewFocused = true;
+            InputManager.setFocus(true);
+        });
+
+        dom.gameCanvas.addEventListener('mouseleave', () => {
+            isGameViewFocused = false;
+            InputManager.setFocus(false);
+        });
 
         // Modal close buttons
         document.querySelectorAll('.modal .close-button').forEach(button => {
@@ -2365,6 +2389,7 @@ public star() {
             const getActiveView = () => activeView;
             const getSelectedMateria = () => selectedMateria;
             const getIsGameRunning = () => isGameRunning;
+            const getIsGameViewFocused = () => isGameViewFocused;
             const getDeltaTime = () => deltaTime;
             const getActiveTool = () => SceneView.getActiveTool ? SceneView.getActiveTool() : 'move';
 
@@ -2387,7 +2412,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getIsGameRunning, getIsGameViewFocused });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

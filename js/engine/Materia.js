@@ -80,10 +80,49 @@ export class Materia {
         }
     }
 
-    update() {
+    getWorldTransform() {
+        const transform = this.getComponent(Transform);
+        if (!transform) {
+            return { x: 0, y: 0, rotation: 0, scale: { x: 1, y: 1 } };
+        }
+
+        let worldTransform = {
+            x: transform.x,
+            y: transform.y,
+            rotation: transform.rotation,
+            scale: { x: transform.scale.x, y: transform.scale.y }
+        };
+
+        let currentParent = this.parent;
+        while (currentParent) {
+            const parentTransform = currentParent.getComponent(Transform);
+            if (parentTransform) {
+                // Combine scale
+                worldTransform.scale.x *= parentTransform.scale.x;
+                worldTransform.scale.y *= parentTransform.scale.y;
+
+                // Combine position and rotation
+                const parentRotationRad = parentTransform.rotation * Math.PI / 180;
+                const cos = Math.cos(parentRotationRad);
+                const sin = Math.sin(parentRotationRad);
+                const childX = worldTransform.x;
+                const childY = worldTransform.y;
+
+                worldTransform.x = parentTransform.x + (childX * cos - childY * sin) * parentTransform.scale.x;
+                worldTransform.y = parentTransform.y + (childX * sin + childY * cos) * parentTransform.scale.y;
+
+                worldTransform.rotation += parentTransform.rotation;
+            }
+            currentParent = currentParent.parent;
+        }
+
+        return worldTransform;
+    }
+
+    update(deltaTime) {
         for (const ley of this.leyes) {
             if(typeof ley.update === 'function') {
-                ley.update();
+                ley.update(deltaTime);
             }
         }
     }

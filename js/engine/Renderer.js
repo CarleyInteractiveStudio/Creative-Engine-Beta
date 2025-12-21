@@ -138,7 +138,7 @@ export class Renderer {
 
     drawTilemap(tilemapRenderer) {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const transform = tilemapRenderer.materia.getComponent(Transform);
+        const transform = tilemapRenderer.materia.getWorldTransform();
 
         // Robustly find the parent Grid object, whether it's a direct reference or an ID
         let gridMateria = null;
