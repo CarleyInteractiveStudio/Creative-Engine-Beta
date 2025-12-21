@@ -93,9 +93,19 @@ export class Materia {
             scale: { x: transform.scale.x, y: transform.scale.y }
         };
 
-        let currentParent = this.parent;
-        while (currentParent) {
-            const parentTransform = currentParent.getComponent(Transform);
+        let currentParentMateria = this.parent;
+        while (currentParentMateria) {
+            // Robustly find the parent Materia object, whether it's a direct reference or an ID
+            let parentObject = null;
+            if (typeof currentParentMateria === 'object' && typeof currentParentMateria.getComponent === 'function') {
+                parentObject = currentParentMateria;
+            } else if (typeof currentParentMateria === 'number') {
+                parentObject = currentScene.findMateriaById(currentParentMateria);
+            }
+
+            if (!parentObject) break; // Stop if we can't find the parent
+
+            const parentTransform = parentObject.getComponent(Transform);
             if (parentTransform) {
                 // Combine scale
                 worldTransform.scale.x *= parentTransform.scale.x;
@@ -113,7 +123,7 @@ export class Materia {
 
                 worldTransform.rotation += parentTransform.rotation;
             }
-            currentParent = currentParent.parent;
+            currentParentMateria = parentObject.parent; // Move up the hierarchy
         }
 
         return worldTransform;
