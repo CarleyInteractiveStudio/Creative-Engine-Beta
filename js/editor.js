@@ -1,4 +1,5 @@
 // Re-syncing with GitHub to ensure latest changes are deployed.
+// COMMUNICATION TEST: The platform is blocking messages. Using a PR to communicate.
 // --- CodeMirror Integration ---
 import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
