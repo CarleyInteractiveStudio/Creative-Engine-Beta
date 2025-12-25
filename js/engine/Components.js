@@ -44,15 +44,26 @@ export class CreativeScriptBehavior {
         // and available in the script's context as `this.input`, `this.engine`, etc.
         try {
             const runtimeInputAPI = RuntimeAPIManager.getAPI('input');
-            const runtimeEngineAPI = RuntimeAPIManager.getAPI('engine');
+            const rawEngineAPI = RuntimeAPIManager.getAPI('engine');
 
             if (runtimeInputAPI) {
                 this.input = runtimeInputAPI;
                 this.entrada = runtimeInputAPI;
             }
-            if (runtimeEngineAPI) {
-                this.engine = runtimeEngineAPI;
-                this.motor = runtimeEngineAPI;
+            if (rawEngineAPI) {
+                // Wrap the engine API to automatically pass the current materia
+                this.engine = {
+                    find: rawEngineAPI.find,
+                    getCollisionEnter: (tag) => rawEngineAPI.getCollisionEnter(this.materia, tag),
+                    getCollisionStay: (tag) => rawEngineAPI.getCollisionStay(this.materia, tag),
+                    getCollisionExit: (tag) => rawEngineAPI.getCollisionExit(this.materia, tag),
+                    // Spanish Aliases
+                    buscar: rawEngineAPI.buscar,
+                    alEntrarEnColision: (tag) => rawEngineAPI.alEntrarEnColision(this.materia, tag),
+                    alPermanecerEnColision: (tag) => rawEngineAPI.alPermanecerEnColision(this.materia, tag),
+                    alSalirDeColision: (tag) => rawEngineAPI.alSalirDeColision(this.materia, tag),
+                };
+                this.motor = this.engine;
             }
         } catch (e) {
             console.warn('CreativeScriptBehavior: Failed to inject runtime APIs (Input, Engine). Make sure RuntimeAPIManager is initialized.', e);

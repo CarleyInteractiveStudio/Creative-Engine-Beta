@@ -18,16 +18,31 @@ function find(name) {
 }
 
 
-function getCollisionEnter(tag = null) {
-    return physicsSystem ? physicsSystem.getCollisionEnter(tag) : [];
+function getCollisionEnter(materia, tag = null) {
+    if (!physicsSystem) return [];
+    let collisions = physicsSystem.getCollisionInfo(materia, 'enter', 'collision');
+    if (tag) {
+        collisions = collisions.filter(c => c.materia.tag === tag);
+    }
+    return collisions;
 }
 
-function getCollisionStay(tag = null) {
-    return physicsSystem ? physicsSystem.getCollisionStay(tag) : [];
+function getCollisionStay(materia, tag = null) {
+    if (!physicsSystem) return [];
+    let collisions = physicsSystem.getCollisionInfo(materia, 'stay', 'collision');
+    if (tag) {
+        collisions = collisions.filter(c => c.materia.tag === tag);
+    }
+    return collisions;
 }
 
-function getCollisionExit(tag = null) {
-    return physicsSystem ? physicsSystem.getCollisionExit(tag) : [];
+function getCollisionExit(materia, tag = null) {
+    if (!physicsSystem) return [];
+    let collisions = physicsSystem.getCollisionInfo(materia, 'exit', 'collision');
+    if (tag) {
+        collisions = collisions.filter(c => c.materia.tag === tag);
+    }
+    return collisions;
 }
 
 // --- The Public API Object ---
