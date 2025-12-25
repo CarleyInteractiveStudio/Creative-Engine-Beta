@@ -1,8 +1,6 @@
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getWorldTransform, worldToLocalPosition } from '../engine/TransformUtils.js';
-
 
 // Dependencies from editor.js
 let dom;
@@ -245,9 +243,8 @@ function drawEditorGrid() {
 function drawGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
-    const worldTransform = getWorldTransform(materia, SceneManager.currentScene);
-    if (!worldTransform) return;
-
+    const transform = materia.getComponent(Components.Transform);
+    if (!transform) return;
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -261,9 +258,8 @@ function drawGizmos(renderer, materia) {
 
 
     // Center of the object in world space
-    const { position, rotation, scale } = worldTransform;
-    const { x: centerX, y: centerY } = position;
-
+    const centerX = transform.x;
+    const centerY = transform.y;
 
     ctx.save();
     // No need to translate the whole context, we'll draw using world coords.
@@ -321,38 +317,22 @@ function drawGizmos(renderer, materia) {
             break;
 
         case 'scale':
-            ctx.save();
-            const rad = rotation * Math.PI / 180;
-            ctx.translate(centerX, centerY);
-            ctx.rotate(rad);
-
-            // Use a default size for scaling gizmo if no collider is present
-            let halfWidth = (50 * scale.x) / 2;
-            let halfHeight = (50 * scale.y) / 2;
-            const boxCollider = materia.getComponent(Components.BoxCollider2D);
-            if (boxCollider) {
-                halfWidth = (boxCollider.size.x * scale.x) / 2;
-                halfHeight = (boxCollider.size.y * scale.y) / 2;
-            }
-
-
-            ctx.lineWidth = HANDLE_THICKNESS;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.setLineDash([4 / zoom, 2 / zoom]);
-            ctx.strokeRect(-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2);
-            ctx.setLineDash([]);
-
-
+             ctx.lineWidth = HANDLE_THICKNESS;
+             ctx.strokeStyle = '#ffffff'; // White for scale handles
+             const halfBox = SCALE_BOX_SIZE / 2;
+             // Draw 4 boxes at the corners relative to the object's center
+             const corners = [
+                 { x: centerX - halfBox, y: centerY - halfBox },
+                 { x: centerX + GIZMO_SIZE - halfBox, y: centerY - halfBox },
+                 { x: centerX - halfBox, y: centerY + GIZMO_SIZE - halfBox },
+                 { x: centerX + GIZMO_SIZE, y: centerY + GIZMO_SIZE }
+             ];
+            // This is a simplified version. A real implementation would rotate with the object.
+            // For now, axis-aligned boxes.
             ctx.fillStyle = '#ffffff';
-            const halfBox = SCALE_BOX_SIZE / 2;
-            const handles = [
-                { x: -halfWidth, y: halfHeight }, { x: halfWidth, y: halfHeight },
-                { x: -halfWidth, y: -halfHeight }, { x: halfWidth, y: -halfHeight }
-            ];
-            handles.forEach(handle => {
-                ctx.fillRect(handle.x - halfBox, handle.y - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
-            });
-            ctx.restore();
+            ctx.strokeRect(centerX - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Center handle
+            ctx.strokeRect(centerX + GIZMO_SIZE - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Right
+            ctx.strokeRect(centerX - halfBox, centerY + GIZMO_SIZE - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Top
             break;
     }
 
@@ -615,55 +595,27 @@ export function initialize(dependencies) {
                     const transform = dragState.materia.getComponent(Components.Transform);
                     const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
                     const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
-                    const scene = SceneManager.currentScene;
-                    const currentWorld = getWorldTransform(dragState.materia, scene);
-
 
                     switch (dragState.handle) {
-                        case 'camera-move': transform.position.x += dx; transform.position.y += dy; break;
-                        case 'move-x':
-                        case 'move-y':
-                        case 'move-xy':
-                            {
-                                const newWorldPos = { ...currentWorld.position };
-                                if (dragState.handle !== 'move-y') newWorldPos.x += dx;
-                                if (dragState.handle !== 'move-x') newWorldPos.y += dy;
-
-                                const newLocalPos = worldToLocalPosition(newWorldPos, dragState.materia, scene);
-                                transform.position.x = newLocalPos.x;
-                                transform.position.y = newLocalPos.y;
-                                break;
-                            }
+                        case 'camera-move': transform.x += dx; transform.y += dy; break;
+                        case 'move-x': transform.x += dx; break;
+                        case 'move-y': transform.y += dy; break;
+                        case 'move-xy': transform.x += dx; transform.y += dy; break;
                         case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
                             const cam = dragState.materia.getComponent(Components.Camera);
                             if (!cam) break;
                             const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
                             const rad = -transform.rotation * Math.PI / 180;
                             const cos = Math.cos(rad), sin = Math.sin(rad);
-                            const localMouseX = (worldMouse.x - transform.position.x) * cos - (worldMouse.y - transform.position.y) * sin;
-                            const localMouseY = (worldMouse.x - transform.position.x) * sin + (worldMouse.y - transform.position.y) * cos;
+                            const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                            const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
                             const aspect = renderer.canvas.width / renderer.canvas.height;
                             cam.orthographicSize = Math.max(0.1, Math.max(Math.abs(localMouseY), Math.abs(localMouseX) / aspect));
                             break;
                         }
                         case 'rotate': {
                             const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
-                            const worldCenter = currentWorld.position;
-                            const worldAngle = Math.atan2(worldMouse.y - worldCenter.y, worldMouse.x - worldCenter.x) * 180 / Math.PI;
-
-                            let parentWorldRotation = 0;
-                            let parent = null;
-                            if (dragState.materia.parent) {
-                                if (typeof dragState.materia.parent === 'number') {
-                                    parent = scene.findMateriaById(dragState.materia.parent);
-                                } else {
-                                    parent = dragState.materia.parent;
-                                }
-                            }
-                            if (parent) {
-                                parentWorldRotation = getWorldTransform(parent, scene).rotation;
-                            }
-                            transform.rotation = worldAngle - parentWorldRotation;
+                            transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
                             break;
                         }
                     }
@@ -828,9 +780,8 @@ function drawCameraGizmos(renderer) {
         const cameraComponent = materia.getComponent(Components.Camera);
         if (!cameraComponent) return;
 
-        const worldTransform = getWorldTransform(materia, SceneManager.currentScene);
-        if (!worldTransform) return;
-
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) return;
 
         const isSelected = selectedMateria && selectedMateria.id === materia.id;
 
@@ -840,9 +791,8 @@ function drawCameraGizmos(renderer) {
         ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
         ctx.lineWidth = 1 / renderer.camera.effectiveZoom;
 
-        ctx.translate(worldTransform.position.x, worldTransform.position.y);
-        ctx.rotate(worldTransform.rotation * Math.PI / 180);
-
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         if (cameraComponent.projection === 'Orthographic') {
             const size = cameraComponent.orthographicSize;
@@ -902,10 +852,9 @@ function drawTileCursor() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const worldTransform = getWorldTransform(selectedMateria, SceneManager.currentScene);
+    const transform = selectedMateria.getComponent(Components.Transform);
     const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
-    if (!tilemap || !worldTransform || !tilemapRenderer) return;
-
+    if (!tilemap || !transform || !tilemapRenderer) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -917,9 +866,8 @@ function drawTileCursor() {
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
     // World position of the tilemap's center
-    const tilemapCenterX = worldTransform.position.x;
-    const tilemapCenterY = worldTransform.position.y;
-
+    const tilemapCenterX = transform.x;
+    const tilemapCenterY = transform.y;
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
@@ -1021,9 +969,8 @@ function drawLayerPlacementPreview() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const worldTransform = getWorldTransform(selectedMateria, SceneManager.currentScene);
-    if (!tilemap || !worldTransform) return;
-
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
@@ -1043,9 +990,8 @@ function drawLayerPlacementPreview() {
     let minDistance = Infinity;
 
     for (const layer of layers) {
-        const layerCenterX = worldTransform.position.x + layer.position.x * layerWidth;
-        const layerCenterY = worldTransform.position.y + layer.position.y * layerHeight;
-
+        const layerCenterX = transform.x + layer.position.x * layerWidth;
+        const layerCenterY = transform.y + layer.position.y * layerHeight;
 
         const snapPositions = [
             { x: layer.position.x, y: layer.position.y - 1 }, // Top
@@ -1060,8 +1006,8 @@ function drawLayerPlacementPreview() {
                 continue;
             }
 
-            const snapWorldX = worldTransform.position.x + pos.x * layerWidth;
-            const snapWorldY = worldTransform.position.y + pos.y * layerHeight;
+            const snapWorldX = transform.x + pos.x * layerWidth;
+            const snapWorldY = transform.y + pos.y * layerHeight;
             const distance = Math.hypot(worldMouse.x - snapWorldX, worldMouse.y - snapWorldY);
 
             if (distance < minDistance) {
@@ -1072,9 +1018,8 @@ function drawLayerPlacementPreview() {
     }
 
     if (closestSnap) {
-        const previewX = worldTransform.position.x + closestSnap.x * layerWidth;
-        const previewY = worldTransform.position.y + closestSnap.y * layerHeight;
-
+        const previewX = transform.x + closestSnap.x * layerWidth;
+        const previewY = transform.y + closestSnap.y * layerHeight;
 
         ctx.save();
         ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
@@ -1123,21 +1068,20 @@ function checkBoxColliderGizmoHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
-    const worldTransform = getWorldTransform(selectedMateria, SceneManager.currentScene);
-    if (!boxCollider || !worldTransform) return null;
-
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!boxCollider || !transform) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
     // Transform mouse position to the collider's local space
-    const rad = -worldTransform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    const localMouseX = (worldMouse.x - (worldTransform.position.x + boxCollider.offset.x)) * cos - (worldMouse.y - (worldTransform.position.y + boxCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (worldTransform.position.x + boxCollider.offset.x)) * sin + (worldMouse.y - (worldTransform.position.y + boxCollider.offset.y)) * cos;
+    const localMouseX = (worldMouse.x - (transform.x + boxCollider.offset.x)) * cos - (worldMouse.y - (transform.y + boxCollider.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + boxCollider.offset.x)) * sin + (worldMouse.y - (transform.y + boxCollider.offset.y)) * cos;
 
-    const width = boxCollider.size.x * worldTransform.scale.x;
-    const height = boxCollider.size.y * worldTransform.scale.y;
+    const width = boxCollider.size.x * transform.scale.x;
+    const height = boxCollider.size.y * transform.scale.y;
     const halfWidth = width / 2;
     const halfHeight = height / 2;
 
@@ -1170,21 +1114,19 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
-    const worldTransform = getWorldTransform(selectedMateria, SceneManager.currentScene);
-    if (!capsuleCollider || !worldTransform) return null;
-
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!capsuleCollider || !transform) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const rad = -worldTransform.rotation * Math.PI / 180;
+    const rad = -transform.rotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    const localMouseX = (worldMouse.x - (worldTransform.position.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (worldTransform.position.y + capsuleCollider.offset.y)) * sin;
-    const localMouseY = (worldMouse.x - (worldTransform.position.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (worldTransform.position.y + capsuleCollider.offset.y)) * cos;
+    const localMouseX = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + capsuleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + capsuleCollider.offset.y)) * cos;
 
-    const width = capsuleCollider.size.x * worldTransform.scale.x;
-    const height = capsuleCollider.size.y * worldTransform.scale.y;
-
+    const width = capsuleCollider.size.x * transform.scale.x;
+    const height = capsuleCollider.size.y * transform.scale.y;
 
     const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
     const halfHitbox = handleHitboxSize / 2;
@@ -1243,9 +1185,8 @@ function drawPhysicsGizmos() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    const worldTransform = getWorldTransform(selectedMateria, SceneManager.currentScene);
-    if (!worldTransform) return;
-
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!transform) return;
 
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
@@ -1253,15 +1194,14 @@ function drawPhysicsGizmos() {
     // Draw BoxCollider2D
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
     if (boxCollider) {
-        const width = boxCollider.size.x * worldTransform.scale.x;
-        const height = boxCollider.size.y * worldTransform.scale.y;
-        const centerX = worldTransform.position.x + boxCollider.offset.x;
-        const centerY = worldTransform.position.y + boxCollider.offset.y;
+        const width = boxCollider.size.x * transform.scale.x;
+        const height = boxCollider.size.y * transform.scale.y;
+        const centerX = transform.x + boxCollider.offset.x;
+        const centerY = transform.y + boxCollider.offset.y;
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(worldTransform.rotation * Math.PI / 180);
-
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -1286,15 +1226,14 @@ function drawPhysicsGizmos() {
     // Draw CapsuleCollider2D
     const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
     if (capsuleCollider) {
-        const width = capsuleCollider.size.x * worldTransform.scale.x;
-        const height = capsuleCollider.size.y * worldTransform.scale.y;
-        const centerX = worldTransform.position.x + capsuleCollider.offset.x;
-        const centerY = worldTransform.position.y + capsuleCollider.offset.y;
-
+        const width = capsuleCollider.size.x * transform.scale.x;
+        const height = capsuleCollider.size.y * transform.scale.y;
+        const centerX = transform.x + capsuleCollider.offset.x;
+        const centerY = transform.y + capsuleCollider.offset.y;
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(worldTransform.rotation * Math.PI / 180);
+        ctx.rotate(transform.rotation * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
         ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -1337,8 +1276,8 @@ function drawTilemapOutline() {
     const grid = tilemapMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
 
-    const worldTransform = getWorldTransform(tilemapMateria, SceneManager.currentScene);
-    if (!worldTransform) return;
+    const transform = tilemapMateria.getComponent(Components.Transform);
+    if (!transform) return;
 
     const { ctx, camera } = renderer;
     const { cellSize } = grid;
@@ -1348,9 +1287,8 @@ function drawTilemapOutline() {
     const layerHeight = height * cellSize.y;
 
     ctx.save();
-    ctx.translate(worldTransform.position.x, worldTransform.position.y);
-    ctx.rotate(worldTransform.rotation * Math.PI / 180);
-    ctx.scale(worldTransform.scale.x, worldTransform.scale.y);
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -1383,22 +1321,18 @@ function drawTilemapColliders() {
 
     if (!collider || !colliderMateria) return;
 
-    const worldTransform = getWorldTransform(colliderMateria, SceneManager.currentScene);
+    const transform = colliderMateria.getComponent(Components.Transform);
     const tilemap = colliderMateria.getComponent(Components.Tilemap);
     const grid = colliderMateria.parent?.getComponent(Components.Grid);
 
-
-    if (!worldTransform || !tilemap || !grid) return;
-
+    if (!transform || !tilemap || !grid) return;
 
     const { ctx, camera } = renderer;
     const { cellSize } = grid;
 
     ctx.save();
-    ctx.translate(worldTransform.position.x, worldTransform.position.y);
-    ctx.rotate(worldTransform.rotation * Math.PI / 180);
-    ctx.scale(worldTransform.scale.x, worldTransform.scale.y);
-
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
 
     ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
     ctx.lineWidth = 2 / camera.effectiveZoom;
@@ -1446,10 +1380,10 @@ function paintTile(event) {
         }
     }
 
-    const worldTransform = getWorldTransform(tilemapMateria, SceneManager.currentScene);
+    const transform = tilemapMateria.getComponent(Components.Transform);
     const tilemapRenderer = tilemapMateria.getComponent(Components.TilemapRenderer);
 
-    if (!tilemap || !worldTransform || !tilemapRenderer) {
+    if (!tilemap || !transform || !tilemapRenderer) {
         VerificationSystem.updateStatus(null, false, "Error: El objeto seleccionado o sus hijos no contienen un Tilemap válido.");
         return;
     }
@@ -1465,10 +1399,10 @@ function paintTile(event) {
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const tilemapCenterX = worldTransform.position.x;
-    const tilemapCenterY = worldTransform.position.y;
-    const layerWidth = width * cellSize.x * worldTransform.scale.x;
-    const layerHeight = height * cellSize.y * worldTransform.scale.y;
+    const tilemapCenterX = transform.x;
+    const tilemapCenterY = transform.y;
+    const layerWidth = width * cellSize.x;
+    const layerHeight = height * cellSize.y;
 
     for (const layer of tilemap.layers) {
         const layerOffsetX = layer.position.x * layerWidth;

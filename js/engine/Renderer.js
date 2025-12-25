@@ -1,6 +1,5 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid } from './Components.js';
-import { getWorldTransform } from './TransformUtils.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -139,7 +138,7 @@ export class Renderer {
 
     drawTilemap(tilemapRenderer) {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const worldTransform = getWorldTransform(tilemapRenderer.materia, SceneManager.currentScene);
+        const transform = tilemapRenderer.materia.getComponent(Transform);
 
         // Robustly find the parent Grid object, whether it's a direct reference or an ID
         let gridMateria = null;
@@ -153,15 +152,13 @@ export class Renderer {
         }
         const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
 
-        if (!tilemap || !worldTransform || !grid) {
+        if (!tilemap || !transform || !grid) {
             return;
         }
 
         this.ctx.save();
-        this.ctx.translate(worldTransform.position.x, worldTransform.position.y);
-        this.ctx.rotate(worldTransform.rotation * Math.PI / 180);
-        this.ctx.scale(worldTransform.scale.x, worldTransform.scale.y);
-
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
@@ -208,10 +205,7 @@ export class Renderer {
         const color = light.color; // Assuming hex format for now
         const intensity = light.intensity;
 
-        const worldTransform = getWorldTransform(light.materia, SceneManager.currentScene);
-
-
-        const gradient = ctx.createRadialGradient(worldTransform.position.x, worldTransform.position.y, 0, worldTransform.position.x, worldTransform.position.y, radius * worldTransform.scale.x);
+        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
 
         // This creates a standard additive light falloff
         gradient.addColorStop(0, `${color}FF`); // Full color at center
@@ -222,15 +216,13 @@ export class Renderer {
         ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
         ctx.fillStyle = gradient;
         ctx.globalAlpha = intensity;
-        ctx.fillRect(worldTransform.position.x - radius, worldTransform.position.y - radius, radius * 2, radius * 2);
+        ctx.fillRect(transform.x - radius, transform.y - radius, radius * 2, radius * 2);
         ctx.globalAlpha = 1.0; // Reset alpha
     }
 
     drawSpotLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const worldTransform = getWorldTransform(light.materia, SceneManager.currentScene);
-        const { position, rotation } = worldTransform;
-        const { x, y } = position;
+        const { x, y, rotation } = transform;
         const { radius, color, intensity, angle } = light;
 
         // Convert angles to radians for canvas API
@@ -263,9 +255,7 @@ export class Renderer {
 
     drawFreeformLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const worldTransform = getWorldTransform(light.materia, SceneManager.currentScene);
-        const { position, rotation } = worldTransform;
-        const { x, y } = position;
+        const { x, y, rotation } = transform;
         const { vertices, color, intensity } = light;
 
         if (!vertices || vertices.length < 3) return;
@@ -293,9 +283,7 @@ export class Renderer {
 
     drawSpriteLight(light, transform) {
         const ctx = this.lightMapCtx;
-        const worldTransform = getWorldTransform(light.materia, SceneManager.currentScene);
-        const { position, rotation, scale } = worldTransform;
-        const { x, y } = position;
+        const { x, y, rotation, scale } = transform;
         const { sprite, color, intensity } = light;
 
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
