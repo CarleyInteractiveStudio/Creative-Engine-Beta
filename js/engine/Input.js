@@ -37,23 +37,36 @@ class InputManager {
 
         const setupCanvasListeners = (canvas) => {
             if (!canvas) return;
+            // Make sure the canvas can be focused and will receive keyboard when clicked
             // Mouse
             canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
-            canvas.addEventListener('mousedown', this._onMouseDown.bind(this));
+            canvas.addEventListener('mousedown', (e) => { this._activeCanvas = e.currentTarget; e.currentTarget.focus(); this._onMouseDown(e); });
             canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
 
+            // Track pointer enter/leave so we know which canvas the pointer is over
+            canvas.addEventListener('mouseenter', (e) => { this._activeCanvas = e.currentTarget; });
+            canvas.addEventListener('mouseleave', (e) => { if (this._activeCanvas === e.currentTarget) this._activeCanvas = this._sceneCanvas || null; });
+
             // Touch
-            canvas.addEventListener('touchstart', this._onTouchStart.bind(this), { passive: false });
+            canvas.addEventListener('touchstart', (e) => { this._activeCanvas = e.currentTarget; this._onTouchStart(e); }, { passive: false });
             canvas.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
             canvas.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
             canvas.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
         };
 
+        // Save references to both canvases so we can switch the active one when in play mode
+        this._sceneCanvas = sceneCanvas;
+        this._gameCanvas = gameCanvas;
+        // Default active canvas is the scene so the editor works normally
+        this._activeCanvas = sceneCanvas || gameCanvas || null;
+
         if (sceneCanvas) {
-            this._canvas = sceneCanvas; // Primary canvas for editor focus
+            // Make canvas focusable so keyboard input can be routed when clicked
+            if (typeof sceneCanvas.tabIndex !== 'number' || sceneCanvas.tabIndex < 0) sceneCanvas.tabIndex = 0;
             setupCanvasListeners(sceneCanvas);
         }
         if (gameCanvas) {
+            if (typeof gameCanvas.tabIndex !== 'number' || gameCanvas.tabIndex < 0) gameCanvas.tabIndex = 0;
             setupCanvasListeners(gameCanvas);
         }
 
@@ -72,13 +85,41 @@ class InputManager {
         this._buttonsDown.clear();
         this._buttonsUp.clear();
 
-        if (this._canvas) {
-             this._canvasRect = this._canvas.getBoundingClientRect();
+        // Use the currently active canvas (scene or game) to compute canvas-relative positions
+        if (this._activeCanvas) {
+             this._canvasRect = this._activeCanvas.getBoundingClientRect();
+        } else {
+             this._canvasRect = null;
+        }
+    }
+
+    // Expose programmatic control for which canvas should be considered active
+    static setActiveCanvas(canvas) {
+        this._activeCanvas = canvas;
+        try {
+            const id = canvas && canvas.id ? canvas.id : (canvas && canvas.tagName ? canvas.tagName : 'unknown');
+            console.log(`[InputManager] Active canvas set to: ${id}`);
+        } catch (e) {}
+    }
+
+    // Call this when entering/exiting play mode so InputManager can default to the game canvas
+    static setGameRunning(isRunning) {
+        this._isGameRunning = !!isRunning;
+        if (this._isGameRunning) {
+            if (this._gameCanvas) {
+                this._activeCanvas = this._gameCanvas;
+                console.log('[InputManager] Game running: routing input to game canvas.');
+            }
+        } else {
+            this._activeCanvas = this._sceneCanvas || this._activeCanvas;
+            console.log('[InputManager] Game stopped: routing input back to scene canvas.');
         }
     }
 
     // Keyboard Methods
     static _onKeyDown(event) {
+        // If the engine is playing, ignore keyboard input unless the active canvas is the game canvas
+        if (this._isGameRunning && this._activeCanvas !== this._gameCanvas) return;
         const key = event.key;
         if (!this._keys.get(key)) {
             this._keysDown.add(key);
@@ -87,6 +128,7 @@ class InputManager {
     }
 
     static _onKeyUp(event) {
+        if (this._isGameRunning && this._activeCanvas !== this._gameCanvas) return;
         const key = event.key;
         this._keys.set(key, false);
         this._keysUp.add(key);

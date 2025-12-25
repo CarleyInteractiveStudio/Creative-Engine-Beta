@@ -38,6 +38,25 @@ export class CreativeScriptBehavior {
 
         // --- Component Shortcuts ---
         this._initializeComponentShortcuts();
+
+        // --- Engine/Input APIs (bilingual) ---
+        // These are fetched from RuntimeAPIManager so they are always up-to-date
+        // and available in the script's context as `this.input`, `this.engine`, etc.
+        try {
+            const runtimeInputAPI = RuntimeAPIManager.getAPI('input');
+            const runtimeEngineAPI = RuntimeAPIManager.getAPI('engine');
+
+            if (runtimeInputAPI) {
+                this.input = runtimeInputAPI;
+                this.entrada = runtimeInputAPI;
+            }
+            if (runtimeEngineAPI) {
+                this.engine = runtimeEngineAPI;
+                this.motor = runtimeEngineAPI;
+            }
+        } catch (e) {
+            console.warn('CreativeScriptBehavior: Failed to inject runtime APIs (Input, Engine). Make sure RuntimeAPIManager is initialized.', e);
+        }
     }
 
     /**
@@ -65,7 +84,7 @@ export class CreativeScriptBehavior {
         }
     }
     star() { /* To be overridden by user scripts */ }
-    update(deltaTime) { /* To be overridden by user scripts */ }
+    update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
 }
 
 // --- Component Class Definitions ---
@@ -239,17 +258,70 @@ export class CreativeScript extends Leyes {
         this.isInitialized = false;
     }
 
-    // Called once when the game starts, after initializeInstance
-    star() {
-        if (this.instance && typeof this.instance.star === 'function') {
-            this.instance.star();
+    // --- Lifecycle wrappers ---
+    start() {
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.start === 'function') {
+                this.instance.start();
+            } else if (typeof this.instance.star === 'function') {
+                // Backwards compat
+                this.instance.star();
+            }
+        } catch (e) {
+            console.error(`Error en start() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
         }
     }
 
-    // Called every frame
+    // Keep the old name as alias
+    star() { this.start(); }
+
     update(deltaTime) {
-        if (this.instance && typeof this.instance.update === 'function') {
-            this.instance.update(deltaTime);
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.update === 'function') {
+                this.instance.update(deltaTime);
+            }
+        } catch (e) {
+            console.error(`Error en update() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
+        }
+    }
+
+    fixedUpdate(deltaTime) {
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.fixedUpdate === 'function') {
+                this.instance.fixedUpdate(deltaTime);
+            }
+        } catch (e) {
+            console.error(`Error en fixedUpdate() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
+        }
+    }
+
+    onEnable() {
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.onEnable === 'function') this.instance.onEnable();
+        } catch (e) {
+            console.error(`Error en onEnable() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
+        }
+    }
+
+    onDisable() {
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.onDisable === 'function') this.instance.onDisable();
+        } catch (e) {
+            console.error(`Error en onDisable() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
+        }
+    }
+
+    onDestroy() {
+        if (!this.instance) return;
+        try {
+            if (typeof this.instance.onDestroy === 'function') this.instance.onDestroy();
+        } catch (e) {
+            console.error(`Error en onDestroy() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
         }
     }
 
@@ -259,7 +331,7 @@ export class CreativeScript extends Leyes {
         return Promise.resolve();
     }
 
-    // Called by startGame, just before the first star() call.
+    // Called by startGame, just before the first start() call.
     async initializeInstance() {
         if (this.isInitialized || !this.scriptName) return;
 
@@ -274,23 +346,59 @@ export class CreativeScript extends Leyes {
 
             if (ScriptClass) {
                 this.instance = new ScriptClass(this.materia);
-                const metadata = CES_Transpiler.getScriptMetadata(this.scriptName);
 
-                // Asignar los valores del Inspector a la instancia
-                for (const [key, value] of Object.entries(this.publicVars)) {
-                    if (this.instance.hasOwnProperty(key)) {
-                        let finalValue = value;
-                        const varInfo = metadata.publicVars.find(v => v.name === key);
+                // Ensure common aliases exist on the instance so script authors can write in either language
+                const aliasMap = {
+                    start: ['star', 'iniciar'],
+                    onEnable: ['alHabilitar', 'activar'],
+                    onDisable: ['alDeshabilitar', 'desactivar'],
+                    onDestroy: ['alDestruir'],
+                    fixedUpdate: ['actualizarFijo']
+                };
 
-                        // Si es una variable de tipo Materia y el valor es un ID, resuélvelo
-                        if (varInfo && varInfo.type === 'Materia' && typeof value === 'number') {
-                            finalValue = this.materia.scene.findMateriaById(value);
+                for (const [canonical, aliases] of Object.entries(aliasMap)) {
+                    for (const alt of aliases) {
+                        if (typeof this.instance[alt] === 'function' && typeof this.instance[canonical] !== 'function') {
+                            this.instance[canonical] = this.instance[alt];
                         }
-
-                        this.instance[key] = finalValue;
+                        if (typeof this.instance[canonical] === 'function' && typeof this.instance[alt] !== 'function') {
+                            this.instance[alt] = this.instance[canonical];
+                        }
                     }
                 }
 
+                // Also keep star/start interop
+                if (typeof this.instance.star === 'function' && typeof this.instance.start !== 'function') this.instance.start = this.instance.star;
+                if (typeof this.instance.start === 'function' && typeof this.instance.star !== 'function') this.instance.star = this.instance.start;
+
+                // Attach convenience properties if not present
+                if (!this.instance.hasOwnProperty('materia')) this.instance.materia = this.materia;
+                if (!this.instance.hasOwnProperty('scene')) this.instance.scene = this.materia ? this.materia.scene : null;
+
+                const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
+
+                // Assign inspector public vars to the instance, handling types and defaults
+                for (const pv of (metadata.publicVars || [])) {
+                    let finalValue = this.publicVars.hasOwnProperty(pv.name) ? this.publicVars[pv.name] : pv.defaultValue;
+
+                    // Resolve Materia type references by ID or name
+                    if (pv.type === 'Materia' && finalValue != null) {
+                        if (typeof finalValue === 'number') {
+                            finalValue = this.materia.scene.findMateriaById(finalValue);
+                        } else if (typeof finalValue === 'string') {
+                            finalValue = this.materia.scene.getAllMaterias().find(m => m.name === finalValue) || null;
+                        }
+                    }
+
+                    // Assign the final value on the instance regardless of whether property previously existed
+                    try {
+                        this.instance[pv.name] = finalValue;
+                    } catch (e) {
+                        console.warn(`No se pudo asignar la variable pública '${pv.name}' en el script '${this.scriptName}':`, e);
+                    }
+                }
+
+                // Mark initialized
                 this.isInitialized = true;
                 console.log(`Script '${this.scriptName}' instanciado con éxito.`);
             } else {

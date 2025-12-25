@@ -215,22 +215,23 @@ export class PhysicsSystem {
         // --- 2. Velocity Correction (Impulse Resolution) ---
         const normal = this._normalize({ x: mtv.x, y: mtv.y });
 
-        // For simplicity, we'll just stop the velocity along the normal for now.
-        // A full impulse-based resolution would be more accurate.
+        // For simplicity, remove the velocity component along the collision normal
+        // to prevent objects from retaining penetration velocity (simple separation).
+        const EPS = 1e-6;
         if (isADynamic && rbA.velocity) {
-            const velDotNormal = this._dot(rbA.velocity, normal);
-            if (velDotNormal < 0) { // Only resolve if moving towards each other
-                 rbA.velocity.x -= velDotNormal * normal.x;
-                 rbA.velocity.y -= velDotNormal * normal.y;
+            const velDotNormalA = this._dot(rbA.velocity, normal);
+            if (Math.abs(velDotNormalA) > EPS) {
+                rbA.velocity.x -= velDotNormalA * normal.x;
+                rbA.velocity.y -= velDotNormalA * normal.y;
             }
         }
 
         if (isBDynamic && rbB.velocity) {
-             const velDotNormal = this._dot(rbB.velocity, normal);
-             if (velDotNormal > 0) { // Only resolve if moving towards each other (opposite direction)
-                rbB.velocity.x += velDotNormal * normal.x;
-                rbB.velocity.y += velDotNormal * normal.y;
-             }
+            const velDotNormalB = this._dot(rbB.velocity, normal);
+            if (Math.abs(velDotNormalB) > EPS) {
+                rbB.velocity.x -= velDotNormalB * normal.x;
+                rbB.velocity.y -= velDotNormalB * normal.y;
+            }
         }
     }
 

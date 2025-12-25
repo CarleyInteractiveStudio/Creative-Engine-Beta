@@ -60,8 +60,24 @@ export class Materia {
 
     addChild(child) {
         if (child.parent) {
-            child.parent.removeChild(child);
+            // If parent is an ID (number) due to cloning, resolve it to an object
+            let oldParent = child.parent;
+            if (typeof oldParent === 'number') {
+                try {
+                    oldParent = currentScene.findMateriaById(oldParent);
+                } catch (e) {
+                    oldParent = null;
+                }
+            }
+
+            if (oldParent && typeof oldParent.removeChild === 'function') {
+                oldParent.removeChild(child);
+            } else {
+                // If the previous parent is invalid (e.g., numeric placeholder), clear it
+                child.parent = null;
+            }
         }
+
         child.parent = this;
         this.children.push(child);
 
@@ -80,10 +96,14 @@ export class Materia {
         }
     }
 
-    update() {
+    update(deltaTime = 0) {
         for (const ley of this.leyes) {
-            if(typeof ley.update === 'function') {
-                ley.update();
+            if (typeof ley.update === 'function') {
+                try {
+                    ley.update(deltaTime);
+                } catch (e) {
+                    console.error(`Error updating component ${ley.constructor.name} on Materia '${this.name}':`, e);
+                }
             }
         }
     }

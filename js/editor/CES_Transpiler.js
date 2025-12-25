@@ -184,12 +184,19 @@ export function transpile(code, scriptName) {
         // 2.a: Replace console shortcuts
         body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
 
-        // 2.b: Replace library function calls
+        // 2.b: Auto-prefix 'input.', 'engine.', 'scene.' with 'this.' for core APIs (bilingual)
+        body = body.replace(/(?<![.\w])(input|entrada)\./g, 'this.$1.');
+        body = body.replace(/(?<![.\w])(engine|motor)\./g, 'this.$1.');
+        body = body.replace(/(?<![.\w])(scene|escena)\./g, 'this.$1.');
+
+        // 2.c: Replace custom library function calls (explicitly 'go' imported)
         for (const libName of importedLibs) {
             const api = RuntimeAPIManager.getAPI(libName);
-            if (!api) continue;
+            if (!api) continue; // Should have been caught by an error earlier, but safe guard
             for (const functionName in api) {
+                // Use a negative lookbehind assertion to ensure we only replace global calls, not member accesses.
                 const regex = new RegExp(`(?<![.\\w])\\b${functionName}\\b(?=\\s*\\()`, 'g');
+                // For custom libs, use RuntimeAPIManager.getAPI directly
                 const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"]`;
                 body = body.replace(regex, replacement);
             }

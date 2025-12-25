@@ -62,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
+    // Fixed-timestep accumulator for scripts
+    let fixedAccumulator = 0;
+    const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
     let sceneSnapshotBeforePlay = null; // Para guardar el estado de la escena antes de "Play"
 
     // Project Settings State
@@ -774,12 +777,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runGameLoop = function() {
-        // Update physics
+        // --- Fixed update (deterministic updates like physics-related logic) ---
+        fixedAccumulator += deltaTime;
+        while (fixedAccumulator >= FIXED_DELTA) {
+            for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                if (!materia.isActive) continue;
+
+                const scripts = materia.getComponents(Components.CreativeScript);
+                for (const script of scripts) {
+                    try {
+                        script.fixedUpdate(FIXED_DELTA);
+                    } catch (e) {
+                        console.error(`Error en fixedUpdate() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                    }
+                }
+            }
+            fixedAccumulator -= FIXED_DELTA;
+        }
+
+        // Update physics (non-fixed as currently implemented)
         if (physicsSystem) {
             physicsSystem.update(deltaTime);
         }
 
-        // Update all game objects scripts
+        // Update all game objects scripts (frame-dependent)
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
 
@@ -1108,6 +1129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
+        // Tell InputManager that the engine is running so it can default to the game canvas
+        try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
@@ -1121,9 +1144,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             await script.initializeInstance(); // Await initialization
                             if (script.isInitialized) {
                                 try {
-                                    script.star(); // Call star only if initialized
+                                    script.start(); // Prefer the new start() API
                                 } catch (e) {
-                                    console.error(`Error en el método star() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                                    console.error(`Error en el método start() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                                }
+                                try {
+                                    script.onEnable(); // Notify script that it has been enabled
+                                } catch (e) {
+                                    console.error(`Error en el método onEnable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
                                 }
                             }
                         }
@@ -1155,7 +1183,21 @@ document.addEventListener('DOMContentLoaded', () => {
     stopGame = async function() {
         if (!isGameRunning) return;
         isGameRunning = false;
+        // Restore InputManager out of game mode
+        try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
+
+        // Notify scripts about disable/destroy so they can clean up
+        try {
+            for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                if (!materia.isActive) continue;
+                const scripts = materia.getComponents(Components.CreativeScript);
+                for (const script of scripts) {
+                    try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
+                    try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
+                }
+            }
+        } catch(e) { console.warn('Error al notificar scripts sobre onDisable/onDestroy:', e); }
 
         // --- Scene Restoration Logic ---
         if (sceneSnapshotBeforePlay) {
@@ -1584,9 +1626,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Ensure canvas is resized after being made visible
                 if (viewId === 'scene-content' && renderer) {
-                    setTimeout(() => renderer.resize(), 0);
+                    setTimeout(() => { renderer.resize(); try { InputManager.setActiveCanvas(renderer.canvas); } catch(e) {}} , 0);
                 } else if (viewId === 'game-content' && gameRenderer) {
-                    setTimeout(() => gameRenderer.resize(), 0);
+                    setTimeout(() => { gameRenderer.resize(); try { InputManager.setActiveCanvas(gameRenderer.canvas); } catch(e) {}} , 0);
                 }
             }
         });

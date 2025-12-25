@@ -166,10 +166,15 @@ export function serializeScene(scene, dom) {
                 if (key !== 'materia' && typeof ley[key] !== 'function') {
                     // Special handling for Tilemap to serialize Map objects
                     if (ley.constructor.name === 'Tilemap' && key === 'layers') {
+                        console.log(`[SerializeScene] Serializando Tilemap layers para ${materia.name}. Capas: ${ley[key].length}`);
                         leyData.properties[key] = ley[key].map(layer => ({
                             ...layer,
+                            // Ensure tileData Map is correctly converted to an array of [key, value] pairs
                             tileData: Array.from(layer.tileData.entries())
                         }));
+                    } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
+                        console.log(`[SerializeScene] Serializando TilemapCollider2D _cachedMesh para ${materia.name}. Entries: ${ley[key].size}`);
+                        leyData.properties[key] = Array.from(ley[key].entries());
                     } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
                         // Correctly serialize the _cachedMesh Map
                         leyData.properties[key] = Array.from(ley[key].entries());
@@ -214,27 +219,32 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
 
                 // Special handling for Tilemap to deserialize Map objects
                 if (leyData.type === 'Tilemap') {
+                    console.log(`[DeserializeScene] Deserializando Tilemap layers para ${materiaData.name}. LeyData:`, leyData);
                     Object.assign(newLey, leyData.properties);
                     if (newLey.layers && Array.isArray(newLey.layers)) {
-                        newLey.layers.forEach(layer => {
+                        newLey.layers.forEach((layer, index) => {
                             if (layer.tileData && Array.isArray(layer.tileData)) {
                                 layer.tileData = new Map(layer.tileData);
+                                console.log(`[DeserializeScene] Tilemap Layer ${index} de ${materiaData.name}: ${layer.tileData.size} tiles deserializados.`);
                             } else {
                                 layer.tileData = new Map();
-                                console.warn(`TileData for a layer in Materia '${materiaData.name}' was invalid or in an old format. Initialized as empty.`);
+                                console.warn(`[DeserializeScene] TileData para la capa ${index} en Materia '${materiaData.name}' no es válida o está en formato antiguo. Inicializada como vacía.`);
                             }
                         });
                     }
                 } else if (leyData.type === 'TilemapCollider2D') {
+                    console.log(`[DeserializeScene] Deserializando TilemapCollider2D _cachedMesh para ${materiaData.name}. LeyData:`, leyData);
                     Object.assign(newLey, leyData.properties);
                     // Correctly deserialize the _cachedMesh back into a Map
                     if (newLey._cachedMesh && Array.isArray(newLey._cachedMesh)) {
                         newLey._cachedMesh = new Map(newLey._cachedMesh);
+                        console.log(`[DeserializeScene] TilemapCollider2D _cachedMesh para ${materiaData.name}: ${newLey._cachedMesh.size} entradas deserializadas.`);
                     } else {
-                        // If it's old data or corrupted, ensure it's a valid Map
                         newLey._cachedMesh = new Map();
+                        console.warn(`[DeserializeScene] _cachedMesh para TilemapCollider2D en Materia '${materiaData.name}' no es válida. Inicializada como vacía.`);
                     }
                 } else if (leyData.type === 'TilemapRenderer') {
+                    console.log(`[DeserializeScene] Deserializando TilemapRenderer para ${materiaData.name}.`);
                     Object.assign(newLey, leyData.properties);
                     // Always re-initialize imageCache as an empty Map on load.
                     // It will be populated as tiles are rendered.
