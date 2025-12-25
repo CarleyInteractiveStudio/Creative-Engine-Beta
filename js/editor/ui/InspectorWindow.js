@@ -2,6 +2,7 @@ import * as Components from '../../engine/Components.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
+import { showPrompt, showNotification } from './DialogWindow.js';
 
 // --- Module State ---
 let dom;
@@ -215,11 +216,44 @@ async function handleInspectorChange(e) {
          updateSceneCallback();
          needsUpdate = true;
     } else if (e.target.matches('#materia-layer-select')) {
-        selectedMateria.layer = parseInt(e.target.value, 10);
+        const selectedValue = e.target.value;
+        if (selectedValue === 'edit_layers') {
+            // Open the project settings modal
+            if (dom.projectSettingsModal) {
+                dom.projectSettingsModal.classList.add('is-open');
+            }
+            // Revert selection in dropdown
+            e.target.value = selectedMateria.layer;
+        } else {
+            selectedMateria.layer = parseInt(selectedValue, 10);
+        }
         needsUpdate = true;
     } else if (e.target.matches('#materia-tag-select')) {
-        selectedMateria.tag = e.target.value;
-        needsUpdate = true;
+        const selectedValue = e.target.value;
+        if (selectedValue === 'add_new_tag') {
+            showPrompt("Nuevo Tag", "Introduce el nombre para el nuevo tag:", async (newTagName) => {
+                if (newTagName && newTagName.trim() !== '') {
+                    const config = getCurrentProjectConfig();
+                    if (!config.tags.includes(newTagName)) {
+                        config.tags.push(newTagName);
+                        await saveProjectConfig();
+                        selectedMateria.tag = newTagName;
+                        showNotification('Éxito', `Tag "${newTagName}" añadido y seleccionado.`);
+                        updateInspector();
+                    } else {
+                        showNotification('Aviso', `El tag "${newTagName}" ya existe.`);
+                        // Revert selection in dropdown
+                        e.target.value = selectedMateria.tag;
+                    }
+                } else {
+                    // User cancelled or entered empty string, revert selection
+                    e.target.value = selectedMateria.tag;
+                }
+            });
+        } else {
+            selectedMateria.tag = selectedValue;
+        }
+        needsUpdate = true; // This will be handled by the async prompt callback
     }
 
     if (e.target.matches('.inspector-re-render')) {
@@ -521,13 +555,15 @@ async function updateInspectorForMateria(selectedMateria) {
             <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" id="materia-name-input" value="${selectedMateria.name}">
         </div>
-        <div class="inspector-row">
-            <label for="materia-tag-select">Tag</label>
-            <select id="materia-tag-select"></select>
-        </div>
-        <div class="inspector-row">
-            <label for="materia-layer-select">Layer</label>
-            <select id="materia-layer-select"></select>
+        <div class="tag-layer-container">
+            <div class="inspector-row">
+                <label for="materia-tag-select">Tag</label>
+                <select id="materia-tag-select"></select>
+            </div>
+            <div class="inspector-row">
+                <label for="materia-layer-select">Layer</label>
+                <select id="materia-layer-select"></select>
+            </div>
         </div>
     `;
 
@@ -543,6 +579,15 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             tagSelect.appendChild(option);
         });
+        // Add a separator and the "Add Tag..." option
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '──────────';
+        tagSelect.appendChild(separator);
+        const addTagOption = document.createElement('option');
+        addTagOption.value = 'add_new_tag';
+        addTagOption.textContent = 'Añadir Tag...';
+        tagSelect.appendChild(addTagOption);
     }
 
     // Populate Layers Dropdown
@@ -558,6 +603,15 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             layerSelect.appendChild(option);
         });
+        // Add a separator and the "Edit Layers..." option
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '──────────';
+        layerSelect.appendChild(separator);
+        const addLayerOption = document.createElement('option');
+        addLayerOption.value = 'edit_layers';
+        addLayerOption.textContent = 'Editar Layers...';
+        layerSelect.appendChild(addLayerOption);
     }
 
     const componentIcons = {
@@ -2113,4 +2167,25 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
     });
 
     modal.classList.remove('hidden');
+}
+
+// Helper function to save the project configuration, adapted from ProjectSettingsWindow
+async function saveProjectConfig() {
+    if (!projectsDirHandle) {
+        console.error("No se puede guardar la configuración: el directorio del proyecto no está disponible.");
+        return;
+    }
+    const config = getCurrentProjectConfig();
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const configFileHandle = await projectHandle.getFileHandle('project.ceconfig', { create: true });
+        const writable = await configFileHandle.createWritable();
+        await writable.write(JSON.stringify(config, null, 2));
+        await writable.close();
+        console.log("Configuración del proyecto guardada desde el Inspector.");
+    } catch (error) {
+        console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
+        showNotification('Error', 'No se pudo guardar la configuración del proyecto.');
+    }
 }

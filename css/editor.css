@@ -863,6 +863,27 @@ body {
     border-radius: 4px;
 }
 
+.tag-layer-container {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.tag-layer-container .inspector-row {
+    flex: 1; /* Each takes half the space */
+    display: flex;
+    align-items: center;
+}
+
+.tag-layer-container label {
+    flex-basis: auto; /* Let the label take its natural width */
+    margin-right: 8px;
+}
+
+.tag-layer-container select {
+    width: 100%;
+}
+
 .library-api-content .checkbox-field {
     display: flex;
     align-items: center;
