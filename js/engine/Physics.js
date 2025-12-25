@@ -591,6 +591,10 @@ export class PhysicsSystem {
                 }
             }
         }
+        // CHIVATO: Imprimir todas las colisiones detectadas para este objeto y estado
+        if (collisions.length > 0) {
+            console.log(`[Physics Debug] Materia ID ${materia.id} (${materia.name}) | Estado: ${state} | Colisiones detectadas:`, collisions);
+        }
         return collisions;
     }
 }
