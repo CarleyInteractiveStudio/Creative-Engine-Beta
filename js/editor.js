@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, transpileAllProjectScripts;
 
     openAssetSelector = async function(callback, options) {
         // For backwards compatibility, if the second argument isn't an object, treat it as the old 'filter'.
@@ -370,6 +370,56 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(`No se pudo crear el asset '${fileName}':`, error);
             showNotificationDialog('Error de Creación', `No se pudo crear el asset: ${error.message}`);
             return null;
+        }
+    };
+
+    transpileAllProjectScripts = async function() {
+        if (!projectsDirHandle) {
+            console.warn("No se puede transpilar scripts, no hay un directorio de proyecto válido.");
+            return;
+        }
+
+        console.log("Iniciando transpilación de todos los scripts del proyecto en segundo plano...");
+
+        const cesFiles = [];
+        async function findCesFiles(dirHandle) {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
+                    cesFiles.push(entry);
+                } else if (entry.kind === 'directory') {
+                    // Avoid errors in directories we can't access, like '.git'
+                    try {
+                        await findCesFiles(entry);
+                    } catch (e) {
+                        console.warn(`No se pudo acceder al directorio '${entry.name}'. Saltando.`);
+                    }
+                }
+            }
+        }
+
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            // In some cases, the root might be the project folder itself if 'Assets' doesn't exist yet
+            await findCesFiles(projectHandle);
+
+            const transpilationPromises = cesFiles.map(async (fileHandle) => {
+                try {
+                    const file = await fileHandle.getFile();
+                    const code = await file.text();
+                    // We call transpile to populate the cache. We don't need to check for errors here,
+                    // as runChecksAndPlay will do that before running the game.
+                    CES_Transpiler.transpile(code, fileHandle.name);
+                } catch (e) {
+                    console.error(`Error al transpilar el script ${fileHandle.name} durante el arranque:`, e);
+                }
+            });
+
+            await Promise.all(transpilationPromises);
+            console.log(`Transpilación en segundo plano completada. ${cesFiles.length} scripts procesados.`);
+
+        } catch (error) {
+            console.error("Error durante la transpilación de todos los scripts del proyecto:", error);
         }
     };
 
@@ -2556,14 +2606,17 @@ public star() {
                 populateProjectSettingsUI(defaultConfig, null);
             }
 
-            updateLoadingProgress(85, "Actualizando paneles...");
+            updateLoadingProgress(85, "Procesando scripts del proyecto...");
+            await transpileAllProjectScripts();
+
+            updateLoadingProgress(90, "Actualizando paneles...");
             updateHierarchy();
             updateInspector();
             await updateAssetBrowser();
             updateWindowMenuUI();
             updateAmbientePanelFromScene(); // Sync UI on initial load
 
-            updateLoadingProgress(90, "Finalizando...");
+            updateLoadingProgress(95, "Finalizando...");
             setupEventListeners();
             initializeFloatingPanels();
             editorLoopId = requestAnimationFrame(editorLoop);
