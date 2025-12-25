@@ -39,35 +39,6 @@ export class CreativeScriptBehavior {
         // --- Component Shortcuts ---
         this._initializeComponentShortcuts();
 
-        // --- Engine/Input APIs (bilingual) ---
-        // These are fetched from RuntimeAPIManager so they are always up-to-date
-        // and available in the script's context as `this.input`, `this.engine`, etc.
-        try {
-            const runtimeInputAPI = RuntimeAPIManager.getAPI('input');
-            const rawEngineAPI = RuntimeAPIManager.getAPI('engine');
-
-            if (runtimeInputAPI) {
-                this.input = runtimeInputAPI;
-                this.entrada = runtimeInputAPI;
-            }
-            if (rawEngineAPI) {
-                // Wrap the engine API to automatically pass the current materia
-                this.engine = {
-                    find: rawEngineAPI.find,
-                    getCollisionEnter: (tag) => rawEngineAPI.getCollisionEnter(this.materia, tag),
-                    getCollisionStay: (tag) => rawEngineAPI.getCollisionStay(this.materia, tag),
-                    getCollisionExit: (tag) => rawEngineAPI.getCollisionExit(this.materia, tag),
-                    // Spanish Aliases
-                    buscar: rawEngineAPI.buscar,
-                    alEntrarEnColision: (tag) => rawEngineAPI.alEntrarEnColision(this.materia, tag),
-                    alPermanecerEnColision: (tag) => rawEngineAPI.alPermanecerEnColision(this.materia, tag),
-                    alSalirDeColision: (tag) => rawEngineAPI.alSalirDeColision(this.materia, tag),
-                };
-                this.motor = this.engine;
-            }
-        } catch (e) {
-            console.warn('CreativeScriptBehavior: Failed to inject runtime APIs (Input, Engine). Make sure RuntimeAPIManager is initialized.', e);
-        }
     }
 
     /**
@@ -385,6 +356,30 @@ export class CreativeScript extends Leyes {
                 // Attach convenience properties if not present
                 if (!this.instance.hasOwnProperty('materia')) this.instance.materia = this.materia;
                 if (!this.instance.hasOwnProperty('scene')) this.instance.scene = this.materia ? this.materia.scene : null;
+
+                // --- API Injection ---
+                const inputAPI = RuntimeAPIManager.getAPI('input');
+                if (inputAPI) {
+                    this.instance.input = inputAPI;
+                    this.instance.entrada = inputAPI;
+                }
+                const engineAPI = RuntimeAPIManager.getAPI('engine');
+                if (engineAPI) {
+                     this.instance.engine = {
+                        find: engineAPI.find,
+                        getCollisionEnter: (tag) => engineAPI.getCollisionEnter(this.instance.materia, tag),
+                        getCollisionStay: (tag) => engineAPI.getCollisionStay(this.instance.materia, tag),
+                        getCollisionExit: (tag) => engineAPI.getCollisionExit(this.instance.materia, tag),
+                        // Spanish Aliases
+                        buscar: engineAPI.buscar,
+                        alEntrarEnColision: (tag) => engineAPI.alEntrarEnColision(this.instance.materia, tag),
+                        alPermanecerEnColision: (tag) => engineAPI.alPermanecerEnColision(this.instance.materia, tag),
+                        alSalirDeColision: (tag) => engineAPI.alSalirDeColision(this.instance.materia, tag),
+                    };
+                    this.instance.motor = this.instance.engine;
+                }
+                // --- End API Injection ---
+
 
                 const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
 
