@@ -30,8 +30,19 @@ function getCollisionEnter(materia, tag = null) {
 function getCollisionStay(materia, tag = null) {
     if (!physicsSystem) return [];
     let collisions = physicsSystem.getCollisionInfo(materia, 'stay', 'collision');
+
+    // --- START DEBUG LOGS ---
+    console.log(`[Physics API] getCollisionStay called for "${materia.name}". Looking for tag: "${tag}".`);
+    console.log('[Physics API] Collisions found before filtering:', collisions);
+    // --- END DEBUG LOGS ---
+
     if (tag) {
-        collisions = collisions.filter(c => c.materia.tag === tag);
+        collisions = collisions.filter(c => {
+            // --- START DEBUG LOGS ---
+            console.log(`[Physics API] Filtering collision with "${c.materia.name}". Its tag is "${c.materia.tag}". Comparison result: ${c.materia.tag === tag}`);
+            // --- END DEBUG LOGS ---
+            return c.materia.tag === tag;
+        });
     }
     return collisions;
 }
