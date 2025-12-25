@@ -8,7 +8,7 @@ import { InputManager } from './Input.js';
  * @returns {boolean} True if the key is held down.
  */
 function isKeyPressed(key) {
-    return InputManager.isKeyPressed(key.toLowerCase());
+    return InputManager.getKey(key.toLowerCase());
 }
 
 /**
@@ -17,7 +17,7 @@ function isKeyPressed(key) {
  * @returns {boolean} True if the key was just pressed.
  */
 function isKeyJustPressed(key) {
-    return InputManager.isKeyJustPressed(key.toLowerCase());
+    return InputManager.getKeyDown(key.toLowerCase());
 }
 
 /**
@@ -26,7 +26,7 @@ function isKeyJustPressed(key) {
  * @returns {boolean} True if the key was just released.
  */
 function isKeyReleased(key) {
-    return InputManager.isKeyReleased(key.toLowerCase());
+    return InputManager.getKeyUp(key.toLowerCase());
 }
 
 // --- The Public API Object ---
