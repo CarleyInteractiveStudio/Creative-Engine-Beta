@@ -1282,7 +1282,11 @@ export class TilemapCollider2D extends Leyes {
         newCollider.isTrigger = this.isTrigger;
         newCollider.offset = { ...this.offset };
         newCollider.sourceLayerIndex = this.sourceLayerIndex;
-        // The colliders themselves are not copied; they should be regenerated.
+
+        // Deep copy the generated colliders and the cached mesh to preserve state
+        newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
+        newCollider._cachedMesh = new Map(JSON.parse(JSON.stringify(Array.from(this._cachedMesh))));
+
         return newCollider;
     }
 }
