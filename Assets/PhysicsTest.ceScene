@@ -4,6 +4,7 @@
         {
             "name": "Ground",
             "id": 1,
+            "tag": "Suelo",
             "parent": null,
             "children": [],
             "components": [
