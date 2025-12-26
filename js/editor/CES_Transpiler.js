@@ -8,24 +8,23 @@ const scriptMetadataMap = new Map(); // Nueva estructura para metadatos
 // --- Helper Functions ---
 
 const typeMap = {
-    'number': 'numero',
-    'numero': 'numero',
-    'dnumber': 'dnumero',
-    'dnumero': 'dnumero',
-    'text': 'texto',
-    'texto': 'texto',
-    'boolean': 'booleano',
-    'booleano': 'booleano',
+    'number': 'number',
+    'numero': 'number',
+    'dnumber': 'number',
+    'dnumero': 'number',
+    'text': 'string',
+    'texto': 'string',
+    'boolean': 'boolean',
+    'booleano': 'boolean',
     'Materia': 'Materia'
 };
 
 function getDefaultValueForType(canonicalType) {
     switch (canonicalType) {
-        case 'numero':
-        case 'dnumero':
+        case 'number':
              return 0;
-        case 'texto': return "";
-        case 'booleano': return false;
+        case 'string': return "";
+        case 'boolean': return false;
         case 'Materia': return null;
         default: return null;
     }
@@ -33,16 +32,15 @@ function getDefaultValueForType(canonicalType) {
 
 function parseInitialValue(value, canonicalType) {
     switch (canonicalType) {
-        case 'numero':
-        case 'dnumero':
+        case 'number':
             return parseFloat(value) || 0;
-        case 'texto':
+        case 'string':
             // Eliminar comillas si existen
             if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
                 return value.slice(1, -1);
             }
             return value;
-        case 'booleano':
+        case 'boolean':
             return value.toLowerCase() === 'verdadero' || value.toLowerCase() === 'true';
         case 'Materia':
             return null; // Las referencias a objetos no se pueden establecer por defecto

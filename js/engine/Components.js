@@ -392,7 +392,7 @@ export class CreativeScript extends Leyes {
                     // If the inspector value for a string/texto is an empty string,
                     // and a non-empty default value exists in the script, prefer the default.
                     // This prevents saved-but-empty Inspector fields from overriding coded defaults.
-                    if ((pv.type === 'texto' || pv.type === 'string') && inspectorValue === '' && pv.defaultValue) {
+                    if (pv.type === 'string' && inspectorValue === '' && pv.defaultValue) {
                         hasInspectorValue = false;
                     }
                     // --- END BUG FIX ---
