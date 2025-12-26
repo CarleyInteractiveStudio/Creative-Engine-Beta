@@ -385,7 +385,20 @@ export class CreativeScript extends Leyes {
 
                 // Assign inspector public vars to the instance, handling types and defaults
                 for (const pv of (metadata.publicVars || [])) {
-                    let finalValue = this.publicVars.hasOwnProperty(pv.name) ? this.publicVars[pv.name] : pv.defaultValue;
+                    let inspectorValue = this.publicVars[pv.name];
+                    let hasInspectorValue = this.publicVars.hasOwnProperty(pv.name);
+
+                    // --- BUG FIX ---
+                    // If the inspector value for a string/texto is an empty string,
+                    // and a non-empty default value exists in the script, prefer the default.
+                    // This prevents saved-but-empty Inspector fields from overriding coded defaults.
+                    if ((pv.type === 'texto' || pv.type === 'string') && inspectorValue === '' && pv.defaultValue) {
+                        hasInspectorValue = false;
+                    }
+                    // --- END BUG FIX ---
+
+                    let finalValue = hasInspectorValue ? inspectorValue : pv.defaultValue;
+
 
                     // Resolve Materia type references by ID or name
                     if (pv.type === 'Materia' && finalValue != null) {
