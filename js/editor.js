@@ -1077,7 +1077,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         lastFrameTime = timestamp;
 
-        InputManager.update();
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
 
@@ -1101,6 +1100,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateScene(gameRenderer, true);
             }
         }
+
+        // Update InputManager at the very end of the frame
+        InputManager.update();
 
         editorLoopId = requestAnimationFrame(editorLoop);
     };
