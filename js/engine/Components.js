@@ -365,16 +365,31 @@ export class CreativeScript extends Leyes {
                 }
                 const engineAPI = RuntimeAPIManager.getAPI('engine');
                 if (engineAPI) {
+                    const createCollisionWrapper = (apiMethod) => {
+                        return (...args) => {
+                            const firstArg = args[0];
+                            // Duck-type check for Materia object
+                            const isFirstArgMateria = typeof firstArg === 'object' && firstArg !== null && Array.isArray(firstArg.leyes);
+
+                            if (args.length >= 2 && isFirstArgMateria) {
+                                // Called as motor.al...(materia, tag)
+                                return apiMethod(firstArg, args[1]);
+                            }
+                            // Called as motor.al...(tag) or motor.al...()
+                            return apiMethod(this.instance.materia, firstArg);
+                        };
+                    };
+
                      this.instance.engine = {
                         find: engineAPI.find,
-                        getCollisionEnter: (tag) => engineAPI.getCollisionEnter(this.instance.materia, tag),
-                        getCollisionStay: (tag) => engineAPI.getCollisionStay(this.instance.materia, tag),
-                        getCollisionExit: (tag) => engineAPI.getCollisionExit(this.instance.materia, tag),
+                        getCollisionEnter: createCollisionWrapper(engineAPI.getCollisionEnter),
+                        getCollisionStay: createCollisionWrapper(engineAPI.getCollisionStay),
+                        getCollisionExit: createCollisionWrapper(engineAPI.getCollisionExit),
                         // Spanish Aliases
                         buscar: engineAPI.buscar,
-                        alEntrarEnColision: (tag) => engineAPI.alEntrarEnColision(this.instance.materia, tag),
-                        alPermanecerEnColision: (tag) => engineAPI.alPermanecerEnColision(this.instance.materia, tag),
-                        alSalirDeColision: (tag) => engineAPI.alSalirDeColision(this.instance.materia, tag),
+                        alEntrarEnColision: createCollisionWrapper(engineAPI.alEntrarEnColision),
+                        alPermanecerEnColision: createCollisionWrapper(engineAPI.alPermanecerEnColision),
+                        alSalirDeColision: createCollisionWrapper(engineAPI.alSalirDeColision),
                     };
                     this.instance.motor = this.instance.engine;
                 }
