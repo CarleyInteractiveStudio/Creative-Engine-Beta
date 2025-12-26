@@ -253,8 +253,10 @@ export class PhysicsSystem {
             // Crear un objeto 'Materia' temporal para representar el tile
             const tileMateria = new Materia('tile_part');
             const tileTransform = new Components.Transform(tileMateria);
-            tileTransform.x = tilemapTransform.x + rect.x;
-            tileTransform.y = tilemapTransform.y + rect.y;
+            // BUG FIX: The generatedColliders now have world coordinates.
+            // No need to add the tilemapTransform position again.
+            tileTransform.x = rect.x;
+            tileTransform.y = rect.y;
             tileMateria.addComponent(tileTransform);
 
             const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
