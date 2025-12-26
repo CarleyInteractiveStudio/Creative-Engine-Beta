@@ -317,8 +317,6 @@ export class CreativeScript extends Leyes {
     async initializeInstance() {
         if (this.isInitialized || !this.scriptName) return;
 
-        console.log("--- Motor de Creative Engine v1.1 ---");
-
         try {
             const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
             if (!transpiledCode) {
@@ -383,48 +381,43 @@ export class CreativeScript extends Leyes {
                 // --- End API Injection ---
 
 
-                const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
-                console.log(`[DIAGNÓSTICO][Componente] Metadatos para ${this.scriptName}:`, JSON.stringify(metadata));
-                console.log(`[DIAGNÓSTICO][Componente] Valores guardados en escena (this.publicVars):`, JSON.stringify(this.publicVars));
+                // --- LÓGICA DE ASIGNACIÓN DE VARIABLES PÚBLICAS REVISADA ---
+                // El constructor de la instancia del script (generado por el transpilador) ya asigna
+                // los valores por defecto definidos en el código.
+                // Aquí, SOLO sobrescribimos esos valores si hay un valor diferente
+                // guardado en la escena (proveniente del Inspector).
 
+                if (this.publicVars) {
+                    const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
+                    const metadataMap = new Map(metadata.publicVars.map(p => [p.name, p]));
 
-                // Assign inspector public vars to the instance, handling types and defaults
-                for (const pv of (metadata.publicVars || [])) {
-                    let inspectorValue = this.publicVars[pv.name];
-                    let hasInspectorValue = this.publicVars.hasOwnProperty(pv.name);
+                    for (const varName in this.publicVars) {
+                        // Comprobar que la variable guardada todavía existe en el script
+                        if (this.publicVars.hasOwnProperty(varName) && metadataMap.has(varName)) {
+                            let savedValue = this.publicVars[varName];
 
-                    console.log(`[DIAGNÓSTICO][Componente] Procesando var '${pv.name}': Valor por defecto=${JSON.stringify(pv.defaultValue)}, Valor guardado=${JSON.stringify(inspectorValue)}`);
+                            // Asignar solo si el valor guardado no es nulo o indefinido.
+                            // Un string vacío "" se considera un valor válido.
+                            if (savedValue !== null && savedValue !== undefined) {
+                                const metaVar = metadataMap.get(varName);
 
+                                // Resolver referencias a Materia por ID o nombre
+                                if (metaVar.type === 'Materia' && savedValue != null) {
+                                    if (typeof savedValue === 'number') {
+                                        savedValue = this.materia.scene.findMateriaById(savedValue);
+                                    } else if (typeof savedValue === 'string') {
+                                        savedValue = this.materia.scene.getAllMaterias().find(m => m.name === savedValue) || null;
+                                    }
+                                }
 
-                    // --- BUG FIX ---
-                    // If the inspector value for a string/texto is an empty string,
-                    // and a non-empty default value exists in the script, prefer the default.
-                    // This prevents saved-but-empty Inspector fields from overriding coded defaults.
-                    if (pv.type === 'string' && inspectorValue === '' && pv.defaultValue) {
-                        console.log(`[DIAGNÓSTICO][Componente] ANULANDO valor guardado vacío para '${pv.name}' en favor del valor por defecto.`);
-                        hasInspectorValue = false;
-                    }
-                    // --- END BUG FIX ---
-
-                    let finalValue = hasInspectorValue ? inspectorValue : pv.defaultValue;
-                    console.log(`[DIAGNÓSTICO][Componente] Valor intermedio para '${pv.name}': ${JSON.stringify(finalValue)}`);
-
-
-                    // Resolve Materia type references by ID or name
-                    if (pv.type === 'Materia' && finalValue != null) {
-                        if (typeof finalValue === 'number') {
-                            finalValue = this.materia.scene.findMateriaById(finalValue);
-                        } else if (typeof finalValue === 'string') {
-                            finalValue = this.materia.scene.getAllMaterias().find(m => m.name === finalValue) || null;
+                                // Sobrescribir el valor por defecto con el valor guardado
+                                try {
+                                    this.instance[varName] = savedValue;
+                                } catch (e) {
+                                    console.warn(`No se pudo asignar la variable pública guardada '${varName}' en el script '${this.scriptName}':`, e);
+                                }
+                            }
                         }
-                    }
-
-                    // Assign the final value on the instance regardless of whether property previously existed
-                    try {
-                        this.instance[pv.name] = finalValue;
-                        console.log(`[DIAGNÓSTICO][Componente] Valor FINAL asignado a this.instance.${pv.name}:`, JSON.stringify(this.instance[pv.name]));
-                    } catch (e) {
-                        console.warn(`No se pudo asignar la variable pública '${pv.name}' en el script '${this.scriptName}':`, e);
                     }
                 }
 
