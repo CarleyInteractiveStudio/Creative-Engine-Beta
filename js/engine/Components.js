@@ -1294,12 +1294,14 @@ export class TilemapCollider2D extends Leyes {
                 for (const rect of rects) {
                     const rectWidth_pixels = rect.width * cellSize.x;
                     const rectHeight_pixels = rect.height * cellSize.y;
-                    const rectTopLeftX = layerTopLeftX + rect.col * cellSize.x;
-                    const rectTopLeftY = layerTopLeftY + rect.row * cellSize.y;
+
+                    // Ajuste clave: Restar la mitad de la altura total del layer para alinear con el pivote central
+                    const rectTopLeftX = (rect.col * cellSize.x) - (layerWidth / 2);
+                    const rectTopLeftY = (rect.row * cellSize.y) - (layerHeight / 2);
 
                     this.generatedColliders.push({
-                        x: rectTopLeftX + rectWidth_pixels / 2,
-                        y: rectTopLeftY + rectHeight_pixels / 2,
+                        x: rectTopLeftX + rectWidth_pixels / 2 + layerOffsetX,
+                        y: rectTopLeftY + rectHeight_pixels / 2 + layerOffsetY,
                         width: rectWidth_pixels,
                         height: rectHeight_pixels
                     });

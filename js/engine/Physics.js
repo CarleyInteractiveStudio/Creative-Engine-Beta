@@ -67,9 +67,10 @@ export class PhysicsSystem {
             const transform = materia.getComponent(Components.Transform);
 
             if (rigidbody && transform && rigidbody.bodyType.toLowerCase() === 'dynamic' && rigidbody.simulated) {
+                const PHYSICS_SCALE = 100; // Factor de escala para que las unidades sean más manejables
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
-                transform.x += rigidbody.velocity.x * deltaTime;
-                transform.y += rigidbody.velocity.y * deltaTime;
+                transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
+                transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
             }
         }
 
