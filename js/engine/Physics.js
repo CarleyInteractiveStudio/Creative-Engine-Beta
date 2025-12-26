@@ -253,10 +253,15 @@ export class PhysicsSystem {
             // Crear un objeto 'Materia' temporal para representar el tile
             const tileMateria = new Materia('tile_part');
             const tileTransform = new Components.Transform(tileMateria);
-            // BUG FIX: The generatedColliders now have world coordinates.
-            // No need to add the tilemapTransform position again.
-            tileTransform.x = rect.x;
-            tileTransform.y = rect.y;
+
+            // ¡Corrección CRÍTICA! Convertir las coordenadas locales del collider a coordenadas mundiales.
+            // Las 'rect' vienen con coordenadas relativas al pivote del Tilemap.
+            // Necesitamos sumar la posición del Tilemap para obtener su posición en el mundo.
+            const tileWorldPos = tilemapTransform.position;
+            tileTransform.position = {
+                x: tileWorldPos.x + rect.x,
+                y: tileWorldPos.y + rect.y
+            };
             tileMateria.addComponent(tileTransform);
 
             const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
@@ -514,9 +519,16 @@ export class PhysicsSystem {
         const cos = Math.cos(angle);
         const sin = Math.sin(angle);
 
+        // Apply scale and rotation to the offset to get the true center in world space
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+
+        const rotatedOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const rotatedOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+
         const center = {
-            x: transform.x + collider.offset.x,
-            y: transform.y + collider.offset.y
+            x: transform.position.x + rotatedOffsetX,
+            y: transform.position.y + rotatedOffsetY
         };
 
         // Local, unrotated corner positions relative to center
