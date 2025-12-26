@@ -20,29 +20,20 @@ function find(name) {
 
 function getCollisionEnter(materia, tag = null) {
     if (!physicsSystem) return [];
-    let collisions = physicsSystem.getCollisionInfo(materia, 'enter', 'collision');
-    if (tag) {
-        collisions = collisions.filter(c => c.materia.tag === tag);
-    }
-    return collisions;
+    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    return physicsSystem.getCollisionInfo(materia, 'enter', 'collision', tag);
 }
 
 function getCollisionStay(materia, tag = null) {
     if (!physicsSystem) return [];
-    let collisions = physicsSystem.getCollisionInfo(materia, 'stay', 'collision');
-    if (tag) {
-        collisions = collisions.filter(c => c.materia.tag === tag);
-    }
-    return collisions;
+    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    return physicsSystem.getCollisionInfo(materia, 'stay', 'collision', tag);
 }
 
 function getCollisionExit(materia, tag = null) {
     if (!physicsSystem) return [];
-    let collisions = physicsSystem.getCollisionInfo(materia, 'exit', 'collision');
-    if (tag) {
-        collisions = collisions.filter(c => c.materia.tag === tag);
-    }
-    return collisions;
+    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    return physicsSystem.getCollisionInfo(materia, 'exit', 'collision', tag);
 }
 
 // --- The Public API Object ---

@@ -570,13 +570,14 @@ export class PhysicsSystem {
     }
 
     /**
-     * Gets all collision infos for a specific materia and state.
+     * Gets all collision infos for a specific materia and state, optionally filtered by tag.
      * @param {Materia} materia
      * @param {'enter'|'stay'|'exit'} state
      * @param {'collision'|'trigger'} type
+     * @param {string} [tag] - Optional tag to filter the other materia by.
      * @returns {Collision[]} An array of collision objects.
      */
-    getCollisionInfo(materia, state, type) {
+    getCollisionInfo(materia, state, type, tag) {
         const collisions = [];
         for (const [key, value] of this.collisionStates.entries()) {
             if (value.state === state && value.type === type && value.frame === this.currentFrame) {
@@ -585,6 +586,10 @@ export class PhysicsSystem {
                     const otherId = id1 === materia.id ? id2 : id1;
                     const otherMateria = this.scene.findMateriaById(otherId);
                     if (otherMateria) {
+                        // --- BUG FIX: Filtrar por tag si se proporciona ---
+                        if (tag && otherMateria.tag !== tag) {
+                            continue; // No coincide el tag, saltar a la siguiente colisión
+                        }
                         const otherCollider = this.getCollider(otherMateria);
                         collisions.push(new Collision(materia, otherMateria, otherCollider));
                     }
