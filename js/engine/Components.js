@@ -384,22 +384,30 @@ export class CreativeScript extends Leyes {
 
 
                 const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
+                console.log(`[DIAGNÓSTICO][Componente] Metadatos para ${this.scriptName}:`, JSON.stringify(metadata));
+                console.log(`[DIAGNÓSTICO][Componente] Valores guardados en escena (this.publicVars):`, JSON.stringify(this.publicVars));
+
 
                 // Assign inspector public vars to the instance, handling types and defaults
                 for (const pv of (metadata.publicVars || [])) {
                     let inspectorValue = this.publicVars[pv.name];
                     let hasInspectorValue = this.publicVars.hasOwnProperty(pv.name);
 
+                    console.log(`[DIAGNÓSTICO][Componente] Procesando var '${pv.name}': Valor por defecto=${JSON.stringify(pv.defaultValue)}, Valor guardado=${JSON.stringify(inspectorValue)}`);
+
+
                     // --- BUG FIX ---
                     // If the inspector value for a string/texto is an empty string,
                     // and a non-empty default value exists in the script, prefer the default.
                     // This prevents saved-but-empty Inspector fields from overriding coded defaults.
                     if (pv.type === 'string' && inspectorValue === '' && pv.defaultValue) {
+                        console.log(`[DIAGNÓSTICO][Componente] ANULANDO valor guardado vacío para '${pv.name}' en favor del valor por defecto.`);
                         hasInspectorValue = false;
                     }
                     // --- END BUG FIX ---
 
                     let finalValue = hasInspectorValue ? inspectorValue : pv.defaultValue;
+                    console.log(`[DIAGNÓSTICO][Componente] Valor intermedio para '${pv.name}': ${JSON.stringify(finalValue)}`);
 
 
                     // Resolve Materia type references by ID or name
@@ -414,6 +422,7 @@ export class CreativeScript extends Leyes {
                     // Assign the final value on the instance regardless of whether property previously existed
                     try {
                         this.instance[pv.name] = finalValue;
+                        console.log(`[DIAGNÓSTICO][Componente] Valor FINAL asignado a this.instance.${pv.name}:`, JSON.stringify(this.instance[pv.name]));
                     } catch (e) {
                         console.warn(`No se pudo asignar la variable pública '${pv.name}' en el script '${this.scriptName}':`, e);
                     }

@@ -173,6 +173,7 @@ export function transpile(code, scriptName) {
         publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue }))
     };
     scriptMetadataMap.set(scriptName, metadata);
+    console.log(`[DIAGNÓSTICO][Transpilador] Metadatos generados para ${scriptName}:`, JSON.stringify(metadata));
 
 
     // --- Phase 2: Transpile method bodies ---
