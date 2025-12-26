@@ -317,6 +317,8 @@ export class CreativeScript extends Leyes {
     async initializeInstance() {
         if (this.isInitialized || !this.scriptName) return;
 
+        console.log("--- Motor de Creative Engine v1.1 ---");
+
         try {
             const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
             if (!transpiledCode) {
