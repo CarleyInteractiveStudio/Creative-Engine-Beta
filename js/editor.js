@@ -1124,6 +1124,12 @@ document.addEventListener('DOMContentLoaded', () => {
     startGame = async function() {
         if (isGameRunning) return;
 
+        // --- CRITICAL FIX: Reset physics system at the start of each play ---
+        // This ensures no collision data from the previous run leaks into the new one.
+        if (physicsSystem) {
+            physicsSystem.reset();
+        }
+
         // 1. Tomar una "snapshot" de la escena actual antes de modificarla
         console.log("Creando snapshot de la escena antes de jugar...");
         sceneSnapshotBeforePlay = SceneManager.currentScene.clone();
@@ -1205,10 +1211,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
             physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
-
-            // --- BUG FIX: Explicitly reset the physics system state ---
-            // This prevents collision states from leaking from one play session to the next.
-            physicsSystem.reset();
 
             sceneSnapshotBeforePlay = null; // Clear the snapshot
 
