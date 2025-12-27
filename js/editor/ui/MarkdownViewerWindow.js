@@ -9,7 +9,7 @@ let saveAssetCallback = null;
         saveAssetCallback = dependencies.saveAssetCallback;
 
         // Corrected IDs to match CSS and upcoming HTML
-        if (!dom.markdownViewerPanel || !dom.markdownViewerTitle || !dom.mdPreviewBtn || !dom.mdEditBtn || !dom.mdSaveBtn || !dom.markdownPreviewArea || !dom.markdownEditArea || !dom.markdownViewerPanel.querySelector('.close-panel-btn')) {
+        if (!dom.markdownViewerPanel || !dom.markdownViewerTitle || !dom.mdPreviewBtn || !dom.mdEditBtn || !dom.mdSaveBtn || !dom.mdPreviewContent || !dom.mdEditContent || !dom.markdownViewerPanel.querySelector('.close-panel-btn')) {
             console.error("MarkdownViewerWindow: Faltan elementos del DOM requeridos.");
             return;
         }
@@ -25,7 +25,7 @@ let saveAssetCallback = null;
         dom.mdSaveBtn.addEventListener('click', saveChanges);
         dom.markdownViewerPanel.querySelector('.close-panel-btn').addEventListener('click', hide);
 
-        dom.markdownEditArea.addEventListener('input', () => {
+        dom.mdEditContent.addEventListener('input', () => {
             isDirty = true;
             dom.mdSaveBtn.textContent = 'Guardar*'; // Indicate unsaved changes
         });
@@ -35,15 +35,15 @@ let saveAssetCallback = null;
         dom.mdPreviewBtn.classList.toggle('active', mode === 'preview');
         dom.mdEditBtn.classList.toggle('active', mode === 'edit');
 
-        dom.markdownPreviewArea.classList.toggle('hidden', mode !== 'preview');
-        dom.markdownEditArea.classList.toggle('hidden', mode !== 'edit');
+        dom.mdPreviewContent.classList.toggle('hidden', mode !== 'preview');
+        dom.mdEditContent.classList.toggle('hidden', mode !== 'edit');
 
         dom.mdSaveBtn.classList.toggle('hidden', mode !== 'edit');
 
         if (mode === 'preview' && isDirty) {
-            const rawMarkdown = dom.markdownEditArea.value;
+            const rawMarkdown = dom.mdEditContent.value;
             const html = showdownConverter.makeHtml(rawMarkdown);
-            dom.markdownPreviewArea.innerHTML = html;
+            dom.mdPreviewContent.innerHTML = html;
         }
     }
 
@@ -54,14 +54,14 @@ let saveAssetCallback = null;
             return;
         }
 
-        const newContent = dom.markdownEditArea.value;
+        const newContent = dom.mdEditContent.value;
         saveAssetCallback(currentFilePath, newContent, () => {
             isDirty = false;
             dom.mdSaveBtn.textContent = 'Guardar'; // Reset button text
             window.Dialogs.showNotification("Éxito", "Archivo guardado correctamente.");
             // Re-render the preview in the background after saving.
             const html = showdownConverter.makeHtml(newContent);
-            dom.markdownPreviewArea.innerHTML = html;
+            dom.mdPreviewContent.innerHTML = html;
         });
     }
 
@@ -77,13 +77,13 @@ let saveAssetCallback = null;
 
         try {
             const html = showdownConverter.makeHtml(content);
-            dom.markdownPreviewArea.innerHTML = html;
+            dom.mdPreviewContent.innerHTML = html;
         } catch (e) {
             console.error("Error al convertir Markdown:", e);
-            dom.markdownPreviewArea.innerHTML = `<p style="color: red;">Error al renderizar el archivo Markdown.</p>`;
+            dom.mdPreviewContent.innerHTML = `<p style="color: red;">Error al renderizar el archivo Markdown.</p>`;
         }
 
-        dom.markdownEditArea.value = content;
+        dom.mdEditContent.value = content;
         isDirty = false;
         dom.mdSaveBtn.textContent = 'Guardar';
 

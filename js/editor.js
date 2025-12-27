@@ -2175,7 +2175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
-            'markdown-preview-area', 'markdown-edit-area'
+            'md-preview-content', 'md-edit-content'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
