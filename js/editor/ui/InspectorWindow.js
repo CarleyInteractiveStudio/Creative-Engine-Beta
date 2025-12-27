@@ -1245,7 +1245,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        else if (ley instanceof Components.CustomComponent) {
+        } else if (ley instanceof Components.CustomComponent) {
             let publicVarsHTML = '';
             if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
                 for (const pv of ley.definition.metadata.publicVars) {
