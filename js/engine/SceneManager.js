@@ -154,7 +154,8 @@ export function serializeScene(scene, dom) {
         const materiaData = {
             id: materia.id,
             name: materia.name,
-            tag: materia.tag, // <-- GUARDAR EL TAG
+            tag: materia.tag,
+            layer: materia.layer,
             parentId: materia.parent ? materia.parent.id : null,
             leyes: []
         };
@@ -210,7 +211,8 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
     for (const materiaData of sceneData.materias) {
         const newMateria = new Materia(materiaData.name);
         newMateria.id = materiaData.id;
-        newMateria.tag = materiaData.tag || 'Untagged'; // <-- CARGAR EL TAG
+        newMateria.tag = materiaData.tag || 'Untagged';
+        newMateria.layer = materiaData.layer !== undefined ? materiaData.layer : 0; // 0 is 'Default'
         newMateria.leyes = []; // Clear default transform
 
         for (const leyData of materiaData.leyes) {
