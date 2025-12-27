@@ -32,7 +32,7 @@ export class PhysicsSystem {
      */
     constructor(scene) {
         this.scene = scene;
-        this.gravity = { x: 0, y: 98.1 };
+        this.gravity = { x: 0, y: 9.8 }; // Reduced gravity to a more game-like value
 
         /**
          * Stores active collisions from the current frame.
@@ -56,6 +56,16 @@ export class PhysicsSystem {
      */
     _generateCollisionKey(id1, id2) {
         return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+    }
+
+    /**
+     * Resets the physics system's state, clearing all collision data.
+     */
+    reset() {
+        this.activeCollisions.clear();
+        this.collisionStates.clear();
+        this.currentFrame = 0;
+        console.log("Physics system reset.");
     }
 
     update(deltaTime) {

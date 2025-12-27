@@ -482,17 +482,19 @@ export class Rigidbody2D extends Leyes {
     }
 
     addForce({ x = 0, y = 0 }) {
-        // In a simple physics model, addForce can be treated similarly to an impulse
-        // that's applied over a frame. For now, we directly modify velocity.
-        // A more complex engine would integrate this over time based on mass.
-        this.velocity.x += x;
-        this.velocity.y += y;
+        // Force produces acceleration based on mass (a = F/m).
+        // This acceleration is then applied to velocity over time in the physics system.
+        // For a simple direct velocity modification, we can simulate this.
+        const mass = Math.max(0.1, this.mass); // Avoid division by zero
+        this.velocity.x += (x / mass);
+        this.velocity.y += (y / mass);
     }
 
     addImpulse({ x = 0, y = 0 }) {
-        // Impulse directly and instantly changes velocity.
-        this.velocity.x += x;
-        this.velocity.y += y;
+        // Impulse produces an instantaneous change in velocity based on mass (Δv = J/m).
+        const mass = Math.max(0.1, this.mass); // Avoid division by zero
+        this.velocity.x += (x / mass);
+        this.velocity.y += (y / mass);
     }
 
     setVelocity({ x = 0, y = 0 }) {

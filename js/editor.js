@@ -1205,6 +1205,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
             physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
+
+            // --- BUG FIX: Explicitly reset the physics system state ---
+            // This prevents collision states from leaking from one play session to the next.
+            physicsSystem.reset();
+
             sceneSnapshotBeforePlay = null; // Clear the snapshot
 
             // --- UI Refresh ---
