@@ -365,16 +365,36 @@ export class CreativeScript extends Leyes {
                 }
                 const engineAPI = RuntimeAPIManager.getAPI('engine');
                 if (engineAPI) {
+                    // --- API de Físicas Retrocompatible ---
+                    // Esta función crea un "envoltorio" para las funciones de colisión
+                    // que maneja inteligentemente las llamadas con 1 o 2 argumentos.
+                    const createCollisionWrapper = (apiMethod) => {
+                        return function(...args) {
+                            if (args.length === 0) {
+                                // Llamada sin argumentos, devuelve vacío
+                                return apiMethod(this.materia, undefined);
+                            } else if (args.length === 1) {
+                                // Llamada con 1 argumento: motor.alPermanecerEnColision(tag)
+                                // El primer argumento es el 'tag'.
+                                return apiMethod(this.materia, args[0]);
+                            } else {
+                                // Llamada con 2+ argumentos: motor.alPermanecerEnColision(materia, tag)
+                                // El primer argumento es la 'materia', el segundo es el 'tag'.
+                                return apiMethod(args[0], args[1]);
+                            }
+                        }.bind(this.instance); // ¡Importante! Enlazar el 'this' a la instancia del script
+                    };
+
                      this.instance.engine = {
                         find: engineAPI.find,
-                        getCollisionEnter: (tag) => engineAPI.getCollisionEnter(this.instance.materia, tag),
-                        getCollisionStay: (tag) => engineAPI.getCollisionStay(this.instance.materia, tag),
-                        getCollisionExit: (tag) => engineAPI.getCollisionExit(this.instance.materia, tag),
+                        getCollisionEnter: createCollisionWrapper(engineAPI.getCollisionEnter),
+                        getCollisionStay: createCollisionWrapper(engineAPI.getCollisionStay),
+                        getCollisionExit: createCollisionWrapper(engineAPI.getCollisionExit),
                         // Spanish Aliases
                         buscar: engineAPI.buscar,
-                        alEntrarEnColision: (tag) => engineAPI.alEntrarEnColision(this.instance.materia, tag),
-                        alPermanecerEnColision: (tag) => engineAPI.alPermanecerEnColision(this.instance.materia, tag),
-                        alSalirDeColision: (tag) => engineAPI.alSalirDeColision(this.instance.materia, tag),
+                        alEntrarEnColision: createCollisionWrapper(engineAPI.alEntrarEnColision),
+                        alPermanecerEnColision: createCollisionWrapper(engineAPI.alPermanecerEnColision),
+                        alSalirDeColision: createCollisionWrapper(engineAPI.alSalirDeColision),
                     };
                     this.instance.motor = this.instance.engine;
                 }
