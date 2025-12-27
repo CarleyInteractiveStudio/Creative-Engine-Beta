@@ -248,15 +248,40 @@ export class PhysicsSystem {
 
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
 
+        // Get the world transform of the entire tilemap
+        const tilemapWorldPos = tilemapTransform.position;
+        const tilemapWorldRot = tilemapTransform.rotation;
+        const tilemapWorldScale = tilemapTransform.scale;
+
         for (const rect of tilemapCollider.generatedColliders) {
-            // Crear un objeto 'Materia' temporal para representar el tile
+            // The rect's x/y is its center in the tilemap's local space.
+            // We need to transform this local point into world space.
+
+            // 1. Apply scale
+            const scaledOffsetX = rect.x * tilemapWorldScale.x;
+            const scaledOffsetY = rect.y * tilemapWorldScale.y;
+
+            // 2. Apply rotation
+            const angleRad = tilemapWorldRot * Math.PI / 180;
+            const cos = Math.cos(angleRad);
+            const sin = Math.sin(angleRad);
+            const rotatedOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+            const rotatedOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+
+            // 3. Add to the tilemap's world position
+            const finalWorldX = tilemapWorldPos.x + rotatedOffsetX;
+            const finalWorldY = tilemapWorldPos.y + rotatedOffsetY;
+
+            // Create a temporary 'Materia' to represent the tile's collider in world space
             const tileMateria = new Materia('tile_part');
             const tileTransform = new Components.Transform(tileMateria);
-            tileTransform.x = tilemapTransform.x + rect.x;
-            tileTransform.y = tilemapTransform.y + rect.y;
+            tileTransform.position = { x: finalWorldX, y: finalWorldY }; // Set world position
+            tileTransform.rotation = tilemapWorldRot;
+            tileTransform.scale = tilemapWorldScale;
             tileMateria.addComponent(tileTransform);
 
             const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
+            // The rect size is the base size; isBoxVsBox will apply the scale from the transform
             tileBoxCollider.size = { x: rect.width, y: rect.height };
             tileMateria.addComponent(tileBoxCollider);
 
@@ -264,12 +289,12 @@ export class PhysicsSystem {
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                // isBoxVsCapsule espera (box, capsule), así que invertimos el orden
+                // isBoxVsCapsule expects (box, capsule), so we pass the tile first
                 collisionInfo = this.isBoxVsCapsule(tileMateria, colliderMateria);
             }
 
             if (collisionInfo) {
-                // Se encontró una colisión, no necesitamos comprobar el resto de tiles
+                // A collision was found, no need to check the rest of the tiles
                 return collisionInfo;
             }
         }
