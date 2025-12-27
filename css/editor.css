@@ -869,6 +869,83 @@ body {
     width: 100%;
 }
 
+/* Estilos para la zona de arrastrar y soltar archivos de la librería */
+.drop-zone {
+    border: 2px dashed var(--color-border);
+    border-radius: 8px;
+    padding: 25px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    margin-bottom: 10px;
+}
+
+.drop-zone.dragover {
+    background-color: var(--color-accent-dark);
+    border-color: var(--color-accent);
+}
+
+.file-list {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+    background-color: var(--color-background-deep);
+    border-radius: 5px;
+    border: 1px solid var(--color-border-dark);
+}
+
+.file-list li {
+    padding: 8px 12px;
+    background-color: var(--color-background-light);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-name {
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.main-script-star {
+    cursor: pointer;
+    color: var(--color-border);
+    font-size: 1.2em;
+    transition: color 0.2s;
+}
+
+.main-script-star:hover {
+    color: var(--color-accent-light);
+}
+
+.main-script-star.selected {
+    color: var(--color-accent);
+}
+
+.file-list li:last-child {
+    border-bottom: none;
+}
+
+.remove-file {
+    color: var(--color-danger);
+    cursor: pointer;
+    font-weight: bold;
+    padding: 2px 5px;
+}
+
+.remove-file:hover {
+    background-color: var(--color-danger);
+    color: white;
+    border-radius: 50%;
+}
+
 .tag-layer-container .inspector-row {
     flex: 1; /* Each takes half the space */
     display: flex;

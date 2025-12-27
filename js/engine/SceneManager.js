@@ -4,8 +4,10 @@
 import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
+import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
+
 
 export class Scene {
     constructor() {
@@ -159,36 +161,36 @@ export function serializeScene(scene, dom) {
             leyes: []
         };
         for (const ley of materia.leyes) {
-            const leyData = {
-                type: ley.constructor.name,
-                properties: {}
-            };
-            for (const key in ley) {
-                if (key !== 'materia' && typeof ley[key] !== 'function') {
-                    // Special handling for Tilemap to serialize Map objects
-                    if (ley.constructor.name === 'Tilemap' && key === 'layers') {
-                        console.log(`[SerializeScene] Serializando Tilemap layers para ${materia.name}. Capas: ${ley[key].length}`);
-                        leyData.properties[key] = ley[key].map(layer => ({
-                            ...layer,
-                            // Ensure tileData Map is correctly converted to an array of [key, value] pairs
-                            tileData: Array.from(layer.tileData.entries())
-                        }));
-                    } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
-                        console.log(`[SerializeScene] Serializando TilemapCollider2D _cachedMesh para ${materia.name}. Entries: ${ley[key].size}`);
-                        leyData.properties[key] = Array.from(ley[key].entries());
-                    } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
-                        // Correctly serialize the _cachedMesh Map
-                        leyData.properties[key] = Array.from(ley[key].entries());
-                    } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
-                        // imageCache can be large and isn't essential to save.
-                        // We'll save it as an empty array and let it rebuild at runtime.
-                        leyData.properties[key] = [];
-                    } else {
-                        leyData.properties[key] = ley[key];
+            if (ley instanceof CustomComponent) {
+                const customLeyData = {
+                    type: 'CustomComponent',
+                    definitionName: ley.definition.nombre,
+                    publicProperties: ley.publicProperties
+                };
+                materiaData.leyes.push(customLeyData);
+            } else {
+                const leyData = {
+                    type: ley.constructor.name,
+                    properties: {}
+                };
+                for (const key in ley) {
+                    if (key !== 'materia' && typeof ley[key] !== 'function') {
+                        if (ley.constructor.name === 'Tilemap' && key === 'layers') {
+                            leyData.properties[key] = ley[key].map(layer => ({
+                                ...layer,
+                                tileData: Array.from(layer.tileData.entries())
+                            }));
+                        } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
+                            leyData.properties[key] = Array.from(ley[key].entries());
+                        } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
+                            leyData.properties[key] = [];
+                        } else {
+                            leyData.properties[key] = ley[key];
+                        }
                     }
                 }
+                materiaData.leyes.push(leyData);
             }
-            materiaData.leyes.push(leyData);
         }
         sceneData.materias.push(materiaData);
     }
@@ -214,15 +216,22 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
         newMateria.leyes = []; // Clear default transform
 
         for (const leyData of materiaData.leyes) {
-            const ComponentClass = getComponent(leyData.type);
-            if (ComponentClass) {
+            if (leyData.type === 'CustomComponent') {
+                const definition = getCustomComponentDefinitions().get(leyData.definitionName);
+                if (definition) {
+                    const newLey = new CustomComponent(definition);
+                    newLey.publicProperties = leyData.publicProperties || {};
+                    newMateria.addComponent(newLey);
+                } else {
+                    console.warn(`No se encontró la definición para el componente personalizado '${leyData.definitionName}' en la Materia '${materiaData.name}'. El componente no será cargado.`);
+                }
+            } else {
+                const ComponentClass = getComponent(leyData.type);
+                if (ComponentClass) {
+                    const newLey = new ComponentClass(newMateria);
 
-                const newLey = new ComponentClass(newMateria);
-
-                // Special handling for Tilemap to deserialize Map objects
-                if (leyData.type === 'Tilemap') {
-                    console.log(`[DeserializeScene] Deserializando Tilemap layers para ${materiaData.name}. LeyData:`, leyData);
-                    Object.assign(newLey, leyData.properties);
+                    if (leyData.type === 'Tilemap') {
+                        Object.assign(newLey, leyData.properties);
                     if (newLey.layers && Array.isArray(newLey.layers)) {
                         newLey.layers.forEach((layer, index) => {
                             if (layer.tileData && Array.isArray(layer.tileData)) {
@@ -267,6 +276,7 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 if (newLey instanceof Animator) {
                     await newLey.loadController(projectsDirHandle);
                 }
+            }
             }
         }
         materiaMap.set(newMateria.id, newMateria);

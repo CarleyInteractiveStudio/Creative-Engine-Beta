@@ -2125,6 +2125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
             'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
             'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
+            'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list',
             'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
@@ -2352,38 +2353,68 @@ public star() {
                             const content = await file.text();
                             const libData = JSON.parse(content);
 
-                            // Decode the Base64 script content
-                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                            let combinedScriptContent = '';
+                            let mainScriptFile = null;
+
+                            // NEW: Handle multi-file format
+                            if (libData.files && Object.keys(libData.files).length > 0) {
+                                const allFiles = Object.keys(libData.files);
+
+                                // Use the designated main script, or fall back to the old logic
+                                mainScriptFile = libData.mainScript && libData.files[libData.mainScript]
+                                    ? libData.mainScript
+                                    : allFiles.find(name => name.endsWith('.js')) || allFiles[0];
+
+                                // Simple bundling: concatenate other files first, then the main script
+                                allFiles.forEach(fileName => {
+                                    if (fileName !== mainScriptFile) {
+                                        combinedScriptContent += `\n// --- Contenido de ${fileName} ---\n`;
+                                        combinedScriptContent += decodeURIComponent(escape(atob(libData.files[fileName])));
+                                    }
+                                });
+                                combinedScriptContent += `\n// --- Contenido de ${mainScriptFile} (Principal) ---\n`;
+                                combinedScriptContent += decodeURIComponent(escape(atob(libData.files[mainScriptFile])));
+
+                            }
+                            // OLD: Handle single-file format for backwards compatibility
+                            else if (libData.script_base64) {
+                                combinedScriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
+                                mainScriptFile = "script.js"; // Placeholder name
+                            }
+
+                            if (!combinedScriptContent) continue;
+
+                            // --- API Injection and Execution ---
+                            const engineAPI = EngineAPI.getEngineAPI();
 
                             // 1. Handle API for creating windows (Editor-side)
                             if (libData.api_access && libData.api_access.can_create_windows) {
-                                // This script runs in the editor's context to register UI elements
-                                try {
-                                    // We wrap the code in a function to control its scope
-                                    const setupFunction = new Function('CreativeEngine', scriptContent);
-                                    setupFunction(window.CreativeEngine); // Pass the API object
-                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
-                                } catch(e) {
-                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                // Only .js files can be main entry points for UI
+                                if (mainScriptFile && mainScriptFile.endsWith('.js')) {
+                                    try {
+                                        // Wrap in a function that receives both APIs
+                                        const setupFunction = new Function('CreativeEngine', 'engine', combinedScriptContent);
+                                        setupFunction(window.CreativeEngine, engineAPI);
+                                        console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
+                                    } catch(e) {
+                                         console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
+                                    }
+                                } else {
+                                     console.warn(`La librería '${libData.name}' solicita acceso a la UI pero no tiene un archivo .js como punto de entrada.`);
                                 }
                             }
 
                             // 2. Handle API for game scripts (Runtime)
                             if (libData.api_access && libData.api_access.runtime_accessible) {
-                                // This script is evaluated to get its public functions for the game
                                 try {
-                                    // Wrap in an IIFE (Immediately Invoked Function Expression) to capture the return value.
-                                    const apiObject = (new Function(scriptContent))();
+                                    const apiObject = (new Function('engine', combinedScriptContent))(engineAPI);
 
                                     if (apiObject && typeof apiObject === 'object') {
                                         RuntimeAPIManager.registerAPI(libData.name, apiObject);
                                         const fileNameWithoutExt = entry.name.replace('.celib', '');
                                         if (libData.name !== fileNameWithoutExt) {
                                             RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
-                                            console.log(`Registrando alias para '${libData.name}' como '${fileNameWithoutExt}'.`);
                                         }
-                                    } else {
-                                        console.warn(`La librería '${libData.name}' está marcada como accesible en tiempo de ejecución pero no devuelve un objeto API.`);
                                     }
                                 } catch(e) {
                                     console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);

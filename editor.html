@@ -173,13 +173,15 @@
                             <label for="lib-create-description">Descripción / Cómo usar</label>
                             <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores."></textarea>
 
-                            <label for="lib-create-script-file">Archivo de Script (.js)</label>
-                            <div class="file-picker">
-                                <input type="text" id="lib-create-script-path" readonly placeholder="Ningún script seleccionado">
-                                <button id="lib-create-script-picker-btn">...</button>
-                                <input type="file" id="lib-create-script-input" style="display: none;" accept=".js">
+                            <label>Archivos de la Librería (.js, .ces)</label>
+                            <div id="lib-create-drop-zone" class="drop-zone">
+                                <p>Arrastra y suelta los archivos aquí, o haz clic para seleccionar.</p>
+                                <input type="file" id="lib-create-file-input" multiple accept=".js,.ces" style="display: none;">
                             </div>
-                             <p class="field-description">El archivo JavaScript principal que contiene la lógica de tu librería.</p>
+                            <ul id="lib-create-file-list" class="file-list">
+                                <!-- Los archivos añadidos se mostrarán aquí -->
+                            </ul>
+                             <p class="field-description">Añade uno o más archivos. El motor los combinará. Si usas la API del editor (paneles, etc.), el script principal debe ser un .js.</p>
                             <hr>
                             <div class="checkbox-field">
                                 <input type="checkbox" id="lib-create-req-windows">

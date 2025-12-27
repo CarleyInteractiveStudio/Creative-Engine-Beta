@@ -1,6 +1,7 @@
 import * as Components from '../../engine/Components.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
+import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
 
@@ -131,6 +132,15 @@ function handleInspectorInput(e) {
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
             script.publicVars[propPath] = value;
+        }
+        return;
+    }
+
+    if (componentName === 'CustomComponent') {
+        const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
+        const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        if (component) {
+            component.publicProperties[propPath] = value;
         }
         return;
     }
@@ -515,14 +525,22 @@ export async function updateInspector() {
     }
 }
 
-function renderPublicVarInput(variable, currentValue, scriptName) {
-    const commonAttrs = `class="prop-input" data-component="CreativeScript" data-script-name="${scriptName}" data-prop="${variable.name}"`;
+function renderPublicVarInput(variable, currentValue, componentType, identifier) {
+    let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
+    if (componentType === 'CreativeScript') {
+        commonAttrs += ` data-component="CreativeScript" data-script-name="${identifier}"`;
+    } else if (componentType === 'CustomComponent') {
+        commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
+    }
 
     switch (variable.type) {
+        case 'number':
         case 'numero':
             return `<input type="number" ${commonAttrs} value="${currentValue}">`;
+        case 'string':
         case 'texto':
             return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+        case 'boolean':
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
         case 'Materia':
@@ -1227,6 +1245,26 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
+        else if (ley instanceof Components.CustomComponent) {
+            let publicVarsHTML = '';
+            if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
+                for (const pv of ley.definition.metadata.publicVars) {
+                    const currentValue = ley.publicProperties[pv.name] ?? pv.defaultValue;
+                     publicVarsHTML += `
+                        <div class="prop-row-multi">
+                            <label>${pv.name}</label>
+                            ${renderPublicVarInput(pv, currentValue, 'CustomComponent', ley.id)}
+                        </div>
+                    `;
+                }
+            }
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">⚙️</span><h4>${ley.definition.nombre}</h4></div>
+                <div class="component-content">
+                    ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
+                </div>
+            `;
+        }
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">
@@ -1874,6 +1912,10 @@ export async function showAddComponentModal() {
 
     dom.componentList.innerHTML = '';
     const existingComponents = new Set(selectedMateria.leyes.map(ley => ley.constructor));
+    const existingCustomComponents = new Set(selectedMateria.leyes
+        .filter(ley => ley instanceof Components.CustomComponent)
+        .map(ley => ley.definition.nombre)
+    );
     const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
 
     // --- 1. Render Built-in Components ---
@@ -1906,7 +1948,31 @@ export async function showAddComponentModal() {
         });
     }
 
-    // --- 2. Show the modal Immediately ---
+    // --- 2. Render Custom Components ---
+    const customComponentDefinitions = getCustomComponentDefinitions();
+    if (customComponentDefinitions.size > 0) {
+        const customHeader = document.createElement('h4');
+        customHeader.textContent = 'Componentes Personalizados';
+        dom.componentList.appendChild(customHeader);
+
+        for (const [name, definition] of customComponentDefinitions.entries()) {
+            if (existingCustomComponents.has(name)) continue;
+
+            const componentItem = document.createElement('div');
+            componentItem.className = 'component-item';
+            componentItem.textContent = name;
+            componentItem.addEventListener('click', () => {
+                const newComponent = new Components.CustomComponent(definition);
+                selectedMateria.addComponent(newComponent);
+                dom.addComponentModal.classList.remove('is-open');
+                updateInspector();
+            });
+            dom.componentList.appendChild(componentItem);
+        }
+    }
+
+
+    // --- 3. Show the modal Immediately ---
     dom.addComponentModal.classList.add('is-open');
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---

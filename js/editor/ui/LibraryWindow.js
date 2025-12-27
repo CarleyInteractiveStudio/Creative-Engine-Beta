@@ -5,6 +5,8 @@ import { showNotification, showConfirmation } from './DialogWindow.js';
 let dom = {};
 let projectsDirHandle = null;
 let exportLibrariesAsPackage = null; // To hold the function from another module
+let libraryFiles = []; // To store files for the new library
+let mainScriptFile = null; // To store the name of the main script
 
 // --- Helper Functions ---
 
@@ -242,25 +244,35 @@ async function handleCreateLibrary() {
             runtime_accessible: dom.libCreateRuntimeAccess.checked,
             is_engine_tool: dom.libCreateIsTool.checked,
         },
+        mainScript: mainScriptFile,
         library_icon_base64: null,
         author_icon_base64: null,
-        script_base64: null,
+        files: {}, // New: object to hold multiple files
     };
 
-    // 2. Convert images and script to Base64
+    // 2. Convert images and script files to Base64
     const iconFile = dom.libCreateIconInput.files[0];
     const authorIconFile = dom.libCreateAuthorIconInput.files[0];
-    const scriptFile = dom.libCreateScriptInput.files[0];
 
-    if (!scriptFile) {
-        showNotification('Campo Obligatorio', 'Debes seleccionar un archivo de script (.js).');
+    if (libraryFiles.length === 0) {
+        showNotification('Campo Obligatorio', 'Debes añadir al menos un archivo de script (.js o .ces).');
         return;
     }
+     // Optional: Validate that at least one .js file is present if certain permissions are checked
+    if (libData.api_access.can_create_windows && !libraryFiles.some(f => f.name.endsWith('.js'))) {
+        showNotification('Archivo Requerido', 'Para crear ventanas en el editor, se necesita al menos un archivo .js como punto de entrada.');
+        return;
+    }
+
 
     try {
         libData.library_icon_base64 = await imageToBase64(iconFile);
         libData.author_icon_base64 = await imageToBase64(authorIconFile);
-        libData.script_base64 = await scriptToBase64(scriptFile);
+
+        for (const file of libraryFiles) {
+            libData.files[file.name] = await scriptToBase64(file);
+        }
+
     } catch (error) {
         console.error("Error al procesar los archivos:", error);
         showNotification('Error', 'Hubo un error al leer uno de los archivos seleccionados.');
@@ -357,7 +369,13 @@ export function initialize(editorDom, handle, exportFunc) {
             dom.createLibraryModal.querySelector('.settings-form').reset();
             dom.libCreateIconPreview.src = 'image/Paquete.png';
             dom.libCreateAuthorIconPreview.src = 'image/Paquete.png';
-            dom.libCreateScriptPath.value = 'Ningún script seleccionado';
+
+            // Reset the new file handling logic
+            libraryFiles = [];
+            mainScriptFile = null;
+            if (dom.libCreateFileList) dom.libCreateFileList.innerHTML = '';
+            if (dom.libCreateDropZone) dom.libCreateDropZone.querySelector('p').textContent = 'Arrastra y suelta los archivos aquí, o haz clic para seleccionar.';
+
             dom.createLibraryModal.classList.add('is-open');
         });
     }
@@ -422,6 +440,8 @@ export function initialize(editorDom, handle, exportFunc) {
 
     // Confirmation button
     dom.libCreateConfirmBtn.addEventListener('click', handleCreateLibrary);
+
+    setupDragAndDrop(); // Initialize the new drag-and-drop functionality
 
     async function toggleLibraryActivation(libName) {
         const projectName = new URLSearchParams(window.location.search).get('project');
@@ -661,4 +681,104 @@ export function initialize(editorDom, handle, exportFunc) {
         refreshLibraryList,
         openLibraryDetails // Export the function
     };
+}
+
+function setupDragAndDrop() {
+    const dropZone = dom.libCreateDropZone;
+    const fileInput = dom.libCreateFileInput;
+    const fileList = dom.libCreateFileList;
+
+    if (!dropZone || !fileInput || !fileList) return;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileList.addEventListener('click', (e) => {
+        const fileName = e.target.parentElement.dataset.fileName;
+        if (e.target.classList.contains('remove-file')) {
+            libraryFiles = libraryFiles.filter(f => f.name !== fileName);
+            // If the removed file was the main script, reset it
+            if (mainScriptFile === fileName) {
+                mainScriptFile = null;
+                // Auto-select a new .js file if available
+                const newMain = libraryFiles.find(f => f.name.endsWith('.js'));
+                if (newMain) mainScriptFile = newMain.name;
+            }
+            updateFileList();
+        } else if (e.target.classList.contains('main-script-star')) {
+            mainScriptFile = fileName;
+            updateFileList();
+        }
+    });
+
+    function handleFiles(files) {
+        let firstJsAdded = false;
+        for (const file of files) {
+            if (!libraryFiles.some(f => f.name === file.name)) {
+                if (file.name.endsWith('.js') || file.name.endsWith('.ces')) {
+                    libraryFiles.push(file);
+                    // If this is the first .js file and no main script is set, make it the main one.
+                    if (file.name.endsWith('.js') && !mainScriptFile && !firstJsAdded) {
+                        mainScriptFile = file.name;
+                        firstJsAdded = true;
+                    }
+                } else {
+                    showNotification('Archivo no válido', `Solo se permiten archivos .js y .ces. ${file.name} fue ignorado.`);
+                }
+            }
+        }
+        updateFileList();
+    }
+
+    function updateFileList() {
+        fileList.innerHTML = '';
+        if (libraryFiles.length === 0) {
+            dropZone.querySelector('p').textContent = 'Arrastra y suelta los archivos aquí, o haz clic para seleccionar.';
+        } else {
+            dropZone.querySelector('p').textContent = `${libraryFiles.length} archivo(s) añadidos. Añade más si lo necesitas.`;
+        }
+
+        libraryFiles.forEach(file => {
+            const li = document.createElement('li');
+            li.dataset.fileName = file.name;
+
+            const starSpan = document.createElement('span');
+            starSpan.className = 'main-script-star';
+            starSpan.textContent = '★';
+            starSpan.title = 'Marcar como script principal';
+            if (file.name === mainScriptFile) {
+                starSpan.classList.add('selected');
+                starSpan.title = 'Este es el script principal';
+            }
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = file.name;
+
+            const removeSpan = document.createElement('span');
+            removeSpan.className = 'remove-file';
+            removeSpan.textContent = '✖';
+            removeSpan.title = 'Eliminar archivo';
+
+            li.appendChild(starSpan);
+            li.appendChild(nameSpan);
+            li.appendChild(removeSpan);
+            fileList.appendChild(li);
+        });
+    }
 }
