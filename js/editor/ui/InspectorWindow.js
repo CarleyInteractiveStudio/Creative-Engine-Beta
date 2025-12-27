@@ -795,7 +795,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     publicVarsHTML += `
                         <div class="prop-row-multi">
                             <label>${pv.name}</label>
-                            ${renderPublicVarInput(pv, currentValue, ley.scriptName)}
+                            ${renderPublicVarInput(pv, currentValue, 'CreativeScript', ley.scriptName)}
                         </div>
                     `;
                 }
@@ -1264,7 +1264,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
             `;
-        }
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">
