@@ -531,7 +531,8 @@ async function handleGridDblClick(e) {
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { openIn: 'SpriteSlicer' });
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
-        onAssetOpened(name, fileHandle, currentDirectoryHandle.handle);
+        // Pass the full path to the callback now
+        onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { path: path });
     }
 }
 

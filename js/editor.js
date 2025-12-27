@@ -36,7 +36,7 @@ import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
-import { default as MarkdownViewerWindow } from './editor/ui/MarkdownViewerWindow.js';
+import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2461,10 +2461,8 @@ public star() {
                     try {
                         const file = await fileHandle.getFile();
                         const content = await file.text();
-                        // Construct the full path to pass to the viewer
-                        const fullPath = await dirHandle.resolve(fileHandle);
-                        const pathString = fullPath.join('/');
-                        openMarkdownViewerCallback(pathString, content);
+                        // Use the full path passed from the options
+                        openMarkdownViewerCallback(options.path, content);
                     } catch (e) {
                         console.error(`Error reading Markdown file ${name}:`, e);
                         showNotificationDialog("Error", `Could not read file: ${name}`);
