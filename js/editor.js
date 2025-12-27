@@ -1124,11 +1124,12 @@ document.addEventListener('DOMContentLoaded', () => {
     startGame = async function() {
         if (isGameRunning) return;
 
-        // --- CRITICAL FIX: Reset physics system at the start of each play ---
-        // This ensures no collision data from the previous run leaks into the new one.
-        if (physicsSystem) {
-            physicsSystem.reset();
-        }
+        // --- ARCHITECTURE FIX: Instantiate a new PhysicsSystem for each play session ---
+        // This guarantees a clean state and prevents any data leaks from previous runs.
+        console.log("Creating new PhysicsSystem instance for the game session.");
+        physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+        EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
+
 
         // 1. Tomar una "snapshot" de la escena actual antes de modificarla
         console.log("Creando snapshot de la escena antes de jugar...");
@@ -1210,8 +1211,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sceneSnapshotBeforePlay) {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
-            physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
-
             sceneSnapshotBeforePlay = null; // Clear the snapshot
 
             // --- UI Refresh ---
@@ -1222,6 +1221,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
         }
+
+        // --- ARCHITECTURE FIX: Destroy the old PhysicsSystem instance ---
+        console.log("Destroying game session's PhysicsSystem instance.");
+        physicsSystem = null;
 
 
         updateGameControlsUI();

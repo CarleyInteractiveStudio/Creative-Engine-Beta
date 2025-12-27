@@ -58,16 +58,6 @@ export class PhysicsSystem {
         return id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
     }
 
-    /**
-     * Resets the physics system's state, clearing all collision data.
-     */
-    reset() {
-        this.activeCollisions.clear();
-        this.collisionStates.clear();
-        this.currentFrame = 0;
-        console.log("Physics system reset.");
-    }
-
     update(deltaTime) {
         this.currentFrame++;
 
