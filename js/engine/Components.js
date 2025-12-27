@@ -315,19 +315,27 @@ export class CreativeScript extends Leyes {
 
     // Called by startGame, just before the first start() call.
     async initializeInstance() {
-        if (this.isInitialized || !this.scriptName) return;
+        console.log(`[CHIVATO] 1. Iniciando initializeInstance para: ${this.scriptName}`);
+        if (this.isInitialized || !this.scriptName) {
+            console.log(`[CHIVATO] Abortando inicialización para ${this.scriptName} (ya inicializado o sin nombre).`);
+            return;
+        }
 
         try {
             const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
             if (!transpiledCode) {
                 throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
+            console.log(`[CHIVATO] 2. Código transpilado para ${this.scriptName} encontrado.`);
 
             const factory = (new Function(`return ${transpiledCode}`))();
             const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
+            console.log(`[CHIVATO] 3. Clase del script ${this.scriptName} creada desde la factoría.`);
+
 
             if (ScriptClass) {
                 this.instance = new ScriptClass(this.materia);
+                console.log(`[CHIVATO] 4. Nueva instancia de ${this.scriptName} creada. Procediendo a asignar variables públicas.`);
 
                 // Ensure common aliases exist on the instance so script authors can write in either language
                 const aliasMap = {
