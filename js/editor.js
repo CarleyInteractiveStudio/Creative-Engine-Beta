@@ -613,6 +613,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        console.log("Forzando re-transpilación de todos los scripts...");
+        await CES_Transpiler.transpileAllProjectScripts(projectsDirHandle);
+        console.log("Re-transpilación completada.");
+
         // --- 1. Clear and Load All APIs ---
         // Clear previous runtime APIs to ensure a clean slate for every "Play"
         RuntimeAPIManager.clearAPIs();
@@ -1182,38 +1186,39 @@ document.addEventListener('DOMContentLoaded', () => {
     stopGame = async function() {
         if (!isGameRunning) return;
         isGameRunning = false;
-        // Restore InputManager out of game mode
-        try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
+        try { InputManager.setGameRunning(false); } catch(e) {}
         console.log("Game Stopped");
 
-        // Notify scripts about disable/destroy so they can clean up
         try {
-            for (const materia of SceneManager.currentScene.getAllMaterias()) {
-                if (!materia.isActive) continue;
-                const scripts = materia.getComponents(Components.CreativeScript);
-                for (const script of scripts) {
-                    try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
-                    try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
+            if (SceneManager.currentScene) {
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    if (materia.isActive) {
+                        const scripts = materia.getComponents(Components.CreativeScript);
+                        for (const script of scripts) {
+                            try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() de '${script.scriptName}':`, e); }
+                            try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() de '${script.scriptName}':`, e); }
+                        }
+                    }
                 }
             }
         } catch(e) { console.warn('Error al notificar scripts sobre onDisable/onDestroy:', e); }
 
-        // --- Scene Restoration Logic ---
         if (sceneSnapshotBeforePlay) {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
-            physicsSystem = new PhysicsSystem(SceneManager.currentScene); // Re-initialize physics with the restored scene
-            sceneSnapshotBeforePlay = null; // Clear the snapshot
+            sceneSnapshotBeforePlay = null;
 
-            // --- UI Refresh ---
+            console.log("Reiniciando el sistema de físicas...");
+            physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+            EngineAPI.CEEngine.initialize({ physicsSystem });
+
             updateHierarchy();
-            selectMateria(null); // Deselect everything
+            selectMateria(null);
             updateInspector();
-            console.log("Escena restaurada.");
+            console.log("Escena restaurada y sistema de físicas reiniciado.");
         } else {
-            console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
+            console.warn("No se encontró una snapshot de la escena para restaurar.");
         }
-
 
         updateGameControlsUI();
     };
