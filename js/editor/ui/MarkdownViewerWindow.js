@@ -1,6 +1,5 @@
-const MarkdownViewerWindow = (function() {
-    let dom = {};
-    let saveAssetCallback = null;
+let dom = {};
+let saveAssetCallback = null;
     let showdownConverter = null;
     let currentFilePath = null;
     let isDirty = false;
@@ -114,8 +113,9 @@ const MarkdownViewerWindow = (function() {
         }
     }
 
-    return {
-        initialize,
-        show
-    };
-})();
+const MarkdownViewerWindow = {
+    initialize,
+    show
+};
+
+export default MarkdownViewerWindow;
