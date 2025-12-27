@@ -36,6 +36,7 @@ import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
+import { default as MarkdownViewerWindow } from './editor/ui/MarkdownViewerWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -79,7 +80,38 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+
+    saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            let currentHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const parts = filePath.split('/');
+            const fileName = parts.pop();
+
+            for (const part of parts) {
+                if (part) { // Skip empty parts if path starts with /
+                    currentHandle = await currentHandle.getDirectoryHandle(part);
+                }
+            }
+
+            const fileHandle = await currentHandle.getFileHandle(fileName, { create: false });
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            console.log(`Asset '${filePath}' guardado exitosamente.`);
+            if (onSaveComplete && typeof onSaveComplete === 'function') {
+                onSaveComplete();
+            }
+        } catch (error) {
+            console.error(`No se pudo guardar el asset '${filePath}':`, error);
+            showNotificationDialog('Error al Guardar', `No se pudo guardar el archivo: ${error.message}`);
+        }
+    };
+
+    openMarkdownViewerCallback = function(filePath, content) {
+        MarkdownViewerWindow.show(filePath, content);
+    };
 
     openAssetSelector = async function(callback, options) {
         // For backwards compatibility, if the second argument isn't an object, treat it as the old 'filter'.
@@ -2140,7 +2172,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
             'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
-            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo'
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
+            // Markdown Viewer Panel
+            'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
+            'markdown-preview-area', 'markdown-edit-area'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -2420,11 +2455,27 @@ public star() {
                 const lowerName = name.toLowerCase();
                 const extension = lowerName.split('.').pop();
 
-                // Handle text-based files first
-                const textExtensions = ['ces', 'js', 'md', 'json', 'txt', 'html', 'css'];
-                if (textExtensions.includes(extension) || lowerName === 'license' || lowerName.startsWith('readme')) {
+                // Handle Markdown files with the dedicated viewer
+                if (extension === 'md' || lowerName === 'readme') {
+                    console.log(`Opening Markdown asset: ${name}`);
+                    try {
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+                        // Construct the full path to pass to the viewer
+                        const fullPath = await dirHandle.resolve(fileHandle);
+                        const pathString = fullPath.join('/');
+                        openMarkdownViewerCallback(pathString, content);
+                    } catch (e) {
+                        console.error(`Error reading Markdown file ${name}:`, e);
+                        showNotificationDialog("Error", `Could not read file: ${name}`);
+                    }
+                    return;
+                }
+
+                // Handle other text-based files with the code editor
+                const textExtensions = ['ces', 'js', 'json', 'txt', 'html', 'css'];
+                if (textExtensions.includes(extension) || lowerName === 'license') {
                     console.log(`Opening text-based asset: ${name}`);
-                    // FIX: Called the correct function name 'openScriptInEditor'
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
                     return;
                 }
@@ -2518,6 +2569,11 @@ public star() {
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
             const libraryModule = initializeLibraryWindow(dom, projectsDirHandle, packageExporter.exportLibrariesAsPackage);
+
+            MarkdownViewerWindow.initialize({
+                dom: dom,
+                saveAssetCallback: saveAssetContentCallback
+            });
 
             const assetBrowserCallbacks = {
                 onAssetSelected,

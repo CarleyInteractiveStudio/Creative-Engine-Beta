@@ -1280,6 +1280,27 @@ public star() {
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script type="module" src="js/editor.js?v=1.6"></script>
 
+    <!-- Markdown Viewer/Editor Panel -->
+    <div id="markdown-viewer-panel" class="editor-panel floating-panel hidden" style="width: 600px; height: 400px; resize: both; overflow: hidden;">
+        <div class="panel-header">
+            <span id="markdown-viewer-title">Visor de Markdown</span>
+            <button class="close-panel-btn" data-panel="markdown-viewer-panel">X</button>
+        </div>
+        <div class="panel-toolbar" style="display: flex; justify-content: space-between; padding: 4px; border-bottom: 1px solid var(--color-border);">
+            <div class="tab-buttons">
+                <button id="md-preview-btn" class="tab-btn active">Vista Previa</button>
+                <button id="md-edit-btn" class="tab-btn">Editar</button>
+            </div>
+            <button id="md-save-btn" class="hidden" style="margin-right: 5px;">Guardar Cambios</button>
+        </div>
+        <div class="panel-content" style="padding: 0; height: calc(100% - 60px);">
+            <div id="md-preview-content" class="md-content" style="padding: 15px; height: 100%; overflow-y: auto;">
+                <!-- Rendered Markdown will go here -->
+            </div>
+            <textarea id="md-edit-content" class="md-content hidden" style="width: 100%; height: 100%; border: none; background-color: var(--color-background-dark); color: var(--color-text-primary); font-family: monospace; padding: 10px; resize: none; box-sizing: border-box;"></textarea>
+        </div>
+    </div>
+
     <div id="animation-from-sprite-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 600px; height: 450px;">
         <div class="panel-header">
             <span>Crear Animación desde Sprites</span>
