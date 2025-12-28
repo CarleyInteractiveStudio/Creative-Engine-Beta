@@ -310,48 +310,9 @@ async function handleCreateLibrary() {
  * @param {function} exportFunc The function to call for exporting library packages.
  */
 export function initialize(editorDom, handle, exportFunc) {
-    dom = editorDom;
+    dom = editorDom; // Use the dom object passed from editor.js
     projectsDirHandle = handle;
     exportLibrariesAsPackage = exportFunc;
-
-    // --- Cache specific DOM elements ---
-    dom.menubarLibrariesBtn = document.getElementById('menubar-libraries-btn');
-    dom.libraryPanel = document.getElementById('library-panel');
-    dom.libraryPanelCreateBtn = document.getElementById('library-panel-create-btn');
-    dom.libraryPanelImportBtn = document.getElementById('library-panel-import-btn');
-    dom.libraryPanelExportBtn = document.getElementById('library-panel-export-btn');
-    dom.createLibraryModal = document.getElementById('create-library-modal');
-
-    // API Docs Modal Elements
-    dom.libraryApiDocsBtn = document.getElementById('library-api-docs-btn');
-    dom.libraryApiDocsModal = document.getElementById('library-api-docs-modal');
-    dom.libraryApiDocsCloseBtn = document.getElementById('library-api-docs-close-btn');
-
-    // Form inputs
-    dom.libCreateName = document.getElementById('lib-create-name');
-    dom.libCreateAuthor = document.getElementById('lib-create-author');
-    dom.libCreateVersion = document.getElementById('lib-create-version');
-    dom.libCreateSignature = document.getElementById('lib-create-signature');
-    dom.libCreateDescription = document.getElementById('lib-create-description');
-    dom.libCreateReqWindows = document.getElementById('lib-create-req-windows');
-    dom.libCreateRuntimeAccess = document.getElementById('lib-create-runtime-access');
-    dom.libCreateIsTool = document.getElementById('lib-create-is-tool');
-
-    // File pickers and previews
-    dom.libCreateIconPreview = document.getElementById('lib-create-icon-preview');
-    dom.libCreateIconPickerBtn = document.getElementById('lib-create-icon-picker-btn');
-    dom.libCreateIconInput = document.getElementById('lib-create-icon-input');
-    dom.libCreateAuthorIconPreview = document.getElementById('lib-create-author-icon-preview');
-    dom.libCreateAuthorIconPickerBtn = document.getElementById('lib-create-author-icon-picker-btn');
-    dom.libCreateAuthorIconInput = document.getElementById('lib-create-author-icon-input');
-    dom.libCreateScriptPath = document.getElementById('lib-create-script-path');
-    dom.libCreateScriptPickerBtn = document.getElementById('lib-create-script-picker-btn');
-    dom.libCreateScriptInput = document.getElementById('lib-create-script-input');
-
-    // Modal buttons
-    dom.libCreateConfirmBtn = document.getElementById('lib-create-confirm-btn');
-    dom.libCreateCancelBtn = document.getElementById('lib-create-cancel-btn');
-
 
     // --- Event Listeners ---
     if (dom.menubarLibrariesBtn) {
@@ -419,7 +380,6 @@ export function initialize(editorDom, handle, exportFunc) {
     // File Picker Button Handlers
     dom.libCreateIconPickerBtn.addEventListener('click', () => dom.libCreateIconInput.click());
     dom.libCreateAuthorIconPickerBtn.addEventListener('click', () => dom.libCreateAuthorIconInput.click());
-    dom.libCreateScriptPickerBtn.addEventListener('click', () => dom.libCreateScriptInput.click());
 
     // File Input Change Handlers
     dom.libCreateIconInput.addEventListener('change', (e) => {
@@ -430,11 +390,6 @@ export function initialize(editorDom, handle, exportFunc) {
     dom.libCreateAuthorIconInput.addEventListener('change', (e) => {
         if (e.target.files[0]) {
             dom.libCreateAuthorIconPreview.src = URL.createObjectURL(e.target.files[0]);
-        }
-    });
-    dom.libCreateScriptInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            dom.libCreateScriptPath.value = e.target.files[0].name;
         }
     });
 

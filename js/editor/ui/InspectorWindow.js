@@ -140,7 +140,7 @@ function handleInspectorInput(e) {
         const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
         const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
         if (component) {
-            component.publicProperties[propPath] = value;
+            component.publicVars[propPath] = value;
         }
         return;
     }
@@ -1249,7 +1249,7 @@ async function updateInspectorForMateria(selectedMateria) {
             let publicVarsHTML = '';
             if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
                 for (const pv of ley.definition.metadata.publicVars) {
-                    const currentValue = ley.publicProperties[pv.name] ?? pv.defaultValue;
+                    const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
                      publicVarsHTML += `
                         <div class="prop-row-multi">
                             <label>${pv.name}</label>

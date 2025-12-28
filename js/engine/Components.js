@@ -1382,3 +1382,121 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
+
+export class CustomComponent extends Leyes {
+    constructor(materia, definitionOrName) {
+        super(materia);
+
+        if (typeof definitionOrName === 'string') {
+            this.definitionName = definitionOrName;
+        } else if (typeof definitionOrName === 'object' && definitionOrName !== null) {
+            // This handles instantiation from Inspector and SceneManager where the whole definition is passed.
+            this.definitionName = definitionOrName.nombre;
+        } else {
+            this.definitionName = null;
+            console.error("CustomComponent Creado con definición o nombre inválido.");
+        }
+
+        this.publicVars = {};
+        this.instance = null;
+        this.isInitialized = false;
+
+        // Lazy initialization of the definition
+        this._definition = null;
+    }
+
+    // Use a getter for the definition to ensure it's loaded lazily
+    get definition() {
+        if (!this._definition) {
+            this._definition = CES_Transpiler.getComponentDefinition(this.definitionName);
+            if (!this._definition) {
+                console.error(`[CustomComponent] Definición '${this.definitionName}' no encontrada.`);
+                // Return a dummy definition to prevent further errors
+                return { nombre: this.definitionName, publicVars: [] };
+            }
+            // Initialize publicVars from the definition's defaults
+            this._definition.publicVars.forEach(pv => {
+                if (this.publicVars[pv.name] === undefined) {
+                   this.publicVars[pv.name] = pv.defaultValue;
+                }
+            });
+        }
+        return this._definition;
+    }
+
+    async initializeInstance() {
+        if (this.isInitialized || !this.definitionName) return;
+
+        try {
+            const componentDefinition = this.definition; // Use the getter
+            if (!componentDefinition || !componentDefinition.transpiledCode) {
+                 throw new Error(`No se encontró código transpilado para el componente personalizado '${this.definitionName}'.`);
+            }
+
+            const factory = (new Function(`return ${componentDefinition.transpiledCode}`))();
+            const ScriptClass = factory(CreativeScriptBehavior, RuntimeAPIManager);
+
+            if (ScriptClass) {
+                this.instance = new ScriptClass(this.materia);
+
+                 // --- Important: Re-run shortcut initialization ---
+                 // This ensures shortcuts to other custom components added later are available.
+                this.instance._initializeComponentShortcuts();
+
+
+                if (!this.instance.hasOwnProperty('materia')) this.instance.materia = this.materia;
+                if (!this.instance.hasOwnProperty('scene')) this.instance.scene = this.materia ? this.materia.scene : null;
+
+                // Apply public var values from the inspector over the defaults
+                if (this.publicVars) {
+                     for (const varName in this.publicVars) {
+                         if (this.publicVars.hasOwnProperty(varName)) {
+                            let savedValue = this.publicVars[varName];
+                             // Special handling for Materia references
+                            if (componentDefinition.publicVars.find(p => p.name === varName)?.type === 'Materia' && savedValue != null) {
+                                if (typeof savedValue === 'number') {
+                                    savedValue = this.materia.scene.findMateriaById(savedValue);
+                                } else if (typeof savedValue === 'string') {
+                                    savedValue = this.materia.scene.getAllMaterias().find(m => m.name === savedValue) || null;
+                                }
+                            }
+                            this.instance[varName] = savedValue;
+                         }
+                     }
+                }
+
+                this.isInitialized = true;
+            } else {
+                 throw new Error(`El componente personalizado '${this.definitionName}' no exporta una clase.`);
+            }
+
+        } catch (error) {
+            console.error(`Error al inicializar instancia del componente personalizado '${this.definitionName}':`, error);
+            this.isInitialized = false;
+        }
+    }
+
+    // --- Lifecycle Wrappers ---
+    start() {
+        if (this.instance && typeof this.instance.start === 'function') {
+            try { this.instance.start(); } catch(e) { console.error(`Error en start() de ${this.definitionName}:`, e); }
+        }
+    }
+    update(deltaTime) {
+        if (this.instance && typeof this.instance.update === 'function') {
+             try { this.instance.update(deltaTime); } catch(e) { console.error(`Error en update() de ${this.definitionName}:`, e); }
+        }
+    }
+     fixedUpdate(deltaTime) {
+        if (this.instance && typeof this.instance.fixedUpdate === 'function') {
+             try { this.instance.fixedUpdate(deltaTime); } catch(e) { console.error(`Error en fixedUpdate() de ${this.definitionName}:`, e); }
+        }
+    }
+
+    clone() {
+        const newCustom = new CustomComponent(null, this.definitionName);
+        // Deep copy public vars to avoid shared state
+        newCustom.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        return newCustom;
+    }
+}

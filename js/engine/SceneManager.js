@@ -165,7 +165,7 @@ export function serializeScene(scene, dom) {
                 const customLeyData = {
                     type: 'CustomComponent',
                     definitionName: ley.definition.nombre,
-                    publicProperties: ley.publicProperties
+                    publicVars: ley.publicVars
                 };
                 materiaData.leyes.push(customLeyData);
             } else {
@@ -220,7 +220,7 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                 const definition = getCustomComponentDefinitions().get(leyData.definitionName);
                 if (definition) {
                     const newLey = new CustomComponent(definition);
-                    newLey.publicProperties = leyData.publicProperties || {};
+                    newLey.publicVars = leyData.publicVars || {};
                     newMateria.addComponent(newLey);
                 } else {
                     console.warn(`No se encontró la definición para el componente personalizado '${leyData.definitionName}' en la Materia '${materiaData.name}'. El componente no será cargado.`);
