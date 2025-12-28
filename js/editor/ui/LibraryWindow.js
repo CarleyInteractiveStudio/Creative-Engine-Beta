@@ -5,6 +5,7 @@ import { showNotification, showConfirmation } from './DialogWindow.js';
 let dom = {};
 let projectsDirHandle = null;
 let exportLibrariesAsPackage = null; // To hold the function from another module
+let openAssetSelector = null; // To hold the callback from editor.js
 let libraryFiles = []; // To store files for the new library
 let mainScriptFile = null; // To store the name of the main script
 
@@ -140,14 +141,10 @@ async function refreshLibraryList() {
     }
 }
 
-async function handleImportLibrary() {
-    try {
-        const [fileHandle] = await window.showOpenFilePicker({
-            types: [{ description: 'Creative Engine Library', accept: { 'application/json': ['.celib'] } }],
-            multiple: false,
-        });
-
-        const file = await fileHandle.getFile();
+async function handleImportLibrary(fileHandleToImport = null) {
+    const processFile = async (fileHandle) => {
+        try {
+            const file = await fileHandle.getFile();
         const content = await file.text();
         const newLibData = JSON.parse(content);
 
@@ -206,27 +203,144 @@ async function handleImportLibrary() {
         }
 
         if (shouldWriteFile) {
+            // --- NEW PERMISSION GRANTING LOGIC ---
+            const permissionDescriptions = {
+                can_create_windows: "Crear ventanas y paneles en el editor.",
+                runtime_accessible: "Ser accedida desde scripts de juego (.ces).",
+                is_engine_tool: "Funcionar como una herramienta interna del motor.",
+                allow_custom_components: "Registrar nuevos componentes de Materia.",
+                allow_asset_modification: "Crear o modificar archivos del proyecto (assets)."
+            };
+
+            const requestedPermissions = newLibData.api_access ? Object.entries(newLibData.api_access)
+                .filter(([key, value]) => value === true)
+                .map(([key]) => permissionDescriptions[key] || `${key} (desconocido)`) : [];
+
+            let userApproved = true;
+            if (requestedPermissions.length > 0) {
+                const permissionListHTML = `<ul>${requestedPermissions.map(p => `<li>${p}</li>`).join('')}</ul>`;
+                const confirmationMessage = `La librería '${newLibData.name}' solicita los siguientes permisos para funcionar correctamente:
+                                             ${permissionListHTML}
+                                             ¿Confías en el autor y quieres conceder estos permisos?`;
+
+                userApproved = await new Promise(resolve => {
+                    showConfirmation(
+                        'Permisos de la Librería',
+                        confirmationMessage,
+                        () => resolve(true),  // On 'Yes'
+                        () => resolve(false), // On 'No'
+                        () => resolve(false)  // On 'Cancel'
+                    );
+                });
+            }
+
+            if (!userApproved) {
+                showNotification('Importación Cancelada', 'No se concedieron los permisos necesarios.');
+                return; // Stop the import process
+            }
+            // --- END NEW LOGIC ---
+
+
             const newFileHandle = await libDirHandle.getFileHandle(finalFileName, { create: true });
             const writable = await newFileHandle.createWritable();
             await writable.write(content);
             await writable.close();
-            showNotification('Importación Exitosa', `Librería '${newLibData.name}' importada con éxito como '${finalFileName}'.`);
+
+            // After successful write, create the .meta file with permissions
+            const metaFileName = `${finalFileName}.meta`;
+            const metaFileHandle = await libDirHandle.getFileHandle(metaFileName, { create: true });
+            const metaWritable = await metaFileHandle.createWritable();
+            const metaData = {
+                active: true,
+                permissions: newLibData.api_access || {}
+            };
+            await metaWritable.write(JSON.stringify(metaData, null, 2));
+            await metaWritable.close();
+
+
+            showNotification('Importación Exitosa', `Librería '${newLibData.name}' importada y activada con éxito como '${finalFileName}'.`);
             refreshLibraryList();
         }
-
-    } catch (err) {
-        if (err.name !== 'AbortError') {
-            console.error("Error al importar la librería:", err);
-            showNotification('Error', 'Ocurrió un error durante la importación.');
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error("Error al procesar el archivo de la librería:", err);
+                showNotification('Error', 'Ocurrió un error durante el procesamiento del archivo.');
+            }
         }
+    };
+
+    if (fileHandleToImport) {
+        processFile(fileHandleToImport);
+    } else {
+        openAssetSelector(processFile, { filter: ['.celib'], title: 'Importar Librería' });
     }
 }
 
 /**
- * Handles the logic to create and save a new .celib file.
+ * Core logic to create a library file from data. Can be called from UI or tests.
+ * @param {object} libData - The manifest data for the library.
+ * @param {File[]} filesToProcess - An array of File objects to be included.
+ * @param {File|null} iconFile - The library icon file.
+ * @param {File|null} authorIconFile - The author icon file.
+ * @returns {Promise<boolean>} True on success, false on failure.
+ */
+export async function createLibraryFile(libData, filesToProcess, iconFile, authorIconFile) {
+    if (!projectsDirHandle) {
+        showNotification('Error de Entorno', 'La función de creación de librerías no está disponible porque no se pudo acceder al directorio de proyectos.');
+        console.error("createLibraryFile falló porque projectsDirHandle es nulo.");
+        return false;
+    }
+    if (!libData.name) {
+        showNotification('Error Interno', 'El nombre de la librería es requerido en createLibraryFile.');
+        return false;
+    }
+     if (filesToProcess.length === 0) {
+        showNotification('Campo Obligatorio', 'Se debe añadir al menos un archivo de script (.js o .ces).');
+        return false;
+    }
+    if (libData.api_access?.can_create_windows && !filesToProcess.some(f => f.name.endsWith('.js'))) {
+        showNotification('Archivo Requerido', 'Para crear ventanas, se necesita un archivo .js como punto de entrada.');
+        return false;
+    }
+
+    try {
+        libData.library_icon_base64 = await imageToBase64(iconFile);
+        libData.author_icon_base64 = await imageToBase64(authorIconFile);
+
+        libData.files = {};
+        for (const file of filesToProcess) {
+            libData.files[file.name] = await scriptToBase64(file);
+        }
+    } catch (error) {
+        console.error("Error processing files for library creation:", error);
+        showNotification('Error', 'Hubo un error al leer uno de los archivos seleccionados.');
+        return false;
+    }
+
+    const fileName = `${libData.name.replace(/\s+/g, '_')}.celib`;
+    const fileContent = JSON.stringify(libData, null, 2);
+
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+        const fileHandle = await libDirHandle.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(fileContent);
+        await writable.close();
+        return true;
+    } catch (error) {
+        console.error("Error saving the library file:", error);
+        showNotification('Error', 'No se pudo guardar el archivo .celib.');
+        return false;
+    }
+}
+
+
+/**
+ * Handles the UI logic for creating a library by gathering data from the modal.
  */
 async function handleCreateLibrary() {
-    // 1. Get all data from the modal form
     const libName = dom.libCreateName.value.trim();
     if (!libName) {
         showNotification('Campo Obligatorio', 'El nombre de la librería es obligatorio.');
@@ -243,62 +357,21 @@ async function handleCreateLibrary() {
             can_create_windows: dom.libCreateReqWindows.checked,
             runtime_accessible: dom.libCreateRuntimeAccess.checked,
             is_engine_tool: dom.libCreateIsTool.checked,
+            allow_custom_components: dom.libCreateCustomComponents.checked,
+            allow_asset_modification: dom.libCreateModifyAssets.checked,
         },
         mainScript: mainScriptFile,
-        library_icon_base64: null,
-        author_icon_base64: null,
-        files: {}, // New: object to hold multiple files
     };
 
-    // 2. Convert images and script files to Base64
     const iconFile = dom.libCreateIconInput.files[0];
     const authorIconFile = dom.libCreateAuthorIconInput.files[0];
 
-    if (libraryFiles.length === 0) {
-        showNotification('Campo Obligatorio', 'Debes añadir al menos un archivo de script (.js o .ces).');
-        return;
-    }
-     // Optional: Validate that at least one .js file is present if certain permissions are checked
-    if (libData.api_access.can_create_windows && !libraryFiles.some(f => f.name.endsWith('.js'))) {
-        showNotification('Archivo Requerido', 'Para crear ventanas en el editor, se necesita al menos un archivo .js como punto de entrada.');
-        return;
-    }
+    const success = await createLibraryFile(libData, libraryFiles, iconFile, authorIconFile);
 
-
-    try {
-        libData.library_icon_base64 = await imageToBase64(iconFile);
-        libData.author_icon_base64 = await imageToBase64(authorIconFile);
-
-        for (const file of libraryFiles) {
-            libData.files[file.name] = await scriptToBase64(file);
-        }
-
-    } catch (error) {
-        console.error("Error al procesar los archivos:", error);
-        showNotification('Error', 'Hubo un error al leer uno de los archivos seleccionados.');
-        return;
-    }
-
-    // 3. Save the .celib file
-    const fileName = `${libName.replace(/\s+/g, '_')}.celib`;
-    const fileContent = JSON.stringify(libData, null, 2);
-
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
-        const fileHandle = await libDirHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(fileContent);
-        await writable.close();
-
+    if (success) {
         showNotification('Éxito', `Librería '${libName}' creada con éxito.`);
         dom.createLibraryModal.classList.remove('is-open');
         refreshLibraryList(); // Update the view
-
-    } catch (error) {
-        console.error("Error al guardar el archivo de la librería:", error);
-        showNotification('Error', 'No se pudo guardar el archivo .celib.');
     }
 }
 
@@ -308,11 +381,13 @@ async function handleCreateLibrary() {
  * @param {object} editorDom The cached DOM elements from editor.js
  * @param {FileSystemDirectoryHandle} handle The handle to the projects directory.
  * @param {function} exportFunc The function to call for exporting library packages.
+ * @param {function} openAssetSelectorCallback The callback to open the asset selector.
  */
-export function initialize(editorDom, handle, exportFunc) {
+export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallback) {
     dom = editorDom; // Use the dom object passed from editor.js
     projectsDirHandle = handle;
     exportLibrariesAsPackage = exportFunc;
+    openAssetSelector = openAssetSelectorCallback;
 
     // --- Event Listeners ---
     if (dom.menubarLibrariesBtn) {
@@ -559,20 +634,11 @@ export function initialize(editorDom, handle, exportFunc) {
             statusText.textContent = isActive ? 'Activo' : 'Inactivo';
 
             const permissionsContent = document.getElementById('details-permissions-content');
-            permissionsContent.innerHTML = `
-                <div class="checkbox-field">
-                    <input type="checkbox" id="details-req-windows" ${libData.api_access?.can_create_windows ? 'checked' : ''}>
-                    <label for="details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
-                </div>
-                <div class="checkbox-field">
-                    <input type="checkbox" id="details-runtime-access" ${libData.api_access?.runtime_accessible ? 'checked' : ''}>
-                    <label for="details-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
-                </div>
-                <div class="checkbox-field">
-                    <input type="checkbox" id="details-is-tool" ${libData.api_access?.is_engine_tool ? 'checked' : ''}>
-                    <label for="details-is-tool">Es una herramienta interna para el motor.</label>
-                </div>
-            `;
+            document.getElementById('lib-details-req-windows').checked = libData.api_access?.can_create_windows || false;
+            document.getElementById('lib-details-runtime-access').checked = libData.api_access?.runtime_accessible || false;
+            document.getElementById('lib-details-is-tool').checked = libData.api_access?.is_engine_tool || false;
+            document.getElementById('lib-details-custom-components').checked = libData.api_access?.allow_custom_components || false;
+            document.getElementById('lib-details-modify-assets').checked = libData.api_access?.allow_asset_modification || false;
 
             document.getElementById('library-details-modal').classList.add('is-open');
 
@@ -597,9 +663,11 @@ export function initialize(editorDom, handle, exportFunc) {
             const libData = JSON.parse(content);
 
             libData.api_access = {
-                can_create_windows: document.getElementById('details-req-windows').checked,
-                runtime_accessible: document.getElementById('details-runtime-access').checked,
-                is_engine_tool: document.getElementById('details-is-tool').checked,
+                can_create_windows: document.getElementById('lib-details-req-windows').checked,
+                runtime_accessible: document.getElementById('lib-details-runtime-access').checked,
+                is_engine_tool: document.getElementById('lib-details-is-tool').checked,
+                allow_custom_components: document.getElementById('lib-details-custom-components').checked,
+                allow_asset_modification: document.getElementById('lib-details-modify-assets').checked,
             };
 
             const writable = await fileHandle.createWritable();
@@ -634,7 +702,8 @@ export function initialize(editorDom, handle, exportFunc) {
     // Return the refresh function so other modules can trigger an update
     return {
         refreshLibraryList,
-        openLibraryDetails // Export the function
+        openLibraryDetails, // Export the function
+        handleImportLibrary
     };
 }
 

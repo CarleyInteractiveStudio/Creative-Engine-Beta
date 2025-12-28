@@ -2128,14 +2128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
-            // Library Window Elements
-            'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
-            'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
-            'lib-create-name', 'lib-create-author', 'lib-create-version', 'lib-create-signature', 'lib-create-description',
-            'lib-create-req-windows', 'lib-create-runtime-access', 'lib-create-is-tool',
-            'lib-create-icon-preview', 'lib-create-icon-picker-btn', 'lib-create-icon-input',
-            'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
-            'lib-create-drop-zone', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
             'prefs-show-terminal',
             'toolbar-music-btn', 'music-player-panel',
             'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
@@ -2360,61 +2352,48 @@ public star() {
                             const content = await file.text();
                             const libData = JSON.parse(content);
 
-                            let combinedScriptContent = '';
-                            let mainScriptFile = null;
-
-                            // NEW: Handle multi-file format
-                            if (libData.files && Object.keys(libData.files).length > 0) {
-                                const allFiles = Object.keys(libData.files);
-
-                                // Use the designated main script, or fall back to the old logic
-                                mainScriptFile = libData.mainScript && libData.files[libData.mainScript]
-                                    ? libData.mainScript
-                                    : allFiles.find(name => name.endsWith('.js')) || allFiles[0];
-
-                                // Simple bundling: concatenate other files first, then the main script
-                                allFiles.forEach(fileName => {
-                                    if (fileName !== mainScriptFile) {
-                                        combinedScriptContent += `\n// --- Contenido de ${fileName} ---\n`;
-                                        combinedScriptContent += decodeURIComponent(escape(atob(libData.files[fileName])));
-                                    }
-                                });
-                                combinedScriptContent += `\n// --- Contenido de ${mainScriptFile} (Principal) ---\n`;
-                                combinedScriptContent += decodeURIComponent(escape(atob(libData.files[mainScriptFile])));
-
-                            }
-                            // OLD: Handle single-file format for backwards compatibility
-                            else if (libData.script_base64) {
-                                combinedScriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
-                                mainScriptFile = "script.js"; // Placeholder name
+                            let grantedPermissions = {};
+                            try {
+                                const metaFileHandle = await libDirHandle.getFileHandle(`${entry.name}.meta`);
+                                const metaFile = await metaFileHandle.getFile();
+                                const metaContent = await metaFile.text();
+                                const metaData = JSON.parse(metaContent);
+                                grantedPermissions = metaData.permissions || {};
+                            } catch (e) {
+                                console.warn(`No se encontró o no se pudo leer el archivo .meta para la librería '${libData.name}'. No se concederán permisos.`);
                             }
 
-                            if (!combinedScriptContent) continue;
-
-                            // --- API Injection and Execution ---
+                            const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
                             const engineAPI = EngineAPI.getEngineAPI();
 
+                            // --- API SANDBOXING ---
+                            const sandboxedApi = {
+                                API: {}
+                            };
+
+                            if (grantedPermissions.can_create_windows) {
+                                sandboxedApi.API.registrarVentana = window.CreativeEngine.API.registrarVentana;
+                            }
+                            if (grantedPermissions.allow_custom_components) {
+                                sandboxedApi.API.registrarComponente = engineAPI.registrarComponente;
+                            }
+                            // Add other permission checks here as the API expands
+
                             // 1. Handle API for creating windows (Editor-side)
-                            if (libData.api_access && libData.api_access.can_create_windows) {
-                                // Only .js files can be main entry points for UI
-                                if (mainScriptFile && mainScriptFile.endsWith('.js')) {
-                                    try {
-                                        // Wrap in a function that receives both APIs
-                                        const setupFunction = new Function('CreativeEngine', 'engine', combinedScriptContent);
-                                        setupFunction(window.CreativeEngine, engineAPI);
-                                        console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
-                                    } catch(e) {
-                                         console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
-                                    }
-                                } else {
-                                     console.warn(`La librería '${libData.name}' solicita acceso a la UI pero no tiene un archivo .js como punto de entrada.`);
+                            if (Object.keys(sandboxedApi.API).length > 0) {
+                                try {
+                                    const setupFunction = new Function('CreativeEngine', 'engine', scriptContent);
+                                    setupFunction(sandboxedApi, sandboxedApi.API);
+                                    console.log(`Librería de UI '${libData.name}' cargada y configurada con permisos limitados.`);
+                                } catch(e) {
+                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
                                 }
                             }
 
                             // 2. Handle API for game scripts (Runtime)
-                            if (libData.api_access && libData.api_access.runtime_accessible) {
+                            if (grantedPermissions.runtime_accessible) {
                                 try {
-                                    const apiObject = (new Function('engine', combinedScriptContent))(engineAPI);
+                                    const apiObject = (new Function('engine', scriptContent))(engineAPI);
 
                                     if (apiObject && typeof apiObject === 'object') {
                                         RuntimeAPIManager.registerAPI(libData.name, apiObject);

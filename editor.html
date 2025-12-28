@@ -195,6 +195,14 @@
                                 <input type="checkbox" id="lib-create-is-tool">
                                 <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
                             </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-custom-components">
+                                <label for="lib-create-custom-components">Permitir registrar componentes personalizados.</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-modify-assets">
+                                <label for="lib-create-modify-assets">Permitir crear y modificar assets.</label>
+                            </div>
                         </fieldset>
                     </form>
                     <div class="modal-footer">
@@ -800,7 +808,26 @@ public star() {
                     </div>
                     <hr>
                     <div id="details-permissions-content">
-                        <!-- Permissions checkboxes will be injected by JS -->
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-req-windows" data-permission="requiresWindowAccess">
+                            <label for="lib-details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-runtime-access" data-permission="runtimeAccess">
+                            <label for="lib-details-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-is-tool" data-permission="isTool">
+                            <label for="lib-details-is-tool">Es una herramienta interna para el motor.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-custom-components" data-permission="allowCustomComponents">
+                            <label for="lib-details-custom-components">Permitir registrar componentes personalizados.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-modify-assets" data-permission="allowAssetModification">
+                            <label for="lib-details-modify-assets">Permitir crear y modificar assets.</label>
+                        </div>
                     </div>
                 </fieldset>
             </div>
