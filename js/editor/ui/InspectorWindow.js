@@ -1338,10 +1338,10 @@ function renderComponentInspector(ley, container, componentIcons) {
 
             // This is a robust way to append the contents of the wrapper
             while(componentWrapper.firstChild) {
-                componentsWrapper.appendChild(componentWrapper.firstChild);
+                container.appendChild(componentWrapper.firstChild);
             }
         }
-    });
+}
 
     console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
