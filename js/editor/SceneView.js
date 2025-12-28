@@ -1056,6 +1056,9 @@ export function drawOverlay() {
     // Draw tilemap colliders
     drawTilemapColliders();
 
+    // Draw Canvas gizmo for selected object
+    drawCanvasGizmo();
+
     // Draw physics colliders for selected object
     drawPhysicsGizmos();
 
@@ -1179,6 +1182,57 @@ function drawCapsulePath(ctx, width, height, direction) {
         ctx.arc(-halfStraight, 0, radius, Math.PI / 2, -Math.PI / 2);
         ctx.closePath();
     }
+}
+
+function drawCanvasGizmo() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
+    if (!canvasComponent) return;
+
+    const { ctx, camera } = renderer;
+    const gameCanvas = dom.gameCanvas;
+
+    ctx.save();
+
+    if (canvasComponent.renderMode === 'Screen Space') {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([10 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
+
+        const gameWidth = gameCanvas.width;
+        const gameHeight = gameCanvas.height;
+
+        // Dibuja el rectángulo del tamaño de la pantalla del juego, centrado en el origen del mundo
+        ctx.strokeRect(-gameWidth / 2, -gameHeight / 2, gameWidth, gameHeight);
+
+    } else if (canvasComponent.renderMode === 'World Space') {
+        const transform = selectedMateria.getComponent(Components.Transform);
+        if (!transform) {
+            ctx.restore();
+            return;
+        }
+
+        const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+
+        const worldPos = transform.position;
+        const worldRot = transform.rotation;
+
+        let width = (rectTransform ? rectTransform.width : 100) * transform.localScale.x;
+        let height = (rectTransform ? rectTransform.height : 100) * transform.localScale.y;
+
+        ctx.translate(worldPos.x, worldPos.y);
+        ctx.rotate(worldRot * Math.PI / 180);
+
+        ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([]);
+
+        ctx.strokeRect(-width / 2, -height / 2, width, height);
+    }
+
+    ctx.restore();
 }
 
 function drawPhysicsGizmos() {

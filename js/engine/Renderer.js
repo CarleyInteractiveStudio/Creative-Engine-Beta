@@ -187,6 +187,11 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    drawUI(canvasComponent) {
+        // This function will render all UI elements that are children of the given canvas.
+        // For now, it's a placeholder for future UI element rendering logic.
+    }
+
     // --- Lighting Methods ---
 
     beginLights() {

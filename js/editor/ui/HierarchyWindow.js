@@ -159,6 +159,11 @@ export function handleContextMenuAction(action) {
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
             break;
+        case 'create-canvas':
+            newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+            newMateria.addComponent(new Components.Canvas(newMateria));
+            newMateria.addComponent(new Components.RectTransform(newMateria));
+            break;
         case 'create-sprite':
             newMateria = createBaseMateria(generateUniqueName('Sprite'), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));

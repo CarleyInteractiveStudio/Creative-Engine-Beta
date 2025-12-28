@@ -1085,6 +1085,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneView.drawOverlay();
             }
             rendererInstance.end();
+
+            // --- UI Rendering Pass ---
+            // After the world is drawn, we render the UI on top.
+            const screenSpaceCanvases = SceneManager.currentScene.getAllMaterias()
+                .filter(m => m.isActive && m.getComponent(Components.Canvas)?.renderMode === 'Screen Space')
+                .sort((a, b) => a.getComponent(Components.Canvas).sortOrder - b.getComponent(Components.Canvas).sortOrder);
+
+            if (screenSpaceCanvases.length > 0) {
+                rendererInstance.beginUI();
+                for (const canvasMateria of screenSpaceCanvases) {
+                    const canvasComponent = canvasMateria.getComponent(Components.Canvas);
+                    rendererInstance.drawUI(canvasComponent);
+                }
+                rendererInstance.end();
+            }
         };
 
 

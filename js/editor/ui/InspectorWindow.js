@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.Canvas, Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -636,7 +636,7 @@ async function updateInspectorForMateria(selectedMateria) {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦'
+        Grid: '▦', Canvas: '🖥️'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -749,6 +749,26 @@ async function updateInspectorForMateria(selectedMateria) {
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+            </div>`;
+        } else if (ley instanceof Components.Canvas) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Canvas</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Render Mode</label>
+                        <select class="prop-input" data-component="Canvas" data-prop="renderMode">
+                            <option value="Screen Space" ${ley.renderMode === 'Screen Space' ? 'selected' : ''}>Screen Space</option>
+                            <option value="World Space" ${ley.renderMode === 'World Space' ? 'selected' : ''}>World Space</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Sort Order</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Canvas" data-prop="sortOrder" value="${ley.sortOrder || 0}">
+                        </div>
+                    </div>
+                </div>
             </div>`;
         }
         else if (ley instanceof Components.SpriteRenderer) {

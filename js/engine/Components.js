@@ -28,6 +28,7 @@ const componentAliases = {
     'UICanvas': 'lienzoUI',
     'UIImage': 'imagenUI',
     'RectTransform': 'transformacionRect',
+    'Canvas': 'lienzo',
 };
 
 
@@ -1382,6 +1383,21 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
+
+export class Canvas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
+        this.sortOrder = 0;
+    }
+    clone() {
+        const newCanvas = new Canvas(null);
+        newCanvas.renderMode = this.renderMode;
+        newCanvas.sortOrder = this.sortOrder;
+        return newCanvas;
+    }
+}
+registerComponent('Canvas', Canvas);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
