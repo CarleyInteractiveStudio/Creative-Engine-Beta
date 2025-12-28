@@ -149,6 +149,58 @@ function checkCameraGizmoHit(canvasPos) {
     return null;
 }
 
+function checkCanvasGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
+
+    if (!canvasComponent || canvasComponent.renderMode !== 'World Space' || !transform || !rectTransform) {
+        return null;
+    }
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+    const width = rectTransform.width * transform.scale.x;
+    const height = rectTransform.height * transform.scale.y;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: 0, y: halfHeight, name: 'canvas-resize-top' },
+        { x: 0, y: -halfHeight, name: 'canvas-resize-bottom' },
+        { x: halfWidth, y: 0, name: 'canvas-resize-right' },
+        { x: -halfWidth, y: 0, name: 'canvas-resize-left' },
+        { x: -halfWidth, y: halfHeight, name: 'canvas-resize-tl' },
+        { x: halfWidth, y: halfHeight, name: 'canvas-resize-tr' },
+        { x: -halfWidth, y: -halfHeight, name: 'canvas-resize-bl' },
+        { x: halfWidth, y: -halfHeight, name: 'canvas-resize-br' }
+    ];
+
+    for (const handle of handles) {
+        if (
+            localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+            localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox
+        ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
+
 function handleEditorInteractions() {
     // This function is now largely a placeholder.
     // Panning, zooming, and gizmo dragging are all handled by direct, dynamic event listeners
@@ -573,7 +625,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkCanvasGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -619,6 +671,35 @@ export function initialize(dependencies) {
                             break;
                         }
                     }
+
+                    // --- Canvas Gizmo Logic ---
+                    const rectTransform = dragState.materia.getComponent(Components.RectTransform);
+                    if (rectTransform && dragState.handle.startsWith('canvas-resize-')) {
+                        const rad = -transform.rotation * Math.PI / 180;
+                        const cos = Math.cos(rad);
+                        const sin = Math.sin(rad);
+                        const localDx = (dx * cos - dy * sin) / transform.scale.x;
+                        const localDy = (dx * sin + dy * cos) / transform.scale.y;
+
+                        const handle = dragState.handle;
+
+                        if (handle.includes('top')) {
+                            rectTransform.height += localDy;
+                        }
+                        if (handle.includes('bottom')) {
+                            rectTransform.height -= localDy;
+                        }
+                        if (handle.includes('right')) {
+                            rectTransform.width += localDx;
+                        }
+                        if (handle.includes('left')) {
+                            rectTransform.width -= localDx;
+                        }
+                        // Clamp to prevent negative size
+                        rectTransform.width = Math.max(0, rectTransform.width);
+                        rectTransform.height = Math.max(0, rectTransform.height);
+                    }
+
 
                     // --- Collider Gizmo Logic ---
                     const boxCollider = dragState.materia.getComponent(Components.BoxCollider2D);
@@ -1230,6 +1311,26 @@ function drawCanvasGizmo() {
         ctx.setLineDash([]);
 
         ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+        // --- Draw interactive handles ---
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
+
+        const handles = [
+            { x: 0, y: height / 2 }, // Top-center
+            { x: 0, y: -height / 2 }, // Bottom-center
+            { x: width / 2, y: 0 }, // Right-center
+            { x: -width / 2, y: 0 }, // Left-center
+            { x: -width / 2, y: height / 2 }, // Top-left
+            { x: width / 2, y: height / 2 }, // Top-right
+            { x: -width / 2, y: -height / 2 }, // Bottom-left
+            { x: width / 2, y: -height / 2 }  // Bottom-right
+        ];
+
+        handles.forEach(handle => {
+            ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+        });
     }
 
     ctx.restore();

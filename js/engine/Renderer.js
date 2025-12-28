@@ -192,6 +192,12 @@ export class Renderer {
         // For now, it's a placeholder for future UI element rendering logic.
     }
 
+    beginUI() {
+        this.ctx.save();
+        // Reset transform to identity for screen-space UI rendering
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
     // --- Lighting Methods ---
 
     beginLights() {

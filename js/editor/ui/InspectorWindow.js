@@ -704,10 +704,6 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Transform) {
             console.log('  - Is Transform component.');
-            if (selectedMateria.getComponent(Components.RectTransform)) {
-                console.log('  - RectTransform also exists, skipping render of Transform.');
-                return;
-            }
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Transform</h4></div>
