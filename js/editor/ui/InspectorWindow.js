@@ -641,12 +641,34 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
-    console.log('2. Created componentsWrapper. Looping through components...');
+
+    // Prioritize rendering Transform if it exists, as it's fundamental.
+    const transformComponent = selectedMateria.getComponent(Components.Transform);
+    if (transformComponent) {
+        renderComponentInspector(transformComponent, componentsWrapper, componentIcons);
+    }
 
     selectedMateria.leyes.forEach((ley, index) => {
-        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
-        let componentHTML = '';
-        const componentName = ley.constructor.name;
+        // Skip the Transform component since we've already rendered it.
+        if (ley instanceof Components.Transform) return;
+
+        renderComponentInspector(ley, componentsWrapper, componentIcons);
+    });
+
+    console.log('6. Finished component loop. Appending main wrapper to DOM.');
+    dom.inspectorContent.appendChild(componentsWrapper);
+
+    const addComponentBtn = document.createElement('button');
+    addComponentBtn.id = 'add-component-btn';
+    addComponentBtn.className = 'add-component-btn';
+    addComponentBtn.textContent = 'Añadir Ley';
+    dom.inspectorContent.appendChild(addComponentBtn);
+    console.log('7. Inspector update complete.');
+}
+
+function renderComponentInspector(ley, container, componentIcons) {
+    let componentHTML = '';
+    const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
         const iconHTML = `<span class="component-icon">${icon}</span>`;
 

@@ -1273,7 +1273,6 @@ function drawCanvasGizmo() {
     if (!canvasComponent) return;
 
     const { ctx, camera } = renderer;
-    const gameCanvas = dom.gameCanvas;
 
     ctx.save();
 
@@ -1282,11 +1281,16 @@ function drawCanvasGizmo() {
         ctx.lineWidth = 2 / camera.effectiveZoom;
         ctx.setLineDash([10 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
 
-        const gameWidth = gameCanvas.width;
-        const gameHeight = gameCanvas.height;
+        // Use the scene canvas for sizing, as the game canvas might not be rendered
+        const viewWidth = renderer.canvas.width;
+        const viewHeight = renderer.canvas.height;
 
-        // Dibuja el rectángulo del tamaño de la pantalla del juego, centrado en el origen del mundo
-        ctx.strokeRect(-gameWidth / 2, -gameHeight / 2, gameWidth, gameHeight);
+        // This is drawn in world-space coordinates, so we need to account for zoom to match the screen size.
+        const worldWidth = viewWidth / camera.effectiveZoom;
+        const worldHeight = viewHeight / camera.effectiveZoom;
+
+        // Draw the rectangle centered around the camera's current position, representing the screen bounds.
+        ctx.strokeRect(camera.x - worldWidth / 2, camera.y - worldHeight / 2, worldWidth, worldHeight);
 
     } else if (canvasComponent.renderMode === 'World Space') {
         const transform = selectedMateria.getComponent(Components.Transform);
@@ -1297,13 +1301,14 @@ function drawCanvasGizmo() {
 
         const rectTransform = selectedMateria.getComponent(Components.RectTransform);
 
-        const worldPos = transform.position;
+        const worldX = transform.x;
+        const worldY = transform.y;
         const worldRot = transform.rotation;
 
-        let width = (rectTransform ? rectTransform.width : 100) * transform.localScale.x;
-        let height = (rectTransform ? rectTransform.height : 100) * transform.localScale.y;
+        let width = (rectTransform ? rectTransform.width : 100) * transform.scale.x;
+        let height = (rectTransform ? rectTransform.height : 100) * transform.scale.y;
 
-        ctx.translate(worldPos.x, worldPos.y);
+        ctx.translate(worldX, worldY);
         ctx.rotate(worldRot * Math.PI / 180);
 
         ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
