@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, transpileAllProjectScripts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
 
     saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
         try {
@@ -635,79 +635,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    transpileAllProjectScripts = async function(silent = true) {
-        if (!projectsDirHandle) {
-            if (!silent) console.warn("No se puede transpilar, el directorio del proyecto no está disponible.");
-            return { success: false, errorCount: 0 };
-        }
-
-        if (!silent) console.log("Transpilando todos los scripts del proyecto...");
-        const allErrors = [];
-
-        async function findCesFiles(dirHandle) {
-            const cesFiles = [];
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
-                    cesFiles.push(entry);
-                } else if (entry.kind === 'directory') {
-                    try {
-                        cesFiles.push(...await findCesFiles(entry));
-                    } catch (e) {
-                        // Permissions error or similar, log it but continue
-                        console.warn(`No se pudo acceder al directorio '${entry.name}'. Saltando.`);
-                    }
-                }
-            }
-            return cesFiles;
-        }
-
-        try {
-            const projectName = new URLSearchParams(window.location.search).get('project');
-            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-            // It's safer to look in the entire project structure for scripts
-            const cesFiles = await findCesFiles(projectHandle);
-
-            if (cesFiles.length === 0) {
-                if (!silent) console.log("No se encontraron scripts .ces para transpilar.");
-                return { success: true, errorCount: 0 };
-            }
-
-            const transpilationPromises = cesFiles.map(async (fileHandle) => {
-                try {
-                    const file = await fileHandle.getFile();
-                    const code = await file.text();
-                    const result = CES_Transpiler.transpile(code, fileHandle.name);
-
-                    if (result.errors && result.errors.length > 0) {
-                        allErrors.push({ fileName: fileHandle.name, errors: result.errors });
-                    }
-                } catch (readError) {
-                     allErrors.push({ fileName: fileHandle.name, errors: [`Error al leer el archivo: ${readError.message}`] });
-                }
-            });
-
-            await Promise.all(transpilationPromises);
-
-            if (allErrors.length > 0) {
-                 console.error(`Transpilación completada con errores en ${allErrors.length} archivo(s):`);
-                for (const fileErrors of allErrors) {
-                    console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
-                    for (const error of fileErrors.errors) {
-                        console.error(`  - ${error}`);
-                    }
-                }
-                return { success: false, errorCount: allErrors.length };
-            } else {
-                if (!silent) console.log("✅ Transpilación exitosa. Todos los scripts se compilaron sin errores.");
-                return { success: true, errorCount: 0 };
-            }
-        } catch (error) {
-            console.error("Error crítico durante el proceso de transpilación:", error);
-            return { success: false, errorCount: 1 }; // Indicate failure
-        }
-    };
-
-
     runChecksAndPlay = async function() {
         if (!isEditorReady) {
             showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
@@ -719,8 +646,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- 1. Clear and Load All APIs ---
+        // Clear previous runtime APIs to ensure a clean slate for every "Play"
         RuntimeAPIManager.clearAPIs();
+
+        // Load external libraries first
         await loadRuntimeApis();
+
+        // Now, register the internal engine APIs
         const internalApis = EngineAPI.getAllInternalApis();
         for (const [name, apiObject] of Object.entries(internalApis)) {
             RuntimeAPIManager.registerAPI(name, apiObject);
@@ -728,17 +660,66 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Registered internal and external runtime APIs.");
 
 
-        // --- 2. Transpile all scripts ---
-        dom.consoleContent.innerHTML = ''; // Clear UI console for build results
-        const transpilationResult = await transpileAllProjectScripts(false); // Pass false to enable verbose logging
+        console.log("Verificando todos los scripts del proyecto...");
+        dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
+        const allErrors = [];
+        let mainGameJsCode = null;
 
-        // --- 3. Act on result ---
-        if (transpilationResult.success) {
-            originalStartGame();
-        } else {
-            // Errors are already logged by the transpiler function
-            // Switch to the console tab to make errors visible
+        // 1. Encontrar todos los archivos .ces
+        const cesFiles = [];
+        async function findCesFiles(dirHandle, currentPath = '') {
+            console.log(`Buscando en: ${currentPath || 'Assets'}`);
+            for await (const entry of dirHandle.values()) {
+                console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
+                if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
+                    console.log(`    -> ¡Script .ces encontrado! Añadiendo a la lista.`);
+                    cesFiles.push(entry);
+                } else if (entry.kind === 'directory') {
+                    await findCesFiles(entry, `${currentPath}/${entry.name}`);
+                }
+            }
+        }
+
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        await findCesFiles(assetsHandle);
+
+        if (cesFiles.length === 0) {
+            console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
+            originalStartGame(); // Usar la función original que guardamos
+            return;
+        }
+
+        // 2. Transpilar cada archivo y recolectar errores
+        const transpilationPromises = cesFiles.map(async (fileHandle) => {
+            const file = await fileHandle.getFile();
+            const code = await file.text();
+            const result = CES_Transpiler.transpile(code, fileHandle.name);
+
+            if (result.errors && result.errors.length > 0) {
+                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
+            }
+        });
+
+        await Promise.all(transpilationPromises);
+
+
+        // 3. Actuar según el resultado
+        if (allErrors.length > 0) {
+            console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
+            for (const fileErrors of allErrors) {
+                console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
+                for (const error of fileErrors.errors) {
+                    console.error(`  - ${error}`);
+                }
+            }
+            // Cambiar a la pestaña de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
+        } else {
+            console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
+            // 4. Iniciar el juego. La lógica ahora está en startGame.
+            originalStartGame();
         }
     };
 
@@ -1071,7 +1052,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handleRender = (camera) => {
-            // --- World Pass ---
             rendererInstance.beginWorld(camera);
 
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
@@ -1098,61 +1078,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Original behavior: draw all objects, then all lights
                 drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
                 drawLights(allLights);
-
-                // --- World Space UI Rendering ---
-                const worldSpaceCanvases = SceneManager.currentScene.getAllMaterias()
-                    .filter(m => m.isActive && m.getComponent(Components.UICanvas)?.renderMode === 'World Space');
-
-                for (const canvasMateria of worldSpaceCanvases) {
-                    const canvasTransform = canvasMateria.getComponent(Components.Transform);
-                    if (!canvasTransform) continue;
-
-                    for (const child of canvasMateria.getAllChildrenRecursive()) {
-                        if (!child.isActive) continue;
-                        const uiImage = child.getComponent(Components.UIImage);
-                        const rectTransform = child.getComponent(Components.RectTransform);
-
-                        if (uiImage && rectTransform) {
-                            // Create a temporary RectTransform for rendering that is offset by the parent canvas's world position
-                            const worldRect = {
-                                x: canvasTransform.position.x + rectTransform.x,
-                                y: canvasTransform.position.y + rectTransform.y,
-                                width: rectTransform.width,
-                                height: rectTransform.height
-                            };
-                            rendererInstance.drawUIImage(uiImage, worldRect);
-                        }
-                    }
-                }
             }
-            rendererInstance.end(); // End World Pass
 
-            // --- UI Pass ---
-            rendererInstance.beginUI();
-            const uiCanvases = SceneManager.currentScene.getAllMaterias().filter(m => m.getComponent(Components.UICanvas));
-            for (const canvasMateria of uiCanvases) {
-                if (!canvasMateria.isActive) continue;
 
-                const canvas = canvasMateria.getComponent(Components.UICanvas);
-                if (canvas.renderMode === 'Screen Space') {
-                    for (const child of canvasMateria.getAllChildrenRecursive()) {
-                        if (!child.isActive) continue;
-                        const uiImage = child.getComponent(Components.UIImage);
-                        const rectTransform = child.getComponent(Components.RectTransform);
-                        if (uiImage && rectTransform) {
-                            rendererInstance.drawUIImage(uiImage, rectTransform);
-                        }
-                    }
-                }
-            }
-            rendererInstance.end(); // End UI Pass
-
-            // --- Editor Overlay Pass ---
             if (!isGameView) {
-                rendererInstance.beginUI(); // Use UI context for overlays
                 SceneView.drawOverlay();
-                rendererInstance.end();
             }
+            rendererInstance.end();
         };
 
 
@@ -2302,9 +2234,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.projectNameDisplay.textContent = `Proyecto: ${projectName}`;
 
             if (projectsDirHandle) {
-                updateLoadingProgress(15, "Transpilando scripts del proyecto...");
-                await transpileAllProjectScripts(true); // Pre-transpile all scripts silently on load
-
                 // Ensure the 'lib' directory exists for the current project
                 const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
                 try {

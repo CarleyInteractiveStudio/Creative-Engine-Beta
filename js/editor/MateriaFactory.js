@@ -32,32 +32,3 @@ export function createBaseMateria(name, parent = null) {
     }
     return newMateria;
 }
-
-
-
-// --- UI Object Factories ---
-
-export function createCanvasObject() {
-    const newMateria = createBaseMateria(generateUniqueName('Canvas'));
-
-    // A Canvas root needs both a Transform (for world position) and a RectTransform (for UI bounds).
-    // We no longer remove the default Transform.
-    newMateria.addComponent(new Components.RectTransform());
-    newMateria.addComponent(new Components.UICanvas());
-
-    return newMateria;
-}
-
-export function createImageObject() {
-    const newMateria = createBaseMateria(generateUniqueName('Image'));
-
-    // UI elements use RectTransform instead of Transform
-    const transform = newMateria.getComponent(Components.Transform);
-    if (transform) {
-        newMateria.removeComponent(Components.Transform);
-    }
-    newMateria.addComponent(new Components.RectTransform());
-    newMateria.addComponent(new Components.UIImage());
-
-    return newMateria;
-}

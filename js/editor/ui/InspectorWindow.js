@@ -703,8 +703,11 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Transform) {
-            // Hide transform if this is a UI child object, but not if it's the Canvas root itself
-            if (selectedMateria.getComponent(Components.RectTransform) && !selectedMateria.getComponent(Components.UICanvas)) return;
+            console.log('  - Is Transform component.');
+            if (selectedMateria.getComponent(Components.RectTransform)) {
+                console.log('  - RectTransform also exists, skipping render of Transform.');
+                return;
+            }
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Transform</h4></div>
@@ -731,20 +734,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UICanvas) {
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>UI Canvas</h4></div>
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Render Mode</label>
-                        <select class="prop-input" data-component="UICanvas" data-prop="renderMode">
-                            <option value="Screen Space" ${ley.renderMode === 'Screen Space' ? 'selected' : ''}>Screen Space</option>
-                            <option value="World Space" ${ley.renderMode === 'World Space' ? 'selected' : ''}>World Space</option>
-                        </select>
-                    </div>
-                </div>
-            `;
         } else if (ley instanceof Components.RectTransform) {
+             console.log('  - Is RectTransform component.');
              componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
             <div class="component-content">
                 <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
@@ -756,12 +747,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
             <div class="component-content">
-                 <div class="inspector-row">
-                    <label>Source</label>
-                    <div class="asset-dropper" data-component="UIImage" data-prop="sourceImage" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
-                        <span class="asset-dropper-text">${ley.sourceImage || 'None'}</span>
-                    </div>
-                </div>
+                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
         }
