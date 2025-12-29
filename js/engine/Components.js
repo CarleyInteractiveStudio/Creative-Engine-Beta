@@ -755,7 +755,93 @@ export class Animator extends Leyes {
     }
 }
 
-// This is the beginning of the block to be replaced.
+export class RectTransform extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.x = 0;
+        this.y = 0;
+        this.width = 100;
+        this.height = 100;
+        this.pivot = { x: 0.5, y: 0.5 };
+        this.anchorMin = { x: 0.5, y: 0.5 };
+        this.anchorMax = { x: 0.5, y: 0.5 };
+    }
+
+    getWorldRect(parentCanvas) {
+        // For now, a simplified version that doesn't handle nesting.
+        // It assumes the parent is the main canvas.
+        const parentWidth = parentCanvas.width;
+        const parentHeight = parentCanvas.height;
+
+        // Calculate anchor positions in pixels
+        const anchorMinX = parentWidth * this.anchorMin.x;
+        const anchorMinY = parentHeight * this.anchorMin.y;
+
+        // Calculate the position of the pivot point relative to the anchors
+        const pivotPosX = anchorMinX + this.x;
+        const pivotPosY = anchorMinY + this.y;
+
+        // Calculate the top-left corner of the rectangle based on the pivot
+        const rectX = pivotPosX - (this.width * this.pivot.x);
+        const rectY = pivotPosY - (this.height * this.pivot.y);
+
+        return {
+            x: rectX,
+            y: rectY,
+            width: this.width,
+            height: this.height
+        };
+    }
+    clone() {
+        const newRectTransform = new RectTransform(null);
+        newRectTransform.x = this.x;
+        newRectTransform.y = this.y;
+        newRectTransform.width = this.width;
+        newRectTransform.height = this.height;
+        newRectTransform.pivot = { ...this.pivot };
+        newRectTransform.anchorMin = { ...this.anchorMin };
+        newRectTransform.anchorMax = { ...this.anchorMax };
+        return newRectTransform;
+    }
+}
+
+export class UICanvas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.renderMode = 'ScreenSpaceOverlay';
+    }
+    clone() {
+        const newCanvas = new UICanvas(null);
+        newCanvas.renderMode = this.renderMode;
+        return newCanvas;
+    }
+}
+
+export class UIImage extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.sprite = new Image();
+        this.source = '';
+        this.color = '#ffffff';
+    }
+
+    async loadSprite(projectsDirHandle) {
+        if (this.source) {
+            const url = await getURLForAssetPath(this.source, projectsDirHandle);
+            if (url) {
+                this.sprite.src = url;
+            }
+        } else {
+            this.sprite.src = '';
+        }
+    }
+    clone() {
+        const newImage = new UIImage(null);
+        newImage.source = this.source;
+        newImage.color = this.color;
+        return newImage;
+    }
+}
 
 export class PointLight2D extends Leyes {
     constructor(materia) {
@@ -1296,39 +1382,6 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
-
-export class Canvas extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
-        this.sortOrder = 0;
-    }
-
-    clone() {
-        const newCanvas = new Canvas(null);
-        newCanvas.renderMode = this.renderMode;
-        newCanvas.sortOrder = this.sortOrder;
-        return newCanvas;
-    }
-}
-registerComponent('Canvas', Canvas);
-
-export class RectTransform extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.width = 100;
-        this.height = 100;
-    }
-
-    clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        return newRectTransform;
-    }
-}
-registerComponent('RectTransform', RectTransform);
-
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

@@ -187,46 +187,6 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawUI(canvasComponent) {
-        const children = canvasComponent.materia.getChildren();
-        for (const child of children) {
-            if (!child.isActive) continue;
-
-            const uiImage = child.getComponent('UIImage');
-            if (uiImage && uiImage.image && uiImage.image.complete) {
-                const rectTransform = child.getComponent('RectTransform');
-                if (rectTransform) {
-                    const canvasWidth = this.canvas.width;
-                    const canvasHeight = this.canvas.height;
-
-                    const anchorPosX = canvasWidth * rectTransform.anchorMin.x;
-                    const anchorPosY = canvasHeight * rectTransform.anchorMin.y;
-
-                    const pivotOffsetX = rectTransform.size.x * rectTransform.pivot.x;
-                    const pivotOffsetY = rectTransform.size.y * rectTransform.pivot.y;
-
-                    const finalX = anchorPosX + rectTransform.anchoredPosition.x - pivotOffsetX;
-                    const finalY = anchorPosY + rectTransform.anchoredPosition.y - pivotOffsetY;
-
-                    this.ctx.globalAlpha = uiImage.color.a;
-                    this.ctx.drawImage(
-                        uiImage.image,
-                        finalX,
-                        finalY,
-                        rectTransform.size.x,
-                        rectTransform.size.y
-                    );
-                    this.ctx.globalAlpha = 1.0;
-                }
-            }
-        }
-    }
-
-    endUI() {
-        this.ctx.restore();
-    }
-
-
     // --- Lighting Methods ---
 
     beginLights() {

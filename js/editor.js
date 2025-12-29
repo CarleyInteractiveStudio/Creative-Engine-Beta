@@ -1133,24 +1133,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // --- UI Rendering Pass ---
-        // This runs regardless of play state to ensure UI is always visible.
-        const targetRenderer = (activeView === 'game-content' && gameRenderer) ? gameRenderer : renderer;
-        if (targetRenderer && SceneManager.currentScene) {
-            const screenSpaceCanvases = SceneManager.currentScene.getAllMaterias()
-                .filter(m => m.isActive && m.getComponent('Canvas')?.renderMode === 'Screen Space')
-                .sort((a, b) => (a.getComponent('Canvas')?.sortOrder || 0) - (b.getComponent('Canvas')?.sortOrder || 0));
-
-            if (screenSpaceCanvases.length > 0) {
-                targetRenderer.beginUI();
-                for (const canvasMateria of screenSpaceCanvases) {
-                    const canvasComponent = canvasMateria.getComponent('Canvas');
-                    targetRenderer.drawUI(canvasComponent);
-                }
-                targetRenderer.endUI();
-            }
-        }
-
         // Update InputManager at the very end of the frame
         InputManager.update();
 
@@ -1446,39 +1428,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // Centralized context menu click handler
         document.body.addEventListener('mousedown', (e) => {
             const target = e.target;
+            if (e.button !== 0) return; // Only act on left clicks
+
+            const menuItem = target.closest('[data-action]');
             const contextMenu = target.closest('.context-menu');
 
-            // Handle actions on menu items (left-click only)
-            if (e.button === 0) {
-                const menuItem = target.closest('[data-action]');
-                if (menuItem && contextMenu) {
-                    e.stopPropagation(); // Stop propagation to prevent other listeners
-                    const action = menuItem.dataset.action;
+            if (menuItem && contextMenu) {
+                e.stopPropagation(); // Stop propagation to prevent other listeners (like global deselection)
+                const action = menuItem.dataset.action;
 
-                    if (menuItem.classList.contains('disabled')) {
-                        return;
-                    }
-
-                    console.log(`[Director] Context menu action detected: '${action}'`);
-                    try {
-                        if (contextMenu.id === 'context-menu') {
-                            handleAssetContextMenuAction(action);
-                        } else if (contextMenu.id === 'hierarchy-context-menu') {
-                            handleHierarchyContextMenuAction(action);
-                        } else {
-                             console.warn(`[Director] No handler found for context menu with id '${contextMenu.id}'`);
-                        }
-                    } catch (error) {
-                        console.error(`[Director] CRITICAL ERROR! Action '${action}' failed with an exception:`, error);
-                    } finally {
-                        hideContextMenus(); // Always hide after an action
-                    }
-                    return; // Action handled
+                if (menuItem.classList.contains('disabled')) {
+                    return; // Do nothing if the item is disabled
                 }
-            }
 
-            // If the mousedown was a left-click outside an existing menu, hide it.
-            if (!contextMenu && e.button === 0) {
+                console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                try {
+                    if (contextMenu.id === 'context-menu') {
+                        handleAssetContextMenuAction(action);
+                    } else if (contextMenu.id === 'hierarchy-context-menu') {
+                        handleHierarchyContextMenuAction(action);
+                    } else {
+                         console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                    }
+                } catch (error) {
+                    console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                } finally {
+                    hideContextMenus(); // Always hide the menu after an action
+                }
+
+            } else if (!contextMenu) {
+                // If the click is outside any context menu, hide them all.
                 hideContextMenus();
             }
         });
@@ -2121,8 +2100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
         window.MateriaFactory = MateriaFactory;
-        window.updateHierarchy = updateHierarchy;
-        window.selectMateria = selectMateria;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---

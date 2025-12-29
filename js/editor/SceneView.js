@@ -1045,7 +1045,6 @@ export function drawOverlay() {
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
         drawGizmos(renderer, getSelectedMateria());
-        drawCanvasGizmo(renderer, getSelectedMateria());
     }
 
     // Draw gizmos for all cameras in the scene
@@ -1062,47 +1061,6 @@ export function drawOverlay() {
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
-}
-
-function drawCanvasGizmo(renderer, materia) {
-    const canvasComponent = materia.getComponent(Components.Canvas);
-    const transform = materia.getComponent(Components.Transform);
-    const rectTransform = materia.getComponent(Components.RectTransform);
-
-    if (!canvasComponent || !transform || !rectTransform) {
-        return;
-    }
-
-    const { ctx, camera } = renderer;
-    const { width, height } = rectTransform;
-    const worldPos = transform.position;
-
-    ctx.save();
-    ctx.translate(worldPos.x, worldPos.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
-
-    // Draw the main rectangle
-    ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
-    ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.setLineDash([6 / camera.effectiveZoom, 3 / camera.effectiveZoom]);
-    ctx.strokeRect(-width / 2, -height / 2, width, height);
-    ctx.setLineDash([]);
-
-    // Draw resize handles
-    const handleSize = 8 / camera.effectiveZoom;
-    const halfHandle = handleSize / 2;
-    ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
-    const handles = [
-        { x: -width / 2, y: -height / 2 }, // Top-left
-        { x: width / 2, y: -height / 2 },  // Top-right
-        { x: -width / 2, y: height / 2 },  // Bottom-left
-        { x: width / 2, y: height / 2 },   // Bottom-right
-    ];
-    handles.forEach(handle => {
-        ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
-    });
-
-    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
