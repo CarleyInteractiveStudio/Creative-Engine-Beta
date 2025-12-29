@@ -325,6 +325,58 @@ export class Renderer {
         this.ctx.drawImage(this.lightMapCanvas, 0, 0);
         this.ctx.restore(); // Restores composite operation and transform
     }
+
+    drawUIImage(uiImage, rectTransform) {
+        if (!uiImage.sprite || !uiImage.sprite.complete || uiImage.sprite.naturalWidth === 0) {
+            // Optionally draw a placeholder
+            // this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            // this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+            return;
+        }
+
+        const img = uiImage.sprite;
+        const ctx = this.ctx;
+
+        ctx.save();
+
+        // Note: For Screen Space UI, transformations are already reset.
+        // For World Space UI, transformations are part of the world context.
+        // This function just needs to draw at the specified coordinates.
+
+        // Apply color tint
+        // A simple way is to use globalAlpha and fill a rect, but that loses the texture.
+        // A better, but more complex, method involves creating a temporary canvas.
+        // For now, we will just draw the image directly.
+        // A future improvement could be:
+        // 1. Create a temp canvas.
+        // 2. Draw the image onto it.
+        // 3. Use globalCompositeOperation 'source-in' and fill with the tint color.
+        // 4. Draw the temp canvas to the main context.
+
+        ctx.drawImage(
+            img,
+            rectTransform.x,
+            rectTransform.y,
+            rectTransform.width,
+            rectTransform.height
+        );
+
+        // Apply color tint if it's not white
+        if (uiImage.color !== '#ffffff') {
+            ctx.fillStyle = uiImage.color;
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.fillRect(
+                rectTransform.x,
+                rectTransform.y,
+                rectTransform.width,
+                rectTransform.height
+            );
+            // Reset composite operation for subsequent draws
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.restore();
+    }
 }
 
 console.log("Renderer.js loaded");

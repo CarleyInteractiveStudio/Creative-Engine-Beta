@@ -1061,6 +1061,28 @@ export function drawOverlay() {
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
+
+    // --- Draw RectTransform Gizmo ---
+    // This is drawn in the UI pass, so coordinates are screen-space relative to the canvas.
+    // However, the gizmo should be drawn in the world space for consistency.
+    const selected = getSelectedMateria();
+    if (selected) {
+        const rectTransform = selected.getComponent(Components.RectTransform);
+        if (rectTransform) {
+            const transform = selected.getComponent(Components.Transform); // UI objects might still have a Transform for world position
+            const worldX = transform ? transform.position.x : 0;
+            const worldY = transform ? transform.position.y : 0;
+
+            renderer.ctx.strokeStyle = 'cyan';
+            renderer.ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+            renderer.ctx.strokeRect(
+                worldX + rectTransform.x,
+                worldY + rectTransform.y,
+                rectTransform.width,
+                rectTransform.height
+            );
+        }
+    }
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
