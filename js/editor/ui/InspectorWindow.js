@@ -655,16 +655,6 @@ async function updateInspectorForMateria(selectedMateria) {
         renderComponentInspector(ley, componentsWrapper, componentIcons);
     });
 
-    console.log('6. Finished component loop. Appending main wrapper to DOM.');
-    dom.inspectorContent.appendChild(componentsWrapper);
-
-    const addComponentBtn = document.createElement('button');
-    addComponentBtn.id = 'add-component-btn';
-    addComponentBtn.className = 'add-component-btn';
-    addComponentBtn.textContent = 'Añadir Ley';
-    dom.inspectorContent.appendChild(addComponentBtn);
-    console.log('7. Inspector update complete.');
-}
 
 function renderComponentInspector(ley, container, componentIcons) {
     let componentHTML = '';
