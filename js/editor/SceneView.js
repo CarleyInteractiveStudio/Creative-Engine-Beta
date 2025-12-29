@@ -149,58 +149,6 @@ function checkCameraGizmoHit(canvasPos) {
     return null;
 }
 
-function checkCanvasGizmoHit(canvasPos) {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria || !renderer) return null;
-
-    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    const rectTransform = selectedMateria.getComponent(Components.RectTransform);
-
-    if (!canvasComponent || canvasComponent.renderMode !== 'World Space' || !transform || !rectTransform) {
-        return null;
-    }
-
-    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
-    const rad = -transform.rotation * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-
-    const width = rectTransform.width * transform.scale.x;
-    const height = rectTransform.height * transform.scale.y;
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
-
-    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
-    const halfHitbox = handleHitboxSize / 2;
-
-    const handles = [
-        { x: 0, y: halfHeight, name: 'canvas-resize-top' },
-        { x: 0, y: -halfHeight, name: 'canvas-resize-bottom' },
-        { x: halfWidth, y: 0, name: 'canvas-resize-right' },
-        { x: -halfWidth, y: 0, name: 'canvas-resize-left' },
-        { x: -halfWidth, y: halfHeight, name: 'canvas-resize-tl' },
-        { x: halfWidth, y: halfHeight, name: 'canvas-resize-tr' },
-        { x: -halfWidth, y: -halfHeight, name: 'canvas-resize-bl' },
-        { x: halfWidth, y: -halfHeight, name: 'canvas-resize-br' }
-    ];
-
-    for (const handle of handles) {
-        if (
-            localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
-            localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox
-        ) {
-            return handle.name;
-        }
-    }
-
-    return null;
-}
-
-
 function handleEditorInteractions() {
     // This function is now largely a placeholder.
     // Panning, zooming, and gizmo dragging are all handled by direct, dynamic event listeners
@@ -625,7 +573,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkCanvasGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -671,35 +619,6 @@ export function initialize(dependencies) {
                             break;
                         }
                     }
-
-                    // --- Canvas Gizmo Logic ---
-                    const rectTransform = dragState.materia.getComponent(Components.RectTransform);
-                    if (rectTransform && dragState.handle.startsWith('canvas-resize-')) {
-                        const rad = -transform.rotation * Math.PI / 180;
-                        const cos = Math.cos(rad);
-                        const sin = Math.sin(rad);
-                        const localDx = (dx * cos - dy * sin) / transform.scale.x;
-                        const localDy = (dx * sin + dy * cos) / transform.scale.y;
-
-                        const handle = dragState.handle;
-
-                        if (handle.includes('top')) {
-                            rectTransform.height += localDy;
-                        }
-                        if (handle.includes('bottom')) {
-                            rectTransform.height -= localDy;
-                        }
-                        if (handle.includes('right')) {
-                            rectTransform.width += localDx;
-                        }
-                        if (handle.includes('left')) {
-                            rectTransform.width -= localDx;
-                        }
-                        // Clamp to prevent negative size
-                        rectTransform.width = Math.max(0, rectTransform.width);
-                        rectTransform.height = Math.max(0, rectTransform.height);
-                    }
-
 
                     // --- Collider Gizmo Logic ---
                     const boxCollider = dragState.materia.getComponent(Components.BoxCollider2D);
@@ -1126,6 +1045,7 @@ export function drawOverlay() {
     // Draw gizmo for the selected object
     if (getSelectedMateria()) {
         drawGizmos(renderer, getSelectedMateria());
+        drawCanvasGizmo(renderer, getSelectedMateria());
     }
 
     // Draw gizmos for all cameras in the scene
@@ -1137,14 +1057,52 @@ export function drawOverlay() {
     // Draw tilemap colliders
     drawTilemapColliders();
 
-    // Draw Canvas gizmo for selected object
-    drawCanvasGizmo();
-
     // Draw physics colliders for selected object
     drawPhysicsGizmos();
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
+}
+
+function drawCanvasGizmo(renderer, materia) {
+    const canvasComponent = materia.getComponent(Components.Canvas);
+    const transform = materia.getComponent(Components.Transform);
+    const rectTransform = materia.getComponent(Components.RectTransform);
+
+    if (!canvasComponent || !transform || !rectTransform) {
+        return;
+    }
+
+    const { ctx, camera } = renderer;
+    const { width, height } = rectTransform;
+    const worldPos = transform.position;
+
+    ctx.save();
+    ctx.translate(worldPos.x, worldPos.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    // Draw the main rectangle
+    ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([6 / camera.effectiveZoom, 3 / camera.effectiveZoom]);
+    ctx.strokeRect(-width / 2, -height / 2, width, height);
+    ctx.setLineDash([]);
+
+    // Draw resize handles
+    const handleSize = 8 / camera.effectiveZoom;
+    const halfHandle = handleSize / 2;
+    ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
+    const handles = [
+        { x: -width / 2, y: -height / 2 }, // Top-left
+        { x: width / 2, y: -height / 2 },  // Top-right
+        { x: -width / 2, y: height / 2 },  // Bottom-left
+        { x: width / 2, y: height / 2 },   // Bottom-right
+    ];
+    handles.forEach(handle => {
+        ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+    });
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
@@ -1263,82 +1221,6 @@ function drawCapsulePath(ctx, width, height, direction) {
         ctx.arc(-halfStraight, 0, radius, Math.PI / 2, -Math.PI / 2);
         ctx.closePath();
     }
-}
-
-function drawCanvasGizmo() {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
-
-    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
-    if (!canvasComponent) return;
-
-    const { ctx, camera } = renderer;
-
-    ctx.save();
-
-    if (canvasComponent.renderMode === 'Screen Space') {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 2 / camera.effectiveZoom;
-        ctx.setLineDash([10 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
-
-        // Use the scene canvas for sizing, as the game canvas might not be rendered
-        const viewWidth = renderer.canvas.width;
-        const viewHeight = renderer.canvas.height;
-
-        // This is drawn in world-space coordinates, so we need to account for zoom to match the screen size.
-        const worldWidth = viewWidth / camera.effectiveZoom;
-        const worldHeight = viewHeight / camera.effectiveZoom;
-
-        // Draw the rectangle centered around the camera's current position, representing the screen bounds.
-        ctx.strokeRect(camera.x - worldWidth / 2, camera.y - worldHeight / 2, worldWidth, worldHeight);
-
-    } else if (canvasComponent.renderMode === 'World Space') {
-        const transform = selectedMateria.getComponent(Components.Transform);
-        if (!transform) {
-            ctx.restore();
-            return;
-        }
-
-        const rectTransform = selectedMateria.getComponent(Components.RectTransform);
-
-        const worldX = transform.x;
-        const worldY = transform.y;
-        const worldRot = transform.rotation;
-
-        let width = (rectTransform ? rectTransform.width : 100) * transform.scale.x;
-        let height = (rectTransform ? rectTransform.height : 100) * transform.scale.y;
-
-        ctx.translate(worldX, worldY);
-        ctx.rotate(worldRot * Math.PI / 180);
-
-        ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
-        ctx.lineWidth = 2 / camera.effectiveZoom;
-        ctx.setLineDash([]);
-
-        ctx.strokeRect(-width / 2, -height / 2, width, height);
-
-        // --- Draw interactive handles ---
-        const handleSize = 8 / camera.effectiveZoom;
-        const halfHandle = handleSize / 2;
-        ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
-
-        const handles = [
-            { x: 0, y: height / 2 }, // Top-center
-            { x: 0, y: -height / 2 }, // Bottom-center
-            { x: width / 2, y: 0 }, // Right-center
-            { x: -width / 2, y: 0 }, // Left-center
-            { x: -width / 2, y: height / 2 }, // Top-left
-            { x: width / 2, y: height / 2 }, // Top-right
-            { x: -width / 2, y: -height / 2 }, // Bottom-left
-            { x: width / 2, y: -height / 2 }  // Bottom-right
-        ];
-
-        handles.forEach(handle => {
-            ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
-        });
-    }
-
-    ctx.restore();
 }
 
 function drawPhysicsGizmos() {

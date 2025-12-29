@@ -28,7 +28,6 @@ const componentAliases = {
     'UICanvas': 'lienzoUI',
     'UIImage': 'imagenUI',
     'RectTransform': 'transformacionRect',
-    'Canvas': 'lienzo',
 };
 
 
@@ -1390,6 +1389,7 @@ export class Canvas extends Leyes {
         this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
         this.sortOrder = 0;
     }
+
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
@@ -1398,6 +1398,23 @@ export class Canvas extends Leyes {
     }
 }
 registerComponent('Canvas', Canvas);
+
+export class RectTransform extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 100;
+        this.height = 100;
+    }
+
+    clone() {
+        const newRectTransform = new RectTransform(null);
+        newRectTransform.width = this.width;
+        newRectTransform.height = this.height;
+        return newRectTransform;
+    }
+}
+registerComponent('RectTransform', RectTransform);
+
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

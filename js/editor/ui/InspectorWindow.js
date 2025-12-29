@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.Canvas, Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -636,691 +636,674 @@ async function updateInspectorForMateria(selectedMateria) {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦', Canvas: '🖥️'
+        Grid: '▦'
     };
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
-
-    // Prioritize rendering Transform if it exists, as it's fundamental.
-    const transformComponent = selectedMateria.getComponent(Components.Transform);
-    if (transformComponent) {
-        renderComponentInspector(transformComponent, componentsWrapper, componentIcons);
-    }
+    console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
-        // Skip the Transform component since we've already rendered it.
-        if (ley instanceof Components.Transform) return;
+        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
+        let componentHTML = '';
+        const componentName = ley.constructor.name;
+        const icon = componentIcons[componentName] || '⚙️';
+        const iconHTML = `<span class="component-icon">${icon}</span>`;
 
-        renderComponentInspector(ley, componentsWrapper, componentIcons);
-    });
-
-
-function renderComponentInspector(ley, container, componentIcons) {
-    let componentHTML = '';
-    const componentName = ley.constructor.name;
-    const icon = componentIcons[componentName] || '⚙️';
-    const iconHTML = `<span class="component-icon">${icon}</span>`;
-
-    if (ley instanceof Components.TextureRender) {
-        let dimensionsHTML = '';
-        if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
-            dimensionsHTML = `
-                <div class="prop-row-multi">
-                    <label>Dimensions</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="Width">
-                        <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="Height">
-                    </div>
-                </div>
-            `;
-        } else if (ley.shape === 'Circle') {
-            dimensionsHTML = `
-                <div class="prop-row-multi">
-                    <label>Radius</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="Radius">
-                    </div>
-                </div>
-            `;
-        }
-
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4>Texture Render</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Shape</label>
-                    <div class="prop-inputs">
-                        <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
-                            <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
-                            <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''}>Circle</option>
-                            <option value="Triangle" ${ley.shape === 'Triangle' ? 'selected' : ''}>Triangle</option>
-                            <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''}>Capsule</option>
-                        </select>
-                    </div>
-                </div>
-                ${dimensionsHTML}
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color}">
-                    </div>
-                </div>
-                <div class="inspector-row">
-                    <label>Texture</label>
-                    <div class="asset-dropper" data-component="TextureRender" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
-                        <span class="asset-dropper-text">${ley.texturePath || 'None'}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    } else if (ley instanceof Components.Transform) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Transform</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Position</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
-                        <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Rotation</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Scale</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
-                        <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.RectTransform) {
-         componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
-        <div class="component-content">
-            <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
-            <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
-            <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
-            <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
-        </div>`;
-    } else if (ley instanceof Components.UIImage) {
-        const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-        componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
-        <div class="component-content">
-            <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-            <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
-        </div>`;
-    } else if (ley instanceof Components.Canvas) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Canvas</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Render Mode</label>
-                    <select class="prop-input" data-component="Canvas" data-prop="renderMode">
-                        <option value="Screen Space" ${ley.renderMode === 'Screen Space' ? 'selected' : ''}>Screen Space</option>
-                        <option value="World Space" ${ley.renderMode === 'World Space' ? 'selected' : ''}>World Space</option>
-                    </select>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Sort Order</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="Canvas" data-prop="sortOrder" value="${ley.sortOrder || 0}">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    }
-    else if (ley instanceof Components.SpriteRenderer) {
-        let spriteSelectorHTML = '';
-        if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {
-            const options = Object.keys(ley.spriteSheet.sprites)
-                .map(spriteName => `<option value="${spriteName}" ${ley.spriteName === spriteName ? 'selected' : ''}>${spriteName}</option>`)
-                .join('');
-
-            spriteSelectorHTML = `
-                <div class="inspector-row">
-                    <label for="sprite-name-select">Sprite</label>
-                    <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
-                        ${options}
-                    </select>
-                </div>
-            `;
-        }
-
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
-            <div class="component-content">
-                <div class="inspector-row">
-                    <label>Source</label>
-                    <div class="asset-dropper" data-component="SpriteRenderer" data-prop="source" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
-                        <span class="asset-dropper-text">${ley.spriteAssetPath || ley.source || 'None'}</span>
-                    </div>
-                </div>
-                ${spriteSelectorHTML}
-                <div class="inspector-row">
-                    <label>Color</label>
-                    <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
-                </div>
-            </div>`;
-    }
-    else if (ley instanceof Components.CreativeScript) {
-        let publicVarsHTML = '';
-        const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
-
-        if (metadata && metadata.publicVars) {
-            for (const pv of metadata.publicVars) {
-                const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
-                publicVarsHTML += `
+        if (ley instanceof Components.TextureRender) {
+            let dimensionsHTML = '';
+            if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
+                dimensionsHTML = `
                     <div class="prop-row-multi">
-                        <label>${pv.name}</label>
-                        ${renderPublicVarInput(pv, currentValue, 'CreativeScript', ley.scriptName)}
+                        <label>Dimensions</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                `;
+            } else if (ley.shape === 'Circle') {
+                dimensionsHTML = `
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="Radius">
+                        </div>
                     </div>
                 `;
             }
-        }
 
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4><a href="#">${ley.scriptName}</a></h4></div>
-            <div class="component-content">
-                ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
-            </div>
-        `;
-    } else if (ley instanceof Components.Animator) {
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4>Animator</h4></div>
-            <div class="component-content">
-                <div class="inspector-row">
-                    <label>Animation Clip</label>
-                    <div class="asset-dropper" data-component="Animator" data-prop="animationClipPath" data-asset-type=".ceanimclip,.cea" title="Arrastra un .ceanimclip o .cea aquí">
-                        <span class="asset-dropper-text">${ley.animationClipPath || 'None'}</span>
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Speed</label>
-                    <input type="number" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
-                </div>
-                <div class="checkbox-field padded-checkbox-field">
-                    <input type="checkbox" class="prop-input" data-component="Animator" data-prop="loop" ${ley.loop ? 'checked' : ''}>
-                    <label>Loop</label>
-                </div>
-                <div class="checkbox-field padded-checkbox-field">
-                    <input type="checkbox" class="prop-input" data-component="Animator" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
-                    <label>Play On Awake</label>
-                </div>
-            </div>`;
-    } else if (ley instanceof Components.AnimatorController) {
-        let statesListHTML = '<p class="field-description">Asigna un Controller para ver sus estados.</p>';
-        if (ley.controller && ley.states.size > 0) {
-            statesListHTML = '<ul>';
-            for (const stateName of ley.states.keys()) {
-                statesListHTML += `<li>${stateName}</li>`;
-            }
-            statesListHTML += '</ul>';
-        }
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4>Animator Controller</h4></div>
-            <div class="component-content">
-                <div class="inspector-row">
-                    <label>Controller</label>
-                    <div class="asset-dropper" data-component="AnimatorController" data-prop="controllerPath" data-asset-type=".ceanim" title="Arrastra un asset .ceanim aquí">
-                        <span class="asset-dropper-text">${ley.controllerPath || 'None'}</span>
-                    </div>
-                </div>
-                <div class="inspector-field-group">
-                    <label>States</label>
-                    ${statesListHTML}
-                </div>
-            </div>`;
-    } else if (ley instanceof Components.Camera) {
-        const projection = ley.projection || 'Perspective';
-        const clearFlags = ley.clearFlags || 'SolidColor';
-
-        componentHTML = `
-            <div class="component-header">${iconHTML}<h4>Camera</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Depth</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Clear Flags</label>
-                    <div class="prop-inputs">
-                        <select class="prop-input inspector-re-render" data-component="Camera" data-prop="clearFlags">
-                            <option value="SolidColor" ${clearFlags === 'SolidColor' ? 'selected' : ''}>Solid Color</option>
-                            <option value="Skybox" ${clearFlags === 'Skybox' ? 'selected' : ''}>Skybox</option>
-                            <option value="DontClear" ${clearFlags === 'DontClear' ? 'selected' : ''}>Don't Clear</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="prop-row-multi" style="display: ${clearFlags === 'SolidColor' ? 'flex' : 'none'};">
-                    <label>Background</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="Camera" data-prop="backgroundColor" value="${ley.backgroundColor || '#1e293b'}">
-                    </div>
-                </div>
-
-                <div class="prop-row-multi">
-                    <label>Culling Mask</label>
-                    <div class="prop-inputs">
-                        <button id="culling-mask-btn" class="prop-input-button">${getCullingMaskText(ley.cullingMask)}</button>
-                    </div>
-                </div>
-
-                <div class="prop-row-multi">
-                    <label>Projection</label>
-                    <div class="prop-inputs">
-                        <select class="prop-input inspector-re-render" data-component="Camera" data-prop="projection">
-                            <option value="Perspective" ${projection === 'Perspective' ? 'selected' : ''}>Perspective</option>
-                            <option value="Orthographic" ${projection === 'Orthographic' ? 'selected' : ''}>Orthographic</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
-                    <label>Field of View</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
-                    </div>
-                </div>
-
-                 <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
-                    <label>Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
-                    </div>
-                </div>
-
-                <div class="prop-row-multi">
-                    <label>Clipping Planes</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" placeholder="Near" data-component="Camera" data-prop="nearClipPlane" value="${ley.nearClipPlane || 0.1}" title="Near Clip Plane">
-                        <input type="number" class="prop-input" placeholder="Far" data-component="Camera" data-prop="farClipPlane" value="${ley.farClipPlane || 1000}" title="Far Clip Plane">
-                    </div>
-                </div>
-            </div>
-        `;
-    } else if (ley instanceof Components.PointLight2D) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Intensity</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Radius</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.SpotLight2D) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Intensity</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Radius</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Angle</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.FreeformLight2D) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="FreeformLight2D" data-prop="color" value="${ley.color}">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Intensity</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
-                    </div>
-                </div>
-                <hr>
-                <p class="field-description">La edición de vértices se implementará en una futura actualización.</p>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.Tilemap) {
-        if (!ley.layers || !Array.isArray(ley.layers)) {
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                </div>
+                <div class="component-header">${iconHTML}<h4>Texture Render</h4></div>
                 <div class="component-content">
-                    <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
+                    <div class="prop-row-multi">
+                        <label>Shape</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
+                                <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
+                                <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''}>Circle</option>
+                                <option value="Triangle" ${ley.shape === 'Triangle' ? 'selected' : ''}>Triangle</option>
+                                <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''}>Capsule</option>
+                            </select>
+                        </div>
+                    </div>
+                    ${dimensionsHTML}
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="inspector-row">
+                        <label>Texture</label>
+                        <div class="asset-dropper" data-component="TextureRender" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
+                            <span class="asset-dropper-text">${ley.texturePath || 'None'}</span>
+                        </div>
+                    </div>
                 </div>
             `;
-        } else {
-            let sizeInputHTML = '';
-            if (ley.manualSize) {
-                sizeInputHTML = `
+        } else if (ley instanceof Components.Transform) {
+            console.log('  - Is Transform component.');
+            if (selectedMateria.getComponent(Components.RectTransform)) {
+                console.log('  - RectTransform also exists, skipping render of Transform.');
+                return;
+            }
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                <div class="component-content">
                     <div class="prop-row-multi">
+                        <label>Position</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Rotation</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Scale</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.RectTransform) {
+             console.log('  - Is RectTransform component.');
+             componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
+            <div class="component-content">
+                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
+                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
+                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
+                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+            </div>`;
+        } else if (ley instanceof Components.UIImage) {
+            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
+            <div class="component-content">
+                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+            </div>`;
+        }
+        else if (ley instanceof Components.SpriteRenderer) {
+            let spriteSelectorHTML = '';
+            // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
+            if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {
+                const options = Object.keys(ley.spriteSheet.sprites)
+                    .map(spriteName => `<option value="${spriteName}" ${ley.spriteName === spriteName ? 'selected' : ''}>${spriteName}</option>`)
+                    .join('');
+
+                spriteSelectorHTML = `
+                    <div class="inspector-row">
+                        <label for="sprite-name-select">Sprite</label>
+                        <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
+                            ${options}
+                        </select>
+                    </div>
+                `;
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Source</label>
+                        <div class="asset-dropper" data-component="SpriteRenderer" data-prop="source" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
+                            <span class="asset-dropper-text">${ley.spriteAssetPath || ley.source || 'None'}</span>
+                        </div>
+                    </div>
+                    ${spriteSelectorHTML}
+                    <div class="inspector-row">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                    </div>
+                </div>`;
+        }
+        else if (ley instanceof Components.CreativeScript) {
+            let publicVarsHTML = '';
+            const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+
+            if (metadata && metadata.publicVars) {
+                for (const pv of metadata.publicVars) {
+                    const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
+                    publicVarsHTML += `
+                        <div class="prop-row-multi">
+                            <label>${pv.name}</label>
+                            ${renderPublicVarInput(pv, currentValue, 'CreativeScript', ley.scriptName)}
+                        </div>
+                    `;
+                }
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4><a href="#">${ley.scriptName}</a></h4></div>
+                <div class="component-content">
+                    ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
+                </div>
+            `;
+        } else if (ley instanceof Components.Animator) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Animator</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Animation Clip</label>
+                        <div class="asset-dropper" data-component="Animator" data-prop="animationClipPath" data-asset-type=".ceanimclip,.cea" title="Arrastra un .ceanimclip o .cea aquí">
+                            <span class="asset-dropper-text">${ley.animationClipPath || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Speed</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Animator" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label>Loop</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Animator" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label>Play On Awake</label>
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.AnimatorController) {
+            let statesListHTML = '<p class="field-description">Asigna un Controller para ver sus estados.</p>';
+            if (ley.controller && ley.states.size > 0) {
+                statesListHTML = '<ul>';
+                for (const stateName of ley.states.keys()) {
+                    statesListHTML += `<li>${stateName}</li>`;
+                }
+                statesListHTML += '</ul>';
+            }
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Animator Controller</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Controller</label>
+                        <div class="asset-dropper" data-component="AnimatorController" data-prop="controllerPath" data-asset-type=".ceanim" title="Arrastra un asset .ceanim aquí">
+                            <span class="asset-dropper-text">${ley.controllerPath || 'None'}</span>
+                        </div>
+                    </div>
+                    <div class="inspector-field-group">
+                        <label>States</label>
+                        ${statesListHTML}
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.Camera) {
+            const projection = ley.projection || 'Perspective';
+            const clearFlags = ley.clearFlags || 'SolidColor';
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Camera</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Depth</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Clear Flags</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="clearFlags">
+                                <option value="SolidColor" ${clearFlags === 'SolidColor' ? 'selected' : ''}>Solid Color</option>
+                                <option value="Skybox" ${clearFlags === 'Skybox' ? 'selected' : ''}>Skybox</option>
+                                <option value="DontClear" ${clearFlags === 'DontClear' ? 'selected' : ''}>Don't Clear</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi" style="display: ${clearFlags === 'SolidColor' ? 'flex' : 'none'};">
+                        <label>Background</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Camera" data-prop="backgroundColor" value="${ley.backgroundColor || '#1e293b'}">
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Culling Mask</label>
+                        <div class="prop-inputs">
+                            <button id="culling-mask-btn" class="prop-input-button">${getCullingMaskText(ley.cullingMask)}</button>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Projection</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="projection">
+                                <option value="Perspective" ${projection === 'Perspective' ? 'selected' : ''}>Perspective</option>
+                                <option value="Orthographic" ${projection === 'Orthographic' ? 'selected' : ''}>Orthographic</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
+                        <label>Field of View</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
+                        </div>
+                    </div>
+
+                     <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
                         <label>Size</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
-                            <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                            <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
+                        </div>
+                    </div>
+
+                    <div class="prop-row-multi">
+                        <label>Clipping Planes</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" placeholder="Near" data-component="Camera" data-prop="nearClipPlane" value="${ley.nearClipPlane || 0.1}" title="Near Clip Plane">
+                            <input type="number" class="prop-input" placeholder="Far" data-component="Camera" data-prop="farClipPlane" value="${ley.farClipPlane || 1000}" title="Far Clip Plane">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.PointLight2D) {
+            console.log('  - Is PointLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.SpotLight2D) {
+            console.log('  - Is SpotLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Angle</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.FreeformLight2D) {
+            console.log('  - Is FreeformLight2D component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="FreeformLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="field-description">La edición de vértices se implementará en una futura actualización.</p>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.Tilemap) {
+            // Safeguard against corrupted layer data from old scene files
+            if (!ley.layers || !Array.isArray(ley.layers)) {
+                componentHTML = `
+                    <div class="component-header">
+                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
+                    </div>
+                    <div class="component-content">
+                        <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
+                    </div>
+                `;
+            } else {
+                let sizeInputHTML = '';
+                if (ley.manualSize) {
+                    sizeInputHTML = `
+                        <div class="prop-row-multi">
+                            <label>Size</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
+                                <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    sizeInputHTML = `
+                        <div class="prop-row-multi">
+                            <label>Size</label>
+                            <div class="prop-inputs">
+                                <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
+                                <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                            </div>
+                        </div>
+                    `;
+                }
+
+                componentHTML = `
+                    <div class="component-header">
+                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
+                    </div>
+                    <div class="component-content">
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
+                            <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
+                        </div>
+                        ${sizeInputHTML}
+                        <hr>
+                        <div class="layer-manager-ui">
+                            <div class="layer-list-header">
+                                <h5>Capas</h5>
+                                <div class="layer-controls">
+                                    <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
+                                    <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
+                                </div>
+                            </div>
+                            <div class="layer-list">
+                                ${ley.layers.map((layer, index) => `
+                                    <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
+                                        <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (ley instanceof Components.TilemapRenderer) {
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
+                </div>
+                <div class="component-content">
+                    <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.TilemapCollider2D) {
+            const tilemap = selectedMateria.getComponent(Components.Tilemap);
+            let layerOptions = '<option value="-1">Ninguna</option>';
+            if (tilemap) {
+                layerOptions = tilemap.layers.map((layer, index) =>
+                    `<option value="${index}" ${ley.sourceLayerIndex === index ? 'selected' : ''}>${index}: ${layer.name}</option>`
+                ).join('');
+            }
+
+            componentHTML = `
+                <div class="component-header">
+                    <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
+                </div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label for="collider-source-layer">Capa de Origen</label>
+                        <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
+                            ${layerOptions}
+                        </select>
+                    </div>
+                    <hr>
+                    <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
+                    <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.Grid) {
+            // Ensure cellSize exists before trying to access its properties
+            const cellSize = ley.cellSize || { x: 32, y: 32 };
+
+            // Add a temporary, UI-only property to the component instance for the toggle state
+            if (ley.isSimplified === undefined) {
+                ley.isSimplified = (cellSize.x === cellSize.y);
+            }
+
+            let sizeInputHTML = '';
+            if (ley.isSimplified) {
+                sizeInputHTML = `
+                    <div class="prop-row-multi">
+                        <label>Cell Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
                         </div>
                     </div>
                 `;
             } else {
                 sizeInputHTML = `
                     <div class="prop-row-multi">
-                        <label>Size</label>
+                        <label>Cell Size</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
-                            <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
+                            <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
                         </div>
                     </div>
                 `;
             }
 
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                </div>
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Grid</h4></div>
                 <div class="component-content">
                     <div class="checkbox-field">
-                        <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
-                        <label for="tilemap-manual-size-toggle">Tamaño Manual</label>
+                        <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
+                        <label for="grid-simplified-toggle">Simplificado</label>
                     </div>
                     ${sizeInputHTML}
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.CapsuleCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Capsule Collider 2D</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
+                    </div>
                     <hr>
-                    <div class="layer-manager-ui">
-                        <div class="layer-list-header">
-                            <h5>Capas</h5>
-                            <div class="layer-controls">
-                                <button class="layer-btn add" data-action="add-layer" title="Añadir Capa">+</button>
-                                <button class="layer-btn remove" data-action="remove-layer" title="Eliminar Capa Seleccionada">-</button>
-                            </div>
-                        </div>
-                        <div class="layer-list">
-                            ${ley.layers.map((layer, index) => `
-                                <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                    <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
-                                </div>
-                            `).join('')}
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
                         </div>
                     </div>
-                </div>
-            `;
-        }
-    } else if (ley instanceof Components.TilemapRenderer) {
-        componentHTML = `
-            <div class="component-header">
-                <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
-            </div>
-            <div class="component-content">
-                <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
-            </div>
-        `;
-    } else if (ley instanceof Components.TilemapCollider2D) {
-        const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        let layerOptions = '<option value="-1">Ninguna</option>';
-        if (tilemap) {
-            layerOptions = tilemap.layers.map((layer, index) =>
-                `<option value="${index}" ${ley.sourceLayerIndex === index ? 'selected' : ''}>${index}: ${layer.name}</option>`
-            ).join('');
-        }
-
-        componentHTML = `
-            <div class="component-header">
-                <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
-            </div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label for="collider-source-layer">Capa de Origen</label>
-                    <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
-                        ${layerOptions}
-                    </select>
-                </div>
-                <hr>
-                <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Generar Colisionadores</button>
-                <p class="field-description" style="margin-top: 8px;">Colisionadores generados: ${ley.generatedColliders.length}</p>
-            </div>
-        `;
-    } else if (ley instanceof Components.Grid) {
-        const cellSize = ley.cellSize || { x: 32, y: 32 };
-
-        if (ley.isSimplified === undefined) {
-            ley.isSimplified = (cellSize.x === cellSize.y);
-        }
-
-        let sizeInputHTML = '';
-        if (ley.isSimplified) {
-            sizeInputHTML = `
-                <div class="prop-row-multi">
-                    <label>Cell Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Direction</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="CapsuleCollider2D" data-prop="direction">
+                                <option value="Vertical" ${ley.direction === 'Vertical' ? 'selected' : ''}>Vertical</option>
+                                <option value="Horizontal" ${ley.direction === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-            `;
-        } else {
-            sizeInputHTML = `
-                <div class="prop-row-multi">
-                    <label>Cell Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
-                        <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
+            </div>`;
+        } else if (ley instanceof Components.SpriteLight2D) {
+            console.log('  - Is SpriteLight2D component.');
+            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Sprite Light 2D</h4></div>
+                <div class="component-content">
+                     <div class="prop-row-multi">
+                        <label>Sprite</label>
+                        <div class="sprite-dropper">
+                            <div class="sprite-preview">${previewImg}</div>
+                            <button class="sprite-select-btn" data-component="SpriteLight2D">🎯</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="SpriteLight2D" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Intensity</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
+                        </div>
                     </div>
                 </div>
-            `;
-        }
-
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Grid</h4></div>
-            <div class="component-content">
-                <div class="checkbox-field">
-                    <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
-                    <label for="grid-simplified-toggle">Simplificado</label>
-                </div>
-                ${sizeInputHTML}
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.CapsuleCollider2D) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Capsule Collider 2D</h4></div>
-            <div class="component-content">
-                <div class="checkbox-field">
-                    <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
-                    <label>Is Trigger</label>
-                </div>
-                <hr>
-                <div class="prop-row-multi">
-                    <label>Offset</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
-                        <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
-                        <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Direction</label>
-                    <div class="prop-inputs">
-                        <select class="prop-input inspector-re-render" data-component="CapsuleCollider2D" data-prop="direction">
-                            <option value="Vertical" ${ley.direction === 'Vertical' ? 'selected' : ''}>Vertical</option>
-                            <option value="Horizontal" ${ley.direction === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+            </div>`;
+        } else if (ley instanceof Components.Rigidbody2D) {
+            const rigidbody = ley; // Rename for clarity as suggested in review
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Body Type</label>
+                        <select class="prop-input" data-component="Rigidbody2D" data-prop="bodyType">
+                            <option value="Dynamic" ${rigidbody.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
+                            <option value="Kinematic" ${rigidbody.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
+                            <option value="Static" ${rigidbody.bodyType === 'Static' ? 'selected' : ''}>Static</option>
                         </select>
                     </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.SpriteLight2D) {
-        const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Sprite Light 2D</h4></div>
-            <div class="component-content">
-                 <div class="prop-row-multi">
-                    <label>Sprite</label>
-                    <div class="sprite-dropper">
-                        <div class="sprite-preview">${previewImg}</div>
-                        <button class="sprite-select-btn" data-component="SpriteLight2D">🎯</button>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${rigidbody.simulated ? 'checked' : ''}>
+                        <label>Simulated</label>
+                    </div>
+                    <div class="inspector-field-group">
+                        <div class="prop-row-multi">
+                            <label>Mass</label>
+                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Gravity Scale</label>
+                            <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
+                        </div>
+                    </div>
+                    <div class="inspector-field-group">
+                        <label>Constraints</label>
+                        <div class="checkbox-field" style="padding-left: 10px;">
+                            <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="constraints.freezeRotation" ${rigidbody.constraints.freezeRotation ? 'checked' : ''}>
+                            <label>Freeze Rotation Z</label>
+                        </div>
                     </div>
                 </div>
-                <div class="prop-row-multi">
-                    <label>Color</label>
-                    <div class="prop-inputs">
-                        <input type="color" class="prop-input" data-component="SpriteLight2D" data-prop="color" value="${ley.color}">
+            </div>`;
+        } else if (ley instanceof Components.CustomComponent) {
+            let publicVarsHTML = '';
+            if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
+                for (const pv of ley.definition.metadata.publicVars) {
+                    const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
+                     publicVarsHTML += `
+                        <div class="prop-row-multi">
+                            <label>${pv.name}</label>
+                            ${renderPublicVarInput(pv, currentValue, 'CustomComponent', ley.id)}
+                        </div>
+                    `;
+                }
+            }
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">⚙️</span><h4>${ley.definition.nombre}</h4></div>
+                <div class="component-content">
+                    ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
+                </div>
+            `;
+        } else if (ley instanceof Components.BoxCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Box Collider 2D</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
                     </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Intensity</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" min="0" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.Rigidbody2D) {
-        const rigidbody = ley;
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Body Type</label>
-                    <select class="prop-input" data-component="Rigidbody2D" data-prop="bodyType">
-                        <option value="Dynamic" ${rigidbody.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
-                        <option value="Kinematic" ${rigidbody.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
-                        <option value="Static" ${rigidbody.bodyType === 'Static' ? 'selected' : ''}>Static</option>
-                    </select>
-                </div>
-                <div class="checkbox-field padded-checkbox-field">
-                    <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${rigidbody.simulated ? 'checked' : ''}>
-                    <label>Simulated</label>
-                </div>
-                <div class="inspector-field-group">
+                    <hr>
                     <div class="prop-row-multi">
-                        <label>Mass</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
+                        </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Gravity Scale</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
                     </div>
                 </div>
-                <div class="inspector-field-group">
-                    <label>Constraints</label>
-                    <div class="checkbox-field" style="padding-left: 10px;">
-                        <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="constraints.freezeRotation" ${rigidbody.constraints.freezeRotation ? 'checked' : ''}>
-                        <label>Freeze Rotation Z</label>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    } else if (ley instanceof Components.CustomComponent) {
-        let publicVarsHTML = '';
-        if (ley.definition && ley.definition.metadata && ley.definition.metadata.publicVars) {
-            for (const pv of ley.definition.metadata.publicVars) {
-                const currentValue = ley.publicVars[pv.name] ?? pv.defaultValue;
-                 publicVarsHTML += `
-                    <div class="prop-row-multi">
-                        <label>${pv.name}</label>
-                        ${renderPublicVarInput(pv, currentValue, 'CustomComponent', ley.id)}
-                    </div>
-                `;
+            </div>`;
+        }
+
+
+        if (componentHTML) {
+            const componentWrapper = document.createElement('div');
+            componentWrapper.className = 'component-inspector';
+            componentWrapper.innerHTML = componentHTML;
+
+            // This is a robust way to append the contents of the wrapper
+            while(componentWrapper.firstChild) {
+                componentsWrapper.appendChild(componentWrapper.firstChild);
             }
         }
-        componentHTML = `
-            <div class="component-header"><span class="component-icon">⚙️</span><h4>${ley.definition.nombre}</h4></div>
-            <div class="component-content">
-                ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
-            </div>
-        `;
-    } else if (ley instanceof Components.BoxCollider2D) {
-        componentHTML = `
-        <div class="component-inspector">
-            <div class="component-header">${iconHTML}<h4>Box Collider 2D</h4></div>
-            <div class="component-content">
-                <div class="checkbox-field">
-                    <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
-                    <label>Is Trigger</label>
-                </div>
-                <hr>
-                <div class="prop-row-multi">
-                    <label>Offset</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
-                        <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
-                    </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="Size X">
-                        <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="Size Y">
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    }
-
-
-    if (componentHTML) {
-        const componentWrapper = document.createElement('div');
-        componentWrapper.className = 'component-inspector';
-        componentWrapper.innerHTML = componentHTML;
-
-        while(componentWrapper.firstChild) {
-            container.appendChild(componentWrapper.firstChild);
-        }
-    }
-}
+    });
 
     console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);

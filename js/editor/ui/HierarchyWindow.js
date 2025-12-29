@@ -161,8 +161,15 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-canvas':
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
-            newMateria.addComponent(new Components.Canvas(newMateria));
-            newMateria.addComponent(new Components.RectTransform(newMateria));
+            if (!newMateria.getComponent(Components.Transform)) {
+                newMateria.addComponent(new Components.Transform(newMateria));
+            }
+            if (!newMateria.getComponent(Components.RectTransform)) {
+                newMateria.addComponent(new Components.RectTransform(newMateria));
+            }
+            if (!newMateria.getComponent(Components.Canvas)) {
+                newMateria.addComponent(new Components.Canvas(newMateria));
+            }
             break;
         case 'create-sprite':
             newMateria = createBaseMateria(generateUniqueName('Sprite'), selectedMateria);
@@ -382,6 +389,10 @@ function setupEventListeners() {
     // --- Context Menu ---
     hierarchyContent.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        // Stop the event from bubbling up to the document body's mousedown listener.
+        // This is a critical fix to prevent race conditions in automated tests where
+        // the menu is hidden before Playwright can interact with it.
+        e.stopPropagation();
         const item = e.target.closest('.hierarchy-item');
 
         // Determine the contextMateria from the right-clicked item. This is the crucial step.
