@@ -1,0 +1,98 @@
+
+{
+  "name": "UITestScene",
+  "materias": [
+    {
+      "id": 1,
+      "name": "Canvas",
+      "isActive": true,
+      "parent": null,
+      "children": [
+        2
+      ],
+      "layer": 0,
+      "tag": "Untagged",
+      "components": [
+        {
+          "type": "Canvas",
+          "renderMode": "Screen Space - Overlay"
+        },
+        {
+          "type": "RectTransform",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "sizeDelta": {
+            "x": 800,
+            "y": 600
+          },
+          "anchors": {
+            "min": {
+              "x": 0,
+              "y": 0
+            },
+            "max": {
+              "x": 1,
+              "y": 1
+            }
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Image",
+      "isActive": true,
+      "parent": 1,
+      "children": [],
+      "layer": 0,
+      "tag": "Untagged",
+      "components": [
+        {
+          "type": "UIImage",
+          "sourceImage": null,
+          "color": "#FFFFFF"
+        },
+        {
+          "type": "RectTransform",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "sizeDelta": {
+            "x": 100,
+            "y": 100
+          },
+          "anchors": {
+            "min": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "max": {
+              "x": 0.5,
+              "y": 0.5
+            }
+          },
+          "pivot": {
+            "x": 0.5,
+            "y": 0.5
+          }
+        }
+      ]
+    }
+  ],
+  "ambiente": {
+    "luzAmbiental": "#404040",
+    "hora": 12,
+    "cicloAutomatico": false,
+    "duracionDia": 60,
+    "mascaraTipo": "simple"
+  }
+}
