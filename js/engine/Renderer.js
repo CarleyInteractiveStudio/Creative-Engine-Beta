@@ -347,8 +347,8 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI(); // Resets transform for screen space
 
-        const children = SceneManager.currentScene.getChildrenOf(canvasMateria.id);
-        for (const child of children) {
+        // The children are directly on the Materia object
+        for (const child of canvasMateria.children) {
             if (!child.isActive) continue;
 
             const transform = child.getComponent(Transform);
