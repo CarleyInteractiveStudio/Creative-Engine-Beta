@@ -1465,16 +1465,15 @@ function drawCanvasGizmos() {
     ctx.save();
     ctx.lineWidth = 2 / camera.effectiveZoom;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.setLineDash([8 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+    // No setLineDash, to make the line solid
 
     if (canvasComponent.renderMode === 'World Space') {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // For screen space, the gizmo in the editor still represents it at its transform position.
-        // The size could be based on the game view's aspect ratio to give a hint.
-        const gameCanvas = dom.gameCanvas;
-        const aspect = gameCanvas.width / gameCanvas.height;
+        // Use the scene canvas for aspect ratio calculation, as it's always available
+        const sceneCanvas = dom.sceneCanvas;
+        const aspect = sceneCanvas.width / sceneCanvas.height;
         const gizmoHeight = 400; // Arbitrary height for visualization in editor
         const gizmoWidth = gizmoHeight * aspect;
         ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
