@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -324,6 +324,92 @@ export class Renderer {
         this.ctx.globalCompositeOperation = 'multiply';
         this.ctx.drawImage(this.lightMapCanvas, 0, 0);
         this.ctx.restore(); // Restores composite operation and transform
+    }
+
+    renderUI(scene) {
+        if (!scene) return;
+
+        const canvases = scene.getAllMaterias().filter(m => m.getComponent(Canvas));
+
+        for (const canvasMateria of canvases) {
+            if (!canvasMateria.isActive) continue;
+
+            const canvas = canvasMateria.getComponent(Canvas);
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else { // 'World Space'
+                // World Space UI elements are just regular objects. The standard `updateScene`
+                // loop already handles their rendering, so no special UI pass is needed for them.
+            }
+        }
+    }
+
+    drawScreenSpaceUI(canvasMateria) {
+        this.beginUI(); // Resets transform for screen space
+
+        const children = SceneManager.currentScene.getChildrenOf(canvasMateria.id);
+        for (const child of children) {
+            if (!child.isActive) continue;
+
+            const transform = child.getComponent(Transform);
+            const spriteRenderer = child.getComponent(SpriteRenderer);
+            const textureRender = child.getComponent(TextureRender);
+
+            if (transform && spriteRenderer && spriteRenderer.sprite) {
+                this.drawSpriteInRect(spriteRenderer, transform);
+            } else if (transform && textureRender) {
+                this.drawTextureInRect(textureRender, transform);
+            }
+        }
+
+        this.end(); // Restores transform
+    }
+
+    drawSpriteInRect(spriteRenderer, transform) {
+        const img = spriteRenderer.sprite;
+        if (!img || !img.complete || img.naturalWidth === 0) return;
+
+        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            sx = spriteData.rect.x;
+            sy = spriteData.rect.y;
+            sWidth = spriteData.rect.width;
+            sHeight = spriteData.rect.height;
+        }
+
+        const pos = transform.position; // For UI, localPosition is effectively screen position
+        const scale = transform.localScale;
+
+        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, sWidth * scale.x, sHeight * scale.y);
+    }
+
+    drawTextureInRect(textureRender, transform) {
+        const pos = transform.position;
+        const scale = transform.localScale;
+
+        this.ctx.save();
+        this.ctx.translate(pos.x, pos.y);
+        this.ctx.scale(scale.x, scale.y);
+
+        if (textureRender.texture && textureRender.texture.complete) {
+            const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
+            this.ctx.fillStyle = pattern;
+        } else {
+            this.ctx.fillStyle = textureRender.color;
+        }
+
+        if (textureRender.shape === 'Rectangle') {
+            this.ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+        } else if (textureRender.shape === 'Circle') {
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
+            this.ctx.fill();
+        }
+        // Add other shapes if needed
+
+        this.ctx.restore();
     }
 }
 

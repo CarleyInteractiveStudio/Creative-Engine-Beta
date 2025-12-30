@@ -201,6 +201,10 @@ export function handleContextMenuAction(action) {
         case 'create-sprite-light':
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
             break;
+        case 'create-canvas':
+            newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+            newMateria.addComponent(new Components.Canvas(newMateria));
+            break;
 
         case 'rename':
             if (contextMateria) { // Use contextMateria

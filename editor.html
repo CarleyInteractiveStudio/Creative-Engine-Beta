@@ -539,7 +539,7 @@ public star() {
                 <div class="panel-content no-padding">
                     <div id="animator-assets-list">
                         <div class="list-header">Animaciones (.cea)</div>
-                        <input type="search" placeholder="Buscar animaciones...">
+        <input type="search" placeholder="Buscar animaciones...">
                         <div class="list-content"></div>
                     </div>
                     <div id="animator-graph-view">
@@ -742,6 +742,12 @@ public star() {
                             <li data-action="create-circle">Círculo</li>
                             <li data-action="create-triangle">Triángulo</li>
                             <li data-action="create-capsule">Cápsula</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
+                        UI <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-canvas">Canvas</li>
                         </ul>
                     </li>
                     <li class="has-submenu">
@@ -1287,7 +1293,7 @@ public star() {
                     <button class="view-mode-btn active" data-mode="folders">Carpetas</button>
                     <button class="view-mode-btn" data-mode="project">Proyecto</button>
                 </div>
-                <input type="search" id="asset-selector-search" placeholder="Buscar por nombre...">
+                <input type="text" id="asset-selector-search" placeholder="Buscar por nombre...">
             </div>
             <div id="asset-selector-breadcrumbs"></div>
             <div id="asset-selector-grid-view" class="asset-grid-view-style">

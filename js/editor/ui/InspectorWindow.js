@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.RectTransform, Components.UIImage, Components.Canvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -750,6 +750,26 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
+        } else if (ley instanceof Components.Canvas) {
+            const isWorldSpace = ley.renderMode === 'World Space';
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Render Mode</label>
+                        <select class="prop-input inspector-re-render" data-component="Canvas" data-prop="renderMode">
+                            <option value="Screen Space" ${!isWorldSpace ? 'selected' : ''}>Screen Space</option>
+                            <option value="World Space" ${isWorldSpace ? 'selected' : ''}>World Space</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                </div>`;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';

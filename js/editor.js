@@ -1122,14 +1122,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameRunning && !isGamePaused) {
             runGameLoop(); // This handles the logic update
             // When game is running, update both views
-            if (renderer) updateScene(renderer, false); // Editor view with gizmos
-            if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
+            if (renderer) {
+                updateScene(renderer, false); // Editor view with gizmos
+                renderer.renderUI(SceneManager.currentScene);
+            }
+            if (gameRenderer) {
+                updateScene(gameRenderer, true); // Game view clean
+                gameRenderer.renderUI(SceneManager.currentScene);
+            }
         } else {
             // When paused, only update the currently active view
             if (activeView === 'scene-content' && renderer) {
                 updateScene(renderer, false);
+                renderer.renderUI(SceneManager.currentScene);
             } else if (activeView === 'game-content' && gameRenderer) {
                 updateScene(gameRenderer, true);
+                gameRenderer.renderUI(SceneManager.currentScene);
             }
         }
 
@@ -2100,6 +2108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
         window.MateriaFactory = MateriaFactory;
+        window.Components = Components;
+        window.updateHierarchy = updateHierarchy;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---

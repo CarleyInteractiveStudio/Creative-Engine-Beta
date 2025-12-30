@@ -1061,6 +1061,9 @@ export function drawOverlay() {
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
+
+    // Draw Canvas gizmos
+    drawCanvasGizmos();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
@@ -1446,4 +1449,36 @@ function paintTile(event) {
         }
     }
     VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
+}
+
+function drawCanvasGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!canvasComponent || !transform) return;
+
+    const { ctx, camera } = renderer;
+    const pos = transform.position;
+
+    ctx.save();
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.setLineDash([8 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+
+    if (canvasComponent.renderMode === 'World Space') {
+        const size = canvasComponent.size;
+        ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
+    } else { // Screen Space
+        // For screen space, the gizmo in the editor still represents it at its transform position.
+        // The size could be based on the game view's aspect ratio to give a hint.
+        const gameCanvas = dom.gameCanvas;
+        const aspect = gameCanvas.width / gameCanvas.height;
+        const gizmoHeight = 400; // Arbitrary height for visualization in editor
+        const gizmoWidth = gizmoHeight * aspect;
+        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
+    }
+
+    ctx.restore();
 }

@@ -25,7 +25,7 @@ const componentAliases = {
     'TilemapCollider2D': 'colisionadorMapaDeAzulejos2D',
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
-    'UICanvas': 'lienzoUI',
+    'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
     'RectTransform': 'transformacionRect',
 };
@@ -805,18 +805,6 @@ export class RectTransform extends Leyes {
     }
 }
 
-export class UICanvas extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.renderMode = 'ScreenSpaceOverlay';
-    }
-    clone() {
-        const newCanvas = new UICanvas(null);
-        newCanvas.renderMode = this.renderMode;
-        return newCanvas;
-    }
-}
-
 export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
@@ -1087,13 +1075,28 @@ export class AnimatorController extends Leyes {
 registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('RectTransform', RectTransform);
-registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
+
+export class Canvas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
+        this.size = { x: 800, y: 600 };
+    }
+
+    clone() {
+        const newCanvas = new Canvas(null);
+        newCanvas.renderMode = this.renderMode;
+        newCanvas.size = { ...this.size };
+        return newCanvas;
+    }
+}
+registerComponent('Canvas', Canvas);
 
 // --- Tilemap Components ---
 
