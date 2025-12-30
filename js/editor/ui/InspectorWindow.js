@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.Canvas, Components.UIImage, Components.UIButton, Components.UIText],
+    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -635,8 +635,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        RectTransform: '⎚', Canvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦'
+        PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        Grid: '▦', Canvas: '🖼️', UIImage: '🏞️', UIButton: '🔘', UIText: '📄'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -734,60 +734,92 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.RectTransform) {
-             console.log('  - Is RectTransform component.');
-             componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
-                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
-                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
-                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+        } else if (ley instanceof Components.Transform) {
+            // This is now the primary transform component shown for UI and regular objects.
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Position</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="x" value="${ley.x}" title="Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="y" value="${ley.y}" title="Position Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Rotation</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="rotation" value="${ley.rotation || 0}" title="Rotation Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Scale</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.x" value="${ley.scale.x}" title="Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="scale.y" value="${ley.scale.y}" title="Scale Y">
+                        </div>
+                    </div>
+                </div>
             </div>`;
         } else if (ley instanceof Components.Canvas) {
             componentHTML = `
+            <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Canvas</h4></div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
                         <select class="prop-input" data-component="Canvas" data-prop="renderMode">
-                            <option value="Screen Space" ${ley.renderMode === 'Screen Space' ? 'selected' : ''}>Screen Space</option>
-                            <option value="World Space" ${ley.renderMode === 'World Space' ? 'selected' : ''}>World Space</option>
+                            <option value="ScreenSpace" ${ley.renderMode === 'ScreenSpace' ? 'selected' : ''}>Screen Space</option>
+                            <option value="WorldSpace" ${ley.renderMode === 'WorldSpace' ? 'selected' : ''}>World Space</option>
                         </select>
                     </div>
                 </div>
-            `;
+            </div>`;
         } else if (ley instanceof Components.UIImage) {
-            componentHTML = `<div class="component-header">${iconHTML}<h4>Image</h4></div>
+            const previewImg = ley.image && ley.image.src ? `<img src="${ley.image.src}" alt="Preview">` : 'None';
+            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
             <div class="component-content">
-                 <p class="field-description">Este componente marca a un Sprite Renderer para que se comporte como un elemento de UI dentro de un Canvas.</p>
-            </div>`;
-        } else if (ley instanceof Components.UIButton) {
-             componentHTML = `<div class="component-header">${iconHTML}<h4>Button</h4></div>
-            <div class="component-content">
-                 <p class="field-description">Próximamente: Propiedades de interacción y eventos.</p>
-            </div>`;
-        } else if (ley instanceof Components.UIText) {
-            componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Text</h4></div>
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>Text</label>
-                        <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Font</label>
-                        <input type="text" class="prop-input" data-component="UIText" data-prop="font" value="${ley.font}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <input type="number" class="prop-input" data-component="UIText" data-prop="size" value="${ley.size}" min="1">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Color</label>
-                        <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
+                 <div class="inspector-row">
+                    <label>Source Image</label>
+                    <div class="asset-dropper" data-component="UIImage" data-prop="source" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
+                        <div class="sprite-preview">${previewImg}</div>
                     </div>
                 </div>
-            `;
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi"><label>Opacity</label><input type="number" class="prop-input" data-component="UIImage" data-prop="opacity" value="${ley.opacity}" min="0" max="1" step="0.05"></div>
+            </div>`;
+        } else if (ley instanceof Components.UIButton) {
+             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Button</h4></div>
+            <div class="component-content">
+                <p class="field-description">Interactable state properties (hover color, etc.) will be available in a future update.</p>
+            </div>`;
+        } else if (ley instanceof Components.UIText) {
+             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Text</h4></div>
+            <div class="component-content">
+                 <div class="prop-row-multi">
+                    <label>Text</label>
+                    <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
+                </div>
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi"><label>Font Size</label><input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1"></div>
+                <div class="prop-row-multi">
+                    <label>Horizontal Align</label>
+                    <select class="prop-input" data-component="UIText" data-prop="horizontalAlign">
+                        <option value="left" ${ley.horizontalAlign === 'left' ? 'selected' : ''}>Left</option>
+                        <option value="center" ${ley.horizontalAlign === 'center' ? 'selected' : ''}>Center</option>
+                        <option value="right" ${ley.horizontalAlign === 'right' ? 'selected' : ''}>Right</option>
+                    </select>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Vertical Align</label>
+                    <select class="prop-input" data-component="UIText" data-prop="verticalAlign">
+                        <option value="top" ${ley.verticalAlign === 'top' ? 'selected' : ''}>Top</option>
+                        <option value="middle" ${ley.verticalAlign === 'middle' ? 'selected' : ''}>Middle</option>
+                        <option value="bottom" ${ley.verticalAlign === 'bottom' ? 'selected' : ''}>Bottom</option>
+                    </select>
+                </div>
+            </div>`;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';

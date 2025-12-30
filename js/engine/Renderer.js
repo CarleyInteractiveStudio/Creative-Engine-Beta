@@ -1,146 +1,279 @@
+// js/engine/Renderer.js
+
 import * as SceneManager from './SceneManager.js';
-import * as Components from './Components.js';
+import { Camera, Transform, SpriteRenderer, TilemapRenderer, TextureRender, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, UIImage, UIButton, UIText } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.isEditor = isEditor;
+        this.renderingMode = 'canvas2d'; // Default mode
 
         this.lightMapCanvas = document.createElement('canvas');
         this.lightMapCtx = this.lightMapCanvas.getContext('2d');
-        this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
+        this.ambientLight = '#1a1a2a';
 
-        // The editor renderer gets its own persistent camera for navigation.
-        // The game renderer will still get its camera from the scene.
         if (this.isEditor) {
-            this.camera = {
-                x: 0,
-                y: 0,
-                zoom: 1.0,
-                effectiveZoom: 1.0 // Start with a 1:1 zoom
-            };
+            this.camera = { x: 0, y: 0, zoom: 1.0, effectiveZoom: 1.0 };
         } else {
-            this.camera = null; // Game camera is set per-frame
+            this.camera = null;
         }
 
         this.resize();
     }
 
-    setAmbientLight(color) {
-        this.ambientLight = color;
-    }
+    setAmbientLight(color) { this.ambientLight = color; }
+    setRenderingMode(mode) { this.renderingMode = mode; }
 
     resize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
-        this.lightMapCanvas.width = this.canvas.width;
-        this.lightMapCanvas.height = this.canvas.height;
+        if (this.renderingMode === 'realista') {
+            this.lightMapCanvas.width = this.canvas.width;
+            this.lightMapCanvas.height = this.canvas.height;
+        }
     }
 
     clear(cameraComponent) {
-        if (cameraComponent && cameraComponent.clearFlags === 'DontClear') {
-            return; // Do nothing
-        }
-        if (cameraComponent && cameraComponent.clearFlags === 'SolidColor') {
-            this.ctx.fillStyle = cameraComponent.backgroundColor;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        } else {
-            // Default clear for skybox (not implemented) or no camera
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        }
+        if (cameraComponent && cameraComponent.clearFlags === 'DontClear') return;
+
+        const clearColor = (cameraComponent && cameraComponent.clearFlags === 'SolidColor')
+            ? cameraComponent.backgroundColor
+            : '#000000'; // Default clear color
+
+        this.ctx.fillStyle = clearColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    beginWorld(cameraMateria = null) {
+    updateScene(scene, cameraMateria) {
+        // 1. Gather all Canvases from the scene
+        const allCanvases = scene.getMateriasWithComponent(Canvas);
+        const worldSpaceCanvases = allCanvases.filter(m => m.getComponent(Canvas).renderMode === 'WorldSpace');
+        const screenSpaceCanvases = allCanvases.filter(m => m.getComponent(Canvas).renderMode === 'ScreenSpace');
+
+        // 2. Render World Space
+        this._drawWorldSpace(scene, cameraMateria, worldSpaceCanvases);
+
+        // 3. Render Screen Space UI on top
+        this._drawScreenSpace(scene, screenSpaceCanvases);
+    }
+
+    _drawWorldSpace(scene, cameraMateria, worldSpaceCanvases) {
         this.ctx.save();
 
+        const cameraComponent = cameraMateria ? cameraMateria.getComponent(Camera) : null;
+        this.clear(cameraComponent);
+
+        // --- Apply Camera Transform ---
         let activeCamera, transform;
-
-        if (cameraMateria) { // Game view rendering with a specific scene camera
-            const cameraComponent = cameraMateria.getComponent(Camera);
+        if (cameraMateria) { // Game camera
             const cameraTransform = cameraMateria.getComponent(Transform);
-
-            this.clear(cameraComponent); // Clear based on this camera's flags
-
             let effectiveZoom = 1.0;
-            if (cameraComponent.projection === 'Orthographic') {
+             if (cameraComponent.projection === 'Orthographic') {
                 effectiveZoom = this.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
-            } else { // Perspective
+            } else {
                 effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
             }
-
             activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom };
             transform = cameraTransform;
-
-        } else if (this.isEditor) { // Editor view rendering with its own navigation camera
-            this.clear(null); // Always do a default clear for editor background
+        } else if (this.isEditor) { // Editor camera
             this.camera.effectiveZoom = this.camera.zoom;
             activeCamera = this.camera;
-            transform = { rotation: 0 }; // Editor camera doesn't rotate
+            transform = { rotation: 0 };
         } else {
-            // Fallback for game view with no camera found - clear and do nothing.
-            this.clear(null);
-            this.ctx.restore(); // balance the save()
-            return;
-        }
-
-        if (!activeCamera) {
             this.ctx.restore();
-            return;
+            return; // No camera, nothing to render
         }
 
-        // Apply transformations
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
-
-        const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
-        this.ctx.rotate(-rotationInRadians); // Negative to rotate the world opposite to camera
-
+        this.ctx.rotate(-(transform.rotation || 0) * Math.PI / 180);
         this.ctx.translate(-activeCamera.x, -activeCamera.y);
 
-    }
+        // --- Gather & Sort World-Space Renderables ---
+        const worldRenderables = [
+            ...scene.getMateriasWithComponent(SpriteRenderer),
+            ...scene.getMateriasWithComponent(TilemapRenderer),
+            ...scene.getMateriasWithComponent(TextureRender)
+        ].filter(m => !m.findParentMateriaWithComponent(Canvas)); // Exclude UI elements for now
 
-    beginUI() {
-        this.ctx.save();
-        // Reset transform to identity for screen-space UI rendering
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    }
+        // Add WorldSpace UI elements to the same list to be sorted and rendered
+        worldSpaceCanvases.forEach(canvasMateria => {
+            worldRenderables.push(...canvasMateria.getDescendants());
+        });
 
-    end() {
+        worldRenderables.sort((a, b) => {
+            const transformA = a.getComponent(Transform);
+            const transformB = b.getComponent(Transform);
+            return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+        });
+
+        // --- Lighting Pass (if applicable) ---
+        let lights = [];
+        if (this.renderingMode === 'realista') {
+            lights = scene.getMateriasWithComponent(PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D);
+            this._beginLights();
+            lights.forEach(lightMateria => this._drawLight(lightMateria));
+        }
+
+        // --- Main Draw Loop for World Space ---
+        worldRenderables.forEach(materia => {
+            if (!materia.isActiveInHierarchy()) return;
+
+            // --- Culling Logic ---
+            if (cameraComponent) { // Only cull if there's a game camera
+                // Layer Mask Culling
+                const objectLayerBit = 1 << materia.layer;
+                if ((cameraComponent.cullingMask & objectLayerBit) === 0) {
+                    return; // Skip rendering this object
+                }
+            }
+             this._renderComponent(materia);
+        });
+
+        if (this.renderingMode === 'realista' && lights.length > 0) {
+            this._endLights();
+        }
+
         this.ctx.restore();
     }
 
-    drawRect(x, y, width, height, color) {
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+    _drawScreenSpace(scene, screenSpaceCanvases) {
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset for UI overlay
+
+        screenSpaceCanvases.forEach(canvasMateria => {
+            if (!canvasMateria.isActiveInHierarchy()) return;
+
+            const canvasComponent = canvasMateria.getComponent(Canvas);
+            const canvasTransform = canvasMateria.getComponent(Transform);
+            if (!canvasComponent || !canvasTransform) return;
+
+            // In ScreenSpace, the canvas's world position defines the anchor point on the screen.
+            // Its size dictates the clipping area.
+            const canvasBounds = {
+                x: canvasTransform.x - (canvasComponent.width * canvasTransform.scale.x / 2),
+                y: canvasTransform.y - (canvasComponent.height * canvasTransform.scale.y / 2),
+                width: canvasComponent.width * canvasTransform.scale.x,
+                height: canvasComponent.height * canvasTransform.scale.y
+            };
+
+            this.ctx.save();
+            // Apply clipping for this canvas
+            this.ctx.beginPath();
+            this.ctx.rect(canvasBounds.x, canvasBounds.y, canvasBounds.width, canvasBounds.height);
+            this.ctx.clip();
+
+            const uiElements = canvasMateria.getDescendants();
+            uiElements.forEach(uiMateria => {
+                if(uiMateria.isActiveInHierarchy()) {
+                    this._renderComponent(uiMateria, true); // Pass true for isUI
+                }
+            });
+
+            this.ctx.restore(); // Remove clipping
+        });
+
+        this.ctx.restore();
     }
 
-    // Placeholder for now
-    drawImage(image, x, y, width, height) {
-        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
-    }
-
-    drawText(text, x, y, color, fontSize, textTransform) {
-        this.ctx.fillStyle = color;
-        this.ctx.font = `${fontSize}px sans-serif`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-
-        let transformedText = text;
-        if (textTransform === 'uppercase') {
-            transformedText = text.toUpperCase();
-        } else if (textTransform === 'lowercase') {
-            transformedText = text.toLowerCase();
+    _renderComponent(materia, isUI = false) {
+        // This function acts as a dispatcher based on the components found.
+        // The order matters if a Materia has multiple renderable components.
+        const spriteRenderer = materia.getComponent(SpriteRenderer);
+        if (spriteRenderer && spriteRenderer.image) {
+            this._drawSprite(spriteRenderer);
+            return;
         }
 
-        this.ctx.fillText(transformedText, x, y);
+        const tilemapRenderer = materia.getComponent(TilemapRenderer);
+        if (tilemapRenderer) {
+            this._drawTilemap(tilemapRenderer);
+            return;
+        }
+
+        const textureRender = materia.getComponent(TextureRender);
+        if (textureRender) {
+            this._drawTextureRender(textureRender);
+            return;
+        }
+
+        // UI Components
+        const uiImage = materia.getComponent(UIImage);
+        if (uiImage && uiImage.image) {
+            this._drawUIImage(uiImage);
+            return;
+        }
+
+        const uiButton = materia.getComponent(UIButton);
+        if (uiButton) {
+            // A button is a composite of other UI elements (like UIImage and UIText).
+            // We don't draw it directly. Instead, its child components will be
+            // found and rendered individually by this same _renderComponent function.
+            // We just need to stop further rendering for this specific materia pass.
+            return;
+        }
+
+        const uiText = materia.getComponent(UIText);
+        if(uiText) {
+            this._drawUIText(uiText);
+            return;
+        }
     }
 
-    drawTilemap(tilemapRenderer, transform, grid, tilemap) {
+    // --- Specific Drawing Implementations ---
+
+    _drawSprite(spriteRenderer) {
+        const transform = spriteRenderer.materia.getComponent(Transform);
+        if (!transform || !spriteRenderer.image || !spriteRenderer.image.complete || spriteRenderer.image.naturalWidth === 0) return;
+
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(transform.scale.x, transform.scale.y);
+
+        // Flip rendering context if needed
+        if (spriteRenderer.flipX) this.ctx.scale(-1, 1);
+        if (spriteRenderer.flipY) this.ctx.scale(1, -1);
+
+        this.ctx.globalAlpha = spriteRenderer.opacity;
+        this.ctx.fillStyle = spriteRenderer.color;
+
+        const pivot = spriteRenderer.pivot;
+        const width = spriteRenderer.rect.w;
+        const height = spriteRenderer.rect.h;
+        const destX = -width * pivot.x;
+        const destY = -height * pivot.y;
+
+        // Use tinting logic
+        // 1. Draw the sprite portion to a temporary canvas
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(spriteRenderer.image, spriteRenderer.rect.x, spriteRenderer.rect.y, width, height, 0, 0, width, height);
+
+        // 2. Apply the color tint
+        tempCtx.globalCompositeOperation = 'source-atop';
+        tempCtx.fillStyle = spriteRenderer.color;
+        tempCtx.fillRect(0, 0, width, height);
+
+        // 3. Draw the tinted result to the main canvas
+        this.ctx.drawImage(tempCanvas, destX, destY, width, height);
+
+        this.ctx.restore();
+    }
+
+    _drawTilemap(tilemapRenderer) {
+        const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
+        const transform = tilemapRenderer.materia.getComponent(Transform);
+        const grid = tilemapRenderer.materia.parent?.getComponent(Grid);
+
         if (!tilemap || !transform || !grid) return;
 
         this.ctx.save();
-        this.ctx.translate(transform.position.x, transform.position.y);
+        this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
 
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
@@ -163,340 +296,201 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawSprite(spriteRenderer, transform) {
-        const { sprite, color, spriteSheet, spriteName } = spriteRenderer;
-        if (!sprite || !sprite.complete || sprite.naturalWidth === 0) {
-            // Draw a white placeholder if the sprite is missing but the component exists
-            this.ctx.save();
-            this.ctx.translate(transform.position.x, transform.position.y);
-            this.ctx.rotate(transform.rotation * Math.PI / 180);
-            this.ctx.fillStyle = 'white';
-            const placeholderSize = 50;
-            this.ctx.fillRect(-placeholderSize / 2, -placeholderSize / 2, placeholderSize, placeholderSize);
-            this.ctx.restore();
-            return;
-        }
-
-        const { x: scaleX, y: scaleY } = transform.scale;
-
-        this.ctx.save();
-        this.ctx.translate(transform.position.x, transform.position.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
-
-        if (spriteSheet && spriteName && spriteSheet.sprites[spriteName]) {
-            const spriteData = spriteSheet.sprites[spriteName];
-            const { x, y, width, height } = spriteData.rect;
-
-            // Adjust for pivot
-            const pivotX = spriteData.pivot ? spriteData.pivot.x : 0.5;
-            const pivotY = spriteData.pivot ? spriteData.pivot.y : 0.5;
-            const finalWidth = width * scaleX;
-            const finalHeight = height * scaleY;
-
-            this.ctx.drawImage(sprite, x, y, width, height, -finalWidth * pivotX, -finalHeight * pivotY, finalWidth, finalHeight);
-        } else {
-            const finalWidth = sprite.naturalWidth * scaleX;
-            const finalHeight = sprite.naturalHeight * scaleY;
-            this.ctx.drawImage(sprite, -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight);
-        }
-
-        this.ctx.restore();
-    }
-
-    drawUIText(uiText, transform) {
-        const { text, font, size, color } = uiText;
-
-        this.ctx.save();
-        this.ctx.translate(transform.position.x, transform.position.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
-
-        this.ctx.fillStyle = color;
-        this.ctx.font = `${size}px ${font}`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(text, 0, 0);
-
-        this.ctx.restore();
-    }
-
-    updateScene(scene, editorCamera = null) {
-        const gameCameraMateria = scene.getActiveCamera();
-        const cameraToUse = this.isEditor ? editorCamera : gameCameraMateria;
-
-        this.clear(cameraToUse ? cameraToUse.getComponent(Components.Camera) : null);
-
-        // 1. Group renderables by their canvas
-        const canvasMap = new Map(); // Maps Canvas Materia -> children
-        const orphans = []; // Objects not belonging to any canvas
-
-        for (const materia of scene.getAllMaterias()) {
-            if (!materia.isActive) continue;
-
-            const hasRenderer = materia.getComponent(Components.SpriteRenderer) || materia.getComponent(Components.UIText) || materia.getComponent(Components.TilemapRenderer);
-            if (!hasRenderer) continue;
-
-            const parentCanvasMateria = materia.findParentMateriaWithComponent(Components.Canvas);
-
-            if (parentCanvasMateria) {
-                if (!canvasMap.has(parentCanvasMateria)) {
-                    canvasMap.set(parentCanvasMateria, []);
-                }
-                canvasMap.get(parentCanvasMateria).push(materia);
-            } else {
-                orphans.push(materia);
-            }
-        }
-
-        // --- 2. WORLD SPACE PASS ---
-        this.beginWorld(cameraToUse);
-
-        // Draw orphans
-        for (const materia of orphans) {
-            this.drawMateria(materia, scene);
-        }
-
-        // Draw World Space Canvases and their children
-        for (const [canvasMateria, children] of canvasMap.entries()) {
-            const canvasComponent = canvasMateria.getComponent(Components.Canvas);
-            if (canvasComponent.renderMode === 'World Space') {
-                const transform = canvasMateria.getComponent(Components.Transform);
-                if (!transform) continue;
-
-                this.ctx.save();
-
-                // Apply clipping mask for the canvas
-                const { x, y } = transform.position;
-                const { x: scaleX, y: scaleY } = transform.localScale;
-                const rotation = transform.rotation * (Math.PI / 180);
-
-                this.ctx.translate(x, y);
-                this.ctx.rotate(rotation);
-                this.ctx.beginPath();
-                this.ctx.rect(-scaleX / 2, -scaleY / 2, scaleX, scaleY);
-                this.ctx.clip();
-
-                // Undo the transformation so children are drawn in correct world space
-                this.ctx.rotate(-rotation);
-                this.ctx.translate(-x, -y);
-
-                // Draw children
-                for (const child of children) {
-                    this.drawMateria(child, scene);
-                }
-
-                this.ctx.restore();
-            }
-        }
-
-        this.end(); // End world space drawing
-
-        // --- 3. SCREEN SPACE PASS ---
-        this.beginUI();
-
-        for (const [canvasMateria, children] of canvasMap.entries()) {
-            const canvasComponent = canvasMateria.getComponent(Components.Canvas);
-            if (canvasComponent.renderMode === 'Screen Space') {
-                const transform = canvasMateria.getComponent(Components.Transform);
-                if (!transform) continue;
-
-                this.ctx.save();
-
-                // Apply clipping mask for the canvas in screen space
-                const { x, y } = transform.position; // Position is now in screen coordinates
-                const { x: scaleX, y: scaleY } = transform.localScale;
-                 const rotation = transform.rotation * (Math.PI / 180);
-
-                this.ctx.translate(x, y);
-                this.ctx.rotate(rotation);
-                this.ctx.beginPath();
-                this.ctx.rect(-scaleX / 2, -scaleY / 2, scaleX, scaleY);
-                this.ctx.clip();
-
-                // Undo the transformation for children
-                this.ctx.rotate(-rotation);
-                this.ctx.translate(-x, -y);
-
-                // Draw children
-                for (const child of children) {
-                    this.drawMateria(child, scene);
-                }
-
-                this.ctx.restore();
-            }
-        }
-
-        this.end(); // End UI space drawing
-    }
-
-    // Helper to draw any renderable components on a Materia
-    drawMateria(materia, scene) {
-        const transform = materia.getComponent(Components.Transform);
+    _drawTextureRender(textureRender) {
+        const transform = textureRender.materia.getComponent(Transform);
         if (!transform) return;
 
-        const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-        if (spriteRenderer) this.drawSprite(spriteRenderer, transform);
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
 
-        const uiText = materia.getComponent(Components.UIText);
-        if (uiText) this.drawUIText(uiText, transform);
+        this.ctx.fillStyle = textureRender.color;
+        this.ctx.strokeStyle = textureRender.borderColor;
+        this.ctx.lineWidth = textureRender.borderWidth;
 
-    const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-    if (tilemapRenderer) {
-        const tilemap = materia.getComponent(Components.Tilemap);
-        let grid = null;
-        if (materia.parent) {
-            const parentMateria = (typeof materia.parent === 'number')
-                ? scene.findMateriaById(materia.parent)
-                : materia.parent;
+        const width = transform.scale.x;
+        const height = transform.scale.y;
 
-            if (parentMateria) {
-                grid = parentMateria.getComponent(Components.Grid);
-            }
+        this.ctx.beginPath();
+        switch (textureRender.shape) {
+            case 'Rectangle':
+                this.ctx.rect(-width / 2, -height / 2, width, height);
+                break;
+            case 'Circle':
+                this.ctx.arc(0, 0, width / 2, 0, 2 * Math.PI);
+                break;
+            case 'Capsule':
+                const radius = Math.min(width, height) / 2;
+                const rectHeight = height - 2 * radius;
+                this.ctx.moveTo(-width / 2 + radius, -height / 2);
+                this.ctx.lineTo(width / 2 - radius, -height / 2);
+                this.ctx.arc(width / 2 - radius, -height / 2 + radius, radius, -Math.PI / 2, Math.PI / 2);
+                this.ctx.lineTo(-width / 2 + radius, height / 2);
+                this.ctx.arc(-width / 2 + radius, -height / 2 + radius, radius, Math.PI / 2, -Math.PI / 2);
+                break;
         }
+        this.ctx.closePath();
 
-        if (tilemap && grid) {
-            this.drawTilemap(tilemapRenderer, transform, grid, tilemap);
-        }
+        if (textureRender.isFilled) this.ctx.fill();
+        if (textureRender.borderWidth > 0) this.ctx.stroke();
+
+        this.ctx.restore();
     }
+
+    // --- UI Drawing ---
+    _drawUIImage(uiImage) {
+        const transform = uiImage.materia.getComponent(Transform);
+        if (!transform || !uiImage.image) return;
+
+        const bounds = this._getComponentBounds(transform);
+        this.ctx.globalAlpha = uiImage.opacity;
+        this.ctx.drawImage(uiImage.image, bounds.x, bounds.y, bounds.width, bounds.height);
+        this.ctx.globalAlpha = 1.0;
+    }
+
+    _drawUIText(uiText) {
+        const transform = uiText.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const bounds = this._getComponentBounds(transform);
+
+        this.ctx.fillStyle = uiText.color;
+        this.ctx.font = `${uiText.fontSize}px ${uiText.font}`;
+        this.ctx.textAlign = uiText.horizontalAlign;
+        this.ctx.textBaseline = uiText.verticalAlign;
+
+        let x = bounds.x;
+        if (uiText.horizontalAlign === 'center') x += bounds.width / 2;
+        if (uiText.horizontalAlign === 'right') x += bounds.width;
+
+        let y = bounds.y;
+        if (uiText.verticalAlign === 'middle') y += bounds.height / 2;
+        if (uiText.verticalAlign === 'bottom') y += bounds.height;
+
+        this.ctx.fillText(uiText.text, x, y);
+    }
+
+    _getComponentBounds(transform) {
+        return {
+            x: transform.x - (transform.scale.x / 2),
+            y: transform.y - (transform.scale.y / 2),
+            width: transform.scale.x,
+            height: transform.scale.y
+        };
     }
 
     // --- Lighting Methods ---
-
-    beginLights() {
-        // Use the same transformation as the world for the lightmap
+    _beginLights() {
+        if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) return;
         this.lightMapCtx.save();
         this.lightMapCtx.setTransform(this.ctx.getTransform());
-
-        // Clear the lightmap to the ambient color
+        this.lightMapCtx.globalCompositeOperation = 'source-over';
         this.lightMapCtx.fillStyle = this.ambientLight;
-        this.lightMapCtx.fillRect(-99999, -99999, 199998, 199998); // A huge rect to cover the whole transformed space
+        // Use a large rect to fill the entire transformed (rotated, scaled) viewport
+        this.lightMapCtx.fillRect(-10000, -10000, 20000, 20000);
+        this.lightMapCtx.globalCompositeOperation = 'lighter';
     }
 
-    drawPointLight(light, transform) {
-        const ctx = this.lightMapCtx;
-        const radius = light.radius;
-        const color = light.color; // Assuming hex format for now
-        const intensity = light.intensity;
+    _drawLight(lightMateria) {
+        const transform = lightMateria.getComponent(Transform);
+        if (!transform) return;
 
-        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
+        const pointLight = lightMateria.getComponent(PointLight2D);
+        if (pointLight) this._drawPointLight(pointLight, transform);
 
-        // This creates a standard additive light falloff
-        gradient.addColorStop(0, `${color}FF`); // Full color at center
-        gradient.addColorStop(0.3, `${color}CC`);
-        gradient.addColorStop(0.6, `${color}66`);
-        gradient.addColorStop(1, `${color}00`); // Transparent at edge
+        const spotLight = lightMateria.getComponent(SpotLight2D);
+        if (spotLight) this._drawSpotLight(spotLight, transform);
 
-        ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = intensity;
-        ctx.fillRect(transform.x - radius, transform.y - radius, radius * 2, radius * 2);
-        ctx.globalAlpha = 1.0; // Reset alpha
+        const freeformLight = lightMateria.getComponent(FreeformLight2D);
+        if (freeformLight) this._drawFreeformLight(freeformLight, transform);
+
+        const spriteLight = lightMateria.getComponent(SpriteLight2D);
+        if (spriteLight) this._drawSpriteLight(spriteLight, transform);
     }
 
-    drawSpotLight(light, transform) {
-        const ctx = this.lightMapCtx;
+    _drawPointLight(light, transform) {
+        const { x, y } = transform;
+        const { radius, color, intensity } = light;
+        const gradient = this.lightMapCtx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `${color}FF`);
+        gradient.addColorStop(1, `${color}00`);
+        this.lightMapCtx.fillStyle = gradient;
+        this.lightMapCtx.globalAlpha = intensity;
+        this.lightMapCtx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        this.lightMapCtx.globalAlpha = 1.0;
+    }
+
+     _drawSpotLight(light, transform) {
         const { x, y, rotation } = transform;
         const { radius, color, intensity, angle } = light;
-
-        // Convert angles to radians for canvas API
-        // The rotation from the transform component needs to be offset by -90 degrees because canvas arc starts from the 3 o'clock position.
         const directionRad = ((rotation - 90) * Math.PI) / 180;
         const coneAngleRad = (angle * Math.PI) / 180;
-
         const startAngle = directionRad - coneAngleRad / 2;
         const endAngle = directionRad + coneAngleRad / 2;
 
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        const gradient = this.lightMapCtx.createRadialGradient(x, y, 0, x, y, radius);
         gradient.addColorStop(0, `${color}FF`);
-        gradient.addColorStop(0.3, `${color}CC`);
-        gradient.addColorStop(0.6, `${color}66`);
         gradient.addColorStop(1, `${color}00`);
 
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = gradient;
-        ctx.globalAlpha = intensity;
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.arc(x, y, radius, startAngle, endAngle);
-        ctx.closePath();
-
-        ctx.fill();
-
-        ctx.globalAlpha = 1.0; // Reset alpha
+        this.lightMapCtx.fillStyle = gradient;
+        this.lightMapCtx.globalAlpha = intensity;
+        this.lightMapCtx.beginPath();
+        this.lightMapCtx.moveTo(x, y);
+        this.lightMapCtx.arc(x, y, radius, startAngle, endAngle);
+        this.lightMapCtx.closePath();
+        this.lightMapCtx.fill();
+        this.lightMapCtx.globalAlpha = 1.0;
     }
 
-    drawFreeformLight(light, transform) {
-        const ctx = this.lightMapCtx;
+     _drawFreeformLight(light, transform) {
         const { x, y, rotation } = transform;
         const { vertices, color, intensity } = light;
-
         if (!vertices || vertices.length < 3) return;
 
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(rotation * Math.PI / 180);
-
-        ctx.beginPath();
-        ctx.moveTo(vertices[0].x, vertices[0].y);
+        this.lightMapCtx.save();
+        this.lightMapCtx.translate(x, y);
+        this.lightMapCtx.rotate(rotation * Math.PI / 180);
+        this.lightMapCtx.beginPath();
+        this.lightMapCtx.moveTo(vertices[0].x, vertices[0].y);
         for (let i = 1; i < vertices.length; i++) {
-            ctx.lineTo(vertices[i].x, vertices[i].y);
+            this.lightMapCtx.lineTo(vertices[i].x, vertices[i].y);
         }
-        ctx.closePath();
-
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = color;
-        ctx.globalAlpha = intensity;
-
-        ctx.fill();
-
-        ctx.restore();
-        ctx.globalAlpha = 1.0;
+        this.lightMapCtx.closePath();
+        this.lightMapCtx.fillStyle = color;
+        this.lightMapCtx.globalAlpha = intensity;
+        this.lightMapCtx.fill();
+        this.lightMapCtx.restore();
+        this.lightMapCtx.globalAlpha = 1.0;
     }
 
-    drawSpriteLight(light, transform) {
-        const ctx = this.lightMapCtx;
+     _drawSpriteLight(light, transform) {
         const { x, y, rotation, scale } = transform;
         const { sprite, color, intensity } = light;
-
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
 
         const width = sprite.naturalWidth * scale.x;
         const height = sprite.naturalHeight * scale.y;
 
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(rotation * Math.PI / 180);
-
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = intensity;
-
-        // Draw the sprite
-        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
-
-        // Overlay a color tint
-        ctx.fillStyle = color;
-        ctx.globalCompositeOperation = 'multiply'; // "Multiply" is great for tinting
-        ctx.fillRect(-width / 2, -height / 2, width, height);
-
-        ctx.restore();
-        ctx.globalAlpha = 1.0; // Reset alpha
+        this.lightMapCtx.save();
+        this.lightMapCtx.translate(x, y);
+        this.lightMapCtx.rotate(rotation * Math.PI / 180);
+        this.lightMapCtx.globalAlpha = intensity;
+        this.lightMapCtx.drawImage(sprite, -width / 2, -height / 2, width, height);
+        this.lightMapCtx.fillStyle = color;
+        this.lightMapCtx.globalCompositeOperation = 'multiply';
+        this.lightMapCtx.fillRect(-width / 2, -height / 2, width, height);
+        this.lightMapCtx.restore();
+        this.lightMapCtx.globalAlpha = 1.0;
     }
 
-    endLights() {
-        this.lightMapCtx.restore(); // Restore transform on lightmap
-
-        // Guard against drawing a 0-size canvas, which causes an error on startup
-        if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) {
-            return;
+    _endLights() {
+        this.lightMapCtx.restore();
+        if (this.lightMapCanvas.width > 0 && this.lightMapCanvas.height > 0) {
+            this.ctx.save();
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            this.ctx.globalCompositeOperation = 'multiply';
+            this.ctx.drawImage(this.lightMapCanvas, 0, 0);
+            this.ctx.restore();
         }
-
-        // Composite the lightmap onto the main canvas
-        this.ctx.save();
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform for screen space drawing
-        this.ctx.globalCompositeOperation = 'multiply';
-        this.ctx.drawImage(this.lightMapCanvas, 0, 0);
-        this.ctx.restore(); // Restores composite operation and transform
     }
 }
-
-console.log("Renderer.js loaded");

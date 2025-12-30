@@ -5,12 +5,14 @@ import { showNotification } from './DialogWindow.js';
 let dom = {};
 let projectsDirHandle = null;
 let currentProjectConfig = {};
+let onSettingsSavedCallback = () => {}; // New callback
 
 // This function will be called from the main editor.js to initialize the module
-export function initialize(editorDom, editorProjectsDirHandle, config) {
+export function initialize(editorDom, editorProjectsDirHandle, config, onSaveCallbackFunc) {
     dom = editorDom;
     projectsDirHandle = editorProjectsDirHandle;
     currentProjectConfig = config;
+    onSettingsSavedCallback = onSaveCallbackFunc || (() => {}); // Store the callback
 
     console.log("Initializing Project Settings Window...");
     setupEventListeners();
@@ -63,6 +65,11 @@ async function saveProjectConfig(showAlert = true) {
         await writable.close();
         console.log("Configuración del proyecto guardada.");
         if(showAlert) showNotification('Éxito', '¡Configuración guardada!');
+
+        // Execute the callback after a successful save
+        if (typeof onSettingsSavedCallback === 'function') {
+            onSettingsSavedCallback(currentProjectConfig);
+        }
     } catch (error) {
         console.error("Error al guardar la configuración del proyecto:", error);
         if(showAlert) showNotification('Error', 'No se pudo guardar la configuración.');

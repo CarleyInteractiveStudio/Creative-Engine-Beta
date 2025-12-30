@@ -22,7 +22,8 @@ export function generateUniqueName(baseName) {
 }
 
 export function createBaseMateria(name, parent = null) {
-    const newMateria = new Materia(name);
+    const uniqueName = generateUniqueName(name);
+    const newMateria = new Materia(uniqueName);
     newMateria.addComponent(new Components.Transform(newMateria));
 
     if (parent) {
@@ -33,48 +34,51 @@ export function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
-function createUIMateria(name, parent = null, components = []) {
-    const newMateria = createBaseMateria(name, parent);
-    for (const ComponentClass of components) {
-        if (!newMateria.getComponent(ComponentClass)) {
-            newMateria.addComponent(new ComponentClass(newMateria));
-        }
-    }
-    return newMateria;
-}
-
 export function createCanvasObject(parent = null) {
-    const name = generateUniqueName('Canvas');
-    const canvasMateria = createUIMateria(name, parent, [Components.Canvas]);
-    // Default size for a new canvas
+    const canvasMateria = createBaseMateria('Canvas', parent);
+    canvasMateria.addComponent(new Components.Canvas(canvasMateria));
     const transform = canvasMateria.getComponent(Components.Transform);
-    if (transform) {
-        transform.localScale = { x: 400, y: 300 };
-    }
+    // For ScreenSpace, position is absolute, so default to center. For WorldSpace, it's relative.
+    transform.position = { x: 0, y: 0 };
+    transform.scale = { x: 200, y: 200 };
     return canvasMateria;
 }
 
-export function createImageObject(parent = null) {
-    const name = generateUniqueName('Image');
-    return createUIMateria(name, parent, [Components.SpriteRenderer, Components.UIImage]);
+export function createUIImageObject(parent = null) {
+    const imageMateria = createBaseMateria('Imagen', parent);
+    imageMateria.addComponent(new Components.UIImage(imageMateria));
+    // SpriteRenderer is not needed for UI components that will be drawn by the Canvas system
+    const transform = imageMateria.getComponent(Components.Transform);
+    transform.scale = { x: 100, y: 100 };
+    return imageMateria;
 }
 
-export function createButtonObject(parent = null) {
-    const name = generateUniqueName('Button');
-    const buttonMateria = createUIMateria(name, parent, [Components.SpriteRenderer, Components.UIImage, Components.UIButton]);
+export function createUITextObject(parent = null) {
+    const textMateria = createBaseMateria('Texto', parent);
+    textMateria.addComponent(new Components.UIText(textMateria));
+    const transform = textMateria.getComponent(Components.Transform);
+    transform.scale = { x: 160, y: 30 };
+    return textMateria;
+}
 
-    // Add a child Text object
-    const textMateria = createTextObject(buttonMateria);
-    textMateria.name = 'Text';
+export function createUIButtonObject(parent = null) {
+    const buttonMateria = createBaseMateria('Boton', parent);
+    buttonMateria.addComponent(new Components.UIButton(buttonMateria));
+
+    // The button itself has the UIImage for its background
+    buttonMateria.addComponent(new Components.UIImage(buttonMateria));
+
+    const transform = buttonMateria.getComponent(Components.Transform);
+    transform.scale = { x: 160, y: 30 };
+
+    // Create a child Text object for the button's label
+    const textMateria = createUITextObject(buttonMateria);
+    textMateria.name = 'Texto';
     const uiText = textMateria.getComponent(Components.UIText);
-    if (uiText) {
-        uiText.text = 'Button';
-    }
+    uiText.text = 'Boton';
+    uiText.color = '#000000'; // Black text is more visible on default white button
+    uiText.horizontalAlign = 'center';
+    uiText.verticalAlign = 'middle';
 
     return buttonMateria;
-}
-
-export function createTextObject(parent = null) {
-    const name = generateUniqueName('Text');
-    return createUIMateria(name, parent, [Components.UIText]);
 }

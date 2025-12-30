@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Project Settings State
     let currentProjectConfig = {};
     // Editor Preferences State
+    let applyProjectSettings;
 
 
     // --- 2. DOM Elements ---
@@ -80,7 +81,30 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+
+    updateScene = function(rendererInstance, isGameView) {
+        if (!rendererInstance || !SceneManager.currentScene) return;
+
+        let gameCamera = null;
+        if (isGameView) {
+            // Find the first active camera to use for the game view.
+            // A more advanced system could render multiple cameras based on depth.
+            const cameras = SceneManager.currentScene.findAllCameras()
+                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
+            gameCamera = cameras.find(c => c.isActiveInHierarchy()) || null;
+        }
+
+        // The new renderer's updateScene method now handles the entire render pipeline,
+        // including clearing, setting up transforms, and drawing both world and UI canvases.
+        rendererInstance.updateScene(SceneManager.currentScene, gameCamera);
+
+        // After the scene and UI are rendered, draw the editor-specific overlays (like gizmos)
+        // only on the editor's renderer instance.
+        if (!isGameView) {
+            SceneView.drawOverlay();
+        }
+    };
 
     saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
         try {
@@ -769,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         component.setSourcePath(imgPath);
                         await component.loadSprite(projectsDirHandle);
                         updateInspector();
-                        renderer.updateScene(SceneManager.currentScene, renderer.camera);
+                        updateScene(renderer, false);
                     }
                 }
                 dom.spriteSelectorModal.classList.remove('is-open');
@@ -841,267 +865,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    updateScene = function(rendererInstance, isGameView) {
-        if (!rendererInstance || !SceneManager.currentScene) return;
-
-        // --- Pass 1: Draw Scene Geometry ---
-        const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
-            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
-
-        const textureRenderersToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
-
-        const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
-
-        const pointLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
-        const spotLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
-        const freeformLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
-        const spriteLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
-
-        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw) => {
-            const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
-
-            for (const materia of objectsToRender) {
-                if (!materia.isActive) continue;
-
-                if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia);
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                }
-
-                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-                const transform = materia.getComponent(Components.Transform);
-
-                if (spriteRenderer) {
-                    if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                        const img = spriteRenderer.sprite;
-                        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                        let pivotX = 0.5, pivotY = 0.5;
-
-                        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-                            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-                            if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                                sx = spriteData.rect.x;
-                                sy = spriteData.rect.y;
-                                sWidth = spriteData.rect.width;
-                                sHeight = spriteData.rect.height;
-                                pivotX = spriteData.pivot.x;
-                                pivotY = spriteData.pivot.y;
-                            }
-                        }
-
-                        const worldScale = transform.scale;
-                        const worldPosition = transform.position;
-                        const worldRotation = transform.rotation;
-
-                        const dWidth = sWidth * worldScale.x;
-                        const dHeight = sHeight * worldScale.y;
-                        const dx = -dWidth * pivotX;
-                        const dy = -dHeight * pivotY;
-
-                        ctx.save();
-                        ctx.translate(worldPosition.x, worldPosition.y);
-                        ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-                        ctx.restore();
-                    } else {
-                        // If there's a renderer but no sprite, draw a white box placeholder
-                        const dWidth = 50 * transform.scale.x; // Default size
-                        const dHeight = 50 * transform.scale.y; // Default size
-                        const dx = -dWidth * 0.5;
-                        const dy = -dHeight * 0.5;
-
-                        ctx.save();
-                        ctx.translate(transform.x, transform.y);
-                        ctx.rotate(transform.rotation * Math.PI / 180);
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(dx, dy, dWidth, dHeight);
-                        ctx.restore();
-                    }
-                }
-            }
-
-            for (const materia of textureRenderersToRender) {
-                if (!materia.isActive) continue;
-
-                const textureRender = materia.getComponent(Components.TextureRender);
-                const transform = materia.getComponent(Components.Transform);
-                const worldPosition = transform.position;
-                const worldRotation = transform.rotation;
-                const worldScale = transform.scale;
-
-                ctx.save();
-                ctx.translate(worldPosition.x, worldPosition.y);
-                ctx.rotate(worldRotation * Math.PI / 180);
-                ctx.scale(worldScale.x, worldScale.y);
-
-                if (textureRender.texture && textureRender.texture.complete) {
-                    const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                    ctx.fillStyle = pattern;
-                } else {
-                    ctx.fillStyle = textureRender.color;
-                }
-
-                if (textureRender.shape === 'Rectangle') {
-                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-                } else if (textureRender.shape === 'Circle') {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (textureRender.shape === 'Triangle') {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -textureRender.height / 2); // Top point
-                    ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
-                    ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
-                    ctx.closePath();
-                    ctx.fill();
-                } else if (textureRender.shape === 'Capsule') {
-                    const width = textureRender.width;
-                    const height = textureRender.height;
-                    const radius = width / 2;
-                    const rectHeight = height - width;
-
-                    ctx.beginPath();
-                    // Start with the top semicircle
-                    ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
-                    // Draw the right side of the rectangle
-                    ctx.lineTo(width / 2, rectHeight / 2);
-                    // Draw the bottom semicircle
-                    ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
-                    // Draw the left side of the rectangle
-                    ctx.lineTo(-width / 2, -rectHeight / 2);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-
-            // Draw tilemaps
-            for (const materia of tilemapsToDraw) {
-                if (!materia.isActive) continue;
-
-                // Culling for tilemaps can be more complex (chunk-based),
-                // for now, we'll do a simple bounds check on the whole map.
-                // A proper implementation would be more performant.
-                if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    // Layer culling
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                }
-
-                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-                if (tilemapRenderer) {
-                    rendererInstance.drawTilemap(tilemapRenderer);
-                }
-            }
-        };
-
-        const drawLights = (lights) => {
-            // NEW: Only run the lighting pass if the renderer mode is 'realista'
-            if (currentProjectConfig.rendererMode !== 'realista' || !lights) {
-                return;
-            }
-
-            rendererInstance.beginLights();
-            for (const lightMateria of lights.point) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.PointLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawPointLight(light, transform);
-            }
-            for (const lightMateria of lights.spot) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpotLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpotLight(light, transform);
-            }
-            for (const lightMateria of lights.freeform) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.FreeformLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawFreeformLight(light, transform);
-            }
-            for (const lightMateria of lights.sprite) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpriteLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpriteLight(light, transform);
-            }
-            rendererInstance.endLights();
-        };
-
-        const allLights = {
-            point: pointLights,
-            spot: spotLights,
-            freeform: freeformLights,
-            sprite: spriteLights
-        };
-
-        const handleRender = (camera) => {
-            rendererInstance.beginWorld(camera);
-
-            const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
-
-            if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
-                const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
-
-                uniqueLayers.forEach(layer => {
-                    const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
-                    const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
-                    const lightsInLayer = {
-                        point: pointLights.filter(l => l.layer === layer),
-                        spot: spotLights.filter(l => l.layer === layer),
-                        freeform: freeformLights.filter(l => l.layer === layer),
-                        sprite: spriteLights.filter(l => l.layer === layer)
-                    };
-
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer);
-                    drawLights(lightsInLayer);
-                });
-
-            } else {
-                // Original behavior: draw all objects, then all lights
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
-                drawLights(allLights);
-            }
-
-
-            if (!isGameView) {
-                SceneView.drawOverlay();
-            }
-            rendererInstance.end();
-        };
-
-
-        if (isGameView) {
-            const cameras = SceneManager.currentScene.findAllCameras()
-                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
-
-            if (cameras.length === 0) {
-                rendererInstance.clear();
-                return;
-            }
-            cameras.forEach(handleRender);
-        } else { // Editor Scene View
-            handleRender(null);
-        }
-    }
-
     const editorLoop = (timestamp) => {
         // Calculate deltaTime
         if (lastFrameTime > 0) {
@@ -1120,14 +883,16 @@ document.addEventListener('DOMContentLoaded', () => {
         runLayoutUpdate();
 
         if (isGameRunning && !isGamePaused) {
-            runGameLoop();
-            // When game is running, update both views using the new centralized method
-            if (renderer) renderer.updateScene(SceneManager.currentScene, renderer.camera);
-            if (gameRenderer) gameRenderer.updateScene(SceneManager.currentScene);
+            runGameLoop(); // This handles the logic update
+            // When game is running, update both views
+            if (renderer) updateScene(renderer, false); // Editor view with gizmos
+            if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
         } else {
-            // When paused or stopped, only update the editor view
-            if (renderer) {
-                renderer.updateScene(SceneManager.currentScene, renderer.camera);
+            // When paused, only update the currently active view
+            if (activeView === 'scene-content' && renderer) {
+                updateScene(renderer, false);
+            } else if (activeView === 'game-content' && gameRenderer) {
+                updateScene(gameRenderer, true);
             }
         }
 
@@ -2094,6 +1859,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 7. Initial Setup ---
+    applyProjectSettings = function(config) {
+        if (!config) return;
+        console.log(`Applying project settings. Renderer mode: ${config.rendererMode}`);
+        if (renderer) {
+            renderer.setRenderingMode(config.rendererMode);
+        }
+        if (gameRenderer) {
+            gameRenderer.setRenderingMode(config.rendererMode);
+        }
+    };
+
     async function initializeEditor() {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
@@ -2578,12 +2354,12 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene: (scene, camera) => renderer.updateScene(scene, camera), SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
-            initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
+            initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig, applyProjectSettings);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
 
@@ -2606,7 +2382,7 @@ public star() {
                 refreshLibraryList: libraryModule.refreshLibraryList,
                 openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
-            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => renderer.updateScene(SceneManager.currentScene, renderer.camera), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
+            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
@@ -2643,6 +2419,7 @@ public star() {
                 currentProjectConfig = defaultConfig; // Also set the global config
                 populateProjectSettingsUI(defaultConfig, null);
             }
+            applyProjectSettings(currentProjectConfig);
 
             updateLoadingProgress(85, "Actualizando paneles...");
             updateHierarchy();

@@ -25,9 +25,10 @@ const componentAliases = {
     'TilemapCollider2D': 'colisionadorMapaDeAzulejos2D',
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
-    'UICanvas': 'lienzoUI',
+    'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
-    'RectTransform': 'transformacionRect',
+    'UIButton': 'botonUI',
+    'UIText': 'textoUI',
 };
 
 
@@ -755,56 +756,96 @@ export class Animator extends Leyes {
     }
 }
 
-export class RectTransform extends Leyes {
+export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
-        this.x = 0;
-        this.y = 0;
-        this.width = 100;
-        this.height = 100;
-        this.pivot = { x: 0.5, y: 0.5 };
-        this.anchorMin = { x: 0.5, y: 0.5 };
-        this.anchorMax = { x: 0.5, y: 0.5 };
-    }
-
-    getWorldRect(parentCanvas) {
-        // For now, a simplified version that doesn't handle nesting.
-        // It assumes the parent is the main canvas.
-        const parentWidth = parentCanvas.width;
-        const parentHeight = parentCanvas.height;
-
-        // Calculate anchor positions in pixels
-        const anchorMinX = parentWidth * this.anchorMin.x;
-        const anchorMinY = parentHeight * this.anchorMin.y;
-
-        // Calculate the position of the pivot point relative to the anchors
-        const pivotPosX = anchorMinX + this.x;
-        const pivotPosY = anchorMinY + this.y;
-
-        // Calculate the top-left corner of the rectangle based on the pivot
-        const rectX = pivotPosX - (this.width * this.pivot.x);
-        const rectY = pivotPosY - (this.height * this.pivot.y);
-
-        return {
-            x: rectX,
-            y: rectY,
-            width: this.width,
-            height: this.height
-        };
+        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
     }
     clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.x = this.x;
-        newRectTransform.y = this.y;
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        newRectTransform.pivot = { ...this.pivot };
-        newRectTransform.anchorMin = { ...this.anchorMin };
-        newRectTransform.anchorMax = { ...this.anchorMax };
-        return newRectTransform;
+        const newCanvas = new Canvas(null);
+        newCanvas.renderMode = this.renderMode;
+        return newCanvas;
     }
 }
 
+export class UIImage extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.image = null; // Will hold the Image object
+        this.source = ''; // Path to the source image file
+        this.color = '#FFFFFF';
+        this.opacity = 1.0;
+    }
+
+    async loadImage(projectsDirHandle) {
+        if (!this.source) {
+            this.image = null;
+            return;
+        }
+        const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
+        if (imageUrl) {
+            this.image = new Image();
+            this.image.src = imageUrl;
+            // It might be useful to await loading in some cases
+            await new Promise(resolve => { this.image.onload = resolve; }).catch(e => console.error(e));
+        }
+    }
+
+    clone() {
+        const newImage = new UIImage(null);
+        newImage.source = this.source;
+        newImage.color = this.color;
+        newImage.opacity = this.opacity;
+        return newImage;
+    }
+}
+
+export class UIButton extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.targetGraphic = null; // Reference to a UIImage component
+        this.interactable = true;
+        this.transition = 'Color Tint'; // 'None', 'Color Tint', 'Sprite Swap'
+        this.colors = {
+            normalColor: '#FFFFFF',
+            highlightedColor: '#F5F5F5',
+            pressedColor: '#C8C8C8',
+            selectedColor: '#F5F5F5',
+            disabledColor: '#C8C8C8',
+            colorMultiplier: 1,
+        };
+        // TODO: Add sprite swap properties
+    }
+    clone() {
+        const newButton = new UIButton(null);
+        newButton.interactable = this.interactable;
+        newButton.transition = this.transition;
+        newButton.colors = { ...this.colors };
+        return newButton;
+    }
+}
+
+export class UIText extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.text = 'New Text';
+        this.font = 'Arial';
+        this.fontSize = 24;
+        this.color = '#FFFFFF';
+        this.horizontalAlign = 'center'; // 'left', 'center', 'right'
+        this.verticalAlign = 'middle'; // 'top', 'middle', 'bottom'
+    }
+    clone() {
+        const newText = new UIText(null);
+        newText.text = this.text;
+        newText.font = this.font;
+        newText.fontSize = this.fontSize;
+        newText.color = this.color;
+        newText.horizontalAlign = this.horizontalAlign;
+        newText.verticalAlign = this.verticalAlign;
+        return newText;
+    }
+}
 
 export class PointLight2D extends Leyes {
     constructor(materia) {
@@ -1049,72 +1090,15 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
+registerComponent('Canvas', Canvas);
+registerComponent('UIImage', UIImage);
+registerComponent('UIButton', UIButton);
+registerComponent('UIText', UIText);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
-
-// --- UI Components ---
-
-export class Canvas extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
-    }
-    clone() {
-        const newCanvas = new Canvas(null);
-        newCanvas.renderMode = this.renderMode;
-        return newCanvas;
-    }
-}
-
-export class UIImage extends Leyes {
-    constructor(materia) {
-        super(materia);
-        // This component ensures the SpriteRenderer respects the Canvas bounds.
-        // Logic will be added in the Renderer.
-    }
-    clone() {
-        return new UIImage(null);
-    }
-}
-
-export class UIButton extends Leyes {
-    constructor(materia) {
-        super(materia);
-        // Placeholder for button logic (event handling, etc.)
-    }
-    clone() {
-        return new UIButton(null);
-    }
-}
-
-export class UIText extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.text = 'Hello World';
-        this.font = 'Arial';
-        this.size = 16;
-        this.color = '#FFFFFF';
-    }
-    clone() {
-        const newText = new UIText(null);
-        newText.text = this.text;
-        newText.font = this.font;
-        newText.size = this.size;
-        newText.color = this.color;
-        return newText;
-    }
-}
-
-registerComponent('Canvas', Canvas);
-registerComponent('UIImage', UIImage);
-registerComponent('UIButton', UIButton);
-registerComponent('UIText', UIText);
-
-// --- Fin de UI Components ---
 
 // --- Tilemap Components ---
 

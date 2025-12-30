@@ -36,6 +36,17 @@ export class Materia {
         return this.leyes.find(ley => ley instanceof componentClass);
     }
 
+    findParentMateriaWithComponent(ComponentClass) {
+        let current = this.parent;
+        while (current) {
+            if (current.getComponent(ComponentClass)) {
+                return current;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
     getComponents(componentClass) {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
@@ -94,41 +105,6 @@ export class Materia {
             this.children.splice(index, 1);
             child.parent = null;
         }
-    }
-
-    findParentComponent(componentClass) {
-        let current = this.parent;
-        while (current) {
-            // Resolve parent ID to object if necessary
-            if (typeof current === 'number') {
-                current = currentScene.findMateriaById(current);
-                if (!current) return null;
-            }
-
-            const component = current.getComponent(componentClass);
-            if (component) {
-                return component;
-            }
-            current = current.parent;
-        }
-        return null;
-    }
-
-    findParentMateriaWithComponent(componentClass) {
-        let current = this.parent;
-        while (current) {
-            // Resolve parent ID to object if necessary
-            if (typeof current === 'number') {
-                current = currentScene.findMateriaById(current);
-                if (!current) return null;
-            }
-
-            if (current.getComponent(componentClass)) {
-                return current;
-            }
-            current = current.parent;
-        }
-        return null;
     }
 
     update(deltaTime = 0) {
