@@ -96,6 +96,41 @@ export class Materia {
         }
     }
 
+    findParentComponent(componentClass) {
+        let current = this.parent;
+        while (current) {
+            // Resolve parent ID to object if necessary
+            if (typeof current === 'number') {
+                current = currentScene.findMateriaById(current);
+                if (!current) return null;
+            }
+
+            const component = current.getComponent(componentClass);
+            if (component) {
+                return component;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
+    findParentMateriaWithComponent(componentClass) {
+        let current = this.parent;
+        while (current) {
+            // Resolve parent ID to object if necessary
+            if (typeof current === 'number') {
+                current = currentScene.findMateriaById(current);
+                if (!current) return null;
+            }
+
+            if (current.getComponent(componentClass)) {
+                return current;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
     update(deltaTime = 0) {
         for (const ley of this.leyes) {
             if (typeof ley.update === 'function') {

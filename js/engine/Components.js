@@ -805,43 +805,6 @@ export class RectTransform extends Leyes {
     }
 }
 
-export class UICanvas extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.renderMode = 'ScreenSpaceOverlay';
-    }
-    clone() {
-        const newCanvas = new UICanvas(null);
-        newCanvas.renderMode = this.renderMode;
-        return newCanvas;
-    }
-}
-
-export class UIImage extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.sprite = new Image();
-        this.source = '';
-        this.color = '#ffffff';
-    }
-
-    async loadSprite(projectsDirHandle) {
-        if (this.source) {
-            const url = await getURLForAssetPath(this.source, projectsDirHandle);
-            if (url) {
-                this.sprite.src = url;
-            }
-        } else {
-            this.sprite.src = '';
-        }
-    }
-    clone() {
-        const newImage = new UIImage(null);
-        newImage.source = this.source;
-        newImage.color = this.color;
-        return newImage;
-    }
-}
 
 export class PointLight2D extends Leyes {
     constructor(materia) {
@@ -1087,13 +1050,71 @@ export class AnimatorController extends Leyes {
 registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('RectTransform', RectTransform);
-registerComponent('UICanvas', UICanvas);
-registerComponent('UIImage', UIImage);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
+
+// --- UI Components ---
+
+export class Canvas extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
+    }
+    clone() {
+        const newCanvas = new Canvas(null);
+        newCanvas.renderMode = this.renderMode;
+        return newCanvas;
+    }
+}
+
+export class UIImage extends Leyes {
+    constructor(materia) {
+        super(materia);
+        // This component ensures the SpriteRenderer respects the Canvas bounds.
+        // Logic will be added in the Renderer.
+    }
+    clone() {
+        return new UIImage(null);
+    }
+}
+
+export class UIButton extends Leyes {
+    constructor(materia) {
+        super(materia);
+        // Placeholder for button logic (event handling, etc.)
+    }
+    clone() {
+        return new UIButton(null);
+    }
+}
+
+export class UIText extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.text = 'Hello World';
+        this.font = 'Arial';
+        this.size = 16;
+        this.color = '#FFFFFF';
+    }
+    clone() {
+        const newText = new UIText(null);
+        newText.text = this.text;
+        newText.font = this.font;
+        newText.size = this.size;
+        newText.color = this.color;
+        return newText;
+    }
+}
+
+registerComponent('Canvas', Canvas);
+registerComponent('UIImage', UIImage);
+registerComponent('UIButton', UIButton);
+registerComponent('UIText', UIText);
+
+// --- Fin de UI Components ---
 
 // --- Tilemap Components ---
 

@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createCanvasObject, createImageObject, createButtonObject, createTextObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -200,6 +200,18 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-sprite-light':
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
+            break;
+        case 'create-ui-canvas':
+            newMateria = createCanvasObject(selectedMateria);
+            break;
+        case 'create-ui-image':
+            newMateria = createImageObject(selectedMateria);
+            break;
+        case 'create-ui-button':
+            newMateria = createButtonObject(selectedMateria);
+            break;
+        case 'create-ui-text':
+            newMateria = createTextObject(selectedMateria);
             break;
 
         case 'rename':

@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.Canvas, Components.UIImage, Components.UIButton, Components.UIText],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -635,7 +635,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        RectTransform: '⎚', Canvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
     };
 
@@ -743,13 +743,51 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
                 <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
             </div>`;
+        } else if (ley instanceof Components.Canvas) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Canvas</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Render Mode</label>
+                        <select class="prop-input" data-component="Canvas" data-prop="renderMode">
+                            <option value="Screen Space" ${ley.renderMode === 'Screen Space' ? 'selected' : ''}>Screen Space</option>
+                            <option value="World Space" ${ley.renderMode === 'World Space' ? 'selected' : ''}>World Space</option>
+                        </select>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.UIImage) {
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
+            componentHTML = `<div class="component-header">${iconHTML}<h4>Image</h4></div>
             <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+                 <p class="field-description">Este componente marca a un Sprite Renderer para que se comporte como un elemento de UI dentro de un Canvas.</p>
             </div>`;
+        } else if (ley instanceof Components.UIButton) {
+             componentHTML = `<div class="component-header">${iconHTML}<h4>Button</h4></div>
+            <div class="component-content">
+                 <p class="field-description">Próximamente: Propiedades de interacción y eventos.</p>
+            </div>`;
+        } else if (ley instanceof Components.UIText) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Text</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Text</label>
+                        <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Font</label>
+                        <input type="text" class="prop-input" data-component="UIText" data-prop="font" value="${ley.font}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <input type="number" class="prop-input" data-component="UIText" data-prop="size" value="${ley.size}" min="1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
+                    </div>
+                </div>
+            `;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';

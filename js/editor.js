@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+    var createScriptFile, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
 
     saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
         try {
@@ -1120,16 +1120,14 @@ document.addEventListener('DOMContentLoaded', () => {
         runLayoutUpdate();
 
         if (isGameRunning && !isGamePaused) {
-            runGameLoop(); // This handles the logic update
-            // When game is running, update both views
-            if (renderer) updateScene(renderer, false); // Editor view with gizmos
-            if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
+            runGameLoop();
+            // When game is running, update both views using the new centralized method
+            if (renderer) renderer.updateScene(SceneManager.currentScene, renderer.camera);
+            if (gameRenderer) gameRenderer.updateScene(SceneManager.currentScene);
         } else {
-            // When paused, only update the currently active view
-            if (activeView === 'scene-content' && renderer) {
-                updateScene(renderer, false);
-            } else if (activeView === 'game-content' && gameRenderer) {
-                updateScene(gameRenderer, true);
+            // When paused or stopped, only update the editor view
+            if (renderer) {
+                renderer.updateScene(SceneManager.currentScene, renderer.camera);
             }
         }
 

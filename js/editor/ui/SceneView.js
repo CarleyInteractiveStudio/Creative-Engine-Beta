@@ -252,6 +252,34 @@ function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
+function drawCanvasGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
+    const transform = selectedMateria.getComponent(Components.Transform);
+
+    if (!canvasComponent || !transform) return;
+
+    const { ctx, camera } = renderer;
+    const { x, y } = transform.position; // World position
+    const { x: localScaleX, y: localScaleY } = transform.localScale; // The size of the canvas is its local scale
+    const rotation = transform.rotation * (Math.PI / 180); // World rotation
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2 / camera.zoom;
+    ctx.setLineDash([]); // Solid line
+
+    // Draw the rectangle centered on the object's pivot. The localScale represents the full size.
+    ctx.strokeRect(-localScaleX / 2, -localScaleY / 2, localScaleX, localScaleY);
+
+    ctx.restore();
+}
+
 export function drawOverlay() {
     if (!renderer) return;
     const ctx = renderer.ctx;
@@ -313,4 +341,6 @@ export function drawOverlay() {
         ctx.stroke();
         ctx.restore();
     }
+
+    drawCanvasGizmos();
 }

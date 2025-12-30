@@ -32,3 +32,49 @@ export function createBaseMateria(name, parent = null) {
     }
     return newMateria;
 }
+
+function createUIMateria(name, parent = null, components = []) {
+    const newMateria = createBaseMateria(name, parent);
+    for (const ComponentClass of components) {
+        if (!newMateria.getComponent(ComponentClass)) {
+            newMateria.addComponent(new ComponentClass(newMateria));
+        }
+    }
+    return newMateria;
+}
+
+export function createCanvasObject(parent = null) {
+    const name = generateUniqueName('Canvas');
+    const canvasMateria = createUIMateria(name, parent, [Components.Canvas]);
+    // Default size for a new canvas
+    const transform = canvasMateria.getComponent(Components.Transform);
+    if (transform) {
+        transform.localScale = { x: 400, y: 300 };
+    }
+    return canvasMateria;
+}
+
+export function createImageObject(parent = null) {
+    const name = generateUniqueName('Image');
+    return createUIMateria(name, parent, [Components.SpriteRenderer, Components.UIImage]);
+}
+
+export function createButtonObject(parent = null) {
+    const name = generateUniqueName('Button');
+    const buttonMateria = createUIMateria(name, parent, [Components.SpriteRenderer, Components.UIImage, Components.UIButton]);
+
+    // Add a child Text object
+    const textMateria = createTextObject(buttonMateria);
+    textMateria.name = 'Text';
+    const uiText = textMateria.getComponent(Components.UIText);
+    if (uiText) {
+        uiText.text = 'Button';
+    }
+
+    return buttonMateria;
+}
+
+export function createTextObject(parent = null) {
+    const name = generateUniqueName('Text');
+    return createUIMateria(name, parent, [Components.UIText]);
+}
