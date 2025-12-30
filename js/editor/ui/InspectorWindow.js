@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.Canvas, Components.UIImage, Components.UIButton, Components.UIText],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -641,10 +641,8 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
-    console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
-        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
@@ -703,9 +701,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Transform) {
-            console.log('  - Is Transform component.');
             if (selectedMateria.getComponent(Components.RectTransform)) {
-                console.log('  - RectTransform also exists, skipping render of Transform.');
                 return;
             }
             componentHTML = `
@@ -802,7 +798,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
                 </div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}"></div>
-                <div class="prop-row-multi"><label>Font Size</label><input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1"></div>
+                <div class="prop-row-multi"><label>Font Size</label><input type="number" class="prop-input" data-component="UIText" data-prop="size" value="${ley.size}" min="1"></div>
                 <div class="prop-row-multi">
                     <label>Horizontal Align</label>
                     <select class="prop-input" data-component="UIText" data-prop="horizontalAlign">
@@ -995,7 +991,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.PointLight2D) {
-            console.log('  - Is PointLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
@@ -1021,7 +1016,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpotLight2D) {
-            console.log('  - Is SpotLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
@@ -1053,7 +1047,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.FreeformLight2D) {
-            console.log('  - Is FreeformLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
@@ -1251,7 +1244,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
-            console.log('  - Is SpriteLight2D component.');
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `
             <div class="component-inspector">
@@ -1375,7 +1367,6 @@ async function updateInspectorForMateria(selectedMateria) {
         }
     });
 
-    console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
 
     const addComponentBtn = document.createElement('button');
@@ -1383,7 +1374,6 @@ async function updateInspectorForMateria(selectedMateria) {
     addComponentBtn.className = 'add-component-btn';
     addComponentBtn.textContent = 'Añadir Ley';
     dom.inspectorContent.appendChild(addComponentBtn);
-    console.log('7. Inspector update complete.');
 }
 
 

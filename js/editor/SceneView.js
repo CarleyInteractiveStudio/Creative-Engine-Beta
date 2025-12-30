@@ -1059,8 +1059,44 @@ export function drawOverlay() {
     // Draw physics colliders for selected object
     drawPhysicsGizmos();
 
+    // Draw Canvas gizmo for selected object
+    drawCanvasGizmos();
+
     // Draw outline for selected Tilemap
     drawTilemapOutline();
+}
+
+function drawCanvasGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
+    const transform = selectedMateria.getComponent(Components.Transform);
+
+    if (!canvasComponent || !transform) return;
+
+    const { ctx, camera } = renderer;
+    if (!ctx || !camera) return;
+
+    // We only draw the gizmo for WorldSpace canvases as ScreenSpace is not positioned in the world.
+    if (canvasComponent.renderMode !== 'WorldSpace') return;
+
+    const width = canvasComponent.width;
+    const height = canvasComponent.height;
+    const centerX = transform.x;
+    const centerY = transform.y;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; // White outline
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([]); // Solid line
+
+    ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {

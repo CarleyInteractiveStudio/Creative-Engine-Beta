@@ -759,11 +759,15 @@ export class Animator extends Leyes {
 export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
-        this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
+        this.renderMode = 'ScreenSpace'; // 'ScreenSpace' or 'WorldSpace'
+        this.width = 200; // Default width
+        this.height = 200; // Default height
     }
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
+        newCanvas.width = this.width;
+        newCanvas.height = this.height;
         return newCanvas;
     }
 }
@@ -806,6 +810,7 @@ export class UIButton extends Leyes {
         this.targetGraphic = null; // Reference to a UIImage component
         this.interactable = true;
         this.transition = 'Color Tint'; // 'None', 'Color Tint', 'Sprite Swap'
+        this.source = ''; // Path to the source image file for the button background
         this.colors = {
             normalColor: '#FFFFFF',
             highlightedColor: '#F5F5F5',
@@ -814,12 +819,12 @@ export class UIButton extends Leyes {
             disabledColor: '#C8C8C8',
             colorMultiplier: 1,
         };
-        // TODO: Add sprite swap properties
     }
     clone() {
         const newButton = new UIButton(null);
         newButton.interactable = this.interactable;
         newButton.transition = this.transition;
+        newButton.source = this.source;
         newButton.colors = { ...this.colors };
         return newButton;
     }
@@ -830,7 +835,7 @@ export class UIText extends Leyes {
         super(materia);
         this.text = 'New Text';
         this.font = 'Arial';
-        this.fontSize = 24;
+        this.size = 24; // Changed from fontSize to size for consistency
         this.color = '#FFFFFF';
         this.horizontalAlign = 'center'; // 'left', 'center', 'right'
         this.verticalAlign = 'middle'; // 'top', 'middle', 'bottom'
@@ -839,7 +844,7 @@ export class UIText extends Leyes {
         const newText = new UIText(null);
         newText.text = this.text;
         newText.font = this.font;
-        newText.fontSize = this.fontSize;
+        newText.size = this.size;
         newText.color = this.color;
         newText.horizontalAlign = this.horizontalAlign;
         newText.verticalAlign = this.verticalAlign;

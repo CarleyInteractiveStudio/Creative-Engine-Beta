@@ -48,7 +48,7 @@ export class Renderer {
 
     updateScene(scene, cameraMateria) {
         // 1. Gather all Canvases from the scene
-        const allCanvases = scene.getMateriasWithComponent(Canvas);
+        const allCanvases = scene.getAllMaterias().filter(m => m.getComponent(Canvas));
         const worldSpaceCanvases = allCanvases.filter(m => m.getComponent(Canvas).renderMode === 'WorldSpace');
         const screenSpaceCanvases = allCanvases.filter(m => m.getComponent(Canvas).renderMode === 'ScreenSpace');
 
@@ -93,9 +93,9 @@ export class Renderer {
 
         // --- Gather & Sort World-Space Renderables ---
         const worldRenderables = [
-            ...scene.getMateriasWithComponent(SpriteRenderer),
-            ...scene.getMateriasWithComponent(TilemapRenderer),
-            ...scene.getMateriasWithComponent(TextureRender)
+            ...scene.getAllMaterias().filter(m => m.getComponent(SpriteRenderer)),
+            ...scene.getAllMaterias().filter(m => m.getComponent(TilemapRenderer)),
+            ...scene.getAllMaterias().filter(m => m.getComponent(TextureRender))
         ].filter(m => !m.findParentMateriaWithComponent(Canvas)); // Exclude UI elements for now
 
         // Add WorldSpace UI elements to the same list to be sorted and rendered
@@ -112,7 +112,7 @@ export class Renderer {
         // --- Lighting Pass (if applicable) ---
         let lights = [];
         if (this.renderingMode === 'realista') {
-            lights = scene.getMateriasWithComponent(PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D);
+            lights = scene.getAllMaterias().filter(m => m.getComponent(PointLight2D) || m.getComponent(SpotLight2D) || m.getComponent(FreeformLight2D) || m.getComponent(SpriteLight2D));
             this._beginLights();
             lights.forEach(lightMateria => this._drawLight(lightMateria));
         }
@@ -182,7 +182,7 @@ export class Renderer {
         // This function acts as a dispatcher based on the components found.
         // The order matters if a Materia has multiple renderable components.
         const spriteRenderer = materia.getComponent(SpriteRenderer);
-        if (spriteRenderer && spriteRenderer.image) {
+        if (spriteRenderer && spriteRenderer.sprite) {
             this._drawSprite(spriteRenderer);
             return;
         }
@@ -226,7 +226,7 @@ export class Renderer {
 
     _drawSprite(spriteRenderer) {
         const transform = spriteRenderer.materia.getComponent(Transform);
-        if (!transform || !spriteRenderer.image || !spriteRenderer.image.complete || spriteRenderer.image.naturalWidth === 0) return;
+        if (!transform || !spriteRenderer.sprite || !spriteRenderer.sprite.complete || spriteRenderer.sprite.naturalWidth === 0) return;
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
@@ -252,7 +252,7 @@ export class Renderer {
         tempCanvas.width = width;
         tempCanvas.height = height;
         const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(spriteRenderer.image, spriteRenderer.rect.x, spriteRenderer.rect.y, width, height, 0, 0, width, height);
+        tempCtx.drawImage(spriteRenderer.sprite, spriteRenderer.rect.x, spriteRenderer.rect.y, width, height, 0, 0, width, height);
 
         // 2. Apply the color tint
         tempCtx.globalCompositeOperation = 'source-atop';
@@ -340,12 +340,30 @@ export class Renderer {
     // --- UI Drawing ---
     _drawUIImage(uiImage) {
         const transform = uiImage.materia.getComponent(Transform);
-        if (!transform || !uiImage.image) return;
+        if (!transform || !uiImage.image || !uiImage.image.complete || uiImage.image.naturalWidth === 0) return;
 
-        const bounds = this._getComponentBounds(transform);
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(transform.scale.x, transform.scale.y);
+
         this.ctx.globalAlpha = uiImage.opacity;
-        this.ctx.drawImage(uiImage.image, bounds.x, bounds.y, bounds.width, bounds.height);
-        this.ctx.globalAlpha = 1.0;
+
+        // Use a temporary canvas for tinting, similar to SpriteRenderer
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = uiImage.image.naturalWidth;
+        tempCanvas.height = uiImage.image.naturalHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        tempCtx.drawImage(uiImage.image, 0, 0);
+        tempCtx.globalCompositeOperation = 'source-atop';
+        tempCtx.fillStyle = uiImage.color;
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        // Draw the tinted image, centered on the transform's origin
+        this.ctx.drawImage(tempCanvas, -tempCanvas.width / 2, -tempCanvas.height / 2);
+
+        this.ctx.restore();
     }
 
     _drawUIText(uiText) {

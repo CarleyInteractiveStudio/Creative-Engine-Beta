@@ -36,18 +36,24 @@ export function createBaseMateria(name, parent = null) {
 
 export function createCanvasObject(parent = null) {
     const canvasMateria = createBaseMateria('Canvas', parent);
-    canvasMateria.addComponent(new Components.Canvas(canvasMateria));
+    const canvasComponent = new Components.Canvas(canvasMateria);
+    canvasComponent.width = 400; // Default width
+    canvasComponent.height = 300; // Default height
+    canvasMateria.addComponent(canvasComponent);
+
+    // Transform position should be centered by default
     const transform = canvasMateria.getComponent(Components.Transform);
-    // For ScreenSpace, position is absolute, so default to center. For WorldSpace, it's relative.
-    transform.position = { x: 0, y: 0 };
-    transform.scale = { x: 200, y: 200 };
+    transform.x = 0;
+    transform.y = 0;
+    // Scale is not used for Canvas size, so it should be 1.
+    transform.scale = { x: 1, y: 1 };
     return canvasMateria;
 }
 
 export function createUIImageObject(parent = null) {
+    // Pass the parent to createBaseMateria so it's correctly assigned.
     const imageMateria = createBaseMateria('Imagen', parent);
     imageMateria.addComponent(new Components.UIImage(imageMateria));
-    // SpriteRenderer is not needed for UI components that will be drawn by the Canvas system
     const transform = imageMateria.getComponent(Components.Transform);
     transform.scale = { x: 100, y: 100 };
     return imageMateria;
