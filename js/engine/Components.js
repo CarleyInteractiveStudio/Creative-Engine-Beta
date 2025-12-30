@@ -1391,6 +1391,30 @@ export class CompositeCollider2D extends Leyes {
     }
 }
 
+// --- UI-specific Transform ---
+export class RectTransform extends Transform {
+    constructor(materia) {
+        super(materia);
+        this.anchorMin = { x: 0.5, y: 0.5 };
+        this.anchorMax = { x: 0.5, y: 0.5 };
+        this.pivot = { x: 0.5, y: 0.5 };
+        // position, width, height will be calculated based on anchors
+    }
+    clone() {
+        const newRectTransform = new RectTransform(null);
+        // Copy properties from Transform's clone
+        const baseClone = super.clone();
+        Object.assign(newRectTransform, baseClone);
+
+        // Copy RectTransform specific properties
+        newRectTransform.anchorMin = { ...this.anchorMin };
+        newRectTransform.anchorMax = { ...this.anchorMax };
+        newRectTransform.pivot = { ...this.pivot };
+        return newRectTransform;
+    }
+}
+registerComponent('RectTransform', RectTransform);
+
 registerComponent('CompositeCollider2D', CompositeCollider2D);
 
 export class CustomComponent extends Leyes {

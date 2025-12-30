@@ -51,6 +51,18 @@ export class Materia {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
+    isActiveInHierarchy() {
+        if (!this.isActive) {
+            return false;
+        }
+        if (this.parent) {
+            // If parent is an ID, it can't be active in hierarchy. This happens during deserialization.
+            if (typeof this.parent === 'number') return false;
+            return this.parent.isActiveInHierarchy();
+        }
+        return true;
+    }
+
     removeComponent(ComponentClass) {
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {
