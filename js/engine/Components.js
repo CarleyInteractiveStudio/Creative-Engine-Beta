@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'UICanvas': 'lienzoUI',
     'UIImage': 'imagenUI',
-    'RectTransform': 'transformacionRect',
+    'UIPosition': 'transformacionRect',
 };
 
 
@@ -755,7 +755,8 @@ export class Animator extends Leyes {
     }
 }
 
-export class RectTransform extends Leyes {
+
+export class UIPosition extends Leyes {
     constructor(materia) {
         super(materia);
         this.x = 0;
@@ -793,15 +794,15 @@ export class RectTransform extends Leyes {
         };
     }
     clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.x = this.x;
-        newRectTransform.y = this.y;
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        newRectTransform.pivot = { ...this.pivot };
-        newRectTransform.anchorMin = { ...this.anchorMin };
-        newRectTransform.anchorMax = { ...this.anchorMax };
-        return newRectTransform;
+        const newUIPosition = new UIPosition(null);
+        newUIPosition.x = this.x;
+        newUIPosition.y = this.y;
+        newUIPosition.width = this.width;
+        newUIPosition.height = this.height;
+        newUIPosition.pivot = { ...this.pivot };
+        newUIPosition.anchorMin = { ...this.anchorMin };
+        newUIPosition.anchorMax = { ...this.anchorMax };
+        return newUIPosition;
     }
 }
 
@@ -822,8 +823,8 @@ export class UIImage extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.spritePath = ''; // The direct path to a .png, .jpg, or a .ceSprite file
-        this.backgroundColor = '#ffffff';
-        this.tintColor = '#ffffff';
+        this.color = '#ffffff';
+        this.opacity = 1;
         this.imageType = 'Simple'; // Simple, Sliced, Tiled, Filled
         this.preserveAspect = false;
 
@@ -869,8 +870,8 @@ export class UIImage extends Leyes {
     clone() {
         const newImage = new UIImage(null);
         newImage.spritePath = this.spritePath;
-        newImage.backgroundColor = this.backgroundColor;
-        newImage.tintColor = this.tintColor;
+        newImage.color = this.color;
+        newImage.opacity = this.opacity;
         newImage.imageType = this.imageType;
         newImage.preserveAspect = this.preserveAspect;
         // The rest is runtime data and will be reloaded
@@ -884,6 +885,7 @@ export class Gizmo extends Leyes {
         this.size = { x: 100, y: 100 };
         this.color = '#00ff00';
         this.alwaysVisibleInEditor = false;
+        this.visibleInGame = false;
     }
 
     clone() {
@@ -891,6 +893,7 @@ export class Gizmo extends Leyes {
         newGizmo.size = { ...this.size };
         newGizmo.color = this.color;
         newGizmo.alwaysVisibleInEditor = this.alwaysVisibleInEditor;
+        newGizmo.visibleInGame = this.visibleInGame;
         return newGizmo;
     }
 }
@@ -1138,7 +1141,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
+registerComponent('UIPosition', UIPosition);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
 registerComponent('Gizmo', Gizmo);

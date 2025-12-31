@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, UICanvas, SpriteRenderer, TilemapRenderer, TextureRender, UIImage, RectTransform } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, UICanvas, SpriteRenderer, TilemapRenderer, TextureRender, UIImage, UIPosition } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -363,6 +363,23 @@ export class Renderer {
             } else if (transform && imageUI) {
                 this.drawImageUI(imageUI, transform);
             }
+
+            const gizmo = child.getComponent(Components.Gizmo);
+	        if (gizmo && gizmo.visibleInGame) {
+	            if(transform){
+	                 const pos = transform.position;
+	                 const rot = transform.rotation;
+	                 const {x: width, y: height} = gizmo.size;
+
+	                 this.ctx.save();
+	                 this.ctx.translate(pos.x, pos.y);
+	                 this.ctx.rotate(rot * Math.PI / 180);
+	                 this.ctx.strokeStyle = gizmo.color;
+	                 this.ctx.lineWidth = 1;
+	                 this.ctx.strokeRect(-width / 2, -height / 2, width, height);
+	                 this.ctx.restore();
+	            }
+	        }
         }
 
         this.end(); // Restores transform
@@ -416,46 +433,48 @@ export class Renderer {
     }
 
     drawImageUI(imageUI, transform) {
-        // This function will render the ImageUI component in the game view.
-        // It will prioritize drawing the sprite if available, otherwise the background color.
         const pos = { x: transform.x, y: transform.y };
         const scale = transform.localScale;
 
         let width, height;
-        const gizmo = imageUI.materia.getComponent(Gizmo);
-        const rectTransform = imageUI.materia.getComponent(RectTransform);
+        let currentMateria = imageUI.materia;
+        let gizmo = null;
+
+        // Traverse up the hierarchy to find the nearest Gizmo
+        while (currentMateria) {
+            gizmo = currentMateria.getComponent(Components.Gizmo);
+            if (gizmo) break;
+            currentMateria = currentMateria.parent;
+        }
 
         if (gizmo) {
             width = gizmo.size.x;
             height = gizmo.size.y;
-        } else if (rectTransform) {
-            width = rectTransform.width * scale.x;
-            height = rectTransform.height * scale.y;
         } else {
-            // Fallback if no size component is present
-            width = 100 * scale.x;
-            height = 100 * scale.y;
+            const uiPosition = imageUI.materia.getComponent(UIPosition);
+            if (uiPosition) {
+                width = uiPosition.width * scale.x;
+                height = uiPosition.height * scale.y;
+            } else {
+                width = 100 * scale.x;
+                height = 100 * scale.y;
+            }
         }
 
         this.ctx.save();
+        this.ctx.globalAlpha = imageUI.opacity;
         this.ctx.translate(pos.x, pos.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
 
-        // Draw sprite first, if available
-        if (imageUI.sprite && imageUI.sprite.complete) {
+        if (imageUI.sprite && imageUI.sprite.complete && imageUI.sprite.naturalWidth > 0) {
             this.ctx.drawImage(imageUI.sprite, -width / 2, -height / 2, width, height);
 
-            // Apply tint color only if there's a sprite
-            if (imageUI.tintColor !== '#FFFFFF') { // Use uppercase for consistent comparison
-                this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.fillStyle = imageUI.tintColor;
-                this.ctx.fillRect(-width / 2, -height / 2, width, height);
-                // Reset composite operation for subsequent draws in the same frame
-                this.ctx.globalCompositeOperation = 'source-over';
-            }
+            this.ctx.globalCompositeOperation = 'multiply';
+            this.ctx.fillStyle = imageUI.color;
+            this.ctx.fillRect(-width / 2, -height / 2, width, height);
+
         } else {
-            // If there's no sprite, draw the background color
-            this.ctx.fillStyle = imageUI.backgroundColor;
+            this.ctx.fillStyle = imageUI.color;
             this.ctx.fillRect(-width / 2, -height / 2, width, height);
         }
 

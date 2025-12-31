@@ -13,6 +13,9 @@ let isDrawingRect = false; // For the rectangle fill tool
 let rectStartGridPos = { x: 0, y: 0 }; // Store the start grid cell
 let currentMousePosition = { x: 0, y: 0 }; // For overlay drawing
 let lastMousePosition = { x: 0, y: 0 };
+let isResizingGizmo = false;
+let resizingGizmoInfo = null;
+
 
 // --- Initialization ---
 export function initialize(dependencies) {
@@ -49,6 +52,29 @@ export function update(deltaTime) {
 
 function handleMouseDown(e) {
     lastMousePosition = { x: e.clientX, y: e.clientY };
+    const worldPos = screenToWorld(e.clientX, e.clientY);
+
+    // Gizmo Resizing
+    const selectedMateria = getSelectedMateria();
+    if (selectedMateria) {
+        const gizmo = selectedMateria.getComponent(Components.Gizmo);
+        if (gizmo) {
+            const handle = getHandleAt(worldPos, selectedMateria);
+            if (handle) {
+                isResizingGizmo = true;
+                resizingGizmoInfo = {
+                    materia: selectedMateria,
+                    handle: handle,
+                    initialPos: worldPos,
+                    initialSize: { ...gizmo.size },
+                    initialMateriaPos: { ...selectedMateria.getComponent(Components.Transform).position }
+                };
+                return; // Stop other actions
+            }
+        }
+    }
+
+
     const paletteTool = TilePaletteWindow.getActiveTool();
 
     if (paletteTool === 'tile-rect-fill') {
@@ -77,6 +103,61 @@ function handleMouseDown(e) {
 
 function handleMouseMove(e) {
     currentMousePosition = { x: e.clientX, y: e.clientY };
+
+    if (isResizingGizmo) {
+        const { materia, handle, initialPos, initialSize, initialMateriaPos } = resizingGizmoInfo;
+        const gizmo = materia.getComponent(Components.Gizmo);
+        const transform = materia.getComponent(Components.Transform);
+        const worldPos = screenToWorld(e.clientX, e.clientY);
+
+        const dx = worldPos.x - initialPos.x;
+        const dy = worldPos.y - initialPos.y;
+
+        // Rotate delta to match gizmo's local space
+        const rad = -transform.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const localDx = dx * cos - dy * sin;
+        const localDy = dx * sin + dy * cos;
+
+        let newWidth = initialSize.x;
+        let newHeight = initialSize.y;
+        let posOffsetX = 0;
+        let posOffsetY = 0;
+
+        if (handle.includes('right')) {
+            newWidth += localDx;
+            posOffsetX += localDx / 2;
+        }
+        if (handle.includes('left')) {
+            newWidth -= localDx;
+            posOffsetX += localDx / 2;
+        }
+        if (handle.includes('bottom')) {
+            newHeight += localDy;
+            posOffsetY += localDy / 2;
+        }
+        if (handle.includes('top')) {
+            newHeight -= localDy;
+            posOffsetY += localDy / 2;
+        }
+
+        gizmo.size.x = Math.max(0, newWidth);
+        gizmo.size.y = Math.max(0, newHeight);
+
+        // Adjust position to keep the gizmo centered
+        const finalPosOffsetX = posOffsetX * cos + posOffsetY * sin;
+        const finalPosOffsetY = -posOffsetX * sin + posOffsetY * cos;
+
+        transform.position = {
+            x: initialMateriaPos.x + finalPosOffsetX,
+            y: initialMateriaPos.y + finalPosOffsetY
+        };
+
+        return;
+    }
+
+
     if (isDrawingRect) {
         // The visual feedback for the rectangle will be handled in the render loop.
         // We just need to trigger redraws, which the loop does automatically.
@@ -97,6 +178,11 @@ function handleMouseMove(e) {
 }
 
 function handleMouseUp(e) {
+    if (isResizingGizmo) {
+        isResizingGizmo = false;
+        resizingGizmoInfo = null;
+    }
+
     if (isDrawingRect) {
         const endWorldPos = screenToWorld(e.clientX, e.clientY);
         fillTileRect(endWorldPos);
@@ -259,6 +345,49 @@ export function drawOverlay() {
     const paletteTool = TilePaletteWindow.getActiveTool();
     const tileTools = ['tile-brush', 'tile-eraser', 'tile-rect-fill'];
 
+    // --- Draw Gizmos ---
+    const allMaterias = SceneManager.currentScene.getAllMaterias();
+    const selectedMateria = getSelectedMateria();
+
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
+
+        const gizmo = materia.getComponent(Components.Gizmo);
+        if (!gizmo) continue;
+
+        // Determine if the gizmo should be drawn
+        const isSelected = (materia === selectedMateria);
+        if (isSelected || gizmo.alwaysVisibleInEditor) {
+            const transform = materia.getComponent(Components.Transform);
+            if (!transform) continue;
+
+            const worldPos = transform.position;
+            const worldRot = transform.rotation;
+            const width = gizmo.size.x;
+            const height = gizmo.size.y;
+
+            ctx.save();
+            ctx.translate(worldPos.x, worldPos.y);
+            ctx.rotate(worldRot * Math.PI / 180);
+
+            ctx.strokeStyle = isSelected ? 'yellow' : gizmo.color;
+            ctx.lineWidth = (isSelected ? 2 : 1) / renderer.camera.effectiveZoom;
+            ctx.strokeRect(-width / 2, -height / 2, width, height);
+
+            if (isSelected) {
+                const handleSize = 8 / renderer.camera.effectiveZoom;
+                ctx.fillStyle = 'yellow';
+                const handles = getResizeHandles(width, height, handleSize);
+                for (const handle in handles) {
+                    const pos = handles[handle];
+                    ctx.fillRect(pos.x - handleSize / 2, pos.y - handleSize / 2, handleSize, handleSize);
+                }
+            }
+
+            ctx.restore();
+        }
+    }
+
 
     // --- Draw Rectangle Selection Preview ---
     if (isDrawingRect && grid) {
@@ -313,4 +442,51 @@ export function drawOverlay() {
         ctx.stroke();
         ctx.restore();
     }
+}
+
+
+function getResizeHandles(width, height) {
+    const halfW = width / 2;
+    const halfH = height / 2;
+    return {
+        'top-left': { x: -halfW, y: -halfH },
+        'top-center': { x: 0, y: -halfH },
+        'top-right': { x: halfW, y: -halfH },
+        'middle-left': { x: -halfW, y: 0 },
+        'middle-right': { x: halfW, y: 0 },
+        'bottom-left': { x: -halfW, y: halfH },
+        'bottom-center': { x: 0, y: halfH },
+        'bottom-right': { x: halfW, y: halfH }
+    };
+}
+
+function getHandleAt(worldPos, materia) {
+    const gizmo = materia.getComponent(Components.Gizmo);
+    const transform = materia.getComponent(Components.Transform);
+    if (!gizmo || !transform) return null;
+
+    const handleSize = 8 / renderer.camera.effectiveZoom;
+    const handles = getResizeHandles(gizmo.size.x, gizmo.size.y);
+
+    for (const name in handles) {
+        const handleLocalPos = handles[name];
+
+        // Rotate handle position to world space
+        const rad = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const handleWorldX = transform.position.x + handleLocalPos.x * cos - handleLocalPos.y * sin;
+        const handleWorldY = transform.position.y + handleLocalPos.x * sin + handleLocalPos.y * cos;
+
+        if (
+            worldPos.x >= handleWorldX - handleSize / 2 &&
+            worldPos.x <= handleWorldX + handleSize / 2 &&
+            worldPos.y >= handleWorldY - handleSize / 2 &&
+            worldPos.y <= handleWorldY + handleSize / 2
+        ) {
+            return name;
+        }
+    }
+
+    return null;
 }

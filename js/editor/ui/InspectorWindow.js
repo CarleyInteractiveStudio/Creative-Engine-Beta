@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UICanvas, Components.UIImage],
+    'UI': [Components.UIPosition, Components.UICanvas, Components.UIImage],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -638,7 +638,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        UIPosition: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦', Gizmo: '🎨'
     };
 
@@ -707,8 +707,8 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Transform) {
             console.log('  - Is Transform component.');
-            if (selectedMateria.getComponent(Components.RectTransform)) {
-                console.log('  - RectTransform also exists, skipping render of Transform.');
+            if (selectedMateria.getComponent(Components.UIPosition)) {
+                console.log('  - UIPosition also exists, skipping render of Transform.');
                 return;
             }
             componentHTML = `
@@ -737,22 +737,22 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.RectTransform) {
-             console.log('  - Is RectTransform component.');
-             componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
+        } else if (ley instanceof Components.UIPosition) {
+             console.log('  - Is UIPosition component.');
+             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Position</h4></div>
             <div class="component-content">
-                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
-                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
-                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
-                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="x" value="${ley.x}"></div>
+                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="y" value="${ley.y}"></div>
+                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="width" value="${ley.width}"></div>
+                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="height" value="${ley.height}"></div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Background</label><input type="color" class="prop-input" data-component="UIImage" data-prop="backgroundColor" value="${ley.backgroundColor}"></div>
-                <div class="prop-row-multi"><label>Tint</label><input type="color" class="prop-input" data-component="UIImage" data-prop="tintColor" value="${ley.tintColor}"></div>
+                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi"><label>Opacity</label><input type="range" class="prop-input" data-component="UIImage" data-prop="opacity" min="0" max="1" step="0.01" value="${ley.opacity}"></div>
             </div>`;
         } else if (ley instanceof Components.UICanvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
@@ -1301,6 +1301,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Gizmo" data-prop="alwaysVisibleInEditor" ${ley.alwaysVisibleInEditor ? 'checked' : ''}>
                         <label>Always Visible</label>
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Gizmo" data-prop="visibleInGame" ${ley.visibleInGame ? 'checked' : ''}>
+                        <label>Visible In Game</label>
                     </div>
                 </div>
             </div>`;
@@ -1974,10 +1978,10 @@ export async function showAddComponentModal() {
                 selectedMateria.addComponent(newComponent);
 
                 if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UICanvas) {
-                    if (!selectedMateria.getComponent(Components.RectTransform)) {
+                    if (!selectedMateria.getComponent(Components.UIPosition)) {
                         const existingTransform = selectedMateria.getComponent(Components.Transform);
                         if (existingTransform) selectedMateria.removeComponent(Components.Transform);
-                        selectedMateria.addComponent(new Components.RectTransform(selectedMateria));
+                        selectedMateria.addComponent(new Components.UIPosition(selectedMateria));
                     }
                 }
                 dom.addComponentModal.classList.remove('is-open');
