@@ -107,6 +107,50 @@ function checkGizmoHit(canvasPos) {
     return null;
 }
 
+function checkGizmoComponentHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const gizmo = selectedMateria.getComponent(Components.Gizmo);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!gizmo || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Transform mouse to gizmo's local space
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+    const halfWidth = gizmo.size.x / 2;
+    const halfHeight = gizmo.size.y / 2;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: 0, y: halfHeight, name: 'gizmo-top' },
+        { x: 0, y: -halfHeight, name: 'gizmo-bottom' },
+        { x: halfWidth, y: 0, name: 'gizmo-right' },
+        { x: -halfWidth, y: 0, name: 'gizmo-left' },
+        { x: -halfWidth, y: halfHeight, name: 'gizmo-tl' },
+        { x: halfWidth, y: halfHeight, name: 'gizmo-tr' },
+        { x: -halfWidth, y: -halfHeight, name: 'gizmo-bl' },
+        { x: halfWidth, y: -halfHeight, name: 'gizmo-br' }
+    ];
+
+    for (const handle of handles) {
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
 function checkCameraGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
@@ -573,7 +617,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoComponentHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -699,6 +743,33 @@ export function initialize(dependencies) {
                                 capsuleCollider.size.x -= localDx;
                                 capsuleCollider.offset.x += localDx / 2;
                                 break;
+                        }
+                    }
+
+                    // --- Gizmo Component Logic ---
+                    const gizmo = dragState.materia.getComponent(Components.Gizmo);
+                    if (gizmo && dragState.handle.startsWith('gizmo-')) {
+                        const rad = -transform.rotation * Math.PI / 180;
+                        const cos = Math.cos(rad);
+                        const sin = Math.sin(rad);
+                        const localDx = dx * cos - dy * sin;
+                        const localDy = dx * sin + dy * cos;
+
+                        if (dragState.handle.includes('top')) {
+                            gizmo.size.y -= localDy;
+                            if (gizmo.size.y < 0) gizmo.size.y = 0;
+                        }
+                        if (dragState.handle.includes('bottom')) {
+                            gizmo.size.y += localDy;
+                            if (gizmo.size.y < 0) gizmo.size.y = 0;
+                        }
+                        if (dragState.handle.includes('right')) {
+                            gizmo.size.x += localDx;
+                            if (gizmo.size.x < 0) gizmo.size.x = 0;
+                        }
+                        if (dragState.handle.includes('left')) {
+                            gizmo.size.x -= localDx;
+                            if (gizmo.size.x < 0) gizmo.size.x = 0;
                         }
                     }
 
@@ -1064,6 +1135,69 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
+
+    // Draw Gizmo Component gizmos
+    drawGizmoComponent(getSelectedMateria());
+
+    // Draw gizmos that should always be visible
+    drawAlwaysVisibleGizmos();
+}
+
+function drawAlwaysVisibleGizmos() {
+    if (!SceneManager || !renderer) return;
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
+
+    const allMaterias = scene.getAllMaterias();
+    const selectedMateria = getSelectedMateria();
+
+    for (const materia of allMaterias) {
+        if (selectedMateria && materia.id === selectedMateria.id) continue; // Don't draw the selected one again
+
+        const gizmo = materia.getComponent(Components.Gizmo);
+        if (gizmo && gizmo.alwaysVisibleInEditor) {
+            drawGizmoComponent(materia);
+        }
+    }
+}
+
+function drawGizmoComponent(materia) {
+    if (!materia) return;
+
+    const gizmo = materia.getComponent(Components.Gizmo);
+    const transform = materia.getComponent(Components.Transform);
+    if (!gizmo || !transform) return;
+
+    const { ctx, camera } = renderer;
+    if (!ctx || !camera) return;
+
+    const halfWidth = gizmo.size.x / 2;
+    const halfHeight = gizmo.size.y / 2;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    // Draw the main rectangle outline
+    ctx.strokeStyle = gizmo.color;
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([]);
+    ctx.strokeRect(-halfWidth, -halfHeight, gizmo.size.x, gizmo.size.y);
+
+    // Draw resize handles
+    const handleSize = 8 / camera.effectiveZoom;
+    const halfHandle = handleSize / 2;
+    ctx.fillStyle = gizmo.color;
+
+    const handles = [
+        { x: 0, y: halfHeight }, { x: 0, y: -halfHeight },
+        { x: halfWidth, y: 0 }, { x: -halfWidth, y: 0 },
+        { x: -halfWidth, y: halfHeight }, { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: -halfHeight }, { x: halfWidth, y: -halfHeight }
+    ];
+    handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {

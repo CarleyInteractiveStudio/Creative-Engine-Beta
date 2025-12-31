@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.Canvas],
+    'UI': [Components.RectTransform, Components.UICanvas, Components.UIImage],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -314,9 +314,12 @@ function handleInspectorClick(e) {
                     const componentName = dropper.dataset.component;
                     const component = selectedMateria.getComponent(Components[componentName]);
                     if (component) {
-                        // Special handling for SpriteRenderer
+                        // Special handling for different components that accept assets
                         if (component instanceof Components.SpriteRenderer) {
                             await component.setSourcePath(data.path, projectsDirHandle);
+                        } else if (component instanceof Components.UIImage) {
+                            // NEW: Use the async method to load the sprite
+                            await component.loadSprite(projectsDirHandle);
                         } else {
                             const propName = dropper.dataset.prop;
                             component[propName] = data.path;
@@ -750,28 +753,20 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
-        } else if (ley instanceof Components.Canvas) {
+        } else if (ley instanceof Components.UICanvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
             componentHTML = `
                 <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
-                        <select class="prop-input inspector-re-render" data-component="Canvas" data-prop="renderMode">
-                            <option value="Screen Space" ${!isWorldSpace ? 'selected' : ''}>Screen Space</option>
-                            <option value="World Space" ${isWorldSpace ? 'selected' : ''}>World Space</option>
+                        <select class="prop-input inspector-re-render" data-component="UICanvas" data-prop="renderMode">
+                            <option value="ScreenSpaceOverlay" ${!isWorldSpace ? 'selected' : ''}>Screen Space</option>
+                            <option value="WorldSpace" ${isWorldSpace ? 'selected' : ''}>World Space</option>
                         </select>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
-                        </div>
-                    </div>
                 </div>`;
-        }
-        else if (ley instanceof Components.SpriteRenderer) {
+        } else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';
             // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
             if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {

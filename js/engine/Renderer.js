@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, UICanvas, SpriteRenderer, TilemapRenderer, TextureRender, UIImage, RectTransform } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -329,13 +329,13 @@ export class Renderer {
     renderUI(scene) {
         if (!scene) return;
 
-        const canvases = scene.getAllMaterias().filter(m => m.getComponent(Canvas));
+        const canvases = scene.getAllMaterias().filter(m => m.getComponent(UICanvas));
 
         for (const canvasMateria of canvases) {
             if (!canvasMateria.isActive) continue;
 
-            const canvas = canvasMateria.getComponent(Canvas);
-            if (canvas.renderMode === 'Screen Space') {
+            const canvas = canvasMateria.getComponent(UICanvas);
+            if (canvas.renderMode === 'ScreenSpaceOverlay') {
                 this.drawScreenSpaceUI(canvasMateria);
             } else { // 'World Space'
                 // World Space UI elements are just regular objects. The standard `updateScene`
@@ -354,11 +354,14 @@ export class Renderer {
             const transform = child.getComponent(Transform);
             const spriteRenderer = child.getComponent(SpriteRenderer);
             const textureRender = child.getComponent(TextureRender);
+            const imageUI = child.getComponent(UIImage);
 
             if (transform && spriteRenderer && spriteRenderer.sprite) {
                 this.drawSpriteInRect(spriteRenderer, transform);
             } else if (transform && textureRender) {
                 this.drawTextureInRect(textureRender, transform);
+            } else if (transform && imageUI) {
+                this.drawImageUI(imageUI, transform);
             }
         }
 
@@ -408,6 +411,53 @@ export class Renderer {
             this.ctx.fill();
         }
         // Add other shapes if needed
+
+        this.ctx.restore();
+    }
+
+    drawImageUI(imageUI, transform) {
+        // This function will render the ImageUI component in the game view.
+        // It will prioritize drawing the sprite if available, otherwise the background color.
+        const pos = { x: transform.x, y: transform.y };
+        const scale = transform.localScale;
+
+        let width, height;
+        const gizmo = imageUI.materia.getComponent(Gizmo);
+        const rectTransform = imageUI.materia.getComponent(RectTransform);
+
+        if (gizmo) {
+            width = gizmo.size.x;
+            height = gizmo.size.y;
+        } else if (rectTransform) {
+            width = rectTransform.width * scale.x;
+            height = rectTransform.height * scale.y;
+        } else {
+            // Fallback if no size component is present
+            width = 100 * scale.x;
+            height = 100 * scale.y;
+        }
+
+        this.ctx.save();
+        this.ctx.translate(pos.x, pos.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+
+        // Draw sprite first, if available
+        if (imageUI.sprite && imageUI.sprite.complete) {
+            this.ctx.drawImage(imageUI.sprite, -width / 2, -height / 2, width, height);
+
+            // Apply tint color only if there's a sprite
+            if (imageUI.tintColor !== '#FFFFFF') { // Use uppercase for consistent comparison
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.fillStyle = imageUI.tintColor;
+                this.ctx.fillRect(-width / 2, -height / 2, width, height);
+                // Reset composite operation for subsequent draws in the same frame
+                this.ctx.globalCompositeOperation = 'source-over';
+            }
+        } else {
+            // If there's no sprite, draw the background color
+            this.ctx.fillStyle = imageUI.backgroundColor;
+            this.ctx.fillRect(-width / 2, -height / 2, width, height);
+        }
 
         this.ctx.restore();
     }

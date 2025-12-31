@@ -360,6 +360,18 @@ function createDefaultScene() {
 }
 
 export async function initialize(projectsDirHandle) {
+    // --- Robustness for Test Environment ---
+    // If no file system handle is available (e.g., in a test environment),
+    // create and return a default in-memory scene to allow the editor to load.
+    if (!projectsDirHandle) {
+        console.warn("SceneManager: No projectsDirHandle. Creando escena por defecto en memoria para el modo de prueba.");
+        const scene = createDefaultScene();
+        return {
+            scene: scene,
+            fileHandle: null // No file handle exists for an in-memory scene
+        };
+    }
+
     const defaultSceneName = 'default.ceScene';
     const projectName = new URLSearchParams(window.location.search).get('project');
     const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);

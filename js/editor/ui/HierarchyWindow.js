@@ -203,7 +203,24 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-canvas':
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
-            newMateria.addComponent(new Components.Canvas(newMateria));
+            newMateria.addComponent(new Components.UICanvas(newMateria));
+            break;
+        case 'create-image':
+            {
+                let parentCanvas = selectedMateria;
+                while (parentCanvas && !parentCanvas.getComponent(Components.UICanvas)) {
+                    parentCanvas = parentCanvas.parent;
+                }
+
+                if (!parentCanvas) {
+                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+                    parentCanvas.addComponent(new Components.UICanvas(parentCanvas));
+                }
+
+                newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
+                newMateria.addComponent(new Components.RectTransform(newMateria));
+                newMateria.addComponent(new Components.UIImage(newMateria));
+            }
             break;
 
         case 'rename':

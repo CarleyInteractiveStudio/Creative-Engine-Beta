@@ -1122,22 +1122,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isGameRunning && !isGamePaused) {
             runGameLoop(); // This handles the logic update
             // When game is running, update both views
-            if (renderer) {
-                updateScene(renderer, false); // Editor view with gizmos
-                renderer.renderUI(SceneManager.currentScene);
-            }
-            if (gameRenderer) {
-                updateScene(gameRenderer, true); // Game view clean
-                gameRenderer.renderUI(SceneManager.currentScene);
-            }
+            if (renderer) updateScene(renderer, false); // Editor view with gizmos
+            if (gameRenderer) updateScene(gameRenderer, true); // Game view clean
         } else {
             // When paused, only update the currently active view
             if (activeView === 'scene-content' && renderer) {
                 updateScene(renderer, false);
-                renderer.renderUI(SceneManager.currentScene);
             } else if (activeView === 'game-content' && gameRenderer) {
                 updateScene(gameRenderer, true);
-                gameRenderer.renderUI(SceneManager.currentScene);
             }
         }
 
@@ -2108,8 +2100,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
         window.MateriaFactory = MateriaFactory;
-        window.Components = Components;
+        // --- For Playwright/Test environment ---
         window.updateHierarchy = updateHierarchy;
+        window.selectMateria = selectMateria;
+        window.Components = Components;
+        window.projectsDirHandle = projectsDirHandle;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
@@ -2440,22 +2435,20 @@ public star() {
             gameRenderer = new Renderer(dom.gameCanvas);
 
             updateLoadingProgress(30, "Cargando escena principal...");
-            // Only initialize scene from file system if handle is available
-            if (projectsDirHandle) {
-                const sceneData = await SceneManager.initialize(projectsDirHandle);
-                if (sceneData) {
-                    SceneManager.setCurrentScene(sceneData.scene);
+            // SceneManager.initialize now robustly handles both cases (with or without projectsDirHandle)
+            const sceneData = await SceneManager.initialize(projectsDirHandle);
+
+            if (sceneData && sceneData.scene) {
+                SceneManager.setCurrentScene(sceneData.scene);
+                if (sceneData.fileHandle) {
                     SceneManager.setCurrentSceneFileHandle(sceneData.fileHandle);
                     dom.currentSceneName.textContent = sceneData.fileHandle.name.replace('.ceScene', '');
-                    SceneManager.setSceneDirty(false);
                 } else {
-                    throw new Error("¡Fallo crítico! No se pudo cargar o crear una escena.");
+                    dom.currentSceneName.textContent = 'Escena de Prueba'; // For in-memory scene
                 }
-            } else {
-                // In test/no-handle mode, create a default empty scene
-                SceneManager.setCurrentScene(new SceneManager.Scene());
-                dom.currentSceneName.textContent = 'Escena de Prueba';
                 SceneManager.setSceneDirty(false);
+            } else {
+                throw new Error("¡Fallo crítico! No se pudo cargar o crear una escena.");
             }
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
