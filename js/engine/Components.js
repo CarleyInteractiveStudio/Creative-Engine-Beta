@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'UICanvas': 'lienzoUI',
     'UIImage': 'imagenUI',
-    'UIPosition': 'transformacionRect',
+    'RectTransform': 'transformacionRect',
 };
 
 
@@ -755,7 +755,6 @@ export class Animator extends Leyes {
     }
 }
 
-
 export class UIPosition extends Leyes {
     constructor(materia) {
         super(materia);
@@ -823,8 +822,8 @@ export class UIImage extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.spritePath = ''; // The direct path to a .png, .jpg, or a .ceSprite file
-        this.color = '#ffffff';
-        this.opacity = 1;
+        this.backgroundColor = '#ffffff';
+        this.tintColor = '#ffffff';
         this.imageType = 'Simple'; // Simple, Sliced, Tiled, Filled
         this.preserveAspect = false;
 
@@ -870,8 +869,8 @@ export class UIImage extends Leyes {
     clone() {
         const newImage = new UIImage(null);
         newImage.spritePath = this.spritePath;
-        newImage.color = this.color;
-        newImage.opacity = this.opacity;
+        newImage.backgroundColor = this.backgroundColor;
+        newImage.tintColor = this.tintColor;
         newImage.imageType = this.imageType;
         newImage.preserveAspect = this.preserveAspect;
         // The rest is runtime data and will be reloaded
@@ -1141,7 +1140,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('UIPosition', UIPosition);
+registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
 registerComponent('Gizmo', Gizmo);

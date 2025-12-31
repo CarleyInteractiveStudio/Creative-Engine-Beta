@@ -203,7 +203,12 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-canvas':
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+            newMateria.removeComponent(Components.Transform); // Remove default Transform
+            newMateria.addComponent(new Components.UIPosition(newMateria)); // Add UIPosition
             newMateria.addComponent(new Components.UICanvas(newMateria));
+            const gizmo = new Components.Gizmo(newMateria);
+            gizmo.alwaysVisibleInEditor = true;
+            newMateria.addComponent(gizmo);
             break;
         case 'create-image':
             {
@@ -214,10 +219,14 @@ export function handleContextMenuAction(action) {
 
                 if (!parentCanvas) {
                     parentCanvas = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+                    parentCanvas.removeComponent(Components.Transform);
+                    parentCanvas.addComponent(new Components.RectTransform(parentCanvas));
                     parentCanvas.addComponent(new Components.UICanvas(parentCanvas));
                 }
 
                 newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
+                newMateria.removeComponent(Components.Transform); // Remove default Transform
+                newMateria.addComponent(new Components.RectTransform(newMateria)); // Add RectTransform
                 newMateria.addComponent(new Components.UIImage(newMateria));
                 newMateria.addComponent(new Components.Gizmo(newMateria));
             }

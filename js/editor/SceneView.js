@@ -1136,14 +1136,12 @@ export function drawOverlay() {
     // Draw Canvas gizmos
     drawCanvasGizmos(getSelectedMateria());
 
-    // Draw Gizmo Component gizmos
-    drawGizmoComponent(getSelectedMateria());
-
-    // Draw gizmos that should always be visible
-    drawAlwaysVisibleGizmos();
+    // NEW: Centralized function to draw all relevant Gizmo components
+    drawAllGizmoComponents();
 }
 
-function drawAlwaysVisibleGizmos() {
+
+function drawAllGizmoComponents() {
     if (!SceneManager || !renderer) return;
     const scene = SceneManager.currentScene;
     if (!scene) return;
@@ -1152,11 +1150,12 @@ function drawAlwaysVisibleGizmos() {
     const selectedMateria = getSelectedMateria();
 
     for (const materia of allMaterias) {
-        if (selectedMateria && materia.id === selectedMateria.id) continue; // Don't draw selected
-
         const gizmo = materia.getComponent(Components.Gizmo);
-        if (gizmo && gizmo.alwaysVisibleInEditor) {
-            drawGizmoComponent(materia);
+        if (gizmo) {
+            const isSelected = selectedMateria && materia.id === selectedMateria.id;
+            if (isSelected || gizmo.alwaysVisibleInEditor) {
+                drawGizmoComponent(materia, isSelected);
+            }
         }
     }
 }
