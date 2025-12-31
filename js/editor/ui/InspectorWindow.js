@@ -639,7 +639,7 @@ async function updateInspectorForMateria(selectedMateria) {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦'
+        Grid: '▦', Gizmo: '🎨'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -751,7 +751,8 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi"><label>Background</label><input type="color" class="prop-input" data-component="UIImage" data-prop="backgroundColor" value="${ley.backgroundColor}"></div>
+                <div class="prop-row-multi"><label>Tint</label><input type="color" class="prop-input" data-component="UIImage" data-prop="tintColor" value="${ley.tintColor}"></div>
             </div>`;
         } else if (ley instanceof Components.UICanvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
@@ -1279,6 +1280,30 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
             `;
+        } else if (ley instanceof Components.Gizmo) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>Gizmo</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Gizmo" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="1" data-component="Gizmo" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Gizmo" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Gizmo" data-prop="alwaysVisibleInEditor" ${ley.alwaysVisibleInEditor ? 'checked' : ''}>
+                        <label>Always Visible</label>
+                    </div>
+                </div>
+            </div>`;
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">

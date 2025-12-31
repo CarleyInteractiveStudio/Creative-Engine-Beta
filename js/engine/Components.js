@@ -821,25 +821,77 @@ export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
-        this.source = '';
-        this.color = '#ffffff';
+        this.spritePath = ''; // The direct path to a .png, .jpg, or a .ceSprite file
+        this.backgroundColor = '#ffffff';
+        this.tintColor = '#ffffff';
+        this.imageType = 'Simple'; // Simple, Sliced, Tiled, Filled
+        this.preserveAspect = false;
+
+        // Internal state not saved in scene
+        this.spriteSheet = null;
+        this.spriteName = null;
     }
 
     async loadSprite(projectsDirHandle) {
-        if (this.source) {
-            const url = await getURLForAssetPath(this.source, projectsDirHandle);
-            if (url) {
-                this.sprite.src = url;
+        if (!this.spritePath) {
+            this.sprite.src = '';
+            return;
+        }
+
+        if (this.spritePath.endsWith('.ceSprite')) {
+            try {
+                const url = await getURLForAssetPath(this.spritePath, projectsDirHandle);
+                if (!url) throw new Error('Could not get URL for .ceSprite asset');
+
+                const response = await fetch(url);
+                this.spriteSheet = await response.json();
+
+                // Load the actual image from the spritesheet data
+                const sourceImagePath = `Assets/${this.spriteSheet.sourceImage}`;
+                const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
+                if (imageUrl) this.sprite.src = imageUrl;
+
+                // Default to the first sprite in the sheet
+                this.spriteName = Object.keys(this.spriteSheet.sprites)[0];
+
+            } catch (error) {
+                console.error(`Failed to load sprite sheet at '${this.spritePath}':`, error);
             }
         } else {
-            this.sprite.src = '';
+            // It's a direct image path
+            this.spriteSheet = null;
+            this.spriteName = null;
+            const imageUrl = await getURLForAssetPath(this.spritePath, projectsDirHandle);
+            if (imageUrl) this.sprite.src = imageUrl;
         }
     }
+
     clone() {
         const newImage = new UIImage(null);
-        newImage.source = this.source;
-        newImage.color = this.color;
+        newImage.spritePath = this.spritePath;
+        newImage.backgroundColor = this.backgroundColor;
+        newImage.tintColor = this.tintColor;
+        newImage.imageType = this.imageType;
+        newImage.preserveAspect = this.preserveAspect;
+        // The rest is runtime data and will be reloaded
         return newImage;
+    }
+}
+
+export class Gizmo extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.size = { x: 100, y: 100 };
+        this.color = '#00ff00';
+        this.alwaysVisibleInEditor = false;
+    }
+
+    clone() {
+        const newGizmo = new Gizmo(null);
+        newGizmo.size = { ...this.size };
+        newGizmo.color = this.color;
+        newGizmo.alwaysVisibleInEditor = this.alwaysVisibleInEditor;
+        return newGizmo;
     }
 }
 
@@ -1089,6 +1141,7 @@ registerComponent('AnimatorController', AnimatorController);
 registerComponent('RectTransform', RectTransform);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
+registerComponent('Gizmo', Gizmo);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);

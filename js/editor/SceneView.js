@@ -1134,7 +1134,7 @@ export function drawOverlay() {
     drawTilemapOutline();
 
     // Draw Canvas gizmos
-    drawCanvasGizmos();
+    drawCanvasGizmos(getSelectedMateria());
 
     // Draw Gizmo Component gizmos
     drawGizmoComponent(getSelectedMateria());
@@ -1152,7 +1152,7 @@ function drawAlwaysVisibleGizmos() {
     const selectedMateria = getSelectedMateria();
 
     for (const materia of allMaterias) {
-        if (selectedMateria && materia.id === selectedMateria.id) continue; // Don't draw the selected one again
+        if (selectedMateria && materia.id === selectedMateria.id) continue; // Don't draw selected
 
         const gizmo = materia.getComponent(Components.Gizmo);
         if (gizmo && gizmo.alwaysVisibleInEditor) {
@@ -1175,27 +1175,13 @@ function drawGizmoComponent(materia) {
     const halfHeight = gizmo.size.y / 2;
 
     ctx.save();
-    ctx.translate(transform.x, transform.y);
+    ctx.translate(transform.position.x, transform.position.y);
     ctx.rotate(transform.rotation * Math.PI / 180);
 
-    // Draw the main rectangle outline
     ctx.strokeStyle = gizmo.color;
     ctx.lineWidth = 2 / camera.effectiveZoom;
     ctx.setLineDash([]);
     ctx.strokeRect(-halfWidth, -halfHeight, gizmo.size.x, gizmo.size.y);
-
-    // Draw resize handles
-    const handleSize = 8 / camera.effectiveZoom;
-    const halfHandle = handleSize / 2;
-    ctx.fillStyle = gizmo.color;
-
-    const handles = [
-        { x: 0, y: halfHeight }, { x: 0, y: -halfHeight },
-        { x: halfWidth, y: 0 }, { x: -halfWidth, y: 0 },
-        { x: -halfWidth, y: halfHeight }, { x: halfWidth, y: halfHeight },
-        { x: -halfWidth, y: -halfHeight }, { x: halfWidth, y: -halfHeight }
-    ];
-    handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
     ctx.restore();
 }
@@ -1585,12 +1571,11 @@ function paintTile(event) {
     VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
 }
 
-function drawCanvasGizmos() {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+function drawCanvasGizmos(materia) {
+    if (!materia) return;
 
-    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const canvasComponent = materia.getComponent(Components.UICanvas);
+    const transform = materia.getComponent(Components.Transform);
     if (!canvasComponent || !transform) return;
 
     const { ctx, camera } = renderer;

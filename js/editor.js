@@ -1428,37 +1428,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Centralized context menu click handler
         document.body.addEventListener('mousedown', (e) => {
             const target = e.target;
-            if (e.button !== 0) return; // Only act on left clicks
-
-            const menuItem = target.closest('[data-action]');
             const contextMenu = target.closest('.context-menu');
 
-            if (menuItem && contextMenu) {
-                e.stopPropagation(); // Stop propagation to prevent other listeners (like global deselection)
-                const action = menuItem.dataset.action;
-
-                if (menuItem.classList.contains('disabled')) {
-                    return; // Do nothing if the item is disabled
-                }
-
-                console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
-                try {
-                    if (contextMenu.id === 'context-menu') {
-                        handleAssetContextMenuAction(action);
-                    } else if (contextMenu.id === 'hierarchy-context-menu') {
-                        handleHierarchyContextMenuAction(action);
-                    } else {
-                         console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
-                    }
-                } catch (error) {
-                    console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
-                } finally {
-                    hideContextMenus(); // Always hide the menu after an action
-                }
-
-            } else if (!contextMenu) {
-                // If the click is outside any context menu, hide them all.
+            // If the click is outside any context menu, hide them all.
+            if (!contextMenu) {
                 hideContextMenus();
+                return; // Exit early
+            }
+
+            // If we are inside a context menu, check for an action.
+            if (e.button === 0) { // Only act on left clicks for actions
+                const menuItem = target.closest('[data-action]');
+                if (menuItem) {
+                    e.stopPropagation(); // Prevent other listeners
+                    const action = menuItem.dataset.action;
+
+                    if (menuItem.classList.contains('disabled')) return;
+
+                    console.log(`[Director] Acción de menú contextual detectada: '${action}'`);
+                    try {
+                        if (contextMenu.id === 'context-menu') {
+                            handleAssetContextMenuAction(action);
+                        } else if (contextMenu.id === 'hierarchy-context-menu') {
+                            handleHierarchyContextMenuAction(action);
+                        } else {
+                            console.warn(`[Director] No se encontró un manejador para el menú contextual con id '${contextMenu.id}'`);
+                        }
+                    } catch (error) {
+                        console.error(`[Director] ¡ERROR CRÍTICO! La acción '${action}' falló con una excepción:`, error);
+                    } finally {
+                        hideContextMenus(); // Always hide after action
+                    }
+                }
             }
         });
 

@@ -218,8 +218,8 @@ export function handleContextMenuAction(action) {
                 }
 
                 newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
-                newMateria.addComponent(new Components.RectTransform(newMateria));
                 newMateria.addComponent(new Components.UIImage(newMateria));
+                newMateria.addComponent(new Components.Gizmo(newMateria));
             }
             break;
 
