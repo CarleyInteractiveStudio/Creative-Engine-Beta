@@ -2098,14 +2098,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
-        // Expose SceneManager globally for modules that need it (like InspectorWindow)
+        // Expose modules globally for debugging and for Playwright tests
         window.SceneManager = SceneManager;
         window.MateriaFactory = MateriaFactory;
-        // --- For Playwright/Test environment ---
-        window.updateHierarchy = updateHierarchy;
-        window.selectMateria = selectMateria;
         window.Components = Components;
-        window.projectsDirHandle = projectsDirHandle;
+        window.updateHierarchy = updateHierarchy;
+        window.Materia = Materia;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---

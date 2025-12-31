@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'UICanvas': 'lienzoUI',
     'UIImage': 'imagenUI',
-    'RectTransform': 'transformacionRect',
+    'UIPosition': 'posicionUI',
 };
 
 
@@ -821,13 +821,13 @@ export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
-        this.spritePath = ''; // The direct path to a .png, .jpg, or a .ceSprite file
-        this.backgroundColor = '#ffffff';
-        this.tintColor = '#ffffff';
-        this.imageType = 'Simple'; // Simple, Sliced, Tiled, Filled
+        this.spritePath = '';
+        this.color = '#ffffff'; // Unified color for background and tint
+        this.opacity = 1.0; // Opacity for the entire element
+        this.imageType = 'Simple';
         this.preserveAspect = false;
 
-        // Internal state not saved in scene
+        // Internal state
         this.spriteSheet = null;
         this.spriteName = null;
     }
@@ -869,11 +869,10 @@ export class UIImage extends Leyes {
     clone() {
         const newImage = new UIImage(null);
         newImage.spritePath = this.spritePath;
-        newImage.backgroundColor = this.backgroundColor;
-        newImage.tintColor = this.tintColor;
+        newImage.color = this.color;
+        newImage.opacity = this.opacity;
         newImage.imageType = this.imageType;
         newImage.preserveAspect = this.preserveAspect;
-        // The rest is runtime data and will be reloaded
         return newImage;
     }
 }
@@ -884,7 +883,7 @@ export class Gizmo extends Leyes {
         this.size = { x: 100, y: 100 };
         this.color = '#00ff00';
         this.alwaysVisibleInEditor = false;
-        this.visibleInGame = false;
+        this.visibleInGame = false; // New property
     }
 
     clone() {
@@ -892,7 +891,7 @@ export class Gizmo extends Leyes {
         newGizmo.size = { ...this.size };
         newGizmo.color = this.color;
         newGizmo.alwaysVisibleInEditor = this.alwaysVisibleInEditor;
-        newGizmo.visibleInGame = this.visibleInGame;
+        newGizmo.visibleInGame = this.visibleInGame; // Clone new property
         return newGizmo;
     }
 }

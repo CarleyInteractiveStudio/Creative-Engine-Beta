@@ -346,26 +346,23 @@ export class Renderer {
 
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI(); // Resets transform for screen space
+        const canvasTransform = canvasMateria.getComponent(Transform);
+        if (!canvasTransform) return;
 
         // The children are directly on the Materia object
         for (const child of canvasMateria.children) {
             if (!child.isActive) continue;
 
-            const transform = child.getComponent(Transform);
-            const spriteRenderer = child.getComponent(SpriteRenderer);
-            const textureRender = child.getComponent(TextureRender);
+            // Pass the canvas transform, not the child's non-existent one
             const imageUI = child.getComponent(UIImage);
             const gizmo = child.getComponent(Components.Gizmo);
 
-            if (transform && spriteRenderer && spriteRenderer.sprite) {
-                this.drawSpriteInRect(spriteRenderer, transform);
-            } else if (transform && textureRender) {
-                this.drawTextureInRect(textureRender, transform);
-            } else if (transform && imageUI) {
-                this.drawImageUI(imageUI, transform);
+            if (imageUI) {
+                this.drawImageUI(imageUI, canvasTransform);
             }
              if (gizmo && gizmo.visibleInGame) {
-                this.drawGizmo(gizmo, transform);
+                // Gizmo needs its own position, but relative to canvas
+                this.drawGizmo(gizmo, canvasTransform);
             }
         }
 
@@ -419,51 +416,78 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawImageUI(imageUI, transform) {
-        // This function will render the ImageUI component in the game view.
-        // It will prioritize drawing the sprite if available, otherwise the background color.
-        const pos = { x: transform.x, y: transform.y };
-        const scale = transform.localScale;
+    drawImageUI(imageUI, canvasTransform) {
+        const uiPosition = imageUI.materia.getComponent(Components.UIPosition);
+        if (!uiPosition) return;
+
+        // Final position is canvas center + UI element's local position
+        const finalX = canvasTransform.x + uiPosition.x;
+        const finalY = canvasTransform.y + uiPosition.y;
 
         let width, height;
-        const gizmo = imageUI.materia.getComponent(Gizmo);
-        const rectTransform = imageUI.materia.getComponent(RectTransform);
+        let gizmo = imageUI.materia.getComponent(Components.Gizmo);
+
+        // Traverse parents to find a Gizmo if the current Materia doesn't have one
+        if (!gizmo) {
+            let parent = imageUI.materia.parent;
+            while (parent && !gizmo) {
+                if (parent.id === canvasTransform.materia.id) break; // Stop at the canvas
+                gizmo = parent.getComponent(Components.Gizmo);
+                parent = parent.parent;
+            }
+        }
 
         if (gizmo) {
             width = gizmo.size.x;
             height = gizmo.size.y;
-        } else if (rectTransform) {
-            width = rectTransform.width * scale.x;
-            height = rectTransform.height * scale.y;
         } else {
-            // Fallback if no size component is present
-            width = 100 * scale.x;
-            height = 100 * scale.y;
+            // Fallback to UIPosition's own size if no Gizmo is in the hierarchy
+            width = uiPosition.width;
+            height = uiPosition.height;
         }
 
         this.ctx.save();
-        this.ctx.translate(pos.x, pos.y);
-        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.globalAlpha = imageUI.opacity;
+        // The canvas transform (rotation) is applied first
+        this.ctx.translate(finalX, finalY);
+        this.ctx.rotate(canvasTransform.rotation * Math.PI / 180);
 
-        // Draw sprite first, if available
-        if (imageUI.sprite && imageUI.sprite.complete) {
+        // If there's no sprite, draw the background color.
+        if (!imageUI.sprite || !imageUI.sprite.complete || imageUI.sprite.naturalWidth === 0) {
+            this.ctx.fillStyle = imageUI.color;
+            this.ctx.fillRect(-width / 2, -height / 2, width, height);
+        } else {
+            // If there is a sprite, draw it first.
             this.ctx.drawImage(imageUI.sprite, -width / 2, -height / 2, width, height);
 
-            // Apply tint color only if there's a sprite
-            if (imageUI.tintColor !== '#FFFFFF') { // Use uppercase for consistent comparison
+            // Then, if the color is not white, apply it as a tint.
+            if (imageUI.color !== '#ffffff') {
                 this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.fillStyle = imageUI.tintColor;
+                this.ctx.fillStyle = imageUI.color;
                 this.ctx.fillRect(-width / 2, -height / 2, width, height);
-                // Reset composite operation for subsequent draws in the same frame
-                this.ctx.globalCompositeOperation = 'source-over';
             }
-        } else {
-            // If there's no sprite, draw the background color
-            this.ctx.fillStyle = imageUI.backgroundColor;
-            this.ctx.fillRect(-width / 2, -height / 2, width, height);
         }
 
         this.ctx.restore();
+    }
+
+    drawGizmo(gizmo, transform) {
+        const { ctx } = this;
+        if (!ctx || !transform) return;
+
+        const halfWidth = gizmo.size.x / 2;
+        const halfHeight = gizmo.size.y / 2;
+
+        ctx.save();
+        ctx.translate(transform.position.x, transform.position.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+
+        ctx.strokeStyle = gizmo.color;
+        ctx.lineWidth = 2; // Fixed line width for in-game view
+        ctx.setLineDash([]);
+        ctx.strokeRect(-halfWidth, -halfHeight, gizmo.size.x, gizmo.size.y);
+
+        ctx.restore();
     }
 }
 

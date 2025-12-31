@@ -112,17 +112,43 @@ function checkGizmoComponentHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const gizmo = selectedMateria.getComponent(Components.Gizmo);
+    if (!gizmo) return null;
+
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!gizmo || !transform) return null;
+    const uiPosition = selectedMateria.getComponent(Components.UIPosition);
+    if (!transform && !uiPosition) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    let worldX, worldY, worldRotation;
+
+    if (transform) {
+        worldX = transform.x;
+        worldY = transform.y;
+        worldRotation = transform.rotation;
+    } else {
+        let parent = selectedMateria.parent;
+        let canvasTransform = null;
+        while(parent) {
+            if (parent.getComponent(Components.UICanvas)) {
+                canvasTransform = parent.getComponent(Components.Transform);
+                break;
+            }
+            parent = parent.parent;
+        }
+        if (!canvasTransform) return null;
+        worldX = canvasTransform.x + uiPosition.x;
+        worldY = canvasTransform.y + uiPosition.y;
+        worldRotation = canvasTransform.rotation;
+    }
+
 
     // Transform mouse to gizmo's local space
-    const rad = -transform.rotation * Math.PI / 180;
+    const rad = -worldRotation * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+    const localMouseX = (worldMouse.x - worldX) * cos - (worldMouse.y - worldY) * sin;
+    const localMouseY = (worldMouse.x - worldX) * sin + (worldMouse.y - worldY) * cos;
+
 
     const halfWidth = gizmo.size.x / 2;
     const halfHeight = gizmo.size.y / 2;
@@ -746,31 +772,40 @@ export function initialize(dependencies) {
                         }
                     }
 
-                    // --- Gizmo Component Logic ---
+                    // --- Gizmo Component Logic (Handles both Transform and UIPosition) ---
                     const gizmo = dragState.materia.getComponent(Components.Gizmo);
+                    const uiPosition = dragState.materia.getComponent(Components.UIPosition);
+
                     if (gizmo && dragState.handle.startsWith('gizmo-')) {
-                        const rad = -transform.rotation * Math.PI / 180;
+                        let rotation = 0;
+                        if (transform) {
+                            rotation = transform.rotation;
+                        } else if (uiPosition) {
+                            // Find parent canvas for rotation
+                             let parent = dragState.materia.parent;
+                             while(parent) {
+                                if (parent.getComponent(Components.UICanvas)) {
+                                    const canvasTransform = parent.getComponent(Components.Transform);
+                                    if(canvasTransform) rotation = canvasTransform.rotation;
+                                    break;
+                                }
+                                parent = parent.parent;
+                            }
+                        }
+
+                        const rad = -rotation * Math.PI / 180;
                         const cos = Math.cos(rad);
                         const sin = Math.sin(rad);
                         const localDx = dx * cos - dy * sin;
                         const localDy = dx * sin + dy * cos;
 
-                        if (dragState.handle.includes('top')) {
-                            gizmo.size.y -= localDy;
-                            if (gizmo.size.y < 0) gizmo.size.y = 0;
-                        }
-                        if (dragState.handle.includes('bottom')) {
-                            gizmo.size.y += localDy;
-                            if (gizmo.size.y < 0) gizmo.size.y = 0;
-                        }
-                        if (dragState.handle.includes('right')) {
-                            gizmo.size.x += localDx;
-                            if (gizmo.size.x < 0) gizmo.size.x = 0;
-                        }
-                        if (dragState.handle.includes('left')) {
-                            gizmo.size.x -= localDx;
-                            if (gizmo.size.x < 0) gizmo.size.x = 0;
-                        }
+                         if (dragState.handle.includes('top')) gizmo.size.y -= localDy;
+                        if (dragState.handle.includes('bottom')) gizmo.size.y += localDy;
+                        if (dragState.handle.includes('right')) gizmo.size.x += localDx;
+                        if (dragState.handle.includes('left')) gizmo.size.x -= localDx;
+
+                        if (gizmo.size.x < 0) gizmo.size.x = 0;
+                        if (gizmo.size.y < 0) gizmo.size.y = 0;
                     }
 
 
@@ -1134,14 +1169,16 @@ export function drawOverlay() {
     drawTilemapOutline();
 
     // Draw Canvas gizmos
-    drawCanvasGizmos(getSelectedMateria());
+    drawAllCanvasGizmos();
 
-    // NEW: Centralized function to draw all relevant Gizmo components
-    drawAllGizmoComponents();
+    // Draw Gizmo Component gizmos for selected
+    drawGizmoComponent(getSelectedMateria());
+
+    // Draw gizmos that should always be visible
+    drawAlwaysVisibleGizmos();
 }
 
-
-function drawAllGizmoComponents() {
+function drawAlwaysVisibleGizmos() {
     if (!SceneManager || !renderer) return;
     const scene = SceneManager.currentScene;
     if (!scene) return;
@@ -1150,12 +1187,11 @@ function drawAllGizmoComponents() {
     const selectedMateria = getSelectedMateria();
 
     for (const materia of allMaterias) {
+        if (selectedMateria && materia.id === selectedMateria.id) continue; // Don't draw selected
+
         const gizmo = materia.getComponent(Components.Gizmo);
-        if (gizmo) {
-            const isSelected = selectedMateria && materia.id === selectedMateria.id;
-            if (isSelected || gizmo.alwaysVisibleInEditor) {
-                drawGizmoComponent(materia, isSelected);
-            }
+        if (gizmo && gizmo.alwaysVisibleInEditor) {
+            drawGizmoComponent(materia);
         }
     }
 }
@@ -1163,24 +1199,71 @@ function drawAllGizmoComponents() {
 function drawGizmoComponent(materia) {
     if (!materia) return;
 
+    // Do not draw the standard gizmo for UICanvas objects, as they have their own visual representation.
+    if (materia.getComponent(Components.UICanvas)) return;
+
     const gizmo = materia.getComponent(Components.Gizmo);
+    if (!gizmo) return;
+
     const transform = materia.getComponent(Components.Transform);
-    if (!gizmo || !transform) return;
+    const uiPosition = materia.getComponent(Components.UIPosition);
+
+    if (!transform && !uiPosition) return;
 
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
+
+    let worldX, worldY, worldRotation;
+
+    if (transform) {
+        worldX = transform.position.x;
+        worldY = transform.position.y;
+        worldRotation = transform.rotation;
+    } else { // It's a UI Element
+        let parent = materia.parent;
+        let canvasTransform = null;
+        while(parent) {
+            if (parent.getComponent(Components.UICanvas)) {
+                canvasTransform = parent.getComponent(Components.Transform);
+                break;
+            }
+            parent = parent.parent;
+        }
+
+        if (!canvasTransform) return; // UI element not under a canvas?
+
+        // For now, simple addition. Anchors and pivots will complicate this.
+        worldX = canvasTransform.position.x + uiPosition.x;
+        worldY = canvasTransform.position.y + uiPosition.y;
+        worldRotation = canvasTransform.rotation; // UI elements inherit rotation
+    }
+
 
     const halfWidth = gizmo.size.x / 2;
     const halfHeight = gizmo.size.y / 2;
 
     ctx.save();
-    ctx.translate(transform.position.x, transform.position.y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
+    ctx.translate(worldX, worldY);
+    ctx.rotate(worldRotation * Math.PI / 180);
 
-    ctx.strokeStyle = gizmo.color;
-    ctx.lineWidth = 2 / camera.effectiveZoom;
+    const isSelected = getSelectedMateria() && getSelectedMateria().id === materia.id;
+    ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : gizmo.color;
+    ctx.lineWidth = (isSelected ? 3 : 2) / camera.effectiveZoom;
     ctx.setLineDash([]);
     ctx.strokeRect(-halfWidth, -halfHeight, gizmo.size.x, gizmo.size.y);
+     if (isSelected) {
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+        const handleSize = 8 / renderer.camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        const handles = [
+            { x: 0, y: halfHeight}, { x: 0, y: -halfHeight},
+            { x: halfWidth, y: 0}, { x: -halfWidth, y: 0},
+            { x: -halfWidth, y: halfHeight}, { x: halfWidth, y: halfHeight},
+            { x: -halfWidth, y: -halfHeight}, { x: halfWidth, y: -halfHeight}
+        ];
+        handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
+    }
+
 
     ctx.restore();
 }
@@ -1570,29 +1653,43 @@ function paintTile(event) {
     VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
 }
 
-function drawCanvasGizmos(materia) {
-    if (!materia) return;
+function drawAllCanvasGizmos() {
+    if (!SceneManager || !renderer) return;
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
 
+    const allMaterias = scene.getAllMaterias();
+    for (const materia of allMaterias) {
+        if (materia.isActive && materia.getComponent(Components.UICanvas)) {
+            drawSingleCanvasGizmo(materia);
+        }
+    }
+}
+
+
+function drawSingleCanvasGizmo(materia) {
     const canvasComponent = materia.getComponent(Components.UICanvas);
     const transform = materia.getComponent(Components.Transform);
     if (!canvasComponent || !transform) return;
 
     const { ctx, camera } = renderer;
     const pos = transform.position;
+    const isSelected = getSelectedMateria() && getSelectedMateria().id === materia.id;
+
 
     ctx.save();
-    ctx.lineWidth = 2 / camera.effectiveZoom;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    // No setLineDash, to make the line solid
+    ctx.lineWidth = (isSelected ? 3 : 2) / camera.effectiveZoom;
+    ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.8)' : 'rgba(255, 255, 255, 0.5)';
+    ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+
 
     if (canvasComponent.renderMode === 'World Space') {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // Use the scene canvas for aspect ratio calculation, as it's always available
         const sceneCanvas = dom.sceneCanvas;
         const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400; // Arbitrary height for visualization in editor
+        const gizmoHeight = 400;
         const gizmoWidth = gizmoHeight * aspect;
         ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }

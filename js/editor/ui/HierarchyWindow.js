@@ -220,13 +220,13 @@ export function handleContextMenuAction(action) {
                 if (!parentCanvas) {
                     parentCanvas = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
                     parentCanvas.removeComponent(Components.Transform);
-                    parentCanvas.addComponent(new Components.RectTransform(parentCanvas));
+                    parentCanvas.addComponent(new Components.UIPosition(parentCanvas));
                     parentCanvas.addComponent(new Components.UICanvas(parentCanvas));
                 }
 
                 newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
                 newMateria.removeComponent(Components.Transform); // Remove default Transform
-                newMateria.addComponent(new Components.RectTransform(newMateria)); // Add RectTransform
+                newMateria.addComponent(new Components.UIPosition(newMateria)); // Add UIPosition
                 newMateria.addComponent(new Components.UIImage(newMateria));
                 newMateria.addComponent(new Components.Gizmo(newMateria));
             }
