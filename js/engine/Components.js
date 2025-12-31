@@ -1140,7 +1140,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
+registerComponent('UIPosition', UIPosition);
 registerComponent('UICanvas', UICanvas);
 registerComponent('UIImage', UIImage);
 registerComponent('Gizmo', Gizmo);
