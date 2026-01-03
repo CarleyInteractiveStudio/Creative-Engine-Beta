@@ -1500,3 +1500,4 @@ export class CustomComponent extends Leyes {
         return newCustom;
     }
 }
+registerComponent('CustomComponent', CustomComponent);

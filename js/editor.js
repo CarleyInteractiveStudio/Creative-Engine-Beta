@@ -2383,46 +2383,28 @@ public star() {
                             }
 
                             const scriptContent = decodeURIComponent(escape(atob(libData.script_base64)));
-                            const engineAPI = EngineAPI.getEngineAPI();
+                            // Runtime libraries are now loaded on-demand when "Play" is clicked via loadRuntimeApis().
+                            // This section in initializeEditor() handles only the editor-side UI/tooling aspects of libraries.
 
-                            // --- API SANDBOXING ---
-                            const sandboxedApi = {
-                                API: {}
-                            };
+                            const sandboxedApi = { API: {} };
 
+                            // Grant permissions based on the library's .meta file
                             if (grantedPermissions.can_create_windows) {
                                 sandboxedApi.API.registrarVentana = window.CreativeEngine.API.registrarVentana;
                             }
-                            if (grantedPermissions.allow_custom_components) {
-                                sandboxedApi.API.registrarComponente = engineAPI.registrarComponente;
-                            }
-                            // Add other permission checks here as the API expands
+                            // NOTE: The 'allow_custom_components' permission was removed as it relied on a faulty API call.
+                            // This can be re-added later with a correct implementation if needed.
 
-                            // 1. Handle API for creating windows (Editor-side)
+                            // Execute the library script only if it has been granted at least one editor permission.
                             if (Object.keys(sandboxedApi.API).length > 0) {
                                 try {
+                                    // The library script can be written as: (function(CreativeEngine, engine) { ... })
+                                    // where CreativeEngine is { API: {...} } and engine is a direct alias to the API object.
                                     const setupFunction = new Function('CreativeEngine', 'engine', scriptContent);
                                     setupFunction(sandboxedApi, sandboxedApi.API);
-                                    console.log(`Librería de UI '${libData.name}' cargada y configurada con permisos limitados.`);
+                                    console.log(`Librería de UI '${libData.name}' cargada y configurada.`);
                                 } catch(e) {
-                                     console.error(`Error ejecutando el script de configuración de UI para ${libData.name}:`, e);
-                                }
-                            }
-
-                            // 2. Handle API for game scripts (Runtime)
-                            if (grantedPermissions.runtime_accessible) {
-                                try {
-                                    const apiObject = (new Function('engine', scriptContent))(engineAPI);
-
-                                    if (apiObject && typeof apiObject === 'object') {
-                                        RuntimeAPIManager.registerAPI(libData.name, apiObject);
-                                        const fileNameWithoutExt = entry.name.replace('.celib', '');
-                                        if (libData.name !== fileNameWithoutExt) {
-                                            RuntimeAPIManager.registerAPI(fileNameWithoutExt, apiObject);
-                                        }
-                                    }
-                                } catch(e) {
-                                    console.error(`Error al evaluar el script de runtime para ${libData.name}:`, e);
+                                     console.error(`Error ejecutando el script de configuración de UI para la librería '${libData.name}':`, e);
                                 }
                             }
 

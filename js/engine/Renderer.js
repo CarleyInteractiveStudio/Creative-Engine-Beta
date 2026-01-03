@@ -447,19 +447,14 @@ export class Renderer {
             sHeight = spriteData.rect.height;
         }
 
-        const pos = uiPosition.anchoredPosition;
-        const size = uiPosition.size;
-
-        // We draw from the top-left corner based on anchoredPosition, not a centered pivot.
-        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, size.x, size.y);
+        // Corrected: Use the passed 'rect' object's properties for drawing.
+        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, rect.x, rect.y, rect.width, rect.height);
     }
 
-    drawTextureInRect(textureRender, uiPosition) {
-        const pos = uiPosition.anchoredPosition;
-        const size = uiPosition.size;
-
+    drawTextureInRect(textureRender, rect) {
         this.ctx.save();
-        this.ctx.translate(pos.x, pos.y);
+        // Corrected: Translate to the rect's top-left corner.
+        this.ctx.translate(rect.x, rect.y);
 
         if (textureRender.texture && textureRender.texture.complete) {
             const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
@@ -469,13 +464,13 @@ export class Renderer {
         }
 
         if (textureRender.shape === 'Rectangle') {
-            // Draw from top-left, not centered
-            this.ctx.fillRect(0, 0, size.x, size.y);
+            // Corrected: Use the rect's width and height.
+            this.ctx.fillRect(0, 0, rect.width, rect.height);
         } else if (textureRender.shape === 'Circle') {
-            // Draw circle centered within the size rect
-            const radius = Math.min(size.x, size.y) / 2;
+            // Corrected: Use the rect's dimensions for circle calculation.
+            const radius = Math.min(rect.width, rect.height) / 2;
             this.ctx.beginPath();
-            this.ctx.arc(size.x / 2, size.y / 2, radius, 0, 2 * Math.PI);
+            this.ctx.arc(rect.width / 2, rect.height / 2, radius, 0, 2 * Math.PI);
             this.ctx.fill();
         }
         // Add other shapes if needed

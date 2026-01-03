@@ -33,10 +33,22 @@ export class Materia {
     }
 
     getComponent(componentClass) {
+        // --- Defensive Programming ---
+        // If the componentClass is null, undefined, or not an object (e.g., from a deserialized
+        // obsolete component like RectTransform), it can't be a valid constructor.
+        // This prevents a "Right-hand side of 'instanceof' is not an object" TypeError.
+        if (typeof componentClass !== 'function' && typeof componentClass !== 'object' || !componentClass) {
+            // We can optionally log this for debugging, but it might be noisy during scene loads.
+            // console.warn(`getComponent called with invalid componentClass:`, componentClass);
+            return undefined;
+        }
         return this.leyes.find(ley => ley instanceof componentClass);
     }
 
     getComponents(componentClass) {
+         if (typeof componentClass !== 'function' && typeof componentClass !== 'object' || !componentClass) {
+            return [];
+        }
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
