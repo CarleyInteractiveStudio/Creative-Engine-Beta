@@ -1,0 +1,45 @@
+{
+  "materias": [
+    {
+      "id": 1,
+      "name": "Tilemap_Object",
+      "isActive": true,
+      "isCollapsed": false,
+      "children": [],
+      "leyes": [
+        {
+          "type": "Transform",
+          "x": 0,
+          "y": 0,
+          "rotation": 0,
+          "scale": { "x": 1, "y": 1 }
+        },
+        {
+          "type": "Tilemap",
+          "tileWidth": 256,
+          "tileHeight": 256,
+          "columns": 10,
+          "rows": 10,
+          "layers": [
+            [
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, -1, -1, -1, -1, -1, -1, -1, -1, 0],
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ]
+          ],
+          "palettePath": "Assets/Palettes/default.cepalette"
+        },
+        {
+          "type": "TilemapRenderer"
+        }
+      ]
+    }
+  ]
+}
