@@ -1128,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (gameRenderer) {
                 updateScene(gameRenderer, true); // Game view clean
+                gameRenderer.drawWorldSpaceGizmos(SceneManager.currentScene);
                 gameRenderer.renderUI(SceneManager.currentScene);
             }
         } else {

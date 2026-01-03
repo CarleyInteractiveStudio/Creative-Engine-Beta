@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.Canvas],
+    'UI': [Components.UIImage, Components.Canvas, Components.Gizmo, Components.UIPosition],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -636,7 +636,7 @@ async function updateInspectorForMateria(selectedMateria) {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
         RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦'
+        Grid: '▦', Gizmo: '📏'
     };
 
     const componentsWrapper = document.createElement('div');
@@ -743,6 +743,26 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
                 <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
             </div>`;
+        } else if (ley instanceof Components.UIPosition) {
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>UI Position</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Anchored Pos</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="anchoredPosition.x" value="${ley.anchoredPosition.x}" title="Anchored Position X">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="anchoredPosition.y" value="${ley.anchoredPosition.y}" title="Anchored Position Y">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.x" value="${ley.size.x}" title="Size X">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.y" value="${ley.size.y}" title="Size Y">
+                        </div>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
@@ -1165,6 +1185,60 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${sizeInputHTML}
                 </div>
             </div>`;
+        } else if (ley instanceof Components.Gizmo) {
+            let dimensionsHTML = '';
+            if (ley.shape === 'Rectangle') {
+                dimensionsHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Gizmo" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" step="1" data-component="Gizmo" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                `;
+            } else if (ley.shape === 'Circle') {
+                 dimensionsHTML = `
+                    <div class="prop-row-multi">
+                        <label>Radius</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Gizmo" data-prop="radius" value="${ley.radius}" title="Radius">
+                        </div>
+                    </div>
+                `;
+            }
+
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Gizmo</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Shape</label>
+                        <div class="prop-inputs">
+                            <select class="prop-input inspector-re-render" data-component="Gizmo" data-prop="shape" disabled>
+                                <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
+                                <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''}>Circle (Próximamente)</option>
+                                <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''}>Capsule (Próximamente)</option>
+                            </select>
+                        </div>
+                    </div>
+                    ${dimensionsHTML}
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Gizmo" data-prop="color" value="${ley.color}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Gizmo" data-prop="alwaysVisibleInScene" ${ley.alwaysVisibleInScene ? 'checked' : ''}>
+                        <label>Always Visible (Scene)</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Gizmo" data-prop="visibleInGame" ${ley.visibleInGame ? 'checked' : ''}>
+                        <label>Visible in Game</label>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.CapsuleCollider2D) {
             componentHTML = `
             <div class="component-inspector">

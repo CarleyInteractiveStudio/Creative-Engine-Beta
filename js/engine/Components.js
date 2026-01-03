@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
-    'RectTransform': 'transformacionRect',
+    'UIPosition': 'posicionUI',
 };
 
 
@@ -755,56 +755,6 @@ export class Animator extends Leyes {
     }
 }
 
-export class RectTransform extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.x = 0;
-        this.y = 0;
-        this.width = 100;
-        this.height = 100;
-        this.pivot = { x: 0.5, y: 0.5 };
-        this.anchorMin = { x: 0.5, y: 0.5 };
-        this.anchorMax = { x: 0.5, y: 0.5 };
-    }
-
-    getWorldRect(parentCanvas) {
-        // For now, a simplified version that doesn't handle nesting.
-        // It assumes the parent is the main canvas.
-        const parentWidth = parentCanvas.width;
-        const parentHeight = parentCanvas.height;
-
-        // Calculate anchor positions in pixels
-        const anchorMinX = parentWidth * this.anchorMin.x;
-        const anchorMinY = parentHeight * this.anchorMin.y;
-
-        // Calculate the position of the pivot point relative to the anchors
-        const pivotPosX = anchorMinX + this.x;
-        const pivotPosY = anchorMinY + this.y;
-
-        // Calculate the top-left corner of the rectangle based on the pivot
-        const rectX = pivotPosX - (this.width * this.pivot.x);
-        const rectY = pivotPosY - (this.height * this.pivot.y);
-
-        return {
-            x: rectX,
-            y: rectY,
-            width: this.width,
-            height: this.height
-        };
-    }
-    clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.x = this.x;
-        newRectTransform.y = this.y;
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        newRectTransform.pivot = { ...this.pivot };
-        newRectTransform.anchorMin = { ...this.anchorMin };
-        newRectTransform.anchorMax = { ...this.anchorMax };
-        return newRectTransform;
-    }
-}
-
 export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
@@ -1074,7 +1024,6 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
 registerComponent('UIImage', UIImage);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
@@ -1385,6 +1334,54 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
+
+export class UIPosition extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.anchorMin = { x: 0.5, y: 0.5 };
+        this.anchorMax = { x: 0.5, y: 0.5 };
+        this.anchoredPosition = { x: 0, y: 0 };
+        this.size = { x: 100, y: 100 };
+    }
+
+    clone() {
+        const newUIPos = new UIPosition(null);
+        newUIPos.anchorMin = { ...this.anchorMin };
+        newUIPos.anchorMax = { ...this.anchorMax };
+        newUIPos.anchoredPosition = { ...this.anchoredPosition };
+        newUIPos.size = { ...this.size };
+        return newUIPos;
+    }
+}
+registerComponent('UIPosition', UIPosition);
+
+export class Gizmo extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.shape = 'Rectangle'; // 'Rectangle', 'Circle', 'Triangle', 'Capsule'
+        this.width = 100;
+        this.height = 100;
+        this.radius = 50;
+        this.color = '#00ff00';
+        this.opacity = 1;
+        this.alwaysVisibleInScene = false;
+        this.visibleInGame = false;
+    }
+
+    clone() {
+        const newGizmo = new Gizmo(null);
+        newGizmo.shape = this.shape;
+        newGizmo.width = this.width;
+        newGizmo.height = this.height;
+        newGizmo.radius = this.radius;
+        newGizmo.color = this.color;
+        newGizmo.opacity = this.opacity;
+        newGizmo.alwaysVisibleInScene = this.alwaysVisibleInScene;
+        newGizmo.visibleInGame = this.visibleInGame;
+        return newGizmo;
+    }
+}
+registerComponent('Gizmo', Gizmo);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

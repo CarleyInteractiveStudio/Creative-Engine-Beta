@@ -1,5 +1,6 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UIPosition, Gizmo } from './Components.js';
+import { _drawShapeForGizmo } from './utils/GizmoUtils.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -326,6 +327,33 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
+    drawWorldSpaceGizmos(scene) {
+        if (!scene) return;
+
+        const materiasWithGizmos = scene.getAllMaterias().filter(m =>
+            m.isActive && m.getComponent(Gizmo)?.visibleInGame && m.getComponent(Transform)
+        );
+
+        for (const materia of materiasWithGizmos) {
+            const gizmo = materia.getComponent(Gizmo);
+            const transform = materia.getComponent(Transform);
+
+            this.ctx.save();
+            this.ctx.translate(transform.position.x, transform.position.y);
+            this.ctx.rotate(transform.rotation * Math.PI / 180);
+
+            const width = gizmo.width * transform.scale.x;
+            const height = gizmo.height * transform.scale.y;
+
+            this.ctx.fillStyle = gizmo.color;
+            this.ctx.globalAlpha = gizmo.opacity;
+
+            _drawShapeForGizmo(this.ctx, gizmo, width, height, 'fill');
+
+            this.ctx.restore();
+        }
+    }
+
     renderUI(scene) {
         if (!scene) return;
 
@@ -345,27 +373,67 @@ export class Renderer {
     }
 
     drawScreenSpaceUI(canvasMateria) {
-        this.beginUI(); // Resets transform for screen space
+        this.beginUI();
+        const parentCanvas = this.canvas;
 
-        // The children are directly on the Materia object
         for (const child of canvasMateria.children) {
             if (!child.isActive) continue;
 
-            const transform = child.getComponent(Transform);
+            const uiPosition = child.getComponent(UIPosition);
+            if (!uiPosition) continue;
+
+            const gizmo = child.getComponent(Gizmo);
+            if (gizmo) {
+                uiPosition.size.x = gizmo.width;
+                uiPosition.size.y = gizmo.height;
+            }
+
+            const rect = this.calculateUIRect(uiPosition, parentCanvas);
+
+            if (gizmo && gizmo.visibleInGame) {
+                this.ctx.save();
+                this.ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
+                this.ctx.fillStyle = gizmo.color;
+                this.ctx.globalAlpha = gizmo.opacity;
+                _drawShapeForGizmo(this.ctx, gizmo, rect.width, rect.height, 'fill');
+                this.ctx.restore();
+            }
+
             const spriteRenderer = child.getComponent(SpriteRenderer);
             const textureRender = child.getComponent(TextureRender);
 
-            if (transform && spriteRenderer && spriteRenderer.sprite) {
-                this.drawSpriteInRect(spriteRenderer, transform);
-            } else if (transform && textureRender) {
-                this.drawTextureInRect(textureRender, transform);
+            if (spriteRenderer && spriteRenderer.sprite) {
+                this.drawSpriteInRect(spriteRenderer, rect);
+            } else if (textureRender) {
+                this.drawTextureInRect(textureRender, rect);
             }
         }
 
-        this.end(); // Restores transform
+        this.end();
     }
 
-    drawSpriteInRect(spriteRenderer, transform) {
+    calculateUIRect(uiPosition, parentCanvas) {
+        const parentWidth = parentCanvas.width;
+        const parentHeight = parentCanvas.height;
+
+        const anchorMinX = parentWidth * uiPosition.anchorMin.x;
+        const anchorMinY = parentHeight * uiPosition.anchorMin.y;
+        const anchorMaxX = parentWidth * uiPosition.anchorMax.x;
+        const anchorMaxY = parentHeight * uiPosition.anchorMax.y;
+
+        const anchorWidth = anchorMaxX - anchorMinX;
+        const anchorHeight = anchorMaxY - anchorMinY;
+
+        const finalWidth = anchorWidth + uiPosition.size.x;
+        const finalHeight = anchorHeight + uiPosition.size.y;
+
+        const finalX = anchorMinX + uiPosition.anchoredPosition.x - (finalWidth / 2);
+        const finalY = anchorMinY + uiPosition.anchoredPosition.y - (finalHeight / 2);
+
+        return { x: finalX, y: finalY, width: finalWidth, height: finalHeight };
+    }
+
+    drawSpriteInRect(spriteRenderer, rect) {
         const img = spriteRenderer.sprite;
         if (!img || !img.complete || img.naturalWidth === 0) return;
 
@@ -379,19 +447,19 @@ export class Renderer {
             sHeight = spriteData.rect.height;
         }
 
-        const pos = transform.position; // For UI, localPosition is effectively screen position
-        const scale = transform.localScale;
+        const pos = uiPosition.anchoredPosition;
+        const size = uiPosition.size;
 
-        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, sWidth * scale.x, sHeight * scale.y);
+        // We draw from the top-left corner based on anchoredPosition, not a centered pivot.
+        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, size.x, size.y);
     }
 
-    drawTextureInRect(textureRender, transform) {
-        const pos = transform.position;
-        const scale = transform.localScale;
+    drawTextureInRect(textureRender, uiPosition) {
+        const pos = uiPosition.anchoredPosition;
+        const size = uiPosition.size;
 
         this.ctx.save();
         this.ctx.translate(pos.x, pos.y);
-        this.ctx.scale(scale.x, scale.y);
 
         if (textureRender.texture && textureRender.texture.complete) {
             const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
@@ -401,10 +469,13 @@ export class Renderer {
         }
 
         if (textureRender.shape === 'Rectangle') {
-            this.ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+            // Draw from top-left, not centered
+            this.ctx.fillRect(0, 0, size.x, size.y);
         } else if (textureRender.shape === 'Circle') {
+            // Draw circle centered within the size rect
+            const radius = Math.min(size.x, size.y) / 2;
             this.ctx.beginPath();
-            this.ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
+            this.ctx.arc(size.x / 2, size.y / 2, radius, 0, 2 * Math.PI);
             this.ctx.fill();
         }
         // Add other shapes if needed

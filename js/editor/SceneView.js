@@ -1,6 +1,8 @@
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
+import { _drawShapeForGizmo } from '../engine/utils/GizmoUtils.js';
+import * as TilePaletteWindow from './ui/TilePaletteWindow.js';
 
 // Dependencies from editor.js
 let dom;
@@ -23,10 +25,13 @@ let isAddingLayer = false;
 let isDragging = false;
 let lastSelectedId = -1;
 let lastPaintedCoords = { col: -1, row: -1 };
-// isPanning is no longer needed as a module-level state
+let isPanning = false;
+let isPainting = false;
+let isDrawingRect = false; // For the rectangle fill tool
+let rectStartGridPos = { x: 0, y: 0 }; // Store the start grid cell
+let currentMousePosition = { x: 0, y: 0 }; // For overlay drawing
 let lastMousePosition = { x: 0, y: 0 };
 let dragState = {}; // To hold info about the current drag operation
-// debugDeltas is no longer needed
 
 // --- Core Functions ---
 
@@ -35,6 +40,12 @@ function screenToWorld(screenX, screenY) {
     const worldX = (screenX - renderer.canvas.width / 2) / renderer.camera.effectiveZoom + renderer.camera.x;
     const worldY = (screenY - renderer.canvas.height / 2) / renderer.camera.effectiveZoom + renderer.camera.y;
     return { x: worldX, y: worldY };
+}
+
+function worldToGrid(worldPos, grid) {
+    const gridX = Math.floor(worldPos.x / grid.cellSize.x);
+    const gridY = Math.floor(worldPos.y / grid.cellSize.y);
+    return { x: gridX, y: gridY };
 }
 
 function checkGizmoHit(canvasPos) {
@@ -548,7 +559,8 @@ export function initialize(dependencies) {
         }
 
         // --- Tile Painting Logic (Left-click) ---
-        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+        const paletteTool = TilePaletteWindow.getActiveTool();
+        if (e.button === 0 && (paletteTool === 'tile-brush' || paletteTool === 'tile-eraser')) {
             e.stopPropagation();
             paintTile(e); // Paint on the first click
 
@@ -573,7 +585,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkGizmoComponentHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -702,6 +714,68 @@ export function initialize(dependencies) {
                         }
                     }
 
+                    const gizmo = dragState.materia.getComponent(Components.Gizmo);
+                    if (gizmo && dragState.handle.startsWith('gizmo-')) {
+                        const rad = -transform.rotation * Math.PI / 180;
+                        const cos = Math.cos(rad);
+                        const sin = Math.sin(rad);
+                        const localDx = (dx / transform.scale.x) * cos - (dy / transform.scale.y) * sin;
+                        const localDy = (dx / transform.scale.x) * sin + (dy / transform.scale.y) * cos;
+
+                        // To move the object's position correctly, we need the delta in world space,
+                        // but rotated according to the object's rotation.
+                        const rotationRad = transform.rotation * Math.PI / 180;
+                        const moveX = (localDx / 2) * Math.cos(rotationRad) - (localDy / 2) * Math.sin(rotationRad);
+                        const moveY = (localDx / 2) * Math.sin(rotationRad) + (localDy / 2) * Math.cos(rotationRad);
+
+
+                        switch (dragState.handle) {
+                            case 'gizmo-top':
+                                gizmo.height += localDy;
+                                transform.position.y += moveY;
+                                break;
+                            case 'gizmo-bottom':
+                                gizmo.height -= localDy;
+                                transform.position.y += moveY;
+                                break;
+                            case 'gizmo-right':
+                                gizmo.width += localDx;
+                                transform.position.x += moveX;
+                                break;
+                            case 'gizmo-left':
+                                gizmo.width -= localDx;
+                                transform.position.x += moveX;
+                                break;
+                            case 'gizmo-tr':
+                                gizmo.height += localDy;
+                                gizmo.width += localDx;
+                                transform.position.x += moveX;
+                                transform.position.y += moveY;
+                                break;
+                            case 'gizmo-tl':
+                                gizmo.height += localDy;
+                                gizmo.width -= localDx;
+                                transform.position.x += moveX;
+                                transform.position.y += moveY;
+                                break;
+                            case 'gizmo-br':
+                                gizmo.height -= localDy;
+                                gizmo.width += localDx;
+                                transform.position.x += moveX;
+                                transform.position.y += moveY;
+                                break;
+                            case 'gizmo-bl':
+                                gizmo.height -= localDy;
+                                gizmo.width -= localDx;
+                                transform.position.x += moveX;
+                                transform.position.y += moveY;
+                                break;
+                        }
+                         // Prevent negative size
+                        if (gizmo.width < 0) gizmo.width = 0;
+                        if (gizmo.height < 0) gizmo.height = 0;
+                    }
+
 
                     lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
                     updateInspector();
@@ -732,37 +806,47 @@ function exitAddLayerMode() {
     dom.sceneCanvas.style.cursor = 'default';
 }
 
-export function update() {
-    // This will be called from the main editorLoop
-    handleEditorInteractions();
-
-    const selectedMateria = getSelectedMateria();
-    const currentSelectedId = selectedMateria ? selectedMateria.id : -1;
-
-    // Check if selection has changed
-    if (currentSelectedId !== lastSelectedId) {
-        let hasTilemap = false;
-        if (selectedMateria) {
-            // Check the selected materia itself
-            hasTilemap = selectedMateria.getComponent(Components.Tilemap) !== null;
-            // If not found, check its direct children
-            if (!hasTilemap && selectedMateria.children) {
-                hasTilemap = selectedMateria.children.some(child => child.getComponent(Components.Tilemap) !== null);
-            }
-        }
-
-        // Show/hide tilemap-specific tools
-        document.querySelectorAll('.tilemap-tool, .tilemap-tool-divider').forEach(el => {
-            el.style.display = hasTilemap ? 'block' : 'none';
-        });
-
-        // If the selected object is not a tilemap, switch back to a default tool
-        if (!hasTilemap && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
-            setActiveTool('move');
-        }
-
-        lastSelectedId = currentSelectedId;
+export function update(deltaTime) {
+    // The main editor loop can call this, though most logic is event-driven
+    handlePanning();
+}
+function handleMouseUp(e) {
+    if (isDrawingRect) {
+        const endWorldPos = screenToWorld(e.clientX, e.clientY);
+        fillTileRect(endWorldPos);
+        isDrawingRect = false;
     }
+    if (isPainting) {
+        isPainting = false;
+    }
+    if (isPanning) {
+        isPanning = false;
+        dom.sceneCanvas.style.cursor = 'grab';
+    }
+}
+function handleMouseLeave() {
+    // Stop painting if the mouse leaves the canvas to prevent weird artifacts
+    isPainting = false;
+}
+function handlePanning() {
+    // This is now handled directly in handleMouseMove to be more responsive
+}
+function getSelectedGrid() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return null;
+
+    let grid = selectedMateria.getComponent(Components.Grid);
+    if (grid) return grid;
+
+    return findParentGrid(selectedMateria);
+}
+function findParentGrid(materia) {
+    if (!materia.parent) return null;
+    const parentMateria = SceneManager.currentScene.getMateriaById(materia.parent);
+    if (!parentMateria) return null;
+
+    const grid = parentMateria.getComponent(Components.Grid);
+    return grid ? grid : null; // Only return if the component exists
 }
 
 function drawCameraGizmos(renderer) {
@@ -1036,34 +1120,150 @@ function drawLayerPlacementPreview() {
 }
 
 export function drawOverlay() {
-    // This will be called from updateScene to draw grid/gizmos
     if (!renderer) return;
     drawEditorGrid();
     drawComponentGrids();
     drawLayerPlacementPreview();
 
-    // Draw gizmo for the selected object
-    if (getSelectedMateria()) {
-        drawGizmos(renderer, getSelectedMateria());
+    const selectedMateria = getSelectedMateria();
+
+    // Draw standard transform gizmos ONLY for the selected object
+    if (selectedMateria) {
+        drawGizmos(renderer, selectedMateria);
     }
 
-    // Draw gizmos for all cameras in the scene
-    drawCameraGizmos(renderer);
+    // --- Draw Component-Specific Gizmos ---
+    const allMaterias = SceneManager.currentScene.getAllMaterias();
+    for (const materia of allMaterias) {
+        if (!materia.isActive) continue;
 
-    // Draw tile painting cursor
-    drawTileCursor();
+        const isSelected = selectedMateria && selectedMateria.id === materia.id;
 
-    // Draw tilemap colliders
-    drawTilemapColliders();
+        // Draw Gizmo component visuals
+        const gizmoComponent = materia.getComponent(Components.Gizmo);
+        if (gizmoComponent && (isSelected || gizmoComponent.alwaysVisibleInScene)) {
+            // Pass the specific materia to the drawing function
+            drawGizmoComponentGizmo(materia, isSelected);
+        }
 
-    // Draw physics colliders for selected object
-    drawPhysicsGizmos();
+        // Draw Camera gizmos (this function already iterates all materias)
+        // We can integrate its logic here if we want more control. For now, keep it separate.
+    }
+     drawCameraGizmos(renderer);
 
-    // Draw outline for selected Tilemap
-    drawTilemapOutline();
 
-    // Draw Canvas gizmos
-    drawCanvasGizmos();
+    // Draw tile painting cursor, colliders, etc., for the SELECTED object
+     if(selectedMateria){
+        drawTileCursor();
+        drawTilemapColliders();
+        drawPhysicsGizmos();
+        drawTilemapOutline();
+        drawCanvasGizmos();
+     }
+}
+
+function checkGizmoComponentHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return null;
+
+    const gizmo = selectedMateria.getComponent(Components.Gizmo);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!gizmo || !transform) return null;
+    if (selectedMateria.getComponent(Components.UIPosition)) return null;
+
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Transform mouse to the object's local space to ignore rotation
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - transform.position.x) * cos - (worldMouse.y - transform.position.y) * sin;
+    const localMouseY = (worldMouse.x - transform.position.x) * sin + (worldMouse.y - transform.position.y) * cos;
+
+
+    const worldWidth = gizmo.width * transform.scale.x;
+    const worldHeight = gizmo.height * transform.scale.y;
+    const halfW = worldWidth / 2;
+    const halfH = worldHeight / 2;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    // The handles are in the object's local space, but scaled
+    const handles = [
+        { x: 0, y: halfH, name: 'gizmo-top' },
+        { x: 0, y: -halfH, name: 'gizmo-bottom' },
+        { x: halfW, y: 0, name: 'gizmo-right' },
+        { x: -halfW, y: 0, name: 'gizmo-left' },
+        { x: -halfW, y: halfH, name: 'gizmo-tl' },
+        { x: halfW, y: halfH, name: 'gizmo-tr' },
+        { x: -halfW, y: -halfH, name: 'gizmo-bl' },
+        { x: halfW, y: -halfH, name: 'gizmo-br' }
+    ];
+
+    for (const handle of handles) {
+        // We check the hit in local space, so we don't have to rotate the handles
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
+
+function drawGizmoComponentGizmo(materia, isSelected) {
+    const gizmo = materia.getComponent(Components.Gizmo);
+    const transform = materia.getComponent(Components.Transform);
+
+    // This gizmo is not for UI elements, which are handled by the UI renderer
+    if (materia.getComponent(Components.UIPosition)) {
+        return;
+    }
+
+    const { ctx, camera } = renderer;
+    const { position, rotation, scale } = transform;
+    const { width, height, color, opacity, shape } = gizmo;
+
+    const worldWidth = width * scale.x;
+    const worldHeight = height * scale.y;
+
+    ctx.save();
+    ctx.translate(position.x, position.y);
+    ctx.rotate(rotation * Math.PI / 180);
+
+    // Draw the main shape outline
+    ctx.strokeStyle = isSelected ? '#FFFFFF' : color;
+    ctx.lineWidth = (isSelected ? 2 : 1) / camera.effectiveZoom;
+    ctx.globalAlpha = isSelected ? 1.0 : opacity * 0.75;
+
+    _drawShapeForGizmo(ctx, gizmo, worldWidth, worldHeight, 'stroke');
+
+    // Draw resize handles only if the object is selected
+    if (isSelected) {
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.globalAlpha = 1.0;
+
+        const halfW = worldWidth / 2;
+        const halfH = worldHeight / 2;
+
+        const handles = [
+            { x: 0, y: halfH }, { x: 0, y: -halfH },
+            { x: halfW, y: 0 }, { x: -halfW, y: 0 },
+            { x: -halfW, y: halfH }, { x: halfW, y: halfH },
+            { x: -halfW, y: -halfH }, { x: halfW, y: -halfH }
+        ];
+
+        handles.forEach(handle => {
+            ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+        });
+    }
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
