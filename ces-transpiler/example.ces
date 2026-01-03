@@ -1,0 +1,27 @@
+using creative.engine;
+using creative.engine.core;
+using creative.engine.ui;
+using creative.engine.animator;
+using creative.engine.physics;
+
+public materia/gameObject jugador;
+public materia/gameObject enemigo;
+
+public star(){
+    Scene.load("Nivel1");
+    Camera.setPosition(0, 5, -10);
+    UI.text("¡Bienvenido al juego!", 20, 20);
+
+    materia crear jugador,"player.glb";
+    ley gravedad activar;
+    Animator.play("JugadorIdle");
+};
+
+public update(deltaTime){
+    if(Input.keyDown("ArrowUp")){
+        jugador.z += 0.1;
+    };
+    if(Input.keyDown("ArrowDown")){
+        jugador.z -= 0.1;
+    };
+};

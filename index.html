@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Engine</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+    <style>
+      #supabase-config-warning {
+        background-color: #fff3cd;
+        color: #664d03;
+        padding: 20px;
+        text-align: center;
+        font-size: 16px;
+        border: 2px solid #ffc107;
+        font-family: sans-serif;
+        margin: 20px;
+        border-radius: 8px;
+      }
+      #supabase-config-warning h2 {
+        color: #664d03;
+        margin-top: 0;
+      }
+      #supabase-config-warning code {
+        background-color: #d3d3d3;
+        padding: 5px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+    </style>
+</head>
+<body>
+  <div id="verifying-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <p>Verificando...</p>
+  </div>
+
+    <div class="container">
+        <header>
+            <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo" id="header-logo">
+            <h1>Creative Engine</h1>
+            <div id="header-controls">
+                <button id="btn-mute-music" title="Silenciar Música">🔊</button>
+            </div>
+            <div id="auth-status-container">
+                <button id="btn-auth-action">Iniciar Sesión</button>
+            </div>
+        </header>
+
+    <main>
+        <div id="welcome-view">
+            <!-- Contenedor para la secuencia de introducción animada -->
+            <div id="intro-sequence">
+                <div id="intro-step-1" class="intro-step">
+                    <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo">
+                </div>
+                <div id="intro-step-2" class="intro-step">
+                    <img src="image/Logo_C.png" alt="Carley Interactive Studio Logo">
+                </div>
+                <div id="intro-step-3" class="intro-step">
+                    <img src="image/flygame.png" alt="Flygame Logo">
+                </div>
+            </div>
+
+            <!-- Contenido principal que aparecerá después de la intro -->
+            <div id="main-content" class="intro-step">
+                <section id="welcome">
+                    <h2>Creative Engine</h2>
+                    <p id="motivational-quote">Tu juego empieza aquí. Lo que imagines, lo construyes. 🚀🧠</p>
+                    <p class="description">
+                        Un motor de videojuegos 2D gratuito para crear directamente en tu navegador. Diseña sin límites, crea sin miedo y publica con orgullo.
+                    </p>
+                </section>
+
+                <section id="actions">
+                    <button id="btn-start" class="rainbow-animated-btn">Empezar a Crear</button>
+                    <button id="btn-support" class="rainbow-animated-btn">Contacto y Soporte</button>
+                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-donate">Donar con PayPal</a>
+                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-discord">Unirte a Discord</a>
+                </section>
+                 <p class="credits">
+                    Hecho por <strong>Carley Interactive Studio</strong> con la ayuda de <strong>Google Jules</strong>.
+                </p>
+                <div class="license-container">
+                    <button id="btn-license">Lee nuestra licencia</button>
+                    <a href="https://flygam.com/" target="_blank" rel="noopener noreferrer" class="know-games-button">conoce juegos hecho con con nuestro motor</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="launcher-view" style="display: none;">
+            <h2>Mis Proyectos</h2>
+            <div id="project-list" class="project-list">
+                <!-- Los proyectos se añadirán aquí dinámicamente -->
+                <p class="no-projects-message">Aún no tienes proyectos. ¡Crea uno para empezar!</p>
+            </div>
+            <div class="launcher-actions">
+                <button id="btn-create-project">Crear Nuevo Proyecto</button>
+            </div>
+            <div class="storage-warning">
+                <p><strong>Aviso Importante:</strong> Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Carley Interactive Studio</p>
+    </footer>
+    </div> <!-- Cierre de .container -->
+
+    <!-- Modals -->
+    <div id="custom-dialog-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="custom-dialog-title">Título</h2>
+            <p id="custom-dialog-message">Este es un mensaje de ejemplo.</p>
+            <div id="custom-dialog-buttons" class="dialog-buttons">
+                <!-- Buttons will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <div id="create-project-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-create-project">&times;</span>
+            <h2>Crear Nuevo Proyecto</h2>
+            <form id="create-project-form">
+                <label for="project-name">Nombre del Proyecto:</label>
+                <input id="project-name" type="text" name="projectName" placeholder="Mi-Juego-Genial" required>
+                <p class="modal-hint">Usa letras, números y guiones. Sin espacios ni caracteres especiales.</p>
+                <button type="submit" class="modal-btn">Crear</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="support-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-support">&times;</span>
+            <h2>Contacto y Soporte</h2>
+            <form id="contact-form" action="https://formspree.io/f/xldlkbej" method="POST" enctype="multipart/form-data">
+                <p>Usa este formulario para enviar sugerencias, consultas o reportar errores. ¡Tu feedback es muy valioso!</p>
+                <label for="contact-email">Tu Correo Electrónico:</label>
+                <input id="contact-email" type="email" name="email" placeholder="tu@email.com" required>
+                <label for="contact-message">Tu Mensaje:</label>
+                <textarea id="contact-message" name="message" placeholder="Escribe tu mensaje, sugerencia o reporte de error aquí..." required></textarea>
+                <label for="contact-attachment">Adjuntar captura de pantalla (Opcional):</label>
+                <input id="contact-attachment" type="file" name="attachment" accept="image/*" style="margin-bottom: 20px;">
+                <button type="submit" class="modal-btn">Enviar Mensaje</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="license-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-license">&times;</span>
+            <h2>END USER LICENSE AGREEMENT (EULA)</h2>
+            <div class="license-text">
+                <p><strong>Copyright (c) 2025 Carley Interactive Studio.</strong> Todos los derechos reservados.</p>
+
+                <h4>Concesión de licencia</h4>
+                <p>El Licenciante otorga al Licenciatario un derecho no exclusivo, intransferible y revocable para utilizar el software en forma binaria “tal cual”, únicamente para el desarrollo de videojuegos, conforme a los términos de este acuerdo.</p>
+
+                <h4>Garantía limitada y soporte</h4>
+                <p>El software se proporciona “tal cual”, sin garantía expresa o implícita. Sin embargo, en caso de fallos técnicos o errores graves, el Licenciatario podrá reportarlos al Licenciante, quien podrá brindar asistencia técnica sin compromiso de solución garantizada.</p>
+
+                <h4>Restricciones de uso</h4>
+                <p>El Licenciatario no podrá, bajo ninguna circunstancia: Copiar, clonar, modificar, distribuir, revender, realizar ingeniería inversa o utilizar el software con fines comerciales no autorizados. En caso de incumplimiento, la licencia podrá ser revocada.</p>
+
+                <div class="license-highlight">
+                    <h4>Derechos sobre los juegos creados</h4>
+                    <p><strong>Todo videojuego creado con el motor es 100% propiedad del usuario.</strong> El Licenciante no reclama participación en las ganancias ni derechos sobre el contenido generado.</p>
+                </div>
+
+                <p>Opcionalmente, el Licenciatario podrá colaborar con nosotros enviando material de su juego (imágenes, videos, enlaces) para que podamos usarlo en la promoción del motor, siempre respetando tu autoría.</p>
+
+                <h4>Duración y terminación</h4>
+                <p>Este acuerdo entra en vigor en la fecha de descarga o instalación y permanecerá vigente hasta su terminación. La licencia se extingue automáticamente si el Licenciatario incumple cualquiera de sus términos.</p>
+
+                <h4>Ley aplicable y jurisdicción</h4>
+                <p>Este acuerdo se regirá por las leyes de República Dominicana. Cualquier disputa será sometida a los tribunales competentes de Santo Domingo.</p>
+
+                <p><strong>Al descargar, instalar o usar el software, el Licenciatario acepta íntegramente los términos de este acuerdo.</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modals -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content auth-modal-content">
+            <span class="close-button" id="close-auth">&times;</span>
+
+            <!-- Login View -->
+            <div id="login-view">
+                <h2>Iniciar Sesión</h2>
+                <form id="login-form">
+                    <label for="login-email">Correo Electrónico:</label>
+                    <input id="login-email" type="email" name="email" required autocomplete="email">
+                    <label for="login-password">Contraseña:</label>
+                    <input id="login-password" type="password" name="password" required autocomplete="current-password">
+                    <button type="submit" class="modal-btn">Iniciar Sesión</button>
+                    <p class="auth-switch">¿No tienes una cuenta? <a href="#" id="goto-signup">Regístrate</a></p>
+                    <p class="auth-switch"><a href="#" id="goto-reset">¿Olvidaste tu contraseña?</a></p>
+                </form>
+            </div>
+
+            <!-- Signup View -->
+            <div id="signup-view" style="display: none;">
+                <h2>Crear una Cuenta</h2>
+                <form id="signup-form">
+                    <label for="signup-name">Nombre de Usuario:</label>
+                    <input id="signup-name" type="text" name="name" required autocomplete="username">
+                    <label for="signup-email">Correo Electrónico:</label>
+                    <input id="signup-email" type="email" name="email" required autocomplete="email">
+                    <label for="signup-password">Contraseña:</label>
+                    <input id="signup-password" type="password" name="password" required autocomplete="new-password" minlength="6">
+                     <p class="password-hint">La contraseña debe tener al menos 6 caracteres.</p>
+                    <button type="submit" class="modal-btn">Registrarse</button>
+                    <p class="auth-switch">¿Ya tienes una cuenta? <a href="#" id="goto-login">Inicia Sesión</a></p>
+                </form>
+            </div>
+
+            <!-- Password Reset View -->
+            <div id="reset-password-view" style="display: none;">
+                <h2>Recuperar Contraseña</h2>
+                <form id="reset-password-form">
+                    <p>Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
+                    <label for="reset-email">Correo Electrónico:</label>
+                    <input id="reset-email" type="email" name="email" required autocomplete="email">
+                    <button type="submit" class="modal-btn">Enviar Enlace de Recuperación</button>
+                    <p class="auth-switch"><a href="#" id="back-to-login">Volver a Iniciar Sesión</a></p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/editor/ui/DialogWindow.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu">
+        <ul>
+            <li id="ctx-rename">Renombrar</li>
+            <li id="ctx-delete">Eliminar</li>
+        </ul>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="musica/MUSICA SUAVE.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+</body>
+</html>

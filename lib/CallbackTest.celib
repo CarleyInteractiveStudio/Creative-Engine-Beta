@@ -1,0 +1,14 @@
+{
+  "name": "CallbackTest",
+  "author": "Jules",
+  "version": "1.0.1",
+  "description": "Una librería de prueba y si existe esta presente y el scrip tambien es de prueba lee todo el motor y entenderas como funciona",
+  "api_access": {
+    "can_create_windows": false,
+    "runtime_accessible": true,
+    "is_engine_tool": false
+  },
+  "library_icon_base64": null,
+  "author_icon_base64": null,
+  "script_base64": "cmV0dXJuIHsgdGVzdDogZnVuY3Rpb24oKSB7IGNvbnNvbGUubG9nKCJNZW5zYWplIGRlc2RlIGxhIGxpYnJlcsOtYTogwqFMYSBmdW5jacOzbiBkZSBDYWxsYmFja1Rlc3QgZnVlIGVqZWN1dGFkYSBjb24gw6l4aXRvISIpOyB9IH07Cg=="
+}
