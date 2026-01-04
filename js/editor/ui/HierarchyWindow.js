@@ -205,6 +205,39 @@ export function handleContextMenuAction(action) {
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
+        case 'create-ui-image':
+            {
+                let parentForImage = selectedMateria;
+                let canvasMateria = null;
+
+                // Check if the selected materia or any of its parents have a Canvas
+                let current = selectedMateria;
+                while (current) {
+                    if (current.getComponent(Components.Canvas)) {
+                        canvasMateria = current;
+                        break;
+                    }
+                    current = current.parent;
+                }
+
+                // If no Canvas was found, create one.
+                if (!canvasMateria) {
+                    const newCanvas = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+                    newCanvas.addComponent(new Components.Canvas(newCanvas));
+                    // The new Image should be a child of this new Canvas.
+                    parentForImage = newCanvas;
+                }
+
+                // Create the Image object itself.
+                newMateria = createBaseMateria(generateUniqueName('Image'), parentForImage);
+                newMateria.addComponent(new Components.RectTransform(newMateria));
+                newMateria.addComponent(new Components.Image(newMateria)); // Use the new 'Image' component
+
+                // Explicitly update the hierarchy and select the new object
+                updateHierarchy();
+                setTimeout(() => selectMateriaCallback(newMateria.id), 0);
+                break;
+            }
 
         case 'rename':
             if (contextMateria) { // Use contextMateria

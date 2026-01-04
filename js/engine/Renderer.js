@@ -345,44 +345,49 @@ export class Renderer {
     }
 
     drawScreenSpaceUI(canvasMateria) {
-        this.beginUI(); // Resets transform for screen space
+        this.beginUI();
 
-        // The children are directly on the Materia object
-        for (const child of canvasMateria.children) {
-            if (!child.isActive) continue;
+        // Recursive function to draw all UI elements under a canvas
+        const drawUIElement = (materia) => {
+            if (!materia.isActive) return;
 
-            const transform = child.getComponent(Transform);
-            const spriteRenderer = child.getComponent(SpriteRenderer);
-            const textureRender = child.getComponent(TextureRender);
+            const image = materia.getComponent(Components.Image);
+            const rectTransform = materia.getComponent(Components.RectTransform);
 
-            if (transform && spriteRenderer && spriteRenderer.sprite) {
-                this.drawSpriteInRect(spriteRenderer, transform);
-            } else if (transform && textureRender) {
-                this.drawTextureInRect(textureRender, transform);
+            if (image && rectTransform) {
+                const img = image.sprite;
+                if (img && img.complete && img.naturalWidth > 0) {
+                    this.ctx.save();
+
+                    // Apply opacity
+                    this.ctx.globalAlpha = image.opacity;
+
+                    // Draw the base image
+                    this.ctx.drawImage(img, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+
+                    // Apply color tint if it's not white
+                    if (image.color !== '#ffffff') {
+                        this.ctx.globalCompositeOperation = 'multiply';
+                        this.ctx.fillStyle = image.color;
+                        this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+                    }
+
+                    this.ctx.restore(); // Restore alpha and composite operation
+                }
             }
+
+            // Draw children
+            if (materia.children) {
+                materia.children.forEach(drawUIElement);
+            }
+        };
+
+        // Start drawing from the children of the canvas
+        if (canvasMateria.children) {
+            canvasMateria.children.forEach(drawUIElement);
         }
 
-        this.end(); // Restores transform
-    }
-
-    drawSpriteInRect(spriteRenderer, transform) {
-        const img = spriteRenderer.sprite;
-        if (!img || !img.complete || img.naturalWidth === 0) return;
-
-        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-
-        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-            sx = spriteData.rect.x;
-            sy = spriteData.rect.y;
-            sWidth = spriteData.rect.width;
-            sHeight = spriteData.rect.height;
-        }
-
-        const pos = transform.position; // For UI, localPosition is effectively screen position
-        const scale = transform.localScale;
-
-        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, sWidth * scale.x, sHeight * scale.y);
+        this.end();
     }
 
     drawTextureInRect(textureRender, transform) {

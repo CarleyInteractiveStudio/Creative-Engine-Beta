@@ -26,7 +26,7 @@ const componentAliases = {
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
-    'UIImage': 'imagenUI',
+    'Image': 'imagen',
     'RectTransform': 'transformacionRect',
 };
 
@@ -805,12 +805,13 @@ export class RectTransform extends Leyes {
     }
 }
 
-export class UIImage extends Leyes {
+export class Image extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
         this.source = '';
         this.color = '#ffffff';
+        this.opacity = 1.0;
     }
 
     async loadSprite(projectsDirHandle) {
@@ -824,9 +825,10 @@ export class UIImage extends Leyes {
         }
     }
     clone() {
-        const newImage = new UIImage(null);
+        const newImage = new Image(null);
         newImage.source = this.source;
         newImage.color = this.color;
+        newImage.opacity = this.opacity;
         return newImage;
     }
 }
@@ -1075,7 +1077,7 @@ export class AnimatorController extends Leyes {
 registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('RectTransform', RectTransform);
-registerComponent('UIImage', UIImage);
+registerComponent('Image', Image);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
