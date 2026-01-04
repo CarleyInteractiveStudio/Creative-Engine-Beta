@@ -758,46 +758,35 @@ export class Animator extends Leyes {
 export class UIPosition extends Leyes {
     constructor(materia) {
         super(materia);
-        this.x = 0;
-        this.y = 0;
-        this.width = 100;
-        this.height = 100;
+        this.size = { x: 100, y: 100 };
         this.pivot = { x: 0.5, y: 0.5 };
         this.anchorMin = { x: 0.5, y: 0.5 };
         this.anchorMax = { x: 0.5, y: 0.5 };
     }
 
     getWorldRect(parentCanvas) {
-        // For now, a simplified version that doesn't handle nesting.
-        // It assumes the parent is the main canvas.
         const parentWidth = parentCanvas.width;
         const parentHeight = parentCanvas.height;
-
-        // Calculate anchor positions in pixels
         const anchorMinX = parentWidth * this.anchorMin.x;
         const anchorMinY = parentHeight * this.anchorMin.y;
 
-        // Calculate the position of the pivot point relative to the anchors
-        const pivotPosX = anchorMinX + this.x;
-        const pivotPosY = anchorMinY + this.y;
+        // This part needs re-evaluation, assuming direct positioning for now
+        const pivotPosX = anchorMinX;
+        const pivotPosY = anchorMinY;
 
-        // Calculate the top-left corner of the rectangle based on the pivot
-        const rectX = pivotPosX - (this.width * this.pivot.x);
-        const rectY = pivotPosY - (this.height * this.pivot.y);
+        const rectX = pivotPosX - (this.size.x * this.pivot.x);
+        const rectY = pivotPosY - (this.size.y * this.pivot.y);
 
         return {
             x: rectX,
             y: rectY,
-            width: this.width,
-            height: this.height
+            width: this.size.x,
+            height: this.size.y
         };
     }
     clone() {
         const newUIPosition = new UIPosition(null);
-        newUIPosition.x = this.x;
-        newUIPosition.y = this.y;
-        newUIPosition.width = this.width;
-        newUIPosition.height = this.height;
+        newUIPosition.size = { ...this.size };
         newUIPosition.pivot = { ...this.pivot };
         newUIPosition.anchorMin = { ...this.anchorMin };
         newUIPosition.anchorMax = { ...this.anchorMax };
@@ -810,8 +799,7 @@ export class Image extends Leyes {
         super(materia);
         this.sprite = new window.Image();
         this.source = '';
-        this.color = '#ffffff';
-        this.opacity = 1.0;
+        this.color = { r: 1, g: 1, b: 1, a: 1 };
     }
 
     async loadSprite(projectsDirHandle) {
@@ -827,8 +815,7 @@ export class Image extends Leyes {
     clone() {
         const newImage = new Image(null);
         newImage.source = this.source;
-        newImage.color = this.color;
-        newImage.opacity = this.opacity;
+        newImage.color = { ...this.color };
         return newImage;
     }
 }

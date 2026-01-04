@@ -855,6 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
 
+        const imagesToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Image));
+
         const pointLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
         const spotLights = SceneManager.currentScene.getAllMaterias()
@@ -864,11 +867,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const spriteLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
 
-        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw) => {
+        const drawObjects = (ctx, cameraForCulling, allObjects, tilemapsToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
-            for (const materia of objectsToRender) {
+            for (const materia of allObjects) {
                 if (!materia.isActive) continue;
 
                 if (cameraForCulling) {
@@ -879,8 +882,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
                 }
 
-                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const transform = materia.getComponent(Components.Transform);
+                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+                const imageComponent = materia.getComponent(Components.Image);
+                const textureRender = materia.getComponent(Components.TextureRender);
+                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
 
                 if (spriteRenderer) {
                     if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
@@ -928,83 +934,62 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.fillRect(dx, dy, dWidth, dHeight);
                         ctx.restore();
                     }
-                }
-            }
+                } else if (imageComponent) {
+                    // NEW: Render logic for Image component
+                    const uiPosition = materia.getComponent(Components.UIPosition);
+                    if (uiPosition) {
+                        rendererInstance.drawImage(imageComponent, transform, uiPosition);
+                    }
+                } else if (textureRender) {
+                    const worldPosition = transform.position;
+                    const worldRotation = transform.rotation;
+                    const worldScale = transform.scale;
 
-            for (const materia of textureRenderersToRender) {
-                if (!materia.isActive) continue;
+                    ctx.save();
+                    ctx.translate(worldPosition.x, worldPosition.y);
+                    ctx.rotate(worldRotation * Math.PI / 180);
+                    ctx.scale(worldScale.x, worldScale.y);
 
-                const textureRender = materia.getComponent(Components.TextureRender);
-                const transform = materia.getComponent(Components.Transform);
-                const worldPosition = transform.position;
-                const worldRotation = transform.rotation;
-                const worldScale = transform.scale;
+                    if (textureRender.texture && textureRender.texture.complete) {
+                        const pattern = ctx.createPattern(textureRender.texture, 'repeat');
+                        ctx.fillStyle = pattern;
+                    } else {
+                        ctx.fillStyle = textureRender.color;
+                    }
 
-                ctx.save();
-                ctx.translate(worldPosition.x, worldPosition.y);
-                ctx.rotate(worldRotation * Math.PI / 180);
-                ctx.scale(worldScale.x, worldScale.y);
+                    if (textureRender.shape === 'Rectangle') {
+                        ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+                    } else if (textureRender.shape === 'Circle') {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    } else if (textureRender.shape === 'Triangle') {
+                        ctx.beginPath();
+                        ctx.moveTo(0, -textureRender.height / 2); // Top point
+                        ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
+                        ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (textureRender.shape === 'Capsule') {
+                        const width = textureRender.width;
+                        const height = textureRender.height;
+                        const radius = width / 2;
+                        const rectHeight = height - width;
 
-                if (textureRender.texture && textureRender.texture.complete) {
-                    const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                    ctx.fillStyle = pattern;
-                } else {
-                    ctx.fillStyle = textureRender.color;
-                }
-
-                if (textureRender.shape === 'Rectangle') {
-                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-                } else if (textureRender.shape === 'Circle') {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (textureRender.shape === 'Triangle') {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -textureRender.height / 2); // Top point
-                    ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
-                    ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
-                    ctx.closePath();
-                    ctx.fill();
-                } else if (textureRender.shape === 'Capsule') {
-                    const width = textureRender.width;
-                    const height = textureRender.height;
-                    const radius = width / 2;
-                    const rectHeight = height - width;
-
-                    ctx.beginPath();
-                    // Start with the top semicircle
-                    ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
-                    // Draw the right side of the rectangle
-                    ctx.lineTo(width / 2, rectHeight / 2);
-                    // Draw the bottom semicircle
-                    ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
-                    // Draw the left side of the rectangle
-                    ctx.lineTo(-width / 2, -rectHeight / 2);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-
-            // Draw tilemaps
-            for (const materia of tilemapsToDraw) {
-                if (!materia.isActive) continue;
-
-                // Culling for tilemaps can be more complex (chunk-based),
-                // for now, we'll do a simple bounds check on the whole map.
-                // A proper implementation would be more performant.
-                if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    // Layer culling
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                }
-
-                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-                if (tilemapRenderer) {
+                        ctx.beginPath();
+                        // Start with the top semicircle
+                        ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
+                        // Draw the right side of the rectangle
+                        ctx.lineTo(width / 2, rectHeight / 2);
+                        // Draw the bottom semicircle
+                        ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
+                        // Draw the left side of the rectangle
+                        ctx.lineTo(-width / 2, -rectHeight / 2);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                } else if (tilemapRenderer) {
                     rendererInstance.drawTilemap(tilemapRenderer);
                 }
             }
@@ -1057,12 +1042,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
 
             if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+        const allObjects = [...materiasToRender, ...tilemapsToRender, ...imagesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
                 const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
 
                 uniqueLayers.forEach(layer => {
                     const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
                     const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
+            // Include imagesToRender in the layer-based filtering
+            const imagesInLayer = imagesToRender.filter(m => m.layer === layer);
                     const lightsInLayer = {
                         point: pointLights.filter(l => l.layer === layer),
                         spot: spotLights.filter(l => l.layer === layer),
@@ -1070,13 +1057,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         sprite: spriteLights.filter(l => l.layer === layer)
                     };
 
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer);
+            // Pass the combined list of renderable objects for the current layer
+            drawObjects(rendererInstance.ctx, camera, [...objectsInLayer, ...imagesInLayer], tilemapsInLayer);
                     drawLights(lightsInLayer);
                 });
 
             } else {
                 // Original behavior: draw all objects, then all lights
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
+        // Combine all renderable objects into a single list
+        const allRenderableObjects = [...materiasToRender, ...imagesToRender];
+        drawObjects(rendererInstance.ctx, camera, allRenderableObjects, tilemapsToRender);
                 drawLights(allLights);
             }
 

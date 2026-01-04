@@ -115,9 +115,46 @@ export class Renderer {
         this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
     }
 
-    // Placeholder for now
-    drawImage(image, x, y, width, height) {
-        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+    drawImage(imageComponent, transform, uiPosition) {
+        const ctx = this.ctx;
+        const worldPos = transform.position;
+        const worldRot = transform.rotation;
+        const worldScale = transform.scale;
+
+        const size = uiPosition.size;
+        const pivot = uiPosition.pivot;
+
+        ctx.save();
+
+        // Apply transformations
+        ctx.translate(worldPos.x, worldPos.y);
+        ctx.rotate(worldRot * Math.PI / 180);
+        ctx.scale(worldScale.x, worldScale.y);
+
+        // Apply UI positioning
+        const dx = -size.x * pivot.x;
+        const dy = -size.y * pivot.y;
+
+        // Apply opacity
+        ctx.globalAlpha = imageComponent.color.a;
+
+        if (!imageComponent.sprite || !imageComponent.sprite.complete || imageComponent.sprite.naturalWidth === 0) {
+            // If there's a renderer but no sprite, draw a colored box placeholder
+            ctx.fillStyle = `rgb(${imageComponent.color.r*255}, ${imageComponent.color.g*255}, ${imageComponent.color.b*255})`;
+            ctx.fillRect(dx, dy, size.x, size.y);
+        } else {
+            ctx.drawImage(imageComponent.sprite, dx, dy, size.x, size.y);
+
+            // Apply tint by drawing a colored rectangle over the image with a multiply effect
+            // We avoid this if the color is pure white (no tint)
+            if (imageComponent.color.r < 1 || imageComponent.color.g < 1 || imageComponent.color.b < 1) {
+                 ctx.globalCompositeOperation = 'multiply';
+                 ctx.fillStyle = `rgb(${Math.round(imageComponent.color.r*255)}, ${Math.round(imageComponent.color.g*255)}, ${Math.round(imageComponent.color.b*255)})`;
+                 ctx.fillRect(dx, dy, size.x, size.y);
+            }
+        }
+
+        ctx.restore();
     }
 
     drawText(text, x, y, color, fontSize, textTransform) {
@@ -326,65 +363,6 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
-    drawWorldSpaceCanvas(canvasMateria) {
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasTransform) return;
-
-        // Recursive function to draw all UI elements under a canvas
-        const drawUIElement = (materia) => {
-            if (!materia.isActive) return;
-
-            const image = materia.getComponent(Image);
-            const uiPosition = materia.getComponent(UIPosition);
-
-            if (image && uiPosition) {
-                // Calculate world position by combining canvas transform and UI position
-                // This treats UIPosition's x/y as a local offset from the canvas's pivot.
-                const worldX = canvasTransform.position.x + uiPosition.x;
-                const worldY = canvasTransform.position.y + uiPosition.y;
-                const worldWidth = uiPosition.width;
-                const worldHeight = uiPosition.height;
-
-                this.ctx.save();
-                this.ctx.globalAlpha = image.opacity;
-
-                // Translate to the final world position to handle drawing
-                this.ctx.translate(worldX, worldY);
-                // Note: This simplified version doesn't account for canvas or UI element rotation yet.
-
-                const hasSource = image.sprite && image.sprite.complete && image.sprite.naturalWidth > 0;
-
-                if (hasSource) {
-                    // Draw the image centered at the new origin
-                    this.ctx.drawImage(image.sprite, -worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
-
-                    // Apply color tint if needed
-                    if (image.color.toLowerCase() !== '#ffffff') {
-                        this.ctx.globalCompositeOperation = 'multiply';
-                        this.ctx.fillStyle = image.color;
-                        this.ctx.fillRect(-worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
-                    }
-                } else {
-                    // If no source, just draw a colored rectangle
-                    this.ctx.fillStyle = image.color;
-                    this.ctx.fillRect(-worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
-                }
-
-                this.ctx.restore();
-            }
-
-            // Draw children recursively
-            if (materia.children) {
-                materia.children.forEach(drawUIElement);
-            }
-        };
-
-        // Start the recursive drawing from the canvas's direct children
-        if (canvasMateria.children) {
-            canvasMateria.children.forEach(drawUIElement);
-        }
-    }
-
     renderUI(scene) {
         if (!scene) return;
 
@@ -397,7 +375,8 @@ export class Renderer {
             if (canvas.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
             } else { // 'World Space'
-                this.drawWorldSpaceCanvas(canvasMateria);
+                // World Space UI elements are just regular objects. The standard `updateScene`
+                // loop already handles their rendering, so no special UI pass is needed for them.
             }
         }
     }
@@ -405,45 +384,49 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
 
-        // Recursive function to draw all UI elements under a canvas
         const drawUIElement = (materia) => {
             if (!materia.isActive) return;
 
-            const image = materia.getComponent(Components.Image);
-            const rectTransform = materia.getComponent(Components.UIPosition);
+            const imageComponent = materia.getComponent(Components.Image);
+            const uiPosition = materia.getComponent(Components.UIPosition);
 
-            if (image && rectTransform) {
-                this.ctx.save();
-                this.ctx.globalAlpha = image.opacity;
+            if (imageComponent && uiPosition) {
+                const ctx = this.ctx;
+                const { size, pivot } = uiPosition;
+                // For Screen Space, the "world position" is effectively the top-left corner of the canvas.
+                // We'll calculate position based on anchors relative to the main canvas dimensions.
+                const worldRect = uiPosition.getWorldRect(this.canvas);
 
-                const hasSource = image.sprite && image.sprite.complete && image.sprite.naturalWidth > 0;
 
-                if (hasSource) {
-                    // Draw the base image if it exists
-                    this.ctx.drawImage(image.sprite, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+                ctx.save();
 
-                    // Apply color tint by multiplying on top, unless it's pure white
-                    if (image.color.toLowerCase() !== '#ffffff') {
-                        this.ctx.globalCompositeOperation = 'multiply';
-                        this.ctx.fillStyle = image.color;
-                        this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
-                    }
+                // Unlike world space, we don't use the Transform component here.
+                // We position directly using the calculated worldRect.
+
+                // Apply opacity
+                ctx.globalAlpha = imageComponent.color.a;
+
+                if (!imageComponent.sprite || !imageComponent.sprite.complete || imageComponent.sprite.naturalWidth === 0) {
+                    ctx.fillStyle = `rgb(${imageComponent.color.r * 255}, ${imageComponent.color.g * 255}, ${imageComponent.color.b * 255})`;
+                    ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
                 } else {
-                    // If there's no source image, just draw a tinted rectangle
-                    this.ctx.fillStyle = image.color;
-                    this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+                    ctx.drawImage(imageComponent.sprite, worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+
+                    if (imageComponent.color.r < 1 || imageComponent.color.g < 1 || imageComponent.color.b < 1) {
+                        ctx.globalCompositeOperation = 'multiply';
+                        ctx.fillStyle = `rgb(${Math.round(imageComponent.color.r * 255)}, ${Math.round(imageComponent.color.g * 255)}, ${Math.round(imageComponent.color.b * 255)})`;
+                        ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+                    }
                 }
 
-                this.ctx.restore();
+                ctx.restore();
             }
 
-            // Draw children
             if (materia.children) {
                 materia.children.forEach(drawUIElement);
             }
         };
 
-        // Start drawing from the children of the canvas
         if (canvasMateria.children) {
             canvasMateria.children.forEach(drawUIElement);
         }

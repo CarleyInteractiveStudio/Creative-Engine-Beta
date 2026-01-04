@@ -1072,39 +1072,35 @@ function drawUIPositionGizmo() {
     if (!selectedMateria) return;
 
     const uiPosition = selectedMateria.getComponent(Components.UIPosition);
-    if (!uiPosition) return;
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!uiPosition || !transform) return;
 
-    // Find the parent Canvas
-    let parent = selectedMateria.parent;
-    let canvas = null;
-    let canvasTransform = null;
-    while (parent) {
-        canvas = parent.getComponent(Components.Canvas);
-        if (canvas) {
-            canvasTransform = parent.getComponent(Components.Transform);
-            break;
-        }
-        parent = parent.parent;
-    }
-
-    if (!canvas || !canvasTransform || canvas.renderMode !== 'World Space') {
-        return; // Only draw gizmos for world-space UI elements
-    }
+    // The gizmo should only be drawn for UI elements that are part of a World Space canvas.
+    // We don't need to find the canvas, just check if the object itself has a parent.
+    // If it's a root object, it cannot be a correctly configured UI element.
+    if (!selectedMateria.parent) return;
 
     const { ctx, camera } = renderer;
-    const worldX = canvasTransform.position.x + uiPosition.x;
-    const worldY = canvasTransform.position.y + uiPosition.y;
+    const worldPos = transform.position; // Use the object's own world position
+    const worldRot = transform.rotation;
+    const { size, pivot } = uiPosition;
 
     ctx.save();
+
+    // Go to the object's position and apply its rotation
+    ctx.translate(worldPos.x, worldPos.y);
+    ctx.rotate(worldRot * Math.PI / 180);
+
     ctx.lineWidth = 2 / camera.effectiveZoom;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
+    // Draw the rectangle relative to the object's pivot
     ctx.strokeRect(
-        worldX - uiPosition.width / 2,
-        worldY - uiPosition.height / 2,
-        uiPosition.width,
-        uiPosition.height
+        -size.x * pivot.x,
+        -size.y * pivot.y,
+        size.x,
+        size.y
     );
 
     ctx.restore();

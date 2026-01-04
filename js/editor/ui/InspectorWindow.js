@@ -151,6 +151,19 @@ function handleInspectorInput(e) {
     const component = selectedMateria.getComponent(ComponentClass);
     if (!component) return;
 
+    // Special handling for Image color property to convert hex to rgba object
+    if (component instanceof Components.Image && propPath === 'color') {
+        const hex = value;
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        component.color.r = r;
+        component.color.g = g;
+        component.color.b = b;
+        // Do not modify alpha here, it's handled by its own slider
+        return;
+    }
+
     if (propPath === 'simplifiedSize') {
         component.cellSize.x = value;
         component.cellSize.y = value;
@@ -704,10 +717,6 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Transform) {
             console.log('  - Is Transform component.');
-            if (selectedMateria.getComponent(Components.UIPosition)) {
-                console.log('  - UIPosition also exists, skipping render of Transform.');
-                return;
-            }
             componentHTML = `
             <div class="component-inspector">
                 <div class="component-header">${iconHTML}<h4>Transform</h4></div>
@@ -736,15 +745,32 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         } else if (ley instanceof Components.UIPosition) {
              console.log('  - Is UIPosition component.');
-             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Posición</h4></div>
+             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Position</h4></div>
             <div class="component-content">
-                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="x" value="${ley.x}"></div>
-                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="y" value="${ley.y}"></div>
-                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="width" value="${ley.width}"></div>
-                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="UIPosition" data-prop="height" value="${ley.height}"></div>
+                <div class="prop-row-multi">
+                    <label>Size</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.x" value="${ley.size.x}" title="Width">
+                        <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.y" value="${ley.size.y}" title="Height">
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Pivot</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="0.1" data-component="UIPosition" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
+                        <input type="number" class="prop-input" step="0.1" data-component="UIPosition" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
+                    </div>
+                </div>
             </div>`;
         } else if (ley instanceof Components.Image) {
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
+            // Helper to convert RGBA object to HEX for the color picker
+            const rgbaToHex = (c) => {
+                const r = Math.round(c.r * 255).toString(16).padStart(2, '0');
+                const g = Math.round(c.g * 255).toString(16).padStart(2, '0');
+                const b = Math.round(c.b * 255).toString(16).padStart(2, '0');
+                return `#${r}${g}${b}`;
+            };
+
             componentHTML = `
                 <div class="component-header">${iconHTML}<h4>Image</h4></div>
                 <div class="component-content">
@@ -756,11 +782,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label>Color</label>
-                        <input type="color" class="prop-input" data-component="Image" data-prop="color" value="${ley.color}">
+                        <input type="color" class="prop-input" data-component="Image" data-prop="color" value="${rgbaToHex(ley.color)}">
                     </div>
                     <div class="prop-row-multi">
                         <label>Opacity</label>
-                        <input type="range" class="prop-input" data-component="Image" data-prop="opacity" min="0" max="1" step="0.01" value="${ley.opacity}">
+                        <input type="range" class="prop-input" data-component="Image" data-prop="color.a" min="0" max="1" step="0.01" value="${ley.color.a}">
                     </div>
                 </div>`;
         } else if (ley instanceof Components.Canvas) {
@@ -1966,10 +1992,9 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
+                // If a UI component is added, ensure a UIPosition component also exists.
                 if (newComponent instanceof Components.Image || newComponent instanceof Components.Canvas) {
                     if (!selectedMateria.getComponent(Components.UIPosition)) {
-                        const existingTransform = selectedMateria.getComponent(Components.Transform);
-                        if (existingTransform) selectedMateria.removeComponent(Components.Transform);
                         selectedMateria.addComponent(new Components.UIPosition(selectedMateria));
                     }
                 }
