@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.Canvas],
+    'UI': [Components.UITransform, Components.UIImage, Components.Canvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -635,7 +635,7 @@ async function updateInspectorForMateria(selectedMateria) {
     const componentIcons = {
         Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        RectTransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
     };
 
@@ -704,8 +704,8 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Transform) {
             console.log('  - Is Transform component.');
-            if (selectedMateria.getComponent(Components.RectTransform)) {
-                console.log('  - RectTransform also exists, skipping render of Transform.');
+            if (selectedMateria.getComponent(Components.UITransform)) {
+                console.log('  - UITransform also exists, skipping render of Transform.');
                 return;
             }
             componentHTML = `
@@ -734,14 +734,43 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.RectTransform) {
-             console.log('  - Is RectTransform component.');
-             componentHTML = `<div class="component-header">${iconHTML}<h4>Rect Transform</h4></div>
+        } else if (ley instanceof Components.UITransform) {
+            const anchorOptions = [
+                'top-left', 'top-center', 'top-right',
+                'middle-left', 'middle-center', 'middle-right',
+                'bottom-left', 'bottom-center', 'bottom-right'
+            ].map(preset => `<option value="${preset}" ${ley.anchorPreset === preset ? 'selected' : ''}>${preset.replace(/-/g, ' ')}</option>`).join('');
+
+            componentHTML = `
+            <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
             <div class="component-content">
-                <div class="prop-row-multi"><label>X</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="x" value="${ley.x}"></div>
-                <div class="prop-row-multi"><label>Y</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="y" value="${ley.y}"></div>
-                <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
-                <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
+                <div class="prop-row-multi">
+                    <label>Position</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="Position X">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="Position Y">
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Size</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.width" value="${ley.size.width}" title="Width">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="Height">
+                    </div>
+                </div>
+                 <div class="prop-row-multi">
+                    <label>Pivot</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
+                        <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Anchor Preset</label>
+                     <select class="prop-input" data-component="UITransform" data-prop="anchorPreset">
+                        ${anchorOptions}
+                    </select>
+                </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
@@ -1953,11 +1982,15 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UICanvas) {
-                    if (!selectedMateria.getComponent(Components.RectTransform)) {
+                if (newComponent instanceof Components.UIImage) {
+                    // If the UI element doesn't have a UITransform, add one
+                    // and remove the standard Transform to avoid conflicts.
+                    if (!selectedMateria.getComponent(Components.UITransform)) {
                         const existingTransform = selectedMateria.getComponent(Components.Transform);
-                        if (existingTransform) selectedMateria.removeComponent(Components.Transform);
-                        selectedMateria.addComponent(new Components.RectTransform(selectedMateria));
+                        if (existingTransform) {
+                            selectedMateria.removeComponent(Components.Transform);
+                        }
+                        selectedMateria.addComponent(new Components.UITransform(selectedMateria));
                     }
                 }
                 dom.addComponentModal.classList.remove('is-open');

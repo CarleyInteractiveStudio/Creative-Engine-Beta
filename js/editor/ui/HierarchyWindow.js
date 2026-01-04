@@ -205,6 +205,12 @@ export function handleContextMenuAction(action) {
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
+        case 'create-ui-image':
+            newMateria = createBaseMateria(generateUniqueName('Image'), selectedMateria);
+            newMateria.removeComponent(Components.Transform); // Remove default transform
+            newMateria.addComponent(new Components.UITransform(newMateria));
+            newMateria.addComponent(new Components.UIImage(newMateria));
+            break;
 
         case 'rename':
             if (contextMateria) { // Use contextMateria

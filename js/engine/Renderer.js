@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -344,72 +344,99 @@ export class Renderer {
         }
     }
 
-    drawScreenSpaceUI(canvasMateria) {
-        this.beginUI(); // Resets transform for screen space
+    getAnchorPoint(preset, canvasWidth, canvasHeight) {
+        const anchor = { x: 0.5, y: 0.5 }; // Default to middle-center
 
-        // The children are directly on the Materia object
+        if (preset.includes('left')) anchor.x = 0;
+        if (preset.includes('center')) anchor.x = 0.5;
+        if (preset.includes('right')) anchor.x = 1;
+
+        if (preset.includes('top')) anchor.y = 0;
+        if (preset.includes('middle')) anchor.y = 0.5;
+        if (preset.includes('bottom')) anchor.y = 1;
+
+        return {
+            x: canvasWidth * anchor.x,
+            y: canvasHeight * anchor.y
+        };
+    }
+
+    drawScreenSpaceUI(canvasMateria) {
+        this.beginUI();
+
+        const canvasComponent = canvasMateria.getComponent(Canvas);
+        const canvasTransform = canvasMateria.getComponent(Transform); // The global offset
+        if (!canvasComponent || !canvasTransform) {
+            this.end();
+            return;
+        }
+
+        const canvasRect = {
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
+
         for (const child of canvasMateria.children) {
             if (!child.isActive) continue;
 
-            const transform = child.getComponent(Transform);
-            const spriteRenderer = child.getComponent(SpriteRenderer);
+            const uiTransform = child.getComponent(UITransform);
+            if (!uiTransform) continue;
+
+            // --- 1. Calculate Anchor Position ---
+            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, canvasRect.width, canvasRect.height);
+
+            // --- 2. Calculate Pivot Position ---
+            const pivotPosX = anchorPoint.x + uiTransform.position.x;
+            const pivotPosY = anchorPoint.y + uiTransform.position.y;
+
+            // --- 3. Calculate Final Top-Left Position ---
+            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+
+            // --- 4. Apply Canvas's World Position as an Offset ---
+            const drawX = finalX + canvasTransform.position.x;
+            const drawY = finalY + canvasTransform.position.y;
+            const drawWidth = uiTransform.size.width;
+            const drawHeight = uiTransform.size.height;
+
+            // --- 5. Render the element ---
+            const uiImage = child.getComponent(UIImage);
             const textureRender = child.getComponent(TextureRender);
 
-            if (transform && spriteRenderer && spriteRenderer.sprite) {
-                this.drawSpriteInRect(spriteRenderer, transform);
-            } else if (transform && textureRender) {
-                this.drawTextureInRect(textureRender, transform);
+            if (uiImage && uiImage.sprite && uiImage.sprite.complete) {
+                this.ctx.save();
+                // Apply color tint by drawing a colored rectangle first, then the image
+                this.ctx.fillStyle = uiImage.color;
+                this.ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
+
+                // Then draw the image on top. If the image has transparency, the color will show through.
+                this.ctx.globalCompositeOperation = 'multiply'; // A good blending mode for tinting
+                this.ctx.drawImage(uiImage.sprite, drawX, drawY, drawWidth, drawHeight);
+                this.ctx.restore(); // Restore globalCompositeOperation
+
+            } else if (textureRender) {
+                this.ctx.save();
+                this.ctx.translate(drawX, drawY);
+
+                if (textureRender.texture && textureRender.texture.complete) {
+                    const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
+                    this.ctx.fillStyle = pattern;
+                } else {
+                    this.ctx.fillStyle = textureRender.color;
+                }
+
+                if (textureRender.shape === 'Rectangle') {
+                    this.ctx.fillRect(0, 0, drawWidth, drawHeight);
+                } else if (textureRender.shape === 'Circle') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                }
+                this.ctx.restore();
             }
         }
 
-        this.end(); // Restores transform
-    }
-
-    drawSpriteInRect(spriteRenderer, transform) {
-        const img = spriteRenderer.sprite;
-        if (!img || !img.complete || img.naturalWidth === 0) return;
-
-        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-
-        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-            sx = spriteData.rect.x;
-            sy = spriteData.rect.y;
-            sWidth = spriteData.rect.width;
-            sHeight = spriteData.rect.height;
-        }
-
-        const pos = transform.position; // For UI, localPosition is effectively screen position
-        const scale = transform.localScale;
-
-        this.ctx.drawImage(img, sx, sy, sWidth, sHeight, pos.x, pos.y, sWidth * scale.x, sHeight * scale.y);
-    }
-
-    drawTextureInRect(textureRender, transform) {
-        const pos = transform.position;
-        const scale = transform.localScale;
-
-        this.ctx.save();
-        this.ctx.translate(pos.x, pos.y);
-        this.ctx.scale(scale.x, scale.y);
-
-        if (textureRender.texture && textureRender.texture.complete) {
-            const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
-            this.ctx.fillStyle = pattern;
-        } else {
-            this.ctx.fillStyle = textureRender.color;
-        }
-
-        if (textureRender.shape === 'Rectangle') {
-            this.ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-        } else if (textureRender.shape === 'Circle') {
-            this.ctx.beginPath();
-            this.ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
-            this.ctx.fill();
-        }
-        // Add other shapes if needed
-
-        this.ctx.restore();
+        this.end();
     }
 }
 

@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
-    'RectTransform': 'transformacionRect',
+    'UITransform': 'transformacionUI',
 };
 
 
@@ -755,53 +755,22 @@ export class Animator extends Leyes {
     }
 }
 
-export class RectTransform extends Leyes {
+export class UITransform extends Leyes {
     constructor(materia) {
         super(materia);
-        this.x = 0;
-        this.y = 0;
-        this.width = 100;
-        this.height = 100;
-        this.pivot = { x: 0.5, y: 0.5 };
-        this.anchorMin = { x: 0.5, y: 0.5 };
-        this.anchorMax = { x: 0.5, y: 0.5 };
+        this.position = { x: 0, y: 0 }; // Position relative to the anchor point
+        this.size = { width: 100, height: 100 };
+        this.pivot = { x: 0.5, y: 0.5 }; // 0,0 is top-left, 1,1 is bottom-right
+        this.anchorPreset = 'middle-center'; // e.g., 'top-left', 'bottom-right', 'stretch-horizontal', etc.
     }
 
-    getWorldRect(parentCanvas) {
-        // For now, a simplified version that doesn't handle nesting.
-        // It assumes the parent is the main canvas.
-        const parentWidth = parentCanvas.width;
-        const parentHeight = parentCanvas.height;
-
-        // Calculate anchor positions in pixels
-        const anchorMinX = parentWidth * this.anchorMin.x;
-        const anchorMinY = parentHeight * this.anchorMin.y;
-
-        // Calculate the position of the pivot point relative to the anchors
-        const pivotPosX = anchorMinX + this.x;
-        const pivotPosY = anchorMinY + this.y;
-
-        // Calculate the top-left corner of the rectangle based on the pivot
-        const rectX = pivotPosX - (this.width * this.pivot.x);
-        const rectY = pivotPosY - (this.height * this.pivot.y);
-
-        return {
-            x: rectX,
-            y: rectY,
-            width: this.width,
-            height: this.height
-        };
-    }
     clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.x = this.x;
-        newRectTransform.y = this.y;
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        newRectTransform.pivot = { ...this.pivot };
-        newRectTransform.anchorMin = { ...this.anchorMin };
-        newRectTransform.anchorMax = { ...this.anchorMax };
-        return newRectTransform;
+        const newUITransform = new UITransform(null);
+        newUITransform.position = { ...this.position };
+        newUITransform.size = { ...this.size };
+        newUITransform.pivot = { ...this.pivot };
+        newUITransform.anchorPreset = this.anchorPreset;
+        return newUITransform;
     }
 }
 
@@ -1074,7 +1043,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
+registerComponent('UITransform', UITransform);
 registerComponent('UIImage', UIImage);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
