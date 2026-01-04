@@ -863,8 +863,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
         const spriteLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
+        const canvasesToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
 
-        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw) => {
+        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
@@ -991,13 +993,9 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of tilemapsToDraw) {
                 if (!materia.isActive) continue;
 
-                // Culling for tilemaps can be more complex (chunk-based),
-                // for now, we'll do a simple bounds check on the whole map.
-                // A proper implementation would be more performant.
                 if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia); // This will need adjustment for tilemaps
+                    const objectBounds = MathUtils.getOOB(materia);
                     if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    // Layer culling
                     const cameraComponent = cameraForCulling.getComponent(Components.Camera);
                     const objectLayerBit = 1 << materia.layer;
                     if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
@@ -1007,6 +1005,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tilemapRenderer) {
                     rendererInstance.drawTilemap(tilemapRenderer);
                 }
+            }
+
+            // Draw Canvases
+            for (const materia of canvasesToDraw) {
+                rendererInstance.drawCanvas(materia, isGameView);
             }
         };
 
@@ -1057,12 +1060,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
 
             if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
                 const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
 
                 uniqueLayers.forEach(layer => {
                     const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
                     const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
+                    const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
                     const lightsInLayer = {
                         point: pointLights.filter(l => l.layer === layer),
                         spot: spotLights.filter(l => l.layer === layer),
@@ -1070,13 +1074,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         sprite: spriteLights.filter(l => l.layer === layer)
                     };
 
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer);
+                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer);
                     drawLights(lightsInLayer);
                 });
 
             } else {
-                // Original behavior: draw all objects, then all lights
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender);
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
                 drawLights(allLights);
             }
 
@@ -1123,19 +1126,15 @@ document.addEventListener('DOMContentLoaded', () => {
             runGameLoop();
             if (renderer) {
                 updateScene(renderer, false);
-                renderer.renderUI(SceneManager.currentScene, false); // Pass isGameView = false
             }
             if (gameRenderer) {
                 updateScene(gameRenderer, true);
-                gameRenderer.renderUI(SceneManager.currentScene, true); // Pass isGameView = true
             }
         } else {
             if (activeView === 'scene-content' && renderer) {
                 updateScene(renderer, false);
-                renderer.renderUI(SceneManager.currentScene, false);
             } else if (activeView === 'game-content' && gameRenderer) {
                 updateScene(gameRenderer, true);
-                gameRenderer.renderUI(SceneManager.currentScene, true);
             }
         }
 

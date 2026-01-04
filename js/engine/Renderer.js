@@ -326,27 +326,19 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
-    renderUI(scene, isGameView) {
-        if (!scene) return;
+    drawCanvas(canvasMateria, isGameView) {
+        if (!canvasMateria.isActive) return;
+        const canvas = canvasMateria.getComponent(Canvas);
 
-        const canvases = scene.getAllMaterias().filter(m => m.getComponent(Canvas));
+        if (!isGameView) {
+            this.drawWorldSpaceUI(canvasMateria);
+            return;
+        }
 
-        for (const canvasMateria of canvases) {
-            if (!canvasMateria.isActive) continue;
-            const canvas = canvasMateria.getComponent(Canvas);
-
-            // In the editor, ALL canvases are drawn in world space for easier editing.
-            if (!isGameView) {
-                this.drawWorldSpaceUI(canvasMateria);
-                continue;
-            }
-
-            // In the game view, we respect the render mode.
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else { // 'World Space'
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+        if (canvas.renderMode === 'Screen Space') {
+            this.drawScreenSpaceUI(canvasMateria);
+        } else {
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
