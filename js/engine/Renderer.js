@@ -326,15 +326,22 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
-    renderUI(scene) {
+    renderUI(scene, isGameView) {
         if (!scene) return;
 
         const canvases = scene.getAllMaterias().filter(m => m.getComponent(Canvas));
 
         for (const canvasMateria of canvases) {
             if (!canvasMateria.isActive) continue;
-
             const canvas = canvasMateria.getComponent(Canvas);
+
+            // In the editor, ALL canvases are drawn in world space for easier editing.
+            if (!isGameView) {
+                this.drawWorldSpaceUI(canvasMateria);
+                continue;
+            }
+
+            // In the game view, we respect the render mode.
             if (canvas.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
             } else { // 'World Space'
@@ -374,6 +381,15 @@ export class Renderer {
             width: this.canvas.width,
             height: this.canvas.height
         };
+
+        // --- 1. Define Clipping Region in Screen Space ---
+        // For screen space, the clipping area is the entire screen, offset by the canvas's transform.
+        // (This is a simple interpretation; more complex setups might need rect transform sizes)
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(canvasTransform.position.x, canvasTransform.position.y, canvasRect.width, canvasRect.height);
+        this.ctx.clip();
+
 
         for (const child of canvasMateria.children) {
             if (!child.isActive) continue;
@@ -435,6 +451,7 @@ export class Renderer {
             }
         }
 
+        this.ctx.restore(); // IMPORTANT: Restore context to remove the clipping region
         this.end();
     }
 

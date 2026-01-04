@@ -1120,24 +1120,22 @@ document.addEventListener('DOMContentLoaded', () => {
         runLayoutUpdate();
 
         if (isGameRunning && !isGamePaused) {
-            runGameLoop(); // This handles the logic update
-            // When game is running, update both views
+            runGameLoop();
             if (renderer) {
-                updateScene(renderer, false); // Editor view with gizmos
-                renderer.renderUI(SceneManager.currentScene);
+                updateScene(renderer, false);
+                renderer.renderUI(SceneManager.currentScene, false); // Pass isGameView = false
             }
             if (gameRenderer) {
-                updateScene(gameRenderer, true); // Game view clean
-                gameRenderer.renderUI(SceneManager.currentScene);
+                updateScene(gameRenderer, true);
+                gameRenderer.renderUI(SceneManager.currentScene, true); // Pass isGameView = true
             }
         } else {
-            // When paused, only update the currently active view
             if (activeView === 'scene-content' && renderer) {
                 updateScene(renderer, false);
-                renderer.renderUI(SceneManager.currentScene);
+                renderer.renderUI(SceneManager.currentScene, false);
             } else if (activeView === 'game-content' && gameRenderer) {
                 updateScene(gameRenderer, true);
-                gameRenderer.renderUI(SceneManager.currentScene);
+                gameRenderer.renderUI(SceneManager.currentScene, true);
             }
         }
 
