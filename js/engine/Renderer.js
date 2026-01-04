@@ -338,8 +338,7 @@ export class Renderer {
             if (canvas.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
             } else { // 'World Space'
-                // World Space UI elements are just regular objects. The standard `updateScene`
-                // loop already handles their rendering, so no special UI pass is needed for them.
+                this.drawWorldSpaceUI(canvasMateria);
             }
         }
     }
@@ -437,6 +436,53 @@ export class Renderer {
         }
 
         this.end();
+    }
+
+    drawWorldSpaceUI(canvasMateria) {
+        const canvasComponent = canvasMateria.getComponent(Canvas);
+        const canvasTransform = canvasMateria.getComponent(Transform);
+        if (!canvasComponent || !canvasTransform) return;
+
+        this.ctx.save(); // Save context state before clipping
+
+        // --- 1. Define Clipping Region in World Space ---
+        const worldPos = canvasTransform.position;
+        const size = canvasComponent.size;
+        const halfWidth = size.x / 2;
+        const halfHeight = size.y / 2;
+
+        this.ctx.beginPath();
+        this.ctx.rect(worldPos.x - halfWidth, worldPos.y - halfHeight, size.x, size.y);
+        this.ctx.clip();
+
+        // --- 2. Render Children within the Clipped Region ---
+        for (const child of canvasMateria.children) {
+            if (!child.isActive) continue;
+
+            const uiTransform = child.getComponent(UITransform);
+            const uiImage = child.getComponent(UIImage);
+            if (!uiTransform || !uiImage || !uiImage.sprite || !uiImage.sprite.complete) continue;
+
+            // Anchor point is relative to the canvas's own size
+            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
+
+            // Position is relative to the canvas's center + anchor
+            const pivotPosX = worldPos.x - halfWidth + anchorPoint.x + uiTransform.position.x;
+            const pivotPosY = worldPos.y - halfHeight + anchorPoint.y + uiTransform.position.y;
+
+            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+
+            // Draw the image
+            this.ctx.save();
+            this.ctx.fillStyle = uiImage.color;
+            this.ctx.fillRect(finalX, finalY, uiTransform.size.width, uiTransform.size.height);
+            this.ctx.globalCompositeOperation = 'multiply';
+            this.ctx.drawImage(uiImage.sprite, finalX, finalY, uiTransform.size.width, uiTransform.size.height);
+            this.ctx.restore();
+        }
+
+        this.ctx.restore(); // IMPORTANT: Restore context to remove the clipping region
     }
 }
 

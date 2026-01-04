@@ -206,10 +206,25 @@ export function handleContextMenuAction(action) {
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
         case 'create-ui-image':
-            newMateria = createBaseMateria(generateUniqueName('Image'), selectedMateria);
-            newMateria.removeComponent(Components.Transform); // Remove default transform
-            newMateria.addComponent(new Components.UITransform(newMateria));
-            newMateria.addComponent(new Components.UIImage(newMateria));
+            {
+                // Find a suitable parent canvas
+                let parentCanvas = selectedMateria;
+                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
+                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                }
+
+                // If no canvas is found in the hierarchy, create a new one at the root
+                if (!parentCanvas) {
+                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                }
+
+                // Create the UI Image as a child of the canvas
+                newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
+                newMateria.removeComponent(Components.Transform); // Remove default transform
+                newMateria.addComponent(new Components.UITransform(newMateria));
+                newMateria.addComponent(new Components.UIImage(newMateria));
+            }
             break;
 
         case 'rename':

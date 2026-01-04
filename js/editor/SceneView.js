@@ -1455,9 +1455,25 @@ function drawCanvasGizmos() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    const canvasComponent = selectedMateria.getComponent(Components.Canvas);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!canvasComponent || !transform) return;
+    let canvasToShow = null;
+
+    // Case 1: The selected object itself is a Canvas
+    if (selectedMateria.getComponent(Components.Canvas)) {
+        canvasToShow = selectedMateria;
+    }
+    // Case 2: The selected object is a UI element (child of a Canvas)
+    else if (selectedMateria.getComponent(Components.UITransform)) {
+        const parent = selectedMateria.parent;
+        if (parent && parent.getComponent(Components.Canvas)) {
+            canvasToShow = parent;
+        }
+    }
+
+    if (!canvasToShow) return;
+
+    const canvasComponent = canvasToShow.getComponent(Components.Canvas);
+    const transform = canvasToShow.getComponent(Components.Transform);
+    if (!canvasComponent || !transform) return; // Should not happen if canvasToShow is set
 
     const { ctx, camera } = renderer;
     const pos = transform.position;
@@ -1465,16 +1481,17 @@ function drawCanvasGizmos() {
     ctx.save();
     ctx.lineWidth = 2 / camera.effectiveZoom;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    // No setLineDash, to make the line solid
+    ctx.setLineDash([10 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
+
 
     if (canvasComponent.renderMode === 'World Space') {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // Use the scene canvas for aspect ratio calculation, as it's always available
+        // For screen space, we just draw a representative box in the world
         const sceneCanvas = dom.sceneCanvas;
         const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400; // Arbitrary height for visualization in editor
+        const gizmoHeight = 400;
         const gizmoWidth = gizmoHeight * aspect;
         ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }
