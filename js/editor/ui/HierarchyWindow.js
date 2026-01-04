@@ -125,6 +125,30 @@ export function duplicateSelectedMateria() {
 }
 
 
+// --- Test-specific helper functions ---
+// These are simplified versions of the context menu actions,
+// designed to be called directly from Playwright's page.evaluate()
+export function createCanvasForTest() {
+    const newMateria = createBaseMateria(generateUniqueName('Canvas'), null);
+    newMateria.addComponent(new Components.Canvas(newMateria));
+    updateHierarchy();
+    return newMateria;
+}
+
+export function createUIElementForTest(parentCanvas) {
+     if (!parentCanvas || !parentCanvas.getComponent(Components.Canvas)) {
+        console.error("createUIElementForTest requires a valid parent Materia with a Canvas component.");
+        return null;
+    }
+    const newMateria = createBaseMateria(generateUniqueName('UI Element'), parentCanvas);
+    newMateria.removeComponent(Components.Transform); // UI elements use UITransform
+    newMateria.addComponent(new Components.UITransform(newMateria));
+    // For simplicity in testing, we won't add a UIImage component by default.
+    updateHierarchy();
+    return newMateria;
+}
+
+
 // Initialization function, called from editor.js
 export function initialize(dependencies) {
     dom = dependencies.dom;

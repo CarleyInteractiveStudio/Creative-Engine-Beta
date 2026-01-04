@@ -26,6 +26,7 @@ let lastPaintedCoords = { col: -1, row: -1 };
 // isPanning is no longer needed as a module-level state
 let lastMousePosition = { x: 0, y: 0 };
 let dragState = {}; // To hold info about the current drag operation
+let anchorPreviewData = null; // To store hovered anchor preset from inspector
 // debugDeltas is no longer needed
 
 // --- Core Functions ---
@@ -302,6 +303,44 @@ function getUITransformWorldRect(uiMateria) {
 }
 
 
+function drawAnchorPreviewGizmo() {
+    if (!anchorPreviewData) return;
+
+    const { ctx, camera } = renderer;
+    const { canvasRect, preset } = anchorPreviewData;
+
+    // We already have the world coordinates of the canvas rectangle
+    const { x: canvasX, y: canvasY, width: canvasWidth, height: canvasHeight } = canvasRect;
+
+    // Calculate anchor point based on the preset name (e.g., 'top-left')
+    const anchor = { x: 0.5, y: 0.5 }; // Default to center
+    if (preset.includes('left')) anchor.x = 0;
+    if (preset.includes('center')) anchor.x = 0.5;
+    if (preset.includes('right')) anchor.x = 1;
+    if (preset.includes('top')) anchor.y = 0;
+    if (preset.includes('middle')) anchor.y = 0.5;
+    if (preset.includes('bottom')) anchor.y = 1;
+
+    const anchorWorldX = canvasX + (canvasWidth * anchor.x);
+    const anchorWorldY = canvasY + (canvasHeight * anchor.y);
+
+    ctx.save();
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)'; // Bright yellow for preview
+    ctx.setLineDash([]);
+
+    const crossSize = 10 / camera.effectiveZoom;
+    ctx.beginPath();
+    ctx.moveTo(anchorWorldX - crossSize, anchorWorldY);
+    ctx.lineTo(anchorWorldX + crossSize, anchorWorldY);
+    ctx.moveTo(anchorWorldX, anchorWorldY - crossSize);
+    ctx.lineTo(anchorWorldX, anchorWorldY + crossSize);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
 function drawUITransformGizmo() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !selectedMateria.getComponent(Components.UITransform)) return;
@@ -332,6 +371,16 @@ function drawUITransformGizmo() {
     handles.forEach(handle => {
         ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
     });
+
+    // Add the central move handle gizmo
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const moveHandleSize = 10 / camera.effectiveZoom;
+    ctx.fillStyle = 'rgba(0, 150, 255, 0.7)';
+    ctx.fillRect(centerX - moveHandleSize / 2, centerY - moveHandleSize / 2, moveHandleSize, moveHandleSize);
+    ctx.strokeStyle = 'white';
+    ctx.strokeRect(centerX - moveHandleSize / 2, centerY - moveHandleSize / 2, moveHandleSize, moveHandleSize);
+
 
     ctx.restore();
 }
@@ -369,9 +418,19 @@ function checkUITransformGizmoHit(canvasPos) {
         }
     }
 
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const moveHandleHitboxSize = 12 / renderer.camera.effectiveZoom;
+    if (Math.abs(worldMouse.x - centerX) < moveHandleHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < moveHandleHitboxSize / 2) {
+        return 'ui-move';
+    }
+
+
+    // Allow moving by dragging anywhere inside the rect as a fallback
     if (worldMouse.x >= x && worldMouse.x <= x + width && worldMouse.y >= y && worldMouse.y <= y + height) {
         return 'ui-move';
     }
+
 
     return null;
 }
@@ -477,6 +536,56 @@ function drawGizmos(renderer, materia) {
 
 
 // --- Public API ---
+
+export function setAnchorPreview(preset) {
+    if (preset === null) {
+        anchorPreviewData = null;
+        return;
+    }
+
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !selectedMateria.getComponent(Components.UITransform)) {
+        anchorPreviewData = null;
+        return;
+    }
+
+    const parent = selectedMateria.parent;
+    if (!parent || !parent.getComponent(Components.Canvas)) {
+         anchorPreviewData = null;
+         return;
+    }
+
+    const canvasComponent = parent.getComponent(Components.Canvas);
+    const canvasTransform = parent.getComponent(Components.Transform);
+
+    let canvasRect;
+    if (canvasComponent.renderMode === 'World Space') {
+        const size = canvasComponent.size;
+        canvasRect = {
+            x: canvasTransform.position.x - size.x / 2,
+            y: canvasTransform.position.y - size.y / 2,
+            width: size.x,
+            height: size.y
+        };
+    } else {
+        const sceneCanvas = dom.sceneCanvas;
+        const aspect = sceneCanvas.width / sceneCanvas.height;
+        const gizmoHeight = 400;
+        const gizmoWidth = gizmoHeight * aspect;
+        canvasRect = {
+            x: canvasTransform.position.x - gizmoWidth / 2,
+            y: canvasTransform.position.y - gizmoHeight / 2,
+            width: gizmoWidth,
+            height: gizmoHeight
+        };
+    }
+
+    anchorPreviewData = {
+        canvasRect: canvasRect,
+        preset: preset
+    };
+}
+
 
 export function getActiveTool() {
     return activeTool;
@@ -1233,6 +1342,9 @@ export function drawOverlay() {
 
     // Draw UI Transform Gizmo
     drawUITransformGizmo();
+
+    // Draw Anchor Preview on hover
+    drawAnchorPreviewGizmo();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {

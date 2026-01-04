@@ -61,6 +61,19 @@ export function initialize(dependencies) {
         }
     });
     dom.inspectorContent.addEventListener('click', handleInspectorClick);
+    dom.inspectorContent.addEventListener('mouseover', handleInspectorMouseOver);
+    dom.inspectorContent.addEventListener('mouseout', handleInspectorMouseOut);
+
+    // Add a global listener to close the anchor grid when clicking outside
+    document.addEventListener('click', (e) => {
+        const anchorGrid = document.getElementById('anchor-preset-grid');
+        const displayBtn = document.getElementById('anchor-preset-display-btn');
+        if (anchorGrid && !anchorGrid.classList.contains('hidden')) {
+            if (!anchorGrid.contains(e.target) && e.target !== displayBtn) {
+                anchorGrid.classList.add('hidden');
+            }
+        }
+    });
 
     // Add drag and drop listeners for Materia assignment
     dom.inspectorContent.addEventListener('dragover', (e) => {
@@ -356,6 +369,24 @@ function handleInspectorClick(e) {
         const camera = selectedMateria.getComponent(Components.Camera);
         if (camera) {
             showCullingMaskDropdown(camera, e.target);
+        }
+    }
+
+    // --- Anchor Preset Selector ---
+    if (e.target.matches('#anchor-preset-display-btn')) {
+        const grid = document.getElementById('anchor-preset-grid');
+        if (grid) {
+            grid.classList.toggle('hidden');
+        }
+    }
+
+    if (e.target.matches('.anchor-grid-button')) {
+        const selectedPreset = e.target.dataset.anchor;
+        const uiTransform = selectedMateria.getComponent(Components.UITransform);
+        if (uiTransform) {
+            uiTransform.anchorPreset = selectedPreset;
+            document.getElementById('anchor-preset-grid').classList.add('hidden');
+            updateInspector(); // Re-render to update the display button
         }
     }
 
@@ -735,11 +766,14 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.UITransform) {
-            const anchorOptions = [
+            const presets = [
                 'top-left', 'top-center', 'top-right',
                 'middle-left', 'middle-center', 'middle-right',
                 'bottom-left', 'bottom-center', 'bottom-right'
-            ].map(preset => `<option value="${preset}" ${ley.anchorPreset === preset ? 'selected' : ''}>${preset.replace(/-/g, ' ')}</option>`).join('');
+            ];
+            const gridButtonsHTML = presets.map(preset =>
+                `<button class="anchor-grid-button" data-anchor="${preset}" title="${preset}"></button>`
+            ).join('');
 
             componentHTML = `
             <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
@@ -765,11 +799,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
                     </div>
                 </div>
-                <div class="prop-row-multi">
+                <div class="prop-row-multi anchor-preset-row">
                     <label>Anchor Preset</label>
-                     <select class="prop-input" data-component="UITransform" data-prop="anchorPreset">
-                        ${anchorOptions}
-                    </select>
+                    <div class="anchor-preset-selector">
+                        <button id="anchor-preset-display-btn" class="anchor-display-btn" data-current-preset="${ley.anchorPreset}"></button>
+                        <div id="anchor-preset-grid" class="anchor-grid hidden">
+                            ${gridButtonsHTML}
+                        </div>
+                    </div>
                 </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
@@ -2286,6 +2323,30 @@ function openAnimationCreatorModal(spriteAsset, sourceImageUrl) {
 
     modal.classList.remove('hidden');
 }
+
+// --- Mouse Over/Out for Anchor Preview ---
+let setAnchorPreviewCallback = () => {};
+
+export function setAnchorPreviewCallbackFn(callback) {
+    setAnchorPreviewCallback = callback;
+}
+function handleInspectorMouseOver(e) {
+    if (e.target.matches('.anchor-grid-button')) {
+        const preset = e.target.dataset.anchor;
+        if (setAnchorPreviewCallback) {
+            setAnchorPreviewCallback(preset);
+        }
+    }
+}
+
+function handleInspectorMouseOut(e) {
+    if (e.target.matches('.anchor-grid-button')) {
+        if (setAnchorPreviewCallback) {
+            setAnchorPreviewCallback(null); // Clear the preview
+        }
+    }
+}
+
 
 // Helper function to save the project configuration, adapted from ProjectSettingsWindow
 async function saveProjectConfig() {

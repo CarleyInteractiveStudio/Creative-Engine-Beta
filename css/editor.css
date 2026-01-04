@@ -3434,3 +3434,99 @@ body {
 #markdown-preview-area th {
     background-color: var(--bg-tertiary);
 }
+
+/* --- UI Transform Anchor Preset Selector --- */
+.anchor-preset-row {
+    align-items: flex-start; /* Align label to the top */
+}
+
+.anchor-preset-selector {
+    position: relative;
+    width: 100%;
+}
+
+.anchor-display-btn {
+    width: 48px;
+    height: 48px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    padding: 0;
+}
+
+.anchor-display-btn::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    /* Dynamic positioning will be handled by JS/inline styles if needed, but CSS can do a lot */
+}
+
+/* Example positioning for top-left */
+.anchor-display-btn[data-current-preset="top-left"]::before { top: 25%; left: 25%; }
+.anchor-display-btn[data-current-preset="top-center"]::before { top: 25%; left: 50%; }
+.anchor-display-btn[data-current-preset="top-right"]::before { top: 25%; left: 75%; }
+.anchor-display-btn[data-current-preset="middle-left"]::before { top: 50%; left: 25%; }
+.anchor-display-btn[data-current-preset="middle-center"]::before { top: 50%; left: 50%; }
+.anchor-display-btn[data-current-preset="middle-right"]::before { top: 50%; left: 75%; }
+.anchor-display-btn[data-current-preset="bottom-left"]::before { top: 75%; left: 25%; }
+.anchor-display-btn[data-current-preset="bottom-center"]::before { top: 75%; left: 50%; }
+.anchor-display-btn[data-current-preset="bottom-right"]::before { top: 75%; left: 75%; }
+
+
+.anchor-grid {
+    position: absolute;
+    top: 0;
+    left: 55px; /* Position it next to the display button */
+    width: 100px;
+    height: 100px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    z-index: 100; /* Ensure it appears above other inspector elements */
+    padding: 2px;
+}
+
+.anchor-grid-button {
+    background-color: var(--bg-tertiary);
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+    position: relative;
+}
+
+.anchor-grid-button:hover {
+    background-color: var(--accent-color);
+}
+
+.anchor-grid-button::before {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: white;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Individual positions for the white dot */
+.anchor-grid-button[data-anchor="top-left"]::before { top: 20%; left: 20%; }
+.anchor-grid-button[data-anchor="top-center"]::before { top: 20%; left: 50%; }
+.anchor-grid-button[data-anchor="top-right"]::before { top: 20%; left: 80%; }
+.anchor-grid-button[data-anchor="middle-left"]::before { top: 50%; left: 20%; }
+.anchor-grid-button[data-anchor="middle-center"]::before { top: 50%; left: 50%; }
+.anchor-grid-button[data-anchor="middle-right"]::before { top: 50%; left: 80%; }
+.anchor-grid-button[data-anchor="bottom-left"]::before { top: 80%; left: 20%; }
+.anchor-grid-button[data-anchor="bottom-center"]::before { top: 80%; left: 50%; }
+.anchor-grid-button[data-anchor="bottom-right"]::before { top: 80%; left: 80%; }

@@ -47,6 +47,24 @@ export class Scene {
         return findRecursive(id, this.materias);
     }
 
+    findMateriaByName(name) {
+        const findRecursive = (name, materias) => {
+            for (const materia of materias) {
+                if (materia.name === name) {
+                    return materia;
+                }
+                if (materia.children && materia.children.length > 0) {
+                    const found = findRecursive(name, materia.children);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        };
+        return findRecursive(name, this.materias);
+    }
+
     getRootMaterias() {
         return this.materias.filter(m => m.parent === null);
     }

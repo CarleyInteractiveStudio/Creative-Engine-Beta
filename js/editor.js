@@ -10,8 +10,8 @@ import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFrom
 import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
-import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
-import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
+import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction, createCanvasForTest, createUIElementForTest } from './editor/ui/HierarchyWindow.js';
+import { initialize as initializeInspector, updateInspector, setAnchorPreviewCallbackFn } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
@@ -19,7 +19,7 @@ import { initialize as initializeImportExport } from './editor/ui/PackageImportE
 import { transpile } from './editor/CES_Transpiler.js';
 import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
-import { setActiveTool } from './editor/SceneView.js';
+import { setActiveTool, setAnchorPreview } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
@@ -2107,6 +2107,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.MateriaFactory = MateriaFactory;
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
+        // --- Expose test helpers globally ---
+        window.createCanvasForTest = createCanvasForTest;
+        window.createUIElementForTest = createUIElementForTest;
+        window.selectMateriaById = (id) => selectMateria(id);
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
@@ -2588,6 +2592,7 @@ public star() {
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            setAnchorPreviewCallbackFn(setAnchorPreview); // Connect Inspector hover events to SceneView
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

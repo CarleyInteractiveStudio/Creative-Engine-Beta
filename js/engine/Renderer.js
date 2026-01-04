@@ -355,7 +355,9 @@ export class Renderer {
 
         return {
             x: canvasWidth * anchor.x,
-            y: canvasHeight * anchor.y
+            y: canvasHeight * anchor.y,
+            anchorPercentX: anchor.x,
+            anchorPercentY: anchor.y
         };
     }
 
@@ -375,7 +377,6 @@ export class Renderer {
         };
 
         // --- 1. Define Clipping Region in Screen Space ---
-        // For screen space, the clipping area is the entire screen, offset by the canvas's transform.
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(canvasTransform.position.x, canvasTransform.position.y, canvasRect.width, canvasRect.height);
@@ -389,11 +390,15 @@ export class Renderer {
             if (!uiTransform) continue;
 
             // --- 1. Calculate Anchor Position ---
-            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, canvasRect.width, canvasRect.height);
+            const anchorData = this.getAnchorPoint(uiTransform.anchorPreset, canvasRect.width, canvasRect.height);
+            const anchorPoint = { x: anchorData.x, y: anchorData.y };
 
-            // --- 2. Calculate the top-left corner based on anchor and pivot, BEFORE applying the position offset ---
-            const initialX = anchorPoint.x - (uiTransform.size.width * uiTransform.pivot.x);
-            const initialY = anchorPoint.y - (uiTransform.size.height * uiTransform.pivot.y);
+            // --- 2. Calculate the top-left corner by aligning the element's anchor point with the canvas's anchor point ---
+            const elementAnchorPointX = uiTransform.size.width * anchorData.anchorPercentX;
+            const elementAnchorPointY = uiTransform.size.height * anchorData.anchorPercentY;
+            const initialX = anchorPoint.x - elementAnchorPointX;
+            const initialY = anchorPoint.y - elementAnchorPointY;
+
 
             // --- 3. Apply the position as an offset ---
             const finalX = initialX + uiTransform.position.x;
@@ -472,15 +477,21 @@ export class Renderer {
             if (!uiTransform || !uiImage || !uiImage.sprite || !uiImage.sprite.complete) continue;
 
             // Anchor point is relative to the canvas's own size
-            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
+            const anchorData = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
+            const anchorPoint = { x: anchorData.x, y: anchorData.y };
 
             // Calculate top-left of the canvas in world space
             const canvasTopLeftX = worldPos.x - halfWidth;
             const canvasTopLeftY = worldPos.y - halfHeight;
 
-            // Calculate the initial top-left of the element based on anchor and pivot, before offset
-            const initialX = canvasTopLeftX + anchorPoint.x - (uiTransform.size.width * uiTransform.pivot.x);
-            const initialY = canvasTopLeftY + anchorPoint.y - (uiTransform.size.height * uiTransform.pivot.y);
+            // Calculate the element's local anchor point in pixels
+            const elementAnchorPointX = uiTransform.size.width * anchorData.anchorPercentX;
+            const elementAnchorPointY = uiTransform.size.height * anchorData.anchorPercentY;
+
+            // Calculate the initial top-left of the element, aligning its anchor with the canvas's anchor
+            const initialX = canvasTopLeftX + anchorPoint.x - elementAnchorPointX;
+            const initialY = canvasTopLeftY + anchorPoint.y - elementAnchorPointY;
+
 
             // Apply the UITransform's position as an offset
             const finalX = initialX + uiTransform.position.x;
