@@ -30,7 +30,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.UIPosition, Components.Image, Components.Canvas],
+    'UI': [Components.UIPosicion, Components.Image, Components.Canvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -151,18 +151,12 @@ function handleInspectorInput(e) {
     const component = selectedMateria.getComponent(ComponentClass);
     if (!component) return;
 
-    // Special handling for Image color property to convert hex to rgba object
     if (component instanceof Components.Image && propPath === 'color') {
-        const hex = value;
-        const r = parseInt(hex.slice(1, 3), 16) / 255;
-        const g = parseInt(hex.slice(3, 5), 16) / 255;
-        const b = parseInt(hex.slice(5, 7), 16) / 255;
-        component.color.r = r;
-        component.color.g = g;
-        component.color.b = b;
-        // Do not modify alpha here, it's handled by its own slider
+        const currentAlpha = component.color.substring(7, 9) || 'FF';
+        component.color = `${value}${currentAlpha}`;
         return;
     }
+
 
     if (propPath === 'simplifiedSize') {
         component.cellSize.x = value;
@@ -177,6 +171,12 @@ function handleInspectorInput(e) {
         current = current[props[i]];
     }
     current[props[props.length - 1]] = value;
+
+    // Special handler for the Image opacity slider
+    if (e.target.id === 'image-opacity-slider' && component instanceof Components.Image) {
+        const alphaHex = parseInt(e.target.value).toString(16).padStart(2, '0');
+        component.color = component.color.substring(0, 7) + alphaHex;
+    }
 }
 
 async function handleInspectorChange(e) {
@@ -646,9 +646,9 @@ async function updateInspectorForMateria(selectedMateria) {
     }
 
     const componentIcons = {
-        Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
+        Posicion: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
         Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        UIPosition: '⚚', UICanvas: '🖼️', Image: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+        UIPosicion: '⚚', UICanvas: '🖼️', Image: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
         Grid: '▦'
     };
 
@@ -715,62 +715,85 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.Transform) {
-            console.log('  - Is Transform component.');
+        } else if (ley instanceof Components.Posicion) {
+            console.log('  - Is Posicion component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                <div class="component-header">${iconHTML}<h4>Posicion</h4></div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Position</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
+                            <input type="number" class="prop-input" step="1" data-component="Posicion" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
+                            <input type="number" class="prop-input" step="1" data-component="Posicion" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Rotation</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
+                            <input type="number" class="prop-input" step="1" data-component="Posicion" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Scale</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
+                            <input type="number" class="prop-input" step="0.1" data-component="Posicion" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Posicion" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
                         </div>
                     </div>
                 </div>
             </div>`;
-        } else if (ley instanceof Components.UIPosition) {
-             console.log('  - Is UIPosition component.');
-             componentHTML = `<div class="component-header">${iconHTML}<h4>UI Position</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi">
-                    <label>Size</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.x" value="${ley.size.x}" title="Width">
-                        <input type="number" class="prop-input" step="1" data-component="UIPosition" data-prop="size.y" value="${ley.size.y}" title="Height">
+        } else if (ley instanceof Components.UIPosicion) {
+            console.log('  - Is UIPosicion component.');
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header">${iconHTML}<h4>UI Posicion</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Position</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
+                        </div>
                     </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Pivot</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" data-component="UIPosition" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
-                        <input type="number" class="prop-input" step="0.1" data-component="UIPosition" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
+                    <div class="prop-row-multi">
+                        <label>Rotation</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Scale</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="UIPosicion" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
+                            <input type="number" class="prop-input" step="0.1" data-component="UIPosicion" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="size.x" value="${ley.size.x}" title="Width">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="size.y" value="${ley.size.y}" title="Height">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Pivot</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="UIPosicion" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
+                            <input type="number" class="prop-input" step="0.1" data-component="UIPosicion" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
+                        </div>
+                    </div>
+                     <div class="prop-row-multi">
+                        <label>Anchored Pos</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="anchoredPosition.x" value="${ley.anchoredPosition.x}" title="Anchored Position X">
+                            <input type="number" class="prop-input" step="1" data-component="UIPosicion" data-prop="anchoredPosition.y" value="${ley.anchoredPosition.y}" title="Anchored Position Y">
+                        </div>
                     </div>
                 </div>
             </div>`;
         } else if (ley instanceof Components.Image) {
-            // Helper to convert RGBA object to HEX for the color picker
-            const rgbaToHex = (c) => {
-                const r = Math.round(c.r * 255).toString(16).padStart(2, '0');
-                const g = Math.round(c.g * 255).toString(16).padStart(2, '0');
-                const b = Math.round(c.b * 255).toString(16).padStart(2, '0');
-                return `#${r}${g}${b}`;
-            };
-
             componentHTML = `
                 <div class="component-header">${iconHTML}<h4>Image</h4></div>
                 <div class="component-content">
@@ -782,11 +805,20 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label>Color</label>
-                        <input type="color" class="prop-input" data-component="Image" data-prop="color" value="${rgbaToHex(ley.color)}">
+                        <input type="color" class="prop-input" data-component="Image" data-prop="color" value="${ley.color.substring(0, 7)}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>Opacity</label>
-                        <input type="range" class="prop-input" data-component="Image" data-prop="color.a" min="0" max="1" step="0.01" value="${ley.color.a}">
+                         <label>Opacity</label>
+                        <input type="range" class="prop-input" id="image-opacity-slider" min="0" max="255" value="${parseInt(ley.color.substring(7, 9) || 'FF', 16)}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Filter</label>
+                        <select class="prop-input" data-component="Image" data-prop="filter">
+                            <option value="none" ${ley.filter === 'none' ? 'selected' : ''}>None</option>
+                            <option value="grayscale(100%)" ${ley.filter === 'grayscale(100%)' ? 'selected' : ''}>Grayscale</option>
+                            <option value="sepia(100%)" ${ley.filter === 'sepia(100%)' ? 'selected' : ''}>Sepia</option>
+                            <option value="invert(100%)" ${ley.filter === 'invert(100%)' ? 'selected' : ''}>Invert</option>
+                        </select>
                     </div>
                 </div>`;
         } else if (ley instanceof Components.Canvas) {
@@ -1992,10 +2024,13 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                // If a UI component is added, ensure a UIPosition component also exists.
+                // If a UI component is added, replace its Posicion component with a UIPosicion component.
                 if (newComponent instanceof Components.Image || newComponent instanceof Components.Canvas) {
-                    if (!selectedMateria.getComponent(Components.UIPosition)) {
-                        selectedMateria.addComponent(new Components.UIPosition(selectedMateria));
+                    if (selectedMateria.getComponent(Components.Posicion)) {
+                        selectedMateria.removeComponent(Components.Posicion);
+                    }
+                    if (!selectedMateria.getComponent(Components.UIPosicion)) {
+                        selectedMateria.addComponent(new Components.UIPosicion(selectedMateria));
                     }
                 }
                 dom.addComponentModal.classList.remove('is-open');

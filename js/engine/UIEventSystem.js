@@ -2,7 +2,7 @@
 
 import { InputManager } from './Input.js';
 import * as SceneManager from './SceneManager.js';
-import { UIPosition, UIButton } from './Components.js';
+import { UIPosicion, UIButton } from './Components.js';
 
 class UIEventSystem {
     constructor() {
@@ -77,7 +77,7 @@ class UIEventSystem {
     }
 
     isPointerOver(materia, mousePos) {
-        const rectTransform = materia.getComponent(UIPosition);
+        const rectTransform = materia.getComponent(UIPosicion);
         if (!rectTransform) return false;
 
         // This is a simplified check for screen-space overlay.

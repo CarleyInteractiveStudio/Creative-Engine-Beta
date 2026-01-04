@@ -230,8 +230,10 @@ export function handleContextMenuAction(action) {
 
                 // Create the Image object itself.
                 newMateria = createBaseMateria(generateUniqueName('Image'), parentForImage);
-                newMateria.addComponent(new Components.UIPosition(newMateria));
+                newMateria.addComponent(new Components.UIPosicion(newMateria));
                 newMateria.addComponent(new Components.Image(newMateria)); // Use the new 'Image' component
+                // Now, remove the base 'Posicion' component because UI elements only use 'UIPosicion'.
+                newMateria.removeComponent(Components.Posicion);
 
                 // Explicitly update the hierarchy and select the new object
                 updateHierarchy();
@@ -366,7 +368,7 @@ function setupEventListeners() {
         // Helper for async asset logic
         const handleAssetDrop = async (data) => {
             const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Transform(newMateria));
+            newMateria.addComponent(new Posicion(newMateria));
             SceneManager.currentScene.addMateria(newMateria);
             updateHierarchy();
             selectMateriaCallback(newMateria.id);

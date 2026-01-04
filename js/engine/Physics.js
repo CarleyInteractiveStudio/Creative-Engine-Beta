@@ -15,8 +15,8 @@ class Collision {
     constructor(materiaA, materiaB, colliderB) {
         /** @type {Materia} The other materia involved in the collision. */
         this.materia = materiaB;
-        /** @type {Components.Transform} The transform of the other materia. */
-        this.transform = materiaB.getComponent(Components.Transform);
+        /** @type {Components.Posicion} The transform of the other materia. */
+        this.transform = materiaB.getComponent(Components.Posicion);
         /** @type {Components.BoxCollider2D|Components.CapsuleCollider2D|Components.TilemapCollider2D} The collider of the other materia. */
         this.collider = colliderB;
         /** @type {Array} For now, an empty array for contact points. */
@@ -64,7 +64,7 @@ export class PhysicsSystem {
         // 1. Apply physics forces (gravity, velocity)
         for (const materia of this.scene.getAllMaterias()) {
             const rigidbody = materia.getComponent(Components.Rigidbody2D);
-            const transform = materia.getComponent(Components.Transform);
+            const transform = materia.getComponent(Components.Posicion);
 
             if (rigidbody && transform && rigidbody.bodyType.toLowerCase() === 'dynamic' && rigidbody.simulated) {
                 const PHYSICS_SCALE = 100; // Factor de escala para que las unidades sean más manejables
@@ -193,8 +193,8 @@ export class PhysicsSystem {
     resolveCollision(materiaA, materiaB, mtv) {
         const rbA = materiaA.getComponent(Components.Rigidbody2D);
         const rbB = materiaB.getComponent(Components.Rigidbody2D);
-        const transformA = materiaA.getComponent(Components.Transform);
-        const transformB = materiaB.getComponent(Components.Transform);
+        const transformA = materiaA.getComponent(Components.Posicion);
+        const transformB = materiaB.getComponent(Components.Posicion);
 
         // --- 1. Position Correction ---
         const isADynamic = rbA && rbA.bodyType === 'Dynamic';
@@ -245,14 +245,14 @@ export class PhysicsSystem {
     isColliderVsTilemap(colliderMateria, tilemapMateria) {
         const otherCollider = this.getCollider(colliderMateria);
         const tilemapCollider = tilemapMateria.getComponent(Components.TilemapCollider2D);
-        const tilemapTransform = tilemapMateria.getComponent(Components.Transform);
+        const tilemapTransform = tilemapMateria.getComponent(Components.Posicion);
 
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
 
         for (const rect of tilemapCollider.generatedColliders) {
             // Crear un objeto 'Materia' temporal para representar el tile
             const tileMateria = new Materia('tile_part');
-            const tileTransform = new Components.Transform(tileMateria);
+            const tileTransform = new Components.Posicion(tileMateria);
 
             // ¡Corrección CRÍTICA! Convertir las coordenadas locales del collider a coordenadas mundiales.
             // Las 'rect' vienen con coordenadas relativas al pivote del Tilemap.
@@ -286,9 +286,9 @@ export class PhysicsSystem {
     }
 
     isCapsuleVsCapsule(materiaA, materiaB) {
-        const transformA = materiaA.getComponent(Components.Transform);
+        const transformA = materiaA.getComponent(Components.Posicion);
         const colliderA = materiaA.getComponent(Components.CapsuleCollider2D);
-        const transformB = materiaB.getComponent(Components.Transform);
+        const transformB = materiaB.getComponent(Components.Posicion);
         const colliderB = materiaB.getComponent(Components.CapsuleCollider2D);
 
         // Ignorando la rotación por simplicidad por ahora
@@ -373,9 +373,9 @@ export class PhysicsSystem {
     }
 
     isBoxVsCapsule(boxMateria, capsuleMateria) {
-        const transformB = boxMateria.getComponent(Components.Transform);
+        const transformB = boxMateria.getComponent(Components.Posicion);
         const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
-        const transformC = capsuleMateria.getComponent(Components.Transform);
+        const transformC = capsuleMateria.getComponent(Components.Posicion);
         const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
 
         // --- 1. Simplificar a colisión Círculo vs AABB ---
@@ -464,9 +464,9 @@ export class PhysicsSystem {
     }
 
     isBoxVsBox(materiaA, materiaB) {
-        const transformA = materiaA.getComponent(Components.Transform);
+        const transformA = materiaA.getComponent(Components.Posicion);
         const colliderA = materiaA.getComponent(Components.BoxCollider2D);
-        const transformB = materiaB.getComponent(Components.Transform);
+        const transformB = materiaB.getComponent(Components.Posicion);
         const colliderB = materiaB.getComponent(Components.BoxCollider2D);
 
         const verticesA = this._getVertices(transformA, colliderA);

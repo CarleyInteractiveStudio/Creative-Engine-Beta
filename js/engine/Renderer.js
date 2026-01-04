@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UIPosition, Image } from './Components.js';
+import { Camera, Posicion, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UIPosicion, Image } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -58,7 +58,7 @@ export class Renderer {
 
         if (cameraMateria) { // Game view rendering with a specific scene camera
             const cameraComponent = cameraMateria.getComponent(Camera);
-            const cameraTransform = cameraMateria.getComponent(Transform);
+            const cameraTransform = cameraMateria.getComponent(Posicion);
 
             this.clear(cameraComponent); // Clear based on this camera's flags
 
@@ -115,43 +115,41 @@ export class Renderer {
         this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
     }
 
-    drawImage(imageComponent, transform, uiPosition) {
+    drawImageComponent(imageComponent) {
+        const transform = imageComponent.materia.getComponent(UIPosicion);
+        if (!transform) return; // No se puede dibujar sin UIPosicion
+
         const ctx = this.ctx;
         const worldPos = transform.position;
         const worldRot = transform.rotation;
         const worldScale = transform.scale;
-
-        const size = uiPosition.size;
-        const pivot = uiPosition.pivot;
+        const size = transform.size;
+        const pivot = transform.pivot;
+        const sprite = imageComponent.sprite;
 
         ctx.save();
 
-        // Apply transformations
+        // Aplicar transformaciones del UIPosicion
         ctx.translate(worldPos.x, worldPos.y);
         ctx.rotate(worldRot * Math.PI / 180);
         ctx.scale(worldScale.x, worldScale.y);
 
-        // Apply UI positioning
+        // El desplazamiento (dx, dy) se calcula usando el tamaño y el pivote del UIPosicion
         const dx = -size.x * pivot.x;
         const dy = -size.y * pivot.y;
 
-        // Apply opacity
-        ctx.globalAlpha = imageComponent.color.a;
+        // Aplicar filtros y opacidad
+        ctx.filter = imageComponent.filter || 'none';
+        const { r, g, b, a } = this.hexToRgba(imageComponent.color);
+        ctx.globalAlpha = a;
 
-        if (!imageComponent.sprite || !imageComponent.sprite.complete || imageComponent.sprite.naturalWidth === 0) {
-            // If there's a renderer but no sprite, draw a colored box placeholder
-            ctx.fillStyle = `rgb(${imageComponent.color.r*255}, ${imageComponent.color.g*255}, ${imageComponent.color.b*255})`;
+        if (!sprite || !sprite.complete || sprite.naturalWidth === 0) {
+            // Dibuja un rectángulo coloreado si no hay sprite, usando el tamaño del UIPosicion
+            ctx.fillStyle = `rgb(${r*255}, ${g*255}, ${b*255})`;
             ctx.fillRect(dx, dy, size.x, size.y);
         } else {
-            ctx.drawImage(imageComponent.sprite, dx, dy, size.x, size.y);
-
-            // Apply tint by drawing a colored rectangle over the image with a multiply effect
-            // We avoid this if the color is pure white (no tint)
-            if (imageComponent.color.r < 1 || imageComponent.color.g < 1 || imageComponent.color.b < 1) {
-                 ctx.globalCompositeOperation = 'multiply';
-                 ctx.fillStyle = `rgb(${Math.round(imageComponent.color.r*255)}, ${Math.round(imageComponent.color.g*255)}, ${Math.round(imageComponent.color.b*255)})`;
-                 ctx.fillRect(dx, dy, size.x, size.y);
-            }
+            // Dibuja el sprite, escalado al tamaño definido en el UIPosicion
+            ctx.drawImage(sprite, dx, dy, size.x, size.y);
         }
 
         ctx.restore();
@@ -175,7 +173,7 @@ export class Renderer {
 
     drawTilemap(tilemapRenderer) {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const transform = tilemapRenderer.materia.getComponent(Transform);
+        const transform = tilemapRenderer.materia.getComponent(Posicion);
 
         // Robustly find the parent Grid object, whether it's a direct reference or an ID
         let gridMateria = null;
@@ -236,13 +234,13 @@ export class Renderer {
         this.lightMapCtx.fillRect(-99999, -99999, 199998, 199998); // A huge rect to cover the whole transformed space
     }
 
-    drawPointLight(light, transform) {
+    drawPointLight(light, posicion) {
         const ctx = this.lightMapCtx;
         const radius = light.radius;
         const color = light.color; // Assuming hex format for now
         const intensity = light.intensity;
 
-        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
+        const gradient = ctx.createRadialGradient(posicion.x, posicion.y, 0, posicion.x, posicion.y, radius);
 
         // This creates a standard additive light falloff
         gradient.addColorStop(0, `${color}FF`); // Full color at center
@@ -253,13 +251,13 @@ export class Renderer {
         ctx.globalCompositeOperation = 'lighter'; // Additive blending for lights
         ctx.fillStyle = gradient;
         ctx.globalAlpha = intensity;
-        ctx.fillRect(transform.x - radius, transform.y - radius, radius * 2, radius * 2);
+        ctx.fillRect(posicion.x - radius, posicion.y - radius, radius * 2, radius * 2);
         ctx.globalAlpha = 1.0; // Reset alpha
     }
 
-    drawSpotLight(light, transform) {
+    drawSpotLight(light, posicion) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation } = transform;
+        const { x, y, rotation } = posicion;
         const { radius, color, intensity, angle } = light;
 
         // Convert angles to radians for canvas API
@@ -290,9 +288,9 @@ export class Renderer {
         ctx.globalAlpha = 1.0; // Reset alpha
     }
 
-    drawFreeformLight(light, transform) {
+    drawFreeformLight(light, posicion) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation } = transform;
+        const { x, y, rotation } = posicion;
         const { vertices, color, intensity } = light;
 
         if (!vertices || vertices.length < 3) return;
@@ -318,9 +316,9 @@ export class Renderer {
         ctx.globalAlpha = 1.0;
     }
 
-    drawSpriteLight(light, transform) {
+    drawSpriteLight(light, posicion) {
         const ctx = this.lightMapCtx;
-        const { x, y, rotation, scale } = transform;
+        const { x, y, rotation, scale } = posicion;
         const { sprite, color, intensity } = light;
 
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
@@ -374,69 +372,74 @@ export class Renderer {
             const canvas = canvasMateria.getComponent(Canvas);
             if (canvas.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
-            } else { // 'World Space'
-                // World Space UI elements are just regular objects. The standard `updateScene`
-                // loop already handles their rendering, so no special UI pass is needed for them.
             }
         }
+    }
+    hexToRgba(hex) {
+        if (!hex) return { r: 1, g: 1, b: 1, a: 1 };
+        let c = hex.substring(1).split('');
+        if (c.length === 3) { c = [c[0], c[0], c[1], c[1], c[2], c[2]]; }
+        if (c.length === 6) { c.push('F', 'F'); } // Add alpha if missing
+        const i = parseInt(c.join(''), 16);
+        return {
+            r: ((i >> 24) & 255) / 255,
+            g: ((i >> 16) & 255) / 255,
+            b: ((i >> 8) & 255) / 255,
+            a: (i & 255) / 255,
+        };
     }
 
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
+        const canvasComponent = canvasMateria.getComponent(Canvas);
 
-        const drawUIElement = (materia) => {
+        const processNode = (materia, parentRect) => {
             if (!materia.isActive) return;
 
-            const imageComponent = materia.getComponent(Components.Image);
-            const uiPosition = materia.getComponent(Components.UIPosition);
+            const uiPos = materia.getComponent(Components.UIPosicion);
+            if (uiPos) {
+                const anchorMin = { x: parentRect.x + parentRect.width * uiPos.anchorMin.x, y: parentRect.y + parentRect.height * uiPos.anchorMin.y };
+                const anchorMax = { x: parentRect.x + parentRect.width * uiPos.anchorMax.x, y: parentRect.y + parentRect.height * uiPos.anchorMax.y };
 
-            if (imageComponent && uiPosition) {
-                const ctx = this.ctx;
-                const { size, pivot } = uiPosition;
-                // For Screen Space, the "world position" is effectively the top-left corner of the canvas.
-                // We'll calculate position based on anchors relative to the main canvas dimensions.
-                const worldRect = uiPosition.getWorldRect(this.canvas);
+                const pivotPoint = { x: uiPos.pivot.x * uiPos.size.x, y: uiPos.pivot.y * uiPos.size.y };
 
+                const finalPos = {
+                    x: anchorMin.x + uiPos.anchoredPosition.x - pivotPoint.x,
+                    y: anchorMin.y + uiPos.anchoredPosition.y - pivotPoint.y
+                };
 
-                ctx.save();
+                const image = materia.getComponent(Image);
+                if (image) {
+                    this.ctx.save();
+                    this.ctx.filter = image.filter || 'none';
+                    const { r, g, b, a } = this.hexToRgba(image.color);
+                    this.ctx.globalAlpha = a;
 
-                // Unlike world space, we don't use the Transform component here.
-                // We position directly using the calculated worldRect.
-
-                // Apply opacity
-                ctx.globalAlpha = imageComponent.color.a;
-
-                if (!imageComponent.sprite || !imageComponent.sprite.complete || imageComponent.sprite.naturalWidth === 0) {
-                    ctx.fillStyle = `rgb(${imageComponent.color.r * 255}, ${imageComponent.color.g * 255}, ${imageComponent.color.b * 255})`;
-                    ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
-                } else {
-                    ctx.drawImage(imageComponent.sprite, worldRect.x, worldRect.y, worldRect.width, worldRect.height);
-
-                    if (imageComponent.color.r < 1 || imageComponent.color.g < 1 || imageComponent.color.b < 1) {
-                        ctx.globalCompositeOperation = 'multiply';
-                        ctx.fillStyle = `rgb(${Math.round(imageComponent.color.r * 255)}, ${Math.round(imageComponent.color.g * 255)}, ${Math.round(imageComponent.color.b * 255)})`;
-                        ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+                    if (image.sprite && image.sprite.complete && image.sprite.naturalWidth > 0) {
+                        this.ctx.drawImage(image.sprite, finalPos.x, finalPos.y, uiPos.size.x, uiPos.size.y);
+                    } else {
+                        this.ctx.fillStyle = `rgb(${r*255}, ${g*255}, ${b*255})`;
+                        this.ctx.fillRect(finalPos.x, finalPos.y, uiPos.size.x, uiPos.size.y);
                     }
+                    this.ctx.restore();
                 }
 
-                ctx.restore();
-            }
-
-            if (materia.children) {
-                materia.children.forEach(drawUIElement);
+                const currentRect = { x: finalPos.x, y: finalPos.y, width: uiPos.size.x, height: uiPos.size.y };
+                materia.children.forEach(child => processNode(child, currentRect));
+            } else {
+                materia.children.forEach(child => processNode(child, parentRect));
             }
         };
 
-        if (canvasMateria.children) {
-            canvasMateria.children.forEach(drawUIElement);
-        }
+        const screenRect = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
+        canvasMateria.children.forEach(child => processNode(child, screenRect));
 
         this.end();
     }
 
-    drawTextureInRect(textureRender, transform) {
-        const pos = transform.position;
-        const scale = transform.localScale;
+    drawTextureInRect(textureRender, posicion) {
+        const pos = posicion.position;
+        const scale = posicion.localScale;
 
         this.ctx.save();
         this.ctx.translate(pos.x, pos.y);

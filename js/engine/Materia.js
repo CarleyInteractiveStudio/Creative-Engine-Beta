@@ -1,7 +1,6 @@
 // Materia.js
 // This file contains the Materia class.
 
-import { Transform } from './Components.js';
 import { currentScene } from './SceneManager.js';
 
 let MATERIA_ID_COUNTER = 0;

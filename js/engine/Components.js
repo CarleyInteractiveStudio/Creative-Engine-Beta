@@ -9,7 +9,7 @@ import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
-    'Transform': 'transformacion',
+    'Posicion': 'transformacion',
     'Rigidbody2D': 'fisica',
     'AnimatorController': 'controladorAnimacion',
     'SpriteRenderer': 'renderizadorDeSprite',
@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'Image': 'imagen',
-    'UIPosition': 'uiPosicion',
+    'UIPosicion': 'uiPosicion',
 };
 
 
@@ -71,7 +71,7 @@ export class CreativeScriptBehavior {
 
 // --- Component Class Definitions ---
 
-export class Transform extends Leyes {
+export class Posicion extends Leyes {
     constructor(materia) {
         super(materia);
         // Propiedades locales relativas al padre
@@ -85,7 +85,7 @@ export class Transform extends Leyes {
         if (!this.materia || !this.materia.parent) {
             return { ...this.localPosition };
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         if (!parentTransform) {
             return { ...this.localPosition };
         }
@@ -111,7 +111,7 @@ export class Transform extends Leyes {
             this.localPosition = { ...worldPosition };
             return;
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         if (!parentTransform) {
             this.localPosition = { ...worldPosition };
             return;
@@ -141,7 +141,7 @@ export class Transform extends Leyes {
         if (!this.materia || !this.materia.parent) {
             return this.localRotation;
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         return parentTransform ? parentTransform.rotation + this.localRotation : this.localRotation;
     }
 
@@ -150,7 +150,7 @@ export class Transform extends Leyes {
             this.localRotation = worldRotation;
             return;
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         this.localRotation = worldRotation - (parentTransform ? parentTransform.rotation : 0);
     }
 
@@ -159,7 +159,7 @@ export class Transform extends Leyes {
         if (!this.materia || !this.materia.parent) {
             return { ...this.localScale };
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         if (!parentTransform) {
             return { ...this.localScale };
         }
@@ -175,7 +175,7 @@ export class Transform extends Leyes {
             this.localScale = { ...worldScale };
             return;
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
+        const parentTransform = this.materia.parent.getComponent(Posicion);
         if (!parentTransform) {
              this.localScale = { ...worldScale };
              return;
@@ -194,11 +194,11 @@ export class Transform extends Leyes {
     set y(value) { this.position = { x: this.position.x, y: value }; }
 
     clone() {
-        const newTransform = new Transform(null);
-        newTransform.localPosition = { ...this.localPosition };
-        newTransform.localRotation = this.localRotation;
-        newTransform.localScale = { ...this.localScale };
-        return newTransform;
+        const newPosicion = new Posicion(null);
+        newPosicion.localPosition = { ...this.localPosition };
+        newPosicion.localRotation = this.localRotation;
+        newPosicion.localScale = { ...this.localScale };
+        return newPosicion;
     }
 }
 
@@ -755,42 +755,110 @@ export class Animator extends Leyes {
     }
 }
 
-export class UIPosition extends Leyes {
+export class UIPosicion extends Leyes {
     constructor(materia) {
         super(materia);
+        // Propiedades de transformación jerárquica (como en Posicion)
+        this.localPosition = { x: 0, y: 0 };
+        this.localRotation = 0;
+        this.localScale = { x: 1, y: 1 };
+
+        // Propiedades de layout para UI
         this.size = { x: 100, y: 100 };
         this.pivot = { x: 0.5, y: 0.5 };
         this.anchorMin = { x: 0.5, y: 0.5 };
         this.anchorMax = { x: 0.5, y: 0.5 };
+        this.anchoredPosition = { x: 0, y: 0 };
     }
 
-    getWorldRect(parentCanvas) {
-        const parentWidth = parentCanvas.width;
-        const parentHeight = parentCanvas.height;
-        const anchorMinX = parentWidth * this.anchorMin.x;
-        const anchorMinY = parentHeight * this.anchorMin.y;
+    // --- Getters y Setters para transformación global (Copiados de Posicion) ---
+    get position() {
+        if (!this.materia || !this.materia.parent) return { ...this.localPosition };
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        if (!parentTransform) return { ...this.localPosition };
 
-        // This part needs re-evaluation, assuming direct positioning for now
-        const pivotPosX = anchorMinX;
-        const pivotPosY = anchorMinY;
+        const parentPos = parentTransform.position;
+        const parentScale = parentTransform.scale;
+        const parentRotRad = parentTransform.rotation * (Math.PI / 180);
+        const cos = Math.cos(parentRotRad);
+        const sin = Math.sin(parentRotRad);
 
-        const rectX = pivotPosX - (this.size.x * this.pivot.x);
-        const rectY = pivotPosY - (this.size.y * this.pivot.y);
+        const rotatedX = (this.localPosition.x * parentScale.x * cos) - (this.localPosition.y * parentScale.y * sin);
+        const rotatedY = (this.localPosition.x * parentScale.x * sin) + (this.localPosition.y * parentScale.y * cos);
 
-        return {
-            x: rectX,
-            y: rectY,
-            width: this.size.x,
-            height: this.size.y
+        return { x: parentPos.x + rotatedX, y: parentPos.y + rotatedY };
+    }
+
+    set position(worldPosition) {
+        if (!this.materia || !this.materia.parent) { this.localPosition = { ...worldPosition }; return; }
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        if (!parentTransform) { this.localPosition = { ...worldPosition }; return; }
+
+        const parentPos = parentTransform.position;
+        const parentScale = parentTransform.scale;
+        const parentRotRad = -parentTransform.rotation * (Math.PI / 180);
+        const cos = Math.cos(parentRotRad);
+        const sin = Math.sin(parentRotRad);
+
+        const relativeX = worldPosition.x - parentPos.x;
+        const relativeY = worldPosition.y - parentPos.y;
+
+        const unrotatedX = (relativeX * cos) - (relativeY * sin);
+        const unrotatedY = (relativeX * sin) + (relativeY * cos);
+
+        this.localPosition = {
+            x: parentScale.x !== 0 ? unrotatedX / parentScale.x : 0,
+            y: parentScale.y !== 0 ? unrotatedY / parentScale.y : 0
         };
     }
+
+    get rotation() {
+        if (!this.materia || !this.materia.parent) return this.localRotation;
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        return parentTransform ? parentTransform.rotation + this.localRotation : this.localRotation;
+    }
+
+    set rotation(worldRotation) {
+        if (!this.materia || !this.materia.parent) { this.localRotation = worldRotation; return; }
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        this.localRotation = worldRotation - (parentTransform ? parentTransform.rotation : 0);
+    }
+
+    get scale() {
+        if (!this.materia || !this.materia.parent) return { ...this.localScale };
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        if (!parentTransform) return { ...this.localScale };
+        const parentScale = parentTransform.scale;
+        return { x: parentScale.x * this.localScale.x, y: parentScale.y * this.localScale.y };
+    }
+
+    set scale(worldScale) {
+        if (!this.materia || !this.materia.parent) { this.localScale = { ...worldScale }; return; }
+        const parentTransform = this.materia.parent.getComponent(Posicion) || this.materia.parent.getComponent(UIPosicion);
+        if (!parentTransform) { this.localScale = { ...worldScale }; return; }
+        const parentScale = parentTransform.scale;
+        this.localScale = {
+            x: parentScale.x !== 0 ? worldScale.x / parentScale.x : 0,
+            y: parentScale.y !== 0 ? worldScale.y / parentScale.y : 0
+        };
+    }
+
+    get x() { return this.position.x; }
+    set x(value) { this.position = { x: value, y: this.position.y }; }
+    get y() { return this.position.y; }
+    set y(value) { this.position = { x: this.position.x, y: value }; }
+
     clone() {
-        const newUIPosition = new UIPosition(null);
-        newUIPosition.size = { ...this.size };
-        newUIPosition.pivot = { ...this.pivot };
-        newUIPosition.anchorMin = { ...this.anchorMin };
-        newUIPosition.anchorMax = { ...this.anchorMax };
-        return newUIPosition;
+        const newUIPosicion = new UIPosicion(null);
+        newUIPosicion.localPosition = { ...this.localPosition };
+        newUIPosicion.localRotation = this.localRotation;
+        newUIPosicion.localScale = { ...this.localScale };
+        newUIPosicion.size = { ...this.size };
+        newUIPosicion.pivot = { ...this.pivot };
+        newUIPosicion.anchorMin = { ...this.anchorMin };
+        newUIPosicion.anchorMax = { ...this.anchorMax };
+        newUIPosicion.anchoredPosition = { ...this.anchoredPosition };
+        return newUIPosicion;
     }
 }
 
@@ -799,7 +867,8 @@ export class Image extends Leyes {
         super(materia);
         this.sprite = new window.Image();
         this.source = '';
-        this.color = { r: 1, g: 1, b: 1, a: 1 };
+        this.color = '#FFFFFF'; // Color y opacidad en formato Hex8
+        this.filter = 'none'; // Para filtros tipo CSS
     }
 
     async loadSprite(projectsDirHandle) {
@@ -815,7 +884,8 @@ export class Image extends Leyes {
     clone() {
         const newImage = new Image(null);
         newImage.source = this.source;
-        newImage.color = { ...this.color };
+        newImage.color = this.color;
+        newImage.filter = this.filter;
         return newImage;
     }
 }
@@ -1063,7 +1133,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('UIPosition', UIPosition);
+registerComponent('UIPosicion', UIPosicion);
 registerComponent('Image', Image);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);

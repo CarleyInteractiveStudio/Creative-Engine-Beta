@@ -41,7 +41,7 @@ function checkGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
 
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!transform) return null;
 
     const centerX = transform.x;
@@ -112,7 +112,7 @@ function checkCameraGizmoHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const cameraComponent = selectedMateria.getComponent(Components.Camera);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!cameraComponent || !transform || cameraComponent.projection !== 'Orthographic') {
         return null;
     }
@@ -243,7 +243,7 @@ function drawEditorGrid() {
 function drawGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
-    const transform = materia.getComponent(Components.Transform);
+    const transform = materia.getComponent(Components.Posicion);
     if (!transform) return;
 
     const { ctx, camera } = renderer;
@@ -410,7 +410,7 @@ export function initialize(dependencies) {
 
                 // Create a new Materia at the drop position
                 const newMateria = SceneManager.currentScene.createMateria(data.spriteName);
-                const transform = newMateria.getComponent(Components.Transform);
+                const transform = newMateria.getComponent(Components.Posicion);
                 transform.x = worldPos.x;
                 transform.y = worldPos.y;
 
@@ -478,7 +478,7 @@ export function initialize(dependencies) {
                 // (This re-uses the preview logic, which could be optimized later)
                 const selectedMateria = getSelectedMateria();
                 const tilemap = selectedMateria?.getComponent(Components.Tilemap);
-                const transform = selectedMateria?.getComponent(Components.Transform);
+                const transform = selectedMateria?.getComponent(Components.Posicion);
                 const grid = selectedMateria?.parent?.getComponent(Components.Grid);
 
                 if (tilemap && transform && grid) {
@@ -582,7 +582,7 @@ export function initialize(dependencies) {
                 lastMousePosition = { x: e.clientX, y: e.clientY };
 
                 if (hitHandle.startsWith('scale-')) {
-                    const transform = selectedMateria.getComponent(Components.Transform);
+                    const transform = selectedMateria.getComponent(Components.Posicion);
                     const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
                     dragState.unscaledWidth = boxCollider ? boxCollider.width : 100;
                     dragState.unscaledHeight = boxCollider ? boxCollider.height : 100;
@@ -592,7 +592,7 @@ export function initialize(dependencies) {
                     moveEvent.preventDefault();
                     if (!dragState.materia) return;
 
-                    const transform = dragState.materia.getComponent(Components.Transform);
+                    const transform = dragState.materia.getComponent(Components.Posicion);
                     const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
                     const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
 
@@ -780,7 +780,7 @@ function drawCameraGizmos(renderer) {
         const cameraComponent = materia.getComponent(Components.Camera);
         if (!cameraComponent) return;
 
-        const transform = materia.getComponent(Components.Transform);
+        const transform = materia.getComponent(Components.Posicion);
         if (!transform) return;
 
         const isSelected = selectedMateria && selectedMateria.id === materia.id;
@@ -852,7 +852,7 @@ function drawTileCursor() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     const tilemapRenderer = selectedMateria.getComponent(Components.TilemapRenderer);
     if (!tilemap || !transform || !tilemapRenderer) return;
 
@@ -923,7 +923,7 @@ function drawComponentGrids() {
 
     if (!grid) return; // No grid found in the hierarchy of the selected object
 
-    const transform = gridMateria.getComponent(Components.Transform);
+    const transform = gridMateria.getComponent(Components.Posicion);
     if (!transform) return;
 
     const { ctx, camera, canvas } = renderer;
@@ -969,7 +969,7 @@ function drawLayerPlacementPreview() {
     if (!selectedMateria) return;
 
     const tilemap = selectedMateria.getComponent(Components.Tilemap);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!tilemap || !transform) return;
 
     const grid = selectedMateria.parent?.getComponent(Components.Grid);
@@ -1064,30 +1064,26 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
-    drawUIPositionGizmo();
+    drawUIPosicionGizmo();
 }
 
-function drawUIPositionGizmo() {
+function drawUIPosicionGizmo() {
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria) return;
+    if (!selectedMateria || !selectedMateria.parent) return;
 
-    const uiPosition = selectedMateria.getComponent(Components.UIPosition);
-    const transform = selectedMateria.getComponent(Components.Transform);
-    if (!uiPosition || !transform) return;
+    const uiPosicion = selectedMateria.getComponent(Components.UIPosicion);
+    if (!uiPosicion) return;
 
-    // The gizmo should only be drawn for UI elements that are part of a World Space canvas.
-    // We don't need to find the canvas, just check if the object itself has a parent.
-    // If it's a root object, it cannot be a correctly configured UI element.
-    if (!selectedMateria.parent) return;
+    // El gizmo solo se dibuja para elementos de UI en un Canvas de tipo 'World Space'.
+    // No necesitamos encontrar el canvas, solo renderizar el gizmo si el objeto tiene UIPosicion.
 
     const { ctx, camera } = renderer;
-    const worldPos = transform.position; // Use the object's own world position
-    const worldRot = transform.rotation;
-    const { size, pivot } = uiPosition;
+    const worldPos = uiPosicion.position;
+    const worldRot = uiPosicion.rotation;
+    const { size, pivot } = uiPosicion;
 
     ctx.save();
 
-    // Go to the object's position and apply its rotation
     ctx.translate(worldPos.x, worldPos.y);
     ctx.rotate(worldRot * Math.PI / 180);
 
@@ -1095,13 +1091,7 @@ function drawUIPositionGizmo() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
-    // Draw the rectangle relative to the object's pivot
-    ctx.strokeRect(
-        -size.x * pivot.x,
-        -size.y * pivot.y,
-        size.x,
-        size.y
-    );
+    ctx.strokeRect( -size.x * pivot.x, -size.y * pivot.y, size.x, size.y );
 
     ctx.restore();
 }
@@ -1111,7 +1101,7 @@ function checkBoxColliderGizmoHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!boxCollider || !transform) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
@@ -1157,7 +1147,7 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     if (!selectedMateria || !renderer) return null;
 
     const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!capsuleCollider || !transform) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
@@ -1228,7 +1218,7 @@ function drawPhysicsGizmos() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!transform) return;
 
     const { ctx, camera } = renderer;
@@ -1319,7 +1309,7 @@ function drawTilemapOutline() {
     const grid = tilemapMateria.parent?.getComponent(Components.Grid);
     if (!grid) return;
 
-    const transform = tilemapMateria.getComponent(Components.Transform);
+    const transform = tilemapMateria.getComponent(Components.Posicion);
     if (!transform) return;
 
     const { ctx, camera } = renderer;
@@ -1364,7 +1354,7 @@ function drawTilemapColliders() {
 
     if (!collider || !colliderMateria) return;
 
-    const transform = colliderMateria.getComponent(Components.Transform);
+    const transform = colliderMateria.getComponent(Components.Posicion);
     const tilemap = colliderMateria.getComponent(Components.Tilemap);
     const grid = colliderMateria.parent?.getComponent(Components.Grid);
 
@@ -1423,7 +1413,7 @@ function paintTile(event) {
         }
     }
 
-    const transform = tilemapMateria.getComponent(Components.Transform);
+    const transform = tilemapMateria.getComponent(Components.Posicion);
     const tilemapRenderer = tilemapMateria.getComponent(Components.TilemapRenderer);
 
     if (!tilemap || !transform || !tilemapRenderer) {
@@ -1496,7 +1486,7 @@ function drawCanvasGizmos() {
     if (!selectedMateria) return;
 
     const canvasComponent = selectedMateria.getComponent(Components.Canvas);
-    const transform = selectedMateria.getComponent(Components.Transform);
+    const transform = selectedMateria.getComponent(Components.Posicion);
     if (!canvasComponent || !transform) return;
 
     const { ctx, camera } = renderer;

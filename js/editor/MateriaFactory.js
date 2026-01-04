@@ -23,7 +23,7 @@ export function generateUniqueName(baseName) {
 
 export function createBaseMateria(name, parent = null) {
     const newMateria = new Materia(name);
-    newMateria.addComponent(new Components.Transform(newMateria));
+    newMateria.addComponent(new Components.Posicion(newMateria));
 
     if (parent) {
         parent.addChild(newMateria);
