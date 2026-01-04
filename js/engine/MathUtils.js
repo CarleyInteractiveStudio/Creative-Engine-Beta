@@ -3,7 +3,7 @@
  * Includes vector operations, matrix transformations, and collision detection algorithms.
  */
 
-import { Transform, SpriteRenderer, Camera } from './Components.js';
+import { Posicion, SpriteRenderer, Camera } from './Components.js';
 
 // Vector operations can be added here if needed.
 
@@ -13,7 +13,7 @@ import { Transform, SpriteRenderer, Camera } from './Components.js';
  * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points or null if not applicable.
  */
 export function getOOB(materia) {
-    const transform = materia.getComponent(Transform);
+    const transform = materia.getComponent(Posicion);
     const spriteRenderer = materia.getComponent(SpriteRenderer);
 
     if (!transform || !spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) {
@@ -46,8 +46,8 @@ export function getOOB(materia) {
 
         // Apply translation
         return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
+            x: rotatedX + transform.position.x,
+            y: rotatedY + transform.position.y
         };
     });
 
@@ -62,7 +62,7 @@ export function getOOB(materia) {
  * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points for the camera's view box.
  */
 export function getCameraViewBox(cameraMateria, aspect) {
-    const transform = cameraMateria.getComponent(Transform);
+    const transform = cameraMateria.getComponent(Posicion);
     const camera = cameraMateria.getComponent(Camera);
 
     if (!transform || !camera) {
@@ -100,8 +100,8 @@ export function getCameraViewBox(cameraMateria, aspect) {
         const rotatedX = corner.x * cosA - corner.y * sinA;
         const rotatedY = corner.x * sinA + corner.y * cosA;
         return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
+            x: rotatedX + transform.position.x,
+            y: rotatedY + transform.position.y
         };
     });
 
