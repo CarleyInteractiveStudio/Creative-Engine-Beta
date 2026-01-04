@@ -2111,6 +2111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.createCanvasForTest = createCanvasForTest;
         window.createUIElementForTest = createUIElementForTest;
         window.selectMateriaById = (id) => selectMateria(id);
+        window.updateInspector = updateInspector;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---

@@ -277,15 +277,22 @@ function getUITransformWorldRect(uiMateria) {
         canvasRectHeight = canvasComponent.size.y;
         canvasWorldX = canvasTransform.position.x - canvasRectWidth / 2;
         canvasWorldY = canvasTransform.position.y - canvasRectHeight / 2;
-    } else {
-        const sceneCanvas = dom.sceneCanvas;
+    } else { // Screen Space
+        // Correctly calculate the world-space coordinates of the screen viewport
+        const camera = renderer.camera;
+        const sceneCanvas = renderer.canvas;
         const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
-        canvasRectWidth = gizmoWidth;
-        canvasRectHeight = gizmoHeight;
-        canvasWorldX = canvasTransform.position.x - canvasRectWidth / 2;
-        canvasWorldY = canvasTransform.position.y - canvasRectHeight / 2;
+
+        // The size of the viewport in world units depends on the camera's zoom
+        const viewHeight = sceneCanvas.height / camera.effectiveZoom;
+        const viewWidth = sceneCanvas.width / camera.effectiveZoom;
+
+        canvasRectWidth = viewWidth;
+        canvasRectHeight = viewHeight;
+
+        // The top-left corner of the viewport in world coordinates
+        canvasWorldX = camera.x - viewWidth / 2;
+        canvasWorldY = camera.y - viewHeight / 2;
     }
 
     const anchorPoint = getAnchorPoint(uiTransform.anchorPreset, canvasRectWidth, canvasRectHeight);
@@ -567,16 +574,15 @@ export function setAnchorPreview(preset) {
             width: size.x,
             height: size.y
         };
-    } else {
-        const sceneCanvas = dom.sceneCanvas;
-        const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
+    } else { // Screen Space
+        const camera = renderer.camera;
+        const viewHeight = camera.canvas.height / camera.effectiveZoom;
+        const viewWidth = camera.canvas.width / camera.effectiveZoom;
         canvasRect = {
-            x: canvasTransform.position.x - gizmoWidth / 2,
-            y: canvasTransform.position.y - gizmoHeight / 2,
-            width: gizmoWidth,
-            height: gizmoHeight
+            x: camera.x - viewWidth / 2,
+            y: camera.y - viewHeight / 2,
+            width: viewWidth,
+            height: viewHeight
         };
     }
 
@@ -1769,12 +1775,12 @@ function drawCanvasGizmos() {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // For screen space, we just draw a representative box in the world
-        const sceneCanvas = dom.sceneCanvas;
-        const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
-        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
+        // Use the same logic as getUITransformWorldRect to draw the gizmo
+        const viewHeight = camera.canvas.height / camera.effectiveZoom;
+        const viewWidth = camera.canvas.width / camera.effectiveZoom;
+        const viewX = camera.x - viewWidth / 2;
+        const viewY = camera.y - viewHeight / 2;
+        ctx.strokeRect(viewX, viewY, viewWidth, viewHeight);
     }
 
     ctx.restore();
