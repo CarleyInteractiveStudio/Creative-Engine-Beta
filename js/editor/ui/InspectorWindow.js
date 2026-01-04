@@ -28,7 +28,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.RectTransform, Components.UIImage, Components.UICanvas],
+    'UI': [Components.RectTransform, Components.Image, Components.Canvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -671,13 +671,36 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Width</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="width" value="${ley.width}"></div>
                 <div class="prop-row-multi"><label>Height</label><input type="number" class="prop-input" data-component="RectTransform" data-prop="height" value="${ley.height}"></div>
             </div>`;
-        } else if (ley instanceof Components.UIImage) {
+        } else if (ley instanceof Components.Image) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
-            <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
-            </div>`;
+            componentHTML = `
+                <div class="component-header">${iconHTML}<h4>Image</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Source</label>
+                        <div class="sprite-dropper">
+                            <div class="sprite-preview">${previewImg}</div>
+                            <button class="sprite-select-btn" data-component="Image">🎯</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="Image" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Width</label>
+                        <input type="number" class="prop-input" data-component="Image" data-prop="width" value="${ley.width}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Height</label>
+                        <input type="number" class="prop-input" data-component="Image" data-prop="height" value="${ley.height}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Opacity</label>
+                        <input type="range" class="prop-input" data-component="Image" data-prop="opacity" min="0" max="1" step="0.01" value="${ley.opacity}">
+                    </div>
+                </div>
+            `;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';
@@ -1838,7 +1861,7 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UICanvas) {
+            if (newComponent instanceof Components.Image || newComponent instanceof Components.Canvas) {
                     if (!selectedMateria.getComponent(Components.RectTransform)) {
                         const existingTransform = selectedMateria.getComponent(Components.Transform);
                         if (existingTransform) selectedMateria.removeComponent(Components.Transform);

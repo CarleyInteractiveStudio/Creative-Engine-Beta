@@ -108,6 +108,35 @@ function createCameraObject(parent = null) {
     return newMateria;
 }
 
+function createUIImageObject(parent = null) {
+    let canvasParent = parent;
+
+    // Find a canvas in the hierarchy
+    if (parent) {
+        let current = parent;
+        while (current) {
+            if (current.getComponent(Components.Canvas)) {
+                canvasParent = current;
+                break;
+            }
+            current = current.parent;
+        }
+    }
+
+    // If no canvas is found, create one
+    if (!canvasParent || !canvasParent.getComponent(Components.Canvas)) {
+        const canvasMateria = createBaseMateria(generateUniqueName('Canvas'), parent);
+        canvasMateria.addComponent(new Components.Canvas(canvasMateria));
+        canvasParent = canvasMateria;
+    }
+
+    // Create the image as a child of the canvas
+    const newMateria = createBaseMateria(generateUniqueName('Imagen'), canvasParent);
+    newMateria.addComponent(new Components.Image(newMateria));
+    newMateria.addComponent(new Components.RectTransform(newMateria));
+    return newMateria;
+}
+
 export function duplicateSelectedMateria() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
@@ -200,6 +229,9 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-sprite-light':
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
+            break;
+        case 'create-ui-image':
+            newMateria = createUIImageObject(selectedMateria);
             break;
 
         case 'rename':

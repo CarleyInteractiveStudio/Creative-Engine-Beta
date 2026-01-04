@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid } from './Components.js';
+import * as Components from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -57,8 +57,8 @@ export class Renderer {
         let activeCamera, transform;
 
         if (cameraMateria) { // Game view rendering with a specific scene camera
-            const cameraComponent = cameraMateria.getComponent(Camera);
-            const cameraTransform = cameraMateria.getComponent(Transform);
+            const cameraComponent = cameraMateria.getComponent(Components.Camera);
+            const cameraTransform = cameraMateria.getComponent(Components.Transform);
 
             this.clear(cameraComponent); // Clear based on this camera's flags
 
@@ -110,6 +110,16 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    beginUI() {
+        this.ctx.save();
+        // Reset transform to identity for screen-space UI rendering
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    endUI() {
+        this.ctx.restore();
+    }
+
     drawRect(x, y, width, height, color) {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
@@ -137,8 +147,8 @@ export class Renderer {
     }
 
     drawTilemap(tilemapRenderer) {
-        const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
-        const transform = tilemapRenderer.materia.getComponent(Transform);
+        const tilemap = tilemapRenderer.materia.getComponent(Components.Tilemap);
+        const transform = tilemapRenderer.materia.getComponent(Components.Transform);
 
         // Robustly find the parent Grid object, whether it's a direct reference or an ID
         let gridMateria = null;
@@ -150,7 +160,7 @@ export class Renderer {
                 gridMateria = SceneManager.currentScene.findMateriaById(parent); // Parent is an ID
             }
         }
-        const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
+        const grid = gridMateria ? gridMateria.getComponent(Components.Grid) : null;
 
         if (!tilemap || !transform || !grid) {
             return;
@@ -324,6 +334,59 @@ export class Renderer {
         this.ctx.globalCompositeOperation = 'multiply';
         this.ctx.drawImage(this.lightMapCanvas, 0, 0);
         this.ctx.restore(); // Restores composite operation and transform
+    }
+
+    drawUIImage(image, rectTransform) {
+        const rect = rectTransform.getWorldRect(this.canvas);
+
+        this.ctx.save();
+        this.ctx.globalAlpha = image.opacity;
+
+        if (!image.sprite || !image.sprite.complete || image.sprite.naturalWidth === 0) {
+            // If there's no sprite, draw a colored rectangle as a placeholder
+            this.ctx.fillStyle = image.color;
+            this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        } else {
+            // Draw the image
+            this.ctx.drawImage(image.sprite, rect.x, rect.y, rect.width, rect.height);
+
+            // Apply color tint if it's not white
+            if (image.color.toLowerCase() !== '#ffffff') {
+                this.ctx.fillStyle = image.color;
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    drawUI() {
+        if (!SceneManager.currentScene) return;
+
+        const allMaterias = SceneManager.currentScene.getAllMaterias();
+        const canvasMaterias = allMaterias.filter(m => m.getComponent(Components.Canvas) && !m.parent);
+
+        const renderRecursive = (materia) => {
+            if (!materia.isActive) return;
+
+            const image = materia.getComponent(Components.Image);
+            const rectTransform = materia.getComponent(Components.RectTransform);
+
+            if (image && rectTransform) {
+                this.drawUIImage(image, rectTransform);
+            }
+
+            if (materia.children) {
+                for (const child of materia.children) {
+                    renderRecursive(child);
+                }
+            }
+        };
+
+        for (const canvasMateria of canvasMaterias) {
+            renderRecursive(canvasMateria);
+        }
     }
 }
 

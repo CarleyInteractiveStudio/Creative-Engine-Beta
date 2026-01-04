@@ -1104,8 +1104,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneView.drawOverlay();
             }
             rendererInstance.end();
-        };
 
+            // --- Pass 2: Draw UI on top of everything ---
+            // UI is always drawn in screen space, so we do it after the world camera pass is fully complete.
+            rendererInstance.beginUI();
+            rendererInstance.drawUI();
+            rendererInstance.endUI();
+        };
 
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
@@ -1113,9 +1118,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (cameras.length === 0) {
                 rendererInstance.clear();
-                return;
+                // We still need to draw the UI even if there's no camera
+            } else {
+                cameras.forEach(handleRender);
             }
-            cameras.forEach(handleRender);
         } else { // Editor Scene View
             handleRender(null);
         }

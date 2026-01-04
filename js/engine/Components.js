@@ -25,9 +25,9 @@ const componentAliases = {
     'TilemapCollider2D': 'colisionadorMapaDeAzulejos2D',
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
-    'UICanvas': 'lienzoUI',
-    'UIImage': 'imagenUI',
     'RectTransform': 'transformacionRect',
+    'Canvas': 'lienzo',
+    'Image': 'imagen',
 };
 
 
@@ -760,24 +760,27 @@ export class RectTransform extends Leyes {
     }
 }
 
-export class UICanvas extends Leyes {
+export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'ScreenSpaceOverlay';
     }
     clone() {
-        const newCanvas = new UICanvas(null);
+        const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
         return newCanvas;
     }
 }
 
-export class UIImage extends Leyes {
+export class Image extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
         this.source = '';
-        this.color = '#ffffff';
+        this.color = '#ffffff'; // Filter/Tint
+        this.width = 100;
+        this.height = 100;
+        this.opacity = 1;
     }
 
     async loadSprite(projectsDirHandle) {
@@ -791,9 +794,12 @@ export class UIImage extends Leyes {
         }
     }
     clone() {
-        const newImage = new UIImage(null);
+        const newImage = new Image(null);
         newImage.source = this.source;
         newImage.color = this.color;
+        newImage.width = this.width;
+        newImage.height = this.height;
+        newImage.opacity = this.opacity;
         return newImage;
     }
 }
@@ -1042,8 +1048,8 @@ export class AnimatorController extends Leyes {
 registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('RectTransform', RectTransform);
-registerComponent('UICanvas', UICanvas);
-registerComponent('UIImage', UIImage);
+registerComponent('Image', Image);
+registerComponent('Canvas', Canvas);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
