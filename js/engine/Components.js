@@ -1046,7 +1046,7 @@ registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);
 registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
-registerComponent('Transform', Transform);
+registerComponent('Posicion', Posicion);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
 registerComponent('Animator', Animator);
