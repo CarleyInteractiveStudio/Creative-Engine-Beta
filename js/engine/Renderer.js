@@ -376,7 +376,6 @@ export class Renderer {
 
         // --- 1. Define Clipping Region in Screen Space ---
         // For screen space, the clipping area is the entire screen, offset by the canvas's transform.
-        // (This is a simple interpretation; more complex setups might need rect transform sizes)
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(canvasTransform.position.x, canvasTransform.position.y, canvasRect.width, canvasRect.height);
@@ -392,13 +391,13 @@ export class Renderer {
             // --- 1. Calculate Anchor Position ---
             const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, canvasRect.width, canvasRect.height);
 
-            // --- 2. Calculate Pivot Position ---
-            const pivotPosX = anchorPoint.x + uiTransform.position.x;
-            const pivotPosY = anchorPoint.y + uiTransform.position.y;
+            // --- 2. Calculate the top-left corner based on anchor and pivot, BEFORE applying the position offset ---
+            const initialX = anchorPoint.x - (uiTransform.size.width * uiTransform.pivot.x);
+            const initialY = anchorPoint.y - (uiTransform.size.height * uiTransform.pivot.y);
 
-            // --- 3. Calculate Final Top-Left Position ---
-            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
-            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+            // --- 3. Apply the position as an offset ---
+            const finalX = initialX + uiTransform.position.x;
+            const finalY = initialY + uiTransform.position.y;
 
             // --- 4. Apply Canvas's World Position as an Offset ---
             const drawX = finalX + canvasTransform.position.x;
@@ -475,12 +474,17 @@ export class Renderer {
             // Anchor point is relative to the canvas's own size
             const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
 
-            // Position is relative to the canvas's center + anchor
-            const pivotPosX = worldPos.x - halfWidth + anchorPoint.x + uiTransform.position.x;
-            const pivotPosY = worldPos.y - halfHeight + anchorPoint.y + uiTransform.position.y;
+            // Calculate top-left of the canvas in world space
+            const canvasTopLeftX = worldPos.x - halfWidth;
+            const canvasTopLeftY = worldPos.y - halfHeight;
 
-            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
-            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+            // Calculate the initial top-left of the element based on anchor and pivot, before offset
+            const initialX = canvasTopLeftX + anchorPoint.x - (uiTransform.size.width * uiTransform.pivot.x);
+            const initialY = canvasTopLeftY + anchorPoint.y - (uiTransform.size.height * uiTransform.pivot.y);
+
+            // Apply the UITransform's position as an offset
+            const finalX = initialX + uiTransform.position.x;
+            const finalY = initialY + uiTransform.position.y;
 
             // Draw the image
             this.ctx.save();

@@ -240,6 +240,142 @@ function drawEditorGrid() {
     ctx.restore();
 }
 
+
+function getUITransformWorldRect(uiMateria) {
+    if (!uiMateria) return null;
+
+    const uiTransform = uiMateria.getComponent(Components.UITransform);
+    if (!uiTransform) return null;
+
+    const parent = uiMateria.parent;
+    if (!parent || !parent.getComponent(Components.Canvas)) {
+        return null;
+    }
+
+    const canvasComponent = parent.getComponent(Components.Canvas);
+    const canvasTransform = parent.getComponent(Components.Transform);
+
+    const getAnchorPoint = (preset, canvasWidth, canvasHeight) => {
+        const anchor = { x: 0.5, y: 0.5 };
+        if (preset.includes('left')) anchor.x = 0;
+        if (preset.includes('center')) anchor.x = 0.5;
+        if (preset.includes('right')) anchor.x = 1;
+        if (preset.includes('top')) anchor.y = 0;
+        if (preset.includes('middle')) anchor.y = 0.5;
+        if (preset.includes('bottom')) anchor.y = 1;
+        return {
+            x: canvasWidth * anchor.x,
+            y: canvasHeight * anchor.y
+        };
+    };
+
+    let canvasRectWidth, canvasRectHeight, canvasWorldX, canvasWorldY;
+
+    if (canvasComponent.renderMode === 'World Space') {
+        canvasRectWidth = canvasComponent.size.x;
+        canvasRectHeight = canvasComponent.size.y;
+        canvasWorldX = canvasTransform.position.x - canvasRectWidth / 2;
+        canvasWorldY = canvasTransform.position.y - canvasRectHeight / 2;
+    } else {
+        const sceneCanvas = dom.sceneCanvas;
+        const aspect = sceneCanvas.width / sceneCanvas.height;
+        const gizmoHeight = 400;
+        const gizmoWidth = gizmoHeight * aspect;
+        canvasRectWidth = gizmoWidth;
+        canvasRectHeight = gizmoHeight;
+        canvasWorldX = canvasTransform.position.x - canvasRectWidth / 2;
+        canvasWorldY = canvasTransform.position.y - canvasRectHeight / 2;
+    }
+
+    const anchorPoint = getAnchorPoint(uiTransform.anchorPreset, canvasRectWidth, canvasRectHeight);
+    const pivotPosX = canvasWorldX + anchorPoint.x + uiTransform.position.x;
+    const pivotPosY = canvasWorldY + anchorPoint.y + uiTransform.position.y;
+    const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+    const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+
+    return {
+        x: finalX,
+        y: finalY,
+        width: uiTransform.size.width,
+        height: uiTransform.size.height
+    };
+}
+
+
+function drawUITransformGizmo() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !selectedMateria.getComponent(Components.UITransform)) return;
+
+    const worldRect = getUITransformWorldRect(selectedMateria);
+    if (!worldRect) return;
+
+    const { ctx, camera } = renderer;
+    const { x, y, width, height } = worldRect;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 150, 255, 0.9)';
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([]);
+    ctx.strokeRect(x, y, width, height);
+
+    const handleSize = 8 / camera.effectiveZoom;
+    const halfHandle = handleSize / 2;
+    ctx.fillStyle = 'rgba(0, 150, 255, 1)';
+
+    const handles = [
+        { x: x, y: y }, { x: x + width / 2, y: y }, { x: x + width, y: y },
+        { x: x + width, y: y + height / 2 }, { x: x + width, y: y + height },
+        { x: x + width / 2, y: y + height }, { x: x, y: y + height },
+        { x: x, y: y + height / 2 },
+    ];
+
+    handles.forEach(handle => {
+        ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize);
+    });
+
+    ctx.restore();
+}
+
+function checkUITransformGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !selectedMateria.getComponent(Components.UITransform)) return null;
+
+    const worldRect = getUITransformWorldRect(selectedMateria);
+    if (!worldRect) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    const { x, y, width, height } = worldRect;
+
+    const handleHitboxSize = 12 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: x, y: y, name: 'ui-resize-tl' },
+        { x: x + width / 2, y: y, name: 'ui-resize-t' },
+        { x: x + width, y: y, name: 'ui-resize-tr' },
+        { x: x + width, y: y + height / 2, name: 'ui-resize-r' },
+        { x: x + width, y: y + height, name: 'ui-resize-br' },
+        { x: x + width / 2, y: y + height, name: 'ui-resize-b' },
+        { x: x, y: y + height, name: 'ui-resize-bl' },
+        { x: x, y: y + height / 2, name: 'ui-resize-l' },
+    ];
+
+     for (const handle of handles) {
+        if (
+            worldMouse.x >= handle.x - halfHitbox && worldMouse.x <= handle.x + halfHitbox &&
+            worldMouse.y >= handle.y - halfHitbox && worldMouse.y <= handle.y + halfHitbox
+        ) {
+            return handle.name;
+        }
+    }
+
+    if (worldMouse.x >= x && worldMouse.x <= x + width && worldMouse.y >= y && worldMouse.y <= y + height) {
+        return 'ui-move';
+    }
+
+    return null;
+}
+
 function drawGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
@@ -573,7 +709,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
+            const hitHandle = checkUITransformGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -619,6 +755,36 @@ export function initialize(dependencies) {
                             break;
                         }
                     }
+
+                    // --- UITransform Gizmo Logic ---
+                    const uiTransform = dragState.materia.getComponent(Components.UITransform);
+                    if (uiTransform && dragState.handle.startsWith('ui-')) {
+                        const pivot = uiTransform.pivot;
+
+                        if (dragState.handle === 'ui-move') {
+                            uiTransform.position.x += dx;
+                            uiTransform.position.y += dy;
+                        } else if (dragState.handle.startsWith('ui-resize-')) {
+                            const type = dragState.handle.replace('ui-resize-', '');
+
+                            // Adjust size
+                            if (type.includes('r')) uiTransform.size.width += dx;
+                            if (type.includes('l')) uiTransform.size.width -= dx;
+                            if (type.includes('b')) uiTransform.size.height += dy;
+                            if (type.includes('t')) uiTransform.size.height -= dy;
+
+                            // Adjust position based on pivot to keep opposite side stationary
+                            if (type.includes('l')) uiTransform.position.x += dx * (1 - pivot.x);
+                            if (type.includes('r')) uiTransform.position.x += dx * pivot.x;
+                            if (type.includes('t')) uiTransform.position.y += dy * (1 - pivot.y);
+                            if (type.includes('b')) uiTransform.position.y += dy * pivot.y;
+
+                            // Handle middle handles that affect only one axis
+                            if (type === 't' || type === 'b') uiTransform.position.x += dx * (0.5 - pivot.x);
+                            if (type === 'l' || type === 'r') uiTransform.position.y += dy * (0.5 - pivot.y);
+                        }
+                    }
+
 
                     // --- Collider Gizmo Logic ---
                     const boxCollider = dragState.materia.getComponent(Components.BoxCollider2D);
@@ -1064,6 +1230,9 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
+
+    // Draw UI Transform Gizmo
+    drawUITransformGizmo();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
