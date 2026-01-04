@@ -26,8 +26,8 @@ const componentAliases = {
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
     'RectTransform': 'transformacionRect',
-    'Canvas': 'lienzo',
-    'Image': 'imagen',
+    'UICanvas': 'lienzo',
+    'UIImage': 'imagen',
 };
 
 
@@ -760,19 +760,19 @@ export class RectTransform extends Leyes {
     }
 }
 
-export class Canvas extends Leyes {
+export class UICanvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'ScreenSpaceOverlay';
     }
     clone() {
-        const newCanvas = new Canvas(null);
+        const newCanvas = new UICanvas(null);
         newCanvas.renderMode = this.renderMode;
         return newCanvas;
     }
 }
 
-export class Image extends Leyes {
+export class UIImage extends Leyes {
     constructor(materia) {
         super(materia);
         this.sprite = new Image();
@@ -794,7 +794,7 @@ export class Image extends Leyes {
         }
     }
     clone() {
-        const newImage = new Image(null);
+        const newImage = new UIImage(null);
         newImage.source = this.source;
         newImage.color = this.color;
         newImage.width = this.width;
@@ -1048,8 +1048,8 @@ export class AnimatorController extends Leyes {
 registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('RectTransform', RectTransform);
-registerComponent('Image', Image);
-registerComponent('Canvas', Canvas);
+registerComponent('UIImage', UIImage);
+registerComponent('UICanvas', UICanvas);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);

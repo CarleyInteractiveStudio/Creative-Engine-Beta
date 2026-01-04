@@ -336,23 +336,23 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
-    drawUIImage(image, rectTransform) {
+    drawUIImage(uiImage, rectTransform) {
         const rect = rectTransform.getWorldRect(this.canvas);
 
         this.ctx.save();
-        this.ctx.globalAlpha = image.opacity;
+        this.ctx.globalAlpha = uiImage.opacity;
 
-        if (!image.sprite || !image.sprite.complete || image.sprite.naturalWidth === 0) {
+        if (!uiImage.sprite || !uiImage.sprite.complete || uiImage.sprite.naturalWidth === 0) {
             // If there's no sprite, draw a colored rectangle as a placeholder
-            this.ctx.fillStyle = image.color;
+            this.ctx.fillStyle = uiImage.color;
             this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
         } else {
             // Draw the image
-            this.ctx.drawImage(image.sprite, rect.x, rect.y, rect.width, rect.height);
+            this.ctx.drawImage(uiImage.sprite, rect.x, rect.y, rect.width, rect.height);
 
             // Apply color tint if it's not white
-            if (image.color.toLowerCase() !== '#ffffff') {
-                this.ctx.fillStyle = image.color;
+            if (uiImage.color.toLowerCase() !== '#ffffff') {
+                this.ctx.fillStyle = uiImage.color;
                 this.ctx.globalCompositeOperation = 'multiply';
                 this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
             }
@@ -365,12 +365,12 @@ export class Renderer {
         if (!SceneManager.currentScene) return;
 
         const allMaterias = SceneManager.currentScene.getAllMaterias();
-        const canvasMaterias = allMaterias.filter(m => m.getComponent(Components.Canvas) && !m.parent);
+        const canvasMaterias = allMaterias.filter(m => m.getComponent(Components.UICanvas) && !m.parent);
 
         const renderRecursive = (materia) => {
             if (!materia.isActive) return;
 
-            const image = materia.getComponent(Components.Image);
+            const image = materia.getComponent(Components.UIImage);
             const rectTransform = materia.getComponent(Components.RectTransform);
 
             if (image && rectTransform) {

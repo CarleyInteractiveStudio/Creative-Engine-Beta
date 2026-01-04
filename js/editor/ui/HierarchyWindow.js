@@ -115,7 +115,7 @@ function createUIImageObject(parent = null) {
     if (parent) {
         let current = parent;
         while (current) {
-            if (current.getComponent(Components.Canvas)) {
+            if (current.getComponent(Components.UICanvas)) {
                 canvasParent = current;
                 break;
             }
@@ -124,15 +124,15 @@ function createUIImageObject(parent = null) {
     }
 
     // If no canvas is found, create one
-    if (!canvasParent || !canvasParent.getComponent(Components.Canvas)) {
+    if (!canvasParent || !canvasParent.getComponent(Components.UICanvas)) {
         const canvasMateria = createBaseMateria(generateUniqueName('Canvas'), parent);
-        canvasMateria.addComponent(new Components.Canvas(canvasMateria));
+        canvasMateria.addComponent(new Components.UICanvas(canvasMateria));
         canvasParent = canvasMateria;
     }
 
     // Create the image as a child of the canvas
     const newMateria = createBaseMateria(generateUniqueName('Imagen'), canvasParent);
-    newMateria.addComponent(new Components.Image(newMateria));
+    newMateria.addComponent(new Components.UIImage(newMateria));
     newMateria.addComponent(new Components.RectTransform(newMateria));
     return newMateria;
 }
