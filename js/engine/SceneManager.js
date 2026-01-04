@@ -4,7 +4,7 @@
 import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
+import { Posicion, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
 import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
 
