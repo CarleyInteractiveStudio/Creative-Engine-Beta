@@ -230,7 +230,7 @@ export function handleContextMenuAction(action) {
 
                 // Create the Image object itself.
                 newMateria = createBaseMateria(generateUniqueName('Image'), parentForImage);
-                newMateria.addComponent(new Components.RectTransform(newMateria));
+                newMateria.addComponent(new Components.UIPosition(newMateria));
                 newMateria.addComponent(new Components.Image(newMateria)); // Use the new 'Image' component
 
                 // Explicitly update the hierarchy and select the new object

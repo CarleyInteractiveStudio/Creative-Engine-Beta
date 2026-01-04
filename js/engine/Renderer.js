@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UIPosition, Image } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -326,6 +326,65 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
+    drawWorldSpaceCanvas(canvasMateria) {
+        const canvasTransform = canvasMateria.getComponent(Transform);
+        if (!canvasTransform) return;
+
+        // Recursive function to draw all UI elements under a canvas
+        const drawUIElement = (materia) => {
+            if (!materia.isActive) return;
+
+            const image = materia.getComponent(Image);
+            const uiPosition = materia.getComponent(UIPosition);
+
+            if (image && uiPosition) {
+                // Calculate world position by combining canvas transform and UI position
+                // This treats UIPosition's x/y as a local offset from the canvas's pivot.
+                const worldX = canvasTransform.position.x + uiPosition.x;
+                const worldY = canvasTransform.position.y + uiPosition.y;
+                const worldWidth = uiPosition.width;
+                const worldHeight = uiPosition.height;
+
+                this.ctx.save();
+                this.ctx.globalAlpha = image.opacity;
+
+                // Translate to the final world position to handle drawing
+                this.ctx.translate(worldX, worldY);
+                // Note: This simplified version doesn't account for canvas or UI element rotation yet.
+
+                const hasSource = image.sprite && image.sprite.complete && image.sprite.naturalWidth > 0;
+
+                if (hasSource) {
+                    // Draw the image centered at the new origin
+                    this.ctx.drawImage(image.sprite, -worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
+
+                    // Apply color tint if needed
+                    if (image.color.toLowerCase() !== '#ffffff') {
+                        this.ctx.globalCompositeOperation = 'multiply';
+                        this.ctx.fillStyle = image.color;
+                        this.ctx.fillRect(-worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
+                    }
+                } else {
+                    // If no source, just draw a colored rectangle
+                    this.ctx.fillStyle = image.color;
+                    this.ctx.fillRect(-worldWidth / 2, -worldHeight / 2, worldWidth, worldHeight);
+                }
+
+                this.ctx.restore();
+            }
+
+            // Draw children recursively
+            if (materia.children) {
+                materia.children.forEach(drawUIElement);
+            }
+        };
+
+        // Start the recursive drawing from the canvas's direct children
+        if (canvasMateria.children) {
+            canvasMateria.children.forEach(drawUIElement);
+        }
+    }
+
     renderUI(scene) {
         if (!scene) return;
 
@@ -338,8 +397,7 @@ export class Renderer {
             if (canvas.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
             } else { // 'World Space'
-                // World Space UI elements are just regular objects. The standard `updateScene`
-                // loop already handles their rendering, so no special UI pass is needed for them.
+                this.drawWorldSpaceCanvas(canvasMateria);
             }
         }
     }
@@ -352,7 +410,7 @@ export class Renderer {
             if (!materia.isActive) return;
 
             const image = materia.getComponent(Components.Image);
-            const rectTransform = materia.getComponent(Components.RectTransform);
+            const rectTransform = materia.getComponent(Components.UIPosition);
 
             if (image && rectTransform) {
                 this.ctx.save();

@@ -27,7 +27,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'Image': 'imagen',
-    'RectTransform': 'transformacionRect',
+    'UIPosition': 'uiPosicion',
 };
 
 
@@ -755,7 +755,7 @@ export class Animator extends Leyes {
     }
 }
 
-export class RectTransform extends Leyes {
+export class UIPosition extends Leyes {
     constructor(materia) {
         super(materia);
         this.x = 0;
@@ -793,15 +793,15 @@ export class RectTransform extends Leyes {
         };
     }
     clone() {
-        const newRectTransform = new RectTransform(null);
-        newRectTransform.x = this.x;
-        newRectTransform.y = this.y;
-        newRectTransform.width = this.width;
-        newRectTransform.height = this.height;
-        newRectTransform.pivot = { ...this.pivot };
-        newRectTransform.anchorMin = { ...this.anchorMin };
-        newRectTransform.anchorMax = { ...this.anchorMax };
-        return newRectTransform;
+        const newUIPosition = new UIPosition(null);
+        newUIPosition.x = this.x;
+        newUIPosition.y = this.y;
+        newUIPosition.width = this.width;
+        newUIPosition.height = this.height;
+        newUIPosition.pivot = { ...this.pivot };
+        newUIPosition.anchorMin = { ...this.anchorMin };
+        newUIPosition.anchorMax = { ...this.anchorMax };
+        return newUIPosition;
     }
 }
 
@@ -1076,7 +1076,7 @@ export class AnimatorController extends Leyes {
 }
 registerComponent('AnimatorController', AnimatorController);
 
-registerComponent('RectTransform', RectTransform);
+registerComponent('UIPosition', UIPosition);
 registerComponent('Image', Image);
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);

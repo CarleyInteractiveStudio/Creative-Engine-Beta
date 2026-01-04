@@ -1064,6 +1064,50 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
+    drawUIPositionGizmo();
+}
+
+function drawUIPositionGizmo() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const uiPosition = selectedMateria.getComponent(Components.UIPosition);
+    if (!uiPosition) return;
+
+    // Find the parent Canvas
+    let parent = selectedMateria.parent;
+    let canvas = null;
+    let canvasTransform = null;
+    while (parent) {
+        canvas = parent.getComponent(Components.Canvas);
+        if (canvas) {
+            canvasTransform = parent.getComponent(Components.Transform);
+            break;
+        }
+        parent = parent.parent;
+    }
+
+    if (!canvas || !canvasTransform || canvas.renderMode !== 'World Space') {
+        return; // Only draw gizmos for world-space UI elements
+    }
+
+    const { ctx, camera } = renderer;
+    const worldX = canvasTransform.position.x + uiPosition.x;
+    const worldY = canvasTransform.position.y + uiPosition.y;
+
+    ctx.save();
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.setLineDash([6 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+
+    ctx.strokeRect(
+        worldX - uiPosition.width / 2,
+        worldY - uiPosition.height / 2,
+        uiPosition.width,
+        uiPosition.height
+    );
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
