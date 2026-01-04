@@ -576,8 +576,8 @@ export function setAnchorPreview(preset) {
         };
     } else { // Screen Space
         const camera = renderer.camera;
-        const viewHeight = camera.canvas.height / camera.effectiveZoom;
-        const viewWidth = camera.canvas.width / camera.effectiveZoom;
+        const viewHeight = renderer.canvas.height / camera.effectiveZoom;
+        const viewWidth = renderer.canvas.width / camera.effectiveZoom;
         canvasRect = {
             x: camera.x - viewWidth / 2,
             y: camera.y - viewHeight / 2,
@@ -1776,8 +1776,8 @@ function drawCanvasGizmos() {
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
         // Use the same logic as getUITransformWorldRect to draw the gizmo
-        const viewHeight = camera.canvas.height / camera.effectiveZoom;
-        const viewWidth = camera.canvas.width / camera.effectiveZoom;
+        const viewHeight = renderer.canvas.height / camera.effectiveZoom;
+        const viewWidth = renderer.canvas.width / camera.effectiveZoom;
         const viewX = camera.x - viewWidth / 2;
         const viewY = camera.y - viewHeight / 2;
         ctx.strokeRect(viewX, viewY, viewWidth, viewHeight);
