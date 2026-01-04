@@ -808,7 +808,7 @@ export class RectTransform extends Leyes {
 export class Image extends Leyes {
     constructor(materia) {
         super(materia);
-        this.sprite = new Image();
+        this.sprite = new window.Image();
         this.source = '';
         this.color = '#ffffff';
         this.opacity = 1.0;

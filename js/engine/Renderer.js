@@ -355,25 +355,28 @@ export class Renderer {
             const rectTransform = materia.getComponent(Components.RectTransform);
 
             if (image && rectTransform) {
-                const img = image.sprite;
-                if (img && img.complete && img.naturalWidth > 0) {
-                    this.ctx.save();
+                this.ctx.save();
+                this.ctx.globalAlpha = image.opacity;
 
-                    // Apply opacity
-                    this.ctx.globalAlpha = image.opacity;
+                const hasSource = image.sprite && image.sprite.complete && image.sprite.naturalWidth > 0;
 
-                    // Draw the base image
-                    this.ctx.drawImage(img, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
+                if (hasSource) {
+                    // Draw the base image if it exists
+                    this.ctx.drawImage(image.sprite, rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
 
-                    // Apply color tint if it's not white
-                    if (image.color !== '#ffffff') {
+                    // Apply color tint by multiplying on top, unless it's pure white
+                    if (image.color.toLowerCase() !== '#ffffff') {
                         this.ctx.globalCompositeOperation = 'multiply';
                         this.ctx.fillStyle = image.color;
                         this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
                     }
-
-                    this.ctx.restore(); // Restore alpha and composite operation
+                } else {
+                    // If there's no source image, just draw a tinted rectangle
+                    this.ctx.fillStyle = image.color;
+                    this.ctx.fillRect(rectTransform.x, rectTransform.y, rectTransform.width, rectTransform.height);
                 }
+
+                this.ctx.restore();
             }
 
             // Draw children
