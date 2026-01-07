@@ -1,0 +1,91 @@
+// ##################################################
+// #         ESCENA DE PRUEBA AVANZADA              #
+// ##################################################
+//
+// Este script demuestra el uso combinado de varios módulos
+// para crear una escena simple pero interactiva.
+//
+// Para usarlo:
+// 1. Tradúcelo a JavaScript:
+//    node transpiler.js escena_de_prueba.ces game.js
+// 2. Abre index.html en tu navegador.
+
+// --- 1. IMPORTACIONES ---
+// Importamos todos los módulos que vamos a necesitar.
+using creative.engine;
+using creative.engine.core;
+using creative.engine.physics;
+using creative.engine.animator;
+using creative.engine.ui;
+
+// --- 2. DECLARACIÓN DE OBJETOS ---
+// Declaramos los GameObjects que usaremos en la escena.
+public materia/gameObject nave;
+public materia/gameObject plataforma;
+public materia/gameObject gema;
+
+// También podemos declarar variables de estado para el juego.
+public materia/gameObject puntuacion;
+public materia/gameObject velocidadNave;
+
+// --- 3. FUNCIÓN DE INICIO ---
+// Se ejecuta una vez al cargar la escena.
+public star() {
+    // --- Configuración de la Escena ---
+    UI.text("Cargando Escena de Prueba...", 20, 20);
+    Camera.setPosition(0, 50, -150); // Vista isométrica
+    ley gravedad activar;
+
+    // --- Creación de Objetos (Materia) ---
+    materia crear nave, "assets/modelos/nave_espacial.glb";
+    materia crear plataforma, "assets/modelos/plataforma_base.glb";
+    materia crear gema, "assets/modelos/gema_poder.glb";
+
+    // --- Inicialización de Estado ---
+    // (En un motor real, manipularíamos las propiedades de los objetos)
+    puntuacion = 0;
+    velocidadNave = 100;
+
+    UI.text("Puntuación: " + puntuacion, 20, 40);
+
+    // --- Física y Animaciones ---
+    // (En un motor real, los objetos tendrían cuerpos físicos)
+    // Physics.addBody(nave);
+    // Physics.addBody(plataforma);
+
+    Animator.play("nave_idle_flotando");
+    Animator.play("gema_girando");
+}
+
+// --- 4. FUNCIÓN DE ACTUALIZACIÓN ---
+// Se ejecuta en cada fotograma.
+public update(deltaTime) {
+    // --- Lógica de Control del Jugador ---
+    if (Input.keyDown("ArrowUp")) {
+        // Mover nave hacia adelante (en el eje Z)
+        // nave.z += velocidadNave * deltaTime;
+        UI.text("Moviendo hacia ARRIBA", 200, 60);
+    }
+    if (Input.keyDown("ArrowDown")) {
+        // nave.z -= velocidadNave * deltaTime;
+        UI.text("Moviendo hacia ABAJO", 200, 80);
+    }
+    if (Input.keyDown("ArrowLeft")) {
+        // nave.x -= velocidadNave * deltaTime;
+        UI.text("Moviendo hacia IZQUIERDA", 200, 100);
+    }
+    if (Input.keyDown("ArrowRight")) {
+        // nave.x += velocidadNave * deltaTime;
+        UI.text("Moviendo hacia DERECHA", 200, 120);
+    }
+
+    // --- Lógica de Juego ---
+    // (En un motor real, comprobaríamos colisiones)
+    // if (Collision.check(nave, gema)) {
+    //     puntuacion += 10;
+    //     UI.text("Puntuación: " + puntuacion, 20, 40);
+    //     Animator.play("gema_recolectada");
+    //     // Desactivar o mover la gema
+    //     // gema.disable();
+    // }
+}
