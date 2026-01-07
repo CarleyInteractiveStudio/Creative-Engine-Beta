@@ -96,17 +96,16 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green) -> Now pointing UP (negative Y in world space)
+            // Y-Axis (Green) - Note: In UI, Y is often down, but we'll stick to world coordinates up
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
             ctx.stroke();
-            // Arrow head
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -530,7 +529,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
-    updateInspector = dependencies.updateInspectorCallback;
+    updateInspector = dependencies.updateInspector;
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
@@ -774,10 +773,15 @@ export function initialize(dependencies) {
                             uiTransform.position.x += dx;
                             break;
                         case 'ui-move-y':
+                            // El sistema de coordenadas de la UI tiene la Y invertida.
+                            // Un dy positivo en el espacio del mundo (movimiento del ratón hacia abajo)
+                            // debe corresponder a un movimiento hacia abajo del elemento UI.
+                            // En el UITransform, un valor más pequeño de position.y significa una posición más baja en la pantalla.
                             uiTransform.position.y -= dy;
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
+                            // Aplicamos la misma lógica invertida para el componente Y.
                             uiTransform.position.y -= dy;
                             break;
                         // --- UI Scaling with Pivot Correction ---
@@ -791,35 +795,35 @@ export function initialize(dependencies) {
                             break;
                         case 'ui-scale-b': // Bottom handle
                             uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
                         case 'ui-scale-t': // Top handle
                             uiTransform.size.height -= dy;
-                            uiTransform.position.y -= dy * uiTransform.pivot.y;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
                             break;
                         case 'ui-scale-tr': // Top-right handle
                             uiTransform.size.width += dx;
                             uiTransform.position.x += dx * uiTransform.pivot.x;
                             uiTransform.size.height -= dy;
-                            uiTransform.position.y -= dy * uiTransform.pivot.y;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
                             break;
                         case 'ui-scale-tl': // Top-left handle
                             uiTransform.size.width -= dx;
                             uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
                             uiTransform.size.height -= dy;
-                            uiTransform.position.y -= dy * uiTransform.pivot.y;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
                             break;
                         case 'ui-scale-br': // Bottom-right handle
                             uiTransform.size.width += dx;
                             uiTransform.position.x += dx * uiTransform.pivot.x;
                             uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
                         case 'ui-scale-bl': // Bottom-left handle
                             uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
+                            uiTransform.position.x -= dx * (1 - uiTransform.pivot.x);
                             uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
                         case 'rotate': {
                             const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
