@@ -96,7 +96,7 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green) - Note: In UI, Y is often down, but we'll stick to world coordinates up
+            // Y-Axis (Green)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
