@@ -773,45 +773,52 @@ export function initialize(dependencies) {
                             uiTransform.position.x += dx;
                             break;
                         case 'ui-move-y':
-                            uiTransform.position.y -= dy; // UI Y-coords are often inverted from world
+                            uiTransform.position.y += dy;
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
-                            uiTransform.position.y -= dy;
+                            uiTransform.position.y += dy;
                             break;
-                        case 'ui-scale-r':
+                        // --- UI Scaling with Pivot Correction ---
+                        case 'ui-scale-r': // Right handle
                             uiTransform.size.width += dx;
+                            uiTransform.position.x += dx * uiTransform.pivot.x;
                             break;
-                        case 'ui-scale-l':
+                        case 'ui-scale-l': // Left handle
                             uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx;
+                            uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
                             break;
-                         case 'ui-scale-b':
-                            uiTransform.size.height -= dy;
-                            break;
-                        case 'ui-scale-t':
+                        case 'ui-scale-b': // Bottom handle
                             uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy;
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
-                        case 'ui-scale-tr':
+                        case 'ui-scale-t': // Top handle
+                            uiTransform.size.height -= dy;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                            break;
+                        case 'ui-scale-tr': // Top-right handle
                             uiTransform.size.width += dx;
-                            uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy;
+                            uiTransform.position.x += dx * uiTransform.pivot.x;
+                            uiTransform.size.height -= dy;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
                             break;
-                        case 'ui-scale-tl':
+                        case 'ui-scale-tl': // Top-left handle
                             uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx;
-                            uiTransform.size.height += dy;
-                            uiTransform.position.y -= dy;
+                            uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
+                            uiTransform.size.height -= dy;
+                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
                             break;
-                        case 'ui-scale-br':
+                        case 'ui-scale-br': // Bottom-right handle
                             uiTransform.size.width += dx;
-                            uiTransform.size.height -= dy;
+                            uiTransform.position.x += dx * uiTransform.pivot.x;
+                            uiTransform.size.height += dy;
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
-                        case 'ui-scale-bl':
+                        case 'ui-scale-bl': // Bottom-left handle
                             uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx;
-                            uiTransform.size.height -= dy;
+                            uiTransform.position.x -= dx * (1 - uiTransform.pivot.x);
+                            uiTransform.size.height += dy;
+                            uiTransform.position.y += dy * uiTransform.pivot.y;
                             break;
                         case 'rotate': {
                             const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);

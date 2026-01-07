@@ -32,3 +32,25 @@ export function createBaseMateria(name, parent = null) {
     }
     return newMateria;
 }
+
+export function createCanvasObject() {
+    const name = generateUniqueName('Canvas');
+    const newMateria = createBaseMateria(name); // createBaseMateria adds Transform
+    newMateria.addComponent(new Components.Canvas(newMateria));
+    return newMateria;
+}
+
+export function createImageObject(parent) {
+    if (!parent) {
+        console.error("createImageObject requiere un padre.");
+        return null;
+    }
+    const name = generateUniqueName('Image');
+    const newMateria = new Materia(name);
+    // UI elements get a UITransform, not a regular Transform
+    newMateria.addComponent(new Components.UITransform(newMateria));
+    newMateria.addComponent(new Components.UIImage(newMateria));
+
+    parent.addChild(newMateria);
+    return newMateria;
+}

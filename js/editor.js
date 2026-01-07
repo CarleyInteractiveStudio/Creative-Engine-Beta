@@ -2107,6 +2107,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.MateriaFactory = MateriaFactory;
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
+        window.selectMateria = selectMateria;
+        window.updateInspector = updateInspector;
+        window.setActiveTool = SceneView.setActiveTool;
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
@@ -2435,6 +2438,7 @@ public star() {
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas);
+            window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");
             // Only initialize scene from file system if handle is available
