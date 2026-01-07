@@ -96,16 +96,17 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green) - Note: In UI, Y is often down, but we'll stick to world coordinates up
+            // Y-Axis (Green) -> Now pointing UP (negative Y in world space)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
             ctx.stroke();
+            // Arrow head
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -529,7 +530,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
-    updateInspector = dependencies.updateInspector;
+    updateInspector = dependencies.updateInspectorCallback;
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
