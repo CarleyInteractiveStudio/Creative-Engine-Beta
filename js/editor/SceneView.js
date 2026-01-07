@@ -96,16 +96,16 @@ function drawUIGizmos(renderer, materia) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
 
-            // Y-Axis (Green) - Note: In UI, Y is often down, but we'll stick to world coordinates up
+            // Y-Axis (Green)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -773,11 +773,11 @@ export function initialize(dependencies) {
                             uiTransform.position.x += dx;
                             break;
                         case 'ui-move-y':
-                            uiTransform.position.y += dy;
+                            uiTransform.position.y -= dy; // Inverted Y-axis for UI
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
-                            uiTransform.position.y += dy;
+                            uiTransform.position.y -= dy; // Inverted Y-axis for UI
                             break;
                         // --- UI Scaling with Pivot Correction ---
                         case 'ui-scale-r': // Right handle
