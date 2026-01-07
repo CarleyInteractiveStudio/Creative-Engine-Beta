@@ -1057,6 +1057,49 @@ export class Canvas extends Leyes {
         this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
         this.size = { x: 800, y: 600 };
     }
+    /**
+     * Calculates the world-space rectangle for a given UI element (child of this canvas).
+     * @param {UITransform} uiTransform The UITransform component of the element.
+     * @returns {{x: number, y: number, width: number, height: number}} The rectangle in world coordinates.
+     */
+    getWorldRect(uiTransform) {
+        const canvasTransform = this.materia.getComponent(Transform);
+        if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
+
+        // Start with canvas's world position as the origin
+        const canvasPos = canvasTransform.position;
+        const canvasSize = (this.renderMode === 'World Space') ? this.size : { x: 800, y: 600 }; // Use a default for screen space for now
+
+        // 1. Calculate the anchor point in world space
+        const anchorPreset = uiTransform.anchorPreset;
+        let anchorX = canvasPos.x - (canvasSize.x / 2);
+        let anchorY = canvasPos.y - (canvasSize.y / 2);
+
+        if (anchorPreset.includes('center')) anchorX += canvasSize.x / 2;
+        if (anchorPreset.includes('right')) anchorX += canvasSize.x;
+        if (anchorPreset.includes('middle')) anchorY += canvasSize.y / 2;
+        if (anchorPreset.includes('bottom')) anchorY += canvasSize.y;
+
+        // 2. Add the UI element's relative position
+        let elementX = anchorX + uiTransform.position.x;
+        let elementY = anchorY - uiTransform.position.y; // Y is inverted in UI space vs world space
+
+        // 3. Adjust for pivot
+        const pivot = uiTransform.pivot;
+        const width = uiTransform.size.width;
+        const height = uiTransform.size.height;
+
+        const finalX = elementX - (width * pivot.x);
+        const finalY = elementY - (height * (1 - pivot.y)); // Inverted pivot Y
+
+        return {
+            x: finalX,
+            y: finalY,
+            width: width,
+            height: height
+        };
+    }
+
 
     clone() {
         const newCanvas = new Canvas(null);

@@ -3440,27 +3440,29 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    width: 60px;
-    height: 60px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-background-dark);
+    width: 70px;
+    height: 70px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
     margin-bottom: 15px;
     padding: 2px;
+    gap: 2px; /* Add a small gap between buttons */
 }
 
 .anchor-grid-button {
-    border: 1px dashed var(--color-border-light);
-    background-color: transparent;
+    border: 1px dashed var(--text-secondary); /* Use a visible color */
+    background-color: var(--bg-tertiary);
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;
 }
 
 .anchor-grid-button:hover {
-    background-color: var(--color-accent-hover);
+    background-color: #4f4f56; /* A slightly lighter grey on hover */
+    border-color: var(--accent-color);
 }
 
 .anchor-grid-button.active {
-    background-color: var(--color-accent);
-    border-style: solid;
+    background-color: var(--accent-color);
+    border: 2px solid white; /* Make the active state more prominent */
 }
