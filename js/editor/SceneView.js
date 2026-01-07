@@ -30,7 +30,7 @@ function checkUIGizmoHit(canvasPos) {
     switch (activeTool) {
         case 'move':
             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'ui-move-y';
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
              // Central square hit detection
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
@@ -100,12 +100,12 @@ function drawUIGizmos(renderer, materia) {
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY + GIZMO_SIZE);
+            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY + GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY + GIZMO_SIZE - ARROW_HEAD_SIZE);
+            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
+            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -777,7 +777,7 @@ export function initialize(dependencies) {
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
-                            uiTransform.position.y -= dy;
+                            uiTransform.position.y += dy;
                             break;
                         // --- UI Scaling with Pivot Correction ---
                         case 'ui-scale-r': // Right handle
