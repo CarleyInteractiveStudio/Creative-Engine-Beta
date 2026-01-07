@@ -1,4 +1,5 @@
 import * as Components from '../../engine/Components.js';
+import * as UITransformUtils from '../../engine/UITransformUtils.js';
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
@@ -397,6 +398,16 @@ function handleInspectorClick(e) {
         }
     }
 
+    if (e.target.matches('.anchor-grid-button')) {
+        const preset = e.target.dataset.preset;
+        const uiTransform = selectedMateria.getComponent(Components.UITransform);
+        if (uiTransform) {
+            uiTransform.anchorPreset = preset;
+            uiTransform.pivot = UITransformUtils.getPivotForAnchorPreset(preset);
+            updateInspector();
+        }
+    }
+
     if (e.target.matches('[data-action="add-layer"]')) {
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
         if (tilemap) {
@@ -735,15 +746,25 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.UITransform) {
-            const anchorOptions = [
+            const presets = [
                 'top-left', 'top-center', 'top-right',
                 'middle-left', 'middle-center', 'middle-right',
                 'bottom-left', 'bottom-center', 'bottom-right'
-            ].map(preset => `<option value="${preset}" ${ley.anchorPreset === preset ? 'selected' : ''}>${preset.replace(/-/g, ' ')}</option>`).join('');
+            ];
+            const anchorGrid = presets.map(p => `
+                <button
+                    class="anchor-grid-button ${ley.anchorPreset === p ? 'active' : ''}"
+                    data-preset="${p}"
+                    title="${p}">
+                </button>
+            `).join('');
 
             componentHTML = `
             <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
             <div class="component-content">
+                 <div class="anchor-grid-container">
+                    ${anchorGrid}
+                </div>
                 <div class="prop-row-multi">
                     <label>Position</label>
                     <div class="prop-inputs">
@@ -764,12 +785,6 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
                         <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
                     </div>
-                </div>
-                <div class="prop-row-multi">
-                    <label>Anchor Preset</label>
-                     <select class="prop-input" data-component="UITransform" data-prop="anchorPreset">
-                        ${anchorOptions}
-                    </select>
                 </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {

@@ -1,15 +1,20 @@
 import * as Components from '../../engine/Components.js';
 import * as TilePaletteWindow from './TilePaletteWindow.js';
+import * as UITransformUtils from '../../engine/UITransformUtils.js';
 
 let dom;
 let renderer;
 let InputManager;
 let SceneManager;
 let getSelectedMateria;
+let updateInspectorCallback;
 let activeTool = 'move'; // Default editor tool
 let isPanning = false;
 let isPainting = false;
 let isDrawingRect = false; // For the rectangle fill tool
+let isDraggingUI = false;
+let draggedMateria = null;
+let dragOffset = { x: 0, y: 0 };
 let rectStartGridPos = { x: 0, y: 0 }; // Store the start grid cell
 let currentMousePosition = { x: 0, y: 0 }; // For overlay drawing
 let lastMousePosition = { x: 0, y: 0 };
@@ -21,6 +26,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     SceneManager = dependencies.SceneManager;
     getSelectedMateria = dependencies.getSelectedMateria;
+    updateInspectorCallback = dependencies.updateInspectorCallback;
 
     dom.sceneCanvas.addEventListener('mousedown', handleMouseDown);
     dom.sceneCanvas.addEventListener('mousemove', handleMouseMove);
@@ -49,6 +55,24 @@ export function update(deltaTime) {
 
 function handleMouseDown(e) {
     lastMousePosition = { x: e.clientX, y: e.clientY };
+
+    // --- UI Dragging Logic ---
+    const selectedMateria = getSelectedMateria();
+    if (activeTool === 'move' && selectedMateria && selectedMateria.getComponent(Components.UITransform)) {
+        const worldPos = screenToWorld(e.clientX, e.clientY);
+
+        if (isPointInMateria(worldPos, selectedMateria)) {
+            isDraggingUI = true;
+            draggedMateria = selectedMateria;
+            const worldPivotPos = getMateriaWorldPivotPosition(draggedMateria);
+            dragOffset = {
+                x: worldPos.x - worldPivotPos.x,
+                y: worldPos.y - worldPivotPos.y
+            };
+            return;
+        }
+    }
+
     const paletteTool = TilePaletteWindow.getActiveTool();
 
     if (paletteTool === 'tile-rect-fill') {
@@ -77,9 +101,37 @@ function handleMouseDown(e) {
 
 function handleMouseMove(e) {
     currentMousePosition = { x: e.clientX, y: e.clientY };
+
+    if (isDraggingUI) {
+        const uiTransform = draggedMateria.getComponent(Components.UITransform);
+        if (!uiTransform) {
+            isDraggingUI = false;
+            draggedMateria = null;
+            return;
+        }
+
+        const newMouseWorldPos = screenToWorld(e.clientX, e.clientY);
+        const newWorldPivotPos = {
+            x: newMouseWorldPos.x - dragOffset.x,
+            y: newMouseWorldPos.y - dragOffset.y
+        };
+
+        const parent = SceneManager.currentScene.getMateriaById(draggedMateria.parent);
+        const parentCanvas = parent.getComponent(Components.Canvas);
+        const parentTransform = parent.getComponent(Components.Transform);
+
+        if (parentCanvas && parentTransform && parentCanvas.renderMode === 'World Space') {
+            const anchorPointWorld = getAnchorPointWorld(uiTransform.anchorPreset, parentTransform.position, parentCanvas.size);
+
+            uiTransform.position = {
+                x: newWorldPivotPos.x - anchorPointWorld.x,
+                y: newWorldPivotPos.y - anchorPointWorld.y
+            };
+        }
+        return;
+    }
+
     if (isDrawingRect) {
-        // The visual feedback for the rectangle will be handled in the render loop.
-        // We just need to trigger redraws, which the loop does automatically.
         return;
     }
     if (isPainting) {
@@ -96,7 +148,48 @@ function handleMouseMove(e) {
     }
 }
 
-function handleMouseUp(e) {
+async function handleMouseUp(e) {
+    if (isDraggingUI) {
+        const uiTransform = draggedMateria.getComponent(Components.UITransform);
+        const parent = SceneManager.currentScene.getMateriaById(draggedMateria.parent);
+        const parentCanvas = parent.getComponent(Components.Canvas);
+        const parentTransform = parent.getComponent(Components.Transform);
+
+        if (uiTransform && parentCanvas && parentTransform && parentCanvas.renderMode === 'World Space') {
+            const finalWorldPivotPos = getMateriaWorldPivotPosition(draggedMateria);
+
+            const canvasSize = parentCanvas.size;
+            const canvasPos = parentTransform.position;
+            const canvasTopLeft = {
+                x: canvasPos.x - canvasSize.x / 2,
+                y: canvasPos.y - canvasSize.y / 2,
+            };
+
+            const relativePos = {
+                x: finalWorldPivotPos.x - canvasTopLeft.x,
+                y: finalWorldPivotPos.y - canvasTopLeft.y,
+            };
+
+            const newPreset = UITransformUtils.getAnchorPresetFromPosition(relativePos, canvasSize);
+
+            uiTransform.anchorPreset = newPreset;
+            uiTransform.pivot = UITransformUtils.getPivotForAnchorPreset(newPreset);
+
+            const newAnchorPointWorld = getAnchorPointWorld(newPreset, canvasPos, canvasSize);
+            uiTransform.position = {
+                x: finalWorldPivotPos.x - newAnchorPointWorld.x,
+                y: finalWorldPivotPos.y - newAnchorPointWorld.y
+            };
+
+            if (updateInspectorCallback) {
+                await updateInspectorCallback();
+            }
+        }
+
+        isDraggingUI = false;
+        draggedMateria = null;
+    }
+
     if (isDrawingRect) {
         const endWorldPos = screenToWorld(e.clientX, e.clientY);
         fillTileRect(endWorldPos);
@@ -255,6 +348,14 @@ function screenToWorld(screenX, screenY) {
 export function drawOverlay() {
     if (!renderer) return;
     const ctx = renderer.ctx;
+    const selectedMateria = getSelectedMateria();
+
+    // --- Draw UI Anchor Gizmo ---
+    if (selectedMateria && selectedMateria.getComponent(Components.UITransform)) {
+        drawUIAnchorGizmo(ctx, selectedMateria);
+    }
+
+
     const grid = getSelectedGrid();
     const paletteTool = TilePaletteWindow.getActiveTool();
     const tileTools = ['tile-brush', 'tile-eraser', 'tile-rect-fill'];
@@ -313,4 +414,109 @@ export function drawOverlay() {
         ctx.stroke();
         ctx.restore();
     }
+}
+
+function drawUIAnchorGizmo(ctx, selectedMateria) {
+    const uiTransform = selectedMateria.getComponent(Components.UITransform);
+    if (!uiTransform || !selectedMateria.parent) return;
+
+    const parent = SceneManager.currentScene.getMateriaById(selectedMateria.parent);
+    if (!parent) return;
+
+    const parentCanvas = parent.getComponent(Components.Canvas);
+    const parentTransform = parent.getComponent(Components.Transform);
+
+    if (!parentCanvas || !parentTransform) return;
+
+    // For now, we only support World Space UI Gizmos as it's the most common for layout.
+    // Screen space would require a different rendering path.
+    if (parentCanvas.renderMode !== 'World Space') return;
+
+    const canvasSize = parentCanvas.size;
+    const canvasPos = parentTransform.position;
+
+    const halfWidth = canvasSize.x / 2;
+    const halfHeight = canvasSize.y / 2;
+
+    const topLeft = { x: canvasPos.x - halfWidth, y: canvasPos.y - halfHeight };
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+    ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]);
+
+    // Draw vertical lines
+    ctx.beginPath();
+    ctx.moveTo(topLeft.x + canvasSize.x / 3, topLeft.y);
+    ctx.lineTo(topLeft.x + canvasSize.x / 3, topLeft.y + canvasSize.y);
+    ctx.moveTo(topLeft.x + 2 * canvasSize.x / 3, topLeft.y);
+    ctx.lineTo(topLeft.x + 2 * canvasSize.x / 3, topLeft.y + canvasSize.y);
+    ctx.stroke();
+
+    // Draw horizontal lines
+    ctx.beginPath();
+    ctx.moveTo(topLeft.x, topLeft.y + canvasSize.y / 3);
+    ctx.lineTo(topLeft.x + canvasSize.x, topLeft.y + canvasSize.y / 3);
+    ctx.moveTo(topLeft.x, topLeft.y + 2 * canvasSize.y / 3);
+    ctx.lineTo(topLeft.x + canvasSize.x, topLeft.y + 2 * canvasSize.y / 3);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// --- UI Dragging Helper Functions ---
+
+function getMateriaWorldPivotPosition(materia) {
+    const uiTransform = materia.getComponent(Components.UITransform);
+    const parent = SceneManager.currentScene.getMateriaById(materia.parent);
+    if (!uiTransform || !parent) return { x: 0, y: 0 };
+
+    const parentCanvas = parent.getComponent(Components.Canvas);
+    const parentTransform = parent.getComponent(Components.Transform);
+    if (!parentCanvas || !parentTransform) return { x: 0, y: 0 };
+
+    const anchorPointWorld = getAnchorPointWorld(uiTransform.anchorPreset, parentTransform.position, parentCanvas.size);
+
+    return {
+        x: anchorPointWorld.x + uiTransform.position.x,
+        y: anchorPointWorld.y + uiTransform.position.y
+    };
+}
+
+
+function getAnchorPointWorld(preset, canvasWorldPos, canvasSize) {
+    const anchor = UITransformUtils.getPivotForAnchorPreset(preset); // Re-use this logic
+
+    const canvasTopLeft = {
+        x: canvasWorldPos.x - canvasSize.x / 2,
+        y: canvasWorldPos.y - canvasSize.y / 2
+    };
+
+    return {
+        x: canvasTopLeft.x + (canvasSize.x * anchor.x),
+        y: canvasTopLeft.y + (canvasSize.y * anchor.y)
+    };
+}
+
+
+function isPointInMateria(worldPoint, materia) {
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) return false;
+
+    const worldPivotPos = getMateriaWorldPivotPosition(materia);
+
+    const halfWidth = uiTransform.size.width / 2;
+    const halfHeight = uiTransform.size.height / 2;
+
+    const topLeft = {
+        x: worldPivotPos.x - (uiTransform.size.width * uiTransform.pivot.x),
+        y: worldPivotPos.y - (uiTransform.size.height * uiTransform.pivot.y)
+    };
+
+    return (
+        worldPoint.x >= topLeft.x &&
+        worldPoint.x <= topLeft.x + uiTransform.size.width &&
+        worldPoint.y >= topLeft.y &&
+        worldPoint.y <= topLeft.y + uiTransform.size.height
+    );
 }
