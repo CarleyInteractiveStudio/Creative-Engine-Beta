@@ -773,15 +773,10 @@ export function initialize(dependencies) {
                             uiTransform.position.x += dx;
                             break;
                         case 'ui-move-y':
-                            // El sistema de coordenadas de la UI tiene la Y invertida.
-                            // Un dy positivo en el espacio del mundo (movimiento del ratón hacia abajo)
-                            // debe corresponder a un movimiento hacia abajo del elemento UI.
-                            // En el UITransform, un valor más pequeño de position.y significa una posición más baja en la pantalla.
                             uiTransform.position.y -= dy;
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
-                            // Aplicamos la misma lógica invertida para el componente Y.
                             uiTransform.position.y -= dy;
                             break;
                         // --- UI Scaling with Pivot Correction ---
