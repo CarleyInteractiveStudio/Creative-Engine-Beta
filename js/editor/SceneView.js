@@ -773,11 +773,11 @@ export function initialize(dependencies) {
                             uiTransform.position.x += dx;
                             break;
                         case 'ui-move-y':
-                            uiTransform.position.y += dy;
+                            uiTransform.position.y -= dy;
                             break;
                         case 'ui-move-xy':
                             uiTransform.position.x += dx;
-                            uiTransform.position.y += dy;
+                            uiTransform.position.y -= dy;
                             break;
                         // --- UI Scaling with Pivot Correction ---
                         case 'ui-scale-r': // Right handle
