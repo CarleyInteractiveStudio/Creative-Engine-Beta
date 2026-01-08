@@ -70,6 +70,40 @@ export function createTextObject(parent) {
     return newMateria;
 }
 
+export function createButtonObject(parent) {
+    if (!parent) {
+        console.error("createButtonObject requiere un padre que sea un Canvas.");
+        return null;
+    }
+    const buttonName = generateUniqueName('Button');
+    const buttonMateria = new Materia(buttonName);
+
+    buttonMateria.addComponent(new Components.UITransform(buttonMateria));
+    buttonMateria.addComponent(new Components.UIImage(buttonMateria));
+    buttonMateria.addComponent(new Components.Button(buttonMateria));
+
+    parent.addChild(buttonMateria);
+
+    // Create a child Text object
+    const textName = generateUniqueName('Text');
+    const textMateria = new Materia(textName);
+    const uiTransform = new Components.UITransform(textMateria);
+    // Anchor the text to stretch across the button
+    uiTransform.anchorPreset = 'stretch-stretch';
+    uiTransform.size = { width: 0, height: 0 }; // Size is controlled by anchors
+    textMateria.addComponent(uiTransform);
+
+    const uiText = new Components.UIText(textMateria);
+    uiText.text = 'Button';
+    uiText.horizontalAlign = 'center';
+    textMateria.addComponent(uiText);
+
+    buttonMateria.addChild(textMateria);
+
+    return buttonMateria;
+}
+
+
 export function createPanelObject(parent) {
     if (!parent) {
         console.error("createPanelObject requiere un padre que sea un Canvas.");

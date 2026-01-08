@@ -29,6 +29,7 @@ const componentAliases = {
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
+    'Button': 'boton'
 };
 
 
@@ -1100,6 +1101,28 @@ export class UIText extends Leyes {
     }
 }
 registerComponent('UIText', UIText);
+
+export class Button extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.interactable = true;
+        this.transition = 'Color Tint'; // 'None' or 'Color Tint'
+        this.colors = {
+            normalColor: '#ffffff',
+            pressedColor: '#dddddd',
+            disabledColor: '#a0a0a0'
+        };
+    }
+
+    clone() {
+        const newButton = new Button(null);
+        newButton.interactable = this.interactable;
+        newButton.transition = this.transition;
+        newButton.colors = { ...this.colors };
+        return newButton;
+    }
+}
+registerComponent('Button', Button);
 
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);

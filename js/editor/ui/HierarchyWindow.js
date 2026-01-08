@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -250,6 +250,19 @@ export function handleContextMenuAction(action) {
                     parentCanvas.addComponent(new Components.Canvas(parentCanvas));
                 }
                 newMateria = createTextObject(parentCanvas);
+            }
+            break;
+        case 'create-ui-button':
+            {
+                let parentCanvas = selectedMateria;
+                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
+                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                }
+                if (!parentCanvas) {
+                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                }
+                newMateria = createButtonObject(parentCanvas);
             }
             break;
 

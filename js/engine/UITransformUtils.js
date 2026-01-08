@@ -56,3 +56,96 @@ export function getAnchorPresetFromPosition(position, parentRect) {
 
     return `${vertical}-${horizontal}`;
 }
+
+/**
+ * Comprueba si una posición del puntero (en coordenadas de pantalla) está sobre un elemento de la interfaz de usuario.
+ * @param {UITransform} uiTransform El componente UITransform del elemento.
+ * @param {Canvas} canvas El componente Canvas padre.
+ * @param {{x: number, y: number}} pointerPosition La posición del puntero en el espacio de la pantalla.
+ * @param {{width: number, height: number}} canvasSize Las dimensiones del canvas en pantalla.
+ * @returns {boolean} True si el puntero está sobre el elemento.
+ */
+export function isPointerOverUIElement(uiTransform, canvas, pointerPosition, canvasSize) {
+    if (!uiTransform || !canvas) return false;
+
+    // TODO: Implementar la lógica para el modo 'World Space' si es necesario
+    if (canvas.renderMode !== 'Screen Space') return false;
+
+    const rect = getScreenRect(uiTransform, canvas, canvasSize);
+
+    return (
+        pointerPosition.x >= rect.x &&
+        pointerPosition.x <= rect.x + rect.width &&
+        pointerPosition.y >= rect.y &&
+        pointerPosition.y <= rect.y + rect.height
+    );
+}
+
+/**
+ * Calcula el rectángulo en pantalla (coordenadas de píxeles) para un elemento de la interfaz de usuario.
+ * @param {UITransform} uiTransform El componente UITransform del elemento.
+ * @param {Canvas} canvas El componente Canvas padre.
+ * @param {{width: number, height: number}} canvasSize Las dimensiones del canvas en pantalla.
+ * @returns {{x: number, y: number, width: number, height: number}} El rectángulo en el espacio de la pantalla.
+ */
+export function getScreenRect(uiTransform, canvas, canvasSize) {
+    const parentRect = { x: 0, y: 0, width: canvasSize.width, height: canvasSize.height };
+    let currentTransform = uiTransform;
+    let finalRect = { ...currentTransform.size };
+
+    // Calcular la posición del ancla en coordenadas de pantalla
+    const anchor = getAnchorPoint(currentTransform.anchorPreset);
+    const anchorPos = {
+        x: parentRect.x + parentRect.width * anchor.x,
+        y: parentRect.y + parentRect.height * anchor.y
+    };
+
+    // Aplicar la posición relativa al ancla
+    let finalX = anchorPos.x + currentTransform.position.x;
+    let finalY = anchorPos.y + currentTransform.position.y;
+
+    // Ajustar por el pivote
+    finalX -= currentTransform.size.width * currentTransform.pivot.x;
+    finalY -= currentTransform.size.height * currentTransform.pivot.y;
+
+    return {
+        x: finalX,
+        y: finalY,
+        width: finalRect.width,
+        height: finalRect.height
+    };
+}
+
+
+/**
+ * Obtiene el punto de anclaje normalizado {x, y} para un preset.
+ * @param {string} preset El nombre del preset.
+ * @returns {{x: number, y: number}} El punto de anclaje (0-1).
+ */
+function getAnchorPoint(preset) {
+    const anchor = { x: 0.5, y: 0.5 }; // Default to middle-center
+
+    if (preset.includes('left')) anchor.x = 0;
+    if (preset.includes('right')) anchor.x = 1;
+    if (preset.includes('stretch')) {
+        // Para stretch, el ancla efectiva está en la esquina superior izquierda
+        // pero el tamaño se ajustará después.
+        anchor.x = 0;
+        anchor.y = 0;
+    }
+
+
+    if (preset.includes('top')) anchor.y = 0;
+    if (preset.includes('bottom')) anchor.y = 1;
+
+
+    // Casos especiales para presets de una sola palabra
+    if (preset === 'center') {
+        anchor.x = 0.5;
+    } else if (preset === 'middle') {
+        anchor.y = 0.5;
+    }
+
+
+    return anchor;
+}

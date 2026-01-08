@@ -31,7 +31,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas],
+    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -871,6 +871,39 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                 </div>`;
+        } else if (ley instanceof Components.Button) {
+            const isColorTint = ley.transition === 'Color Tint';
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">🖲️</span><h4>Button</h4></div>
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
+                        <label>Interactable</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Transition</label>
+                        <select class="prop-input inspector-re-render" data-component="Button" data-prop="transition">
+                            <option value="None" ${!isColorTint ? 'selected' : ''}>None</option>
+                            <option value="Color Tint" ${isColorTint ? 'selected' : ''}>Color Tint</option>
+                        </select>
+                    </div>
+                    <div id="color-tint-settings" style="display: ${isColorTint ? 'block' : 'none'};">
+                        <div class="prop-row-multi">
+                            <label>Normal Color</label>
+                            <input type="color" class="prop-input" data-component="Button" data-prop="colors.normalColor" value="${ley.colors.normalColor}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Pressed Color</label>
+                            <input type="color" class="prop-input" data-component="Button" data-prop="colors.pressedColor" value="${ley.colors.pressedColor}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Disabled Color</label>
+                            <input type="color" class="prop-input" data-component="Button" data-prop="colors.disabledColor" value="${ley.colors.disabledColor}">
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';
@@ -2054,9 +2087,9 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
-                if (newComponent instanceof Components.UIImage) {
-                    // If the UI element doesn't have a UITransform, add one
-                    // and remove the standard Transform to avoid conflicts.
+                // If a UI component is added, ensure it has a UITransform
+                // and remove the standard Transform to avoid conflicts.
+                if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UIText || newComponent instanceof Components.Button) {
                     if (!selectedMateria.getComponent(Components.UITransform)) {
                         const existingTransform = selectedMateria.getComponent(Components.Transform);
                         if (existingTransform) {
@@ -2065,6 +2098,7 @@ export async function showAddComponentModal() {
                         selectedMateria.addComponent(new Components.UITransform(selectedMateria));
                     }
                 }
+
                 dom.addComponentModal.classList.remove('is-open');
                 updateInspector();
             });
