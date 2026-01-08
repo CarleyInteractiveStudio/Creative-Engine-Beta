@@ -370,6 +370,8 @@ export async function updateAssetBrowser() {
                 });
             } else if (entry.name.endsWith('.mp3')) {
                 iconContainer.textContent = '🎵';
+            } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
+                iconContainer.textContent = '🔠';
             } else if (entry.name.endsWith('.ces')) {
                 imgIcon.src = 'image/Script.png';
                 iconContainer.appendChild(imgIcon);

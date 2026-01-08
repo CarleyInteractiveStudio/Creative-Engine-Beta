@@ -292,6 +292,22 @@ async function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
 
+    if (e.target.closest('[data-component="UIText"][data-prop="fontAssetPath"]')) {
+        const component = selectedMateria.getComponent(Components.UIText);
+        if (component) {
+            openSpriteSelectorCallback(async (fileHandle, fullPath) => {
+                component.fontAssetPath = fullPath;
+                await component.loadFont(projectsDirHandle);
+                updateInspector();
+                updateSceneCallback();
+            }, {
+                filter: ['.ttf', '.otf', '.woff', '.woff2'],
+                title: 'Seleccionar Fuente'
+            });
+        }
+        return; // Stop further processing for this click
+    }
+
     // --- Drag and Drop for Asset Fields ---
     if (e.target.matches('.asset-dropper, .asset-dropper *')) {
         const dropper = e.target.closest('.asset-dropper');
@@ -795,12 +811,19 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
         } else if (ley instanceof Components.UIText) {
+            const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
             componentHTML = `
                 <div class="component-header"><span class="component-icon">📝</span><h4>UI Text</h4></div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Text</label>
                         <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
+                    </div>
+                    <div class="inspector-row">
+                        <label>Font</label>
+                        <div class="asset-dropper" data-component="UIText" data-prop="fontAssetPath" data-asset-type=".ttf,.otf,.woff,.woff2" title="Haz clic para seleccionar o arrastra una fuente aquí">
+                            <span class="asset-dropper-text">${fontName}</span>
+                        </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Font Size</label>

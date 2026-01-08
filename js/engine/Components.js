@@ -1050,11 +1050,41 @@ registerComponent('UIImage', UIImage);
 export class UIText extends Leyes {
     constructor(materia) {
         super(materia);
-        this.text = 'Hello, World!';
+        this.text = 'Hello World';
         this.fontSize = 24;
         this.color = '#ffffff';
-        this.horizontalAlign = 'center'; // 'left', 'center', 'right'
+        this.horizontalAlign = 'left'; // 'left', 'center', 'right'
         this.textTransform = 'none'; // 'none', 'uppercase', 'lowercase'
+        this.fontAssetPath = ''; // Path to the .ttf, .otf, .woff, etc. file
+        this.fontFamily = 'sans-serif'; // The dynamically generated font-family name
+    }
+
+    async loadFont(projectsDirHandle) {
+        if (!this.fontAssetPath) {
+            this.fontFamily = 'sans-serif'; // Reset to default if path is cleared
+            return;
+        }
+
+        try {
+            const fontUrl = await getURLForAssetPath(this.fontAssetPath, projectsDirHandle);
+            if (!fontUrl) {
+                throw new Error(`Could not get URL for font asset: ${this.fontAssetPath}`);
+            }
+
+            // Generate a unique font family name to avoid conflicts
+            const fontName = `font_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            this.fontFamily = fontName;
+
+            const fontFace = new FontFace(fontName, `url(${fontUrl})`);
+            await fontFace.load();
+            document.fonts.add(fontFace);
+
+            console.log(`Font '${this.fontAssetPath}' loaded successfully as '${fontName}'.`);
+
+        } catch (error) {
+            console.error(`Failed to load font: ${this.fontAssetPath}`, error);
+            this.fontFamily = 'sans-serif'; // Fallback to default on error
+        }
     }
 
     clone() {
@@ -1064,6 +1094,8 @@ export class UIText extends Leyes {
         newText.color = this.color;
         newText.horizontalAlign = this.horizontalAlign;
         newText.textTransform = this.textTransform;
+        newText.fontAssetPath = this.fontAssetPath;
+        newText.fontFamily = this.fontFamily;
         return newText;
     }
 }
