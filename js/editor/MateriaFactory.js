@@ -54,3 +54,20 @@ export function createImageObject(parent) {
     parent.addChild(newMateria);
     return newMateria;
 }
+
+export function createPanelObject(parent) {
+    if (!parent) {
+        console.error("createPanelObject requiere un padre que sea un Canvas.");
+        return null;
+    }
+    const name = generateUniqueName('Panel');
+    const newMateria = new Materia(name);
+
+    newMateria.addComponent(new Components.UITransform(newMateria));
+    const uiImage = new Components.UIImage(newMateria);
+    uiImage.color = '#00000080'; // Negro con 50% de transparencia
+    newMateria.addComponent(uiImage);
+
+    parent.addChild(newMateria);
+    return newMateria;
+}
