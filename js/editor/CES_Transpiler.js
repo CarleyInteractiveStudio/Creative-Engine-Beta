@@ -81,6 +81,7 @@ export function transpile(code, scriptName) {
     let starMethod = '';
     let updateMethod = '';
     let customMethods = '';
+    let publicFunctions = [];
     const importedLibs = new Set();
 
     // --- Phase 1: Parse and Rip Declarations ---
@@ -92,14 +93,15 @@ export function transpile(code, scriptName) {
     let unprocessedCode = code;
 
     // 1.a: Parse and extract methods (bilingual)
-    const methodHeaderRegex = /^\s*(public|publico)\s+(\w+)\s*\(([^)]*)\)\s*{/gm;
+    const methodHeaderRegex = /^\s*(public|publico)\s+(?:(function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
 
     while ((methodMatch = methodHeaderRegex.exec(tempCode)) !== null) {
-        let name = methodMatch[2];
-        const args = methodMatch[3];
+        const isFunction = methodMatch[2] === 'function' || methodMatch[2] === 'funcion';
+        let name = methodMatch[3];
+        const args = methodMatch[4];
         const bodyStartIndex = methodMatch.index + methodMatch[0].length;
 
         let braceCount = 1;
@@ -122,6 +124,10 @@ export function transpile(code, scriptName) {
 
         const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
         const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
+
+        if (isFunction) {
+            publicFunctions.push(name);
+        }
         methodMatches.push({ name, args, body });
 
         // Blank out the matched method to prevent it from being processed again
@@ -170,7 +176,8 @@ export function transpile(code, scriptName) {
 
     // Almacenar los metadatos de las variables públicas
     const metadata = {
-        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue }))
+        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue })),
+        publicFunctions: publicFunctions
     };
     scriptMetadataMap.set(scriptName, metadata);
 

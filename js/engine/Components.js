@@ -1112,6 +1112,7 @@ export class Button extends Leyes {
             pressedColor: '#dddddd',
             disabledColor: '#a0a0a0'
         };
+        this.onClick = []; // Array to hold onClick events
     }
 
     clone() {
@@ -1119,6 +1120,8 @@ export class Button extends Leyes {
         newButton.interactable = this.interactable;
         newButton.transition = this.transition;
         newButton.colors = { ...this.colors };
+        // Deep copy the onClick array
+        newButton.onClick = JSON.parse(JSON.stringify(this.onClick));
         return newButton;
     }
 }

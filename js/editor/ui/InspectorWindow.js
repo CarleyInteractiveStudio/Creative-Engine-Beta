@@ -106,6 +106,16 @@ function handleInspectorDrop(e) {
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
             script.publicVars[propName] = droppedMateriaId;
+        } else {
+            // Handle onClick event materia drop
+            const button = selectedMateria.getComponent(Components.Button);
+            if (button && propName.startsWith('onClick')) {
+                const parts = propName.split('.');
+                const index = parseInt(parts[1], 10);
+                if (!isNaN(index) && button.onClick[index]) {
+                    button.onClick[index].targetMateriaId = droppedMateriaId;
+                }
+            }
         }
 
         updateInspector(); // Re-render to show the new name
@@ -448,6 +458,27 @@ function handleInspectorClick(e) {
         const index = parseInt(e.target.dataset.index, 10);
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="add-onclick-event"]')) {
+        const button = selectedMateria.getComponent(Components.Button);
+        if (button) {
+            button.onClick.push({
+                targetMateriaId: null,
+                scriptName: '',
+                functionName: ''
+            });
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="remove-onclick-event"]')) {
+        const button = selectedMateria.getComponent(Components.Button);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (button && !isNaN(index)) {
+            button.onClick.splice(index, 1);
             updateInspector();
         }
     }
@@ -902,6 +933,44 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="color" class="prop-input" data-component="Button" data-prop="colors.disabledColor" value="${ley.colors.disabledColor}">
                         </div>
                     </div>
+                     <div class="inspector-section-header">
+                        <span>On Click ()</span>
+                    </div>
+                    <div class="onclick-event-list">
+                        ${ley.onClick.map((event, index) => {
+                            let targetName = 'None (Materia)';
+                            let functionsDropdown = '<option value="">No Function</option>';
+
+                            if (event.targetMateriaId) {
+                                const targetMateria = window.SceneManager.currentScene.findMateriaById(event.targetMateriaId);
+                                if (targetMateria) {
+                                    targetName = targetMateria.name;
+                                    const scripts = targetMateria.getComponents(Components.CreativeScript);
+                                    if (scripts.length > 0) {
+                                        // For simplicity, we'll use the first script for now.
+                                        // A more robust solution would let the user choose the script.
+                                        const metadata = CES_Transpiler.getScriptMetadata(scripts[0].scriptName);
+                                        if (metadata && metadata.publicFunctions) {
+                                            functionsDropdown = metadata.publicFunctions.map(funcName =>
+                                                `<option value="${funcName}" ${event.functionName === funcName ? 'selected' : ''}>${funcName}</option>`
+                                            ).join('');
+                                        }
+                                    }
+                                }
+                            }
+
+                            return `
+                            <div class="onclick-event-item" data-event-index="${index}">
+                                <div class="materia-dropper" data-prop="onClick.${index}.targetMateriaId" title="Arrastra una Materia con un script aquí.">${targetName}</div>
+                                <select class="prop-input" data-component="Button" data-prop="onClick.${index}.functionName">
+                                    ${functionsDropdown}
+                                </select>
+                                <button class="remove-event-btn" data-action="remove-onclick-event" data-index="${index}">-</button>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <button class="add-event-btn" data-action="add-onclick-event">+</button>
                 </div>
             `;
         }

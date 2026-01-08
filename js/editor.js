@@ -3,7 +3,7 @@ import { InputManager } from './engine/Input.js';
 import * as SceneManager from './engine/SceneManager.js';
 import { Renderer } from './engine/Renderer.js';
 import { PhysicsSystem } from './engine/Physics.js';
-import { UISystem } from './engine/UISystem.js';
+import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
@@ -833,11 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
             physicsSystem.update(deltaTime);
         }
 
-        // Update UI interactions
-        if (uiSystem) {
-            uiSystem.update();
-        }
-
         // Update all game objects scripts (frame-dependent)
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
@@ -1121,6 +1116,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
+        if (uiSystem) {
+            uiSystem.update(deltaTime);
+        }
 
         if (isGameRunning) {
         }
@@ -1172,7 +1170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
-        uiSystem = new UISystem(SceneManager.currentScene);
+        UISystem.initialize(SceneManager.currentScene);
         EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
 
 
@@ -2472,6 +2470,8 @@ public star() {
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
+            UISystem.initialize(SceneManager.currentScene);
+
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;
