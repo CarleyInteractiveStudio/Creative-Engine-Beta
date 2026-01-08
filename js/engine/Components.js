@@ -28,6 +28,7 @@ const componentAliases = {
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
+    'UIText': 'textoUI',
 };
 
 
@@ -1045,6 +1046,29 @@ registerComponent('AnimatorController', AnimatorController);
 
 registerComponent('UITransform', UITransform);
 registerComponent('UIImage', UIImage);
+
+export class UIText extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.text = 'Hello, World!';
+        this.fontSize = 24;
+        this.color = '#ffffff';
+        this.horizontalAlign = 'center'; // 'left', 'center', 'right'
+        this.textTransform = 'none'; // 'none', 'uppercase', 'lowercase'
+    }
+
+    clone() {
+        const newText = new UIText(null);
+        newText.text = this.text;
+        newText.fontSize = this.fontSize;
+        newText.color = this.color;
+        newText.horizontalAlign = this.horizontalAlign;
+        newText.textTransform = this.textTransform;
+        return newText;
+    }
+}
+registerComponent('UIText', UIText);
+
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);

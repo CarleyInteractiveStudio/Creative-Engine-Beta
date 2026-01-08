@@ -31,7 +31,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.UITransform, Components.UIImage, Components.Canvas],
+    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -794,6 +794,40 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
             </div>`;
+        } else if (ley instanceof Components.UIText) {
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">📝</span><h4>UI Text</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Text</label>
+                        <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Font Size</label>
+                        <input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color</label>
+                        <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Alignment</label>
+                        <select class="prop-input" data-component="UIText" data-prop="horizontalAlign">
+                            <option value="left" ${ley.horizontalAlign === 'left' ? 'selected' : ''}>Left</option>
+                            <option value="center" ${ley.horizontalAlign === 'center' ? 'selected' : ''}>Center</option>
+                            <option value="right" ${ley.horizontalAlign === 'right' ? 'selected' : ''}>Right</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Transform</label>
+                        <select class="prop-input" data-component="UIText" data-prop="textTransform">
+                            <option value="none" ${ley.textTransform === 'none' ? 'selected' : ''}>None</option>
+                            <option value="uppercase" ${ley.textTransform === 'uppercase' ? 'selected' : ''}>UPPERCASE</option>
+                            <option value="lowercase" ${ley.textTransform === 'lowercase' ? 'selected' : ''}>lowercase</option>
+                        </select>
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.Canvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
             componentHTML = `

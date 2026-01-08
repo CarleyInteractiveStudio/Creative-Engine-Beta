@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -326,19 +326,20 @@ export class Renderer {
         this.ctx.restore(); // Restores composite operation and transform
     }
 
-    drawCanvas(canvasMateria, isGameView) {
+    drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
 
-        if (!isGameView) {
+        // In the editor, we ALWAYS draw UI in world space to make it selectable and editable.
+        // In the game, we respect the canvas's render mode.
+        if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
-            return;
-        }
-
-        if (canvas.renderMode === 'Screen Space') {
-            this.drawScreenSpaceUI(canvasMateria);
         } else {
-            this.drawWorldSpaceUI(canvasMateria);
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
@@ -409,6 +410,7 @@ export class Renderer {
             // --- 5. Render the element ---
             const uiImage = child.getComponent(UIImage);
             const textureRender = child.getComponent(TextureRender);
+            const uiText = child.getComponent(UIText);
 
             if (uiImage && uiImage.sprite && uiImage.sprite.complete) {
                 this.ctx.save();
@@ -440,6 +442,32 @@ export class Renderer {
                     this.ctx.fill();
                 }
                 this.ctx.restore();
+            } else if (uiText) {
+                this.ctx.save();
+                this.ctx.font = `${uiText.fontSize}px sans-serif`;
+                this.ctx.fillStyle = uiText.color;
+                this.ctx.textAlign = uiText.horizontalAlign;
+                this.ctx.textBaseline = 'middle'; // Adjust as needed
+
+                let textToRender = uiText.text;
+                if (uiText.textTransform === 'uppercase') {
+                    textToRender = textToRender.toUpperCase();
+                } else if (uiText.textTransform === 'lowercase') {
+                    textToRender = textToRender.toLowerCase();
+                }
+
+                // Adjust position based on alignment
+                let textX = drawX;
+                if (uiText.horizontalAlign === 'center') {
+                    textX += drawWidth / 2;
+                } else if (uiText.horizontalAlign === 'right') {
+                    textX += drawWidth;
+                }
+
+                const textY = drawY + drawHeight / 2;
+
+                this.ctx.fillText(textToRender, textX, textY);
+                this.ctx.restore();
             }
         }
 
@@ -470,7 +498,10 @@ export class Renderer {
 
             const uiTransform = child.getComponent(UITransform);
             const uiImage = child.getComponent(UIImage);
-            if (!uiTransform || !uiImage || !uiImage.sprite || !uiImage.sprite.complete) continue;
+            const uiText = child.getComponent(UIText);
+            if (!uiTransform || (!uiImage && !uiText)) continue;
+            if (uiImage && (!uiImage.sprite || !uiImage.sprite.complete)) continue;
+
 
             // Anchor point is relative to the canvas's own size
             const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
@@ -482,13 +513,43 @@ export class Renderer {
             const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
             const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
 
-            // Draw the image
-            this.ctx.save();
-            this.ctx.fillStyle = uiImage.color;
-            this.ctx.fillRect(finalX, finalY, uiTransform.size.width, uiTransform.size.height);
-            this.ctx.globalCompositeOperation = 'multiply';
-            this.ctx.drawImage(uiImage.sprite, finalX, finalY, uiTransform.size.width, uiTransform.size.height);
-            this.ctx.restore();
+            // Draw the image if it exists and is valid
+            if (uiImage && uiImage.sprite && uiImage.sprite.complete) {
+                this.ctx.save();
+                this.ctx.fillStyle = uiImage.color;
+                this.ctx.fillRect(finalX, finalY, uiTransform.size.width, uiTransform.size.height);
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.drawImage(uiImage.sprite, finalX, finalY, uiTransform.size.width, uiTransform.size.height);
+                this.ctx.restore();
+            }
+
+            // Draw the text if it exists
+            if (uiText) {
+                this.ctx.save();
+                this.ctx.font = `${uiText.fontSize}px sans-serif`;
+                this.ctx.fillStyle = uiText.color;
+                this.ctx.textAlign = uiText.horizontalAlign;
+                this.ctx.textBaseline = 'middle';
+
+                let textToRender = uiText.text;
+                if (uiText.textTransform === 'uppercase') {
+                    textToRender = textToRender.toUpperCase();
+                } else if (uiText.textTransform === 'lowercase') {
+                    textToRender = textToRender.toLowerCase();
+                }
+
+                let textX = finalX;
+                if (uiText.horizontalAlign === 'center') {
+                    textX += uiTransform.size.width / 2;
+                } else if (uiText.horizontalAlign === 'right') {
+                    textX += uiTransform.size.width;
+                }
+
+                const textY = finalY + uiTransform.size.height / 2;
+
+                this.ctx.fillText(textToRender, textX, textY);
+                this.ctx.restore();
+            }
         }
 
         this.ctx.restore(); // IMPORTANT: Restore context to remove the clipping region

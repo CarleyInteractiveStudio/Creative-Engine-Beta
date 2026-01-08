@@ -55,6 +55,21 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
+export function createTextObject(parent) {
+    if (!parent) {
+        console.error("createTextObject requiere un padre que sea un Canvas.");
+        return null;
+    }
+    const name = generateUniqueName('Texto');
+    const newMateria = new Materia(name);
+
+    newMateria.addComponent(new Components.UITransform(newMateria));
+    newMateria.addComponent(new Components.UIText(newMateria));
+
+    parent.addChild(newMateria);
+    return newMateria;
+}
+
 export function createPanelObject(parent) {
     if (!parent) {
         console.error("createPanelObject requiere un padre que sea un Canvas.");
