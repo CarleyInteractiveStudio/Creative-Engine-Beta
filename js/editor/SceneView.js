@@ -529,7 +529,7 @@ export function initialize(dependencies) {
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
-    updateInspector = dependencies.updateInspector;
+    updateInspector = dependencies.updateInspectorCallback;
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
