@@ -904,6 +904,8 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>`;
         } else if (ley instanceof Components.Button) {
             const isColorTint = ley.transition === 'Color Tint';
+            const isSpriteSwap = ley.transition === 'Sprite Swap';
+            const isAnimation = ley.transition === 'Animation';
             componentHTML = `
                 <div class="component-header"><span class="component-icon">🖲️</span><h4>Button</h4></div>
                 <div class="component-content">
@@ -915,8 +917,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Transition</label>
                         <select class="prop-input inspector-re-render" data-component="Button" data-prop="transition">
-                            <option value="None" ${!isColorTint ? 'selected' : ''}>None</option>
+                            <option value="None" ${ley.transition === 'None' ? 'selected' : ''}>None</option>
                             <option value="Color Tint" ${isColorTint ? 'selected' : ''}>Color Tint</option>
+                            <option value="Sprite Swap" ${isSpriteSwap ? 'selected' : ''}>Sprite Swap</option>
+                            <option value="Animation" ${isAnimation ? 'selected' : ''}>Animation</option>
                         </select>
                     </div>
                     <div id="color-tint-settings" style="display: ${isColorTint ? 'block' : 'none'};">
@@ -931,6 +935,40 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-row-multi">
                             <label>Disabled Color</label>
                             <input type="color" class="prop-input" data-component="Button" data-prop="colors.disabledColor" value="${ley.colors.disabledColor}">
+                        </div>
+                    </div>
+                    <div id="sprite-swap-settings" style="display: ${isSpriteSwap ? 'block' : 'none'};">
+                        <div class="inspector-row">
+                            <label>Highlighted Sprite</label>
+                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.highlightedSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
+                                <span class="asset-dropper-text">${ley.spriteSwap.highlightedSprite || 'None'}</span>
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label>Pressed Sprite</label>
+                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.pressedSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
+                                <span class="asset-dropper-text">${ley.spriteSwap.pressedSprite || 'None'}</span>
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label>Disabled Sprite</label>
+                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.disabledSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
+                                <span class="asset-dropper-text">${ley.spriteSwap.disabledSprite || 'None'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="animation-settings" style="display: ${isAnimation ? 'block' : 'none'};">
+                        <div class="prop-row-multi">
+                            <label>Highlighted Trigger</label>
+                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.highlightedTrigger" value="${ley.animationTriggers.highlightedTrigger}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Pressed Trigger</label>
+                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.pressedTrigger" value="${ley.animationTriggers.pressedTrigger}">
+                        </div>
+                        <div class="prop-row-multi">
+                            <label>Disabled Trigger</label>
+                            <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.disabledTrigger" value="${ley.animationTriggers.disabledTrigger}">
                         </div>
                     </div>
                      <div class="inspector-section-header">

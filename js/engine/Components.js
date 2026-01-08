@@ -1106,11 +1106,21 @@ export class Button extends Leyes {
     constructor(materia) {
         super(materia);
         this.interactable = true;
-        this.transition = 'Color Tint'; // 'None' or 'Color Tint'
+        this.transition = 'Color Tint'; // 'None', 'Color Tint', 'Sprite Swap', 'Animation'
         this.colors = {
             normalColor: '#ffffff',
             pressedColor: '#dddddd',
             disabledColor: '#a0a0a0'
+        };
+        this.spriteSwap = {
+            highlightedSprite: '',
+            pressedSprite: '',
+            disabledSprite: ''
+        };
+        this.animationTriggers = {
+            highlightedTrigger: 'Highlighted',
+            pressedTrigger: 'Pressed',
+            disabledTrigger: 'Disabled'
         };
         this.onClick = []; // Array to hold onClick events
     }
@@ -1120,6 +1130,8 @@ export class Button extends Leyes {
         newButton.interactable = this.interactable;
         newButton.transition = this.transition;
         newButton.colors = { ...this.colors };
+        newButton.spriteSwap = { ...this.spriteSwap };
+        newButton.animationTriggers = { ...this.animationTriggers };
         // Deep copy the onClick array
         newButton.onClick = JSON.parse(JSON.stringify(this.onClick));
         return newButton;
