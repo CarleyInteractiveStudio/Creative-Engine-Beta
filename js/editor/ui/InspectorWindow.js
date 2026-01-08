@@ -961,7 +961,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
                             return `
                             <div class="onclick-event-item" data-event-index="${index}">
-                                <div class="materia-dropper" data-prop="onClick.${index}.targetMateriaId" title="Arrastra una Materia con un script aquí.">${targetName}</div>
+                                <div class="materia-dropper" data-prop="onClick.${index}.targetMateriaId" data-asset-type="Materia" title="Arrastra una Materia con un script aquí.">${targetName}</div>
                                 <select class="prop-input" data-component="Button" data-prop="onClick.${index}.functionName">
                                     ${functionsDropdown}
                                 </select>
