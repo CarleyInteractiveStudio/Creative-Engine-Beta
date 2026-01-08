@@ -1066,37 +1066,39 @@ export class Canvas extends Leyes {
         const canvasTransform = this.materia.getComponent(Transform);
         if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
 
-        // Start with canvas's world position as the origin
-        const canvasPos = canvasTransform.position;
-        const canvasSize = (this.renderMode === 'World Space') ? this.size : { x: 800, y: 600 }; // Use a default for screen space for now
+        const canvasPos = canvasTransform.position; // World center of the canvas
+        const canvasSize = this.size; // Assuming World Space for this calculation
 
-        // 1. Calculate the anchor point in world space
-        const anchorPreset = uiTransform.anchorPreset;
-        let anchorX = canvasPos.x - (canvasSize.x / 2);
-        let anchorY = canvasPos.y - (canvasSize.y / 2);
+        // This helper function must be identical to the one in Renderer.js
+        const getAnchorPoint = (preset, canvasWidth, canvasHeight) => {
+            const anchor = { x: 0.5, y: 0.5 }; // Default to middle-center
+            if (preset.includes('left')) anchor.x = 0;
+            if (preset.includes('center')) anchor.x = 0.5;
+            if (preset.includes('right')) anchor.x = 1;
+            if (preset.includes('top')) anchor.y = 0;
+            if (preset.includes('middle')) anchor.y = 0.5;
+            if (preset.includes('bottom')) anchor.y = 1;
+            return {
+                x: canvasWidth * anchor.x,
+                y: canvasHeight * anchor.y
+            };
+        };
 
-        if (anchorPreset.includes('center')) anchorX += canvasSize.x / 2;
-        if (anchorPreset.includes('right')) anchorX += canvasSize.x;
-        if (anchorPreset.includes('middle')) anchorY += canvasSize.y / 2;
-        if (anchorPreset.includes('bottom')) anchorY += canvasSize.y;
+        const anchorPoint = getAnchorPoint(uiTransform.anchorPreset, canvasSize.x, canvasSize.y);
 
-        // 2. Add the UI element's relative position
-        let elementX = anchorX + uiTransform.position.x;
-        let elementY = anchorY - uiTransform.position.y; // Y is inverted in UI space vs world space
+        // Calculate pivot position in world space, matching the renderer's logic EXACTLY
+        const pivotPosX = (canvasPos.x - canvasSize.x / 2) + anchorPoint.x + uiTransform.position.x;
+        const pivotPosY = (canvasPos.y + canvasSize.y / 2) - anchorPoint.y - uiTransform.position.y;
 
-        // 3. Adjust for pivot
-        const pivot = uiTransform.pivot;
-        const width = uiTransform.size.width;
-        const height = uiTransform.size.height;
-
-        const finalX = elementX - (width * pivot.x);
-        const finalY = elementY - (height * (1 - pivot.y)); // Inverted pivot Y
+        // Calculate final top-left position based on pivot
+        const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+        const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
 
         return {
             x: finalX,
             y: finalY,
-            width: width,
-            height: height
+            width: uiTransform.size.width,
+            height: uiTransform.size.height
         };
     }
 

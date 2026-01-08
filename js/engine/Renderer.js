@@ -477,7 +477,7 @@ export class Renderer {
 
             // Position is relative to the canvas's center + anchor
             const pivotPosX = worldPos.x - halfWidth + anchorPoint.x + uiTransform.position.x;
-            const pivotPosY = worldPos.y - halfHeight + anchorPoint.y + uiTransform.position.y;
+            const pivotPosY = worldPos.y + halfHeight - anchorPoint.y - uiTransform.position.y;
 
             const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
             const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);

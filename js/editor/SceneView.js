@@ -591,19 +591,19 @@ export function initialize(dependencies) {
                 break;
             case 'ui-scale-t': // Top handle
                 uiTransform.size.height -= dy;
-                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
                 break;
             case 'ui-scale-tr': // Top-right handle
                 uiTransform.size.width += dx;
                 uiTransform.position.x += dx * uiTransform.pivot.x;
                 uiTransform.size.height -= dy;
-                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
                 break;
             case 'ui-scale-tl': // Top-left handle
                 uiTransform.size.width -= dx;
                 uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
                 uiTransform.size.height -= dy;
-                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
                 break;
             case 'ui-scale-br': // Bottom-right handle
                 uiTransform.size.width += dx;
