@@ -30,7 +30,8 @@ function checkUIGizmoHit(canvasPos) {
     switch (activeTool) {
         case 'move':
             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y > centerY && worldMouse.y < centerY + gizmoSize) return 'ui-move-y';
+            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
              // Central square hit detection
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
