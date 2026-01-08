@@ -538,6 +538,185 @@ export function initialize(dependencies) {
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
 
+    // --- Gizmo Drag Handlers (defined at a higher scope) ---
+    const onGizmoDrag = (moveEvent) => {
+        moveEvent.preventDefault();
+        if (!dragState.materia) return;
+
+        const transform = dragState.materia.getComponent(Components.Transform);
+        const uiTransform = dragState.materia.getComponent(Components.UITransform);
+        const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
+        const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+
+        switch (dragState.handle) {
+            case 'camera-move': transform.x += dx; transform.y += dy; break;
+            case 'move-x': transform.x += dx; break;
+            case 'move-y': transform.y += dy; break;
+            case 'move-xy': transform.x += dx; transform.y += dy; break;
+            case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
+                const cam = dragState.materia.getComponent(Components.Camera);
+                if (!cam) break;
+                const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                const rad = -transform.rotation * Math.PI / 180;
+                const cos = Math.cos(rad), sin = Math.sin(rad);
+                const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+                const aspect = renderer.canvas.width / renderer.canvas.height;
+                cam.orthographicSize = Math.max(0.1, Math.max(Math.abs(localMouseY), Math.abs(localMouseX) / aspect));
+                break;
+            }
+            case 'ui-move-x':
+                uiTransform.position.x += dx;
+                break;
+            case 'ui-move-y':
+                uiTransform.position.y -= dy; // Inverted Y-axis for UI
+                break;
+            case 'ui-move-xy':
+                uiTransform.position.x += dx;
+                uiTransform.position.y -= dy; // Inverted Y-axis for UI
+                break;
+            // --- UI Scaling with Pivot Correction ---
+            case 'ui-scale-r': // Right handle
+                uiTransform.size.width += dx;
+                uiTransform.position.x += dx * uiTransform.pivot.x;
+                break;
+            case 'ui-scale-l': // Left handle
+                uiTransform.size.width -= dx;
+                uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
+                break;
+            case 'ui-scale-b': // Bottom handle
+                uiTransform.size.height += dy;
+                uiTransform.position.y += dy * uiTransform.pivot.y;
+                break;
+            case 'ui-scale-t': // Top handle
+                uiTransform.size.height -= dy;
+                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                break;
+            case 'ui-scale-tr': // Top-right handle
+                uiTransform.size.width += dx;
+                uiTransform.position.x += dx * uiTransform.pivot.x;
+                uiTransform.size.height -= dy;
+                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                break;
+            case 'ui-scale-tl': // Top-left handle
+                uiTransform.size.width -= dx;
+                uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
+                uiTransform.size.height -= dy;
+                uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
+                break;
+            case 'ui-scale-br': // Bottom-right handle
+                uiTransform.size.width += dx;
+                uiTransform.position.x += dx * uiTransform.pivot.x;
+                uiTransform.size.height += dy;
+                uiTransform.position.y += dy * uiTransform.pivot.y;
+                break;
+            case 'ui-scale-bl': // Bottom-left handle
+                uiTransform.size.width -= dx;
+                uiTransform.position.x -= dx * (1 - uiTransform.pivot.x);
+                uiTransform.size.height += dy;
+                uiTransform.position.y += dy * uiTransform.pivot.y;
+                break;
+            case 'rotate': {
+                const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
+                break;
+            }
+        }
+
+        // --- Collider Gizmo Logic ---
+        const boxCollider = dragState.materia.getComponent(Components.BoxCollider2D);
+        if (boxCollider && dragState.handle.startsWith('collider-')) {
+            const rad = -transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const localDx = dx * cos - dy * sin;
+            const localDy = dx * sin + dy * cos;
+
+            switch (dragState.handle) {
+                case 'collider-top':
+                    boxCollider.size.y += localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    break;
+                case 'collider-bottom':
+                    boxCollider.size.y -= localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    break;
+                case 'collider-right':
+                    boxCollider.size.x += localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+                case 'collider-left':
+                    boxCollider.size.x -= localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+                case 'collider-tr':
+                    boxCollider.size.y += localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    boxCollider.size.x += localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+                 case 'collider-tl':
+                    boxCollider.size.y += localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    boxCollider.size.x -= localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+                case 'collider-br':
+                    boxCollider.size.y -= localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    boxCollider.size.x += localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+                case 'collider-bl':
+                    boxCollider.size.y -= localDy;
+                    boxCollider.offset.y += localDy / 2;
+                    boxCollider.size.x -= localDx;
+                    boxCollider.offset.x += localDx / 2;
+                    break;
+            }
+        }
+
+        // --- Capsule Collider Gizmo Logic ---
+        const capsuleCollider = dragState.materia.getComponent(Components.CapsuleCollider2D);
+        if (capsuleCollider && dragState.handle.startsWith('collider-capsule-')) {
+            const rad = -transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const localDx = dx * cos - dy * sin;
+            const localDy = dx * sin + dy * cos;
+
+            switch (dragState.handle) {
+                case 'collider-capsule-top':
+                    capsuleCollider.size.y += localDy;
+                    capsuleCollider.offset.y += localDy / 2;
+                    break;
+                case 'collider-capsule-bottom':
+                    capsuleCollider.size.y -= localDy;
+                    capsuleCollider.offset.y += localDy / 2;
+                    break;
+                case 'collider-capsule-right':
+                    capsuleCollider.size.x += localDx;
+                    capsuleCollider.offset.x += localDx / 2;
+                    break;
+                case 'collider-capsule-left':
+                    capsuleCollider.size.x -= localDx;
+                    capsuleCollider.offset.x += localDx / 2;
+                    break;
+            }
+        }
+
+
+        lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
+        updateInspector();
+    };
+
+    const onGizmoDragEnd = () => {
+        isDragging = false;
+        dragState = {};
+        window.removeEventListener('mousemove', onGizmoDrag);
+        window.removeEventListener('mouseup', onGizmoDragEnd);
+    };
+
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -743,184 +922,7 @@ export function initialize(dependencies) {
                     dragState.unscaledHeight = boxCollider ? boxCollider.height : 100;
                 }
 
-                const onGizmoDrag = (moveEvent) => {
-                    moveEvent.preventDefault();
-                    if (!dragState.materia) return;
-
-                    const transform = dragState.materia.getComponent(Components.Transform);
-                    const uiTransform = dragState.materia.getComponent(Components.UITransform);
-                    const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
-                    const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
-
-                    switch (dragState.handle) {
-                        case 'camera-move': transform.x += dx; transform.y += dy; break;
-                        case 'move-x': transform.x += dx; break;
-                        case 'move-y': transform.y += dy; break;
-                        case 'move-xy': transform.x += dx; transform.y += dy; break;
-                        case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
-                            const cam = dragState.materia.getComponent(Components.Camera);
-                            if (!cam) break;
-                            const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
-                            const rad = -transform.rotation * Math.PI / 180;
-                            const cos = Math.cos(rad), sin = Math.sin(rad);
-                            const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-                            const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
-                            const aspect = renderer.canvas.width / renderer.canvas.height;
-                            cam.orthographicSize = Math.max(0.1, Math.max(Math.abs(localMouseY), Math.abs(localMouseX) / aspect));
-                            break;
-                        }
-                        case 'ui-move-x':
-                            uiTransform.position.x += dx;
-                            break;
-                        case 'ui-move-y':
-                            uiTransform.position.y -= dy; // Inverted Y-axis for UI
-                            break;
-                        case 'ui-move-xy':
-                            uiTransform.position.x += dx;
-                            uiTransform.position.y -= dy; // Inverted Y-axis for UI
-                            break;
-                        // --- UI Scaling with Pivot Correction ---
-                        case 'ui-scale-r': // Right handle
-                            uiTransform.size.width += dx;
-                            uiTransform.position.x += dx * uiTransform.pivot.x;
-                            break;
-                        case 'ui-scale-l': // Left handle
-                            uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
-                            break;
-                        case 'ui-scale-b': // Bottom handle
-                            uiTransform.size.height += dy;
-                            uiTransform.position.y += dy * uiTransform.pivot.y;
-                            break;
-                        case 'ui-scale-t': // Top handle
-                            uiTransform.size.height -= dy;
-                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
-                            break;
-                        case 'ui-scale-tr': // Top-right handle
-                            uiTransform.size.width += dx;
-                            uiTransform.position.x += dx * uiTransform.pivot.x;
-                            uiTransform.size.height -= dy;
-                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
-                            break;
-                        case 'ui-scale-tl': // Top-left handle
-                            uiTransform.size.width -= dx;
-                            uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
-                            uiTransform.size.height -= dy;
-                            uiTransform.position.y += dy * (1 - uiTransform.pivot.y);
-                            break;
-                        case 'ui-scale-br': // Bottom-right handle
-                            uiTransform.size.width += dx;
-                            uiTransform.position.x += dx * uiTransform.pivot.x;
-                            uiTransform.size.height += dy;
-                            uiTransform.position.y += dy * uiTransform.pivot.y;
-                            break;
-                        case 'ui-scale-bl': // Bottom-left handle
-                            uiTransform.size.width -= dx;
-                            uiTransform.position.x -= dx * (1 - uiTransform.pivot.x);
-                            uiTransform.size.height += dy;
-                            uiTransform.position.y += dy * uiTransform.pivot.y;
-                            break;
-                        case 'rotate': {
-                            const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
-                            transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
-                            break;
-                        }
-                    }
-
-                    // --- Collider Gizmo Logic ---
-                    const boxCollider = dragState.materia.getComponent(Components.BoxCollider2D);
-                    if (boxCollider && dragState.handle.startsWith('collider-')) {
-                        const rad = -transform.rotation * Math.PI / 180;
-                        const cos = Math.cos(rad);
-                        const sin = Math.sin(rad);
-                        const localDx = dx * cos - dy * sin;
-                        const localDy = dx * sin + dy * cos;
-
-                        switch (dragState.handle) {
-                            case 'collider-top':
-                                boxCollider.size.y += localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                break;
-                            case 'collider-bottom':
-                                boxCollider.size.y -= localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                break;
-                            case 'collider-right':
-                                boxCollider.size.x += localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                            case 'collider-left':
-                                boxCollider.size.x -= localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                            case 'collider-tr':
-                                boxCollider.size.y += localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                boxCollider.size.x += localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                             case 'collider-tl':
-                                boxCollider.size.y += localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                boxCollider.size.x -= localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                            case 'collider-br':
-                                boxCollider.size.y -= localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                boxCollider.size.x += localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                            case 'collider-bl':
-                                boxCollider.size.y -= localDy;
-                                boxCollider.offset.y += localDy / 2;
-                                boxCollider.size.x -= localDx;
-                                boxCollider.offset.x += localDx / 2;
-                                break;
-                        }
-                    }
-
-                    // --- Capsule Collider Gizmo Logic ---
-                    const capsuleCollider = dragState.materia.getComponent(Components.CapsuleCollider2D);
-                    if (capsuleCollider && dragState.handle.startsWith('collider-capsule-')) {
-                        const rad = -transform.rotation * Math.PI / 180;
-                        const cos = Math.cos(rad);
-                        const sin = Math.sin(rad);
-                        const localDx = dx * cos - dy * sin;
-                        const localDy = dx * sin + dy * cos;
-
-                        switch (dragState.handle) {
-                            case 'collider-capsule-top':
-                                capsuleCollider.size.y += localDy;
-                                capsuleCollider.offset.y += localDy / 2;
-                                break;
-                            case 'collider-capsule-bottom':
-                                capsuleCollider.size.y -= localDy;
-                                capsuleCollider.offset.y += localDy / 2;
-                                break;
-                            case 'collider-capsule-right':
-                                capsuleCollider.size.x += localDx;
-                                capsuleCollider.offset.x += localDx / 2;
-                                break;
-                            case 'collider-capsule-left':
-                                capsuleCollider.size.x -= localDx;
-                                capsuleCollider.offset.x += localDx / 2;
-                                break;
-                        }
-                    }
-
-
-                    lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
-                    updateInspector();
-                };
-
-                const onGizmoDragEnd = () => {
-                    isDragging = false;
-                    dragState = {};
-                    window.removeEventListener('mousemove', onGizmoDrag);
-                    window.removeEventListener('mouseup', onGizmoDragEnd);
-                };
-
+                // Attach the predefined handlers
                 window.addEventListener('mousemove', onGizmoDrag);
                 window.addEventListener('mouseup', onGizmoDragEnd);
             }
