@@ -58,6 +58,23 @@ export class Materia {
         return false;
     }
 
+    findAncestorWithComponent(componentClass) {
+        let current = this;
+        while (current) {
+            const component = current.getComponent(componentClass);
+            if (component) {
+                return current; // Return the Materia that has the component
+            }
+            // If parent is an ID, resolve it before continuing
+            if (typeof current.parent === 'number') {
+                current = currentScene.findMateriaById(current.parent);
+            } else {
+                current = current.parent;
+            }
+        }
+        return null; // Not found
+    }
+
     addChild(child) {
         if (child.parent) {
             // If parent is an ID (number) due to cloning, resolve it to an object

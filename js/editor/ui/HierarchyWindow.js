@@ -205,6 +205,65 @@ export function handleContextMenuAction(action) {
             newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
+        case 'create-ui-image':
+        case 'create-ui-panel':
+        case 'create-ui-button':
+        case 'create-ui-text':
+            {
+                // Helper to determine the correct parent for a new UI element.
+                function getOrCreateCanvasParent(selectedParent) {
+                    // If nothing is selected, create a new root Canvas to house the UI element.
+                    if (!selectedParent) {
+                        const canvasMateria = createBaseMateria(generateUniqueName('Canvas'));
+                        canvasMateria.addComponent(new Components.Canvas(canvasMateria));
+                        return canvasMateria;
+                    }
+
+                    // If something is selected, check if it lives under a Canvas already.
+                    const canvasAncestor = selectedParent.findAncestorWithComponent(Components.Canvas);
+                    if (canvasAncestor) {
+                        // It does, so we can create the new element as a direct child of the selected object.
+                        return selectedParent;
+                    } else {
+                        // It does not. We must create a new Canvas as a child of the selected object
+                        // to house the new UI element.
+                        const newCanvas = createBaseMateria(generateUniqueName('Canvas'), selectedParent);
+                        newCanvas.addComponent(new Components.Canvas(newCanvas));
+                        return newCanvas;
+                    }
+                }
+
+                const parentForUi = getOrCreateCanvasParent(contextMateria || selectedMateria);
+                let elementName = 'UI Element';
+                const componentsToAdd = [Components.UITransform];
+
+                switch (action) {
+                    case 'create-ui-image':
+                        elementName = 'Image';
+                        componentsToAdd.push(Components.UIImage);
+                        break;
+                    case 'create-ui-panel':
+                        elementName = 'Panel';
+                        componentsToAdd.push(Components.UIImage); // Panels are images
+                        break;
+                    case 'create-ui-button':
+                        elementName = 'Button';
+                        componentsToAdd.push(Components.UIImage, Components.UIButton);
+                        break;
+                    case 'create-ui-text':
+                        elementName = 'Text';
+                        componentsToAdd.push(Components.UIText);
+                        break;
+                }
+
+                newMateria = createBaseMateria(generateUniqueName(elementName), parentForUi);
+                // UI Elements use UITransform instead of the default Transform.
+                newMateria.removeComponent(Components.Transform);
+                for (const Comp of componentsToAdd) {
+                    newMateria.addComponent(new Comp(newMateria));
+                }
+            }
+            break;
 
         case 'rename':
             if (contextMateria) { // Use contextMateria
