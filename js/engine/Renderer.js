@@ -304,67 +304,66 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
+    _drawUIElementAndChildren(materia, parentRect) {
+        if (!materia.isActive) return;
+
+        const uiTransform = materia.getComponent(UITransform);
+        if (!uiTransform) {
+            materia.children.forEach(child => this._drawUIElementAndChildren(child, parentRect));
+            return;
+        }
+
+        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
+        const pivotPosX = parentRect.x + anchorPoint.x + uiTransform.position.x;
+        const pivotPosY = parentRect.y + anchorPoint.y + uiTransform.position.y;
+        const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+        const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+        const drawWidth = uiTransform.size.width;
+        const drawHeight = uiTransform.size.height;
+
+        const uiImage = materia.getComponent(UIImage);
+        const uiText = materia.getComponent(UIText);
+
+        if (uiImage) {
+            this.ctx.fillStyle = uiImage.color;
+            this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
+            if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
+                this.ctx.save();
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
+                this.ctx.restore();
+            }
+        }
+        if (uiText) {
+            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
+        }
+
+        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+        materia.children.forEach(child => this._drawUIElementAndChildren(child, currentRect));
+    }
+
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
-            this.end();
-            return;
-        }
+        if (!canvasComponent || !canvasTransform) { this.end(); return; }
 
-        const canvasRect = { width: this.canvas.width, height: this.canvas.height };
+        const canvasRect = {
+            x: canvasTransform.position.x,
+            y: canvasTransform.position.y,
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
+
         this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(canvasTransform.position.x, canvasTransform.position.y, canvasRect.width, canvasRect.height);
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
         for (const child of canvasMateria.children) {
-            if (!child.isActive) continue;
-            const uiTransform = child.getComponent(UITransform);
-            if (!uiTransform) continue;
-
-            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, canvasRect.width, canvasRect.height);
-            const pivotPosX = anchorPoint.x + uiTransform.position.x;
-            const pivotPosY = anchorPoint.y + uiTransform.position.y;
-            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
-            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
-            const drawX = finalX + canvasTransform.position.x;
-            const drawY = finalY + canvasTransform.position.y;
-            const drawWidth = uiTransform.size.width;
-            const drawHeight = uiTransform.size.height;
-
-            const uiImage = child.getComponent(UIImage);
-            const textureRender = child.getComponent(TextureRender);
-            const uiText = child.getComponent(UIText);
-
-            if (uiImage && uiImage.sprite && uiImage.sprite.complete) {
-                this.ctx.save();
-                this.ctx.fillStyle = uiImage.color;
-                this.ctx.fillRect(drawX, drawY, drawWidth, drawHeight);
-                this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.drawImage(uiImage.sprite, drawX, drawY, drawWidth, drawHeight);
-                this.ctx.restore();
-            } else if (textureRender) {
-                this.ctx.save();
-                this.ctx.translate(drawX, drawY);
-                if (textureRender.texture && textureRender.texture.complete) {
-                    this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
-                } else {
-                    this.ctx.fillStyle = textureRender.color;
-                }
-                if (textureRender.shape === 'Rectangle') {
-                    this.ctx.fillRect(0, 0, drawWidth, drawHeight);
-                } else if (textureRender.shape === 'Circle') {
-                    this.ctx.beginPath();
-                    this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
-                    this.ctx.fill();
-                }
-                this.ctx.restore();
-            } else if (uiText) {
-                this._drawUIText(uiText, drawX, drawY, drawWidth, drawHeight);
-            }
+            this._drawUIElementAndChildren(child, canvasRect);
         }
+
         this.ctx.restore();
         this.end();
     }
@@ -374,41 +373,27 @@ export class Renderer {
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
 
-        this.ctx.save();
         const worldPos = canvasTransform.position;
         const size = canvasComponent.size;
         const halfWidth = size.x / 2;
         const halfHeight = size.y / 2;
+
+        const canvasRect = {
+            x: worldPos.x - halfWidth,
+            y: worldPos.y - halfHeight,
+            width: size.x,
+            height: size.y
+        };
+
+        this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(worldPos.x - halfWidth, worldPos.y - halfHeight, size.x, size.y);
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
         for (const child of canvasMateria.children) {
-            if (!child.isActive) continue;
-            const uiTransform = child.getComponent(UITransform);
-            const uiImage = child.getComponent(UIImage);
-            const uiText = child.getComponent(UIText);
-            if (!uiTransform || (!uiImage && !uiText)) continue;
-            if (uiImage && (!uiImage.sprite || !uiImage.sprite.complete)) continue;
-
-            const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, size.x, size.y);
-            const pivotPosX = worldPos.x - halfWidth + anchorPoint.x + uiTransform.position.x;
-            const pivotPosY = worldPos.y + halfHeight - anchorPoint.y - uiTransform.position.y;
-            const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
-            const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
-
-            if (uiImage && uiImage.sprite && uiImage.sprite.complete) {
-                this.ctx.save();
-                this.ctx.fillStyle = uiImage.color;
-                this.ctx.fillRect(finalX, finalY, uiTransform.size.width, uiTransform.size.height);
-                this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.drawImage(uiImage.sprite, finalX, finalY, uiTransform.size.width, uiTransform.size.height);
-                this.ctx.restore();
-            }
-            if (uiText) {
-                this._drawUIText(uiText, finalX, finalY, uiTransform.size.width, uiTransform.size.height);
-            }
+            this._drawUIElementAndChildren(child, canvasRect);
         }
+
         this.ctx.restore();
     }
 }
