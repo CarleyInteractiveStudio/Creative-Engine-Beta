@@ -149,3 +149,21 @@ function getAnchorPoint(preset) {
 
     return anchor;
 }
+
+/**
+ * Helper to get anchor percentages from the preset string in a Y-UP system.
+ * This is used for consistent calculations between the renderer and the gizmo.
+ * @param {string} preset The anchor preset name (e.g., 'top-left').
+ * @returns {{x: number, y: number}} The anchor percentages (0-1), where Y=0 is bottom.
+ */
+export const getAnchorPercentages = (preset) => {
+    const anchor = { x: 0.5, y: 0.5 }; // Default: middle-center
+    if (preset.includes('left')) anchor.x = 0;
+    if (preset.includes('right')) anchor.x = 1;
+
+    // In a Y-UP logical system, 'bottom' is the origin (0), 'top' is the max (1).
+    if (preset.includes('top')) anchor.y = 1;
+    if (preset.includes('bottom')) anchor.y = 0;
+
+    return anchor;
+};

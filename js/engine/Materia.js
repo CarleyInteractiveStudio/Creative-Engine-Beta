@@ -40,6 +40,39 @@ export class Materia {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
+    findAncestorWithComponent(componentClass) {
+        let current = this.parent;
+        // If the parent is a number (ID), we need to resolve it to a Materia object first.
+        if (typeof current === 'number') {
+            try {
+                // Assuming `currentScene` is accessible or passed in somehow.
+                // This is a potential issue if currentScene is not globally available here.
+                // For now, let's rely on it being available via SceneManager.
+                current = currentScene.findMateriaById(current);
+            } catch (e) {
+                console.error("Could not resolve parent ID to Materia:", e);
+                return null;
+            }
+        }
+
+        while (current) {
+            if (current.getComponent(componentClass)) {
+                return current;
+            }
+            current = current.parent;
+             // Handle cases where the next parent in the chain is also just an ID
+            if (typeof current === 'number') {
+                 try {
+                    current = currentScene.findMateriaById(current);
+                } catch (e) {
+                    console.error("Could not resolve parent ID to Materia during traversal:", e);
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
     removeComponent(ComponentClass) {
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {
@@ -56,40 +89,6 @@ export class Materia {
             current = current.parent;
         }
         return false;
-    }
-
-    findAncestorWithComponent(componentClass) {
-        let current = this.parent;
-
-        // Resolve parent if it's an ID
-        if (typeof current === 'number') {
-            try {
-                current = currentScene.findMateriaById(current);
-            } catch (e) {
-                console.warn(`Could not resolve parent ID ${this.parent} for materia '${this.name}'`);
-                return null;
-            }
-        }
-
-        while (current) {
-            if (current.getComponent(componentClass)) {
-                return current;
-            }
-
-            // Resolve next parent if it's an ID
-            let nextParent = current.parent;
-            if (typeof nextParent === 'number') {
-                 try {
-                    nextParent = currentScene.findMateriaById(nextParent);
-                } catch (e) {
-                    console.warn(`Could not resolve parent ID ${current.parent} for materia '${current.name}'`);
-                    nextParent = null; // Stop searching if resolution fails
-                }
-            }
-            current = nextParent;
-        }
-
-        return null;
     }
 
     addChild(child) {

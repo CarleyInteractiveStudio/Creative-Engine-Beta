@@ -571,11 +571,11 @@ export function initialize(dependencies) {
                 uiTransform.position.x += dx;
                 break;
             case 'ui-move-y':
-                uiTransform.position.y += dy;
+                uiTransform.position.y -= dy; // Y-UP: A positive dy (mouse down) should decrease the logical Y value.
                 break;
             case 'ui-move-xy':
                 uiTransform.position.x += dx;
-                uiTransform.position.y += dy;
+                uiTransform.position.y -= dy; // Y-UP: A positive dy (mouse down) should decrease the logical Y value.
                 break;
             // --- UI Scaling with Pivot Correction ---
             case 'ui-scale-r': // Right handle

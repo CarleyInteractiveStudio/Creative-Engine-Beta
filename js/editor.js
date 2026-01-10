@@ -2118,6 +2118,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.updateInspector = updateInspector;
         window.setActiveTool = SceneView.setActiveTool;
 
+        // --- For Playwright Testing ---
+        // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests
+        globalThis.HierarchyWindow = { handleContextMenuAction: handleHierarchyContextMenuAction };
+
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
         const ids = [

@@ -6,6 +6,7 @@ import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import { getAnchorPercentages } from './UITransformUtils.js';
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
@@ -781,7 +782,7 @@ export class UIImage extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.source = '';
-        this.color = '#ffffff';
+        this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
     }
 
     async loadSprite(projectsDirHandle) {
@@ -1160,37 +1161,33 @@ export class Canvas extends Leyes {
         const canvasTransform = this.materia.getComponent(Transform);
         if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
 
-        const canvasPos = canvasTransform.position; // World center of the canvas
-        const canvasSize = this.size; // Assuming World Space for this calculation
+        const canvasPos = canvasTransform.position;
+        const canvasSize = this.size;
+        const parentWidth = canvasSize.x;
+        const parentHeight = canvasSize.y;
 
-        // This helper function must be identical to the one in Renderer.js
-        const getAnchorPoint = (preset, canvasWidth, canvasHeight) => {
-            const anchor = { x: 0.5, y: 0.5 }; // Default to middle-center
-            if (preset.includes('left')) anchor.x = 0;
-            if (preset.includes('center')) anchor.x = 0.5;
-            if (preset.includes('right')) anchor.x = 1;
-            if (preset.includes('top')) anchor.y = 0;
-            if (preset.includes('middle')) anchor.y = 0.5;
-            if (preset.includes('bottom')) anchor.y = 1;
-            return {
-                x: canvasWidth * anchor.x,
-                y: canvasHeight * anchor.y
-            };
-        };
+        // World space coordinates of the canvas edges
+        const canvasLeftEdgeX = canvasPos.x - parentWidth / 2;
+        const canvasTopEdgeY = canvasPos.y - parentHeight / 2;
 
-        const anchorPoint = getAnchorPoint(uiTransform.anchorPreset, canvasSize.x, canvasSize.y);
+        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-        // Calculate pivot position in world space, matching the renderer's logic EXACTLY
-        const pivotPosX = (canvasPos.x - canvasSize.x / 2) + anchorPoint.x + uiTransform.position.x;
-        const pivotPosY = (canvasPos.y + canvasSize.y / 2) - anchorPoint.y - uiTransform.position.y;
+        // --- X Calculation (standard left-to-right) ---
+        const anchorMinX_fromLeft = parentWidth * anchorMin.x;
+        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+        // uiTransform.pivot.x is Y-down (0=left), which is standard for X.
+        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
 
-        // Calculate final top-left position based on pivot
-        const finalX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+        // --- Y Calculation (converts Y-UP data to Y-DOWN coordinates) ---
+        // This implements the user-provided formula: parentHeight * (1 - anchorMin.y) - position.y - height * (1 - pivot.y)
+        // anchorMin.y is now Y-up (0=bottom, 1=top)
+        // position.y is now Y-up (positive moves up)
+        // uiTransform.pivot.y is Y-down (0=top), so (1 - pivot.y) converts it to Y-up for the calculation.
+        const rectY_fromTop = parentHeight * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
 
         return {
-            x: finalX,
-            y: finalY,
+            x: canvasLeftEdgeX + rectX_fromLeft,
+            y: canvasTopEdgeY + rectY_fromTop,
             width: uiTransform.size.width,
             height: uiTransform.size.height
         };
