@@ -12,7 +12,7 @@ function checkUIGizmoHit(canvasPos) {
 
     // Bounding box of the UI element in world space
     const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache, renderer);
+    const rect = getAbsoluteRect(selectedMateria, rectCache);
 
 
     const centerX = rect.x + rect.width / 2;
@@ -79,7 +79,7 @@ function drawUIGizmos(renderer, materia) {
 
     // Bounding box of the UI element in world space
     const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache, renderer);
+    const rect = getAbsoluteRect(materia, rectCache);
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;

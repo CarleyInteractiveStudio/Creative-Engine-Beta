@@ -304,62 +304,76 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    _drawUIElementAndChildren(element, rectCache) {
-    if (!element.isActive) return;
+    _drawUIElementAndChildren(element, parentRect) {
+        if (!element.isActive) return;
 
-    // We must draw children even if the parent has no UITransform
-    if (!element.getComponent(UITransform)) {
-        for (const child of element.children) {
-            this._drawUIElementAndChildren(child, rectCache);
-        }
-        return;
-    }
+        const uiTransform = element.getComponent(UITransform);
+        if (!uiTransform) return;
 
-    const rect = getAbsoluteRect(element, rectCache, this);
-    const { x, y, width, height } = rect;
+        // Calculate the element's own rectangle based on the parent's rectangle
+        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
 
-    // --- Drawing Logic for the current element ---
-    const uiImage = element.getComponent(UIImage);
-    const uiText = element.getComponent(UIText);
-    const textureRender = element.getComponent(TextureRender);
+        // --- UNIFIED Y-AXIS LOGIC ---
+        // This logic now matches `getWorldRect` in Components.js
+        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-    if (uiImage) {
-        this.ctx.fillStyle = uiImage.color;
-        this.ctx.fillRect(x, y, width, height);
-        if (uiImage.sprite && uiImage.sprite.complete) {
-            this.ctx.save();
-            // Assuming you might want blending modes; otherwise, this can be simplified
-            this.ctx.globalCompositeOperation = 'multiply'; // Or 'source-over'
-            this.ctx.drawImage(uiImage.sprite, x, y, width, height);
+        // X Calculation is straightforward
+        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+        const finalX = parentRect.x + rectX_fromLeft;
+
+        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
+        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+        const finalY = parentRect.y + rectY_fromTop;
+        const drawWidth = uiTransform.size.width;
+        const drawHeight = uiTransform.size.height;
+
+        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+
+        // --- Drawing Logic for the current element ---
+        const uiImage = element.getComponent(UIImage);
+        const uiText = element.getComponent(UIText);
+        const textureRender = element.getComponent(TextureRender);
+
+
+        if (uiImage) {
+            this.ctx.fillStyle = uiImage.color;
+            this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
+            if (uiImage.sprite && uiImage.sprite.complete) {
+                this.ctx.save();
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
+                this.ctx.restore();
+            }
+        } else if (textureRender) {
+             this.ctx.save();
+            this.ctx.translate(finalX, finalY);
+            if (textureRender.texture && textureRender.texture.complete) {
+                this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
+            } else {
+                this.ctx.fillStyle = textureRender.color;
+            }
+            if (textureRender.shape === 'Rectangle') {
+                this.ctx.fillRect(0, 0, drawWidth, drawHeight);
+            } else if (textureRender.shape === 'Circle') {
+                this.ctx.beginPath();
+                this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
+                this.ctx.fill();
+            }
             this.ctx.restore();
         }
-    } else if (textureRender) {
-        this.ctx.save();
-        this.ctx.translate(x, y);
-        if (textureRender.texture && textureRender.texture.complete) {
-            this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
-        } else {
-            this.ctx.fillStyle = textureRender.color;
-        }
-        if (textureRender.shape === 'Rectangle') {
-            this.ctx.fillRect(0, 0, width, height);
-        } else if (textureRender.shape === 'Circle') {
-            this.ctx.beginPath();
-            this.ctx.arc(width / 2, height / 2, width / 2, 0, 2 * Math.PI);
-            this.ctx.fill();
-        }
-        this.ctx.restore();
-    }
 
-    if (uiText) {
-        this._drawUIText(uiText, x, y, width, height);
-    }
+        if (uiText) {
+            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
+        }
 
-    // --- Recursion ---
-    for (const child of element.children) {
-        this._drawUIElementAndChildren(child, rectCache);
+        // --- Recursion ---
+        // Now, draw children, passing this element's rectangle as the new parentRect
+        for (const child of element.children) {
+            this._drawUIElementAndChildren(child, currentRect);
+        }
     }
-}
 
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
@@ -384,9 +398,8 @@ export class Renderer {
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
-        const rectCache = new Map();
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, rectCache);
+            this._drawUIElementAndChildren(child, canvasRect);
         }
 
         this.ctx.restore();
@@ -414,9 +427,8 @@ export class Renderer {
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
-        const rectCache = new Map();
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, rectCache);
+            this._drawUIElementAndChildren(child, canvasRect);
         }
 
         this.ctx.restore();
