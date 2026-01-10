@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Engine - Tu Juego Empieza Aquí</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Sección de Introducción Animada -->
+    <header class="intro">
+        <!-- Reemplaza 'logo1.png' y 'logo2.png' con tus archivos de imagen en la misma carpeta -->
+        <img src="https://via.placeholder.com/300x150.png?text=Logo+Principal" alt="Logo Principal de Creative Engine" id="logo1" class="logo">
+        <img src="https://via.placeholder.com/250x100.png?text=Logo+Secundario" alt="Logo Secundario" id="logo2" class="logo">
+    </header>
+
+    <!-- Contenido Principal (Aparece después de la intro) -->
+    <main class="main-content hidden">
+        <section id="menu">
+            <h1>Creative Engine</h1>
+            <p class="description">
+                Una herramienta de desarrollo de videojuegos 3D diseñada para artistas, soñadores y creadores.
+                Con nuestro lenguaje de scripting intuitivo, `.ces`, puedes dar vida a tus mundos sin necesidad de ser un experto en programación.
+                Desde la física hasta las animaciones y la interfaz de usuario, tienes todo el poder en tus manos.
+            </p>
+            <a href="config.html" class="btn-primary-link">Ir al Panel de Configuración</a>
+        </section>
+
+        <section id="features">
+            <div class="feature-quote">
+                <p id="motivational-text">Cargando inspiración...</p>
+            </div>
+        </section>
+
+        <section id="contact">
+            <h2>Envíanos tu Opinión</h2>
+            <form id="contact-form">
+                <input type="email" id="email-input" placeholder="Tu correo electrónico" required>
+                <textarea id="message-input" placeholder="Tu mensaje..." required></textarea>
+                <button type="submit">Enviar Mensaje</button>
+            </form>
+            <p id="form-feedback" class="hidden"></p>
+        </section>
+
+        <section id="support">
+            <h2>Apoya el Proyecto</h2>
+            <p>Si Creative Engine te ha sido útil, considera apoyar su desarrollo.</p>
+            <a href="#" id="paypal-button">
+                <span>Donar con</span>
+                <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_111x69.png" alt="PayPal">
+            </a>
+        </section>
+
+        <footer>
+            <p>&copy; 2025 Carley Interactive Studio. Todos los derechos reservados.</p>
+            <a href="#" id="eula-link">Leer Licencia de Usuario Final (EULA)</a>
+        </footer>
+    </main>
+
+    <!-- Modal de la Licencia (EULA) -->
+    <div id="eula-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>END USER LICENSE AGREEMENT (EULA)</h2>
+            <pre>
+Copyright (c) 2025 Carley Interactive Studio
+Todos los derechos reservados.
+
+1. Concesión de licencia
+El Licenciante otorga al Licenciatario un derecho no exclusivo, intransferible y revocable para utilizar el software en forma binaria “tal cual”, únicamente para el desarrollo de videojuegos, conforme a los términos de este acuerdo.
+
+2. Garantía limitada y soporte
+El software se proporciona “tal cual”, sin garantía expresa o implícita. Sin embargo, en caso de fallos técnicos o errores graves, el Licenciatario podrá reportarlos al Licenciante, quien podrá brindar asistencia técnica sin compromiso de solución garantizada.
+
+3. Restricciones de uso
+El Licenciatario no podrá, bajo ninguna circunstancia:
+- Copiar, clonar o reproducir el software en código o binario.
+- Modificar, adaptar, traducir o crear trabajos derivados.
+- Distribuir, sublicenciar, revender, alquilar o arrendar el software.
+- Realizar ingeniería inversa, descompilar o desensamblar.
+- Utilizar el software con fines comerciales o de lucro, directa o indirectamente.
+En caso de incumplimiento, el Licenciatario deberá restaurar el software a su estado original. Si se detecta uso comercial no autorizado, el Licenciante podrá exigir el pago de una multa compensatoria proporcional al daño causado.
+
+4. Propiedad intelectual
+Todos los derechos de autor, marcas, patentes y demás derechos de propiedad intelectual sobre el software y la documentación pertenecen exclusivamente al Licenciante.
+
+5. Derechos sobre los juegos creados
+Todo videojuego creado con el motor es 100% propiedad del usuario. El Licenciante no reclama participación en las ganancias ni derechos sobre el contenido generado.
+Opcionalmente, el Licenciatario podrá colaborar con el Licenciante en la promoción del motor, enviando:
+- 📸 Imágenes o videos del juego
+- 🔗 Enlace al proyecto publicado
+- 📝 Breve descripción del juego
+El Licenciante podrá utilizar dicho material únicamente con fines de marketing y promoción del motor, respetando siempre la autoría del creador.
+
+6. Duración y terminación
+Este acuerdo entra en vigor en la fecha de descarga o instalación y permanecerá vigente hasta su terminación. La licencia se extingue automáticamente si el Licenciatario incumple cualquiera de sus términos. Tras la terminación, el Licenciatario deberá cesar todo uso del software y destruir todas las copias que posea.
+
+7. Ley aplicable y jurisdicción
+Este acuerdo se regirá e interpretará de acuerdo con las leyes de República Dominicana. Cualquier disputa será sometida a los tribunales competentes de Santo Domingo.
+
+8. Aceptación
+Al descargar, instalar o usar el software, el Licenciatario acepta íntegramente los términos de este acuerdo.
+            </pre>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

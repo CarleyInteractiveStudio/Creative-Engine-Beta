@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Configuración del Proyecto - Creative Engine</title>
+    <link rel="stylesheet" href="style.css"> <!-- Reutilizamos el estilo base -->
+    <link rel="stylesheet" href="config.css"> <!-- Estilos específicos del panel -->
+</head>
+<body>
+    <div class="config-container">
+        <header>
+            <h1>Panel de Configuración del Proyecto</h1>
+            <p>Define las propiedades de tu juego, desde el icono hasta la seguridad.</p>
+        </header>
+
+        <!-- Pestañas de Navegación -->
+        <nav class="tab-nav">
+            <button class="tab-link active" data-tab="general">General</button>
+            <button class="tab-link" data-tab="graphics">Gráficos</button>
+            <button class="tab-link" data-tab="logos">Logos de Inicio</button>
+            <button class="tab-link" data-tab="security">Seguridad</button>
+            <button class="tab-link" data-tab="input">Controles</button>
+        </nav>
+
+        <!-- Contenido de las Pestañas -->
+        <main class="tab-content">
+
+            <!-- Sección General -->
+            <section id="general" class="tab-pane active">
+                <h2>Configuración General</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="game-name">Nombre del Juego (Ejecutable)</label>
+                        <input type="text" id="game-name" placeholder="MiJuegoIncreible">
+                    </div>
+                    <div class="form-group">
+                        <label for="game-version">Versión</label>
+                        <input type="text" id="game-version" placeholder="1.0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="author-name">Nombre del Autor</label>
+                        <input type="text" id="author-name" placeholder="Mi Estudio Creativo">
+                    </div>
+                    <div class="form-group">
+                        <label for="package-id">ID del Paquete</label>
+                        <input type="text" id="package-id" placeholder="com.miestudio.mijuego">
+                    </div>
+                    <div class="form-group">
+                        <label for="game-icon">Icono de la Aplicación (.ico, .png)</label>
+                        <input type="file" id="game-icon" accept="image/x-icon,image/png">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Gráficos -->
+            <section id="graphics" class="tab-pane">
+                <h2>Configuración de Gráficos</h2>
+                <div class="form-grid">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="enable-shadows" checked>
+                        <label for="enable-shadows">Activar Sistema de Sombras</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="splash-screen">Splash Screen (Imagen de carga)</label>
+                        <input type="file" id="splash-screen" accept="image/*">
+                    </div>
+                </div>
+                <h3>Fondos de Escena</h3>
+                <p class="description">Asigna una imagen de fondo a cada escena de tu proyecto.</p>
+                <div id="scene-backgrounds-list">
+                    <!-- Simulación: se llenará con JS -->
+                    <p class="description">No se encontraron archivos de escena. (Esto es una simulación).</p>
+                </div>
+            </section>
+
+            <!-- Sección Logos -->
+            <section id="logos" class="tab-pane">
+                <h2>Configuración de Logos de Inicio</h2>
+                <p class="description">Añade logos que se mostrarán al iniciar el juego.</p>
+                <div id="logo-list">
+                    <!-- Logos dinámicos se añadirán aquí -->
+                </div>
+                <button id="add-logo-btn" class="btn-secondary">Añadir Logo</button>
+            </section>
+
+            <!-- Sección Seguridad -->
+            <section id="security" class="tab-pane">
+                <h2>Configuración de Seguridad</h2>
+                <div class="form-grid">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="enable-anti-tampering">
+                        <label for="enable-anti-tampering">Protección Anti-Manipulación (Checksum)</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="encryption-key">Clave de Cifrado para Assets</label>
+                        <input type="password" id="encryption-key">
+                    </div>
+                </div>
+                <h3>Keystore (para Firmar la App)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="keystore-author">Autor del Keystore</label>
+                        <input type="text" id="keystore-author">
+                    </div>
+                    <div class="form-group">
+                        <label for="keystore-password">Contraseña del Keystore</label>
+                        <input type="password" id="keystore-password">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección Controles -->
+            <section id="input" class="tab-pane">
+                <h2>Input Manager (Controles)</h2>
+                <p class="description">Define las acciones del juego y asígnales teclas.</p>
+                <div id="input-map-list">
+                    <!-- Mapa de inputs se añadirá aquí -->
+                </div>
+                <button id="add-input-map-btn" class="btn-secondary">Añadir Acción</button>
+            </section>
+
+        </main>
+
+        <!-- Botón de Guardar y Salida JSON -->
+        <footer>
+            <button id="save-config-btn" class="btn-primary">Generar Archivo de Configuración</button>
+            <div id="json-output-container" class="hidden">
+                <h3>Resultado (project.json)</h3>
+                <pre id="json-output"></pre>
+            </div>
+             <a href="index.html" class="back-link">Volver a la página principal</a>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+</body>
+</html>
