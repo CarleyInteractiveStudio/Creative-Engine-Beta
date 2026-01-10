@@ -378,15 +378,16 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
+        if (!canvasComponent) {
             this.end();
             return;
         }
 
+        // A Screen Space canvas should ignore its world transform and fill the screen.
+        // Its origin is always top-left (0,0).
         const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
+            x: 0,
+            y: 0,
             width: this.canvas.width,
             height: this.canvas.height
         };
