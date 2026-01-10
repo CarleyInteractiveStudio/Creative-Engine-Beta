@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, getAbsoluteRect } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -304,32 +304,27 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    _drawUIElementAndChildren(element, parentRect) {
+    _drawUIElementAndChildren(element, parentRect, rectCache) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
-        if (!uiTransform) return;
+        if (!uiTransform) {
+            // If the child doesn't have a UITransform, it doesn't participate in UI layout.
+            // We still need to recurse to its children, passing the same parentRect.
+            for (const child of element.children) {
+                this._drawUIElementAndChildren(child, parentRect, rectCache);
+            }
+            return;
+        }
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
+        // --- Use the single source of truth for positioning ---
+        // NOTE: getAbsoluteRect returns world-space coordinates. The canvas transform is already set up.
+        const currentRect = getAbsoluteRect(element, rectCache, this);
+        const finalX = currentRect.x;
+        const finalY = currentRect.y;
+        const drawWidth = currentRect.width;
+        const drawHeight = currentRect.height;
 
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // X Calculation is straightforward
-        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalX = parentRect.x + rectX_fromLeft;
-
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-        const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
-
-        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
         // --- Drawing Logic for the current element ---
         const uiImage = element.getComponent(UIImage);
@@ -371,7 +366,7 @@ export class Renderer {
         // --- Recursion ---
         // Now, draw children, passing this element's rectangle as the new parentRect
         for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIElementAndChildren(child, currentRect, rectCache);
         }
     }
 
@@ -398,8 +393,9 @@ export class Renderer {
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
+        const rectCache = new Map();
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, canvasRect, rectCache);
         }
 
         this.ctx.restore();
@@ -427,8 +423,9 @@ export class Renderer {
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
+        const rectCache = new Map();
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, canvasRect, rectCache);
         }
 
         this.ctx.restore();

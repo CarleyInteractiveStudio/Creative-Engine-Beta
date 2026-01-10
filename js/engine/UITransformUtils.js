@@ -187,15 +187,24 @@ export function getAbsoluteRect(materia, rectCache, renderer) {
         let rect;
 
         if (canvas && transform && renderer) {
-            const canvasSize = canvas.renderMode === 'Screen Space'
-                ? { width: renderer.canvas.width, height: renderer.canvas.height } // Correct size
-                : { width: canvas.size.x, height: canvas.size.y }; // Use x/y properties
-            rect = {
-                x: transform.position.x - canvasSize.width / 2,
-                y: transform.position.y - canvasSize.height / 2,
-                width: canvasSize.width,
-                height: canvasSize.height
-            };
+             if (canvas.renderMode === 'Screen Space') {
+                // For Screen Space, the canvas's logical rectangle in the world must match the camera's viewport.
+                // Its own transform is ignored.
+                const zoom = renderer.camera.effectiveZoom;
+                const viewWidth = renderer.canvas.width / zoom;
+                const viewHeight = renderer.canvas.height / zoom;
+                const viewLeft = renderer.camera.x - viewWidth / 2;
+                const viewTop = renderer.camera.y - viewHeight / 2;
+                rect = { x: viewLeft, y: viewTop, width: viewWidth, height: viewHeight };
+            } else { // World Space
+                const canvasSize = { width: canvas.size.x, height: canvas.size.y };
+                rect = {
+                    x: transform.position.x - canvasSize.width / 2,
+                    y: transform.position.y - canvasSize.height / 2,
+                    width: canvasSize.width,
+                    height: canvasSize.height
+                };
+            }
         } else {
             // Fallback for an unparented object that isn't a canvas.
             rect = { x: 0, y: 0, width: renderer?.canvas?.width || 0, height: renderer?.canvas?.height || 0 };
