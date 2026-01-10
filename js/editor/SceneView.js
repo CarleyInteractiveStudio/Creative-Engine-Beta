@@ -7,12 +7,12 @@ function checkUIGizmoHit(canvasPos) {
 
     const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return null;
-    const parentCanvas = parentCanvasMateria.getComponent(Components.Canvas);
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
     // Bounding box of the UI element in world space
-    const rect = parentCanvas.getWorldRect(uiTransform);
+    const rectCache = new Map();
+    const rect = getAbsoluteRect(selectedMateria, rectCache);
 
 
     const centerX = rect.x + rect.width / 2;
@@ -67,7 +67,6 @@ function drawUIGizmos(renderer, materia) {
 
     const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return;
-    const parentCanvas = parentCanvasMateria.getComponent(Components.Canvas);
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -79,7 +78,8 @@ function drawUIGizmos(renderer, materia) {
     const SCALE_BOX_SIZE = 8 / zoom;
 
     // Bounding box of the UI element in world space
-    const rect = parentCanvas.getWorldRect(uiTransform);
+    const rectCache = new Map();
+    const rect = getAbsoluteRect(materia, rectCache);
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -158,6 +158,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
+import { getAbsoluteRect } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;

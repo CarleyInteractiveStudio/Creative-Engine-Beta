@@ -1,4 +1,5 @@
 // js/engine/UITransformUtils.js
+import { UITransform, Canvas, Transform } from './Components.js';
 
 /**
  * Devuelve el objeto de pivote {x, y} correspondiente a un preset de anclaje.
@@ -167,3 +168,67 @@ export const getAnchorPercentages = (preset) => {
 
     return anchor;
 };
+
+/**
+ * Calculates the absolute screen-space rectangle for a UI element by recursively traversing its parents.
+ * This is the single source of truth for UI element positioning.
+ * @param {Materia} materia The game object with the UITransform.
+ * @param {Map<number, {x: number, y: number, width: number, height: number}>} rectCache A cache to store intermediate calculations.
+ * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates.
+ */
+export function getAbsoluteRect(materia, rectCache) {
+    if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
+    if (rectCache.has(materia.id)) return rectCache.get(materia.id);
+
+    const uiTransform = materia.getComponent(UITransform);
+    if (!uiTransform) {
+        console.warn(`getAbsoluteRect called on Materia '${materia.name}' without a UITransform.`);
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    let parentRect;
+    if (materia.parent) {
+        // If there's a parent, recurse up the chain.
+        parentRect = getAbsoluteRect(materia.parent, rectCache);
+    } else {
+        // Base case: If there's no parent, this should be the Canvas.
+        const canvas = materia.getComponent(Canvas);
+        const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
+        if (canvas && transform) {
+            const canvasSize = canvas.renderMode === 'Screen Space'
+                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
+                : canvas.size;
+            parentRect = {
+                x: transform.position.x - canvasSize.width / 2,
+                y: transform.position.y - canvasSize.height / 2,
+                width: canvasSize.width,
+                height: canvasSize.height
+            };
+        } else {
+             // Fallback for an unparented UI element that isn't a canvas.
+            parentRect = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+        }
+    }
+
+    const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+
+    // X Calculation
+    const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+    const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+    const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+    const finalX = parentRect.x + rectX_fromLeft;
+
+    // Y Calculation (Y-UP to Y-DOWN)
+    const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+    const finalY = parentRect.y + rectY_fromTop;
+
+    const absoluteRect = {
+        x: finalX,
+        y: finalY,
+        width: uiTransform.size.width,
+        height: uiTransform.size.height
+    };
+
+    rectCache.set(materia.id, absoluteRect);
+    return absoluteRect;
+}
