@@ -59,15 +59,20 @@ function handleMouseDown(e) {
     // --- UI Dragging Logic ---
     const selectedMateria = getSelectedMateria();
     if (activeTool === 'move' && selectedMateria && selectedMateria.getComponent(Components.UITransform)) {
-        const worldPos = screenToWorld(e.clientX, e.clientY);
+        const rectCache = new Map();
+        const materiaRect = UITransformUtils.getAbsoluteRect(selectedMateria, renderer, rectCache);
 
-        if (isPointInMateria(worldPos, selectedMateria)) {
+        const canvasRect = dom.sceneCanvas.getBoundingClientRect();
+        const mousePos = { x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top };
+
+        if (mousePos.x >= materiaRect.x && mousePos.x <= materiaRect.x + materiaRect.width &&
+            mousePos.y >= materiaRect.y && mousePos.y <= materiaRect.y + materiaRect.height) {
+
             isDraggingUI = true;
             draggedMateria = selectedMateria;
-            const worldPivotPos = getMateriaWorldPivotPosition(draggedMateria);
             dragOffset = {
-                x: worldPos.x - worldPivotPos.x,
-                y: worldPos.y - worldPivotPos.y
+                x: mousePos.x - materiaRect.x,
+                y: mousePos.y - materiaRect.y,
             };
             return;
         }
@@ -104,31 +109,42 @@ function handleMouseMove(e) {
 
     if (isDraggingUI) {
         const uiTransform = draggedMateria.getComponent(Components.UITransform);
-        if (!uiTransform) {
+        const parent = SceneManager.currentScene.getMateriaById(draggedMateria.parent);
+        if (!uiTransform || !parent) {
             isDraggingUI = false;
             draggedMateria = null;
             return;
         }
 
-        const newMouseWorldPos = screenToWorld(e.clientX, e.clientY);
-        const newWorldPivotPos = {
-            x: newMouseWorldPos.x - dragOffset.x,
-            y: newMouseWorldPos.y - dragOffset.y
-        };
+        const canvasRect = dom.sceneCanvas.getBoundingClientRect();
+        const mousePos = { x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top };
 
-        const parent = SceneManager.currentScene.getMateriaById(draggedMateria.parent);
-        const parentCanvas = parent.getComponent(Components.Canvas);
-        const parentTransform = parent.getComponent(Components.Transform);
+        // Calculate the new top-left position of the element
+        const newRectX = mousePos.x - dragOffset.x;
+        const newRectY = mousePos.y - dragOffset.y;
 
-        if (parentCanvas && parentTransform && parentCanvas.renderMode === 'World Space') {
-            const anchorPointWorld = getAnchorPointWorld(uiTransform.anchorPreset, parentTransform.position, parentCanvas.size);
+        // We need the parent's absolute rect to calculate the new relative position
+        const rectCache = new Map();
+        const parentRect = UITransformUtils.getAbsoluteRect(parent, renderer, rectCache);
 
-            uiTransform.position = {
-                x: newWorldPivotPos.x - anchorPointWorld.x,
-                y: newWorldPivotPos.y - anchorPointWorld.y
-            };
-        }
-        return;
+        // --- Invert the getAbsoluteRect logic to solve for uiTransform.position ---
+        const anchorMin = UITransformUtils.getAnchorPercentages(uiTransform.anchorPreset);
+
+        // Solve for X
+        const parentX = parentRect.x;
+        const rectX_fromLeft = newRectX - parentX;
+        const pivotPosX_fromLeft = rectX_fromLeft + (uiTransform.size.width * uiTransform.pivot.x);
+        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+        uiTransform.position.x = pivotPosX_fromLeft - anchorMinX_fromLeft;
+
+        // Solve for Y (Y-UP logic conversion)
+        const parentY = parentRect.y;
+        const rectY_fromTop = newRectY - parentY;
+        const pivotPosY_fromTop = rectY_fromTop + (uiTransform.size.height * uiTransform.pivot.y);
+        const anchorMinY_fromBottom = parentRect.height * anchorMin.y;
+        uiTransform.position.y = (parentRect.height - pivotPosY_fromTop) - anchorMinY_fromBottom;
+
+        return; // Prevent other actions while dragging
     }
 
     if (isDrawingRect) {
@@ -150,36 +166,47 @@ function handleMouseMove(e) {
 
 async function handleMouseUp(e) {
     if (isDraggingUI) {
+        // --- Recalculate anchor preset based on final position ---
         const uiTransform = draggedMateria.getComponent(Components.UITransform);
         const parent = SceneManager.currentScene.getMateriaById(draggedMateria.parent);
-        const parentCanvas = parent.getComponent(Components.Canvas);
-        const parentTransform = parent.getComponent(Components.Transform);
 
-        if (uiTransform && parentCanvas && parentTransform && parentCanvas.renderMode === 'World Space') {
-            const finalWorldPivotPos = getMateriaWorldPivotPosition(draggedMateria);
+        if (uiTransform && parent) {
+            const rectCache = new Map();
+            const parentRect = UITransformUtils.getAbsoluteRect(parent, renderer, rectCache);
 
-            const canvasSize = parentCanvas.size;
-            const canvasPos = parentTransform.position;
-            const canvasTopLeft = {
-                x: canvasPos.x - canvasSize.x / 2,
-                y: canvasPos.y - canvasSize.y / 2,
+            // The position we need is the element's pivot point, relative to the parent's top-left corner.
+            const pivotPoint = {
+                x: uiTransform.position.x,
+                y: parentRect.height - uiTransform.position.y // Convert back to Y-Down for preset calculation
             };
 
-            const relativePos = {
-                x: finalWorldPivotPos.x - canvasTopLeft.x,
-                y: finalWorldPivotPos.y - canvasTopLeft.y,
-            };
-
-            const newPreset = UITransformUtils.getAnchorPresetFromPosition(relativePos, canvasSize);
+            // This part of the logic might need refinement, as getAnchorPresetFromPosition expects a rect size.
+            // For now, we assume the parent rect is the reference.
+            const newPreset = UITransformUtils.getAnchorPresetFromPosition(pivotPoint, parentRect);
 
             uiTransform.anchorPreset = newPreset;
+            // The pivot should also be updated to match the new anchor.
             uiTransform.pivot = UITransformUtils.getPivotForAnchorPreset(newPreset);
 
-            const newAnchorPointWorld = getAnchorPointWorld(newPreset, canvasPos, canvasSize);
-            uiTransform.position = {
-                x: finalWorldPivotPos.x - newAnchorPointWorld.x,
-                y: finalWorldPivotPos.y - newAnchorPointWorld.y
-            };
+            // After changing the anchor, we must recalculate the position value
+            // so the element doesn't jump.
+            const canvasRect = dom.sceneCanvas.getBoundingClientRect();
+            const mousePos = { x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top };
+            const newRectX = mousePos.x - dragOffset.x;
+            const newRectY = mousePos.y - dragOffset.y;
+
+            const newAnchorMin = UITransformUtils.getAnchorPercentages(uiTransform.anchorPreset);
+            const parentX = parentRect.x;
+            const rectX_fromLeft = newRectX - parentX;
+            const pivotPosX_fromLeft = rectX_fromLeft + (uiTransform.size.width * uiTransform.pivot.x);
+            const anchorMinX_fromLeft = parentRect.width * newAnchorMin.x;
+            uiTransform.position.x = pivotPosX_fromLeft - anchorMinX_fromLeft;
+
+            const parentY = parentRect.y;
+            const rectY_fromTop = newRectY - parentY;
+            const pivotPosY_fromTop = rectY_fromTop + (uiTransform.size.height * uiTransform.pivot.y);
+            const anchorMinY_fromBottom = parentRect.height * newAnchorMin.y;
+            uiTransform.position.y = (parentRect.height - pivotPosY_fromTop) - anchorMinY_fromBottom;
 
             if (updateInspectorCallback) {
                 await updateInspectorCallback();
@@ -428,22 +455,35 @@ function drawUIAnchorGizmo(ctx, selectedMateria) {
 
     if (!parentCanvas || !parentTransform) return;
 
-    // For now, we only support World Space UI Gizmos as it's the most common for layout.
-    // Screen space would require a different rendering path.
-    if (parentCanvas.renderMode !== 'World Space') return;
+    ctx.save(); // Save the current (likely world-space) transform state.
 
-    const canvasSize = parentCanvas.size;
-    const canvasPos = parentTransform.position;
+    let topLeft, canvasSize;
 
-    const halfWidth = canvasSize.x / 2;
-    const halfHeight = canvasSize.y / 2;
+    if (parentCanvas.renderMode === 'Screen Space') {
+        // For Screen Space, we draw in screen coordinates (pixels).
+        // We must reset the context's transform.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const topLeft = { x: canvasPos.x - halfWidth, y: canvasPos.y - halfHeight };
+        topLeft = { x: 0, y: 0 };
+        canvasSize = { x: renderer.canvas.width, y: renderer.canvas.height };
 
-    ctx.save();
+        // Line width is in pixels, no need for zoom correction.
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+
+    } else { // World Space (original logic)
+        canvasSize = parentCanvas.size;
+        const canvasPos = parentTransform.position;
+        const halfWidth = canvasSize.x / 2;
+        const halfHeight = canvasSize.y / 2;
+        topLeft = { x: canvasPos.x - halfWidth, y: canvasPos.y - halfHeight };
+
+        // Line width needs to be adjusted for camera zoom to appear constant.
+        ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+        ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]);
+    }
+
     ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
-    ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-    ctx.setLineDash([6 / renderer.camera.effectiveZoom, 4 / renderer.camera.effectiveZoom]);
 
     // Draw vertical lines
     ctx.beginPath();
@@ -461,62 +501,7 @@ function drawUIAnchorGizmo(ctx, selectedMateria) {
     ctx.lineTo(topLeft.x + canvasSize.x, topLeft.y + 2 * canvasSize.y / 3);
     ctx.stroke();
 
-    ctx.restore();
+    ctx.restore(); // Restore the original transform state.
 }
 
-// --- UI Dragging Helper Functions ---
-
-function getMateriaWorldPivotPosition(materia) {
-    const uiTransform = materia.getComponent(Components.UITransform);
-    const parent = SceneManager.currentScene.getMateriaById(materia.parent);
-    if (!uiTransform || !parent) return { x: 0, y: 0 };
-
-    const parentCanvas = parent.getComponent(Components.Canvas);
-    const parentTransform = parent.getComponent(Components.Transform);
-    if (!parentCanvas || !parentTransform) return { x: 0, y: 0 };
-
-    const anchorPointWorld = getAnchorPointWorld(uiTransform.anchorPreset, parentTransform.position, parentCanvas.size);
-
-    return {
-        x: anchorPointWorld.x + uiTransform.position.x,
-        y: anchorPointWorld.y + uiTransform.position.y
-    };
-}
-
-
-function getAnchorPointWorld(preset, canvasWorldPos, canvasSize) {
-    const anchor = UITransformUtils.getPivotForAnchorPreset(preset); // Re-use this logic
-
-    const canvasTopLeft = {
-        x: canvasWorldPos.x - canvasSize.x / 2,
-        y: canvasWorldPos.y - canvasSize.y / 2
-    };
-
-    return {
-        x: canvasTopLeft.x + (canvasSize.x * anchor.x),
-        y: canvasTopLeft.y + (canvasSize.y * anchor.y)
-    };
-}
-
-
-function isPointInMateria(worldPoint, materia) {
-    const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) return false;
-
-    const worldPivotPos = getMateriaWorldPivotPosition(materia);
-
-    const halfWidth = uiTransform.size.width / 2;
-    const halfHeight = uiTransform.size.height / 2;
-
-    const topLeft = {
-        x: worldPivotPos.x - (uiTransform.size.width * uiTransform.pivot.x),
-        y: worldPivotPos.y - (uiTransform.size.height * uiTransform.pivot.y)
-    };
-
-    return (
-        worldPoint.x >= topLeft.x &&
-        worldPoint.x <= topLeft.x + uiTransform.size.width &&
-        worldPoint.y >= topLeft.y &&
-        worldPoint.y <= topLeft.y + uiTransform.size.height
-    );
-}
+// --- UI Dragging Helper Functions --- (Obsolete functions removed after refactor)

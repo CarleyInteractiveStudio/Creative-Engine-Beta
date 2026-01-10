@@ -174,9 +174,10 @@ export const getAnchorPercentages = (preset) => {
  * This is the single source of truth for UI element positioning.
  * @param {Materia} materia The game object with the UITransform.
  * @param {Map<number, {x: number, y: number, width: number, height: number}>} rectCache A cache to store intermediate calculations.
+ * @param {Renderer} renderer The renderer instance to get actual canvas dimensions.
  * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates.
  */
-export function getAbsoluteRect(materia, rectCache) {
+export function getAbsoluteRect(materia, renderer, rectCache) {
     if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
     if (rectCache.has(materia.id)) return rectCache.get(materia.id);
 
@@ -189,24 +190,28 @@ export function getAbsoluteRect(materia, rectCache) {
     let parentRect;
     if (materia.parent) {
         // If there's a parent, recurse up the chain.
-        parentRect = getAbsoluteRect(materia.parent, rectCache);
+        parentRect = getAbsoluteRect(materia.parent, renderer, rectCache);
     } else {
         // Base case: If there's no parent, this should be the Canvas.
         const canvas = materia.getComponent(Canvas);
         const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
         if (canvas && transform) {
-            const canvasSize = canvas.renderMode === 'Screen Space'
-                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
-                : canvas.size;
-            parentRect = {
-                x: transform.position.x - canvasSize.width / 2,
-                y: transform.position.y - canvasSize.height / 2,
-                width: canvasSize.width,
-                height: canvasSize.height
-            };
+            if (canvas.renderMode === 'Screen Space') {
+                // A root Screen Space canvas ALWAYS fills the viewport, ignoring its transform position.
+                parentRect = { x: 0, y: 0, width: renderer.canvas.width, height: renderer.canvas.height };
+            } else {
+                // A root World Space canvas uses its transform.
+                const canvasSize = canvas.size;
+                 parentRect = {
+                    x: transform.position.x - canvasSize.width / 2,
+                    y: transform.position.y - canvasSize.height / 2,
+                    width: canvasSize.width,
+                    height: canvasSize.height
+                };
+            }
         } else {
              // Fallback for an unparented UI element that isn't a canvas.
-            parentRect = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+            parentRect = { x: 0, y: 0, width: renderer.canvas.width, height: renderer.canvas.height };
         }
     }
 
