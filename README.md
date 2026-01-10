@@ -1,74 +1,37 @@
-# Informe de Incidencia: Problema con el Gizmo de UIImage
+# Estado del Problema del Sistema de UI - Canvas
 
-**Estado:** <span style="color:green;">RESUELTO</span>
+Este documento describe un problema persistente con el sistema de UI, específicamente con el componente `Canvas` y sus modos `World Space` y `Screen Space`.
 
 ## Descripción del Problema
 
-El gizmo de movimiento para el componente `UIImage` en el editor de Creative Engine presenta un comportamiento anómalo y persistente que no ha podido ser solucionado hasta la fecha. El problema se manifiesta de la siguiente manera:
+El objetivo es que los elementos de la interfaz de usuario (UI) dentro de un `Canvas` configurado en modo **'Screen Space'** se posicionen y se comporten en relación con los límites de la pantalla del juego.
 
-1.  **Movimiento Vertical Invertido:** Al seleccionar un `UIImage` en la escena y arrastrar la flecha verde (eje Y) del gizmo hacia arriba, la imagen se desplaza hacia abajo. Al arrastrarla hacia abajo, la imagen se desplaza hacia arriba. El movimiento horizontal (eje X) funciona correctamente.
-2.  **Inconsistencia con Otros Componentes:** Este comportamiento es exclusivo del `UIImage`. El gizmo del componente `SpriteRenderer` funciona de manera intuitiva y correcta, sirviendo como modelo del comportamiento deseado.
+El problema actual es una inconsistencia fundamental entre cómo se visualiza el `Canvas` en el editor y cómo se comporta la lógica de posicionamiento de sus elementos hijos:
 
-El objetivo es lograr que el gizmo del `UIImage` se comporte exactamente igual que el del `SpriteRenderer`.
+1.  **Visualización del Gizmo**: Al seleccionar un `Canvas` en modo `Screen Space`, el editor dibuja correctamente un "gizmo" (un recuadro punteado) que representa los límites del `Canvas` y lo expande para que ocupe toda la vista de la escena. Esto da la impresión visual de que el `Canvas` abarca toda la pantalla.
+2.  **Lógica de Posicionamiento**: Sin embargo, la lógica subyacente que controla la interacción y el posicionamiento de los elementos UI hijos (como `UIImage`) no respeta estos límites visuales. En su lugar, sigue utilizando las dimensiones definidas para el modo `World Space`.
 
----
+El resultado es que cuando un usuario intenta mover un elemento UI hacia los bordes del gizmo visible en `Screen Space`, el elemento puede ser recortado (clipping) o desaparecer, porque la lógica interna cree que los límites son mucho más pequeños (los del `World Space`).
 
-## Historial de Intentos de Solución
+## Intentos de Solución
 
-A continuación, se detalla un registro de las múltiples estrategias que se han implementado en un intento por resolver esta incidencia.
+Se han realizado dos intentos principales para solucionar este problema, ambos sin éxito.
 
-### Intento 1: Inversión de la Lógica de Arrastre
+### Intento 1: Modificar el Renderizado en el Editor
 
--   **Hipótesis:** Se pensó que el problema residía en una simple inversión lógica en el cálculo de la posición durante el arrastre. El sistema de coordenadas de la UI tiene el eje Y invertido (crece hacia abajo), mientras que el movimiento del ratón en la pantalla lo hace en la misma dirección.
--   **Acción:** Se modificó el archivo `js/editor/SceneView.js`, en la función que gestiona el arrastre del gizmo (`onGizmoDrag`). Se cambió la línea `uiTransform.position.y += dy;` a `uiTransform.position.y -= dy;`.
--   **Resultado:** **FALLIDO.** Esta acción provocó que el movimiento se invirtiera, pero en la dirección incorrecta a la deseada, agravando la sensación de desconexión.
+*   **Hipótesis**: Se creyó que el problema era que el editor forzaba un modo de renderizado incorrecto (`World Space`) para todos los `Canvas`, ignorando la configuración de `Screen Space`.
+*   **Acción**: Se modificó `js/engine/Renderer.js` para eliminar la lógica que forzaba el renderizado en `World Space` dentro del editor. La idea era que si el `Canvas` se renderizaba correctamente "despegado" y superpuesto a toda la pantalla, el problema de límites desaparecería.
+*   **Resultado**: **Incorrecto**. Esta solución empeoró el problema. El `Canvas` y sus elementos se "despegaron" del gizmo en la escena, rompiendo la correspondencia visual entre el objeto en la jerarquía y su representación en el editor, lo cual no era el comportamiento deseado.
 
-### Intento 2: Corrección Visual del Gizmo
+### Intento 2: Unificar la Lógica de Cálculo de Límites
 
--   **Hipótesis:** Se observó que la flecha verde del gizmo del `UIImage` apuntaba hacia abajo, a diferencia de otros gizmos que apuntan hacia arriba. Se pensó que alinear la apariencia visual resolvería la confusión.
--   **Acción:** Se modificó la función `drawUIGizmos` en `js/editor/SceneView.js` para que la flecha se dibujara apuntando hacia arriba (hacia coordenadas Y negativas en el espacio del mundo).
--   **Resultado:** **FALLIDO.** Aunque la apariencia del gizmo mejoró, el movimiento seguía siendo el inverso al arrastre.
-
-### Intento 3: Corrección de la Zona de Clic (Hitbox)
-
--   **Hipótesis:** Tras corregir la apariencia visual de la flecha, se dedujo que la zona invisible donde se detecta el clic (`hitbox`) no se había movido junto con la flecha. El sistema esperaba un clic donde la flecha estaba antes.
--   **Acción:** Se modificó la función `checkUIGizmoHit` en `js/editor/SceneView.js` para que la condición de detección del clic en el eje Y coincidiera con la nueva posición de la flecha (en la parte superior del centro del objeto).
--   **Resultado:** **FALLIDO.** A pesar de que la lógica parecía sólida, el comportamiento en la práctica no cambió. El gizmo seguía sin responder correctamente o el movimiento permanecía invertido.
-
-### Problemas Secundarios Solucionados
-
-Durante el proceso, se identificaron y solucionaron dos errores de regresión que no estaban directamente relacionados con el problema de inversión, pero que surgieron a raíz de las modificaciones:
-
-1.  **`TypeError: updateInspector is not a function` (Error de Alcance):**
-    *   **Causa:** Una refactorización inicial movió las funciones de arrastre del gizmo a un ámbito donde no tenían acceso a la función `updateInspector`.
-    *   **Solución:** Se reestructuró el código en `SceneView.js` para definir los manejadores de eventos (`onGizmoDrag`, `onGizmoDragEnd`) en el ámbito principal de la función `initialize`, garantizando el acceso a todas sus dependencias.
-
-2.  **`TypeError: updateInspector is not a function` (Error de Dependencia):**
-    *   **Causa:** Se descubrió un desajuste en los nombres de las propiedades. El archivo `editor.js` pasaba la dependencia como `updateInspectorCallback`, pero `SceneView.js` intentaba leerla como `updateInspector`.
-    *   **Solución:** Se corrigió el nombre de la propiedad en `SceneView.js` para que coincidiera, resolviendo el `TypeError` de forma definitiva.
-
----
+*   **Hipótesis**: Se identificó que el problema era una discrepancia entre dos sistemas: la lógica de dibujado de gizmos (`SceneView.js`) y la lógica de renderizado en tiempo de ejecución (`Renderer.js`). La solución propuesta fue centralizar el cálculo de la posición y tamaño en una única función (`getAbsoluteRect` en `UITransformUtils.js`) y hacerla "consciente" del modo del `Canvas`.
+*   **Acción**:
+    1.  Se modificó `getAbsoluteRect` para que aceptara el `renderer` como parámetro y así pudiera acceder a las dimensiones reales de la pantalla.
+    2.  Cuando `getAbsoluteRect` detectaba un `Canvas` en `Screen Space`, utilizaba las dimensiones del `renderer` como el rectángulo base.
+    3.  Se actualizaron todas las llamadas a esta función en `SceneView.js` (para los gizmos) y en `Renderer.js` (para el dibujado final) para que usaran esta nueva lógica unificada.
+*   **Resultado**: **Incorrecto**. A pesar de que la lógica parecía sólida y completa, el feedback fue que el problema no solo no se solucionó, sino que empeoró.
 
 ## Estado Actual
 
-A pesar de haber solucionado los errores secundarios y haber intentado múltiples enfoques lógicos, el problema principal persiste: **el movimiento vertical del gizmo de `UIImage` sigue invertido.**
-
----
-
-## Solución Definitiva
-
-Tras un análisis exhaustivo, se identificó que el problema no era un único error, sino una combinación de tres inconsistencias que, juntas, producían el comportamiento anómalo. La solución final consistió en alinear estos tres aspectos en el archivo `js/editor/SceneView.js`:
-
-1.  **Corrección de la Lógica de Arrastre (Funcional):**
-    *   **Problema:** El sistema de coordenadas de la UI está invertido en el eje Y. El cálculo original (`+= dy`) no tenía esto en cuenta.
-    *   **Solución:** Se invirtió la operación en la función `onGizmoDrag` para el movimiento vertical, cambiando `uiTransform.position.y += dy;` a `uiTransform.position.y -= dy;`. Esto sincroniza el movimiento del ratón con el sistema de coordenadas de la UI.
-
-2.  **Corrección del Dibujo del Gizmo (Visual):**
-    *   **Problema:** La flecha verde del gizmo apuntaba hacia abajo, en dirección contraria a la convención "arriba".
-    *   **Solución:** Se modificó la función `drawUIGizmos` para dibujar la flecha en la dirección Y negativa del espacio del mundo, haciendo que apunte visualmente hacia arriba.
-
-3.  **Corrección de la Zona de Clic (Interacción):**
-    *   **Problema:** Después de corregir la apariencia visual de la flecha, la zona invisible para detectar el clic (`hitbox`) no se movió, por lo que el gizmo no respondía a los clics en su nueva posición.
-    *   **Solución:** Se actualizó la función `checkUIGizmoHit` para que la condición de detección del clic en el eje Y coincidiera con la nueva ubicación de la flecha visual.
-
-Al sincronizar estos tres elementos (lógica, apariencia e interacción), el comportamiento del gizmo del `UIImage` se corrigió de forma definitiva, funcionando ahora de manera idéntica al del `SpriteRenderer`.
+Actualmente, todos los cambios relacionados con estos intentos han sido revertidos. El problema persiste en su estado original. Se necesita un nuevo enfoque para diagnosticar la causa raíz del porqué la lógica de posicionamiento de los elementos UI no utiliza los límites correctos del `Canvas` padre cuando este se encuentra en modo `Screen Space`.
