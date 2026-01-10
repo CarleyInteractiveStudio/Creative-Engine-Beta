@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, getAbsoluteRect } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -304,38 +304,20 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    _drawUIElementAndChildren(element, parentRect) {
+    _drawUIElementAndChildren(element, rectCache) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
-
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // X Calculation is straightforward
-        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalX = parentRect.x + rectX_fromLeft;
-
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-        const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
-
-        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+        // --- UNIFIED LOGIC ---
+        // Get the absolute, final screen coordinates from the single source of truth.
+        const { x: finalX, y: finalY, width: drawWidth, height: drawHeight } = getAbsoluteRect(element, this, rectCache);
 
         // --- Drawing Logic for the current element ---
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
         const textureRender = element.getComponent(TextureRender);
-
 
         if (uiImage) {
             this.ctx.fillStyle = uiImage.color;
@@ -369,14 +351,14 @@ export class Renderer {
         }
 
         // --- Recursion ---
-        // Now, draw children, passing this element's rectangle as the new parentRect
+        // Recurse into children. getAbsoluteRect will handle their hierarchy internally.
         for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIElementAndChildren(child, rectCache);
         }
     }
 
     drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
+        this.beginUI(); // Resets transform to identity for screen space rendering
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) {
             this.end();
@@ -384,7 +366,6 @@ export class Renderer {
         }
 
         // A Screen Space canvas should ignore its world transform and fill the screen.
-        // Its origin is always top-left (0,0).
         const canvasRect = {
             x: 0,
             y: 0,
@@ -397,9 +378,11 @@ export class Renderer {
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Initialize the cache for this drawing pass
+        const rectCache = new Map();
+        // Start the recursive drawing process
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, rectCache);
         }
 
         this.ctx.restore();
@@ -410,6 +393,14 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
+
+        // In the editor, a Screen Space canvas is rendered within the world for manipulation,
+        // but it should be drawn using screen-space logic to match the gizmo and game view.
+        // This is the key to unifying the behavior.
+        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
+            this.drawScreenSpaceUI(canvasMateria);
+            return;
+        }
 
         this.ctx.save();
         const worldPos = canvasTransform.position;
@@ -426,9 +417,11 @@ export class Renderer {
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Initialize the cache for this drawing pass
+        const rectCache = new Map();
+        // Start the recursive drawing process
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, rectCache);
         }
 
         this.ctx.restore();
