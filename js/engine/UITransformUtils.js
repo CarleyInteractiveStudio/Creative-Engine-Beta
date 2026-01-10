@@ -176,54 +176,40 @@ export const getAnchorPercentages = (preset) => {
  * @param {Map<number, {x: number, y: number, width: number, height: number}>} rectCache A cache to store intermediate calculations.
  * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates.
  */
-export function getAbsoluteRect(materia, rectCache, renderer) {
+export function getAbsoluteRect(materia, rectCache) {
     if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
     if (rectCache.has(materia.id)) return rectCache.get(materia.id);
 
-    // Base case: If there's no parent, it must be the root Canvas object.
-    if (!materia.parent) {
-        const canvas = materia.getComponent(Canvas);
-        const transform = materia.getComponent(Transform);
-        let rect;
-
-        if (canvas && transform && renderer) {
-             if (canvas.renderMode === 'Screen Space') {
-                // For Screen Space, the canvas's logical rectangle in the world must match the camera's viewport.
-                // Its own transform is ignored.
-                const zoom = renderer.camera.effectiveZoom;
-                const viewWidth = renderer.canvas.width / zoom;
-                const viewHeight = renderer.canvas.height / zoom;
-                const viewLeft = renderer.camera.x - viewWidth / 2;
-                const viewTop = renderer.camera.y - viewHeight / 2;
-                rect = { x: viewLeft, y: viewTop, width: viewWidth, height: viewHeight };
-            } else { // World Space
-                const canvasSize = { width: canvas.size.x, height: canvas.size.y };
-                rect = {
-                    x: transform.position.x - canvasSize.width / 2,
-                    y: transform.position.y - canvasSize.height / 2,
-                    width: canvasSize.width,
-                    height: canvasSize.height
-                };
-            }
-        } else {
-            // Fallback for an unparented object that isn't a canvas.
-            rect = { x: 0, y: 0, width: renderer?.canvas?.width || 0, height: renderer?.canvas?.height || 0 };
-        }
-        rectCache.set(materia.id, rect);
-        return rect;
-    }
-
-    // Recursive step: Get the parent's rectangle first.
-    const parentRect = getAbsoluteRect(materia.parent, rectCache, renderer);
-
     const uiTransform = materia.getComponent(UITransform);
     if (!uiTransform) {
-        // If it's not a UI element, it just inherits its parent's rect (like a container object).
-        rectCache.set(materia.id, parentRect);
-        return parentRect;
+        console.warn(`getAbsoluteRect called on Materia '${materia.name}' without a UITransform.`);
+        return { x: 0, y: 0, width: 0, height: 0 };
     }
 
-    // Calculation for the current UI element relative to its parent.
+    let parentRect;
+    if (materia.parent) {
+        // If there's a parent, recurse up the chain.
+        parentRect = getAbsoluteRect(materia.parent, rectCache);
+    } else {
+        // Base case: If there's no parent, this should be the Canvas.
+        const canvas = materia.getComponent(Canvas);
+        const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
+        if (canvas && transform) {
+            const canvasSize = canvas.renderMode === 'Screen Space'
+                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
+                : canvas.size;
+            parentRect = {
+                x: transform.position.x - canvasSize.width / 2,
+                y: transform.position.y - canvasSize.height / 2,
+                width: canvasSize.width,
+                height: canvasSize.height
+            };
+        } else {
+             // Fallback for an unparented UI element that isn't a canvas.
+            parentRect = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+        }
+    }
+
     const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
     // X Calculation

@@ -304,31 +304,33 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    _drawUIElementAndChildren(element, parentRect) {
+    _drawUIElementAndChildren(element, parentRect, rootCanvasRect) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
-        if (!uiTransform) return;
+        if (!uiTransform) {
+             // If no UITransform, just recurse to children with the same parentRect
+            for (const child of element.children) {
+                this._drawUIElementAndChildren(child, parentRect, rootCanvasRect);
+            }
+            return;
+        };
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
-
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
+        // --- POSITIONING LOGIC ---
         const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-        // X Calculation is straightforward
+        // X Calculation relative to the direct parent
         const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
         const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
         const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
         const finalX = parentRect.x + rectX_fromLeft;
 
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
+        // Y Calculation (Y-UP to Y-DOWN) relative to the direct parent
         const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
         const finalY = parentRect.y + rectY_fromTop;
+
         const drawWidth = uiTransform.size.width;
         const drawHeight = uiTransform.size.height;
-
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
         // --- Drawing Logic for the current element ---
@@ -371,7 +373,7 @@ export class Renderer {
         // --- Recursion ---
         // Now, draw children, passing this element's rectangle as the new parentRect
         for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIElementAndChildren(child, currentRect, rootCanvasRect);
         }
     }
 
@@ -399,7 +401,7 @@ export class Renderer {
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, canvasRect, canvasRect);
         }
 
         this.ctx.restore();
@@ -412,28 +414,15 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
+        const worldPos = canvasTransform.position;
+        const size = canvasComponent.size;
 
-        let canvasRect;
-        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
-            const zoom = this.camera.effectiveZoom;
-            const viewWidth = this.canvas.width / zoom;
-            const viewHeight = this.canvas.height / zoom;
-            canvasRect = {
-                x: this.camera.x - viewWidth / 2,
-                y: this.camera.y - viewHeight / 2,
-                width: viewWidth,
-                height: viewHeight
-            };
-        } else {
-            const worldPos = canvasTransform.position;
-            const size = canvasComponent.size;
-            canvasRect = {
-                x: worldPos.x - size.x / 2,
-                y: worldPos.y - size.y / 2,
-                width: size.x,
-                height: size.y
-            };
-        }
+        const canvasRect = {
+            x: worldPos.x - size.x / 2,
+            y: worldPos.y - size.y / 2,
+            width: size.x,
+            height: size.y
+        };
 
         this.ctx.beginPath();
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
@@ -441,7 +430,7 @@ export class Renderer {
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, canvasRect, canvasRect);
         }
 
         this.ctx.restore();
