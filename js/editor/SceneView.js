@@ -5,9 +5,9 @@ function checkUIGizmoHit(canvasPos) {
     const uiTransform = selectedMateria.getComponent(Components.UITransform);
     if (!uiTransform) return null;
 
-    const parentCanvas = selectedMateria.parent?.getComponent(Components.Canvas);
-    if (!parentCanvas) return null;
-
+    const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
+    if (!parentCanvasMateria) return null;
+    const parentCanvas = parentCanvasMateria.getComponent(Components.Canvas);
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
@@ -65,8 +65,9 @@ function drawUIGizmos(renderer, materia) {
     const uiTransform = materia.getComponent(Components.UITransform);
     if (!uiTransform) return;
 
-    const parentCanvas = materia.parent?.getComponent(Components.Canvas);
-    if (!parentCanvas) return;
+    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
+    if (!parentCanvasMateria) return;
+    const parentCanvas = parentCanvasMateria.getComponent(Components.Canvas);
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;

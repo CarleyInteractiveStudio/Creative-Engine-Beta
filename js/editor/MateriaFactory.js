@@ -79,7 +79,9 @@ export function createButtonObject(parent) {
     const buttonMateria = new Materia(buttonName);
 
     buttonMateria.addComponent(new Components.UITransform(buttonMateria));
-    buttonMateria.addComponent(new Components.UIImage(buttonMateria));
+    const buttonImage = new Components.UIImage(buttonMateria);
+    buttonImage.color = '#FFFFFF'; // Asignar color blanco por defecto
+    buttonMateria.addComponent(buttonImage);
     buttonMateria.addComponent(new Components.Button(buttonMateria));
 
     parent.addChild(buttonMateria);
@@ -114,7 +116,7 @@ export function createPanelObject(parent) {
 
     newMateria.addComponent(new Components.UITransform(newMateria));
     const uiImage = new Components.UIImage(newMateria);
-    uiImage.color = '#00000080'; // Negro con 50% de transparencia
+    uiImage.color = '#4B5563'; // Un color gris opaco
     newMateria.addComponent(uiImage);
 
     parent.addChild(newMateria);
