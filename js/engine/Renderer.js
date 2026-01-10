@@ -282,14 +282,10 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
+        if (canvas.renderMode === 'Screen Space') {
+            this.drawScreenSpaceUI(canvasMateria);
         } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
