@@ -2677,6 +2677,13 @@ public star() {
             updateWindowMenuUI();
             updateAmbientePanelFromScene(); // Sync UI on initial load
 
+            // --- FIX: Force initial canvas sync ---
+            // This ensures that Screen Space canvases get the correct size on load,
+            // not just on window resize.
+            if (renderer) renderer.resize();
+            if (gameRenderer) gameRenderer.resize();
+
+
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
             initializeFloatingPanels();
