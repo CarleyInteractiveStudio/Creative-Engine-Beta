@@ -206,63 +206,40 @@ export function handleContextMenuAction(action) {
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
         case 'create-ui-image':
-            {
-                // Find a suitable parent canvas
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
-                }
-
-                // If no canvas is found in the hierarchy, create a new one at the root
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
-                }
-
-                // Create the UI Image as a child of the canvas
-                newMateria = createBaseMateria(generateUniqueName('Image'), parentCanvas);
-                newMateria.removeComponent(Components.Transform); // Remove default transform
-                newMateria.addComponent(new Components.UITransform(newMateria));
-                newMateria.addComponent(new Components.UIImage(newMateria));
-            }
-            break;
         case 'create-ui-panel':
-            {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
-                }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
-                }
-                newMateria = createPanelObject(parentCanvas);
-            }
-            break;
         case 'create-ui-text':
-            {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
-                }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
-                }
-                newMateria = createTextObject(parentCanvas);
-            }
-            break;
         case 'create-ui-button':
             {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                let parentForNewMateria = selectedMateria;
+                let canvas = null;
+                if (selectedMateria) {
+                    canvas = selectedMateria.getComponent(Components.Canvas) || selectedMateria.findAncestorWithComponent(Components.Canvas);
                 }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+
+                // If no canvas is found, create a new one at the root and make it the parent.
+                if (!canvas) {
+                    const newCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    newCanvas.addComponent(new Components.Canvas(newCanvas));
+                    parentForNewMateria = newCanvas;
                 }
-                newMateria = createButtonObject(parentCanvas);
+
+                switch (action) {
+                    case 'create-ui-image':
+                        newMateria = createBaseMateria(generateUniqueName('Image'), parentForNewMateria);
+                        newMateria.removeComponent(Components.Transform);
+                        newMateria.addComponent(new Components.UITransform(newMateria));
+                        newMateria.addComponent(new Components.UIImage(newMateria));
+                        break;
+                    case 'create-ui-panel':
+                        newMateria = createPanelObject(parentForNewMateria);
+                        break;
+                    case 'create-ui-text':
+                        newMateria = createTextObject(parentForNewMateria);
+                        break;
+                    case 'create-ui-button':
+                        newMateria = createButtonObject(parentForNewMateria);
+                        break;
+                }
             }
             break;
 

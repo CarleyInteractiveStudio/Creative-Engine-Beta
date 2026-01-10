@@ -58,6 +58,40 @@ export class Materia {
         return false;
     }
 
+    findAncestorWithComponent(componentClass) {
+        let current = this.parent;
+
+        // Resolve parent if it's an ID
+        if (typeof current === 'number') {
+            try {
+                current = currentScene.findMateriaById(current);
+            } catch (e) {
+                console.warn(`Could not resolve parent ID ${this.parent} for materia '${this.name}'`);
+                return null;
+            }
+        }
+
+        while (current) {
+            if (current.getComponent(componentClass)) {
+                return current;
+            }
+
+            // Resolve next parent if it's an ID
+            let nextParent = current.parent;
+            if (typeof nextParent === 'number') {
+                 try {
+                    nextParent = currentScene.findMateriaById(nextParent);
+                } catch (e) {
+                    console.warn(`Could not resolve parent ID ${current.parent} for materia '${current.name}'`);
+                    nextParent = null; // Stop searching if resolution fails
+                }
+            }
+            current = nextParent;
+        }
+
+        return null;
+    }
+
     addChild(child) {
         if (child.parent) {
             // If parent is an ID (number) due to cloning, resolve it to an object
