@@ -62,8 +62,11 @@ function checkUIGizmoHit(canvasPos) {
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
+    // --- FIX: Only draw UI gizmos for objects that actually have a UITransform ---
     const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) return;
+    if (!uiTransform) {
+        return; // This is not a UI element, so do nothing.
+    }
 
     const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return;
