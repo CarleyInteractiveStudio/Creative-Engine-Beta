@@ -412,15 +412,28 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-        const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
 
-        const canvasRect = {
-            x: worldPos.x - size.x / 2,
-            y: worldPos.y - size.y / 2,
-            width: size.x,
-            height: size.y
-        };
+        let canvasRect;
+        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
+            const zoom = this.camera.effectiveZoom;
+            const viewWidth = this.canvas.width / zoom;
+            const viewHeight = this.canvas.height / zoom;
+            canvasRect = {
+                x: this.camera.x - viewWidth / 2,
+                y: this.camera.y - viewHeight / 2,
+                width: viewWidth,
+                height: viewHeight
+            };
+        } else {
+            const worldPos = canvasTransform.position;
+            const size = canvasComponent.size;
+            canvasRect = {
+                x: worldPos.x - size.x / 2,
+                y: worldPos.y - size.y / 2,
+                width: size.x,
+                height: size.y
+            };
+        }
 
         this.ctx.beginPath();
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
