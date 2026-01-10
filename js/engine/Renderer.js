@@ -57,12 +57,11 @@ export class Renderer {
         this.lightMapCanvas.height = this.canvas.height;
 
         // --- FIX: Synchronize Screen Space Canvas components ---
-        // When the viewport resizes, we must update the size property
-        // of any Screen Space canvases to match the new dimensions.
         if (window.SceneManager && window.SceneManager.currentScene) {
-            const canvases = window.SceneManager.currentScene.findAllComponents(Canvas);
-            for (const canvasComponent of canvases) {
-                if (canvasComponent.renderMode === 'Screen Space') {
+            const allMaterias = window.SceneManager.currentScene.getAllMaterias();
+            for (const materia of allMaterias) {
+                const canvasComponent = materia.getComponent(Canvas);
+                if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
                     canvasComponent.size.x = this.canvas.clientWidth;
                     canvasComponent.size.y = this.canvas.clientHeight;
                 }
