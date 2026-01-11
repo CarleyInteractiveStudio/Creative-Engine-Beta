@@ -32,8 +32,11 @@ export class Materia {
         component.materia = this;
     }
 
-    getComponent(componentClass) {
-        return this.leyes.find(ley => ley instanceof componentClass);
+    getComponent(ComponentClassOrName) {
+        if (typeof ComponentClassOrName === 'string') {
+            return this.leyes.find(component => component.constructor.name === ComponentClassOrName);
+        }
+        return this.leyes.find(component => component instanceof ComponentClassOrName);
     }
 
     getComponents(componentClass) {

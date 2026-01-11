@@ -279,14 +279,19 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawCanvas(canvasMateria) {
+    drawCanvas(canvasMateria, isGameView = false) {
         if (!canvasMateria.isActive) return;
-        const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
+        const canvas = canvasMateria.getComponent('Canvas');
+        if (!canvas) return;
+
+        // En el editor, siempre tratamos los Canvas como 'World Space' para poder moverlos.
+        if (this.isEditor && !isGameView) {
             this.drawWorldSpaceUI(canvasMateria);
-        } else {
+        }
+        // En la vista de juego, respetamos el renderMode.
+        else {
             if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
+                this.drawScreenSpaceUI(canvasMateria, isGameView);
             } else {
                 this.drawWorldSpaceUI(canvasMateria);
             }
@@ -375,20 +380,21 @@ export class Renderer {
         }
     }
 
-    drawScreenSpaceUI(canvasMateria) {
+    drawScreenSpaceUI(canvasMateria, isGameView) {
         this.beginUI();
-        const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
+        const canvasComponent = canvasMateria.getComponent('Canvas');
+        const canvasTransform = canvasMateria.getComponent('Transform');
         if (!canvasComponent || !canvasTransform) {
             this.end();
             return;
         }
 
-        // Para el modo Screen Space en el juego, ignoramos la posición del transform del Canvas
-        // y lo anclamos a la esquina (0,0) de la pantalla de juego.
+        const worldPos = canvasTransform.position;
+        const size = canvasComponent.size;
+
         const canvasRect = {
-            x: 0,
-            y: 0,
+            x: (isGameView) ? 0 : worldPos.x - size.x / 2,
+            y: (isGameView) ? 0 : worldPos.y - size.y / 2,
             width: this.canvas.width,
             height: this.canvas.height
         };
