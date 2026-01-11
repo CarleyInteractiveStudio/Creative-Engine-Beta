@@ -54,7 +54,20 @@ export class Renderer {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
-        this.lightMapCanvas.height = this.canvas.height;
+        this.lightMapCanvas.height = this.canvas.clientHeight;
+
+        if (SceneManager.currentScene) {
+            const materiasConCanvas = SceneManager.currentScene.getAllMaterias()
+                .filter(m => m.getComponent(Canvas));
+
+            for (const materia of materiasConCanvas) {
+                const canvasComponent = materia.getComponent(Canvas);
+                if (canvasComponent.renderMode === 'Screen Space') {
+                    canvasComponent.size.x = this.canvas.width;
+                    canvasComponent.size.y = this.canvas.height;
+                }
+            }
+        }
     }
 
     clear(cameraComponent) {
@@ -282,16 +295,14 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-
-        if (canvas.renderMode === 'Screen Space') {
-            // The editor's main renderer (isEditor=true) should NOT render Screen Space UI,
-            // as it's now handled as a separate overlay pass in editor.js.
-            // Only the game renderer (isEditor=false) should render it directly.
-            if (!this.isEditor) {
-                this.drawScreenSpaceUI(canvasMateria);
-            }
-        } else {
+        if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
+        } else {
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
@@ -322,14 +333,14 @@ export class Renderer {
         // X Calculation is straightforward
         const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
         const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.x * uiTransform.pivot.x);
         const finalX = parentRect.x + rectX_fromLeft;
 
         // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.y * (1 - uiTransform.pivot.y));
         const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
+        const drawWidth = uiTransform.size.x;
+        const drawHeight = uiTransform.size.y;
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
@@ -378,23 +389,22 @@ export class Renderer {
     }
 
     drawScreenSpaceUI(canvasMateria) {
+        this.beginUI(); // Resets transform to identity
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) {
+            this.end();
             return;
         }
 
-        // For Screen Space, the canvas *always* starts at (0,0) of the viewport
-        // and its size is the viewport's size. Its own Transform is ignored.
         const canvasRect = {
             x: 0,
             y: 0,
-            width: this.canvas.width,
-            height: this.canvas.height
+            width: canvasComponent.size.x,
+            height: canvasComponent.size.y
         };
 
         this.ctx.save();
         this.ctx.beginPath();
-        // The clipping rectangle is the entire canvas for Screen Space UI
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
@@ -404,6 +414,7 @@ export class Renderer {
         }
 
         this.ctx.restore();
+        this.end();
     }
 
     drawWorldSpaceUI(canvasMateria) {

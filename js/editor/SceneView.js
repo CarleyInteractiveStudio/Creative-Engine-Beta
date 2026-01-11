@@ -1700,9 +1700,11 @@ function drawCanvasGizmos() {
     if (canvasComponent.renderMode === 'World Space') {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
+    } else { // Screen Space
+        // Use the dynamic size from the canvas component, but draw it at the object's world position.
+        const size = canvasComponent.size;
+        ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     }
-    // No 'else' block needed. For Screen Space, the actual UI is now rendered
-    // in the scene view by editor.js, so a gizmo is redundant.
 
     ctx.restore();
 }
