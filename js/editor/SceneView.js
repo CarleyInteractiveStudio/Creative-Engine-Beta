@@ -62,11 +62,8 @@ function checkUIGizmoHit(canvasPos) {
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
-    // --- FIX: Only draw UI gizmos for objects that actually have a UITransform ---
     const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) {
-        return; // This is not a UI element, so do nothing.
-    }
+    if (!uiTransform) return;
 
     const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return;
@@ -1279,7 +1276,12 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
-    drawUIGizmos(renderer, getSelectedMateria());
+
+    // --- FIX: Only call drawUIGizmos if the selected object is actually a UI element ---
+    const selected = getSelectedMateria();
+    if (selected && selected.getComponent(Components.UITransform)) {
+        drawUIGizmos(renderer, selected);
+    }
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {
