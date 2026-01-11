@@ -195,9 +195,8 @@ export function getAbsoluteRect(materia, rectCache) {
         const canvas = materia.getComponent(Canvas);
         const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
         if (canvas && transform) {
-            const canvasSize = canvas.renderMode === 'Screen Space'
-                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
-                : canvas.size;
+            // Screen Space Canvases in the editor scene view should use their own defined size, not the window size.
+            const canvasSize = canvas.size;
             parentRect = {
                 x: transform.position.x - canvasSize.width / 2,
                 y: transform.position.y - canvasSize.height / 2,

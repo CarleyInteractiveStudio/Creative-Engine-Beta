@@ -1655,6 +1655,21 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('resize', () => {
             if (renderer) renderer.resize();
             if (gameRenderer) gameRenderer.resize();
+
+            // Actualizar automáticamente el tamaño de los Canvas en Screen Space
+            if (SceneManager.currentScene) {
+                const gameCanvas = dom.gameCanvas;
+                const newWidth = gameCanvas.width;
+                const newHeight = gameCanvas.height;
+
+                for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                    const canvasComponent = materia.getComponent(Components.Canvas);
+                    if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
+                        canvasComponent.size.x = newWidth;
+                        canvasComponent.size.y = newHeight;
+                    }
+                }
+            }
         });
 
         // Scene/Game/Code View Toggle Logic
