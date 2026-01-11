@@ -282,11 +282,14 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        // FIX: Always respect the canvas's render mode, even in the editor.
-        if (canvas.renderMode === 'Screen Space') {
-            this.drawScreenSpaceUI(canvasMateria);
-        } else {
+        if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
+        } else {
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
