@@ -55,18 +55,6 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
-
-        // Update all Screen Space Canvases
-        if (SceneManager.currentScene) {
-            const allMaterias = SceneManager.currentScene.getAllMaterias();
-            for (const materia of allMaterias) {
-                const canvasComponent = materia.getComponent(Canvas);
-                if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
-                    canvasComponent.size.x = this.canvas.width;
-                    canvasComponent.size.y = this.canvas.height;
-                }
-            }
-        }
     }
 
     clear(cameraComponent) {
@@ -396,12 +384,12 @@ export class Renderer {
         }
 
         // For Screen Space, the canvas always starts at (0,0) and fills the screen.
-        // The size is updated by the resize() method.
+        // The size is taken directly from the renderer's canvas dimensions.
         const canvasRect = {
             x: 0,
             y: 0,
-            width: canvasComponent.size.x,
-            height: canvasComponent.size.y
+            width: this.canvas.width,
+            height: this.canvas.height
         };
 
         this.ctx.save();
