@@ -1703,16 +1703,16 @@ function drawCanvasGizmos() {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // For screen space, draw a gizmo that matches the game view's aspect ratio and size.
-        // Use the gameRenderer's canvas as the source of truth for the viewport size.
+        // For screen space, draw a representative box in the world that has the correct aspect ratio
+        // of the game view, but scales naturally with the scene view's camera zoom.
         const gameCanvas = gameRenderer ? gameRenderer.canvas : dom.sceneCanvas;
-        const gizmoWidth = gameCanvas.width;
-        const gizmoHeight = gameCanvas.height;
-        // The gizmo is drawn centered on the Canvas's world position, but its size is not scaled by zoom,
-        // so we divide by zoom to make it appear as a fixed overlay in world space.
-        const scaledWidth = gizmoWidth / camera.effectiveZoom;
-        const scaledHeight = gizmoHeight / camera.effectiveZoom;
-        ctx.strokeRect(pos.x - scaledWidth / 2, pos.y - scaledHeight / 2, scaledWidth, scaledHeight);
+        const aspect = (gameCanvas.width > 0 && gameCanvas.height > 0) ? gameCanvas.width / gameCanvas.height : 16 / 9;
+
+        const GIZMO_BASE_HEIGHT = 400; // A fixed size in world units
+        const gizmoHeight = GIZMO_BASE_HEIGHT;
+        const gizmoWidth = gizmoHeight * aspect;
+
+        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }
 
     ctx.restore();
