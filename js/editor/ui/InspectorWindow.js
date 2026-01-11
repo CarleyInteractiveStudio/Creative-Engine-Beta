@@ -884,6 +884,18 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Canvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
+            let sizeHTML = '';
+            if (isWorldSpace) {
+                sizeHTML = `
+                    <div class="prop-row-multi">
+                        <label>Size</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}">
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}">
+                        </div>
+                    </div>`;
+            }
+
             componentHTML = `
                 <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
                 <div class="component-content">
@@ -894,13 +906,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <option value="World Space" ${isWorldSpace ? 'selected' : ''}>World Space</option>
                         </select>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
-                        </div>
-                    </div>
+                    ${sizeHTML}
                 </div>`;
         } else if (ley instanceof Components.Button) {
             const isColorTint = ley.transition === 'Color Tint';

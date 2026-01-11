@@ -55,6 +55,18 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
+
+        // Update all Screen Space Canvases
+        if (SceneManager.currentScene) {
+            const allMaterias = SceneManager.currentScene.getAllMaterias();
+            for (const materia of allMaterias) {
+                const canvasComponent = materia.getComponent(Canvas);
+                if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
+                    canvasComponent.size.x = this.canvas.width;
+                    canvasComponent.size.y = this.canvas.height;
+                }
+            }
+        }
     }
 
     clear(cameraComponent) {
@@ -378,22 +390,24 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
+        if (!canvasComponent) {
             this.end();
             return;
         }
 
+        // For Screen Space, the canvas always starts at (0,0) and fills the screen.
+        // The size is updated by the resize() method.
         const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
+            x: 0,
+            y: 0,
+            width: canvasComponent.size.x,
+            height: canvasComponent.size.y
         };
 
         this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        // The clipping path should also start at 0,0 for Screen Space UI.
+        this.ctx.rect(0, 0, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas

@@ -1150,7 +1150,7 @@ export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
-        this.size = { x: 800, y: 600 };
+        this.size = { x: 0, y: 0 };
     }
     /**
      * Calculates the world-space rectangle for a given UI element (child of this canvas).
