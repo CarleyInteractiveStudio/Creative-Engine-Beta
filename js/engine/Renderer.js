@@ -384,9 +384,11 @@ export class Renderer {
             return;
         }
 
+        // Para el modo Screen Space en el juego, ignoramos la posición del transform del Canvas
+        // y lo anclamos a la esquina (0,0) de la pantalla de juego.
         const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
+            x: 0,
+            y: 0,
             width: this.canvas.width,
             height: this.canvas.height
         };
