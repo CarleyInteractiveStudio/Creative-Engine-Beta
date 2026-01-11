@@ -1138,6 +1138,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (activeView === 'scene-content' && renderer) {
                 updateScene(renderer, false);
+                 // --- SECOND PASS: Render Screen Space UI Overlay ---
+                // We do this after the main scene render to ensure UI is always on top.
+                const screenSpaceCanvases = SceneManager.currentScene.getMateriasWithComponent(Components.Canvas)
+                    .filter(m => m.getComponent(Components.Canvas).renderMode === 'Screen Space');
+
+                if (screenSpaceCanvases.length > 0) {
+                    // We use the SCENE renderer's context directly, but we reset its transform
+                    // to ensure the UI is drawn in screen space, unaffected by the scene camera.
+                    renderer.beginUI(); // Resets transform to identity matrix
+                    for (const canvasMateria of screenSpaceCanvases) {
+                        renderer.drawScreenSpaceUI(canvasMateria);
+                    }
+                    renderer.end(); // Restores the transform to the previous state (camera view)
+                }
             } else if (activeView === 'game-content' && gameRenderer) {
                 updateScene(gameRenderer, true);
             }

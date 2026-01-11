@@ -282,14 +282,16 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
-        } else {
-            if (canvas.renderMode === 'Screen Space') {
+
+        if (canvas.renderMode === 'Screen Space') {
+            // The editor's main renderer (isEditor=true) should NOT render Screen Space UI,
+            // as it's now handled as a separate overlay pass in editor.js.
+            // Only the game renderer (isEditor=false) should render it directly.
+            if (!this.isEditor) {
                 this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
             }
+        } else {
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
@@ -376,15 +378,13 @@ export class Renderer {
     }
 
     drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) {
-            this.end();
             return;
         }
 
-        // For Screen Space, the canvas always starts at (0,0) and fills the screen.
-        // The size is taken directly from the renderer's canvas dimensions.
+        // For Screen Space, the canvas *always* starts at (0,0) of the viewport
+        // and its size is the viewport's size. Its own Transform is ignored.
         const canvasRect = {
             x: 0,
             y: 0,
@@ -394,8 +394,8 @@ export class Renderer {
 
         this.ctx.save();
         this.ctx.beginPath();
-        // The clipping path should also start at 0,0 for Screen Space UI.
-        this.ctx.rect(0, 0, canvasRect.width, canvasRect.height);
+        // The clipping rectangle is the entire canvas for Screen Space UI
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
@@ -404,7 +404,6 @@ export class Renderer {
         }
 
         this.ctx.restore();
-        this.end();
     }
 
     drawWorldSpaceUI(canvasMateria) {

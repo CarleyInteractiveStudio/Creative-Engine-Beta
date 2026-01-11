@@ -163,7 +163,6 @@ import { getAbsoluteRect } from '../engine/UITransformUtils.js';
 // Dependencies from editor.js
 let dom;
 let renderer;
-let gameRenderer; // The renderer for the 'Game' tab view
 let InputManager;
 let getSelectedMateria;
 let selectMateria;
@@ -530,7 +529,6 @@ export function setActiveTool(toolName) {
 export function initialize(dependencies) {
     dom = dependencies.dom;
     renderer = dependencies.renderer;
-    gameRenderer = dependencies.gameRenderer;
     InputManager = dependencies.InputManager;
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
@@ -1702,18 +1700,9 @@ function drawCanvasGizmos() {
     if (canvasComponent.renderMode === 'World Space') {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
-    } else { // Screen Space
-        // For screen space, draw a representative box in the world that has the correct aspect ratio
-        // of the game view, but scales naturally with the scene view's camera zoom.
-        const gameCanvas = gameRenderer ? gameRenderer.canvas : dom.sceneCanvas;
-        const aspect = (gameCanvas.width > 0 && gameCanvas.height > 0) ? gameCanvas.width / gameCanvas.height : 16 / 9;
-
-        const GIZMO_BASE_HEIGHT = 400; // A fixed size in world units
-        const gizmoHeight = GIZMO_BASE_HEIGHT;
-        const gizmoWidth = gizmoHeight * aspect;
-
-        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }
+    // No 'else' block needed. For Screen Space, the actual UI is now rendered
+    // in the scene view by editor.js, so a gizmo is redundant.
 
     ctx.restore();
 }
