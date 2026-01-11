@@ -29,29 +29,37 @@ export function getAbsoluteRect(materia, rectCache) {
     let parentTransformForWorld = { x: 0, y: 0 };
 
     if (materia.parent) {
-        // Primero, comprobamos si el padre tiene un Canvas. Si es así, ese es nuestro "mundo" de UI.
         const parentCanvas = materia.parent.getComponent('Canvas');
         if (parentCanvas) {
-            // El padre es el Canvas. Su "rect" es su tamaño, pero su posición en el mundo
-            // viene dada por su componente Transform normal.
             const worldTransform = materia.parent.getComponent('Transform');
             if (worldTransform) {
-                 parentTransformForWorld = { x: worldTransform.position.x, y: worldTransform.position.y };
+                parentTransformForWorld = { x: worldTransform.position.x, y: worldTransform.position.y };
             }
-             parentRect = {
+            parentRect = {
                 x: -parentCanvas.size.x / 2,
                 y: -parentCanvas.size.y / 2,
                 width: parentCanvas.size.x,
                 height: parentCanvas.size.y
             };
-
         } else {
-            // FIX: Si el padre no es un Canvas, es otro elemento de UI.
-            // La llamada recursiva ya devuelve el rect del padre en coordenadas de mundo.
-            // No debemos aplicar una segunda transformación mundial al final.
             parentRect = getAbsoluteRect(materia.parent, rectCache);
-            // Al establecer esto en cero, evitamos la doble transformación al final del cálculo.
             parentTransformForWorld = { x: 0, y: 0 };
+        }
+    } else {
+        // FIX: Handle root UI elements (like a Canvas with no parent).
+        // Its world position is its own Transform, and its parentRect is its own Canvas size.
+        const worldTransform = materia.getComponent('Transform');
+        const canvas = materia.getComponent('Canvas');
+        if (worldTransform) {
+            parentTransformForWorld = { x: worldTransform.position.x, y: worldTransform.position.y };
+        }
+        if (canvas) {
+            parentRect = {
+                x: -canvas.size.x / 2,
+                y: -canvas.size.y / 2,
+                width: canvas.size.x,
+                height: canvas.size.y
+            };
         }
     }
 
