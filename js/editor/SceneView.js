@@ -65,8 +65,7 @@ function drawUIGizmos(renderer, materia) {
     const uiTransform = materia.getComponent(Components.UITransform);
     if (!uiTransform) return;
 
-    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return;
+    // No necesitamos buscar el ancestro aquí, getAbsoluteRect ya maneja la jerarquía.
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -77,7 +76,7 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // Bounding box of the UI element in world space
+    // Usamos getAbsoluteRect para obtener la posición y tamaño correctos en el mundo.
     const rectCache = new Map();
     const rect = getAbsoluteRect(materia, rectCache);
 
@@ -1701,12 +1700,9 @@ function drawCanvasGizmos() {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // For screen space, we just draw a representative box in the world
-        const sceneCanvas = dom.sceneCanvas;
-        const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
-        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
+        // Para el modo Screen Space, dibujamos el gizmo usando el tamaño definido en el componente Canvas.
+        const size = canvasComponent.size;
+        ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     }
 
     ctx.restore();
