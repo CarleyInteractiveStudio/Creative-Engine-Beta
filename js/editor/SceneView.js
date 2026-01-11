@@ -1276,12 +1276,7 @@ export function drawOverlay() {
 
     // Draw Canvas gizmos
     drawCanvasGizmos();
-
-    // --- FIX: Only call drawUIGizmos if the selected object is actually a UI element ---
-    const selected = getSelectedMateria();
-    if (selected && selected.getComponent(Components.UITransform)) {
-        drawUIGizmos(renderer, selected);
-    }
+    drawUIGizmos(renderer, getSelectedMateria());
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {

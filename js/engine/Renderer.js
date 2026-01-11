@@ -55,18 +55,6 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
-
-        // --- FIX: Synchronize Screen Space Canvas components ---
-        if (window.SceneManager && window.SceneManager.currentScene) {
-            const allMaterias = window.SceneManager.currentScene.getAllMaterias();
-            for (const materia of allMaterias) {
-                const canvasComponent = materia.getComponent(Canvas);
-                if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
-                    canvasComponent.size.x = this.canvas.clientWidth;
-                    canvasComponent.size.y = this.canvas.clientHeight;
-                }
-            }
-        }
     }
 
     clear(cameraComponent) {
@@ -294,14 +282,11 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
+        // FIX: Always respect the canvas's render mode, even in the editor.
+        if (canvas.renderMode === 'Screen Space') {
+            this.drawScreenSpaceUI(canvasMateria);
         } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
