@@ -1658,16 +1658,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Actualizar automáticamente el tamaño de los Canvas en Screen Space
             if (SceneManager.currentScene) {
-                const gameCanvas = dom.gameCanvas;
+                const gameCanvas = dom.gameCanvas; // Usamos el gameCanvas como referencia del tamaño
                 const newWidth = gameCanvas.width;
                 const newHeight = gameCanvas.height;
 
+                let inspectorNeedsUpdate = false;
                 for (const materia of SceneManager.currentScene.getAllMaterias()) {
                     const canvasComponent = materia.getComponent(Components.Canvas);
                     if (canvasComponent && canvasComponent.renderMode === 'Screen Space') {
-                        canvasComponent.size.x = newWidth;
-                        canvasComponent.size.y = newHeight;
+                        // Comprobamos si el tamaño ha cambiado realmente para evitar actualizaciones innecesarias
+                        if (canvasComponent.size.x !== newWidth || canvasComponent.size.y !== newHeight) {
+                            canvasComponent.size.x = newWidth;
+                            canvasComponent.size.y = newHeight;
+
+                            // Si el objeto afectado está seleccionado, marcamos que el inspector necesita actualizarse
+                            if (selectedMateria && selectedMateria.id === materia.id) {
+                                inspectorNeedsUpdate = true;
+                            }
+                        }
                     }
+                }
+                // Si un canvas relevante fue modificado y estaba seleccionado, actualizamos el inspector
+                if (inspectorNeedsUpdate) {
+                    updateInspector();
                 }
             }
         });
