@@ -332,6 +332,13 @@ export class Renderer {
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
         // --- Drawing Logic for the current element ---
+        this.ctx.save();
+        // Apply rotation
+        const pivotX = finalX + (drawWidth * uiTransform.pivot.x);
+        const pivotY = finalY + (drawHeight * uiTransform.pivot.y);
+        this.ctx.translate(pivotX, pivotY);
+        this.ctx.rotate(uiTransform.rotation * Math.PI / 180);
+        this.ctx.translate(-pivotX, -pivotY);
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
         const textureRender = element.getComponent(TextureRender);
@@ -367,7 +374,7 @@ export class Renderer {
         if (uiText) {
             this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
         }
-
+        this.ctx.restore();
         // --- Recursion ---
         // Now, draw children, passing this element's rectangle as the new parentRect
         for (const child of element.children) {
@@ -378,30 +385,53 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
+        const canvasTransform = canvasMateria.getComponent(Transform); // Although unused in SS, good to have
         if (!canvasComponent || !canvasTransform) {
             this.end();
             return;
         }
 
+        const targetWidth = this.canvas.width;
+        const targetHeight = this.canvas.height;
+        const sourceWidth = canvasComponent.size.x;
+        const sourceHeight = canvasComponent.size.y;
+
+        const targetAspect = targetWidth / targetHeight;
+        const sourceAspect = sourceWidth / sourceHeight;
+
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (targetAspect > sourceAspect) {
+            // Target is wider than source, letterbox on the sides
+            scale = targetHeight / sourceHeight;
+            offsetX = (targetWidth - sourceWidth * scale) / 2;
+        } else {
+            // Target is taller than source, letterbox on top/bottom
+            scale = targetWidth / sourceWidth;
+            offsetY = (targetHeight - sourceHeight * scale) / 2;
+        }
+
         const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
+            x: 0, // In the scaled context, the canvas starts at 0,0
+            y: 0,
+            width: sourceWidth,
+            height: sourceHeight
         };
 
         this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
+        // Apply the letterboxing transformation
+        this.ctx.translate(offsetX, offsetY);
+        this.ctx.scale(scale, scale);
+
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }
 
-        this.ctx.restore();
+        this.ctx.restore(); // Restores from the letterbox transform
         this.end();
     }
 

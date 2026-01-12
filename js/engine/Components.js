@@ -762,6 +762,7 @@ export class UITransform extends Leyes {
     constructor(materia) {
         super(materia);
         this.position = { x: 0, y: 0 }; // Position relative to the anchor point
+        this.rotation = 0;
         this.size = { width: 100, height: 100 };
         this.pivot = { x: 0.5, y: 0.5 }; // 0,0 is top-left, 1,1 is bottom-right
         this.anchorPreset = 'middle-center'; // e.g., 'top-left', 'bottom-right', 'stretch-horizontal', etc.
@@ -770,6 +771,7 @@ export class UITransform extends Leyes {
     clone() {
         const newUITransform = new UITransform(null);
         newUITransform.position = { ...this.position };
+        newUITransform.rotation = this.rotation;
         newUITransform.size = { ...this.size };
         newUITransform.pivot = { ...this.pivot };
         newUITransform.anchorPreset = this.anchorPreset;

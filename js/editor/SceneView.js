@@ -38,6 +38,15 @@ function checkUIGizmoHit(canvasPos) {
                 return 'ui-move-xy';
             }
             break;
+        case 'rotate':
+            {
+                const radius = Math.max(rect.width, rect.height) / 2 + (20 / zoom);
+                const dist = Math.hypot(worldMouse.x - centerX, worldMouse.y - centerY);
+                if (Math.abs(dist - radius) < handleHitboxSize) {
+                    return 'ui-rotate';
+                }
+            }
+            break;
         case 'scale':
             const handles = [
                 { x: rect.x, y: rect.y, name: 'ui-scale-tl' },
@@ -85,29 +94,32 @@ function drawUIGizmos(renderer, materia) {
     const centerY = rect.y + rect.height / 2;
 
     ctx.save();
-
+    // Move context to the center of the UI element for easier rotation drawing
+    ctx.translate(centerX, centerY);
+    // Apply the element's rotation to the gizmos
+    ctx.rotate(uiTransform.rotation * Math.PI / 180);
     // Draw selection outline
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
     ctx.lineWidth = 1 / zoom;
     ctx.setLineDash([4 / zoom, 2 / zoom]);
-    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.strokeRect(-rect.width / 2, -rect.height / 2, rect.width, rect.height);
     ctx.setLineDash([]);
 
 
     switch (activeTool) {
         case 'move':
-            ctx.lineWidth = HANDLE_THICKNESS;
+             ctx.lineWidth = HANDLE_THICKNESS;
 
             // Y-Axis (Green)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -GIZMO_SIZE);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.moveTo(0, -GIZMO_SIZE);
+            ctx.lineTo(-ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
+            ctx.lineTo(ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
             ctx.closePath();
             ctx.fillStyle = '#00ff00';
             ctx.fill();
@@ -115,13 +127,13 @@ function drawUIGizmos(renderer, materia) {
             // X-Axis (Red)
             ctx.strokeStyle = '#ff0000';
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE, centerY);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(GIZMO_SIZE, 0);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(centerX + GIZMO_SIZE, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY - ARROW_HEAD_SIZE / 2);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY + ARROW_HEAD_SIZE / 2);
+            ctx.moveTo(GIZMO_SIZE, 0);
+            ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, -ARROW_HEAD_SIZE / 2);
+            ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, ARROW_HEAD_SIZE / 2);
             ctx.closePath();
             ctx.fillStyle = '#ff0000';
             ctx.fill();
@@ -129,21 +141,28 @@ function drawUIGizmos(renderer, materia) {
             // XY-Plane Handle (Central Square)
             const SQUARE_SIZE = 10 / zoom;
             ctx.fillStyle = 'rgba(0, 100, 255, 0.7)';
-            ctx.fillRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
+            ctx.fillRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
             ctx.strokeStyle = '#ffffff';
-            ctx.strokeRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
+            ctx.strokeRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
             break;
-
+        case 'rotate':
+            const radius = Math.max(rect.width, rect.height) / 2 + (20 / zoom);
+            ctx.lineWidth = HANDLE_THICKNESS;
+            ctx.strokeStyle = '#0000ff'; // Blue for rotation
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+            break;
         case 'scale':
             const handles = [
-                { x: rect.x, y: rect.y }, // Top-left
-                { x: rect.x + rect.width, y: rect.y }, // Top-right
-                { x: rect.x, y: rect.y + rect.height }, // Bottom-left
-                { x: rect.x + rect.width, y: rect.y + rect.height }, // Bottom-right
-                { x: rect.x + rect.width / 2, y: rect.y }, // Top
-                { x: rect.x + rect.width / 2, y: rect.y + rect.height }, // Bottom
-                { x: rect.x, y: rect.y + rect.height / 2 }, // Left
-                { x: rect.x + rect.width, y: rect.y + rect.height / 2 }, // Right
+                { x: -rect.width / 2, y: -rect.height / 2 }, // Top-left
+                { x: rect.width / 2, y: -rect.height / 2 }, // Top-right
+                { x: -rect.width / 2, y: rect.height / 2 }, // Bottom-left
+                { x: rect.width / 2, y: rect.height / 2 }, // Bottom-right
+                { x: 0, y: -rect.height / 2 }, // Top
+                { x: 0, y: rect.height / 2 }, // Bottom
+                { x: -rect.width / 2, y: 0 }, // Left
+                { x: rect.width / 2, y: 0 }, // Right
             ];
              ctx.fillStyle = '#0090ff';
             const halfBox = SCALE_BOX_SIZE / 2;
@@ -577,6 +596,17 @@ export function initialize(dependencies) {
             case 'ui-move-xy':
                 uiTransform.position.x += dx;
                 uiTransform.position.y -= dy; // Y-UP: A positive dy (mouse down) should decrease the logical Y value.
+                break;
+            case 'ui-rotate':
+                {
+                    const rectCache = new Map();
+                    const rect = getAbsoluteRect(dragState.materia, rectCache);
+                    const centerX = rect.x + rect.width / 2;
+                    const centerY = rect.y + rect.height / 2;
+                    const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
+                    const angle = Math.atan2(worldMouse.y - centerY, worldMouse.x - centerX) * 180 / Math.PI;
+                    uiTransform.rotation = angle + 90;
+                }
                 break;
             // --- UI Scaling with Pivot Correction ---
             case 'ui-scale-r': // Right handle
