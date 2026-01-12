@@ -1566,7 +1566,7 @@ function drawUIGizmos(renderer, selectedMateria) {
     if (!scene) return;
 
     // We need to draw gizmos for the selected materia AND all of its UI children.
-    const materiasToDraw = [selectedMateria, ...scene.getDescendants(selectedMateria)];
+    const materiasToDraw = scene.getMateriasRecursive(selectedMateria);
 
     materiasToDraw.forEach(materia => {
         const uiTransform = materia.getComponent(Components.UITransform);

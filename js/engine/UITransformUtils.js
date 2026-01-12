@@ -225,7 +225,12 @@ export function getUIRectRecursive(materia, scene, editorRefs) {
     const parentCanvas = parentMateria.getComponent(Canvas);
     if (parentCanvas) {
         // Base case: The parent is the Canvas. Get its root rect.
-        const rootRect = parentCanvas.getRootRect(editorRefs.renderer.canvas, editorRefs.getActiveView);
+        const isGameView = editorRefs.getActiveView() === 'game-content';
+        const viewSize = {
+            width: editorRefs.renderer.canvas.width,
+            height: editorRefs.renderer.canvas.height
+        };
+        const rootRect = parentCanvas.getRootRect(isGameView, viewSize);
         return getRelativeRect(uiTransform, rootRect);
     }
 
