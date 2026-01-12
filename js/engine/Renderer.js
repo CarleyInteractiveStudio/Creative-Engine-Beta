@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages, getRelativeRect } from './UITransformUtils.js';
+import { getUIRectRecursive, getRelativeRect } from './UITransformUtils.js';
 
 export class Renderer {
     constructor(canvas, isEditor = false) {
@@ -285,83 +285,62 @@ export class Renderer {
         const canvas = canvasMateria.getComponent(Canvas);
         if (!canvas) return;
 
-        // Determine if we need to switch to a screen-space drawing context
         const isScreenSpaceInGame = canvas.renderMode === 'Screen Space' && isGameView;
         if (isScreenSpaceInGame) {
             this.beginUI();
         }
 
-        // Get the root rectangle for the canvas using the new unified logic
         const gameViewSize = { width: this.canvas.width, height: this.canvas.height };
         const rootRect = canvas.getRootRect(isGameView, gameViewSize);
 
-        // Clip the drawing area to the canvas's bounds
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(rootRect.x, rootRect.y, rootRect.width, rootRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, rootRect);
+        // Get all descendant UI elements of the canvas
+        const allUIElements = SceneManager.currentScene.getMateriasRecursive(canvasMateria);
+
+        for (const element of allUIElements) {
+            if (element === canvasMateria || !element.isActive) continue;
+
+            const uiTransform = element.getComponent(UITransform);
+            if (!uiTransform) continue;
+
+            // Use the ABSOLUTE recursive function for rendering, just like the gizmos
+            const worldRect = getUIRectRecursive(element, SceneManager.currentScene, {
+                renderer: this,
+                getActiveView: () => isGameView ? 'game-content' : 'scene-content'
+            });
+
+            if (!worldRect) continue;
+
+            this._drawSingleUIElement(element, worldRect);
         }
 
-        // Clean up the clipping mask and screen-space context
         this.ctx.restore();
         if (isScreenSpaceInGame) {
             this.end();
         }
     }
 
-    _drawUIElementAndChildren(element, parentRect) {
-        if (!element.isActive) return;
-
-        const uiTransform = element.getComponent(UITransform);
-        if (!uiTransform) return;
-
-        // Calculate the element's rectangle using the new, reliable utility function
-        const currentRect = getRelativeRect(uiTransform, parentRect);
-
-        // --- Drawing Logic for the current element ---
+    _drawSingleUIElement(element, rect) {
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
-        const textureRender = element.getComponent(TextureRender);
 
         if (uiImage) {
+            // First, draw the solid color block
             this.ctx.fillStyle = uiImage.color;
-            this.ctx.fillRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
-            if (uiImage.sprite && uiImage.sprite.complete) {
-                this.ctx.save();
-                this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.drawImage(uiImage.sprite, currentRect.x, currentRect.y, currentRect.width, currentRect.height);
-                this.ctx.restore();
+            this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+            // Then, if a sprite is present, draw it on top
+            if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
+                this.ctx.drawImage(uiImage.sprite, rect.x, rect.y, rect.width, rect.height);
             }
-        } else if (textureRender) {
-            this.ctx.save();
-            this.ctx.translate(currentRect.x, currentRect.y);
-            if (textureRender.texture && textureRender.texture.complete) {
-                this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
-            } else {
-                this.ctx.fillStyle = textureRender.color;
-            }
-            if (textureRender.shape === 'Rectangle') {
-                this.ctx.fillRect(0, 0, currentRect.width, currentRect.height);
-            } else if (textureRender.shape === 'Circle') {
-                this.ctx.beginPath();
-                this.ctx.arc(currentRect.width / 2, currentRect.height / 2, currentRect.width / 2, 0, 2 * Math.PI);
-                this.ctx.fill();
-            }
-            this.ctx.restore();
         }
 
         if (uiText) {
-            this._drawUIText(uiText, currentRect.x, currentRect.y, currentRect.width, currentRect.height);
-        }
-
-        // --- Recursion ---
-        // Now, draw children, passing this element's calculated rectangle as the new parentRect
-        for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIText(uiText, rect.x, rect.y, rect.width, rect.height);
         }
     }
 }
