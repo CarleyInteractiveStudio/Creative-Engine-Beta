@@ -1,164 +1,8 @@
-function checkUIGizmoHit(canvasPos) {
-    const selectedMateria = getSelectedMateria();
-    if (!selectedMateria || !renderer) return null;
-
-    const uiTransform = selectedMateria.getComponent(Components.UITransform);
-    if (!uiTransform) return null;
-
-    const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return null;
-
-    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache);
-
-
-    const centerX = rect.x + rect.width / 2;
-    const centerY = rect.y + rect.height / 2;
-
-    const zoom = renderer.camera.effectiveZoom;
-    const gizmoSize = 60 / zoom;
-    const handleHitboxSize = 12 / zoom;
-
-    const checkHit = (targetX, targetY) => {
-        return Math.abs(worldMouse.x - targetX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - targetY) < handleHitboxSize / 2;
-    };
-
-
-    switch (activeTool) {
-        case 'move':
-            if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
-             // Central square hit detection
-            const squareHitboxSize = 10 / zoom;
-            if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
-                return 'ui-move-xy';
-            }
-            break;
-        case 'scale':
-            const handles = [
-                { x: rect.x, y: rect.y, name: 'ui-scale-tl' },
-                { x: rect.x + rect.width, y: rect.y, name: 'ui-scale-tr' },
-                { x: rect.x, y: rect.y + rect.height, name: 'ui-scale-bl' },
-                { x: rect.x + rect.width, y: rect.y + rect.height, name: 'ui-scale-br' },
-                 { x: rect.x + rect.width / 2, y: rect.y, name: 'ui-scale-t' },
-                { x: rect.x + rect.width / 2, y: rect.y + rect.height, name: 'ui-scale-b' },
-                { x: rect.x, y: rect.y + rect.height / 2, name: 'ui-scale-l' },
-                { x: rect.x + rect.width, y: rect.y + rect.height / 2, name: 'ui-scale-r' },
-            ];
-            for (const handle of handles) {
-                if (checkHit(handle.x, handle.y)) return handle.name;
-            }
-            break;
-    }
-
-
-    return null;
-}
-
-function drawUIGizmos(renderer, materia) {
-    if (!materia || !renderer) return;
-
-    const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) return;
-
-    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return;
-
-    const { ctx, camera } = renderer;
-    const zoom = camera.effectiveZoom;
-
-    // --- Gizmo settings ---
-    const GIZMO_SIZE = 60 / zoom;
-    const HANDLE_THICKNESS = 2 / zoom;
-    const ARROW_HEAD_SIZE = 8 / zoom;
-    const SCALE_BOX_SIZE = 8 / zoom;
-
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache);
-
-    const centerX = rect.x + rect.width / 2;
-    const centerY = rect.y + rect.height / 2;
-
-    ctx.save();
-
-    // Draw selection outline
-    ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
-    ctx.lineWidth = 1 / zoom;
-    ctx.setLineDash([4 / zoom, 2 / zoom]);
-    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-    ctx.setLineDash([]);
-
-
-    switch (activeTool) {
-        case 'move':
-            ctx.lineWidth = HANDLE_THICKNESS;
-
-            // Y-Axis (Green)
-            ctx.strokeStyle = '#00ff00';
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX, centerY - GIZMO_SIZE);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY - GIZMO_SIZE);
-            ctx.lineTo(centerX - ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(centerX + ARROW_HEAD_SIZE / 2, centerY - GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.closePath();
-            ctx.fillStyle = '#00ff00';
-            ctx.fill();
-
-            // X-Axis (Red)
-            ctx.strokeStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE, centerY);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(centerX + GIZMO_SIZE, centerY);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY - ARROW_HEAD_SIZE / 2);
-            ctx.lineTo(centerX + GIZMO_SIZE - ARROW_HEAD_SIZE, centerY + ARROW_HEAD_SIZE / 2);
-            ctx.closePath();
-            ctx.fillStyle = '#ff0000';
-            ctx.fill();
-
-            // XY-Plane Handle (Central Square)
-            const SQUARE_SIZE = 10 / zoom;
-            ctx.fillStyle = 'rgba(0, 100, 255, 0.7)';
-            ctx.fillRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
-            ctx.strokeStyle = '#ffffff';
-            ctx.strokeRect(centerX - SQUARE_SIZE / 2, centerY - SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
-            break;
-
-        case 'scale':
-            const handles = [
-                { x: rect.x, y: rect.y }, // Top-left
-                { x: rect.x + rect.width, y: rect.y }, // Top-right
-                { x: rect.x, y: rect.y + rect.height }, // Bottom-left
-                { x: rect.x + rect.width, y: rect.y + rect.height }, // Bottom-right
-                { x: rect.x + rect.width / 2, y: rect.y }, // Top
-                { x: rect.x + rect.width / 2, y: rect.y + rect.height }, // Bottom
-                { x: rect.x, y: rect.y + rect.height / 2 }, // Left
-                { x: rect.x + rect.width, y: rect.y + rect.height / 2 }, // Right
-            ];
-             ctx.fillStyle = '#0090ff';
-            const halfBox = SCALE_BOX_SIZE / 2;
-            handles.forEach(handle => {
-                ctx.fillRect(handle.x - halfBox, handle.y - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
-            });
-            break;
-    }
-
-    ctx.restore();
-}
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+// Import the new recursive helper
+import { getRelativeRect, getUIRectRecursive } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;
@@ -1710,4 +1554,115 @@ function drawCanvasGizmos() {
     }
 
     ctx.restore();
+}
+
+
+// --- UI Gizmo Functions ---
+
+function drawUIGizmos(renderer, selectedMateria) {
+    if (!selectedMateria || !renderer || !SceneManager) return;
+
+    const scene = SceneManager.currentScene;
+    if (!scene) return;
+
+    // We need to draw gizmos for the selected materia AND all of its UI children.
+    const materiasToDraw = [selectedMateria, ...scene.getDescendants(selectedMateria)];
+
+    materiasToDraw.forEach(materia => {
+        const uiTransform = materia.getComponent(Components.UITransform);
+        if (!uiTransform) return;
+
+        const rect = getUIRectRecursive(materia, scene, { renderer, getActiveView });
+        if (!rect) return;
+
+        const { ctx, camera } = renderer;
+        const zoom = camera.effectiveZoom;
+        const isSelected = materia.id === selectedMateria.id;
+
+        ctx.save();
+        // Draw the main rectangle outline
+        ctx.lineWidth = isSelected ? (2 / zoom) : (1 / zoom);
+        ctx.strokeStyle = isSelected ? 'rgba(255, 255, 0, 0.9)' : 'rgba(255, 255, 255, 0.5)';
+        ctx.setLineDash([]);
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+        // Draw resize handles for the selected UI element
+        if (isSelected) {
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+            const handleSize = 8 / zoom;
+            const halfHandle = handleSize / 2;
+            const handles = [
+                { x: rect.x + rect.width / 2, y: rect.y }, // Top
+                { x: rect.x + rect.width / 2, y: rect.y + rect.height }, // Bottom
+                { x: rect.x, y: rect.y + rect.height / 2 }, // Left
+                { x: rect.x + rect.width, y: rect.y + rect.height / 2 }, // Right
+                { x: rect.x, y: rect.y }, // Top-Left
+                { x: rect.x + rect.width, y: rect.y }, // Top-Right
+                { x: rect.x, y: rect.y + rect.height }, // Bottom-Left
+                { x: rect.x + rect.width, y: rect.y + rect.height }, // Bottom-Right
+            ];
+            handles.forEach(h => ctx.fillRect(h.x - halfHandle, h.y - halfHandle, handleSize, handleSize));
+        }
+        ctx.restore();
+    });
+}
+
+function checkUIGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer || !SceneManager) return null;
+
+    const scene = SceneManager.currentScene;
+    if (!scene) return null;
+
+    // Check the selected materia first
+    let hitResult = checkHandlesForMateria(selectedMateria, canvasPos);
+    if (hitResult) return hitResult;
+
+    // If no handle on the parent was hit, check children
+    // This allows clicking on a child to select it, for future implementation.
+    // For now, we only care about dragging handles on the *currently selected* materia.
+    const rect = getUIRectRecursive(selectedMateria, scene, { renderer, getActiveView });
+    if (!rect) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Check main body hit for movement
+    if (worldMouse.x >= rect.x && worldMouse.x <= rect.x + rect.width &&
+        worldMouse.y >= rect.y && worldMouse.y <= rect.y + rect.height) {
+        return 'ui-move-xy';
+    }
+
+    return null;
+}
+
+function checkHandlesForMateria(materia, canvasPos) {
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) return null;
+
+    const scene = SceneManager.currentScene;
+    const rect = getUIRectRecursive(materia, scene, { renderer, getActiveView });
+    if (!rect) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    const handleHitboxSize = 12 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: rect.x + rect.width, y: rect.y + rect.height / 2, name: 'ui-scale-r' },
+        { x: rect.x, y: rect.y + rect.height / 2, name: 'ui-scale-l' },
+        { x: rect.x + rect.width / 2, y: rect.y + rect.height, name: 'ui-scale-b' },
+        { x: rect.x + rect.width / 2, y: rect.y, name: 'ui-scale-t' },
+        { x: rect.x + rect.width, y: rect.y, name: 'ui-scale-tr' },
+        { x: rect.x, y: rect.y, name: 'ui-scale-tl' },
+        { x: rect.x + rect.width, y: rect.y + rect.height, name: 'ui-scale-br' },
+        { x: rect.x, y: rect.y + rect.height, name: 'ui-scale-bl' },
+    ];
+
+    for (const handle of handles) {
+        if (Math.abs(worldMouse.x - handle.x) < halfHitbox && Math.abs(worldMouse.y - handle.y) < halfHitbox) {
+            return handle.name;
+        }
+    }
+
+    return null;
 }

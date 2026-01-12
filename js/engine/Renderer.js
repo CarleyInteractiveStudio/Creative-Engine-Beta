@@ -1,6 +1,7 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, getRelativeRect } from './UITransformUtils.js';
+
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -279,29 +280,37 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawCanvas(canvasMateria) {
+    drawCanvas(canvasMateria, isGameView = false) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
-        } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
-        }
-    }
+        if (!canvas) return;
 
-    getAnchorPoint(preset, canvasWidth, canvasHeight) {
-        const anchor = { x: 0.5, y: 0.5 };
-        if (preset.includes('left')) anchor.x = 0;
-        if (preset.includes('center')) anchor.x = 0.5;
-        if (preset.includes('right')) anchor.x = 1;
-        if (preset.includes('top')) anchor.y = 0;
-        if (preset.includes('middle')) anchor.y = 0.5;
-        if (preset.includes('bottom')) anchor.y = 1;
-        return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
+        // Determine if we need to switch to a screen-space drawing context
+        const isScreenSpaceInGame = canvas.renderMode === 'Screen Space' && isGameView;
+        if (isScreenSpaceInGame) {
+            this.beginUI();
+        }
+
+        // Get the root rectangle for the canvas using the new unified logic
+        const gameViewSize = { width: this.canvas.width, height: this.canvas.height };
+        const rootRect = canvas.getRootRect(isGameView, gameViewSize);
+
+        // Clip the drawing area to the canvas's bounds
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(rootRect.x, rootRect.y, rootRect.width, rootRect.height);
+        this.ctx.clip();
+
+        // Start the recursive drawing process for all direct children
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, rootRect);
+        }
+
+        // Clean up the clipping mask and screen-space context
+        this.ctx.restore();
+        if (isScreenSpaceInGame) {
+            this.end();
+        }
     }
 
     _drawUIElementAndChildren(element, parentRect) {
@@ -310,127 +319,50 @@ export class Renderer {
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
-
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // X Calculation is straightforward
-        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalX = parentRect.x + rectX_fromLeft;
-
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-        const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
-
-        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+        // Calculate the element's rectangle using the new, reliable utility function
+        const currentRect = getRelativeRect(uiTransform, parentRect);
 
         // --- Drawing Logic for the current element ---
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
         const textureRender = element.getComponent(TextureRender);
 
-
         if (uiImage) {
             this.ctx.fillStyle = uiImage.color;
-            this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
+            this.ctx.fillRect(currentRect.x, currentRect.y, currentRect.width, currentRect.height);
             if (uiImage.sprite && uiImage.sprite.complete) {
                 this.ctx.save();
                 this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
+                this.ctx.drawImage(uiImage.sprite, currentRect.x, currentRect.y, currentRect.width, currentRect.height);
                 this.ctx.restore();
             }
         } else if (textureRender) {
-             this.ctx.save();
-            this.ctx.translate(finalX, finalY);
+            this.ctx.save();
+            this.ctx.translate(currentRect.x, currentRect.y);
             if (textureRender.texture && textureRender.texture.complete) {
                 this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
             } else {
                 this.ctx.fillStyle = textureRender.color;
             }
             if (textureRender.shape === 'Rectangle') {
-                this.ctx.fillRect(0, 0, drawWidth, drawHeight);
+                this.ctx.fillRect(0, 0, currentRect.width, currentRect.height);
             } else if (textureRender.shape === 'Circle') {
                 this.ctx.beginPath();
-                this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
+                this.ctx.arc(currentRect.width / 2, currentRect.height / 2, currentRect.width / 2, 0, 2 * Math.PI);
                 this.ctx.fill();
             }
             this.ctx.restore();
         }
 
         if (uiText) {
-            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
+            this._drawUIText(uiText, currentRect.x, currentRect.y, currentRect.width, currentRect.height);
         }
 
         // --- Recursion ---
-        // Now, draw children, passing this element's rectangle as the new parentRect
+        // Now, draw children, passing this element's calculated rectangle as the new parentRect
         for (const child of element.children) {
             this._drawUIElementAndChildren(child, currentRect);
         }
-    }
-
-    drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
-        const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
-            this.end();
-            return;
-        }
-
-        const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
-        };
-
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
-
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
-        }
-
-        this.ctx.restore();
-        this.end();
-    }
-
-    drawWorldSpaceUI(canvasMateria) {
-        const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) return;
-
-        this.ctx.save();
-        const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
-
-        const canvasRect = {
-            x: worldPos.x - size.x / 2,
-            y: worldPos.y - size.y / 2,
-            width: size.x,
-            height: size.y
-        };
-
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
-
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
-        }
-
-        this.ctx.restore();
     }
 }
 

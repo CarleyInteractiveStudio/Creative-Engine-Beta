@@ -170,65 +170,72 @@ export const getAnchorPercentages = (preset) => {
 };
 
 /**
- * Calculates the absolute screen-space rectangle for a UI element by recursively traversing its parents.
- * This is the single source of truth for UI element positioning.
- * @param {Materia} materia The game object with the UITransform.
- * @param {Map<number, {x: number, y: number, width: number, height: number}>} rectCache A cache to store intermediate calculations.
- * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates.
+ * Calculates a UI element's rectangle relative to its parent's rectangle.
+ * This is the new single source of truth for all UI layout calculations.
+ * @param {UITransform} uiTransform The UITransform component of the element.
+ * @param {{x: number, y: number, width: number, height: number}} parentRect The calculated rectangle of the parent container.
+ * @returns {{x: number, y: number, width: number, height: number}} The element's calculated rectangle in the same coordinate system as the parent.
  */
-export function getAbsoluteRect(materia, rectCache) {
-    if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
-    if (rectCache.has(materia.id)) return rectCache.get(materia.id);
-
-    const uiTransform = materia.getComponent(UITransform);
-    if (!uiTransform) {
-        console.warn(`getAbsoluteRect called on Materia '${materia.name}' without a UITransform.`);
-        return { x: 0, y: 0, width: 0, height: 0 };
-    }
-
-    let parentRect;
-    if (materia.parent) {
-        // If there's a parent, recurse up the chain.
-        parentRect = getAbsoluteRect(materia.parent, rectCache);
-    } else {
-        // Base case: If there's no parent, this should be the Canvas.
-        const canvas = materia.getComponent(Canvas);
-        const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
-        if (canvas && transform) {
-            const canvasSize = canvas.renderMode === 'Screen Space'
-                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
-                : canvas.size;
-            parentRect = {
-                x: transform.position.x - canvasSize.width / 2,
-                y: transform.position.y - canvasSize.height / 2,
-                width: canvasSize.width,
-                height: canvasSize.height
-            };
-        } else {
-             // Fallback for an unparented UI element that isn't a canvas.
-            parentRect = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
-        }
+export function getRelativeRect(uiTransform, parentRect) {
+    if (!uiTransform || !parentRect) {
+        return { x: 0, y: 0, width: 100, height: 100 };
     }
 
     const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-    // X Calculation
+    // X Calculation (using standard left-to-right coordinates)
     const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
     const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
     const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
     const finalX = parentRect.x + rectX_fromLeft;
 
-    // Y Calculation (Y-UP to Y-DOWN)
+    // Y Calculation (using a Y-UP logical system and converting to Y-DOWN screen/world coordinates)
+    // The formula is: parent_top + parent_height * (1 - anchor_y) - position_y - height * (1 - pivot_y)
     const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
     const finalY = parentRect.y + rectY_fromTop;
 
-    const absoluteRect = {
+    return {
         x: finalX,
         y: finalY,
         width: uiTransform.size.width,
         height: uiTransform.size.height
     };
+}
 
-    rectCache.set(materia.id, absoluteRect);
-    return absoluteRect;
+
+/**
+ * Recursively calculates the absolute world-space rectangle for any UI element.
+ * It traverses up the hierarchy until it finds the root Canvas.
+ * @param {Materia} materia The Materia object with the UITransform.
+ * @param {Scene} scene The current scene to find Materia by ID.
+ * @param {object} editorRefs References to editor singletons like renderer.
+ * @returns {{x: number, y: number, width: number, height: number}|null} The absolute rectangle or null if invalid.
+ */
+export function getUIRectRecursive(materia, scene, editorRefs) {
+    const uiTransform = materia.getComponent(UITransform);
+    if (!uiTransform) {
+        return null;
+    }
+
+    const parentMateria = scene.findMateriaById(materia.parent);
+    if (!parentMateria) {
+        return null; // Orphaned UI element
+    }
+
+    const parentCanvas = parentMateria.getComponent(Canvas);
+    if (parentCanvas) {
+        // Base case: The parent is the Canvas. Get its root rect.
+        const rootRect = parentCanvas.getRootRect(editorRefs.renderer.canvas, editorRefs.getActiveView);
+        return getRelativeRect(uiTransform, rootRect);
+    }
+
+    // Recursive step: The parent is another UI element.
+    // Get the parent's absolute rect first.
+    const parentRect = getUIRectRecursive(parentMateria, scene, editorRefs);
+    if (!parentRect) {
+        return null; // Invalid parent chain
+    }
+
+    // Now calculate the current element's rect relative to its parent's absolute rect.
+    return getRelativeRect(uiTransform, parentRect);
 }

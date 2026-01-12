@@ -1153,46 +1153,42 @@ export class Canvas extends Leyes {
         this.size = { x: 800, y: 600 };
     }
     /**
-     * Calculates the world-space rectangle for a given UI element (child of this canvas).
-     * @param {UITransform} uiTransform The UITransform component of the element.
-     * @returns {{x: number, y: number, width: number, height: number}} The rectangle in world coordinates.
+     * Determines the root bounding rectangle for this canvas.
+     * This is the starting point for all child UI element calculations.
+     * @param {boolean} isGameView - True if we are rendering the game, false for the editor scene view.
+     * @param {{width: number, height: number}} gameViewSize - The dimensions of the game view canvas.
+     * @returns {{x: number, y: number, width: number, height: number}} The root rectangle.
      */
-    getWorldRect(uiTransform) {
-        const canvasTransform = this.materia.getComponent(Transform);
-        if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
+    getRootRect(isGameView, gameViewSize) {
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return { x: 0, y: 0, width: 0, height: 0 };
 
-        const canvasPos = canvasTransform.position;
-        const canvasSize = this.size;
-        const parentWidth = canvasSize.x;
-        const parentHeight = canvasSize.y;
-
-        // World space coordinates of the canvas edges
-        const canvasLeftEdgeX = canvasPos.x - parentWidth / 2;
-        const canvasTopEdgeY = canvasPos.y - parentHeight / 2;
-
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // --- X Calculation (standard left-to-right) ---
-        const anchorMinX_fromLeft = parentWidth * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        // uiTransform.pivot.x is Y-down (0=left), which is standard for X.
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-
-        // --- Y Calculation (converts Y-UP data to Y-DOWN coordinates) ---
-        // This implements the user-provided formula: parentHeight * (1 - anchorMin.y) - position.y - height * (1 - pivot.y)
-        // anchorMin.y is now Y-up (0=bottom, 1=top)
-        // position.y is now Y-up (positive moves up)
-        // uiTransform.pivot.y is Y-down (0=top), so (1 - pivot.y) converts it to Y-up for the calculation.
-        const rectY_fromTop = parentHeight * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-
-        return {
-            x: canvasLeftEdgeX + rectX_fromLeft,
-            y: canvasTopEdgeY + rectY_fromTop,
-            width: uiTransform.size.width,
-            height: uiTransform.size.height
-        };
+        if (this.renderMode === 'Screen Space') {
+            if (isGameView) {
+                // In-game, it's a simple overlay starting at 0,0 with the game's size.
+                return { x: 0, y: 0, width: gameViewSize.width, height: gameViewSize.height };
+            } else {
+                // In the editor, it's a movable object that simulates the game view's aspect ratio.
+                const aspect = gameViewSize.width / gameViewSize.height;
+                const gizmoHeight = 400; // A fixed representative height in the editor
+                const gizmoWidth = gizmoHeight * aspect;
+                return {
+                    x: transform.position.x - gizmoWidth / 2,
+                    y: transform.position.y - gizmoHeight / 2,
+                    width: gizmoWidth,
+                    height: gizmoHeight
+                };
+            }
+        } else { // World Space
+            // In both editor and game, it's a rectangle in the world based on its transform and size.
+            return {
+                x: transform.position.x - this.size.x / 2,
+                y: transform.position.y - this.size.y / 2,
+                width: this.size.x,
+                height: this.size.y
+            };
+        }
     }
-
 
     clone() {
         const newCanvas = new Canvas(null);
