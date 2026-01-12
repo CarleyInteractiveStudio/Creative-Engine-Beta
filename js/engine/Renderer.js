@@ -450,10 +450,12 @@ export class Renderer {
             width: size.x,
             height: size.y
         };
+        if (canvasComponent.renderMode === 'World Space') {
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
+        }
 
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
