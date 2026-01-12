@@ -867,8 +867,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
         const canvasesToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+        const uiImagesToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.UIImage));
+        const uiTextsToRender = SceneManager.currentScene.getAllMaterias()
+            .filter(m => m.getComponent(Components.UIText));
 
-        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
+        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw, uiImagesToDraw, uiTextsToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
             const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
 
@@ -1009,9 +1013,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Draw Canvases
-            for (const materia of canvasesToDraw) {
-                rendererInstance.drawCanvas(materia, isGameView);
+            // Draw Canvases and their UI children hierarchically
+            for (const canvasMateria of canvasesToDraw) {
+                rendererInstance.beginCanvas(canvasMateria, isGameView);
+
+                // Get all descendants of this specific canvas
+                const descendants = SceneManager.currentScene.getMateriasRecursive(canvasMateria);
+                for (const descendant of descendants) {
+                    if (descendant === canvasMateria) continue; // Skip the canvas itself
+
+                    // Check if the descendant is in our pre-filtered lists to draw it
+                    if (uiImagesToDraw.includes(descendant) || uiTextsToDraw.includes(descendant)) {
+                        rendererInstance.drawUIElement(descendant, isGameView);
+                    }
+                }
+
+                rendererInstance.endCanvas(canvasMateria, isGameView);
             }
         };
 
@@ -1069,6 +1086,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
                     const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
                     const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
+                    const uiImagesInLayer = uiImagesToRender.filter(m => m.layer === layer);
+                    const uiTextsInLayer = uiTextsToRender.filter(m => m.layer === layer);
                     const lightsInLayer = {
                         point: pointLights.filter(l => l.layer === layer),
                         spot: spotLights.filter(l => l.layer === layer),
@@ -1076,12 +1095,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         sprite: spriteLights.filter(l => l.layer === layer)
                     };
 
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer);
+                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer, uiImagesInLayer, uiTextsInLayer);
                     drawLights(lightsInLayer);
                 });
 
             } else {
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender, uiImagesToRender, uiTextsToRender);
                 drawLights(allLights);
             }
 
