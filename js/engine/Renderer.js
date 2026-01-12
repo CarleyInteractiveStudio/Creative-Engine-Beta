@@ -1,6 +1,7 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
 import { getAnchorPercentages } from './UITransformUtils.js';
+import { CANVAS_GIZMO_HEIGHT } from '../editor/Constants.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -281,13 +282,54 @@ export class Renderer {
 
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
-        const canvas = canvasMateria.getComponent(Canvas);
+        const canvasComponent = canvasMateria.getComponent(Canvas);
+        if (!canvasComponent) return;
+
+        // --- Editor-Specific Rendering ---
         if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
-        } else {
-            if (canvas.renderMode === 'Screen Space') {
+            const canvasTransform = canvasMateria.getComponent(Transform);
+            if (!canvasTransform) return;
+
+            this.ctx.save();
+            const worldPos = canvasTransform.position;
+            let size;
+
+            // In the editor, always use the Canvas's defined size for consistency with the gizmo
+            if (canvasComponent.renderMode === 'Screen Space') {
+                 // Use a fixed representative size for Screen Space gizmo area
+                const sceneCanvas = this.canvas; // The editor canvas
+                const aspect = sceneCanvas.width / sceneCanvas.height;
+                const gizmoHeight = CANVAS_GIZMO_HEIGHT; // This must match SceneView.js `drawCanvasGizmos`
+                const gizmoWidth = gizmoHeight * aspect;
+                size = { x: gizmoWidth, y: gizmoHeight };
+            } else { // World Space
+                size = canvasComponent.size;
+            }
+
+            const canvasRect = {
+                x: worldPos.x - size.x / 2,
+                y: worldPos.y - size.y / 2,
+                width: size.x,
+                height: size.y
+            };
+
+            // Always clip in the editor view to match the gizmo
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasRect);
+            }
+
+            this.ctx.restore();
+
+        }
+        // --- Game View Rendering ---
+        else {
+            if (canvasComponent.renderMode === 'Screen Space') {
                 this.drawScreenSpaceUI(canvasMateria);
-            } else {
+            } else { // World Space
                 this.drawWorldSpaceUI(canvasMateria);
             }
         }
@@ -425,6 +467,10 @@ export class Renderer {
         this.ctx.translate(offsetX, offsetY);
         this.ctx.scale(scale, scale);
 
+        // Clip the content to the canvas boundaries after letterboxing
+        this.ctx.beginPath();
+        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
+        this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
