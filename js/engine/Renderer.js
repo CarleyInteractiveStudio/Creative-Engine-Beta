@@ -1,7 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
 import { getAnchorPercentages } from './UITransformUtils.js';
-import { CANVAS_GIZMO_HEIGHT } from '../editor/Constants.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -299,7 +298,7 @@ export class Renderer {
                  // Use a fixed representative size for Screen Space gizmo area
                 const sceneCanvas = this.canvas; // The editor canvas
                 const aspect = sceneCanvas.width / sceneCanvas.height;
-                const gizmoHeight = CANVAS_GIZMO_HEIGHT; // This must match SceneView.js `drawCanvasGizmos`
+                const gizmoHeight = 400; // This must match SceneView.js `drawCanvasGizmos`
                 const gizmoWidth = gizmoHeight * aspect;
                 size = { x: gizmoWidth, y: gizmoHeight };
             } else { // World Space

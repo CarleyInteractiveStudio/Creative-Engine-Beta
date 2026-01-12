@@ -178,7 +178,6 @@ function drawUIGizmos(renderer, materia) {
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
 import { getAbsoluteRect } from '../engine/UITransformUtils.js';
-import { CANVAS_GIZMO_HEIGHT } from './Constants.js';
 
 // Dependencies from editor.js
 let dom;
@@ -1735,7 +1734,7 @@ function drawCanvasGizmos() {
         // For screen space, we just draw a representative box in the world
         const sceneCanvas = dom.sceneCanvas;
         const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = CANVAS_GIZMO_HEIGHT;
+        const gizmoHeight = 400;
         const gizmoWidth = gizmoHeight * aspect;
         ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }
