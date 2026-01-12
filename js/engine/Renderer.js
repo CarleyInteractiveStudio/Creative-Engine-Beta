@@ -280,7 +280,7 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawCanvas(canvasMateria, isGameView = false) {
+    beginCanvas(canvasMateria, isGameView = false) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
         if (!canvas) return;
@@ -297,43 +297,31 @@ export class Renderer {
         this.ctx.beginPath();
         this.ctx.rect(rootRect.x, rootRect.y, rootRect.width, rootRect.height);
         this.ctx.clip();
+    }
 
-        // Get all descendant UI elements of the canvas
-        const allUIElements = SceneManager.currentScene.getMateriasRecursive(canvasMateria);
-
-        for (const element of allUIElements) {
-            if (element === canvasMateria || !element.isActive) continue;
-
-            const uiTransform = element.getComponent(UITransform);
-            if (!uiTransform) continue;
-
-            // Use the ABSOLUTE recursive function for rendering, just like the gizmos
-            const worldRect = getUIRectRecursive(element, SceneManager.currentScene, {
-                renderer: this,
-                getActiveView: () => isGameView ? 'game-content' : 'scene-content'
-            });
-
-            if (!worldRect) continue;
-
-            this._drawSingleUIElement(element, worldRect);
-        }
-
+    endCanvas(canvasMateria, isGameView = false) {
         this.ctx.restore();
-        if (isScreenSpaceInGame) {
+        const canvas = canvasMateria.getComponent(Canvas);
+        if (canvas && canvas.renderMode === 'Screen Space' && isGameView) {
             this.end();
         }
     }
 
-    _drawSingleUIElement(element, rect) {
-        const uiImage = element.getComponent(UIImage);
-        const uiText = element.getComponent(UIText);
+    drawUIElement(materia, isGameView) {
+        const uiImage = materia.getComponent(UIImage);
+        const uiText = materia.getComponent(UIText);
+        if (!uiImage && !uiText) return;
+
+        const rect = getUIRectRecursive(materia, SceneManager.currentScene, {
+            renderer: this,
+            getActiveView: () => isGameView ? 'game-content' : 'scene-content'
+        });
+
+        if (!rect) return;
 
         if (uiImage) {
-            // First, draw the solid color block
             this.ctx.fillStyle = uiImage.color;
             this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-
-            // Then, if a sprite is present, draw it on top
             if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
                 this.ctx.drawImage(uiImage.sprite, rect.x, rect.y, rect.width, rect.height);
             }
