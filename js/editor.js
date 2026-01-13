@@ -865,8 +865,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
         const spriteLights = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
-        const canvasesToRender = SceneManager.currentScene.getAllMaterias()
+        const allCanvases = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+
+        const screenSpaceCanvases = allCanvases.filter(m => m.getComponent(Components.Canvas).renderMode === 'Screen Space');
+        const worldSpaceCanvases = allCanvases.filter(m => m.getComponent(Components.Canvas).renderMode === 'World Space');
+
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
@@ -1061,27 +1065,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
 
+            // In the game view, we only render WORLD SPACE canvases in the world pass.
+            // In the editor view, we render ALL canvases so their gizmos are visible.
+            const canvasesForWorldPass = isGameView ? worldSpaceCanvases : allCanvases;
+
             if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesForWorldPass, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
                 const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
 
                 uniqueLayers.forEach(layer => {
                     const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
                     const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
-                    const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
+                    const canvasesInLayer = canvasesForWorldPass.filter(m => m.layer === layer);
                     const lightsInLayer = {
                         point: pointLights.filter(l => l.layer === layer),
                         spot: spotLights.filter(l => l.layer === layer),
                         freeform: freeformLights.filter(l => l.layer === layer),
                         sprite: spriteLights.filter(l => l.layer === layer)
                     };
-
                     drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer);
                     drawLights(lightsInLayer);
                 });
 
             } else {
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesForWorldPass);
                 drawLights(allLights);
             }
 
@@ -1099,10 +1106,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (cameras.length === 0) {
                 rendererInstance.clear();
-                return;
+            } else {
+                // World Pass: Render scene for each camera, including World Space UI.
+                cameras.forEach(camera => handleRender(camera));
             }
-            cameras.forEach(handleRender);
-        } else { // Editor Scene View
+
+            // UI Pass: After all cameras, render only Screen Space canvases as an overlay.
+            rendererInstance.beginUI();
+            for (const materia of screenSpaceCanvases) {
+                if (materia.isActive) {
+                    rendererInstance.drawCanvas(materia, true);
+                }
+            }
+            rendererInstance.end();
+
+
+        } else { // Editor Scene View: Render everything together for editing.
             handleRender(null);
         }
     }

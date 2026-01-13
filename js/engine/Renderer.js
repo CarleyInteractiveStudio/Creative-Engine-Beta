@@ -279,13 +279,13 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawCanvas(canvasMateria) {
+    drawCanvas(canvasMateria, isGameView) {
         if (!canvasMateria.isActive) return;
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) return;
 
         // --- Editor-Specific Rendering ---
-        if (this.isEditor) {
+        if (!isGameView) { // In editor, always render as world space for gizmos
             const canvasTransform = canvasMateria.getComponent(Transform);
             if (!canvasTransform) return;
 
@@ -293,15 +293,13 @@ export class Renderer {
             const worldPos = canvasTransform.position;
             let size;
 
-            // In the editor, always use the Canvas's defined size for consistency with the gizmo
             if (canvasComponent.renderMode === 'Screen Space') {
-                 // Use a fixed representative size for Screen Space gizmo area
-                const sceneCanvas = this.canvas; // The editor canvas
+                const sceneCanvas = this.canvas;
                 const aspect = sceneCanvas.width / sceneCanvas.height;
-                const gizmoHeight = 400; // This must match SceneView.js `drawCanvasGizmos`
+                const gizmoHeight = 400;
                 const gizmoWidth = gizmoHeight * aspect;
                 size = { x: gizmoWidth, y: gizmoHeight };
-            } else { // World Space
+            } else {
                 size = canvasComponent.size;
             }
 
@@ -312,7 +310,6 @@ export class Renderer {
                 height: size.y
             };
 
-            // Always clip in the editor view to match the gizmo
             this.ctx.beginPath();
             this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
             this.ctx.clip();
