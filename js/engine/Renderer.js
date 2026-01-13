@@ -348,6 +348,17 @@ export class Renderer {
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
+        console.groupCollapsed(`[UI] Dibujando '${element.name}' (ID: ${element.id})`);
+        console.log("Datos de ENTRADA:", {
+            parentRect: { ...parentRect },
+            uiTransform: {
+                position: { ...uiTransform.position },
+                size: { ...uiTransform.size },
+                pivot: { ...uiTransform.pivot },
+                anchorPreset: uiTransform.anchorPreset
+            }
+        });
+
         // Calculate the element's own rectangle based on the parent's rectangle
         const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
 
@@ -368,6 +379,7 @@ export class Renderer {
         const drawHeight = uiTransform.size.height;
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+        console.log("Datos de SALIDA (Rectángulo final):", { ...currentRect });
 
         // --- Drawing Logic for the current element ---
         this.ctx.save();
@@ -418,6 +430,8 @@ export class Renderer {
         for (const child of element.children) {
             this._drawUIElementAndChildren(child, currentRect);
         }
+
+        console.groupEnd();
     }
 
     drawScreenSpaceUI(canvasMateria) {
@@ -433,6 +447,10 @@ export class Renderer {
         const targetHeight = this.canvas.height;
         const sourceWidth = canvasComponent.size.x;
         const sourceHeight = canvasComponent.size.y;
+
+        console.group(`[CANVAS] Renderizando Canvas '${canvasMateria.name}'`);
+        console.log(`Tamaño de diseño (código): ${sourceWidth}x${sourceHeight}`);
+        console.log(`Tamaño de pantalla (juego): ${targetWidth}x${targetHeight}`);
 
         const targetAspect = targetWidth / targetHeight;
         const sourceAspect = sourceWidth / sourceHeight;
@@ -450,6 +468,8 @@ export class Renderer {
             scale = targetWidth / sourceWidth;
             offsetY = (targetHeight - sourceHeight * scale) / 2;
         }
+
+        console.log(`Cálculo de Letterbox:`, { scale, offsetX, offsetY });
 
         const canvasRect = {
             x: 0, // In the scaled context, the canvas starts at 0,0
@@ -474,6 +494,7 @@ export class Renderer {
         }
 
         this.ctx.restore(); // Restores from the letterbox transform
+        console.groupEnd(); // Finaliza el grupo para '[CANVAS]'
         this.end();
     }
 
