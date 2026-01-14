@@ -284,56 +284,30 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) return;
 
-        // --- Editor-Specific Rendering ---
-        if (!isGameView) { // In editor, always render as world space for gizmos
-            console.group(`[LOG-ESCENA] Procesando Canvas '${canvasMateria.name}'`);
-            const canvasTransform = canvasMateria.getComponent(Transform);
-            if (!canvasTransform) return;
+        // --- UNIFIED RENDERING LOGIC ---
+        // Both Editor and Game view will now use the same rendering path
+        // to ensure WYSIWYG (What You See Is What You Get).
 
-            this.ctx.save();
-            const worldPos = canvasTransform.position;
-            let size;
-
-            if (canvasComponent.renderMode === 'Screen Space') {
-                const sceneCanvas = this.canvas;
-                const aspect = sceneCanvas.width / sceneCanvas.height;
-                const gizmoHeight = 400;
-                const gizmoWidth = gizmoHeight * aspect;
-                size = { x: gizmoWidth, y: gizmoHeight };
+        if (canvasComponent.renderMode === 'Screen Space') {
+            if (isGameView) {
+                this.drawScreenSpaceUI(canvasMateria, this.canvas);
             } else {
-                size = canvasComponent.size;
+                const canvasTransform = canvasMateria.getComponent(Transform);
+                if (!canvasTransform) return;
+
+                // For screen space in editor, we draw a representative box
+                const aspect = this.canvas.width / this.canvas.height;
+                const gizmoHeight = 400; // A fixed height for the gizmo in world units
+                const gizmoWidth = gizmoHeight * aspect;
+                const simulatedCanvas = { width: gizmoWidth, height: gizmoHeight };
+
+                this.ctx.save();
+                this.ctx.translate(canvasTransform.position.x - gizmoWidth / 2, canvasTransform.position.y - gizmoHeight / 2);
+                this.drawScreenSpaceUI(canvasMateria, simulatedCanvas);
+                this.ctx.restore();
             }
-
-            const canvasRect = {
-                x: worldPos.x - size.x / 2,
-                y: worldPos.y - size.y / 2,
-                width: size.x,
-                height: size.y
-            };
-
-            console.log(`Tamaño de diseño (código):`, { ...canvasComponent.size });
-            console.log(`Tamaño simulado en escena:`, { ...size });
-
-            this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-            this.ctx.clip();
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
-
-            this.ctx.restore();
-            console.groupEnd();
-        }
-        // --- Game View Rendering ---
-        else {
-            console.group(`[LOG-JUEGO] Procesando Canvas '${canvasMateria.name}'`);
-            if (canvasComponent.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else { // World Space
-                this.drawWorldSpaceUI(canvasMateria);
-            }
-            console.groupEnd();
+        } else { // World Space
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
@@ -361,9 +335,6 @@ export class Renderer {
         // This logic now matches `getWorldRect` in Components.js
         const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-        console.groupCollapsed(`Elemento UI: '${element.name}'`);
-        console.log(`Tamaño de diseño (código):`, { ...uiTransform.size });
-
         // X Calculation is straightforward
         const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
         const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
@@ -377,8 +348,6 @@ export class Renderer {
         const drawHeight = uiTransform.size.height;
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
-
-        console.log(`Rectángulo final (dibujado):`, { ...currentRect });
 
         // --- Drawing Logic for the current element ---
         this.ctx.save();
@@ -429,10 +398,9 @@ export class Renderer {
         for (const child of element.children) {
             this._drawUIElementAndChildren(child, currentRect);
         }
-        console.groupEnd();
     }
 
-    drawScreenSpaceUI(canvasMateria) {
+    drawScreenSpaceUI(canvasMateria, targetCanvas = this.canvas) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform); // Although unused in SS, good to have
@@ -441,13 +409,10 @@ export class Renderer {
             return;
         }
 
-        const targetWidth = this.canvas.width;
-        const targetHeight = this.canvas.height;
+        const targetWidth = targetCanvas.width;
+        const targetHeight = targetCanvas.height;
         const sourceWidth = canvasComponent.size.x;
         const sourceHeight = canvasComponent.size.y;
-
-        console.log(`Tamaño de diseño (código): ${sourceWidth}x${sourceHeight}`);
-        console.log(`Tamaño real de la pantalla: ${targetWidth}x${targetHeight}`);
 
         const targetAspect = targetWidth / targetHeight;
         const sourceAspect = sourceWidth / sourceHeight;
@@ -465,8 +430,6 @@ export class Renderer {
             scale = targetWidth / sourceWidth;
             offsetY = (targetHeight - sourceHeight * scale) / 2;
         }
-
-        console.log(`Cálculo de Letterbox (resultado):`, { scale, offsetX, offsetY });
 
         const canvasRect = {
             x: 0, // In the scaled context, the canvas starts at 0,0
