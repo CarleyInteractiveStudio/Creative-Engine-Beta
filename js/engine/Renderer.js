@@ -284,30 +284,86 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) return;
 
-        // --- UNIFIED RENDERING LOGIC ---
-        // Both Editor and Game view will now use the same rendering path
-        // to ensure WYSIWYG (What You See Is What You Get).
+        // --- Editor-Specific Rendering ---
+        if (!isGameView) { // In editor, always render as world space for gizmos
+            const canvasTransform = canvasMateria.getComponent(Transform);
+            if (!canvasTransform) return;
 
-        if (canvasComponent.renderMode === 'Screen Space') {
-            if (isGameView) {
-                this.drawScreenSpaceUI(canvasMateria, this.canvas);
-            } else {
-                const canvasTransform = canvasMateria.getComponent(Transform);
-                if (!canvasTransform) return;
+            this.ctx.save();
+            const worldPos = canvasTransform.position;
+            let size;
 
-                // For screen space in editor, we draw a representative box
-                const aspect = this.canvas.width / this.canvas.height;
-                const gizmoHeight = 400; // A fixed height for the gizmo in world units
+            if (canvasComponent.renderMode === 'Screen Space') {
+                const sceneCanvas = this.canvas;
+                const aspect = sceneCanvas.width / sceneCanvas.height;
+                const gizmoHeight = 400;
                 const gizmoWidth = gizmoHeight * aspect;
-                const simulatedCanvas = { width: gizmoWidth, height: gizmoHeight };
-
-                this.ctx.save();
-                this.ctx.translate(canvasTransform.position.x - gizmoWidth / 2, canvasTransform.position.y - gizmoHeight / 2);
-                this.drawScreenSpaceUI(canvasMateria, simulatedCanvas);
-                this.ctx.restore();
+                size = { x: gizmoWidth, y: gizmoHeight };
+            } else {
+                size = canvasComponent.size;
             }
-        } else { // World Space
-            this.drawWorldSpaceUI(canvasMateria);
+
+            const canvasRect = {
+                x: worldPos.x - size.x / 2,
+                y: worldPos.y - size.y / 2,
+                width: size.x,
+                height: size.y
+            };
+
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
+
+            // --- Start: Correct Letterbox Scaling for Scene View ---
+            const sourceWidth = canvasComponent.size.x;
+            const sourceHeight = canvasComponent.size.y;
+            const targetWidth = size.x;
+            const targetHeight = size.y;
+            const targetAspect = targetWidth / targetHeight;
+            const sourceAspect = sourceWidth / sourceHeight;
+
+            let scale = 1;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (targetAspect > sourceAspect) {
+                scale = targetHeight / sourceHeight;
+                offsetX = (targetWidth - sourceWidth * scale) / 2;
+            } else {
+                scale = targetWidth / sourceWidth;
+                offsetY = (targetHeight - sourceHeight * scale) / 2;
+            }
+
+            // Apply the transformation to a nested context
+            this.ctx.save();
+            this.ctx.translate(canvasRect.x + offsetX, canvasRect.y + offsetY);
+            this.ctx.scale(scale, scale);
+
+            // The drawing function now operates in the scaled, un-offset space
+            const scaledCanvasRect = {
+                x: 0,
+                y: 0,
+                width: sourceWidth,
+                height: sourceHeight
+            };
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, scaledCanvasRect);
+            }
+
+            this.ctx.restore(); // Pops the letterbox transform
+            // --- End: Correct Letterbox Scaling ---
+
+            this.ctx.restore(); // Pops the clipping mask and world transform
+
+        }
+        // --- Game View Rendering ---
+        else {
+            if (canvasComponent.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else { // World Space
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
@@ -400,7 +456,7 @@ export class Renderer {
         }
     }
 
-    drawScreenSpaceUI(canvasMateria, targetCanvas = this.canvas) {
+    drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform); // Although unused in SS, good to have
@@ -409,8 +465,8 @@ export class Renderer {
             return;
         }
 
-        const targetWidth = targetCanvas.width;
-        const targetHeight = targetCanvas.height;
+        const targetWidth = this.canvas.width;
+        const targetHeight = this.canvas.height;
         const sourceWidth = canvasComponent.size.x;
         const sourceHeight = canvasComponent.size.y;
 
