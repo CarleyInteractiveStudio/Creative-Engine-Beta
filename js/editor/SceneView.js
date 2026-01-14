@@ -71,8 +71,17 @@ function checkUIGizmoHit(canvasPos) {
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
+    // Si la materia no tiene UITransform (como un Canvas),
+    // llama recursivamente a los hijos.
     const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) return;
+    if (!uiTransform) {
+        if (materia.children && materia.children.length > 0) {
+            for (const child of materia.children) {
+                drawUIGizmos(renderer, child);
+            }
+        }
+        return; // Detente aquí para el objeto Canvas
+    }
 
     const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return;
