@@ -7,12 +7,28 @@ function checkUIGizmoHit(canvasPos) {
 
     const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return null;
+     const parentCanvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+    const parentCanvasTransform = parentCanvasMateria.getComponent(Components.Transform);
+    if (!parentCanvasComponent || !parentCanvasTransform) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache);
+    // --- Start of new WYSIWYG calculation ---
+    const sourceRect = parentCanvasComponent.size;
+    const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+    const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+    // Get the UI element's unscaled rect relative to the canvas origin (0,0)
+    const relativeRect = getWorldRectForUITransform(selectedMateria);
+
+    // Manually apply the letterbox scaling and offset to find the final world position
+    const finalWidth = relativeRect.width * scale;
+    const finalHeight = relativeRect.height * scale;
+    const finalX = parentCanvasTransform.position.x - (sourceRect.x * scale) / 2 + relativeRect.x * scale;
+    const finalY = parentCanvasTransform.position.y - (sourceRect.y * scale) / 2 + relativeRect.y * scale;
+
+    const rect = { x: finalX, y: finalY, width: finalWidth, height: finalHeight };
+    // --- End of new WYSIWYG calculation ---
 
 
     const centerX = rect.x + rect.width / 2;
@@ -72,10 +88,24 @@ function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
     const uiTransform = materia.getComponent(Components.UITransform);
-    if (!uiTransform) return;
+    // Special case: If the selected object is a Canvas, we don't draw UI gizmos for it,
+    // but we should draw them for its children.
+    if (!uiTransform) {
+        if (materia.getComponent(Components.Canvas)) {
+            for (const child of materia.children) {
+                drawUIGizmos(renderer, child); // Recurse
+            }
+        }
+        return; // Stop if it's not a UI element or a Canvas
+    }
+
 
     const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
     if (!parentCanvasMateria) return;
+    const parentCanvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+    const parentCanvasTransform = parentCanvasMateria.getComponent(Components.Transform);
+    if (!parentCanvasComponent || !parentCanvasTransform) return;
+
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -86,9 +116,21 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache);
+    // --- Start of new WYSIWYG calculation ---
+    const sourceRect = parentCanvasComponent.size;
+    const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+    const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+    const relativeRect = getWorldRectForUITransform(materia);
+
+    const finalWidth = relativeRect.width * scale;
+    const finalHeight = relativeRect.height * scale;
+    const finalX = parentCanvasTransform.position.x - (sourceRect.x * scale) / 2 + relativeRect.x * scale;
+    const finalY = parentCanvasTransform.position.y - (sourceRect.y * scale) / 2 + relativeRect.y * scale;
+
+    const rect = { x: finalX, y: finalY, width: finalWidth, height: finalHeight };
+    // --- End of new WYSIWYG calculation ---
+
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -177,7 +219,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+import { getWorldRectForUITransform, calculateLetterbox } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;
@@ -599,10 +641,21 @@ export function initialize(dependencies) {
                 break;
             case 'ui-rotate':
                 {
-                    const rectCache = new Map();
-                    const rect = getAbsoluteRect(dragState.materia, rectCache);
-                    const centerX = rect.x + rect.width / 2;
-                    const centerY = rect.y + rect.height / 2;
+                    // This uses the same logic as the gizmo drawing to find the center
+                    const parentCanvasMateria = dragState.materia.findAncestorWithComponent(Components.Canvas);
+                    const parentCanvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+                    const parentCanvasTransform = parentCanvasMateria.getComponent(Components.Transform);
+                    const sourceRect = parentCanvasComponent.size;
+                    const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+                    const { scale } = calculateLetterbox(sourceRect, targetRect);
+                    const relativeRect = getWorldRectForUITransform(dragState.materia);
+                    const finalWidth = relativeRect.width * scale;
+                    const finalHeight = relativeRect.height * scale;
+                    const finalX = parentCanvasTransform.position.x - (sourceRect.x * scale) / 2 + relativeRect.x * scale;
+                    const finalY = parentCanvasTransform.position.y - (sourceRect.y * scale) / 2 + relativeRect.y * scale;
+                    const centerX = finalX + finalWidth / 2;
+                    const centerY = finalY + finalHeight / 2;
+
                     const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
                     const angle = Math.atan2(worldMouse.y - centerY, worldMouse.x - centerX) * 180 / Math.PI;
                     uiTransform.rotation = angle + 90;
@@ -1731,11 +1784,14 @@ function drawCanvasGizmos() {
         const size = canvasComponent.size;
         ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
     } else { // Screen Space
-        // For screen space, we just draw a representative box in the world
-        const sceneCanvas = dom.sceneCanvas;
-        const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
+        // --- Use the new centralized utility for WYSIWYG gizmo ---
+        const sourceRect = canvasComponent.size;
+        const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+        const { scale } = calculateLetterbox(sourceRect, targetRect);
+
+        const gizmoWidth = sourceRect.x * scale;
+        const gizmoHeight = sourceRect.y * scale;
+
         ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
     }
 

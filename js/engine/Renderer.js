@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -284,50 +284,17 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) return;
 
-        // --- Editor-Specific Rendering ---
-        if (!isGameView) { // In editor, always render as world space for gizmos
-            const canvasTransform = canvasMateria.getComponent(Transform);
-            if (!canvasTransform) return;
-
-            this.ctx.save();
-            const worldPos = canvasTransform.position;
-            let size;
-
-            if (canvasComponent.renderMode === 'Screen Space') {
-                const sceneCanvas = this.canvas;
-                const aspect = sceneCanvas.width / sceneCanvas.height;
-                const gizmoHeight = 400;
-                const gizmoWidth = gizmoHeight * aspect;
-                size = { x: gizmoWidth, y: gizmoHeight };
-            } else {
-                size = canvasComponent.size;
-            }
-
-            const canvasRect = {
-                x: worldPos.x - size.x / 2,
-                y: worldPos.y - size.y / 2,
-                width: size.x,
-                height: size.y
-            };
-
-            this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-            this.ctx.clip();
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
-
-            this.ctx.restore();
-
-        }
-        // --- Game View Rendering ---
-        else {
-            if (canvasComponent.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else { // World Space
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+        // --- UNIFIED RENDERING LOGIC ---
+        // Both the editor and the game view will now use the same logic path.
+        if (canvasComponent.renderMode === 'Screen Space') {
+            // Screen Space canvases are not part of the world transform system.
+            // They are drawn directly to the screen using a separate UI pass.
+            // In the editor, this pass happens inside beginWorld/end, but it's still logically separate.
+            this.drawScreenSpaceUI(canvasMateria);
+        } else { // World Space
+            // World Space canvases are part of the world transform system.
+            // They are drawn during the main world pass along with sprites.
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
@@ -421,51 +388,51 @@ export class Renderer {
     }
 
     drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform); // Although unused in SS, good to have
-        if (!canvasComponent || !canvasTransform) {
-            this.end();
-            return;
-        }
+        if (!canvasComponent) return;
 
-        const targetWidth = this.canvas.width;
-        const targetHeight = this.canvas.height;
-        const sourceWidth = canvasComponent.size.x;
-        const sourceHeight = canvasComponent.size.y;
+        // --- Use the new centralized utility for letterboxing ---
+        const sourceRect = canvasComponent.size;
+        const targetRect = { width: this.canvas.width, height: this.canvas.height };
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
 
-        const targetAspect = targetWidth / targetHeight;
-        const sourceAspect = sourceWidth / sourceHeight;
-
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (targetAspect > sourceAspect) {
-            // Target is wider than source, letterbox on the sides
-            scale = targetHeight / sourceHeight;
-            offsetX = (targetWidth - sourceWidth * scale) / 2;
-        } else {
-            // Target is taller than source, letterbox on top/bottom
-            scale = targetWidth / sourceWidth;
-            offsetY = (targetHeight - sourceHeight * scale) / 2;
-        }
-
+        // The canvas's logical rectangle starts at 0,0 with its defined size.
         const canvasRect = {
-            x: 0, // In the scaled context, the canvas starts at 0,0
+            x: 0,
             y: 0,
-            width: sourceWidth,
-            height: sourceHeight
+            width: sourceRect.x,
+            height: sourceRect.y
         };
 
         this.ctx.save();
-        // Apply the letterboxing transformation
-        this.ctx.translate(offsetX, offsetY);
-        this.ctx.scale(scale, scale);
 
-        // Clip the content to the canvas boundaries after letterboxing
+        // In the editor, the world transform (pan/zoom) is already applied.
+        // We need to render the letterboxed canvas relative to the Canvas object's world position.
+        if (this.isEditor) {
+            const transform = canvasMateria.getComponent(Transform);
+            if (transform) {
+                 // The final scaled size of the canvas in the world
+                const scaledWidth = sourceRect.x * scale;
+                const scaledHeight = sourceRect.y * scale;
+
+                // Center the letterboxed canvas on the transform's position
+                const drawX = transform.position.x - scaledWidth / 2;
+                const drawY = transform.position.y - scaledHeight / 2;
+
+                this.ctx.translate(drawX, drawY);
+                this.ctx.scale(scale, scale);
+            }
+        } else {
+            // In the game view, we operate in screen space directly.
+            this.beginUI(); // Reset transform to identity
+            this.ctx.translate(offsetX, offsetY);
+            this.ctx.scale(scale, scale);
+        }
+
+
+        // Clip the content to the canvas's logical boundaries
         this.ctx.beginPath();
-        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
+        this.ctx.rect(0, 0, sourceRect.x, sourceRect.y);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
@@ -473,8 +440,12 @@ export class Renderer {
             this._drawUIElementAndChildren(child, canvasRect);
         }
 
-        this.ctx.restore(); // Restores from the letterbox transform
-        this.end();
+        this.ctx.restore();
+
+        // End the UI pass if we're in the game view
+        if (!this.isEditor) {
+            this.end();
+        }
     }
 
     drawWorldSpaceUI(canvasMateria) {
