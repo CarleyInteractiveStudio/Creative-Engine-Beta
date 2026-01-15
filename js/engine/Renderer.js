@@ -328,8 +328,8 @@ export class Renderer {
             const scaledCanvasRect = {
                 x: 0,
                 y: 0,
-                width: sourceWidth,
-                height: sourceHeight
+                width: sourceRect.width,
+                height: sourceRect.height
             };
 
             for (const child of canvasMateria.children) {
@@ -457,8 +457,8 @@ export class Renderer {
         const canvasRect = {
             x: 0, // In the scaled context, the canvas starts at 0,0
             y: 0,
-            width: sourceWidth,
-            height: sourceHeight
+            width: sourceRect.width,
+            height: sourceRect.height
         };
 
         this.ctx.save();
