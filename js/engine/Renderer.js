@@ -468,7 +468,7 @@ export class Renderer {
 
         // Clip the content to the canvas boundaries after letterboxing
         this.ctx.beginPath();
-        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
+        this.ctx.rect(0, 0, sourceRect.width, sourceRect.height);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
