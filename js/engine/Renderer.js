@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -314,10 +314,30 @@ export class Renderer {
             this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
             this.ctx.clip();
 
-            // The parent rect for the scene view simulation is the gizmo rect itself.
+            // --- Start: Correct Letterbox Scaling for Scene View ---
+            const sourceRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
+            const targetRect = { width: size.x, height: size.y };
+            const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+            // Apply the transformation to a nested context
+            this.ctx.save();
+            this.ctx.translate(canvasRect.x + offsetX, canvasRect.y + offsetY);
+            this.ctx.scale(scale, scale);
+
+            // The drawing function now operates in the scaled, un-offset space
+            const scaledCanvasRect = {
+                x: 0,
+                y: 0,
+                width: sourceWidth,
+                height: sourceHeight
+            };
+
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
+                this._drawUIElementAndChildren(child, scaledCanvasRect);
             }
+
+            this.ctx.restore(); // Pops the letterbox transform
+            // --- End: Correct Letterbox Scaling ---
 
             this.ctx.restore(); // Pops the clipping mask and world transform
 
@@ -430,27 +450,33 @@ export class Renderer {
             return;
         }
 
-        // The parent rect for a Screen Space canvas is always the full game window.
+        const sourceRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
+        const targetRect = { width: this.canvas.width, height: this.canvas.height };
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
         const canvasRect = {
-            x: 0,
+            x: 0, // In the scaled context, the canvas starts at 0,0
             y: 0,
-            width: this.canvas.width,
-            height: this.canvas.height
+            width: sourceWidth,
+            height: sourceHeight
         };
 
         this.ctx.save();
+        // Apply the letterboxing transformation
+        this.ctx.translate(offsetX, offsetY);
+        this.ctx.scale(scale, scale);
 
-        // Clip the content to the full canvas boundaries.
+        // Clip the content to the canvas boundaries after letterboxing
         this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas.
+        // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }
 
-        this.ctx.restore();
+        this.ctx.restore(); // Restores from the letterbox transform
         this.end();
     }
 

@@ -10,14 +10,13 @@ function checkUIGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    // --- Start: Gizmo Rect Calculation for Hit Check ---
-    // This logic must also mirror the renderer to ensure hits are accurate.
+    // --- Start: Gizmo Rect Calculation with Letterbox for Hit Check ---
     const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
     const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
-    let canvasRect;
+    let targetRect;
 
     if (canvasComponent.renderMode === 'World Space') {
-        canvasRect = {
+        targetRect = {
             x: canvasTransform.position.x - canvasComponent.size.x / 2,
             y: canvasTransform.position.y - canvasComponent.size.y / 2,
             width: canvasComponent.size.x,
@@ -28,7 +27,7 @@ function checkUIGizmoHit(canvasPos) {
         const aspect = sceneCanvas.width / sceneCanvas.height;
         const gizmoHeight = 400;
         const gizmoWidth = gizmoHeight * aspect;
-        canvasRect = {
+        targetRect = {
             x: canvasTransform.position.x - gizmoWidth / 2,
             y: canvasTransform.position.y - gizmoHeight / 2,
             width: gizmoWidth,
@@ -36,9 +35,20 @@ function checkUIGizmoHit(canvasPos) {
         };
     }
 
+    const sourceRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
+    const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+    const unscaledCanvasRect = { x: 0, y: 0, width: sourceRect.width, height: sourceRect.height };
     const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, canvasRect, rectCache);
-    // --- End: Gizmo Rect Calculation for Hit Check ---
+    const relativeRect = getAbsoluteRect(selectedMateria, unscaledCanvasRect, rectCache);
+
+    const rect = {
+        x: targetRect.x + offsetX + (relativeRect.x * scale),
+        y: targetRect.y + offsetY + (relativeRect.y * scale),
+        width: relativeRect.width * scale,
+        height: relativeRect.height * scale
+    };
+    // --- End: Gizmo Rect Calculation ---
 
 
     const centerX = rect.x + rect.width / 2;
@@ -121,14 +131,13 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // --- Start: Gizmo Rect Calculation ---
-    // This logic must mirror the logic in Renderer.js to ensure WYSIWYG.
+    // --- Start: Gizmo Rect Calculation with Letterbox ---
     const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
     const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
-    let canvasRect;
+    let targetRect; // The rectangle of the simulated screen gizmo
 
     if (canvasComponent.renderMode === 'World Space') {
-        canvasRect = {
+        targetRect = {
             x: canvasTransform.position.x - canvasComponent.size.x / 2,
             y: canvasTransform.position.y - canvasComponent.size.y / 2,
             width: canvasComponent.size.x,
@@ -137,9 +146,9 @@ function drawUIGizmos(renderer, materia) {
     } else { // Screen Space
         const sceneCanvas = renderer.canvas;
         const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400; // This is the fixed simulation size used by the renderer
+        const gizmoHeight = 400;
         const gizmoWidth = gizmoHeight * aspect;
-        canvasRect = {
+        targetRect = {
             x: canvasTransform.position.x - gizmoWidth / 2,
             y: canvasTransform.position.y - gizmoHeight / 2,
             width: gizmoWidth,
@@ -147,8 +156,22 @@ function drawUIGizmos(renderer, materia) {
         };
     }
 
+    // Now, calculate the letterbox scale and offset within this targetRect
+    const sourceRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
+    const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+    // The `unscaledCanvasRect` is what the UI elements are positioned relative to.
+    const unscaledCanvasRect = { x: 0, y: 0, width: sourceRect.width, height: sourceRect.height };
     const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, canvasRect, rectCache);
+    const relativeRect = getAbsoluteRect(materia, unscaledCanvasRect, rectCache);
+
+    // Manually apply the scale and offset to the relative rect to get the final world rect for the gizmo
+    const rect = {
+        x: targetRect.x + offsetX + (relativeRect.x * scale),
+        y: targetRect.y + offsetY + (relativeRect.y * scale),
+        width: relativeRect.width * scale,
+        height: relativeRect.height * scale
+    };
     // --- End: Gizmo Rect Calculation ---
 
     const centerX = rect.x + rect.width / 2;
@@ -238,7 +261,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+import { getAbsoluteRect, calculateLetterbox } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;

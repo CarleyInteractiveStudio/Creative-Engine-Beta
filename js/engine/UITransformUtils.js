@@ -211,3 +211,25 @@ export function getWorldRectForUITransform(uiMateria, parentCanvasWorldRect, rec
 // Keep the old function but rename it to avoid breaking other parts of the system
 // that might still (incorrectly) be using it. This is a temporary measure.
 export const getAbsoluteRect = getWorldRectForUITransform;
+
+/**
+ * Calculates the scale and offset for letterbox scaling.
+ * @param {{width: number, height: number}} sourceRect - The source rectangle (e.g., design resolution).
+ * @param {{width: number, height: number}} targetRect - The target rectangle (e.g., screen size).
+ * @returns {{scale: number, offsetX: number, offsetY: number}}
+ */
+export function calculateLetterbox(sourceRect, targetRect) {
+    const sourceAspect = sourceRect.width / sourceRect.height;
+    const targetAspect = targetRect.width / targetRect.height;
+    let scale = 1, offsetX = 0, offsetY = 0;
+
+    if (targetAspect > sourceAspect) {
+        scale = targetRect.height / sourceRect.height;
+        offsetX = (targetRect.width - sourceRect.width * scale) / 2;
+    } else {
+        scale = targetRect.width / sourceRect.width;
+        offsetY = (targetRect.height - sourceRect.height * scale) / 2;
+    }
+
+    return { scale, offsetX, offsetY };
+}
