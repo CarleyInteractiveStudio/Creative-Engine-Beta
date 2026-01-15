@@ -10,9 +10,35 @@ function checkUIGizmoHit(canvasPos) {
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    // Bounding box of the UI element in world space
+    // --- Start: Gizmo Rect Calculation for Hit Check ---
+    // This logic must also mirror the renderer to ensure hits are accurate.
+    const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+    const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
+    let canvasRect;
+
+    if (canvasComponent.renderMode === 'World Space') {
+        canvasRect = {
+            x: canvasTransform.position.x - canvasComponent.size.x / 2,
+            y: canvasTransform.position.y - canvasComponent.size.y / 2,
+            width: canvasComponent.size.x,
+            height: canvasComponent.size.y
+        };
+    } else { // Screen Space
+        const sceneCanvas = renderer.canvas;
+        const aspect = sceneCanvas.width / sceneCanvas.height;
+        const gizmoHeight = 400;
+        const gizmoWidth = gizmoHeight * aspect;
+        canvasRect = {
+            x: canvasTransform.position.x - gizmoWidth / 2,
+            y: canvasTransform.position.y - gizmoHeight / 2,
+            width: gizmoWidth,
+            height: gizmoHeight
+        };
+    }
+
     const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache);
+    const rect = getAbsoluteRect(selectedMateria, canvasRect, rectCache);
+    // --- End: Gizmo Rect Calculation for Hit Check ---
 
 
     const centerX = rect.x + rect.width / 2;
@@ -95,9 +121,35 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // Bounding box of the UI element in world space
+    // --- Start: Gizmo Rect Calculation ---
+    // This logic must mirror the logic in Renderer.js to ensure WYSIWYG.
+    const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+    const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
+    let canvasRect;
+
+    if (canvasComponent.renderMode === 'World Space') {
+        canvasRect = {
+            x: canvasTransform.position.x - canvasComponent.size.x / 2,
+            y: canvasTransform.position.y - canvasComponent.size.y / 2,
+            width: canvasComponent.size.x,
+            height: canvasComponent.size.y
+        };
+    } else { // Screen Space
+        const sceneCanvas = renderer.canvas;
+        const aspect = sceneCanvas.width / sceneCanvas.height;
+        const gizmoHeight = 400; // This is the fixed simulation size used by the renderer
+        const gizmoWidth = gizmoHeight * aspect;
+        canvasRect = {
+            x: canvasTransform.position.x - gizmoWidth / 2,
+            y: canvasTransform.position.y - gizmoHeight / 2,
+            width: gizmoWidth,
+            height: gizmoHeight
+        };
+    }
+
     const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache);
+    const rect = getAbsoluteRect(materia, canvasRect, rectCache);
+    // --- End: Gizmo Rect Calculation ---
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;

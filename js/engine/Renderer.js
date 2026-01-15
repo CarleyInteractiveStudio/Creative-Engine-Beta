@@ -314,45 +314,10 @@ export class Renderer {
             this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
             this.ctx.clip();
 
-            // --- Start: Correct Letterbox Scaling for Scene View ---
-            const sourceWidth = canvasComponent.size.x;
-            const sourceHeight = canvasComponent.size.y;
-            const targetWidth = size.x;
-            const targetHeight = size.y;
-            const targetAspect = targetWidth / targetHeight;
-            const sourceAspect = sourceWidth / sourceHeight;
-
-            let scale = 1;
-            let offsetX = 0;
-            let offsetY = 0;
-
-            if (targetAspect > sourceAspect) {
-                scale = targetHeight / sourceHeight;
-                offsetX = (targetWidth - sourceWidth * scale) / 2;
-            } else {
-                scale = targetWidth / sourceWidth;
-                offsetY = (targetHeight - sourceHeight * scale) / 2;
-            }
-
-            // Apply the transformation to a nested context
-            this.ctx.save();
-            this.ctx.translate(canvasRect.x + offsetX, canvasRect.y + offsetY);
-            this.ctx.scale(scale, scale);
-
-            // The drawing function now operates in the scaled, un-offset space
-            const scaledCanvasRect = {
-                x: 0,
-                y: 0,
-                width: sourceWidth,
-                height: sourceHeight
-            };
-
+            // The parent rect for the scene view simulation is the gizmo rect itself.
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, scaledCanvasRect);
+                this._drawUIElementAndChildren(child, canvasRect);
             }
-
-            this.ctx.restore(); // Pops the letterbox transform
-            // --- End: Correct Letterbox Scaling ---
 
             this.ctx.restore(); // Pops the clipping mask and world transform
 
@@ -465,51 +430,27 @@ export class Renderer {
             return;
         }
 
-        const targetWidth = this.canvas.width;
-        const targetHeight = this.canvas.height;
-        const sourceWidth = canvasComponent.size.x;
-        const sourceHeight = canvasComponent.size.y;
-
-        const targetAspect = targetWidth / targetHeight;
-        const sourceAspect = sourceWidth / sourceHeight;
-
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (targetAspect > sourceAspect) {
-            // Target is wider than source, letterbox on the sides
-            scale = targetHeight / sourceHeight;
-            offsetX = (targetWidth - sourceWidth * scale) / 2;
-        } else {
-            // Target is taller than source, letterbox on top/bottom
-            scale = targetWidth / sourceWidth;
-            offsetY = (targetHeight - sourceHeight * scale) / 2;
-        }
-
+        // The parent rect for a Screen Space canvas is always the full game window.
         const canvasRect = {
-            x: 0, // In the scaled context, the canvas starts at 0,0
+            x: 0,
             y: 0,
-            width: sourceWidth,
-            height: sourceHeight
+            width: this.canvas.width,
+            height: this.canvas.height
         };
 
         this.ctx.save();
-        // Apply the letterboxing transformation
-        this.ctx.translate(offsetX, offsetY);
-        this.ctx.scale(scale, scale);
 
-        // Clip the content to the canvas boundaries after letterboxing
+        // Clip the content to the full canvas boundaries.
         this.ctx.beginPath();
-        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Start the recursive drawing process for all direct children of the canvas.
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }
 
-        this.ctx.restore(); // Restores from the letterbox transform
+        this.ctx.restore();
         this.end();
     }
 
