@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, CanvasScaler, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -281,65 +281,17 @@ export class Renderer {
 
     drawCanvas(canvasMateria, isGameView) {
         if (!canvasMateria.isActive) return;
+
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) return;
 
-        // --- Editor-Specific Rendering ---
-        if (!isGameView) { // In editor, always render as world space for gizmos
-            const canvasTransform = canvasMateria.getComponent(Transform);
-            if (!canvasTransform) return;
-
-            this.ctx.save();
-            const worldPos = canvasTransform.position;
-            let size;
-
-            if (canvasComponent.renderMode === 'Screen Space') {
-                const sceneCanvas = this.canvas;
-                const aspect = sceneCanvas.width / sceneCanvas.height;
-                const gizmoHeight = 400;
-                const gizmoWidth = gizmoHeight * aspect;
-                size = { x: gizmoWidth, y: gizmoHeight };
-            } else {
-                size = canvasComponent.size;
-            }
-
-            const canvasRect = {
-                x: worldPos.x - size.x / 2,
-                y: worldPos.y - size.y / 2,
-                width: size.x,
-                height: size.y
-            };
-
-            this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-            this.ctx.clip();
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
-
-            this.ctx.restore();
-
+        // Dispatch to the correct rendering method based on the canvas mode.
+        // The core logic for WYSIWYG is now handled inside drawScreenSpaceUI for both editor and game.
+        if (canvasComponent.renderMode === 'Screen Space') {
+            this.drawScreenSpaceUI(canvasMateria, isGameView);
+        } else { // World Space
+            this.drawWorldSpaceUI(canvasMateria);
         }
-        // --- Game View Rendering ---
-        else {
-            if (canvasComponent.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else { // World Space
-                this.drawWorldSpaceUI(canvasMateria);
-            }
-        }
-    }
-
-    getAnchorPoint(preset, canvasWidth, canvasHeight) {
-        const anchor = { x: 0.5, y: 0.5 };
-        if (preset.includes('left')) anchor.x = 0;
-        if (preset.includes('center')) anchor.x = 0.5;
-        if (preset.includes('right')) anchor.x = 1;
-        if (preset.includes('top')) anchor.y = 0;
-        if (preset.includes('middle')) anchor.y = 0.5;
-        if (preset.includes('bottom')) anchor.y = 1;
-        return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
     _drawUIElementAndChildren(element, parentRect) {
@@ -348,20 +300,15 @@ export class Renderer {
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
-
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
         const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
-        // X Calculation is straightforward
+        // X Calculation remains straightforward (left-to-right)
         const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
         const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
         const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
         const finalX = parentRect.x + rectX_fromLeft;
 
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
+        // Y Calculation uses the consistent Y-UP data model and converts to Y-DOWN render coordinates
         const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
         const finalY = parentRect.y + rectY_fromTop;
         const drawWidth = uiTransform.size.width;
@@ -369,27 +316,24 @@ export class Renderer {
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
-        // --- Drawing Logic for the current element ---
+        // --- Drawing Logic ---
         this.ctx.save();
-        // Apply rotation
+        // Apply rotation around the pivot point
         const pivotX = finalX + (drawWidth * uiTransform.pivot.x);
         const pivotY = finalY + (drawHeight * uiTransform.pivot.y);
         this.ctx.translate(pivotX, pivotY);
         this.ctx.rotate(uiTransform.rotation * Math.PI / 180);
         this.ctx.translate(-pivotX, -pivotY);
+
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
         const textureRender = element.getComponent(TextureRender);
-
 
         if (uiImage) {
             this.ctx.fillStyle = uiImage.color;
             this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
             if (uiImage.sprite && uiImage.sprite.complete) {
-                this.ctx.save();
-                this.ctx.globalCompositeOperation = 'multiply';
                 this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
-                this.ctx.restore();
             }
         } else if (textureRender) {
              this.ctx.save();
@@ -399,6 +343,7 @@ export class Renderer {
             } else {
                 this.ctx.fillStyle = textureRender.color;
             }
+
             if (textureRender.shape === 'Rectangle') {
                 this.ctx.fillRect(0, 0, drawWidth, drawHeight);
             } else if (textureRender.shape === 'Circle') {
@@ -412,63 +357,56 @@ export class Renderer {
         if (uiText) {
             this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
         }
-        this.ctx.restore();
+
+        this.ctx.restore(); // Restore from rotation transform
+
         // --- Recursion ---
-        // Now, draw children, passing this element's rectangle as the new parentRect
         for (const child of element.children) {
             this._drawUIElementAndChildren(child, currentRect);
         }
     }
 
-    drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
-        const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform); // Although unused in SS, good to have
-        if (!canvasComponent || !canvasTransform) {
+    drawScreenSpaceUI(canvasMateria, isGameView) {
+        this.beginUI(); // Resets transform to screen space
+
+        const scaler = canvasMateria.getComponent(CanvasScaler);
+        if (!scaler) {
+            // A Screen Space Canvas requires a CanvasScaler to function.
             this.end();
             return;
         }
 
-        const targetWidth = this.canvas.width;
-        const targetHeight = this.canvas.height;
-        const sourceWidth = canvasComponent.size.x;
-        const sourceHeight = canvasComponent.size.y;
+        const sourceRect = {
+            width: scaler.referenceResolution.x,
+            height: scaler.referenceResolution.y
+        };
+        const targetRect = {
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
 
-        const targetAspect = targetWidth / targetHeight;
-        const sourceAspect = sourceWidth / sourceHeight;
+        // Use the centralized utility to get letterboxing parameters
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
 
-        let scale = 1;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (targetAspect > sourceAspect) {
-            // Target is wider than source, letterbox on the sides
-            scale = targetHeight / sourceHeight;
-            offsetX = (targetWidth - sourceWidth * scale) / 2;
-        } else {
-            // Target is taller than source, letterbox on top/bottom
-            scale = targetWidth / sourceWidth;
-            offsetY = (targetHeight - sourceHeight * scale) / 2;
-        }
-
+        // This is the virtual canvas area, which is the parent rect for all direct children
         const canvasRect = {
-            x: 0, // In the scaled context, the canvas starts at 0,0
+            x: 0,
             y: 0,
-            width: sourceWidth,
-            height: sourceHeight
+            width: sourceRect.width,
+            height: sourceRect.height
         };
 
         this.ctx.save();
-        // Apply the letterboxing transformation
+        // Apply the letterbox transformation to the entire UI
         this.ctx.translate(offsetX, offsetY);
         this.ctx.scale(scale, scale);
 
-        // Clip the content to the canvas boundaries after letterboxing
+        // Clip drawing to the scaled canvas area
         this.ctx.beginPath();
-        this.ctx.rect(0, 0, sourceWidth, sourceHeight);
+        this.ctx.rect(0, 0, sourceRect.width, sourceRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Recursively draw all children within the scaled, virtual canvas
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }
@@ -482,9 +420,16 @@ export class Renderer {
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
 
+        // NOTE: This will fail if the Canvas component doesn't have a `.size` property.
+        // This is a known issue from the refactoring and will be addressed separately if it causes problems.
+        const size = canvasComponent.size;
+        if (!size) {
+             console.error("World Space Canvas requires a 'size' property, which was removed. This needs to be fixed.");
+             return;
+        }
+
         this.ctx.save();
         const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
 
         const canvasRect = {
             x: worldPos.x - size.x / 2,
@@ -492,14 +437,13 @@ export class Renderer {
             width: size.x,
             height: size.y
         };
-        if (canvasComponent.renderMode === 'World Space') {
-            this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-            this.ctx.clip();
-        }
 
+        // Clip rendering to the bounds of the world-space canvas
+        this.ctx.beginPath();
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Recursively draw children relative to the world-space canvas rectangle
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }

@@ -1,38 +1,145 @@
+import { calculateLetterbox } from '../engine/UITransformUtils.js';
+
+
+/**
+ * Recursively calculates a UI element's rectangle relative to its root Canvas's coordinate system.
+ * This is used to get the "unscaled" position and size before letterboxing is applied.
+ * @param {Materia} materia The UI element to calculate the rect for.
+ * @param {Map} rectCache A cache to store intermediate calculations for performance.
+ * @returns {object|null} The rectangle {x, y, width, height} or null if invalid.
+ */
+function getUnscaledRelativeRect(materia, rectCache) {
+    if (!materia) return null;
+    if (rectCache.has(materia.id)) {
+        return rectCache.get(materia.id);
+    }
+
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) {
+        const canvas = materia.getComponent(Components.Canvas);
+        const scaler = materia.getComponent(Components.CanvasScaler);
+        // Base case: This is the root Canvas. Its rect is the reference resolution.
+        if (canvas && scaler) {
+            const rect = { x: 0, y: 0, width: scaler.referenceResolution.x, height: scaler.referenceResolution.y };
+            rectCache.set(materia.id, rect);
+            return rect;
+        }
+        return null; // Not a UI element or a valid Canvas.
+    }
+
+    const parent = materia.parent;
+    if (!parent) return null; // UI elements must have a parent.
+
+    const parentRect = getUnscaledRelativeRect(parent, rectCache);
+    if (!parentRect) return null; // Parent chain must lead to a valid Canvas.
+
+    const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+
+    const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+    const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+    const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+    const finalX = parentRect.x + rectX_fromLeft;
+
+    const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+    const finalY = parentRect.y + rectY_fromTop;
+
+    const result = {
+        x: finalX,
+        y: finalY,
+        width: uiTransform.size.width,
+        height: uiTransform.size.height
+    };
+
+    rectCache.set(materia.id, result);
+    return result;
+}
+
+/**
+ * Calculates the final world-space rectangle for a UI element for gizmo drawing.
+ * This function accounts for the letterboxing of a Screen Space Canvas.
+ * @param {Materia} materia The UI element.
+ * @returns {object|null} The world-space rectangle {x, y, width, height} or null if invalid.
+ */
+function getGizmoWorldRect(materia) {
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) return null; // Only draw gizmos for UI elements, not the canvas itself.
+
+    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
+    if (!parentCanvasMateria) return null;
+
+    const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
+    const scaler = parentCanvasMateria.getComponent(Components.CanvasScaler);
+
+    if (canvasComponent.renderMode === 'Screen Space' && scaler) {
+        // --- WYSIWYG Logic for Screen Space ---
+        const unscaledRect = getUnscaledRelativeRect(materia, new Map());
+        if (!unscaledRect) return null;
+
+        const sourceRect = { width: scaler.referenceResolution.x, height: scaler.referenceResolution.y };
+        const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+        const screenRect = {
+            x: unscaledRect.x * scale + offsetX,
+            y: unscaledRect.y * scale + offsetY,
+            width: unscaledRect.width * scale,
+            height: unscaledRect.height * scale
+        };
+
+        const worldTopLeft = screenToWorld(screenRect.x, screenRect.y);
+        const worldBottomRight = screenToWorld(screenRect.x + screenRect.width, screenRect.y + screenRect.height);
+
+        return {
+            x: worldTopLeft.x,
+            y: worldTopLeft.y,
+            width: worldBottomRight.x - worldTopLeft.x,
+            height: worldBottomRight.y - worldTopLeft.y
+        };
+
+    } else {
+        // --- Fallback/World Space Logic ---
+        return getAbsoluteRect(materia, new Map());
+    }
+}
+
 function checkUIGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
 
+    // We check gizmo hits for all children of a selected canvas
+    if (selectedMateria.getComponent(Components.Canvas)) {
+        for (const child of selectedMateria.children) {
+            const hit = checkUIGizmoHit(canvasPos, child); // Pass down the child
+            if (hit) return hit;
+        }
+        return null;
+    }
+
     const uiTransform = selectedMateria.getComponent(Components.UITransform);
     if (!uiTransform) return null;
 
-    const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return null;
-
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache);
-
+    const rect = getGizmoWorldRect(selectedMateria);
+    if (!rect) return null;
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
 
     const zoom = renderer.camera.effectiveZoom;
-    const gizmoSize = 60 / zoom;
+    const GIZMO_SIZE = 60 / zoom;
     const handleHitboxSize = 12 / zoom;
 
     const checkHit = (targetX, targetY) => {
         return Math.abs(worldMouse.x - targetX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - targetY) < handleHitboxSize / 2;
     };
 
-
+    // Note: Gizmos are drawn relative to the element's center, but hit checks are in world space.
+    // The handle positions must be calculated in world space.
     switch (activeTool) {
         case 'move':
-            if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
-            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
-             // Central square hit detection
+            if (checkHit(centerX + GIZMO_SIZE / 2, centerY)) return 'ui-move-x';
+            if (checkHit(centerX, centerY - GIZMO_SIZE / 2)) return 'ui-move-y';
             const squareHitboxSize = 10 / zoom;
             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
                 return 'ui-move-xy';
@@ -48,15 +155,15 @@ function checkUIGizmoHit(canvasPos) {
             }
             break;
         case 'scale':
-            const handles = [
+             const handles = [
                 { x: rect.x, y: rect.y, name: 'ui-scale-tl' },
                 { x: rect.x + rect.width, y: rect.y, name: 'ui-scale-tr' },
                 { x: rect.x, y: rect.y + rect.height, name: 'ui-scale-bl' },
                 { x: rect.x + rect.width, y: rect.y + rect.height, name: 'ui-scale-br' },
-                 { x: rect.x + rect.width / 2, y: rect.y, name: 'ui-scale-t' },
-                { x: rect.x + rect.width / 2, y: rect.y + rect.height, name: 'ui-scale-b' },
-                { x: rect.x, y: rect.y + rect.height / 2, name: 'ui-scale-l' },
-                { x: rect.x + rect.width, y: rect.y + rect.height / 2, name: 'ui-scale-r' },
+                { x: centerX, y: rect.y, name: 'ui-scale-t' },
+                { x: centerX, y: rect.y + rect.height, name: 'ui-scale-b' },
+                { x: rect.x, y: centerY, name: 'ui-scale-l' },
+                { x: rect.x + rect.width, y: centerY, name: 'ui-scale-r' },
             ];
             for (const handle of handles) {
                 if (checkHit(handle.x, handle.y)) return handle.name;
@@ -64,40 +171,39 @@ function checkUIGizmoHit(canvasPos) {
             break;
     }
 
-
     return null;
 }
 
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
+    // If the selected object is a Canvas, recursively draw gizmos for its direct children.
+    const canvas = materia.getComponent(Components.Canvas);
+    if (canvas) {
+        materia.children.forEach(child => drawUIGizmos(renderer, child));
+        return;
+    }
+
     const uiTransform = materia.getComponent(Components.UITransform);
     if (!uiTransform) return;
 
-    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return;
-
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
-
-    // --- Gizmo settings ---
     const GIZMO_SIZE = 60 / zoom;
     const HANDLE_THICKNESS = 2 / zoom;
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache);
+    const rect = getGizmoWorldRect(materia);
+    if (!rect) return;
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
 
     ctx.save();
-    // Move context to the center of the UI element for easier rotation drawing
     ctx.translate(centerX, centerY);
-    // Apply the element's rotation to the gizmos
     ctx.rotate(uiTransform.rotation * Math.PI / 180);
+
     // Draw selection outline
     ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
     ctx.lineWidth = 1 / zoom;
@@ -105,66 +211,36 @@ function drawUIGizmos(renderer, materia) {
     ctx.strokeRect(-rect.width / 2, -rect.height / 2, rect.width, rect.height);
     ctx.setLineDash([]);
 
-
     switch (activeTool) {
         case 'move':
              ctx.lineWidth = HANDLE_THICKNESS;
-
             // Y-Axis (Green)
-            ctx.strokeStyle = '#00ff00';
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, -GIZMO_SIZE);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, -GIZMO_SIZE);
-            ctx.lineTo(-ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.lineTo(ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
-            ctx.closePath();
-            ctx.fillStyle = '#00ff00';
-            ctx.fill();
-
+            ctx.strokeStyle = '#00ff00'; ctx.fillStyle = '#00ff00';
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -GIZMO_SIZE); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -GIZMO_SIZE); ctx.lineTo(-ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE); ctx.lineTo(ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE); ctx.closePath(); ctx.fill();
             // X-Axis (Red)
-            ctx.strokeStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(GIZMO_SIZE, 0);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(GIZMO_SIZE, 0);
-            ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, -ARROW_HEAD_SIZE / 2);
-            ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, ARROW_HEAD_SIZE / 2);
-            ctx.closePath();
-            ctx.fillStyle = '#ff0000';
-            ctx.fill();
-
-            // XY-Plane Handle (Central Square)
+            ctx.strokeStyle = '#ff0000'; ctx.fillStyle = '#ff0000';
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(GIZMO_SIZE, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(GIZMO_SIZE, 0); ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, -ARROW_HEAD_SIZE / 2); ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, ARROW_HEAD_SIZE / 2); ctx.closePath(); ctx.fill();
+            // XY-Plane Handle
             const SQUARE_SIZE = 10 / zoom;
-            ctx.fillStyle = 'rgba(0, 100, 255, 0.7)';
-            ctx.fillRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
-            ctx.strokeStyle = '#ffffff';
-            ctx.strokeRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
+            ctx.fillStyle = 'rgba(0, 100, 255, 0.7)'; ctx.strokeStyle = '#ffffff';
+            ctx.fillRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE); ctx.strokeRect(-SQUARE_SIZE / 2, -SQUARE_SIZE / 2, SQUARE_SIZE, SQUARE_SIZE);
             break;
         case 'rotate':
             const radius = Math.max(rect.width, rect.height) / 2 + (20 / zoom);
             ctx.lineWidth = HANDLE_THICKNESS;
-            ctx.strokeStyle = '#0000ff'; // Blue for rotation
-            ctx.beginPath();
-            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
-            ctx.stroke();
+            ctx.strokeStyle = '#0000ff';
+            ctx.beginPath(); ctx.arc(0, 0, radius, 0, 2 * Math.PI); ctx.stroke();
             break;
         case 'scale':
             const handles = [
-                { x: -rect.width / 2, y: -rect.height / 2 }, // Top-left
-                { x: rect.width / 2, y: -rect.height / 2 }, // Top-right
-                { x: -rect.width / 2, y: rect.height / 2 }, // Bottom-left
-                { x: rect.width / 2, y: rect.height / 2 }, // Bottom-right
-                { x: 0, y: -rect.height / 2 }, // Top
-                { x: 0, y: rect.height / 2 }, // Bottom
-                { x: -rect.width / 2, y: 0 }, // Left
-                { x: rect.width / 2, y: 0 }, // Right
+                { x: -rect.width / 2, y: -rect.height / 2 }, { x: rect.width / 2, y: -rect.height / 2 },
+                { x: -rect.width / 2, y: rect.height / 2 }, { x: rect.width / 2, y: rect.height / 2 },
+                { x: 0, y: -rect.height / 2 }, { x: 0, y: rect.height / 2 },
+                { x: -rect.width / 2, y: 0 }, { x: rect.width / 2, y: 0 },
             ];
-             ctx.fillStyle = '#0090ff';
+            ctx.fillStyle = '#0090ff';
             const halfBox = SCALE_BOX_SIZE / 2;
             handles.forEach(handle => {
                 ctx.fillRect(handle.x - halfBox, handle.y - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
@@ -177,7 +253,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+import { getAbsoluteRect, getAnchorPercentages } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;

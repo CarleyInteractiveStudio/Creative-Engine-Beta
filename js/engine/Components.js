@@ -30,7 +30,8 @@ const componentAliases = {
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
-    'Button': 'boton'
+    'Button': 'boton',
+    'CanvasScaler': 'escaladorDeLienzo'
 };
 
 
@@ -1152,58 +1153,37 @@ export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
-        this.size = { x: 800, y: 600 };
+        this.size = { x: 800, y: 600 }; // Restored for World Space Canvas functionality
     }
-    /**
-     * Calculates the world-space rectangle for a given UI element (child of this canvas).
-     * @param {UITransform} uiTransform The UITransform component of the element.
-     * @returns {{x: number, y: number, width: number, height: number}} The rectangle in world coordinates.
-     */
-    getWorldRect(uiTransform) {
-        const canvasTransform = this.materia.getComponent(Transform);
-        if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
-
-        const canvasPos = canvasTransform.position;
-        const canvasSize = this.size;
-        const parentWidth = canvasSize.x;
-        const parentHeight = canvasSize.y;
-
-        // World space coordinates of the canvas edges
-        const canvasLeftEdgeX = canvasPos.x - parentWidth / 2;
-        const canvasTopEdgeY = canvasPos.y - parentHeight / 2;
-
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // --- X Calculation (standard left-to-right) ---
-        const anchorMinX_fromLeft = parentWidth * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        // uiTransform.pivot.x is Y-down (0=left), which is standard for X.
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-
-        // --- Y Calculation (converts Y-UP data to Y-DOWN coordinates) ---
-        // This implements the user-provided formula: parentHeight * (1 - anchorMin.y) - position.y - height * (1 - pivot.y)
-        // anchorMin.y is now Y-up (0=bottom, 1=top)
-        // position.y is now Y-up (positive moves up)
-        // uiTransform.pivot.y is Y-down (0=top), so (1 - pivot.y) converts it to Y-up for the calculation.
-        const rectY_fromTop = parentHeight * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-
-        return {
-            x: canvasLeftEdgeX + rectX_fromLeft,
-            y: canvasTopEdgeY + rectY_fromTop,
-            width: uiTransform.size.width,
-            height: uiTransform.size.height
-        };
-    }
-
 
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
-        newCanvas.size = { ...this.size };
+        newCanvas.size = { ...this.size }; // Ensure size is cloned
         return newCanvas;
     }
 }
 registerComponent('Canvas', Canvas);
+
+export class CanvasScaler extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.uiScaleMode = 'Scale With Screen Size'; // Future: 'Constant Pixel Size', 'Constant Physical Size'
+        this.referenceResolution = { x: 800, y: 600 };
+        this.screenMatchMode = 'Match Width Or Height'; // Future: 'Expand', 'Shrink'
+        this.matchWidthOrHeight = 0.5; // 0 = Width, 1 = Height
+    }
+
+    clone() {
+        const newScaler = new CanvasScaler(null);
+        newScaler.uiScaleMode = this.uiScaleMode;
+        newScaler.referenceResolution = { ...this.referenceResolution };
+        newScaler.screenMatchMode = this.screenMatchMode;
+        newScaler.matchWidthOrHeight = this.matchWidthOrHeight;
+        return newScaler;
+    }
+}
+registerComponent('CanvasScaler', CanvasScaler);
 
 // --- Tilemap Components ---
 

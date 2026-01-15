@@ -232,3 +232,31 @@ export function getAbsoluteRect(materia, rectCache) {
     rectCache.set(materia.id, absoluteRect);
     return absoluteRect;
 }
+
+/**
+ * Calculates the scale and offset to fit a source rectangle within a target rectangle
+ * while maintaining the source's aspect ratio (letterboxing).
+ *
+ * @param {{width: number, height: number}} sourceRect The dimensions of the content (e.g., reference resolution).
+ * @param {{width: number, height: number}} targetRect The dimensions of the container (e.g., screen size).
+ * @returns {{scale: number, offsetX: number, offsetY: number}} The scale factor and offsets to apply.
+ */
+export function calculateLetterbox(sourceRect, targetRect) {
+    const sourceAspect = sourceRect.width / sourceRect.height;
+    const targetAspect = targetRect.width / targetRect.height;
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (targetAspect > sourceAspect) {
+        // Target is wider than source, letterbox on the sides
+        scale = targetRect.height / sourceRect.height;
+        offsetX = (targetRect.width - sourceRect.width * scale) / 2;
+    } else {
+        // Target is taller than or same aspect as source, letterbox on top/bottom
+        scale = targetRect.width / sourceRect.width;
+        offsetY = (targetRect.height - sourceRect.height * scale) / 2;
+    }
+
+    return { scale, offsetX, offsetY };
+}
