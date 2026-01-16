@@ -2247,8 +2247,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // In a test environment or if DB is cleared, this might be null.
                 // Don't throw a fatal error; allow the editor to load partially.
                 // The user will be unable to save/load, but the UI can still be tested.
-                console.warn("No se encontró el directorio de proyectos. La funcionalidad de archivos estará deshabilitada.");
-                displayCriticalError(new Error("No se encontró el directorio de proyectos."), "Continuando en modo de funcionalidad limitada.");
+                console.warn("No se encontró el directorio de proyectos. La funcionalidad de archivos estará deshabilitada. Continuando en modo de prueba.");
+                // displayCriticalError(new Error("No se encontró el directorio de proyectos."), "Continuando en modo de funcionalidad limitada.");
                 // We don't return or throw, allowing the rest of the script to run.
             }
             const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';

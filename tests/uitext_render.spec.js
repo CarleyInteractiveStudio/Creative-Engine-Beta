@@ -3,6 +3,9 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('UIText Rendering Test', () => {
   test('should create a UIText object and render it correctly', async ({ page }) => {
+    // Listen for console logs
+    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+
     // Navigate to the editor
     await page.goto('http://localhost:8000/editor.html?project=test-project');
 
@@ -14,6 +17,9 @@ test.describe('UIText Rendering Test', () => {
 
     // Wait for the hierarchy panel to be visible as a final check
     await page.waitForSelector('#hierarchy-panel', { state: 'visible' });
+
+    // Take a screenshot to see what's on the screen
+    await page.screenshot({ path: 'test-results/editor-view.png' });
 
     // Right-click on the hierarchy panel to open the context menu
     await page.locator('#hierarchy-panel').click({ button: 'right' });
