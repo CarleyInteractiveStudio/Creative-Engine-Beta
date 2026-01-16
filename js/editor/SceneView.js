@@ -105,23 +105,32 @@ function getGizmoWorldRect(materia) {
         const rectCache = new Map();
         return getAbsoluteRect(materia, rectCache);
     } else {
-        // For Screen Space in the editor, the "screen" is the reference resolution itself,
-        // centered on the canvas object's world position.
-        const { referenceResolution } = canvasComponent;
-        const worldPos = canvasTransform.position;
+        // --- WYSIWYG SCALING LOGIC ---
+        // This logic mirrors the Renderer's logic in `drawWorldSpaceUI`.
+        const sourceRect = { width: canvasComponent.referenceResolution.x, height: canvasComponent.referenceResolution.y };
+        const targetRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
 
-        // The unscaled rect is already relative to the top-left of the reference resolution.
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
+
+        // The unscaled rect is relative to the top-left of the reference resolution.
         const unscaledRelativeRect = getUnscaledRelativeRect(materia, parentCanvasMateria, new Map());
 
-        // We just need to translate this relative rect to the canvas's world origin.
-        const canvasWorldOriginX = worldPos.x - (referenceResolution.x / 2);
-        const canvasWorldOriginY = worldPos.y - (referenceResolution.y / 2);
+        // Now, scale this relative rect and apply the letterbox offset.
+        const scaledX = unscaledRelativeRect.x * scale;
+        const scaledY = unscaledRelativeRect.y * scale;
+        const scaledWidth = unscaledRelativeRect.width * scale;
+        const scaledHeight = unscaledRelativeRect.height * scale;
+
+        // Finally, translate the scaled rect to the canvas's world origin.
+        const worldPos = canvasTransform.position;
+        const canvasWorldOriginX = worldPos.x - targetRect.width / 2;
+        const canvasWorldOriginY = worldPos.y - targetRect.height / 2;
 
         return {
-            x: canvasWorldOriginX + unscaledRelativeRect.x,
-            y: canvasWorldOriginY + unscaledRelativeRect.y,
-            width: unscaledRelativeRect.width,
-            height: unscaledRelativeRect.height
+            x: canvasWorldOriginX + offsetX + scaledX,
+            y: canvasWorldOriginY + offsetY + scaledY,
+            width: scaledWidth,
+            height: scaledHeight
         };
     }
 }

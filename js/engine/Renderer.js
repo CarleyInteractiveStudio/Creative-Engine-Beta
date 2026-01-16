@@ -19,9 +19,10 @@ export class Renderer {
         this.resize();
     }
 
-    _drawUIText(uiText, drawX, drawY, drawWidth, drawHeight) {
+    _drawUIText(uiText, drawX, drawY, drawWidth, drawHeight, scale = 1) {
         this.ctx.save();
-        this.ctx.font = `${uiText.fontSize}px ${uiText.fontFamily || 'sans-serif'}`;
+        const scaledFontSize = uiText.fontSize * scale;
+        this.ctx.font = `${scaledFontSize}px ${uiText.fontFamily || 'sans-serif'}`;
         this.ctx.fillStyle = uiText.color;
         this.ctx.textAlign = uiText.horizontalAlign;
         this.ctx.textBaseline = 'middle';
@@ -304,30 +305,34 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    _drawUIElementAndChildren(element, parentRect) {
+    _drawUIElementAndChildren(element, parentRect, scale = 1) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
+        // --- SCALED PROPERTIES ---
+        const scaledPosition = { x: uiTransform.position.x * scale, y: uiTransform.position.y * scale };
+        const scaledSize = { width: uiTransform.size.width * scale, height: uiTransform.size.height * scale };
+
+
         // Calculate the element's own rectangle based on the parent's rectangle
         const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
 
         // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
         const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
         // X Calculation is straightforward
         const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+        const pivotPosX_fromLeft = anchorMinX_fromLeft + scaledPosition.x;
+        const rectX_fromLeft = pivotPosX_fromLeft - (scaledSize.width * uiTransform.pivot.x);
         const finalX = parentRect.x + rectX_fromLeft;
 
         // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - scaledPosition.y - (scaledSize.height * (1 - uiTransform.pivot.y));
         const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
+        const drawWidth = scaledSize.width;
+        const drawHeight = scaledSize.height;
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
@@ -365,13 +370,13 @@ export class Renderer {
         }
 
         if (uiText) {
-            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
+            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight, scale);
         }
 
         // --- Recursion ---
         // Now, draw children, passing this element's rectangle as the new parentRect
         for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIElementAndChildren(child, currentRect, scale);
         }
     }
 
@@ -383,37 +388,44 @@ export class Renderer {
             return;
         }
 
-        const { referenceResolution } = canvasComponent;
-        const targetRect = { width: this.canvas.width, height: this.canvas.height };
-        const unscaledRect = { x: 0, y: 0, width: referenceResolution.x, height: referenceResolution.y };
+        const sourceRect = {
+            x: 0, y: 0,
+            width: canvasComponent.referenceResolution.x,
+            height: canvasComponent.referenceResolution.y
+        };
+        const targetRect = {
+            x: 0, y: 0,
+            width: this.canvas.width,
+            height: this.canvas.height
+        };
 
-        if (canvasComponent.screenMatchMode === 'Match Width Or Height') {
-            const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
+        const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
 
-            this.ctx.save();
-            // Apply the letterbox transformation
-            this.ctx.translate(offsetX, offsetY);
-            this.ctx.scale(scale, scale);
+        const letterboxCanvasRect = {
+            x: offsetX,
+            y: offsetY,
+            width: sourceRect.width * scale,
+            height: sourceRect.height * scale
+        };
 
-            // Clip to the unscaled reference resolution, as the context is now scaled
-            this.ctx.beginPath();
-            this.ctx.rect(unscaledRect.x, unscaledRect.y, unscaledRect.width, unscaledRect.height);
-            this.ctx.clip();
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.rect(letterboxCanvasRect.x, letterboxCanvasRect.y, letterboxCanvasRect.width, letterboxCanvasRect.height);
+        this.ctx.clip();
 
-            // Draw children within the unscaled, transformed space
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, unscaledRect);
-            }
+        // The "parentRect" for top-level UI elements is now the reference resolution itself.
+        // We pass the calculated scale down the recursive drawing function.
+        const referenceRect = { x: 0, y: 0, width: canvasComponent.referenceResolution.x, height: canvasComponent.referenceResolution.y };
 
-            this.ctx.restore(); // This removes the scale, translation, and clip
-        } else {
-            // Original behavior for other modes
-            const canvasRect = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
+        // Before drawing children, we apply the global letterbox transform
+        this.ctx.translate(offsetX, offsetY);
+
+
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, referenceRect, scale);
         }
 
+        this.ctx.restore();
         this.end();
     }
 
@@ -423,43 +435,60 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-        const worldPos = canvasTransform.position;
+
+        let canvasRect, scale = 1, referenceRect;
 
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
-            const { referenceResolution } = canvasComponent;
+             // --- WYSIWYG for Screen Space Canvas in Editor ---
+            const sourceRect = { x: 0, y: 0, width: canvasComponent.referenceResolution.x, height: canvasComponent.referenceResolution.y };
 
-            // Simplified logic: The context is already centered on the object.
-            // We just need to offset by half the resolution to get the top-left corner.
-            const unscaledRect = {
-                x: worldPos.x - referenceResolution.x / 2,
-                y: worldPos.y - referenceResolution.y / 2,
-                width: referenceResolution.x,
-                height: referenceResolution.y
+            // In the editor's world view, the "target" for the letterbox is the canvas's own world-space size.
+            const targetRect = { x: 0, y: 0, width: canvasComponent.size.x, height: canvasComponent.size.y };
+
+            const letterbox = calculateLetterbox(sourceRect, targetRect);
+            scale = letterbox.scale;
+
+            const worldPos = canvasTransform.position;
+            const letterboxWidth = sourceRect.width * scale;
+            const letterboxHeight = sourceRect.height * scale;
+
+            // The canvasRect is the final scaled & offset rectangle in world space
+            canvasRect = {
+                x: worldPos.x - canvasComponent.size.x / 2 + letterbox.offsetX,
+                y: worldPos.y - canvasComponent.size.y / 2 + letterbox.offsetY,
+                width: letterboxWidth,
+                height: letterboxHeight
             };
 
+            // The reference for children is the unscaled resolution
+            referenceRect = { x: 0, y: 0, width: canvasComponent.referenceResolution.x, height: canvasComponent.referenceResolution.y };
+
+            // Apply the letterbox offset before drawing children
+            this.ctx.translate(canvasRect.x, canvasRect.y);
+
             this.ctx.beginPath();
-            this.ctx.rect(unscaledRect.x, unscaledRect.y, unscaledRect.width, unscaledRect.height);
+            this.ctx.rect(0, 0, canvasRect.width, canvasRect.height);
             this.ctx.clip();
 
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, unscaledRect);
-            }
         } else {
+            // --- Default World Space UI rendering ---
+            const worldPos = canvasTransform.position;
             const size = canvasComponent.size;
-            const canvasRect = {
+            canvasRect = {
                 x: worldPos.x - size.x / 2,
                 y: worldPos.y - size.y / 2,
                 width: size.x,
                 height: size.y
             };
-
+            referenceRect = canvasRect; // For world space, the reference is the canvas itself
             this.ctx.beginPath();
             this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
             this.ctx.clip();
+        }
 
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
+        // Start the recursive drawing process
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, referenceRect, scale);
         }
 
         this.ctx.restore();
