@@ -31,7 +31,7 @@ const availableComponents = {
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
-    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
+    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.CanvasScaler, Components.Button],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -899,6 +899,18 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
+                        </div>
+                    </div>
+                </div>`;
+        } else if (ley instanceof Components.CanvasScaler) {
+            componentHTML = `
+                <div class="component-header"><span class="component-icon">↔️</span><h4>Canvas Scaler</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Reference Resolution</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="CanvasScaler" data-prop="referenceResolution.width" value="${ley.referenceResolution.width}" title="Width">
+                            <input type="number" class="prop-input" data-component="CanvasScaler" data-prop="referenceResolution.height" value="${ley.referenceResolution.height}" title="Height">
                         </div>
                     </div>
                 </div>`;

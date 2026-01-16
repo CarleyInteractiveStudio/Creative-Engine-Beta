@@ -1203,6 +1203,22 @@ export class Canvas extends Leyes {
 }
 registerComponent('Canvas', Canvas);
 
+
+export class CanvasScaler extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.referenceResolution = { width: 800, height: 600 };
+    }
+
+    clone() {
+        const newScaler = new CanvasScaler(null);
+        newScaler.referenceResolution = { ...this.referenceResolution };
+        return newScaler;
+    }
+}
+registerComponent('CanvasScaler', CanvasScaler);
+
+
 // --- Tilemap Components ---
 
 export class Tilemap extends Leyes {

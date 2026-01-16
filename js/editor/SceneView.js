@@ -1,3 +1,65 @@
+function getGizmoWorldRect(materia, renderer) {
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) return null;
+
+    const canvasMateria = materia.findAncestorWithComponent(Components.Canvas);
+    if (!canvasMateria) return null;
+
+    const canvasScaler = canvasMateria.getComponent(Components.CanvasScaler);
+
+    const referenceResolution = canvasScaler
+        ? canvasScaler.referenceResolution
+        : { width: renderer.canvas.width, height: renderer.canvas.height };
+
+    // Helper to recursively find the element's rect relative to the canvas.
+    const getUnscaledRelativeRect = (element, cache) => {
+        if (cache.has(element.id)) return cache.get(element.id);
+
+        const transform = element.getComponent(Components.UITransform);
+        if (!transform) return { x: 0, y: 0, width: 0, height: 0 };
+
+        let parentRect;
+        if (element.parent && element.parent !== canvasMateria) {
+            parentRect = getUnscaledRelativeRect(element.parent, cache);
+        } else {
+            parentRect = { x: 0, y: 0, width: referenceResolution.width, height: referenceResolution.height };
+        }
+
+        const anchorMin = getAnchorPercentages(transform.anchorPreset); // Y-UP
+
+        const rectX_fromLeft = (parentRect.width * anchorMin.x) + transform.position.x - (transform.size.width * transform.pivot.x);
+        const finalX = parentRect.x + rectX_fromLeft;
+
+        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - transform.position.y - (transform.size.height * (1 - transform.pivot.y));
+        const finalY = parentRect.y + rectY_fromTop;
+
+        const result = { x: finalX, y: finalY, width: transform.size.width, height: transform.size.height };
+        cache.set(element.id, result);
+        return result;
+    };
+
+    const unscaledRect = getUnscaledRelativeRect(materia, new Map());
+
+    const targetRect = { width: renderer.canvas.width, height: renderer.canvas.height };
+    const letterbox = calculateLetterbox(referenceResolution, targetRect);
+
+    const finalScreenX = unscaledRect.x * letterbox.scale + letterbox.offsetX;
+    const finalScreenY = unscaledRect.y * letterbox.scale + letterbox.offsetY;
+    const finalScreenWidth = unscaledRect.width * letterbox.scale;
+    const finalScreenHeight = unscaledRect.height * letterbox.scale;
+
+    const worldTopLeft = screenToWorld(finalScreenX, finalScreenY);
+    const worldBottomRight = screenToWorld(finalScreenX + finalScreenWidth, finalScreenY + finalScreenHeight);
+
+    return {
+        x: worldTopLeft.x,
+        y: worldTopLeft.y,
+        width: worldBottomRight.x - worldTopLeft.x,
+        height: worldBottomRight.y - worldTopLeft.y
+    };
+}
+
+
 function checkUIGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
@@ -5,15 +67,11 @@ function checkUIGizmoHit(canvasPos) {
     const uiTransform = selectedMateria.getComponent(Components.UITransform);
     if (!uiTransform) return null;
 
-    const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return null;
+     const rect = getGizmoWorldRect(selectedMateria, renderer);
+    if (!rect) return null;
+
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(selectedMateria, rectCache);
-
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -62,11 +120,20 @@ function checkUIGizmoHit(canvasPos) {
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
+    // If the selected object is a Canvas, we shouldn't draw a gizmo for it directly.
+    // Instead, we should draw gizmos for its selectable children.
+    if (materia.getComponent(Components.Canvas)) {
+        // This prevents drawing a gizmo for the canvas itself.
+        // Gizmos are drawn for its children when they are selected.
+        return;
+    }
+
     const uiTransform = materia.getComponent(Components.UITransform);
     if (!uiTransform) return;
 
-    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return;
+    const rect = getGizmoWorldRect(materia, renderer);
+    if (!rect) return;
+
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -77,9 +144,6 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    // Bounding box of the UI element in world space
-    const rectCache = new Map();
-    const rect = getAbsoluteRect(materia, rectCache);
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -158,7 +222,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+import { getAbsoluteRect, calculateLetterbox, getAnchorPercentages } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;

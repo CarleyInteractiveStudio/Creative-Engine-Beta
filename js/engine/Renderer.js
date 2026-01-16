@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, CanvasScaler, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -379,24 +379,49 @@ export class Renderer {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform);
+        const canvasScaler = canvasMateria.getComponent(CanvasScaler);
+
         if (!canvasComponent || !canvasTransform) {
             this.end();
             return;
         }
 
-        const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
-        };
+        let canvasRect;
+
+        // Si hay un CanvasScaler, calcula el letterbox. Si no, usa el tamaño completo del canvas.
+        if (canvasScaler && canvasScaler.enabled) {
+            const targetRect = { width: this.canvas.width, height: this.canvas.height };
+            const letterbox = calculateLetterbox(canvasScaler.referenceResolution, targetRect);
+
+            canvasRect = {
+                x: letterbox.offsetX,
+                y: letterbox.offsetY,
+                width: letterbox.width,
+                height: letterbox.height
+            };
+
+            // Dibuja las bandas negras (o el color de fondo de la cámara)
+            this.ctx.fillStyle = 'black'; // O podría ser this.camera.backgroundColor si se prefiere
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        } else {
+            // Comportamiento original si no hay CanvasScaler
+            canvasRect = {
+                x: 0,
+                y: 0,
+                width: this.canvas.width,
+                height: this.canvas.height
+            };
+        }
+
 
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
+        // Inicia el proceso de dibujado recursivo para todos los hijos directos del canvas
+        // El rectángulo base ahora es el área escalada y centrada.
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, canvasRect);
         }
