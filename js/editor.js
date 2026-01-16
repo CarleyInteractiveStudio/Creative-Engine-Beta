@@ -2111,7 +2111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeEditor() {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = SceneManager;
-        window.MateriaFactory = MateriaFactory;
+        window.MateriaFactory = MateriaFactory; // This exposes the entire module's exports.
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
         window.selectMateria = selectMateria;
@@ -2741,6 +2741,9 @@ public star() {
                 // --- Habilitar el botón de Play y marcar el editor como listo ---
                 dom.btnPlay.disabled = false;
                 isEditorReady = true;
+
+                // Expose a flag for automated tests to signal completion
+                window.editorInitialized = true;
 
             }, 500);
 

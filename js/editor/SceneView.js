@@ -55,7 +55,8 @@ function checkUIGizmoHit(canvasPos) {
 
 // --- UI Gizmo Drawing Logic with WYSIWYG Scaling ---
 
-// Helper to recursively find the rectangle of a UI element relative to its root canvas, in unscaled coordinates.
+// Helper to recursively find the rectangle of a UI element relative to its root canvas,
+// in unscaled, Y-Up coordinates (origin at the bottom-left).
 function getUnscaledRelativeRect(materia, rootCanvasMateria, rectCache) {
     if (rectCache.has(materia.id)) {
         return rectCache.get(materia.id);
@@ -72,16 +73,24 @@ function getUnscaledRelativeRect(materia, rootCanvasMateria, rectCache) {
     } else {
         const canvasComponent = rootCanvasMateria.getComponent(Components.Canvas);
         const resolution = canvasComponent.renderMode === 'Screen Space' ? canvasComponent.referenceResolution : canvasComponent.size;
+        // The root is always at 0,0 with the canvas's resolution as its size.
         parentRect = { x: 0, y: 0, width: resolution.x, height: resolution.y };
     }
 
-    const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-    const pivotPosX_fromLeft = (parentRect.width * anchorMin.x) + uiTransform.position.x;
-    const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-    const finalX = parentRect.x + rectX_fromLeft;
+    // This logic is now identical to `_drawUIElementAndChildren` for perfect consistency.
+    const anchorPercentages = getAnchorPercentages(uiTransform.anchorPreset);
 
-    const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-    const finalY = parentRect.y + rectY_fromTop;
+    // Calculate position of the pivot point relative to the parent's bottom-left corner
+    const pivotPosX = parentRect.width * anchorPercentages.x + uiTransform.position.x;
+    const pivotPosY = parentRect.height * anchorPercentages.y + uiTransform.position.y;
+
+    // Calculate the bottom-left corner of the rectangle based on the pivot
+    const rectX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+    const rectY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
+
+    // The final rect is relative to the parent's origin
+    const finalX = parentRect.x + rectX;
+    const finalY = parentRect.y + rectY;
 
     const result = { x: finalX, y: finalY, width: uiTransform.size.width, height: uiTransform.size.height };
     rectCache.set(materia.id, result);
@@ -112,14 +121,17 @@ function getGizmoWorldRect(materia) {
 
         const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
 
-        // The unscaled rect is relative to the top-left of the reference resolution.
+        // This rect is in Y-Up coordinates (0,0 is bottom-left of the reference resolution).
         const unscaledRelativeRect = getUnscaledRelativeRect(materia, parentCanvasMateria, new Map());
 
-        // Now, scale this relative rect and apply the letterbox offset.
+        // Scale the rect and its components.
         const scaledX = unscaledRelativeRect.x * scale;
         const scaledY = unscaledRelativeRect.y * scale;
         const scaledWidth = unscaledRelativeRect.width * scale;
         const scaledHeight = unscaledRelativeRect.height * scale;
+
+        // Convert from Y-Up (UI logic) to Y-Down (world space for gizmo) and position it.
+        const finalScaledY_yDown = (targetRect.height - (scaledY + scaledHeight));
 
         // Finally, translate the scaled rect to the canvas's world origin.
         const worldPos = canvasTransform.position;
@@ -128,7 +140,7 @@ function getGizmoWorldRect(materia) {
 
         return {
             x: canvasWorldOriginX + offsetX + scaledX,
-            y: canvasWorldOriginY + offsetY + scaledY,
+            y: canvasWorldOriginY + offsetY + finalScaledY_yDown,
             width: scaledWidth,
             height: scaledHeight
         };

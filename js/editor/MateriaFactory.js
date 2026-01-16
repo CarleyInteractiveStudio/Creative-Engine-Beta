@@ -55,6 +55,42 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
+// --- Test-Friendly and Advanced API ---
+
+export function createCanvas(options = {}) {
+    const name = generateUniqueName(options.name || 'Canvas');
+    const newMateria = createBaseMateria(name, options.parent || null);
+    const canvas = new Components.Canvas(newMateria);
+
+    if (options.renderMode) canvas.renderMode = options.renderMode;
+    if (options.referenceResolution) canvas.referenceResolution = options.referenceResolution;
+
+    newMateria.addComponent(canvas);
+    return newMateria;
+}
+
+export function createUIImage(options = {}) {
+    if (!options.parent) {
+        console.error("createUIImage requiere un padre (parent).");
+        return null;
+    }
+    const name = generateUniqueName(options.name || 'Image');
+    const newMateria = new Materia(name);
+
+    const uiTransform = new Components.UITransform(newMateria);
+    if (options.anchorPreset) uiTransform.anchorPreset = options.anchorPreset;
+    if (options.size) uiTransform.size = options.size;
+
+    const uiImage = new Components.UIImage(newMateria);
+    if (options.color) uiImage.color = options.color;
+
+    newMateria.addComponent(uiTransform);
+    newMateria.addComponent(uiImage);
+
+    options.parent.addChild(newMateria);
+    return newMateria;
+}
+
 export function createTextObject(parent) {
     if (!parent) {
         console.error("createTextObject requiere un padre que sea un Canvas.");

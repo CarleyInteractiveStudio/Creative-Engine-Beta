@@ -305,27 +305,31 @@ export class Renderer {
         return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
     }
 
-    // This recursive function now operates entirely within the unscaled reference resolution space.
-    // The global transform applied by the caller handles the final scaling and positioning.
+    // This recursive function now operates entirely within the coordinate space provided by `parentRect`.
+    // For Screen Space Canvases, this is the unscaled reference resolution space.
+    // For World Space Canvases, this is the standard world space.
     _drawUIElementAndChildren(element, parentRect) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
         if (!uiTransform) return;
 
-        // This calculation logic is now identical to `getUnscaledRelativeRect` for perfect consistency.
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+        // Use the exact same logic as the gizmo calculation for perfect consistency.
+        const anchorPercentages = getAnchorPercentages(uiTransform.anchorPreset);
 
-        const pivotPosX_fromLeft = (parentRect.width * anchorMin.x) + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalX = parentRect.x + rectX_fromLeft;
+        // Calculate position of the pivot point relative to the parent's bottom-left corner
+        const pivotPosX = parentRect.width * anchorPercentages.x + uiTransform.position.x;
+        const pivotPosY = parentRect.height * anchorPercentages.y + uiTransform.position.y;
 
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-        const finalY = parentRect.y + rectY_fromTop;
+        // Calculate the bottom-left corner of the rectangle based on the pivot
+        const rectX = pivotPosX - (uiTransform.size.width * uiTransform.pivot.x);
+        const rectY = pivotPosY - (uiTransform.size.height * uiTransform.pivot.y);
 
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
-        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+        // Convert from Y-Up (UI logic) to Y-Down (Canvas rendering) and position relative to parent
+        const finalDrawX = parentRect.x + rectX;
+        const finalDrawY = parentRect.y + (parentRect.height - (rectY + uiTransform.size.height));
+
+        const currentRect = { x: finalDrawX, y: finalDrawY, width: uiTransform.size.width, height: uiTransform.size.height };
 
         // --- Drawing Logic ---
         const uiImage = element.getComponent(UIImage);
@@ -385,12 +389,10 @@ export class Renderer {
         this.ctx.translate(offsetX, offsetY);
         this.ctx.scale(scale, scale);
 
-        // Clip the drawing area to the reference resolution
         this.ctx.beginPath();
         this.ctx.rect(0, 0, sourceRect.width, sourceRect.height);
         this.ctx.clip();
 
-        // The parent rect for direct children is the reference resolution itself
         const referenceRect = { x: 0, y: 0, width: sourceRect.width, height: sourceRect.height };
 
         for (const child of canvasMateria.children) {
@@ -408,8 +410,13 @@ export class Renderer {
 
         this.ctx.save();
 
+        // The editor's Scene View ALWAYS renders a Canvas using world-space coordinates
+        // to allow for camera panning and zooming. To achieve a WYSIWYG result for
+        // Screen Space Canvases, we apply the same letterbox scaling logic here, but
+        // using the Canvas's world-space rect as the target container.
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
             const sourceRect = { width: canvasComponent.referenceResolution.x, height: canvasComponent.referenceResolution.y };
+            // The target is the Canvas's world-space bounding box
             const targetRect = { width: canvasComponent.size.x, height: canvasComponent.size.y };
             const { scale, offsetX, offsetY } = calculateLetterbox(sourceRect, targetRect);
 
@@ -417,9 +424,11 @@ export class Renderer {
             const canvasWorldOriginX = worldPos.x - targetRect.width / 2;
             const canvasWorldOriginY = worldPos.y - targetRect.height / 2;
 
+            // Apply the world transform, then the letterbox transform
             this.ctx.translate(canvasWorldOriginX + offsetX, canvasWorldOriginY + offsetY);
             this.ctx.scale(scale, scale);
 
+            // Clip, and then draw children relative to the reference resolution
             this.ctx.beginPath();
             this.ctx.rect(0, 0, sourceRect.width, sourceRect.height);
             this.ctx.clip();
@@ -430,20 +439,22 @@ export class Renderer {
             }
 
         } else {
-            // Default World Space rendering
+            // Standard World Space Canvas rendering
             const worldPos = canvasTransform.position;
             const size = canvasComponent.size;
-            const canvasRect = {
+            const worldRect = {
                 x: worldPos.x - size.x / 2,
                 y: worldPos.y - size.y / 2,
                 width: size.x,
                 height: size.y
             };
+
+            // Clip to the canvas bounds, then draw children relative to it
             this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.rect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
             this.ctx.clip();
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
+                this._drawUIElementAndChildren(child, worldRect);
             }
         }
 
