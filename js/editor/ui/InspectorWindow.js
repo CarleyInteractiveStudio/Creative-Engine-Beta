@@ -884,6 +884,9 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Canvas) {
             const isWorldSpace = ley.renderMode === 'World Space';
+            const hasScaler = selectedMateria.getComponent(Components.CanvasScaler) !== null;
+            const isSizeDisabled = !isWorldSpace && hasScaler;
+
             componentHTML = `
                 <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
                 <div class="component-content">
@@ -894,11 +897,11 @@ async function updateInspectorForMateria(selectedMateria) {
                             <option value="World Space" ${isWorldSpace ? 'selected' : ''}>World Space</option>
                         </select>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Size</label>
+                    <div class="prop-row-multi" title="${isSizeDisabled ? 'Controlado por CanvasScaler' : ''}">
+                        <label class="${isSizeDisabled ? 'disabled-label' : ''}">Size</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${isSizeDisabled ? 'disabled' : ''}>
+                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${isSizeDisabled ? 'disabled' : ''}>
                         </div>
                     </div>
                 </div>`;
