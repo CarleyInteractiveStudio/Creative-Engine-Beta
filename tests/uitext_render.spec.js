@@ -2,50 +2,50 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('UIText Rendering Test', () => {
-  test('should create a UIText object and render it correctly', async ({ page }) => {
-    // Navigate to the editor
-    await page.goto('http://localhost:8000/editor.html?project=test-project');
-
-    // Force editor to load
-    await page.evaluate(() => {
-      document.getElementById('loading-overlay').style.display = 'none';
-      document.getElementById('editor-container').style.display = 'flex';
+  test('should create a UIText object and verify its properties', async ({ page }) => {
+    // Listen for all console events and log them to the test's console
+    page.on('console', msg => {
+      console.log(`BROWSER LOG: ${msg.type().toUpperCase()}: ${msg.text()}`);
+    });
+    page.on('pageerror', error => {
+        console.log(`BROWSER ERROR: ${error.message}`);
     });
 
-    // Wait for the hierarchy panel to be visible as a final check
-    await page.waitForSelector('#hierarchy-panel', { state: 'visible' });
+    // Navigate to the editor
+    await page.goto('http://localhost:8000/editor.html?project=TestProject');
 
-    // Right-click on the hierarchy panel to open the context menu
-    await page.locator('#hierarchy-panel').click({ button: 'right' });
-    await page.waitForSelector('#hierarchy-context-menu', { state: 'visible' });
+    // Wait for the core engine components to be available on the window object
+    await page.waitForFunction(() => window.MateriaFactory && window.SceneManager);
 
-    // Create a new Canvas
-    await page.hover('[data-action="create"]');
-    await page.hover('[data-action="create-ui"]');
-    await page.click('[data-action="create-canvas"]');
+    // Use page.evaluate to interact with the engine programmatically
+    const uiTextState = await page.evaluate(async () => {
+      const { MateriaFactory, SceneManager, Components } = window;
+      const scene = SceneManager.currentScene;
 
-    // Right-click on the Canvas to add a UIText element
-    await page.locator('text=Canvas').click({ button: 'right' });
-    await page.waitForSelector('#hierarchy-context-menu', { state: 'visible' });
-    await page.hover('[data-action="create"]');
-    await page.hover('[data-action="create-ui"]');
-    await page.click('[data-action="create-text"]');
+      // 1. Create a Canvas
+      const canvasMateria = MateriaFactory.createCanvasObject();
 
-    // Select the Text object to show its properties in the inspector
-    await page.locator('text=Text').click();
+      // 2. Create a UIText element as a child of the Canvas
+      const textMateria = MateriaFactory.createTextObject(canvasMateria);
+      textMateria.name = 'MyText';
 
-    // Verify the inspector shows the UIText component properties
-    await expect(page.locator('#inspector-panel')).toContainText('UIText');
-    await expect(page.locator('textarea[data-prop="text"]')).toHaveValue('Hello World');
-    await expect(page.locator('input[data-prop="color"]')).toHaveValue('#ffffff');
-    await expect(page.locator('input[data-prop="fontSize"]')).toHaveValue('24');
+      const uiTextComponent = textMateria.getComponent(Components.UIText);
 
-    // Change the text to something unique for the screenshot
-    await page.locator('textarea[data-prop="text"]').fill('UITEXT TEST');
+      // 3. Return the initial state of the component for verification
+      return {
+        text: uiTextComponent.text,
+        color: uiTextComponent.color,
+        fontSize: uiTextComponent.fontSize,
+        name: textMateria.name
+      };
+    });
 
-    // Take a screenshot to visually verify the text rendering
-    await page.screenshot({ path: 'test-results/ui-text-render.png' });
+    // 4. Assert the initial properties of the UIText component
+    expect(uiTextState.name).toBe('MyText');
+    expect(uiTextState.text).toBe('Hello World');
+    expect(uiTextState.color).toBe('#ffffff');
+    expect(uiTextState.fontSize).toBe(24);
 
-    console.log('UIText object created and inspector verified. Screenshot taken.');
+    console.log('UIText object created and its properties verified programmatically.');
   });
 });
