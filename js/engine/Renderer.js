@@ -284,10 +284,18 @@ export class Renderer {
         const canvas = canvasMateria.getComponent(Canvas);
         if (!canvas) return;
 
-        if (canvas.renderMode === 'Screen Space') {
-            this.drawScreenSpaceUI(canvasMateria);
-        } else { // World Space
+        // La lógica del editor SIEMPRE debe dibujar los canvas en el espacio del mundo
+        // para que la cámara del editor (paneo/zoom) funcione.
+        // La lógica de WYSIWYG se moverá a `drawWorldSpaceUI`.
+        if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
+        } else {
+            // La lógica del juego sigue la configuración del componente
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
@@ -433,24 +441,60 @@ export class Renderer {
         const canvasTransform = canvasMateria.getComponent(Transform);
         if (!canvasComponent || !canvasTransform) return;
 
+        const canvasScaler = canvasMateria.getComponent(CanvasScaler);
+
         this.ctx.save();
         const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
+        let baseSize = canvasComponent.size;
 
-        const canvasRect = {
-            x: worldPos.x - size.x / 2,
-            y: worldPos.y - size.y / 2,
-            width: size.x,
-            height: size.y
-        };
+        // Si el editor está dibujando un Canvas con un Scaler, aplica el letterboxing
+        // dentro de los límites del `size` del World Space Canvas.
+        if (this.isEditor && canvasScaler && canvasComponent.renderMode === 'Screen Space') {
+            const letterbox = calculateLetterbox(canvasScaler.referenceResolution, baseSize);
 
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
+            const worldRect = {
+                x: worldPos.x - baseSize.x / 2,
+                y: worldPos.y - baseSize.y / 2,
+                width: baseSize.x,
+                height: baseSize.y
+            };
 
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            // Dibuja el fondo negro de las bandas.
+            this.ctx.fillStyle = 'black';
+            this.ctx.fillRect(worldRect.x, worldRect.y, worldRect.width, worldRect.height);
+
+            // El nuevo `canvasRect` para los hijos es el área escalada dentro del canvas.
+            const canvasRect = {
+                x: worldRect.x + letterbox.offsetX,
+                y: worldRect.y + letterbox.offsetY,
+                width: letterbox.width,
+                height: letterbox.height
+            };
+
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasRect);
+            }
+
+        } else {
+            // Comportamiento original para World Space Canvases o juego sin editor.
+            const canvasRect = {
+                x: worldPos.x - baseSize.x / 2,
+                y: worldPos.y - baseSize.y / 2,
+                width: baseSize.x,
+                height: baseSize.y
+            };
+
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasRect);
+            }
         }
 
         this.ctx.restore();
