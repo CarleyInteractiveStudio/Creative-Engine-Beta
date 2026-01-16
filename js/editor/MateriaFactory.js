@@ -33,14 +33,15 @@ export function createBaseMateria(name, parent = null) {
     return newMateria;
 }
 
-export function createCanvasObject() {
+export function createCanvas() {
     const name = generateUniqueName('Canvas');
     const newMateria = createBaseMateria(name); // createBaseMateria adds Transform
     newMateria.addComponent(new Components.Canvas(newMateria));
+    newMateria.addComponent(new Components.CanvasScaler(newMateria)); // Add the scaler by default
     return newMateria;
 }
 
-export function createImageObject(parent) {
+export function createUIImage(parent) {
     if (!parent) {
         console.error("createImageObject requiere un padre.");
         return null;
