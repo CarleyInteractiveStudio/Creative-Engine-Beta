@@ -288,7 +288,7 @@ export class Renderer {
         // Dispatch to the correct rendering method based on the canvas mode.
         // The core logic for WYSIWYG is now handled inside drawScreenSpaceUI for both editor and game.
         if (canvasComponent.renderMode === 'Screen Space') {
-            this.drawScreenSpaceUI(canvasMateria, isGameView);
+            this.drawScreenSpaceUI(canvasMateria);
         } else { // World Space
             this.drawWorldSpaceUI(canvasMateria);
         }
@@ -366,7 +366,7 @@ export class Renderer {
         }
     }
 
-    drawScreenSpaceUI(canvasMateria, isGameView) {
+    drawScreenSpaceUI(canvasMateria) {
         this.beginUI(); // Resets transform to screen space
 
         const scaler = canvasMateria.getComponent(CanvasScaler);

@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createCanvas, createUIImage } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -202,86 +202,72 @@ export function handleContextMenuAction(action) {
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
             break;
         case 'create-canvas':
-            newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
-            newMateria.addComponent(new Components.Canvas(newMateria));
+            // Use the factory function which now includes a CanvasScaler
+            newMateria = createCanvas(selectedMateria);
             break;
         case 'create-ui-image':
             {
-                let parentForNewImage = selectedMateria; // The item we right-clicked on
-                let parentCanvasMateria = null;
-
-                if (parentForNewImage) {
-                    // Is the selected item a canvas itself?
-                    if (parentForNewImage.getComponent(Components.Canvas)) {
-                        parentCanvasMateria = parentForNewImage;
-                    }
-                    // Is it a UI element inside a canvas?
-                    else if (parentForNewImage.getComponent(Components.UITransform)) {
-                        parentCanvasMateria = parentForNewImage.findAncestorWithComponent(Components.Canvas);
-                    }
-                    // If it's a regular Materia, we don't want to child the UI element to it.
-                    else {
-                        parentForNewImage = null;
-                    }
+                let parent = selectedMateria;
+                if (parent && !parent.getComponent(Components.Canvas) && !parent.getComponent(Components.UITransform)) {
+                    parent = null; // Don't parent UI to non-UI objects
                 }
-
-                // If after all that we don't have a canvas, create a new one at the root.
-                if (!parentCanvasMateria) {
-                    parentCanvasMateria = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvasMateria.addComponent(new Components.Canvas(parentCanvasMateria));
-                    // The new UI element should be a child of this new canvas, not what was previously selected.
-                    parentForNewImage = parentCanvasMateria;
+                let canvas = parent ? parent.findAncestorWithComponent(Components.Canvas) : SceneManager.currentScene.findRootMateriaWithComponent(Components.Canvas);
+                if (!canvas) {
+                    canvas = createCanvas();
                 }
-
-                // If we started with no selection, parentForNewImage is null. Let's parent to the canvas.
-                if (!parentForNewImage) {
-                    parentForNewImage = parentCanvasMateria;
+                // If the selected item wasn't a UI element, parent the new image directly to the canvas
+                if (!parent || !parent.getComponent(Components.UITransform)) {
+                    parent = canvas;
                 }
-
-
-                newMateria = createBaseMateria(generateUniqueName('UIImage'), parentForNewImage);
-                newMateria.removeComponent(Components.Transform); // UI elements use UITransform
-                newMateria.addComponent(new Components.UITransform(newMateria));
-                newMateria.addComponent(new Components.UIImage(newMateria));
+                newMateria = createUIImage(parent);
             }
             break;
         case 'create-ui-panel':
             {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                let parent = selectedMateria;
+                 if (parent && !parent.getComponent(Components.Canvas) && !parent.getComponent(Components.UITransform)) {
+                    parent = null;
                 }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                let canvas = parent ? parent.findAncestorWithComponent(Components.Canvas) : SceneManager.currentScene.findRootMateriaWithComponent(Components.Canvas);
+                if (!canvas) {
+                    canvas = createCanvas();
                 }
-                newMateria = createPanelObject(parentCanvas);
+                if (!parent || !parent.getComponent(Components.UITransform)) {
+                    parent = canvas;
+                }
+                newMateria = createPanelObject(parent);
             }
             break;
         case 'create-ui-text':
             {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                let parent = selectedMateria;
+                 if (parent && !parent.getComponent(Components.Canvas) && !parent.getComponent(Components.UITransform)) {
+                    parent = null;
                 }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                let canvas = parent ? parent.findAncestorWithComponent(Components.Canvas) : SceneManager.currentScene.findRootMateriaWithComponent(Components.Canvas);
+                if (!canvas) {
+                    canvas = createCanvas();
                 }
-                newMateria = createTextObject(parentCanvas);
+                if (!parent || !parent.getComponent(Components.UITransform)) {
+                    parent = canvas;
+                }
+                newMateria = createTextObject(parent);
             }
             break;
         case 'create-ui-button':
             {
-                let parentCanvas = selectedMateria;
-                if (parentCanvas && !parentCanvas.getComponent(Components.Canvas)) {
-                    parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
+                let parent = selectedMateria;
+                 if (parent && !parent.getComponent(Components.Canvas) && !parent.getComponent(Components.UITransform)) {
+                    parent = null;
                 }
-                if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
-                    parentCanvas.addComponent(new Components.Canvas(parentCanvas));
+                let canvas = parent ? parent.findAncestorWithComponent(Components.Canvas) : SceneManager.currentScene.findRootMateriaWithComponent(Components.Canvas);
+                if (!canvas) {
+                    canvas = createCanvas();
                 }
-                newMateria = createButtonObject(parentCanvas);
+                if (!parent || !parent.getComponent(Components.UITransform)) {
+                    parent = canvas;
+                }
+                newMateria = createButtonObject(parent);
             }
             break;
 

@@ -50,7 +50,10 @@ export function createUIImage(parent) {
     const newMateria = new Materia(name);
     // UI elements get a UITransform, not a regular Transform
     newMateria.addComponent(new Components.UITransform(newMateria));
-    newMateria.addComponent(new Components.UIImage(newMateria));
+    const imageComponent = new Components.UIImage(newMateria);
+    imageComponent.color = '#FFFFFF'; // Make it visible by default
+    newMateria.addComponent(imageComponent);
+
 
     parent.addChild(newMateria);
     return newMateria;
