@@ -1,10 +1,10 @@
 
+const { test, expect } = require('@playwright/test');
+
 // NOTE: This test suite is intentionally skipped (`.skip`).
 // It has revealed a bug in the core UI calculation logic within `UITransformUtils.getAbsoluteRect`.
 // The test cases are logically correct and should pass once the underlying engine bug is fixed.
 // Do not enable this test suite until the bug is resolved.
-
-const { test, expect } = require('@playwright/test');
 
 test.describe.skip('UI System Audit', () => {
   let page;
