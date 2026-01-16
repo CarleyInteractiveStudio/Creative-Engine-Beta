@@ -883,24 +883,45 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Canvas) {
-            const isWorldSpace = ley.renderMode === 'World Space';
+            const isScreenSpace = ley.renderMode === 'Screen Space';
+
+            const screenSpaceSettings = `
+                <div class="prop-row-multi">
+                    <label>Reference Resolution</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.x" value="${ley.referenceResolution.x}" title="X">
+                        <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.y" value="${ley.referenceResolution.y}" title="Y">
+                    </div>
+                </div>
+                <div class="prop-row-multi">
+                    <label>Screen Match Mode</label>
+                    <select class="prop-input" data-component="Canvas" data-prop="screenMatchMode">
+                        <option value="Match Width Or Height" ${ley.screenMatchMode === 'Match Width Or Height' ? 'selected' : ''}>Match Width Or Height</option>
+                    </select>
+                </div>
+            `;
+
+            const worldSpaceSettings = `
+                <div class="prop-row-multi">
+                    <label>Size</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" title="X">
+                        <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" title="Y">
+                    </div>
+                </div>
+            `;
+
             componentHTML = `
                 <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
                         <select class="prop-input inspector-re-render" data-component="Canvas" data-prop="renderMode">
-                            <option value="Screen Space" ${!isWorldSpace ? 'selected' : ''}>Screen Space</option>
-                            <option value="World Space" ${isWorldSpace ? 'selected' : ''}>World Space</option>
+                            <option value="Screen Space" ${isScreenSpace ? 'selected' : ''}>Screen Space</option>
+                            <option value="World Space" ${!isScreenSpace ? 'selected' : ''}>World Space</option>
                         </select>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Size</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}" ${!isWorldSpace ? 'disabled' : ''}>
-                            <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}" ${!isWorldSpace ? 'disabled' : ''}>
-                        </div>
-                    </div>
+                    ${isScreenSpace ? screenSpaceSettings : worldSpaceSettings}
                 </div>`;
         } else if (ley instanceof Components.Button) {
             const isColorTint = ley.transition === 'Color Tint';

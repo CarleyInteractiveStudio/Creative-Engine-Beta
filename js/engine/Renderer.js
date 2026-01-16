@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -378,30 +378,41 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
+        if (!canvasComponent) {
             this.end();
             return;
         }
 
-        const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
-        };
+        const { referenceResolution } = canvasComponent;
+        const targetRect = { width: this.canvas.width, height: this.canvas.height };
 
-        this.ctx.save();
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
+        if (canvasComponent.screenMatchMode === 'Match Width Or Height') {
+            const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
 
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            const scaledRect = {
+                x: offsetX,
+                y: offsetY,
+                width: referenceResolution.x * scale,
+                height: referenceResolution.y * scale
+            };
+
+            this.ctx.save();
+            this.ctx.beginPath();
+            this.ctx.rect(scaledRect.x, scaledRect.y, scaledRect.width, scaledRect.height);
+            this.ctx.clip();
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, scaledRect);
+            }
+
+            this.ctx.restore();
+        } else {
+            const canvasRect = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasRect);
+            }
         }
 
-        this.ctx.restore();
         this.end();
     }
 
@@ -411,15 +422,39 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-        const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
 
-        const canvasRect = {
-            x: worldPos.x - size.x / 2,
-            y: worldPos.y - size.y / 2,
-            width: size.x,
-            height: size.y
-        };
+        let canvasRect;
+
+        // In the editor, a Screen Space canvas is rendered in world space for WYSIWYG.
+        // We need to apply the same letterbox scaling here.
+        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
+            const { referenceResolution } = canvasComponent;
+            const worldPos = canvasTransform.position;
+
+            // We simulate the "screen" as being the size of the reference resolution
+            // itself, centered on the canvas's world position.
+            const targetRect = { width: referenceResolution.x, height: referenceResolution.y };
+            const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
+
+            canvasRect = {
+                x: worldPos.x - (referenceResolution.x / 2) + offsetX,
+                y: worldPos.y - (referenceResolution.y / 2) + offsetY,
+                width: referenceResolution.x * scale,
+                height: referenceResolution.y * scale
+            };
+
+        } else {
+             // Standard World Space Canvas logic
+            const worldPos = canvasTransform.position;
+            const size = canvasComponent.size;
+            canvasRect = {
+                x: worldPos.x - size.x / 2,
+                y: worldPos.y - size.y / 2,
+                width: size.x,
+                height: size.y
+            };
+        }
+
 
         this.ctx.beginPath();
         this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
