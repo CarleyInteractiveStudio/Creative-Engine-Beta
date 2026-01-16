@@ -101,24 +101,27 @@ function getGizmoWorldRect(materia) {
     const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
 
     if (canvasComponent.renderMode === 'World Space') {
+        // For World Space, the absolute rect is the ground truth.
         const rectCache = new Map();
         return getAbsoluteRect(materia, rectCache);
-    } else { // 'Screen Space' WYSIWYG Logic
+    } else {
+        // For Screen Space in the editor, the "screen" is the reference resolution itself,
+        // centered on the canvas object's world position.
         const { referenceResolution } = canvasComponent;
         const worldPos = canvasTransform.position;
-        const targetRect = { width: referenceResolution.x, height: referenceResolution.y };
-        const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
 
+        // The unscaled rect is already relative to the top-left of the reference resolution.
         const unscaledRelativeRect = getUnscaledRelativeRect(materia, parentCanvasMateria, new Map());
 
-        const canvasWorldOriginX = worldPos.x - (referenceResolution.x / 2) + offsetX;
-        const canvasWorldOriginY = worldPos.y - (referenceResolution.y / 2) + offsetY;
+        // We just need to translate this relative rect to the canvas's world origin.
+        const canvasWorldOriginX = worldPos.x - (referenceResolution.x / 2);
+        const canvasWorldOriginY = worldPos.y - (referenceResolution.y / 2);
 
         return {
-            x: canvasWorldOriginX + (unscaledRelativeRect.x * scale),
-            y: canvasWorldOriginY + (unscaledRelativeRect.y * scale),
-            width: unscaledRelativeRect.width * scale,
-            height: unscaledRelativeRect.height * scale
+            x: canvasWorldOriginX + unscaledRelativeRect.x,
+            y: canvasWorldOriginY + unscaledRelativeRect.y,
+            width: unscaledRelativeRect.width,
+            height: unscaledRelativeRect.height
         };
     }
 }

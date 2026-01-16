@@ -385,28 +385,29 @@ export class Renderer {
 
         const { referenceResolution } = canvasComponent;
         const targetRect = { width: this.canvas.width, height: this.canvas.height };
+        const unscaledRect = { x: 0, y: 0, width: referenceResolution.x, height: referenceResolution.y };
 
         if (canvasComponent.screenMatchMode === 'Match Width Or Height') {
             const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
 
-            const scaledRect = {
-                x: offsetX,
-                y: offsetY,
-                width: referenceResolution.x * scale,
-                height: referenceResolution.y * scale
-            };
-
             this.ctx.save();
+            // Apply the letterbox transformation
+            this.ctx.translate(offsetX, offsetY);
+            this.ctx.scale(scale, scale);
+
+            // Clip to the unscaled reference resolution, as the context is now scaled
             this.ctx.beginPath();
-            this.ctx.rect(scaledRect.x, scaledRect.y, scaledRect.width, scaledRect.height);
+            this.ctx.rect(unscaledRect.x, unscaledRect.y, unscaledRect.width, unscaledRect.height);
             this.ctx.clip();
 
+            // Draw children within the unscaled, transformed space
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, scaledRect);
+                this._drawUIElementAndChildren(child, unscaledRect);
             }
 
-            this.ctx.restore();
+            this.ctx.restore(); // This removes the scale, translation, and clip
         } else {
+            // Original behavior for other modes
             const canvasRect = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
             for (const child of canvasMateria.children) {
                 this._drawUIElementAndChildren(child, canvasRect);
@@ -422,47 +423,43 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
+        const worldPos = canvasTransform.position;
 
-        let canvasRect;
-
-        // In the editor, a Screen Space canvas is rendered in world space for WYSIWYG.
-        // We need to apply the same letterbox scaling here.
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
             const { referenceResolution } = canvasComponent;
-            const worldPos = canvasTransform.position;
 
-            // We simulate the "screen" as being the size of the reference resolution
-            // itself, centered on the canvas's world position.
-            const targetRect = { width: referenceResolution.x, height: referenceResolution.y };
-            const { scale, offsetX, offsetY } = calculateLetterbox(referenceResolution, targetRect);
-
-            canvasRect = {
-                x: worldPos.x - (referenceResolution.x / 2) + offsetX,
-                y: worldPos.y - (referenceResolution.y / 2) + offsetY,
-                width: referenceResolution.x * scale,
-                height: referenceResolution.y * scale
+            // Simplified logic: The context is already centered on the object.
+            // We just need to offset by half the resolution to get the top-left corner.
+            const unscaledRect = {
+                x: worldPos.x - referenceResolution.x / 2,
+                y: worldPos.y - referenceResolution.y / 2,
+                width: referenceResolution.x,
+                height: referenceResolution.y
             };
 
+            this.ctx.beginPath();
+            this.ctx.rect(unscaledRect.x, unscaledRect.y, unscaledRect.width, unscaledRect.height);
+            this.ctx.clip();
+
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, unscaledRect);
+            }
         } else {
-             // Standard World Space Canvas logic
-            const worldPos = canvasTransform.position;
             const size = canvasComponent.size;
-            canvasRect = {
+            const canvasRect = {
                 x: worldPos.x - size.x / 2,
                 y: worldPos.y - size.y / 2,
                 width: size.x,
                 height: size.y
             };
-        }
 
+            this.ctx.beginPath();
+            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.clip();
 
-        this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-        this.ctx.clip();
-
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasRect);
+            }
         }
 
         this.ctx.restore();
