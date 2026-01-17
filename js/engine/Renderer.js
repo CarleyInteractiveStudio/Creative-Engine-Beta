@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
+import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -389,54 +389,25 @@ export class Renderer {
         }
 
         const refRes = canvasComponent.referenceResolution;
-        const screenWidth = this.canvas.width;
-        const screenHeight = this.canvas.height;
+        const screenRect = { width: this.canvas.width, height: this.canvas.height };
 
-        // --- Letterbox Scaling Logic ---
-        const scaleX = screenWidth / refRes.width;
-        const scaleY = screenHeight / refRes.height;
-        const scale = Math.min(scaleX, scaleY); // Use 'contain' scaling
-
-        const scaledWidth = refRes.width * scale;
-        const scaledHeight = refRes.height * scale;
-
-        // Calculate offsets to center the scaled canvas
-        const offsetX = (screenWidth - scaledWidth) / 2;
-        const offsetY = (screenHeight - scaledHeight) / 2;
+        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
 
         this.ctx.save();
-
-        // Apply the transformation to scale and center the UI
         this.ctx.translate(offsetX, offsetY);
         this.ctx.scale(scale, scale);
 
-        // Define the virtual canvas rectangle based on the reference resolution.
-        // All child elements will now be drawn relative to this 0,0-based rectangle.
-        const virtualCanvasRect = {
-            x: 0,
-            y: 0,
-            width: refRes.width,
-            height: refRes.height
-        };
+        const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
 
-        // Clip to the bounds of the virtual canvas to prevent drawing outside
         this.ctx.beginPath();
         this.ctx.rect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
             this._drawUIElementAndChildren(child, virtualCanvasRect);
         }
 
-        // --- DEBUG GIZMO ---
-        if (!this.isEditor) {
-            this.ctx.strokeStyle = '#FF00FF'; // Magenta
-            this.ctx.lineWidth = 2 / scale; // Adjust line width for the current scale
-            this.ctx.strokeRect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
-        }
-
-        this.ctx.restore(); // This restores the context, removing the scale and translation
+        this.ctx.restore();
         this.end();
     }
 
@@ -449,7 +420,7 @@ export class Renderer {
         const worldPos = canvasTransform.position;
         const size = canvasComponent.size;
 
-        const canvasRect = {
+        const canvasWorldRect = {
             x: worldPos.x - size.x / 2,
             y: worldPos.y - size.y / 2,
             width: size.x,
@@ -457,19 +428,27 @@ export class Renderer {
         };
 
         this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        this.ctx.rect(canvasWorldRect.x, canvasWorldRect.y, canvasWorldRect.width, canvasWorldRect.height);
         this.ctx.clip();
 
-        // Start the recursive drawing process for all direct children of the canvas
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
-        }
+        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
+            const refRes = canvasComponent.referenceResolution;
+            const targetRect = { width: canvasWorldRect.width, height: canvasWorldRect.height };
+            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
 
-        // --- DEBUG GIZMO ---
-        if (!this.isEditor) {
-            this.ctx.strokeStyle = '#FF00FF'; // Magenta
-            this.ctx.lineWidth = 2 / this.camera.effectiveZoom; // Adjust line width for camera zoom
-            this.ctx.strokeRect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.save();
+            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY);
+            this.ctx.scale(scale, scale);
+
+            const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, virtualCanvasRect);
+            }
+            this.ctx.restore();
+        } else {
+            for (const child of canvasMateria.children) {
+                this._drawUIElementAndChildren(child, canvasWorldRect);
+            }
         }
 
         this.ctx.restore();

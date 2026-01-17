@@ -180,6 +180,23 @@ function handleInspectorInput(e) {
     if (updateSceneCallback) {
         updateSceneCallback();
     }
+
+     // --- DYNAMIC UI LOGIC for Canvas ---
+    if (componentName === 'Canvas' && propPath === 'renderMode') {
+        const componentContent = e.target.closest('.component-content');
+        if (componentContent) {
+            const worldSpaceProps = componentContent.querySelector('[data-canvas-props="world"]');
+            const screenSpaceProps = componentContent.querySelectorAll('[data-canvas-props="screen"]');
+
+            if (worldSpaceProps && screenSpaceProps.length > 0) {
+                const isWorld = value === 'World Space';
+                worldSpaceProps.style.display = isWorld ? 'flex' : 'none';
+                screenSpaceProps.forEach(el => {
+                    el.style.display = isWorld ? 'none' : 'flex';
+                });
+            }
+        }
+    }
 }
 
 async function handleInspectorChange(e) {
@@ -903,7 +920,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
 
                     <!-- World Space Properties -->
-                    <div class="prop-row-multi" style="display: ${isWorldSpace ? 'flex' : 'none'};">
+                    <div class="prop-row-multi" data-canvas-props="world" style="display: ${isWorldSpace ? 'flex' : 'none'};">
                         <label>Size</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}">
@@ -912,14 +929,14 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
 
                     <!-- Screen Space Properties -->
-                    <div class="prop-row-multi" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
+                    <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
                         <label>Reference Res</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.width" value="${ssResolution.width}">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.height" value="${ssResolution.height}">
                         </div>
                     </div>
-                     <div class="prop-row-multi" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
+                     <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
                         <label>Screen Match</label>
                          <select class="prop-input" data-component="Canvas" data-prop="screenMatchMode">
                             <option value="Match Width Or Height" ${ley.screenMatchMode === 'Match Width Or Height' ? 'selected' : ''}>Match Width Or Height</option>

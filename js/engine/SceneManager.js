@@ -139,6 +139,13 @@ export function setSceneDirty(dirty) {
     isSceneDirty = dirty;
 }
 
+export function clearScene() {
+    currentScene = new Scene();
+    currentSceneFileHandle = null;
+    isSceneDirty = false;
+    console.log("Scene cleared.");
+}
+
 export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {

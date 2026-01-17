@@ -190,7 +190,8 @@ export function getAbsoluteRect(materia, rectCache) {
         }
 
         // For gizmo rendering, we need a world-space rect.
-        const size = canvas.renderMode === 'Screen Space' ? canvas.referenceResolution : canvas.size;
+        const res = canvas.referenceResolution || { width: 800, height: 600 };
+        const size = canvas.renderMode === 'Screen Space' ? res : canvas.size;
         const width = canvas.renderMode === 'Screen Space' ? size.width : size.x;
         const height = canvas.renderMode === 'Screen Space' ? size.height : size.y;
 
@@ -249,4 +250,25 @@ export function getAbsoluteRect(materia, rectCache) {
 
     rectCache.set(materia.id, absoluteRect);
     return absoluteRect;
+}
+
+/**
+ * Calculates the scale and offset to fit a source rectangle within a target rectangle,
+ * maintaining aspect ratio (letterboxing).
+ * @param {{width: number, height: number}} sourceRect The dimensions of the content.
+ * @param {{width: number, height: number}} targetRect The dimensions of the container.
+ * @returns {{scale: number, offsetX: number, offsetY: number}} The scale factor and offsets.
+ */
+export function calculateLetterbox(sourceRect, targetRect) {
+    const scaleX = targetRect.width / sourceRect.width;
+    const scaleY = targetRect.height / sourceRect.height;
+    const scale = Math.min(scaleX, scaleY);
+
+    const scaledWidth = sourceRect.width * scale;
+    const scaledHeight = sourceRect.height * scale;
+
+    const offsetX = (targetRect.width - scaledWidth) / 2;
+    const offsetY = (targetRect.height - scaledHeight) / 2;
+
+    return { scale, offsetX, offsetY };
 }
