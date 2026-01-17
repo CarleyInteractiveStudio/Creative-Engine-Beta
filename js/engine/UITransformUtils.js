@@ -2,179 +2,29 @@
 import { UITransform, Canvas, Transform } from './Components.js';
 
 /**
- * Devuelve el objeto de pivote {x, y} correspondiente a un preset de anclaje.
- * @param {string} preset - El nombre del ancla (ej: 'top-right').
- * @returns {{x: number, y: number}} El pivote correspondiente (ej: {x: 1, y: 1}).
+ * Calculates the world-space position of a specific anchor point within a parent rectangle.
+ * The coordinate system is Y-Down (top-left is 0,0).
+ * @param {number} anchorPoint - The index of the anchor point (0-8).
+ * @param {{x: number, y: number, width: number, height: number}} parentRect - The parent's absolute rectangle.
+ * @returns {{x: number, y: number}} The world-space coordinates of the anchor point.
  */
-export function getPivotForAnchorPreset(preset) {
-    const pivot = { x: 0.5, y: 0.5 }; // Default to center
+export function getAnchorPosition(anchorPoint, parentRect) {
+    const col = anchorPoint % 3; // 0 for left, 1 for center, 2 for right
+    const row = Math.floor(anchorPoint / 3); // 0 for top, 1 for middle, 2 for bottom
 
-    if (preset.includes('left')) pivot.x = 0;
-    if (preset.includes('center')) pivot.x = 0.5;
-    if (preset.includes('right')) pivot.x = 1;
+    const x = parentRect.x + (parentRect.width * col * 0.5);
+    const y = parentRect.y + (parentRect.height * row * 0.5);
 
-    if (preset.includes('top')) pivot.y = 0;
-    if (preset.includes('middle')) pivot.y = 0.5;
-    if (preset.includes('bottom')) pivot.y = 1;
-
-    return pivot;
+    return { x, y };
 }
 
-/**
- * Determina en qué ancla de 9 áreas se encuentra una posición dentro de un rectángulo padre.
- * @param {{x: number, y: number}} position - La posición del objeto (punto de pivote) en coordenadas del padre.
- * @param {{width: number, height: number}} parentRect - Las dimensiones del contenedor padre.
- * @returns {string} El nombre del preset de anclaje (ej: 'top-right').
- */
-export function getAnchorPresetFromPosition(position, parentRect) {
-    const thirdW = parentRect.width / 3;
-    const thirdH = parentRect.height / 3;
-
-    let horizontal, vertical;
-
-    // Determine horizontal part
-    if (position.x < thirdW) {
-        horizontal = 'left';
-    } else if (position.x <= 2 * thirdW) {
-        horizontal = 'center';
-    } else {
-        horizontal = 'right';
-    }
-
-    // Determine vertical part
-    if (position.y < thirdH) {
-        vertical = 'top';
-    } else if (position.y <= 2 * thirdH) {
-        vertical = 'middle';
-    } else {
-        vertical = 'bottom';
-    }
-
-    // Combine them, with a special case for the absolute center
-    if (vertical === 'middle' && horizontal === 'center') {
-        return 'middle-center';
-    }
-
-    return `${vertical}-${horizontal}`;
-}
-
-/**
- * Comprueba si una posición del puntero (en coordenadas de pantalla) está sobre un elemento de la interfaz de usuario.
- * @param {UITransform} uiTransform El componente UITransform del elemento.
- * @param {Canvas} canvas El componente Canvas padre.
- * @param {{x: number, y: number}} pointerPosition La posición del puntero en el espacio de la pantalla.
- * @param {{width: number, height: number}} canvasSize Las dimensiones del canvas en pantalla.
- * @returns {boolean} True si el puntero está sobre el elemento.
- */
-export function isPointerOverUIElement(uiTransform, canvas, pointerPosition, canvasSize) {
-    if (!uiTransform || !canvas) return false;
-
-    // TODO: Implementar la lógica para el modo 'World Space' si es necesario
-    if (canvas.renderMode !== 'Screen Space') return false;
-
-    const rect = getScreenRect(uiTransform, canvas, canvasSize);
-
-    return (
-        pointerPosition.x >= rect.x &&
-        pointerPosition.x <= rect.x + rect.width &&
-        pointerPosition.y >= rect.y &&
-        pointerPosition.y <= rect.y + rect.height
-    );
-}
-
-/**
- * Calcula el rectángulo en pantalla (coordenadas de píxeles) para un elemento de la interfaz de usuario.
- * @param {UITransform} uiTransform El componente UITransform del elemento.
- * @param {Canvas} canvas El componente Canvas padre.
- * @param {{width: number, height: number}} canvasSize Las dimensiones del canvas en pantalla.
- * @returns {{x: number, y: number, width: number, height: number}} El rectángulo en el espacio de la pantalla.
- */
-export function getScreenRect(uiTransform, canvas, canvasSize) {
-    const parentRect = { x: 0, y: 0, width: canvasSize.width, height: canvasSize.height };
-    let currentTransform = uiTransform;
-    let finalRect = { ...currentTransform.size };
-
-    // Calcular la posición del ancla en coordenadas de pantalla
-    const anchor = getAnchorPoint(currentTransform.anchorPreset);
-    const anchorPos = {
-        x: parentRect.x + parentRect.width * anchor.x,
-        y: parentRect.y + parentRect.height * anchor.y
-    };
-
-    // Aplicar la posición relativa al ancla
-    let finalX = anchorPos.x + currentTransform.position.x;
-    let finalY = anchorPos.y + currentTransform.position.y;
-
-    // Ajustar por el pivote
-    finalX -= currentTransform.size.width * currentTransform.pivot.x;
-    finalY -= currentTransform.size.height * currentTransform.pivot.y;
-
-    return {
-        x: finalX,
-        y: finalY,
-        width: finalRect.width,
-        height: finalRect.height
-    };
-}
-
-
-/**
- * Obtiene el punto de anclaje normalizado {x, y} para un preset.
- * @param {string} preset El nombre del preset.
- * @returns {{x: number, y: number}} El punto de anclaje (0-1).
- */
-function getAnchorPoint(preset) {
-    const anchor = { x: 0.5, y: 0.5 }; // Default to middle-center
-
-    if (preset.includes('left')) anchor.x = 0;
-    if (preset.includes('right')) anchor.x = 1;
-    if (preset.includes('stretch')) {
-        // Para stretch, el ancla efectiva está en la esquina superior izquierda
-        // pero el tamaño se ajustará después.
-        anchor.x = 0;
-        anchor.y = 0;
-    }
-
-
-    if (preset.includes('top')) anchor.y = 0;
-    if (preset.includes('bottom')) anchor.y = 1;
-
-
-    // Casos especiales para presets de una sola palabra
-    if (preset === 'center') {
-        anchor.x = 0.5;
-    } else if (preset === 'middle') {
-        anchor.y = 0.5;
-    }
-
-
-    return anchor;
-}
-
-/**
- * Helper to get anchor percentages from the preset string in a Y-UP system.
- * This is used for consistent calculations between the renderer and the gizmo.
- * @param {string} preset The anchor preset name (e.g., 'top-left').
- * @returns {{x: number, y: number}} The anchor percentages (0-1), where Y=0 is bottom.
- */
-export const getAnchorPercentages = (preset) => {
-    const anchor = { x: 0.5, y: 0.5 }; // Default: middle-center
-    if (preset.includes('left')) anchor.x = 0;
-    if (preset.includes('right')) anchor.x = 1;
-
-    // In a Y-UP logical system, 'bottom' is the origin (0), 'top' is the max (1).
-    if (preset.includes('top')) anchor.y = 1;
-    if (preset.includes('bottom')) anchor.y = 0;
-
-    return anchor;
-};
 
 /**
  * Calculates the absolute screen-space rectangle for a UI element by recursively traversing its parents.
  * This is the single source of truth for UI element positioning.
  * @param {Materia} materia The game object with the UITransform.
  * @param {Map<number, {x: number, y: number, width: number, height: number}>} rectCache A cache to store intermediate calculations.
- * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates.
+ * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in screen coordinates (Y-Down).
  */
 export function getAbsoluteRect(materia, rectCache) {
     if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
@@ -189,15 +39,17 @@ export function getAbsoluteRect(materia, rectCache) {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
 
-        // For gizmo rendering, we need a world-space rect.
-        const res = canvas.referenceResolution || { width: 800, height: 600 };
-        const size = canvas.renderMode === 'Screen Space' ? res : canvas.size;
-        const width = canvas.renderMode === 'Screen Space' ? size.width : size.x;
-        const height = canvas.renderMode === 'Screen Space' ? size.height : size.y;
+        // For UI calculations, the Canvas's world transform defines the root rectangle.
+        const size = canvas.renderMode === 'Screen Space'
+            ? (canvas.referenceResolution || { width: 800, height: 600 })
+            : (canvas.size || { x: 800, y: 600 });
+
+        const width = size.width ?? size.x;
+        const height = size.height ?? size.y;
 
         const absoluteRect = {
             x: transform.position.x - width / 2,
-            y: transform.position.y - height / 2,
+            y: transform.position.y - height / 2, // Y-Down, so this works as intended
             width: width,
             height: height
         };
@@ -206,40 +58,28 @@ export function getAbsoluteRect(materia, rectCache) {
     }
 
     const uiTransform = materia.getComponent(UITransform);
-    if (!uiTransform) {
-        // This is an intermediate object without a UITransform (e.g., an empty container).
-        // Its transform is effectively identity, so we defer to its parent.
-        if (materia.parent) {
-            return getAbsoluteRect(materia.parent, rectCache);
-        } else {
-            // This should not happen in a valid scene.
-            console.error(`Materia '${materia.name}' has no UITransform and no parent.`);
-            return { x: 0, y: 0, width: 0, height: 0 };
-        }
-    }
-
-    // All UI elements must have a parent.
-    if (!materia.parent) {
-        console.error(`UI Element '${materia.name}' has no parent Canvas.`);
-        // Fallback to a default rect, though this is an error state.
-        return { x: 0, y: 0, width: 800, height: 600 };
+    if (!uiTransform || !materia.parent) {
+         // If there's no UI transform or no parent, we can't calculate a position.
+         // Defer to the parent, or return a zero rect if there is no parent.
+         return materia.parent
+            ? getAbsoluteRect(materia.parent, rectCache)
+            : { x: 0, y: 0, width: 0, height: 0 };
     }
 
     // Recurse to get the parent's calculated rectangle.
     const parentRect = getAbsoluteRect(materia.parent, rectCache);
 
-    const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+    // Calculate this element's position based on the new 3x3 grid system.
+    const anchorPos = getAnchorPosition(uiTransform.anchorPoint, parentRect);
 
-    // Calculate this element's rect relative to its parent's rect.
-    // X Calculation
-    const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-    const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-    const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-    const finalX = parentRect.x + rectX_fromLeft;
+    // The element's position is an offset from the anchor point.
+    // This offset moves the CENTER of the element.
+    const elementCenterX = anchorPos.x + uiTransform.position.x;
+    const elementCenterY = anchorPos.y + uiTransform.position.y;
 
-    // Y Calculation (converting from engine's Y-UP to rect's Y-DOWN)
-    const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-    const finalY = parentRect.y + rectY_fromTop;
+    // Calculate the top-left corner from the center.
+    const finalX = elementCenterX - uiTransform.size.width / 2;
+    const finalY = elementCenterY - uiTransform.size.height / 2;
 
     const absoluteRect = {
         x: finalX,
@@ -251,6 +91,7 @@ export function getAbsoluteRect(materia, rectCache) {
     rectCache.set(materia.id, absoluteRect);
     return absoluteRect;
 }
+
 
 /**
  * Calculates the scale and offset to fit a source rectangle within a target rectangle,
@@ -271,4 +112,21 @@ export function calculateLetterbox(sourceRect, targetRect) {
     const offsetY = (targetRect.height - scaledHeight) / 2;
 
     return { scale, offsetX, offsetY };
+}
+
+/**
+ * Determines which of the 9 anchor points is closest to a given position within a parent rect.
+ * @param {{x: number, y: number}} positionInParentCoords - The position of the UI element's center relative to the parent's top-left corner.
+ * @param {{width: number, height: number}} parentSize - The size of the parent rectangle.
+ * @returns {number} The index (0-8) of the closest anchor point.
+ */
+export function getClosestAnchorPoint(positionInParentCoords, parentSize) {
+    const col = Math.round((positionInParentCoords.x / parentSize.width) * 2);
+    const row = Math.round((positionInParentCoords.y / parentSize.height) * 2);
+
+    // Clamp values to be safe
+    const finalCol = Math.max(0, Math.min(2, col));
+    const finalRow = Math.max(0, Math.min(2, row));
+
+    return finalRow * 3 + finalCol;
 }

@@ -447,12 +447,34 @@ function handleInspectorClick(e) {
     }
 
     if (e.target.matches('.anchor-grid-button')) {
-        const preset = e.target.dataset.preset;
+        const anchorPoint = parseInt(e.target.dataset.anchor, 10);
         const uiTransform = selectedMateria.getComponent(Components.UITransform);
-        if (uiTransform) {
-            uiTransform.anchorPreset = preset;
-            uiTransform.pivot = UITransformUtils.getPivotForAnchorPreset(preset);
+        const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
+
+        if (uiTransform && parentCanvasMateria && !isNaN(anchorPoint)) {
+            // --- Logic to keep the element visually stationary ---
+            const rectCache = new Map();
+
+            // 1. Get current absolute center of the UI element
+            const oldRect = UITransformUtils.getAbsoluteRect(selectedMateria, rectCache);
+            const oldCenterX = oldRect.x + oldRect.width / 2;
+            const oldCenterY = oldRect.y + oldRect.height / 2;
+
+            // 2. Get the new anchor's absolute position
+            const parentRect = UITransformUtils.getAbsoluteRect(parentCanvasMateria, rectCache);
+            const newAnchorPos = UITransformUtils.getAnchorPosition(anchorPoint, parentRect);
+
+            // 3. Calculate the new offset
+            const newOffsetX = oldCenterX - newAnchorPos.x;
+            const newOffsetY = oldCenterY - newAnchorPos.y;
+
+            // 4. Apply the new anchor and the calculated offset
+            uiTransform.anchorPoint = anchorPoint;
+            uiTransform.position.x = newOffsetX;
+            uiTransform.position.y = newOffsetY;
+
             updateInspector();
+            updateSceneCallback();
         }
     }
 
@@ -815,30 +837,33 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.UITransform) {
-            const presets = [
-                'top-left', 'top-center', 'top-right',
-                'middle-left', 'middle-center', 'middle-right',
-                'bottom-left', 'bottom-center', 'bottom-right'
+            let anchorGridHTML = '';
+            const anchorTitles = [
+                'Top Left', 'Top Center', 'Top Right',
+                'Middle Left', 'Middle Center', 'Middle Right',
+                'Bottom Left', 'Bottom Center', 'Bottom Right'
             ];
-            const anchorGrid = presets.map(p => `
-                <button
-                    class="anchor-grid-button ${ley.anchorPreset === p ? 'active' : ''}"
-                    data-preset="${p}"
-                    title="${p}">
-                </button>
-            `).join('');
+            for (let i = 0; i < 9; i++) {
+                anchorGridHTML += `
+                    <button
+                        class="anchor-grid-button ${ley.anchorPoint === i ? 'active' : ''}"
+                        data-anchor="${i}"
+                        title="${anchorTitles[i]}">
+                    </button>
+                `;
+            }
 
             componentHTML = `
             <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
             <div class="component-content">
                  <div class="anchor-grid-container">
-                    ${anchorGrid}
+                    ${anchorGridHTML}
                 </div>
                 <div class="prop-row-multi">
                     <label>Position</label>
                     <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="Position X">
-                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="Position Y">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="Position X Offset">
+                        <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="Position Y Offset">
                     </div>
                 </div>
                 <div class="prop-row-multi">
@@ -846,13 +871,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-inputs">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.width" value="${ley.size.width}" title="Width">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="Height">
-                    </div>
-                </div>
-                 <div class="prop-row-multi">
-                    <label>Pivot</label>
-                    <div class="prop-inputs">
-                        <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot.x}" title="Pivot X">
-                        <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot.y}" title="Pivot Y">
                     </div>
                 </div>
             </div>`;
@@ -941,6 +959,10 @@ async function updateInspectorForMateria(selectedMateria) {
                          <select class="prop-input" data-component="Canvas" data-prop="screenMatchMode">
                             <option value="Match Width Or Height" ${ley.screenMatchMode === 'Match Width Or Height' ? 'selected' : ''}>Match Width Or Height</option>
                         </select>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Canvas" data-prop="showGrid" ${ley.showGrid ? 'checked' : ''}>
+                        <label>Show Grid Gizmo</label>
                     </div>
                 </div>`;
         } else if (ley instanceof Components.Button) {

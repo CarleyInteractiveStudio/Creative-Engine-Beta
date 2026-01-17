@@ -1,7 +1,7 @@
 
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
+import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -294,102 +294,60 @@ export class Renderer {
         }
     }
 
-    getAnchorPoint(preset, canvasWidth, canvasHeight) {
-        const anchor = { x: 0.5, y: 0.5 };
-        if (preset.includes('left')) anchor.x = 0;
-        if (preset.includes('center')) anchor.x = 0.5;
-        if (preset.includes('right')) anchor.x = 1;
-        if (preset.includes('top')) anchor.y = 0;
-        if (preset.includes('middle')) anchor.y = 0.5;
-        if (preset.includes('bottom')) anchor.y = 1;
-        return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
-    }
-
-    _drawUIElementAndChildren(element, parentRect) {
+    _drawUIElementAndChildren(element, rectCache) {
         if (!element.isActive) return;
 
         const uiTransform = element.getComponent(UITransform);
-        if (!uiTransform) return;
+        if (uiTransform) { // Only draw elements that have a UITransform
+            const absoluteRect = getAbsoluteRect(element, rectCache);
+            const { x, y, width, height } = absoluteRect;
 
-        // Calculate the element's own rectangle based on the parent's rectangle
-        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
+            // Drawing Logic for the current element
+            const uiImage = element.getComponent(UIImage);
+            const uiText = element.getComponent(UIText);
+            const textureRender = element.getComponent(TextureRender);
 
-        // --- UNIFIED Y-AXIS LOGIC ---
-        // This logic now matches `getWorldRect` in Components.js
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // X Calculation is straightforward
-        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-        const finalX = parentRect.x + rectX_fromLeft;
-
-        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
-        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-        const finalY = parentRect.y + rectY_fromTop;
-        const drawWidth = uiTransform.size.width;
-        const drawHeight = uiTransform.size.height;
-
-        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
-
-        // --- DEBUG CHIVATO ---
-        if (!this.isEditor) {
-            console.log(`[JUEGO] Dibujando UI: ${element.name} | Pos: (${Math.round(finalX)}, ${Math.round(finalY)}) | Tamaño: (${drawWidth}x${drawHeight})`);
-        }
-
-        // --- Drawing Logic for the current element ---
-        const uiImage = element.getComponent(UIImage);
-        const uiText = element.getComponent(UIText);
-        const textureRender = element.getComponent(TextureRender);
-
-
-        if (uiImage) {
-            this.ctx.fillStyle = uiImage.color;
-            this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
-            if (uiImage.sprite && uiImage.sprite.complete) {
+            if (uiImage) {
+                this.ctx.fillStyle = uiImage.color;
+                this.ctx.fillRect(x, y, width, height);
+                if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
+                     this.ctx.drawImage(uiImage.sprite, x, y, width, height);
+                }
+            } else if (textureRender) {
                 this.ctx.save();
-                this.ctx.globalCompositeOperation = 'multiply';
-                this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
+                this.ctx.translate(x, y);
+                if (textureRender.texture && textureRender.texture.complete) {
+                    this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
+                } else {
+                    this.ctx.fillStyle = textureRender.color;
+                }
+                if (textureRender.shape === 'Rectangle') {
+                    this.ctx.fillRect(0, 0, width, height);
+                } else if (textureRender.shape === 'Circle') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(width / 2, height / 2, width / 2, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                }
                 this.ctx.restore();
             }
-        } else if (textureRender) {
-             this.ctx.save();
-            this.ctx.translate(finalX, finalY);
-            if (textureRender.texture && textureRender.texture.complete) {
-                this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
-            } else {
-                this.ctx.fillStyle = textureRender.color;
+
+            if (uiText) {
+                this._drawUIText(uiText, x, y, width, height);
             }
-            if (textureRender.shape === 'Rectangle') {
-                this.ctx.fillRect(0, 0, drawWidth, drawHeight);
-            } else if (textureRender.shape === 'Circle') {
-                this.ctx.beginPath();
-                this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
-                this.ctx.fill();
-            }
-            this.ctx.restore();
         }
 
-        if (uiText) {
-            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
-        }
-
-        // --- Recursion ---
-        // Now, draw children, passing this element's rectangle as the new parentRect
+        // Recursion for children
         for (const child of element.children) {
-            this._drawUIElementAndChildren(child, currentRect);
+            this._drawUIElementAndChildren(child, rectCache);
         }
     }
 
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        if (!canvasComponent) {
-            this.end();
-            return;
-        }
+        if (!canvasComponent) { this.end(); return; }
 
-        const refRes = canvasComponent.referenceResolution;
+        const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
         const screenRect = { width: this.canvas.width, height: this.canvas.height };
 
         const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
@@ -398,20 +356,19 @@ export class Renderer {
         this.ctx.translate(offsetX, offsetY);
         this.ctx.scale(scale, scale);
 
+        // The virtual canvas rect is now just for clipping
         const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
-
         this.ctx.beginPath();
         this.ctx.rect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
         this.ctx.clip();
 
-        for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, virtualCanvasRect);
-        }
+        // The calculation logic is now self-contained in getAbsoluteRect.
+        // We create a cache and "seed" it with the canvas's virtual rectangle.
+        const rectCache = new Map();
+        rectCache.set(canvasMateria.id, virtualCanvasRect);
 
-        if (!this.isEditor) {
-            this.ctx.strokeStyle = '#FF00FF';
-            this.ctx.lineWidth = 2 / scale;
-            this.ctx.strokeRect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, rectCache);
         }
 
         this.ctx.restore();
@@ -424,46 +381,42 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-        const worldPos = canvasTransform.position;
-        const size = canvasComponent.size;
 
-        const canvasWorldRect = {
-            x: worldPos.x - size.x / 2,
-            y: worldPos.y - size.y / 2,
-            width: size.x,
-            height: size.y
-        };
+        // The rectCache will get the initial rect from the canvas itself via getAbsoluteRect.
+        const rectCache = new Map();
+        const canvasWorldRect = getAbsoluteRect(canvasMateria, rectCache);
 
         this.ctx.beginPath();
         this.ctx.rect(canvasWorldRect.x, canvasWorldRect.y, canvasWorldRect.width, canvasWorldRect.height);
         this.ctx.clip();
 
+        // This is a special case for the editor to achieve WYSIWYG for Screen Space canvases.
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
-            const refRes = canvasComponent.referenceResolution;
+            const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
             const targetRect = { width: canvasWorldRect.width, height: canvasWorldRect.height };
             const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
 
             this.ctx.save();
-            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY);
+            // We apply the letterbox transform relative to the canvas's world position.
+            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY); // Y-Down
             this.ctx.scale(scale, scale);
 
+            // We need a new cache here because the coordinate system has changed.
+            const screenSpaceCache = new Map();
+            // We "trick" the calculation by putting a fake rect for the canvas in the cache,
+            // representing the scaled, virtual screen.
             const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
+            screenSpaceCache.set(canvasMateria.id, virtualCanvasRect);
+
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, virtualCanvasRect);
+                this._drawUIElementAndChildren(child, screenSpaceCache);
             }
             this.ctx.restore();
         } else {
+            // For 'World Space' canvases, the logic is direct.
             for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasWorldRect);
+                this._drawUIElementAndChildren(child, rectCache);
             }
-        }
-
-        if (!this.isEditor) {
-            this.ctx.strokeStyle = '#FF00FF';
-            // In game view, editor camera might not exist, so we need a fallback.
-            const zoom = this.camera ? this.camera.effectiveZoom : 1.0;
-            this.ctx.lineWidth = 2 / zoom;
-            this.ctx.strokeRect(canvasWorldRect.x, canvasWorldRect.y, canvasWorldRect.width, canvasWorldRect.height);
         }
 
         this.ctx.restore();

@@ -62,6 +62,9 @@ function checkUIGizmoHit(canvasPos) {
 function drawUIGizmos(renderer, materia) {
     if (!materia || !renderer) return;
 
+    // A Canvas itself should not draw a UI gizmo, it uses the Canvas gizmo.
+    if (materia.getComponent(Components.Canvas)) return;
+
     const uiTransform = materia.getComponent(Components.UITransform);
     if (!uiTransform) return;
 
@@ -80,9 +83,6 @@ function drawUIGizmos(renderer, materia) {
     // Bounding box of the UI element in world space
     const rectCache = new Map();
     const rect = getAbsoluteRect(materia, rectCache);
-
-    // --- DEBUG CHIVATO ---
-    console.log(`[ESCENA] Dibujando Gizmo para: ${materia.name} | Pos: (${Math.round(rect.x)}, ${Math.round(rect.y)}) | Tamaño: (${Math.round(rect.width)}x${Math.round(rect.height)})`);
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -161,7 +161,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect } from '../engine/UITransformUtils.js';
+import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;
@@ -572,55 +572,61 @@ export function initialize(dependencies) {
                 break;
             }
             case 'ui-move-x':
-                uiTransform.position.x += dx;
-                break;
+                 uiTransform.position.x += dx;
+                 break;
             case 'ui-move-y':
-                uiTransform.position.y -= dy; // Y-UP: A positive dy (mouse down) should decrease the logical Y value.
-                break;
+                 uiTransform.position.y += dy;
+                 break;
             case 'ui-move-xy':
-                uiTransform.position.x += dx;
-                uiTransform.position.y -= dy; // Y-UP: A positive dy (mouse down) should decrease the logical Y value.
+                {
+                    const parentCanvasMateria = dragState.materia.findAncestorWithComponent(Components.Canvas);
+                    if (!uiTransform || !parentCanvasMateria) break;
+
+                    // Directly update the position offset based on the mouse drag.
+                    uiTransform.position.x += dx;
+                    uiTransform.position.y += dy;
+
+                    // To achieve the "jump", we determine the new anchor point. If it has changed,
+                    // we update it. The renderer will then automatically apply the *same* offset
+                    // to the *new* anchor, creating the jump. No complex recalculation is needed here.
+                    const rectCache = new Map();
+                    const newRect = getAbsoluteRect(dragState.materia, rectCache);
+                    const newCenter = { x: newRect.x + newRect.width / 2, y: newRect.y + newRect.height / 2 };
+
+                    const parentRect = getAbsoluteRect(parentCanvasMateria, rectCache);
+                    const posInParent = { x: newCenter.x - parentRect.x, y: newCenter.y - parentRect.y };
+
+                    const newAnchorPoint = getClosestAnchorPoint(posInParent, { width: parentRect.width, height: parentRect.height });
+
+                    if (newAnchorPoint !== uiTransform.anchorPoint) {
+                        uiTransform.anchorPoint = newAnchorPoint;
+                        // NOTE: We do NOT recalculate uiTransform.position here.
+                        // This is the key to achieving the "jump" behavior.
+                    }
+
+                    break;
+                }
+
+            // --- UI Scaling with new Offset-based logic ---
+            case 'ui-scale-r': uiTransform.size.width += dx; uiTransform.position.x += dx / 2; break;
+            case 'ui-scale-l': uiTransform.size.width -= dx; uiTransform.position.x += dx / 2; break;
+            case 'ui-scale-b': uiTransform.size.height += dy; uiTransform.position.y += dy / 2; break;
+            case 'ui-scale-t': uiTransform.size.height -= dy; uiTransform.position.y += dy / 2; break;
+            case 'ui-scale-tr':
+                uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
+                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
                 break;
-            // --- UI Scaling with Pivot Correction ---
-            case 'ui-scale-r': // Right handle
-                uiTransform.size.width += dx;
-                uiTransform.position.x += dx * uiTransform.pivot.x;
+            case 'ui-scale-tl':
+                uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
+                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
                 break;
-            case 'ui-scale-l': // Left handle
-                uiTransform.size.width -= dx;
-                uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
+            case 'ui-scale-br':
+                uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
+                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
-            case 'ui-scale-b': // Bottom handle
-                uiTransform.size.height += dy;
-                uiTransform.position.y += dy * uiTransform.pivot.y;
-                break;
-            case 'ui-scale-t': // Top handle
-                uiTransform.size.height -= dy;
-                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
-                break;
-            case 'ui-scale-tr': // Top-right handle
-                uiTransform.size.width += dx;
-                uiTransform.position.x += dx * uiTransform.pivot.x;
-                uiTransform.size.height -= dy;
-                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
-                break;
-            case 'ui-scale-tl': // Top-left handle
-                uiTransform.size.width -= dx;
-                uiTransform.position.x += dx * (1 - uiTransform.pivot.x);
-                uiTransform.size.height -= dy;
-                uiTransform.position.y -= dy * (1 - uiTransform.pivot.y);
-                break;
-            case 'ui-scale-br': // Bottom-right handle
-                uiTransform.size.width += dx;
-                uiTransform.position.x += dx * uiTransform.pivot.x;
-                uiTransform.size.height += dy;
-                uiTransform.position.y += dy * uiTransform.pivot.y;
-                break;
-            case 'ui-scale-bl': // Bottom-left handle
-                uiTransform.size.width -= dx;
-                uiTransform.position.x -= dx * (1 - uiTransform.pivot.x);
-                uiTransform.size.height += dy;
-                uiTransform.position.y += dy * uiTransform.pivot.y;
+            case 'ui-scale-bl':
+                uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
+                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
             case 'rotate': {
                 const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
@@ -1709,6 +1715,32 @@ function drawCanvasGizmos() {
     }
 
     ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
+
+    // --- Draw 3x3 Grid ---
+    if (canvasComponent.showGrid) {
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)'; // Semi-transparent green
+        ctx.lineWidth = 1 / camera.effectiveZoom;
+        ctx.setLineDash([]); // Solid line
+
+        const startX = pos.x - gizmoWidth / 2;
+        const startY = pos.y - gizmoHeight / 2;
+
+        // Vertical lines
+        ctx.beginPath();
+        ctx.moveTo(startX + gizmoWidth / 3, startY);
+        ctx.lineTo(startX + gizmoWidth / 3, startY + gizmoHeight);
+        ctx.moveTo(startX + (2 * gizmoWidth) / 3, startY);
+        ctx.lineTo(startX + (2 * gizmoWidth) / 3, startY + gizmoHeight);
+        ctx.stroke();
+
+        // Horizontal lines
+        ctx.beginPath();
+        ctx.moveTo(startX, startY + gizmoHeight / 3);
+        ctx.lineTo(startX + gizmoWidth, startY + gizmoHeight / 3);
+        ctx.moveTo(startX, startY + (2 * gizmoHeight) / 3);
+        ctx.lineTo(startX + gizmoWidth, startY + (2 * gizmoHeight) / 3);
+        ctx.stroke();
+    }
 
     ctx.restore();
 }

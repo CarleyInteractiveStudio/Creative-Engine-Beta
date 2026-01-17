@@ -763,16 +763,14 @@ export class UITransform extends Leyes {
         super(materia);
         this.position = { x: 0, y: 0 }; // Position relative to the anchor point
         this.size = { width: 100, height: 100 };
-        this.pivot = { x: 0.5, y: 0.5 }; // 0,0 is top-left, 1,1 is bottom-right
-        this.anchorPreset = 'middle-center'; // e.g., 'top-left', 'bottom-right', 'stretch-horizontal', etc.
+        this.anchorPoint = 4; // 0-8, representing the 3x3 grid. 4 is center.
     }
 
     clone() {
         const newUITransform = new UITransform(null);
         newUITransform.position = { ...this.position };
         newUITransform.size = { ...this.size };
-        newUITransform.pivot = { ...this.pivot };
-        newUITransform.anchorPreset = this.anchorPreset;
+        newUITransform.anchorPoint = this.anchorPoint;
         return newUITransform;
     }
 }
@@ -1153,53 +1151,16 @@ export class Canvas extends Leyes {
         this.size = { x: 800, y: 600 }; // For World Space
         this.referenceResolution = { width: 800, height: 600 }; // For Screen Space
         this.screenMatchMode = 'Match Width Or Height';
+        this.showGrid = false; // Controls the 3x3 grid gizmo visibility
     }
-    /**
-     * Calculates the world-space rectangle for a given UI element (child of this canvas).
-     * @param {UITransform} uiTransform The UITransform component of the element.
-     * @returns {{x: number, y: number, width: number, height: number}} The rectangle in world coordinates.
-     */
-    getWorldRect(uiTransform) {
-        const canvasTransform = this.materia.getComponent(Transform);
-        if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
-
-        const canvasPos = canvasTransform.position;
-        const canvasSize = this.size;
-        const parentWidth = canvasSize.x;
-        const parentHeight = canvasSize.y;
-
-        // World space coordinates of the canvas edges
-        const canvasLeftEdgeX = canvasPos.x - parentWidth / 2;
-        const canvasTopEdgeY = canvasPos.y - parentHeight / 2;
-
-        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
-
-        // --- X Calculation (standard left-to-right) ---
-        const anchorMinX_fromLeft = parentWidth * anchorMin.x;
-        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
-        // uiTransform.pivot.x is Y-down (0=left), which is standard for X.
-        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
-
-        // --- Y Calculation (converts Y-UP data to Y-DOWN coordinates) ---
-        // This implements the user-provided formula: parentHeight * (1 - anchorMin.y) - position.y - height * (1 - pivot.y)
-        // anchorMin.y is now Y-up (0=bottom, 1=top)
-        // position.y is now Y-up (positive moves up)
-        // uiTransform.pivot.y is Y-down (0=top), so (1 - pivot.y) converts it to Y-up for the calculation.
-        const rectY_fromTop = parentHeight * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
-
-        return {
-            x: canvasLeftEdgeX + rectX_fromLeft,
-            y: canvasTopEdgeY + rectY_fromTop,
-            width: uiTransform.size.width,
-            height: uiTransform.size.height
-        };
-    }
-
 
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
         newCanvas.size = { ...this.size };
+        newCanvas.referenceResolution = { ...this.referenceResolution };
+        newCanvas.screenMatchMode = this.screenMatchMode;
+        newCanvas.showGrid = this.showGrid;
         return newCanvas;
     }
 }
