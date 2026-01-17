@@ -1679,17 +1679,15 @@ function drawCanvasGizmos() {
     }
     // Case 2: The selected object is a UI element (child of a Canvas)
     else if (selectedMateria.getComponent(Components.UITransform)) {
-        const parent = selectedMateria.parent;
-        if (parent && parent.getComponent(Components.Canvas)) {
-            canvasToShow = parent;
-        }
+        // Find the root canvas for this UI element
+        canvasToShow = selectedMateria.findAncestorWithComponent(Components.Canvas);
     }
 
     if (!canvasToShow) return;
 
     const canvasComponent = canvasToShow.getComponent(Components.Canvas);
     const transform = canvasToShow.getComponent(Components.Transform);
-    if (!canvasComponent || !transform) return; // Should not happen if canvasToShow is set
+    if (!canvasComponent || !transform) return;
 
     const { ctx, camera } = renderer;
     const pos = transform.position;
@@ -1699,18 +1697,18 @@ function drawCanvasGizmos() {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.setLineDash([10 / camera.effectiveZoom, 5 / camera.effectiveZoom]);
 
+    let gizmoWidth, gizmoHeight;
 
     if (canvasComponent.renderMode === 'World Space') {
-        const size = canvasComponent.size;
-        ctx.strokeRect(pos.x - size.x / 2, pos.y - size.y / 2, size.x, size.y);
+        gizmoWidth = canvasComponent.size.x;
+        gizmoHeight = canvasComponent.size.y;
     } else { // Screen Space
-        // For screen space, we just draw a representative box in the world
-        const sceneCanvas = dom.sceneCanvas;
-        const aspect = sceneCanvas.width / sceneCanvas.height;
-        const gizmoHeight = 400;
-        const gizmoWidth = gizmoHeight * aspect;
-        ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
+        // Use the referenceResolution for the gizmo size.
+        gizmoWidth = canvasComponent.referenceResolution.width;
+        gizmoHeight = canvasComponent.referenceResolution.height;
     }
+
+    ctx.strokeRect(pos.x - gizmoWidth / 2, pos.y - gizmoHeight / 2, gizmoWidth, gizmoHeight);
 
     ctx.restore();
 }

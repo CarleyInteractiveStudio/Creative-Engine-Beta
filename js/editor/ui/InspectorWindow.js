@@ -175,6 +175,11 @@ function handleInspectorInput(e) {
         current = current[props[i]];
     }
     current[props[props.length - 1]] = value;
+
+    // After updating the property, trigger a scene update to reflect changes visually.
+    if (updateSceneCallback) {
+        updateSceneCallback();
+    }
 }
 
 async function handleInspectorChange(e) {
