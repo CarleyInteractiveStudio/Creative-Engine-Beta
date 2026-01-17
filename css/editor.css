@@ -3490,3 +3490,34 @@ body {
     border-style: solid;
     color: var(--text-primary);
 }
+
+/* --- Game Mode --- */
+body.game-mode #editor-main-content {
+    display: block; /* Override grid layout */
+    height: 100vh;
+    padding: 0;
+}
+
+body.game-mode #scene-panel {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+}
+
+body.game-mode #scene-panel .panel-header {
+    display: none; /* Hide the scene/game/code tabs */
+}
+
+body.game-mode #scene-panel .panel-content-container {
+    height: 100%; /* Ensure content area fills the panel */
+}
+
+body.game-mode #menubar,
+body.game-mode #hierarchy-panel,
+body.game-mode #inspector-panel,
+body.game-mode #assets-panel,
+body.game-mode .resizer-v,
+body.game-mode .resizer-h {
+    display: none;
+}

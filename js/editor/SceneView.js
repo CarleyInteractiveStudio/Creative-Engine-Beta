@@ -582,27 +582,26 @@ export function initialize(dependencies) {
                     const parentCanvasMateria = dragState.materia.findAncestorWithComponent(Components.Canvas);
                     if (!uiTransform || !parentCanvasMateria) break;
 
-                    // Directly update the position offset based on the mouse drag.
-                    uiTransform.position.x += dx;
-                    uiTransform.position.y += dy;
-
-                    // To achieve the "jump", we determine the new anchor point. If it has changed,
-                    // we update it. The renderer will then automatically apply the *same* offset
-                    // to the *new* anchor, creating the jump. No complex recalculation is needed here.
                     const rectCache = new Map();
-                    const newRect = getAbsoluteRect(dragState.materia, rectCache);
-                    const newCenter = { x: newRect.x + newRect.width / 2, y: newRect.y + newRect.height / 2 };
+                    // 1. Calculate the element's desired new absolute center position
+                    const oldRect = getAbsoluteRect(dragState.materia, rectCache);
+                    const desiredCenterX = (oldRect.x + oldRect.width / 2) + dx;
+                    const desiredCenterY = (oldRect.y + oldRect.height / 2) + dy;
 
+                    // 2. Determine the closest anchor point based on the new position
                     const parentRect = getAbsoluteRect(parentCanvasMateria, rectCache);
-                    const posInParent = { x: newCenter.x - parentRect.x, y: newCenter.y - parentRect.y };
+                    const positionInParentCoords = { x: desiredCenterX - parentRect.x, y: desiredCenterY - parentRect.y };
+                    const newAnchorPoint = getClosestAnchorPoint(positionInParentCoords, { width: parentRect.width, height: parentRect.height });
 
-                    const newAnchorPoint = getClosestAnchorPoint(posInParent, { width: parentRect.width, height: parentRect.height });
+                    // 3. Calculate the new position offset relative to the *new* anchor point
+                    const newAnchorPos = getAnchorPosition(newAnchorPoint, parentRect);
+                    const newOffsetX = desiredCenterX - newAnchorPos.x;
+                    const newOffsetY = desiredCenterY - newAnchorPos.y;
 
-                    if (newAnchorPoint !== uiTransform.anchorPoint) {
-                        uiTransform.anchorPoint = newAnchorPoint;
-                        // NOTE: We do NOT recalculate uiTransform.position here.
-                        // This is the key to achieving the "jump" behavior.
-                    }
+                    // 4. Apply both the new anchor and the new offset simultaneously
+                    uiTransform.anchorPoint = newAnchorPoint;
+                    uiTransform.position.x = newOffsetX;
+                    uiTransform.position.y = newOffsetY;
 
                     break;
                 }

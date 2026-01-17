@@ -642,8 +642,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
             return;
         }
+        // MODIFICATION: In test mode (no handle), skip checks and just play.
         if (!projectsDirHandle) {
-            showNotificationDialog('Proyecto Cargando', 'El proyecto aún se está cargando, por favor, inténtalo de nuevo en un momento.');
+            console.log("Modo de prueba detectado (sin project handle). Iniciando el juego directamente.");
+            originalStartGame();
             return;
         }
 
@@ -1180,6 +1182,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
+        document.body.classList.add('game-mode');
+        // Ensure the game view is active
+        const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
+        if (gameViewButton && activeView !== 'game-content') {
+            gameViewButton.click();
+        }
+
         // Tell InputManager that the engine is running so it can default to the game canvas
         try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
         isGamePaused = false;
@@ -1234,6 +1243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopGame = async function() {
         if (!isGameRunning) return;
         isGameRunning = false;
+        document.body.classList.remove('game-mode');
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
