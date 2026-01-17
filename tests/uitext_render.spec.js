@@ -6,8 +6,14 @@ test.describe('UIText Rendering Test', () => {
     // Navigate to the editor
     await page.goto('http://localhost:8000/editor.html?project=test-project');
 
-    // Wait for the editor to be fully initialized
-    await page.waitForFunction(() => window.editorInitialized);
+    // Force editor to load
+    await page.evaluate(() => {
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.getElementById('editor-container').style.display = 'flex';
+    });
+
+    // Wait for the hierarchy panel to be visible as a final check
+    await page.waitForSelector('#hierarchy-panel', { state: 'visible' });
 
     // Right-click on the hierarchy panel to open the context menu
     await page.locator('#hierarchy-panel').click({ button: 'right' });

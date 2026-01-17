@@ -1,6 +1,6 @@
 import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
-import { getAnchorPercentages, calculateLetterbox } from './UITransformUtils.js';
+import { getAnchorPercentages } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false) {
         this.canvas = canvas;
@@ -331,6 +331,11 @@ export class Renderer {
 
         const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
 
+        // --- DEBUG CHIVATO ---
+        if (!this.isEditor) {
+            console.log(`[JUEGO] Dibujando UI: ${element.name} | Pos: (${Math.round(finalX)}, ${Math.round(finalY)}) | Tamaño: (${drawWidth}x${drawHeight})`);
+        }
+
         // --- Drawing Logic for the current element ---
         const uiImage = element.getComponent(UIImage);
         const uiText = element.getComponent(UIText);
@@ -378,39 +383,37 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        if (!canvasComponent) {
+        const canvasTransform = canvasMateria.getComponent(Transform);
+        if (!canvasComponent || !canvasTransform) {
             this.end();
             return;
         }
 
-        const { scale, offsetX, offsetY } = calculateLetterbox(
-            canvasComponent.referenceResolution,
-            { width: this.canvas.width, height: this.canvas.height }
-        );
-
-        this.ctx.save();
-        // Apply the letterbox transformation
-        this.ctx.translate(offsetX, offsetY);
-        this.ctx.scale(scale, scale);
-
-        const parentRect = {
-            x: 0,
-            y: 0,
-            width: canvasComponent.referenceResolution.x,
-            height: canvasComponent.referenceResolution.y
+        const canvasRect = {
+            x: canvasTransform.position.x,
+            y: canvasTransform.position.y,
+            width: this.canvas.width,
+            height: this.canvas.height
         };
 
-        // Clip to the reference resolution to prevent drawing outside the scaled area
+        this.ctx.save();
         this.ctx.beginPath();
-        this.ctx.rect(parentRect.x, parentRect.y, parentRect.width, parentRect.height);
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, parentRect);
+            this._drawUIElementAndChildren(child, canvasRect);
         }
 
-        this.ctx.restore(); // This restores the context, removing the scale and translation
+        // --- DEBUG GIZMO ---
+        if (!this.isEditor) {
+            this.ctx.strokeStyle = '#FF00FF'; // Magenta
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        }
+
+        this.ctx.restore();
         this.end();
     }
 
@@ -420,54 +423,30 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-
         const worldPos = canvasTransform.position;
-        const worldSize = canvasComponent.size; // This is the container for the UI in world space
+        const size = canvasComponent.size;
 
-        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
-            // --- Editor-only WYSIWYG for Screen Space ---
-            const { scale, offsetX, offsetY } = calculateLetterbox(
-                canvasComponent.referenceResolution,
-                { width: worldSize.x, height: worldSize.y }
-            );
+        const canvasRect = {
+            x: worldPos.x - size.x / 2,
+            y: worldPos.y - size.y / 2,
+            width: size.x,
+            height: size.y
+        };
 
-            // Move to the top-left of the world-space canvas container
-            this.ctx.translate(worldPos.x - worldSize.x / 2, worldPos.y - worldSize.y / 2);
-            // Apply the letterbox transformation
-            this.ctx.translate(offsetX, offsetY);
-            this.ctx.scale(scale, scale);
+        this.ctx.beginPath();
+        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        this.ctx.clip();
 
-            const parentRect = {
-                x: 0,
-                y: 0,
-                width: canvasComponent.referenceResolution.x,
-                height: canvasComponent.referenceResolution.y
-            };
+        // Start the recursive drawing process for all direct children of the canvas
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, canvasRect);
+        }
 
-            this.ctx.beginPath();
-            this.ctx.rect(0, 0, parentRect.width, parentRect.height);
-            this.ctx.clip();
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, parentRect);
-            }
-
-        } else {
-            // --- Default World Space UI Rendering ---
-            const canvasRect = {
-                x: worldPos.x - worldSize.x / 2,
-                y: worldPos.y - worldSize.y / 2,
-                width: worldSize.x,
-                height: worldSize.y
-            };
-
-            this.ctx.beginPath();
-            this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
-            this.ctx.clip();
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, canvasRect);
-            }
+        // --- DEBUG GIZMO ---
+        if (!this.isEditor) {
+            this.ctx.strokeStyle = '#FF00FF'; // Magenta
+            this.ctx.lineWidth = 2 / this.camera.effectiveZoom; // Adjust line width for camera zoom
+            this.ctx.strokeRect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
         }
 
         this.ctx.restore();

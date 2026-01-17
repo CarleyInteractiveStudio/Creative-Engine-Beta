@@ -1,73 +1,19 @@
-/**
- * [Helper for Gizmo] Calculates the final world-space rectangle for a UI gizmo,
- * accounting for the Canvas's letterbox scaling.
- * @param {Materia} materia The UI element to get the rectangle for.
- * @returns {{x: number, y: number, width: number, height: number}|null} The world-space rect or null if invalid.
- */
-function getGizmoWorldRect(materia) {
-    if (!materia) return null;
-
-    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
-    if (!parentCanvasMateria) return null;
-
-    const canvasComponent = parentCanvasMateria.getComponent(Components.Canvas);
-    const canvasTransform = parentCanvasMateria.getComponent(Components.Transform);
-
-    if (canvasComponent.renderMode !== 'Screen Space') {
-        // For World Space UI, the calculation is direct
-        // We must provide a cache map to getAbsoluteRect.
-        const rectCache = new Map();
-
-        // The top-level canvas itself needs its rect calculated to start the process.
-        const worldPos = canvasTransform.position;
-        const worldSize = canvasComponent.size;
-        const canvasRect = {
-            x: worldPos.x - worldSize.x / 2,
-            y: worldPos.y - worldSize.y / 2,
-            width: worldSize.x,
-            height: worldSize.y
-        };
-        rectCache.set(parentCanvasMateria.id, canvasRect);
-
-        return getAbsoluteRect(materia, rectCache);
-    }
-
-    // --- Screen Space WYSIWYG Calculation ---
-    // 1. Get the UI element's unscaled rect relative to the reference resolution.
-    const unscaledRect = getUnscaledRelativeRect(materia, parentCanvasMateria);
-
-    // 2. Calculate the letterbox scaling of the canvas itself.
-    const worldCanvasRect = {
-        x: canvasTransform.position.x - canvasComponent.size.x / 2,
-        y: canvasTransform.position.y - canvasComponent.size.y / 2,
-        width: canvasComponent.size.x,
-        height: canvasComponent.size.y
-    };
-    const { scale, offsetX, offsetY } = calculateLetterbox(
-        canvasComponent.referenceResolution,
-        { width: worldCanvasRect.width, height: worldCanvasRect.height }
-    );
-
-    // 3. Apply the letterbox transformation to the unscaled UI rect.
-    const finalRect = {
-        x: worldCanvasRect.x + offsetX + (unscaledRect.x * scale),
-        y: worldCanvasRect.y + offsetY + (unscaledRect.y * scale),
-        width: unscaledRect.width * scale,
-        height: unscaledRect.height * scale
-    };
-
-    return finalRect;
-}
-
-
 function checkUIGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
-    if (!selectedMateria || !renderer || selectedMateria.getComponent(Components.Canvas)) return null;
+    if (!selectedMateria || !renderer) return null;
 
-    const rect = getGizmoWorldRect(selectedMateria);
-    if (!rect) return null;
+    const uiTransform = selectedMateria.getComponent(Components.UITransform);
+    if (!uiTransform) return null;
+
+    const parentCanvasMateria = selectedMateria.findAncestorWithComponent(Components.Canvas);
+    if (!parentCanvasMateria) return null;
 
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    // Bounding box of the UI element in world space
+    const rectCache = new Map();
+    const rect = getAbsoluteRect(selectedMateria, rectCache);
+
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -80,22 +26,25 @@ function checkUIGizmoHit(canvasPos) {
         return Math.abs(worldMouse.x - targetX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - targetY) < handleHitboxSize / 2;
     };
 
+
     switch (activeTool) {
         case 'move':
-             if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
-             if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
-             const squareHitboxSize = 10 / zoom;
-             if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
-                 return 'ui-move-xy';
-             }
-             break;
+            if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'ui-move-x';
+            // Corrected Y-axis hit detection to be in the negative world Y direction (upwards on screen)
+            if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'ui-move-y';
+             // Central square hit detection
+            const squareHitboxSize = 10 / zoom;
+            if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
+                return 'ui-move-xy';
+            }
+            break;
         case 'scale':
             const handles = [
                 { x: rect.x, y: rect.y, name: 'ui-scale-tl' },
                 { x: rect.x + rect.width, y: rect.y, name: 'ui-scale-tr' },
                 { x: rect.x, y: rect.y + rect.height, name: 'ui-scale-bl' },
                 { x: rect.x + rect.width, y: rect.y + rect.height, name: 'ui-scale-br' },
-                { x: rect.x + rect.width / 2, y: rect.y, name: 'ui-scale-t' },
+                 { x: rect.x + rect.width / 2, y: rect.y, name: 'ui-scale-t' },
                 { x: rect.x + rect.width / 2, y: rect.y + rect.height, name: 'ui-scale-b' },
                 { x: rect.x, y: rect.y + rect.height / 2, name: 'ui-scale-l' },
                 { x: rect.x + rect.width, y: rect.y + rect.height / 2, name: 'ui-scale-r' },
@@ -106,12 +55,18 @@ function checkUIGizmoHit(canvasPos) {
             break;
     }
 
+
     return null;
 }
 
-
 function drawUIGizmos(renderer, materia) {
-    if (!materia || !renderer || materia.getComponent(Components.Canvas)) return;
+    if (!materia || !renderer) return;
+
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (!uiTransform) return;
+
+    const parentCanvasMateria = materia.findAncestorWithComponent(Components.Canvas);
+    if (!parentCanvasMateria) return;
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -122,9 +77,12 @@ function drawUIGizmos(renderer, materia) {
     const ARROW_HEAD_SIZE = 8 / zoom;
     const SCALE_BOX_SIZE = 8 / zoom;
 
-    const rect = getGizmoWorldRect(materia);
-    if (!rect) return;
+    // Bounding box of the UI element in world space
+    const rectCache = new Map();
+    const rect = getAbsoluteRect(materia, rectCache);
 
+    // --- DEBUG CHIVATO ---
+    console.log(`[ESCENA] Dibujando Gizmo para: ${materia.name} | Pos: (${Math.round(rect.x)}, ${Math.round(rect.y)}) | Tamaño: (${Math.round(rect.width)}x${Math.round(rect.height)})`);
 
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height / 2;
@@ -138,9 +96,11 @@ function drawUIGizmos(renderer, materia) {
     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
     ctx.setLineDash([]);
 
+
     switch (activeTool) {
         case 'move':
             ctx.lineWidth = HANDLE_THICKNESS;
+
             // Y-Axis (Green)
             ctx.strokeStyle = '#00ff00';
             ctx.beginPath();
@@ -201,7 +161,7 @@ function drawUIGizmos(renderer, materia) {
 // --- Module for Scene View Interactions and Gizmos ---
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
-import { getAbsoluteRect, getUnscaledRelativeRect, calculateLetterbox } from '../engine/UITransformUtils.js';
+import { getAbsoluteRect } from '../engine/UITransformUtils.js';
 
 // Dependencies from editor.js
 let dom;
