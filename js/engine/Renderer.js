@@ -383,37 +383,60 @@ export class Renderer {
     drawScreenSpaceUI(canvasMateria) {
         this.beginUI();
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        const canvasTransform = canvasMateria.getComponent(Transform);
-        if (!canvasComponent || !canvasTransform) {
+        if (!canvasComponent) {
             this.end();
             return;
         }
 
-        const canvasRect = {
-            x: canvasTransform.position.x,
-            y: canvasTransform.position.y,
-            width: this.canvas.width,
-            height: this.canvas.height
-        };
+        const refRes = canvasComponent.referenceResolution;
+        const screenWidth = this.canvas.width;
+        const screenHeight = this.canvas.height;
+
+        // --- Letterbox Scaling Logic ---
+        const scaleX = screenWidth / refRes.width;
+        const scaleY = screenHeight / refRes.height;
+        const scale = Math.min(scaleX, scaleY); // Use 'contain' scaling
+
+        const scaledWidth = refRes.width * scale;
+        const scaledHeight = refRes.height * scale;
+
+        // Calculate offsets to center the scaled canvas
+        const offsetX = (screenWidth - scaledWidth) / 2;
+        const offsetY = (screenHeight - scaledHeight) / 2;
 
         this.ctx.save();
+
+        // Apply the transformation to scale and center the UI
+        this.ctx.translate(offsetX, offsetY);
+        this.ctx.scale(scale, scale);
+
+        // Define the virtual canvas rectangle based on the reference resolution.
+        // All child elements will now be drawn relative to this 0,0-based rectangle.
+        const virtualCanvasRect = {
+            x: 0,
+            y: 0,
+            width: refRes.width,
+            height: refRes.height
+        };
+
+        // Clip to the bounds of the virtual canvas to prevent drawing outside
         this.ctx.beginPath();
-        this.ctx.rect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+        this.ctx.rect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
         this.ctx.clip();
 
         // Start the recursive drawing process for all direct children of the canvas
         for (const child of canvasMateria.children) {
-            this._drawUIElementAndChildren(child, canvasRect);
+            this._drawUIElementAndChildren(child, virtualCanvasRect);
         }
 
         // --- DEBUG GIZMO ---
         if (!this.isEditor) {
             this.ctx.strokeStyle = '#FF00FF'; // Magenta
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(canvasRect.x, canvasRect.y, canvasRect.width, canvasRect.height);
+            this.ctx.lineWidth = 2 / scale; // Adjust line width for the current scale
+            this.ctx.strokeRect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
         }
 
-        this.ctx.restore();
+        this.ctx.restore(); // This restores the context, removing the scale and translation
         this.end();
     }
 
