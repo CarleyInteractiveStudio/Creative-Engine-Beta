@@ -180,45 +180,63 @@ export function getAbsoluteRect(materia, rectCache) {
     if (!materia) return { x: 0, y: 0, width: 0, height: 0 };
     if (rectCache.has(materia.id)) return rectCache.get(materia.id);
 
-    const uiTransform = materia.getComponent(UITransform);
-    if (!uiTransform) {
-        console.warn(`getAbsoluteRect called on Materia '${materia.name}' without a UITransform.`);
-        return { x: 0, y: 0, width: 0, height: 0 };
+    // Base case: The recursion root is a Materia with a Canvas component.
+    const canvas = materia.getComponent(Canvas);
+    if (canvas) {
+        const transform = materia.getComponent(Transform);
+        if (!transform) {
+            console.error(`Canvas '${materia.name}' is missing a Transform component.`);
+            return { x: 0, y: 0, width: 0, height: 0 };
+        }
+
+        // For gizmo rendering, we need a world-space rect.
+        const size = canvas.renderMode === 'Screen Space' ? canvas.referenceResolution : canvas.size;
+        const width = canvas.renderMode === 'Screen Space' ? size.width : size.x;
+        const height = canvas.renderMode === 'Screen Space' ? size.height : size.y;
+
+        const absoluteRect = {
+            x: transform.position.x - width / 2,
+            y: transform.position.y - height / 2,
+            width: width,
+            height: height
+        };
+        rectCache.set(materia.id, absoluteRect);
+        return absoluteRect;
     }
 
-    let parentRect;
-    if (materia.parent) {
-        // If there's a parent, recurse up the chain.
-        parentRect = getAbsoluteRect(materia.parent, rectCache);
-    } else {
-        // Base case: If there's no parent, this should be the Canvas.
-        const canvas = materia.getComponent(Canvas);
-        const transform = materia.getComponent(Transform); // Assuming Canvas has a regular Transform
-        if (canvas && transform) {
-            const canvasSize = canvas.renderMode === 'Screen Space'
-                ? { width: window.innerWidth, height: window.innerHeight } // This needs access to the actual canvas size
-                : canvas.size;
-            parentRect = {
-                x: transform.position.x - canvasSize.width / 2,
-                y: transform.position.y - canvasSize.height / 2,
-                width: canvasSize.width,
-                height: canvasSize.height
-            };
+    const uiTransform = materia.getComponent(UITransform);
+    if (!uiTransform) {
+        // This is an intermediate object without a UITransform (e.g., an empty container).
+        // Its transform is effectively identity, so we defer to its parent.
+        if (materia.parent) {
+            return getAbsoluteRect(materia.parent, rectCache);
         } else {
-             // Fallback for an unparented UI element that isn't a canvas.
-            parentRect = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+            // This should not happen in a valid scene.
+            console.error(`Materia '${materia.name}' has no UITransform and no parent.`);
+            return { x: 0, y: 0, width: 0, height: 0 };
         }
     }
 
+    // All UI elements must have a parent.
+    if (!materia.parent) {
+        console.error(`UI Element '${materia.name}' has no parent Canvas.`);
+        // Fallback to a default rect, though this is an error state.
+        return { x: 0, y: 0, width: 800, height: 600 };
+    }
+
+    // Recurse to get the parent's calculated rectangle.
+    const parentRect = getAbsoluteRect(materia.parent, rectCache);
+
     const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
 
+    // Calculate this element's rect relative to its parent's rect.
     // X Calculation
     const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
     const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
     const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
     const finalX = parentRect.x + rectX_fromLeft;
 
-    // Y Calculation (Y-UP to Y-DOWN)
+    // Y Calculation (converting from engine's Y-UP to rect's Y-DOWN)
     const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
     const finalY = parentRect.y + rectY_fromTop;
 
