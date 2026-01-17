@@ -6,7 +6,6 @@ import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
-import { getAnchorPercentages } from './UITransformUtils.js';
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
