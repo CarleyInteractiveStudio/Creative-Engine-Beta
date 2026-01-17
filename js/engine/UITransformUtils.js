@@ -232,3 +232,79 @@ export function getAbsoluteRect(materia, rectCache) {
     rectCache.set(materia.id, absoluteRect);
     return absoluteRect;
 }
+
+/**
+ * Calculates the scale and offset needed to fit a source resolution within a target container,
+ * preserving the aspect ratio (letterboxing).
+ * @param {{x: number, y: number}} sourceResolution The reference size (e.g., 800x600).
+ * @param {{width: number, height: number}} targetContainer The actual size of the screen or window.
+ * @returns {{scale: number, offsetX: number, offsetY: number}} The scale factor and offsets.
+ */
+export function calculateLetterbox(sourceResolution, targetContainer) {
+    const sourceAspect = sourceResolution.x / sourceResolution.y;
+    const targetAspect = targetContainer.width / targetContainer.height;
+
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (targetAspect > sourceAspect) {
+        // Target is wider than source, so letterbox will be on the sides (left/right)
+        scale = targetContainer.height / sourceResolution.y;
+        offsetX = (targetContainer.width - (sourceResolution.x * scale)) / 2;
+    } else {
+        // Target is taller than source, so letterbox will be on the top/bottom
+        scale = targetContainer.width / sourceResolution.x;
+        offsetY = (targetContainer.height - (sourceResolution.y * scale)) / 2;
+    }
+
+    return { scale, offsetX, offsetY };
+}
+
+/**
+ * [Helper for Gizmo] Calculates the rectangle of a UI element relative to its root Canvas's
+ * reference resolution, without any scaling applied.
+ * @param {Materia} materia The UI element.
+ * @param {Materia} canvasMateria The root Canvas for the UI element.
+ * @returns {{x: number, y: number, width: number, height: number}} The unscaled rectangle.
+ */
+export function getUnscaledRelativeRect(materia, canvasMateria) {
+    if (!materia || !canvasMateria) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    const uiTransform = materia.getComponent(UITransform);
+    if (!uiTransform) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    let parentRect;
+    if (materia === canvasMateria || !materia.parent) {
+        // Base case: We've reached the canvas or a root element.
+        const canvasComponent = canvasMateria.getComponent(Canvas);
+        const refRes = canvasComponent.referenceResolution;
+        return { x: 0, y: 0, width: refRes.x, height: refRes.y };
+    } else {
+        // Recurse up to the parent.
+        parentRect = getUnscaledRelativeRect(materia.parent, canvasMateria);
+    }
+
+    const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+
+    // X Calculation
+    const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+    const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+    const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+    const finalX = parentRect.x + rectX_fromLeft;
+
+    // Y Calculation (Y-UP to Y-DOWN)
+    const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+    const finalY = parentRect.y + rectY_fromTop;
+
+    return {
+        x: finalX,
+        y: finalY,
+        width: uiTransform.size.width,
+        height: uiTransform.size.height
+    };
+}

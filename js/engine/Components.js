@@ -1150,6 +1150,12 @@ export class Canvas extends Leyes {
     constructor(materia) {
         super(materia);
         this.renderMode = 'Screen Space'; // 'Screen Space' or 'World Space'
+
+        // --- Propiedades para 'Screen Space' ---
+        this.referenceResolution = { x: 800, y: 600 };
+        this.screenMatchMode = 'Match Width Or Height'; // 'Match Width Or Height', 'Expand', 'Shrink'
+
+        // --- Propiedades para 'World Space' ---
         this.size = { x: 800, y: 600 };
     }
     /**
@@ -1162,6 +1168,7 @@ export class Canvas extends Leyes {
         if (!canvasTransform) return { x: 0, y: 0, width: 0, height: 0 };
 
         const canvasPos = canvasTransform.position;
+        // IMPORTANT: In World Space, the size is determined by the 'size' property.
         const canvasSize = this.size;
         const parentWidth = canvasSize.x;
         const parentHeight = canvasSize.y;
@@ -1197,6 +1204,8 @@ export class Canvas extends Leyes {
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
+        newCanvas.referenceResolution = { ...this.referenceResolution };
+        newCanvas.screenMatchMode = this.screenMatchMode;
         newCanvas.size = { ...this.size };
         return newCanvas;
     }
