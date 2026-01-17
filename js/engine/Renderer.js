@@ -119,10 +119,266 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    // ... (drawRect, drawImage, drawText, drawTilemap, and light functions remain unchanged)
+    drawRect(x, y, width, height, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+    }
+
+    drawImage(image, x, y, width, height) {
+        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+    }
+
+    drawText(text, x, y, color, fontSize, fontFamily, textTransform) {
+        this.ctx.fillStyle = color;
+        this.ctx.font = `${fontSize}px ${fontFamily || 'sans-serif'}`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        let transformedText = text;
+        if (textTransform === 'uppercase') {
+            transformedText = text.toUpperCase();
+        } else if (textTransform === 'lowercase') {
+            transformedText = text.toLowerCase();
+        }
+        this.ctx.fillText(transformedText, x, y);
+    }
+
+    drawTilemap(tilemapRenderer) {
+        const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
+        const transform = tilemapRenderer.materia.getComponent(Transform);
+        let gridMateria = null;
+        const parent = tilemapRenderer.materia.parent;
+        if (parent) {
+            if (typeof parent === 'object' && typeof parent.getComponent === 'function') {
+                gridMateria = parent;
+            } else if (typeof parent === 'number') {
+                gridMateria = SceneManager.currentScene.findMateriaById(parent);
+            }
+        }
+        const grid = gridMateria ? gridMateria.getComponent(Grid) : null;
+        if (!tilemap || !transform || !grid) return;
+
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        const mapTotalWidth = tilemap.width * grid.cellSize.x;
+        const mapTotalHeight = tilemap.height * grid.cellSize.y;
+
+        for (const layer of tilemap.layers) {
+            const layerOffsetX = layer.position.x * mapTotalWidth;
+            const layerOffsetY = layer.position.y * mapTotalHeight;
+            for (const [coord, tileData] of layer.tileData.entries()) {
+                const image = tilemapRenderer.getImageForTile(tileData);
+                if (image && image.complete && image.naturalWidth > 0) {
+                    const [x, y] = coord.split(',').map(Number);
+                    const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
+                    const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
+                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x, grid.cellSize.y);
+                }
+            }
+        }
+        this.ctx.restore();
+    }
+
+    beginLights() {
+        this.lightMapCtx.save();
+        this.lightMapCtx.setTransform(this.ctx.getTransform());
+        this.lightMapCtx.fillStyle = this.ambientLight;
+        this.lightMapCtx.fillRect(-99999, -99999, 199998, 199998);
+    }
+
+    drawPointLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { radius, color, intensity } = light;
+        const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
+        gradient.addColorStop(0, `${color}FF`);
+        gradient.addColorStop(0.3, `${color}CC`);
+        gradient.addColorStop(0.6, `${color}66`);
+        gradient.addColorStop(1, `${color}00`);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = intensity;
+        ctx.fillRect(transform.x - radius, transform.y - radius, radius * 2, radius * 2);
+        ctx.globalAlpha = 1.0;
+    }
+
+    drawSpotLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation } = transform;
+        const { radius, color, intensity, angle } = light;
+        const directionRad = ((rotation - 90) * Math.PI) / 180;
+        const coneAngleRad = (angle * Math.PI) / 180;
+        const startAngle = directionRad - coneAngleRad / 2;
+        const endAngle = directionRad + coneAngleRad / 2;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `${color}FF`);
+        gradient.addColorStop(0.3, `${color}CC`);
+        gradient.addColorStop(0.6, `${color}66`);
+        gradient.addColorStop(1, `${color}00`);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = intensity;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.arc(x, y, radius, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    drawFreeformLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation } = transform;
+        const { vertices, color, intensity } = light;
+        if (!vertices || vertices.length < 3) return;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation * Math.PI / 180);
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        for (let i = 1; i < vertices.length; i++) {
+            ctx.lineTo(vertices[i].x, vertices[i].y);
+        }
+        ctx.closePath();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = intensity;
+        ctx.fill();
+        ctx.restore();
+        ctx.globalAlpha = 1.0;
+    }
+
+    drawSpriteLight(light, transform) {
+        const ctx = this.lightMapCtx;
+        const { x, y, rotation, scale } = transform;
+        const { sprite, color, intensity } = light;
+        if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
+
+        const width = sprite.naturalWidth * scale.x;
+        const height = sprite.naturalHeight * scale.y;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation * Math.PI / 180);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = intensity;
+        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
+        ctx.fillStyle = color;
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillRect(-width / 2, -height / 2, width, height);
+        ctx.restore();
+        ctx.globalAlpha = 1.0;
+    }
+
+    endLights() {
+        this.lightMapCtx.restore();
+        if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) return;
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.globalCompositeOperation = 'multiply';
+        this.ctx.drawImage(this.lightMapCanvas, 0, 0);
+        this.ctx.restore();
+    }
+
+    drawCanvas(canvasMateria) {
+        if (!canvasMateria.isActive) return;
+        const canvas = canvasMateria.getComponent(Canvas);
+        if (this.isEditor) {
+            this.drawWorldSpaceUI(canvasMateria);
+        } else {
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
+        }
+    }
+
+    getAnchorPoint(preset, canvasWidth, canvasHeight) {
+        const anchor = { x: 0.5, y: 0.5 };
+        if (preset.includes('left')) anchor.x = 0;
+        if (preset.includes('center')) anchor.x = 0.5;
+        if (preset.includes('right')) anchor.x = 1;
+        if (preset.includes('top')) anchor.y = 0;
+        if (preset.includes('middle')) anchor.y = 0.5;
+        if (preset.includes('bottom')) anchor.y = 1;
+        return { x: canvasWidth * anchor.x, y: canvasHeight * anchor.y };
+    }
 
     _drawUIElementAndChildren(element, parentRect) {
-        // ... (this function remains unchanged)
+        if (!element.isActive) return;
+
+        const uiTransform = element.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        // Calculate the element's own rectangle based on the parent's rectangle
+        const anchorPoint = this.getAnchorPoint(uiTransform.anchorPreset, parentRect.width, parentRect.height);
+
+        // --- UNIFIED Y-AXIS LOGIC ---
+        // This logic now matches `getWorldRect` in Components.js
+        const anchorMin = getAnchorPercentages(uiTransform.anchorPreset);
+
+        // X Calculation is straightforward
+        const anchorMinX_fromLeft = parentRect.width * anchorMin.x;
+        const pivotPosX_fromLeft = anchorMinX_fromLeft + uiTransform.position.x;
+        const rectX_fromLeft = pivotPosX_fromLeft - (uiTransform.size.width * uiTransform.pivot.x);
+        const finalX = parentRect.x + rectX_fromLeft;
+
+        // Y Calculation uses the Y-UP formula and converts to Y-DOWN screen coordinates
+        const rectY_fromTop = parentRect.height * (1 - anchorMin.y) - uiTransform.position.y - (uiTransform.size.height * (1 - uiTransform.pivot.y));
+        const finalY = parentRect.y + rectY_fromTop;
+        const drawWidth = uiTransform.size.width;
+        const drawHeight = uiTransform.size.height;
+
+        const currentRect = { x: finalX, y: finalY, width: drawWidth, height: drawHeight };
+
+        // --- DEBUG CHIVATO ---
+        if (!this.isEditor) {
+            console.log(`[JUEGO] Dibujando UI: ${element.name} | Pos: (${Math.round(finalX)}, ${Math.round(finalY)}) | Tamaño: (${drawWidth}x${drawHeight})`);
+        }
+
+        // --- Drawing Logic for the current element ---
+        const uiImage = element.getComponent(UIImage);
+        const uiText = element.getComponent(UIText);
+        const textureRender = element.getComponent(TextureRender);
+
+
+        if (uiImage) {
+            this.ctx.fillStyle = uiImage.color;
+            this.ctx.fillRect(finalX, finalY, drawWidth, drawHeight);
+            if (uiImage.sprite && uiImage.sprite.complete) {
+                this.ctx.save();
+                this.ctx.globalCompositeOperation = 'multiply';
+                this.ctx.drawImage(uiImage.sprite, finalX, finalY, drawWidth, drawHeight);
+                this.ctx.restore();
+            }
+        } else if (textureRender) {
+             this.ctx.save();
+            this.ctx.translate(finalX, finalY);
+            if (textureRender.texture && textureRender.texture.complete) {
+                this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
+            } else {
+                this.ctx.fillStyle = textureRender.color;
+            }
+            if (textureRender.shape === 'Rectangle') {
+                this.ctx.fillRect(0, 0, drawWidth, drawHeight);
+            } else if (textureRender.shape === 'Circle') {
+                this.ctx.beginPath();
+                this.ctx.arc(drawWidth / 2, drawHeight / 2, drawWidth / 2, 0, 2 * Math.PI);
+                this.ctx.fill();
+            }
+            this.ctx.restore();
+        }
+
+        if (uiText) {
+            this._drawUIText(uiText, finalX, finalY, drawWidth, drawHeight);
+        }
+
+        // --- Recursion ---
+        // Now, draw children, passing this element's rectangle as the new parentRect
+        for (const child of element.children) {
+            this._drawUIElementAndChildren(child, currentRect);
+        }
     }
 
     drawScreenSpaceUI(canvasMateria) {
