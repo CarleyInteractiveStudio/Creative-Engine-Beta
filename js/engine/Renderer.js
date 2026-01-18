@@ -289,19 +289,16 @@ export class Renderer {
     drawScreenSpaceCanvas(canvasMateria, isGameView) {
         if (!canvasMateria.isActive) return;
 
-        // In the editor, Screen Space canvases are drawn OVER the world space view.
-        // The actual independent screen space rendering only happens in the game view.
-        if (this.isEditor && !isGameView) {
-             this.drawWorldSpaceUI(canvasMateria); // This provides the WYSIWYG preview
-        } else {
-             // This is a true UI pass. It should not depend on any camera state.
-             // We check if any cameras were rendered in this frame. If not, we must clear the canvas first.
-             const scene = SceneManager.currentScene;
-             if (!scene || scene.findAllCameras().length === 0) {
-                 this.clearWithDefault();
-             }
-             this.drawScreenSpaceUI(canvasMateria);
+        // This is a true UI pass. It should not depend on any camera state.
+        // In game view, if no cameras were rendered, we must clear the canvas first.
+        if (isGameView) {
+            const scene = SceneManager.currentScene;
+            if (!scene || scene.findAllCameras().length === 0) {
+                this.clearWithDefault();
+            }
         }
+
+        this.drawScreenSpaceUI(canvasMateria);
     }
 
     drawCanvas(canvasMateria) {

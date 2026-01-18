@@ -1093,6 +1093,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
             if (!isGameView) {
+                // For the editor, we render Screen Space canvases here to ensure their gizmos are drawn correctly.
+                for (const canvasMateria of screenSpaceCanvases) {
+                    rendererInstance.drawScreenSpaceCanvas(canvasMateria, isGameView);
+                }
                 SceneView.drawOverlay();
             }
             rendererInstance.end();
@@ -1113,10 +1117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } else { // Editor Scene View
             handleRender(null);
-            // Also draw screen space canvases in the editor for consistency
-            for (const canvasMateria of screenSpaceCanvases) {
-                rendererInstance.drawScreenSpaceCanvas(canvasMateria, isGameView);
-            }
         }
     }
 
