@@ -282,12 +282,15 @@ export class Renderer {
 
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
-        // The editor view renders canvases in-place in the world.
+        const canvas = canvasMateria.getComponent(Canvas);
         if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
         } else {
-            // The game view ALWAYS renders the canvas full-screen.
-            this.drawScreenSpaceUI(canvasMateria);
+            if (canvas.renderMode === 'Screen Space') {
+                this.drawScreenSpaceUI(canvasMateria);
+            } else {
+                this.drawWorldSpaceUI(canvasMateria);
+            }
         }
     }
 
@@ -344,18 +347,10 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) { this.end(); return; }
 
-        // Determine the reference resolution based on the canvas mode.
-        let refRes;
-        if (canvasComponent.renderMode === 'World Space') {
-            // For World Space, the "reference" is its actual size in world units.
-            refRes = { width: canvasComponent.size.x, height: canvasComponent.size.y };
-        } else {
-            // For Screen Space, it's the explicit reference resolution.
-            refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
-        }
-
+        const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
         const screenRect = { width: this.canvas.width, height: this.canvas.height };
-        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
+
+        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect, canvasComponent.screenMatchMode);
 
         this.ctx.save();
         this.ctx.translate(offsetX, offsetY);
@@ -399,7 +394,7 @@ export class Renderer {
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
             const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
             const targetRect = { width: canvasWorldRect.width, height: canvasWorldRect.height };
-            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
+            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect, canvasComponent.screenMatchMode);
 
             this.ctx.save();
             // We apply the letterbox transform relative to the canvas's world position.

@@ -100,10 +100,20 @@ export function getAbsoluteRect(materia, rectCache) {
  * @param {{width: number, height: number}} targetRect The dimensions of the container.
  * @returns {{scale: number, offsetX: number, offsetY: number}} The scale factor and offsets.
  */
-export function calculateLetterbox(sourceRect, targetRect) {
+export function calculateLetterbox(sourceRect, targetRect, screenMatchMode = 'Match Width Or Height', matchWidthOrHeight = 0.5) {
     const scaleX = targetRect.width / sourceRect.width;
     const scaleY = targetRect.height / sourceRect.height;
-    const scale = Math.min(scaleX, scaleY);
+
+    let scale;
+    if (screenMatchMode === 'Match Width Or Height') {
+        // Logarithmic interpolation between width and height scales
+        const logScaleX = Math.log(scaleX);
+        const logScaleY = Math.log(scaleY);
+        scale = Math.exp(logScaleX * (1 - matchWidthOrHeight) + logScaleY * matchWidthOrHeight);
+    } else {
+        // Default to shrinking to fit
+        scale = Math.min(scaleX, scaleY);
+    }
 
     const scaledWidth = sourceRect.width * scale;
     const scaledHeight = sourceRect.height * scale;
