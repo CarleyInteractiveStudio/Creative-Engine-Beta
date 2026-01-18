@@ -1059,6 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handleRender = (camera) => {
+            rendererInstance.beginFrame(); // 1. Start the frame, clear UI queue
             rendererInstance.beginWorld(camera);
 
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
@@ -1083,10 +1084,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } else {
+                // World Space canvases are drawn here as part of the world
                 drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
                 drawLights(allLights);
             }
 
+            // After the world and lights, render the Screen Space UI overlay
+            rendererInstance.endFrame(); // 2. This is the UI pass
 
             if (!isGameView) {
                 SceneView.drawOverlay();
@@ -2454,8 +2458,10 @@ public star() {
         }
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
-            renderer = new Renderer(dom.sceneCanvas, true);
-            gameRenderer = new Renderer(dom.gameCanvas);
+            // The editor's scene view renderer
+            renderer = new Renderer(dom.sceneCanvas, true, false);
+            // The editor's dedicated game view renderer
+            gameRenderer = new Renderer(dom.gameCanvas, false, true);
             window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");

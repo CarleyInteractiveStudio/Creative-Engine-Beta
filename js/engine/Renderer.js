@@ -3,10 +3,12 @@ import * as SceneManager from './SceneManager.js';
 import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
-    constructor(canvas, isEditor = false) {
+    constructor(canvas, isEditor = false, isGameView = false) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.isEditor = isEditor;
+        this.isGameView = isGameView;
+        this._screenSpaceCanvases = [];
 
         this.lightMapCanvas = document.createElement('canvas');
         this.lightMapCtx = this.lightMapCanvas.getContext('2d');
@@ -117,6 +119,18 @@ export class Renderer {
 
     end() {
         this.ctx.restore();
+    }
+
+    // To implement a two-pass rendering system, the main loop should call beginFrame() before the world pass,
+    // and endFrame() after the lights pass.
+    beginFrame() {
+        this._screenSpaceCanvases = [];
+    }
+
+    endFrame() {
+        for (const canvasMateria of this._screenSpaceCanvases) {
+            this.drawScreenSpaceUI(canvasMateria);
+        }
     }
 
     drawRect(x, y, width, height, color) {
@@ -283,14 +297,20 @@ export class Renderer {
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
+
+        // In the editor's scene view, we render a proxy of the canvas in world space for WYSIWYG.
+        if (this.isEditor && !this.isGameView) {
             this.drawWorldSpaceUI(canvasMateria);
+            return;
+        }
+
+        // In the final game or the editor's game view, we use the proper render mode.
+        // World Space canvases are drawn in-line with other world objects.
+        // Screen Space canvases are queued to be drawn in a separate pass at the end of the frame.
+        if (canvas.renderMode === 'Screen Space') {
+            this._screenSpaceCanvases.push(canvasMateria);
         } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+            this.drawWorldSpaceUI(canvasMateria);
         }
     }
 
@@ -350,7 +370,7 @@ export class Renderer {
         const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
         const screenRect = { width: this.canvas.width, height: this.canvas.height };
 
-        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect, canvasComponent.screenMatchMode);
+        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
 
         this.ctx.save();
         this.ctx.translate(offsetX, offsetY);
@@ -394,7 +414,7 @@ export class Renderer {
         if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
             const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
             const targetRect = { width: canvasWorldRect.width, height: canvasWorldRect.height };
-            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect, canvasComponent.screenMatchMode);
+            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
 
             this.ctx.save();
             // We apply the letterbox transform relative to the canvas's world position.
