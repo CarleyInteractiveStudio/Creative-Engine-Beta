@@ -282,15 +282,12 @@ export class Renderer {
 
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
-        const canvas = canvasMateria.getComponent(Canvas);
+        // The editor view renders canvases in-place in the world.
         if (this.isEditor) {
             this.drawWorldSpaceUI(canvasMateria);
         } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
+            // The game view ALWAYS renders the canvas full-screen.
+            this.drawScreenSpaceUI(canvasMateria);
         }
     }
 
@@ -347,9 +344,17 @@ export class Renderer {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         if (!canvasComponent) { this.end(); return; }
 
-        const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
-        const screenRect = { width: this.canvas.width, height: this.canvas.height };
+        // Determine the reference resolution based on the canvas mode.
+        let refRes;
+        if (canvasComponent.renderMode === 'World Space') {
+            // For World Space, the "reference" is its actual size in world units.
+            refRes = { width: canvasComponent.size.x, height: canvasComponent.size.y };
+        } else {
+            // For Screen Space, it's the explicit reference resolution.
+            refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
+        }
 
+        const screenRect = { width: this.canvas.width, height: this.canvas.height };
         const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
 
         this.ctx.save();
