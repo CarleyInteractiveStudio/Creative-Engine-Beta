@@ -70,6 +70,11 @@ export class Renderer {
         }
     }
 
+    clearWithDefault() {
+        this.ctx.fillStyle = '#000000'; // Default black background
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
     beginWorld(cameraMateria = null) {
         this.ctx.save();
         let activeCamera, transform;
@@ -280,18 +285,29 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    // New function specifically for the independent UI pass
+    drawScreenSpaceCanvas(canvasMateria, isGameView) {
+        if (!canvasMateria.isActive) return;
+
+        // In the editor, Screen Space canvases are drawn OVER the world space view.
+        // The actual independent screen space rendering only happens in the game view.
+        if (this.isEditor && !isGameView) {
+             this.drawWorldSpaceUI(canvasMateria); // This provides the WYSIWYG preview
+        } else {
+             // This is a true UI pass. It should not depend on any camera state.
+             // We check if any cameras were rendered in this frame. If not, we must clear the canvas first.
+             const scene = SceneManager.currentScene;
+             if (!scene || scene.findAllCameras().length === 0) {
+                 this.clearWithDefault();
+             }
+             this.drawScreenSpaceUI(canvasMateria);
+        }
+    }
+
     drawCanvas(canvasMateria) {
         if (!canvasMateria.isActive) return;
-        const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
-            this.drawWorldSpaceUI(canvasMateria);
-        } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
-        }
+        // This function now only handles World Space canvases within the camera loop.
+        this.drawWorldSpaceUI(canvasMateria);
     }
 
     _drawUIElementAndChildren(element, rectCache) {
