@@ -3533,3 +3533,4 @@ body.game-mode #game-canvas {
     height: 100vh;
     z-index: 9999; /* Ensure it's on top */
 }
+body.game-mode #scene-content { display: none !important; }
