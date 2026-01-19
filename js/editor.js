@@ -1227,6 +1227,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastFrameTime = performance.now();
         console.log("Game Started");
 
+        // Force a resize of the game canvas after the DOM has updated to game mode
+        setTimeout(() => {
+            if (gameRenderer) {
+                gameRenderer.resize();
+            }
+        }, 0);
+
         try {
             if (SceneManager.currentScene) {
                 for (const materia of SceneManager.currentScene.getAllMaterias()) {
