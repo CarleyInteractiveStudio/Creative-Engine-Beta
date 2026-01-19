@@ -848,27 +848,41 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        // --- Pass 1: Draw Scene Geometry ---
-        const materiasToRender = SceneManager.currentScene.getAllMaterias()
+        // --- Collect all renderable objects ---
+        const allMaterias = SceneManager.currentScene.getAllMaterias();
+
+        const materiasToRender = allMaterias
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
             .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
-        const textureRenderersToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
+        const textureRenderersToRender = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
+        const tilemapsToRender = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
 
-        const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
+        const pointLights = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
+        const spotLights = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
+        const freeformLights = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
+        const spriteLights = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
 
-        const pointLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
-        const spotLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
-        const freeformLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
-        const spriteLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
-        const canvasesToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+        // --- ARCHITECTURE REFACTOR: Separate World Space and Screen Space Canvases ---
+        const allCanvases = allMaterias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+        const worldSpaceCanvases = [];
+        const screenSpaceCanvases = [];
+
+        if (isGameView) {
+            // In game view, strictly separate them based on their render mode
+            for (const canvasMateria of allCanvases) {
+                const canvas = canvasMateria.getComponent(Components.Canvas);
+                if (canvas.renderMode === 'World Space') {
+                    worldSpaceCanvases.push(canvasMateria);
+                } else {
+                    screenSpaceCanvases.push(canvasMateria);
+                }
+            }
+        } else {
+            // In editor view, we treat ALL canvases as world-space objects for WYSIWYG editing.
+            // The renderer has special logic to handle 'Screen Space' canvases in this context.
+            worldSpaceCanvases.push(...allCanvases);
+        }
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
@@ -1011,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Draw Canvases
+            // Draw World Space Canvases
             for (const materia of canvasesToDraw) {
                 rendererInstance.drawCanvas(materia, isGameView);
             }
@@ -1064,13 +1078,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
 
             if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
+                const allObjects = [...materiasToRender, ...tilemapsToRender, ...worldSpaceCanvases, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
                 const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
 
                 uniqueLayers.forEach(layer => {
                     const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
                     const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
-                    const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
+                    const canvasesInLayer = worldSpaceCanvases.filter(m => m.layer === layer);
                     const lightsInLayer = {
                         point: pointLights.filter(l => l.layer === layer),
                         spot: spotLights.filter(l => l.layer === layer),
@@ -1083,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } else {
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
+                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, worldSpaceCanvases);
                 drawLights(allLights);
             }
 
@@ -1095,17 +1109,35 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
 
+        // --- Pass 1: Draw Scene Geometry & World Space UI ---
+        let camerasRendered = false;
         if (isGameView) {
             const cameras = SceneManager.currentScene.findAllCameras()
                 .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
 
-            if (cameras.length === 0) {
-                rendererInstance.clear();
-                return;
+            if (cameras.length > 0) {
+                cameras.forEach(handleRender);
+                camerasRendered = true;
             }
-            cameras.forEach(handleRender);
         } else { // Editor Scene View
             handleRender(null);
+            camerasRendered = true; // Editor view always has a "camera"
+        }
+
+
+        // --- Pass 2: Draw Screen Space UI (Overlay - Game View Only) ---
+        if (isGameView) {
+            // If no world cameras were rendered, the canvas is dirty. Clear it before drawing UI.
+            if (!camerasRendered) {
+                rendererInstance.clear(null);
+            }
+
+            // Now, iterate over all screen space canvases and draw them directly.
+            for (const canvasMateria of screenSpaceCanvases) {
+                // The renderer's drawCanvas function will correctly call drawScreenSpaceUI
+                // because isGameView is true and the canvas's renderMode is 'Screen Space'.
+                rendererInstance.drawCanvas(canvasMateria, isGameView);
+            }
         }
     }
 

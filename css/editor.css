@@ -3521,7 +3521,6 @@ body.game-mode #assets-panel,
 body.game-mode .resizer-v,
 body.game-mode .resizer-h,
 body.game-mode #scene-panel .panel-header,
-body.game-mode #scene-content,
 body.game-mode #loading-overlay {
     display: none !important;
 }
