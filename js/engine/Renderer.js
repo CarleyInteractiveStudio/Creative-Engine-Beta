@@ -280,17 +280,21 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    drawCanvas(canvasMateria) {
+    drawCanvas(canvasMateria, isGameView) {
         if (!canvasMateria.isActive) return;
         const canvas = canvasMateria.getComponent(Canvas);
-        if (this.isEditor) {
+        if (!canvas) return;
+
+        // Determine the render mode. isGameView is true for the game itself or the game preview tab.
+        const isInGameMode = isGameView;
+
+        if (canvas.renderMode === 'Screen Space') {
+            // Screen Space canvases are handled by a separate render pass in editor.js,
+            // but in the actual game, they are rendered by the camera.
+            // This logic is now unified in drawScreenSpaceUI.
+            this.drawScreenSpaceUI(canvasMateria, isInGameMode);
+        } else { // World Space
             this.drawWorldSpaceUI(canvasMateria);
-        } else {
-            if (canvas.renderMode === 'Screen Space') {
-                this.drawScreenSpaceUI(canvasMateria);
-            } else {
-                this.drawWorldSpaceUI(canvasMateria);
-            }
         }
     }
 
@@ -342,28 +346,31 @@ export class Renderer {
         }
     }
 
-    drawScreenSpaceUI(canvasMateria) {
-        this.beginUI();
+    drawScreenSpaceUI(canvasMateria, isGameView) {
         const canvasComponent = canvasMateria.getComponent(Canvas);
-        if (!canvasComponent) { this.end(); return; }
+        if (!canvasComponent) return;
 
-        const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
-        const screenRect = { width: this.canvas.width, height: this.canvas.height };
+        this.beginUI(); // Reset transform for UI drawing
 
-        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
+        const refRes = canvasComponent.referenceResolution;
+        let targetRect;
+
+        if (isGameView) {
+            // In the game, the target is the entire game canvas.
+            targetRect = { x: 0, y: 0, width: this.canvas.width, height: this.canvas.height };
+        } else {
+            // In the editor, the target is the world-space rect of the Canvas object.
+            targetRect = getAbsoluteRect(canvasMateria, new Map());
+        }
+
+        const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
+
 
         this.ctx.save();
-        this.ctx.translate(offsetX, offsetY);
+        this.ctx.translate(targetRect.x + offsetX, targetRect.y + offsetY);
         this.ctx.scale(scale, scale);
 
-        // The virtual canvas rect is now just for clipping
         const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
-        this.ctx.beginPath();
-        this.ctx.rect(virtualCanvasRect.x, virtualCanvasRect.y, virtualCanvasRect.width, virtualCanvasRect.height);
-        this.ctx.clip();
-
-        // The calculation logic is now self-contained in getAbsoluteRect.
-        // We create a cache and "seed" it with the canvas's virtual rectangle.
         const rectCache = new Map();
         rectCache.set(canvasMateria.id, virtualCanvasRect);
 
@@ -381,8 +388,6 @@ export class Renderer {
         if (!canvasComponent || !canvasTransform) return;
 
         this.ctx.save();
-
-        // The rectCache will get the initial rect from the canvas itself via getAbsoluteRect.
         const rectCache = new Map();
         const canvasWorldRect = getAbsoluteRect(canvasMateria, rectCache);
 
@@ -390,33 +395,8 @@ export class Renderer {
         this.ctx.rect(canvasWorldRect.x, canvasWorldRect.y, canvasWorldRect.width, canvasWorldRect.height);
         this.ctx.clip();
 
-        // This is a special case for the editor to achieve WYSIWYG for Screen Space canvases.
-        if (this.isEditor && canvasComponent.renderMode === 'Screen Space') {
-            const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
-            const targetRect = { width: canvasWorldRect.width, height: canvasWorldRect.height };
-            const { scale, offsetX, offsetY } = calculateLetterbox(refRes, targetRect);
-
-            this.ctx.save();
-            // We apply the letterbox transform relative to the canvas's world position.
-            this.ctx.translate(canvasWorldRect.x + offsetX, canvasWorldRect.y + offsetY); // Y-Down
-            this.ctx.scale(scale, scale);
-
-            // We need a new cache here because the coordinate system has changed.
-            const screenSpaceCache = new Map();
-            // We "trick" the calculation by putting a fake rect for the canvas in the cache,
-            // representing the scaled, virtual screen.
-            const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
-            screenSpaceCache.set(canvasMateria.id, virtualCanvasRect);
-
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, screenSpaceCache);
-            }
-            this.ctx.restore();
-        } else {
-            // For 'World Space' canvases, the logic is direct.
-            for (const child of canvasMateria.children) {
-                this._drawUIElementAndChildren(child, rectCache);
-            }
+        for (const child of canvasMateria.children) {
+            this._drawUIElementAndChildren(child, rectCache);
         }
 
         this.ctx.restore();

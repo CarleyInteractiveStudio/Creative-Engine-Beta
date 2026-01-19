@@ -848,264 +848,87 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        // --- Pass 1: Draw Scene Geometry ---
-        const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
-            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
+        const allMaterias = SceneManager.currentScene.getAllMaterias();
 
-        const textureRenderersToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
-
-        const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
-
-        const pointLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D));
-        const spotLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D));
-        const freeformLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D));
-        const spriteLights = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D));
-        const canvasesToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
-
-        const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
-            const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
-
-            for (const materia of objectsToRender) {
-                if (!materia.isActive) continue;
-
-                if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia);
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                }
-
-                const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-                const transform = materia.getComponent(Components.Transform);
-
-                if (spriteRenderer) {
-                    if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                        const img = spriteRenderer.sprite;
-                        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                        let pivotX = 0.5, pivotY = 0.5;
-
-                        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-                            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-                            if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                                sx = spriteData.rect.x;
-                                sy = spriteData.rect.y;
-                                sWidth = spriteData.rect.width;
-                                sHeight = spriteData.rect.height;
-                                pivotX = spriteData.pivot.x;
-                                pivotY = spriteData.pivot.y;
-                            }
-                        }
-
-                        const worldScale = transform.scale;
-                        const worldPosition = transform.position;
-                        const worldRotation = transform.rotation;
-
-                        const dWidth = sWidth * worldScale.x;
-                        const dHeight = sHeight * worldScale.y;
-                        const dx = -dWidth * pivotX;
-                        const dy = -dHeight * pivotY;
-
-                        ctx.save();
-                        ctx.translate(worldPosition.x, worldPosition.y);
-                        ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
-                        ctx.restore();
-                    } else {
-                        // If there's a renderer but no sprite, draw a white box placeholder
-                        const dWidth = 50 * transform.scale.x; // Default size
-                        const dHeight = 50 * transform.scale.y; // Default size
-                        const dx = -dWidth * 0.5;
-                        const dy = -dHeight * 0.5;
-
-                        ctx.save();
-                        ctx.translate(transform.x, transform.y);
-                        ctx.rotate(transform.rotation * Math.PI / 180);
-                        ctx.fillStyle = 'white';
-                        ctx.fillRect(dx, dy, dWidth, dHeight);
-                        ctx.restore();
-                    }
-                }
-            }
-
-            for (const materia of textureRenderersToRender) {
-                if (!materia.isActive) continue;
-
-                const textureRender = materia.getComponent(Components.TextureRender);
-                const transform = materia.getComponent(Components.Transform);
-                const worldPosition = transform.position;
-                const worldRotation = transform.rotation;
-                const worldScale = transform.scale;
-
-                ctx.save();
-                ctx.translate(worldPosition.x, worldPosition.y);
-                ctx.rotate(worldRotation * Math.PI / 180);
-                ctx.scale(worldScale.x, worldScale.y);
-
-                if (textureRender.texture && textureRender.texture.complete) {
-                    const pattern = ctx.createPattern(textureRender.texture, 'repeat');
-                    ctx.fillStyle = pattern;
+        // --- 1. Separate canvases based on their render mode ---
+        const worldCanvases = [];
+        const screenSpaceCanvases = [];
+        allMaterias.forEach(m => {
+            const canvas = m.getComponent(Components.Canvas);
+            if (canvas) {
+                if (canvas.renderMode === 'World Space') {
+                    worldCanvases.push(m);
                 } else {
-                    ctx.fillStyle = textureRender.color;
-                }
-
-                if (textureRender.shape === 'Rectangle') {
-                    ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
-                } else if (textureRender.shape === 'Circle') {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (textureRender.shape === 'Triangle') {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -textureRender.height / 2); // Top point
-                    ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
-                    ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
-                    ctx.closePath();
-                    ctx.fill();
-                } else if (textureRender.shape === 'Capsule') {
-                    const width = textureRender.width;
-                    const height = textureRender.height;
-                    const radius = width / 2;
-                    const rectHeight = height - width;
-
-                    ctx.beginPath();
-                    // Start with the top semicircle
-                    ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
-                    // Draw the right side of the rectangle
-                    ctx.lineTo(width / 2, rectHeight / 2);
-                    // Draw the bottom semicircle
-                    ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
-                    // Draw the left side of the rectangle
-                    ctx.lineTo(-width / 2, -rectHeight / 2);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-
-                ctx.restore();
-            }
-
-            // Draw tilemaps
-            for (const materia of tilemapsToDraw) {
-                if (!materia.isActive) continue;
-
-                if (cameraForCulling) {
-                    const objectBounds = MathUtils.getOOB(materia);
-                    if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-                }
-
-                const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
-                if (tilemapRenderer) {
-                    rendererInstance.drawTilemap(tilemapRenderer);
+                    screenSpaceCanvases.push(m);
                 }
             }
+        });
 
-            // Draw Canvases
-            for (const materia of canvasesToDraw) {
+        // --- 2. Gather all other world-space renderable objects ---
+        const worldObjects = allMaterias.filter(m =>
+            m.getComponent(Components.Transform) &&
+            !m.getComponent(Components.Canvas) && // Exclude canvases as they're handled separately
+            (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.TilemapRenderer))
+        );
+
+        // Combine all world-space elements (regular objects + world canvases) for rendering
+        const allWorldRenderables = [...worldObjects, ...worldCanvases];
+
+
+        // --- 3. Main Rendering Logic ---
+        const cameras = SceneManager.currentScene.findAllCameras()
+            .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
+
+        let anyCameraRendered = false;
+
+        if (cameras.length > 0) {
+            // --- Multi-camera rendering path ---
+            cameras.forEach(camera => {
+                rendererInstance.beginWorld(camera);
+                const cameraComponent = camera.getComponent(Components.Camera);
+
+                // Draw all world-space objects and world-space canvases
+                for (const materia of allWorldRenderables) {
+                     if (!materia.isActive) continue;
+                     if (((1 << materia.layer) & cameraComponent.cullingMask) === 0) continue;
+
+                     // Perform drawing based on component type
+                     if (materia.getComponent(Components.Canvas)) {
+                         rendererInstance.drawCanvas(materia, isGameView);
+                     } else if (materia.getComponent(Components.SpriteRenderer)) {
+                         rendererInstance.drawSprite(materia.getComponent(Components.SpriteRenderer));
+                     } else if (materia.getComponent(Components.TextureRender)) {
+                         rendererInstance.drawTextureRender(materia.getComponent(Components.TextureRender));
+                     } else if (materia.getComponent(Components.TilemapRenderer)) {
+                         rendererInstance.drawTilemap(materia.getComponent(Components.TilemapRenderer));
+                     }
+                }
+                rendererInstance.end();
+            });
+            anyCameraRendered = true;
+        }
+
+        // --- 4. UI Overlay Pass ---
+        // This pass happens after all cameras have rendered the world.
+        // Or, if there are no cameras, it runs on a cleared screen.
+        if (!anyCameraRendered) {
+             rendererInstance.clear();
+        }
+
+        for (const materia of screenSpaceCanvases) {
+            if (materia.isActive) {
                 rendererInstance.drawCanvas(materia, isGameView);
             }
-        };
+        }
 
-        const drawLights = (lights) => {
-            // NEW: Only run the lighting pass if the renderer mode is 'realista'
-            if (currentProjectConfig.rendererMode !== 'realista' || !lights) {
-                return;
+        // --- 5. Draw Editor-only overlays (gizmos, grids, etc.) ---
+        if (!isGameView) {
+            // Set up a default world view if no camera exists, so gizmos can be drawn
+            if (!anyCameraRendered) {
+                 rendererInstance.beginWorld(null);
+                 rendererInstance.end();
             }
-
-            rendererInstance.beginLights();
-            for (const lightMateria of lights.point) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.PointLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawPointLight(light, transform);
-            }
-            for (const lightMateria of lights.spot) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpotLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpotLight(light, transform);
-            }
-            for (const lightMateria of lights.freeform) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.FreeformLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawFreeformLight(light, transform);
-            }
-            for (const lightMateria of lights.sprite) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpriteLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpriteLight(light, transform);
-            }
-            rendererInstance.endLights();
-        };
-
-        const allLights = {
-            point: pointLights,
-            spot: spotLights,
-            freeform: freeformLights,
-            sprite: spriteLights
-        };
-
-        const handleRender = (camera) => {
-            rendererInstance.beginWorld(camera);
-
-            const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
-
-            if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
-                const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
-
-                uniqueLayers.forEach(layer => {
-                    const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
-                    const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
-                    const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
-                    const lightsInLayer = {
-                        point: pointLights.filter(l => l.layer === layer),
-                        spot: spotLights.filter(l => l.layer === layer),
-                        freeform: freeformLights.filter(l => l.layer === layer),
-                        sprite: spriteLights.filter(l => l.layer === layer)
-                    };
-
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer);
-                    drawLights(lightsInLayer);
-                });
-
-            } else {
-                drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
-                drawLights(allLights);
-            }
-
-
-            if (!isGameView) {
-                SceneView.drawOverlay();
-            }
-            rendererInstance.end();
-        };
-
-
-        if (isGameView) {
-            const cameras = SceneManager.currentScene.findAllCameras()
-                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
-
-            if (cameras.length === 0) {
-                rendererInstance.clear();
-                return;
-            }
-            cameras.forEach(handleRender);
-        } else { // Editor Scene View
-            handleRender(null);
+            SceneView.drawOverlay();
         }
     }
 
@@ -1172,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
-        UISystem.initialize(SceneManager.currentScene);
+        UISystem.initialize(SceneManager.currentScene, gameRenderer.canvas);
         EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
 
 
@@ -1182,15 +1005,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
-        document.body.classList.add('game-mode');
-        // Ensure the game view is active
+        // Ensure the game view is active BEFORE adding game-mode class
         const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         if (gameViewButton && activeView !== 'game-content') {
             gameViewButton.click();
         }
 
-        // Tell InputManager that the engine is running so it can default to the game canvas
-        try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
+        // Use a small timeout to allow the DOM to update to the correct view
+        // before we apply the game-mode class and resize the canvas.
+        setTimeout(() => {
+            document.body.classList.add('game-mode');
+            if (gameRenderer) {
+                gameRenderer.resize(); // Resize after the view is fullscreen
+            }
+             // Tell InputManager that the engine is running so it can default to the game canvas
+            try { InputManager.setGameRunning(true, gameRenderer.canvas); } catch(e) { /* ignore if not available */ }
+        }, 100); // 100ms delay to be safe
+
+
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
@@ -1245,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isGameRunning = false;
         document.body.classList.remove('game-mode');
         // Restore InputManager out of game mode
-        try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
+        try { InputManager.setGameRunning(false, null); } catch(e) { /* ignore if not available */ }
         console.log("Game Stopped");
 
         // Notify scripts about disable/destroy so they can clean up
@@ -2481,7 +2313,7 @@ public star() {
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
-            UISystem.initialize(SceneManager.currentScene);
+            UISystem.initialize(SceneManager.currentScene, renderer.canvas);
 
 
             // --- Define Callbacks & Helpers ---
