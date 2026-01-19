@@ -1215,26 +1215,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isGameRunning = true;
 
-        // CORRECT ORDER: First switch to the game view, THEN apply fullscreen styles.
+        // Ensure the game view is active BEFORE applying game-mode styles
         const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         if (gameViewButton && activeView !== 'game-content') {
-            gameViewButton.click();
+            gameViewButton.click(); // This will switch the active view
         }
-        document.body.classList.add('game-mode');
 
+        // Apply game-mode class after a short delay to allow the view to switch
+        setTimeout(() => {
+            document.body.classList.add('game-mode');
+            if(gameRenderer) gameRenderer.resize(); // Force resize after styles are applied
+        }, 100);
 
         // Tell InputManager that the engine is running so it can default to the game canvas
         try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
-
-        // Force a resize of the game canvas after the DOM has updated to game mode
-        setTimeout(() => {
-            if (gameRenderer) {
-                gameRenderer.resize();
-            }
-        }, 100);
 
         try {
             if (SceneManager.currentScene) {

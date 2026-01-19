@@ -33,9 +33,10 @@ export function getAbsoluteRect(materia, rectCache) {
     // Base case: The recursion root is a Materia with a Canvas component.
     const canvas = materia.getComponent(Canvas);
     if (canvas) {
-        const transform = materia.getComponent(Transform);
+        // A Canvas can have either a Transform (for World Space) or a UITransform (for Screen Space as a base)
+        const transform = materia.getComponent(Transform) || materia.getComponent(UITransform);
         if (!transform) {
-            console.error(`Canvas '${materia.name}' is missing a Transform component.`);
+            console.error(`Canvas '${materia.name}' is missing a Transform or UITransform component.`);
             return { x: 0, y: 0, width: 0, height: 0 };
         }
 

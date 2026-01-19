@@ -66,7 +66,14 @@ export class Renderer {
             this.ctx.fillStyle = cameraComponent.backgroundColor;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         } else {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            // In the editor, a transparent background is desired to see the grid.
+            // In the game, a solid black is a better default than transparent.
+            if (this.isEditor) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            } else {
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
         }
     }
 
