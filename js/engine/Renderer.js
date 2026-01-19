@@ -52,12 +52,10 @@ export class Renderer {
     }
 
     resize() {
-        console.log(`[Renderer.resize] Resizing canvas. Client dimensions: ${this.canvas.clientWidth}x${this.canvas.clientHeight}`);
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
-        console.log(`[Renderer.resize] Canvas buffer resized to: ${this.canvas.width}x${this.canvas.height}`);
     }
 
     clear(cameraComponent) {

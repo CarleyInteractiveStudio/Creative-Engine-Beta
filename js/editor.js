@@ -1214,12 +1214,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
-        document.body.classList.add('game-mode');
-        // Ensure the game view is active
+
+        // CORRECT ORDER: First switch to the game view, THEN apply fullscreen styles.
         const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         if (gameViewButton && activeView !== 'game-content') {
             gameViewButton.click();
         }
+        document.body.classList.add('game-mode');
+
 
         // Tell InputManager that the engine is running so it can default to the game canvas
         try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
@@ -1230,7 +1232,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Force a resize of the game canvas after the DOM has updated to game mode
         setTimeout(() => {
             if (gameRenderer) {
-                console.log(`[startGame] Forcing resize. Canvas client size: ${gameRenderer.canvas.clientWidth}x${gameRenderer.canvas.clientHeight}`);
                 gameRenderer.resize();
             }
         }, 100);
