@@ -180,6 +180,117 @@ export class Renderer {
         this.ctx.restore();
     }
 
+    drawSprite(spriteRenderer) {
+        if (!spriteRenderer) return;
+
+        const transform = spriteRenderer.materia.getComponent(Transform);
+        if (!transform) return;
+
+        if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+            const img = spriteRenderer.sprite;
+            let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+            let pivotX = 0.5, pivotY = 0.5;
+
+            if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
+                    sx = spriteData.rect.x;
+                    sy = spriteData.rect.y;
+                    sWidth = spriteData.rect.width;
+                    sHeight = spriteData.rect.height;
+                    pivotX = spriteData.pivot.x;
+                    pivotY = spriteData.pivot.y;
+                }
+            }
+
+            const worldScale = transform.scale;
+            const worldPosition = transform.position;
+            const worldRotation = transform.rotation;
+
+            const dWidth = sWidth * worldScale.x;
+            const dHeight = sHeight * worldScale.y;
+            const dx = -dWidth * pivotX;
+            const dy = -dHeight * pivotY;
+
+            this.ctx.save();
+            this.ctx.translate(worldPosition.x, worldPosition.y);
+            this.ctx.rotate(worldRotation * Math.PI / 180);
+            this.ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+            this.ctx.restore();
+        } else {
+            // If there's a renderer but no sprite, draw a white box placeholder
+            const transform = spriteRenderer.materia.getComponent(Transform);
+            const dWidth = 50 * transform.scale.x; // Default size
+            const dHeight = 50 * transform.scale.y; // Default size
+            const dx = -dWidth * 0.5;
+            const dy = -dHeight * 0.5;
+
+            this.ctx.save();
+            this.ctx.translate(transform.x, transform.y);
+            this.ctx.rotate(transform.rotation * Math.PI / 180);
+            this.ctx.fillStyle = 'white';
+            this.ctx.fillRect(dx, dy, dWidth, dHeight);
+            this.ctx.restore();
+        }
+    }
+
+    drawTextureRender(textureRender) {
+        if (!textureRender) return;
+        const transform = textureRender.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const worldPosition = transform.position;
+        const worldRotation = transform.rotation;
+        const worldScale = transform.scale;
+
+        this.ctx.save();
+        this.ctx.translate(worldPosition.x, worldPosition.y);
+        this.ctx.rotate(worldRotation * Math.PI / 180);
+        this.ctx.scale(worldScale.x, worldScale.y);
+
+        if (textureRender.texture && textureRender.texture.complete) {
+            const pattern = this.ctx.createPattern(textureRender.texture, 'repeat');
+            this.ctx.fillStyle = pattern;
+        } else {
+            this.ctx.fillStyle = textureRender.color;
+        }
+
+        if (textureRender.shape === 'Rectangle') {
+            this.ctx.fillRect(-textureRender.width / 2, -textureRender.height / 2, textureRender.width, textureRender.height);
+        } else if (textureRender.shape === 'Circle') {
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, textureRender.radius, 0, 2 * Math.PI);
+            this.ctx.fill();
+        } else if (textureRender.shape === 'Triangle') {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, -textureRender.height / 2); // Top point
+            this.ctx.lineTo(-textureRender.width / 2, textureRender.height / 2); // Bottom-left point
+            this.ctx.lineTo(textureRender.width / 2, textureRender.height / 2); // Bottom-right point
+            this.ctx.closePath();
+            this.ctx.fill();
+        } else if (textureRender.shape === 'Capsule') {
+            const width = textureRender.width;
+            const height = textureRender.height;
+            const radius = width / 2;
+            const rectHeight = height - width;
+
+            this.ctx.beginPath();
+            // Start with the top semicircle
+            this.ctx.arc(0, -rectHeight / 2, radius, Math.PI, 0);
+            // Draw the right side of the rectangle
+            this.ctx.lineTo(width / 2, rectHeight / 2);
+            // Draw the bottom semicircle
+            this.ctx.arc(0, rectHeight / 2, radius, 0, Math.PI);
+            // Draw the left side of the rectangle
+            this.ctx.lineTo(-width / 2, -rectHeight / 2);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
+    }
+
+
     beginLights() {
         this.lightMapCtx.save();
         this.lightMapCtx.setTransform(this.ctx.getTransform());
