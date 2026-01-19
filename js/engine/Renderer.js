@@ -52,10 +52,12 @@ export class Renderer {
     }
 
     resize() {
+        console.log(`[Renderer.resize] Resizing canvas. Client dimensions: ${this.canvas.clientWidth}x${this.canvas.clientHeight}`);
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
+        console.log(`[Renderer.resize] Canvas buffer resized to: ${this.canvas.width}x${this.canvas.height}`);
     }
 
     clear(cameraComponent) {
@@ -350,7 +352,11 @@ export class Renderer {
         const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
         const screenRect = { width: this.canvas.width, height: this.canvas.height };
 
+        console.log(`[Renderer.drawScreenSpaceUI] Canvas Buffer: ${screenRect.width}x${screenRect.height}, Reference Res: ${refRes.width}x${refRes.height}`);
+
         const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
+
+        console.log(`[Renderer.drawScreenSpaceUI] Calculated Scale: ${scale}, Offset: ${offsetX}, ${offsetY}`);
 
         this.ctx.save();
         this.ctx.translate(offsetX, offsetY);
