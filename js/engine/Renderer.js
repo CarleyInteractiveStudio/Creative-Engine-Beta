@@ -352,11 +352,7 @@ export class Renderer {
         const refRes = canvasComponent.referenceResolution || { width: 800, height: 600 };
         const screenRect = { width: this.canvas.width, height: this.canvas.height };
 
-        console.log(`[Renderer.drawScreenSpaceUI] Canvas Buffer: ${screenRect.width}x${screenRect.height}, Reference Res: ${refRes.width}x${refRes.height}`);
-
         const { scale, offsetX, offsetY } = calculateLetterbox(refRes, screenRect);
-
-        console.log(`[Renderer.drawScreenSpaceUI] Calculated Scale: ${scale}, Offset: ${offsetX}, ${offsetY}`);
 
         this.ctx.save();
         this.ctx.translate(offsetX, offsetY);

@@ -1167,7 +1167,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateScene(renderer, false);
             }
             if (gameRenderer) {
-                console.log(`[editorLoop] Pre-render game canvas size: ${gameRenderer.canvas.width}x${gameRenderer.canvas.height}`);
                 updateScene(gameRenderer, true);
             }
         } else {
@@ -1231,10 +1230,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Force a resize of the game canvas after the DOM has updated to game mode
         setTimeout(() => {
             if (gameRenderer) {
-                console.log("Forcing game canvas resize for game mode.");
+                console.log(`[startGame] Forcing resize. Canvas client size: ${gameRenderer.canvas.clientWidth}x${gameRenderer.canvas.clientHeight}`);
                 gameRenderer.resize();
             }
-        }, 0);
+        }, 100);
 
         try {
             if (SceneManager.currentScene) {
