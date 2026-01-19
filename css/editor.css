@@ -3492,44 +3492,21 @@ body {
 }
 
 /* --- Game Mode --- */
-html, body.game-mode {
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
+/* Hide non-essential panels, but keep the main grid structure */
+body.game-mode #menubar,
+body.game-mode #hierarchy-panel,
+body.game-mode #inspector-panel,
+body.game-mode #assets-panel,
+body.game-mode .resizer-v,
+body.game-mode .resizer-h {
+    display: none !important;
 }
 
-body.game-mode #editor-container,
-body.game-mode #scene-panel,
-body.game-mode #game-content,
-body.game-mode #game-canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    padding: 0;
-    margin: 0;
-    border: none;
-    border-radius: 0;
-}
-
+/* Make the scene panel take up the remaining space */
 body.game-mode #editor-main-content {
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr !important;
     grid-template-areas: "scene" !important;
     padding: 0 !important;
     gap: 0 !important;
-    height: 100vh !important; /* Take full viewport height */
-}
-
-body.game-mode #menubar,
-body.game-mode #hierarchy-panel,
-body.game-mode #inspector-panel,
-body.game-mode #assets-panel,
-body.game-mode .resizer-v,
-body.game-mode .resizer-h,
-body.game-mode #scene-panel .panel-header,
-body.game-mode #scene-content,
-body.game-mode #loading-overlay {
-    display: none !important;
 }

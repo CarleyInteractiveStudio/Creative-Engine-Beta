@@ -1168,35 +1168,29 @@ document.addEventListener('DOMContentLoaded', () => {
     startGame = async function() {
         if (isGameRunning) return;
 
+        // --- ARCHITECTURE FIX: Instantiate a new PhysicsSystem for each play session ---
+        // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
         UISystem.initialize(SceneManager.currentScene);
-        EngineAPI.CEEngine.initialize({ physicsSystem });
+        EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
 
+
+        // 1. Tomar una "snapshot" de la escena actual antes de modificarla
         console.log("Creando snapshot de la escena antes de jugar...");
         sceneSnapshotBeforePlay = SceneManager.currentScene.clone();
 
+
         isGameRunning = true;
         document.body.classList.add('game-mode');
+        // Ensure the game view is active
+        const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
+        if (gameViewButton && activeView !== 'game-content') {
+            gameViewButton.click();
+        }
 
-        // Manually switch to the game view
-        activeView = 'game-content';
-        dom.scenePanel.querySelectorAll('.view-toggle-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === 'game-content');
-        });
-        dom.scenePanel.querySelectorAll('.view-content').forEach(view => {
-            view.classList.toggle('active', view.id === 'game-content');
-        });
-
-        // CRITICAL FIX: Wait for the DOM to reflow after CSS changes before resizing the canvas.
-        // A 0ms timeout is not always enough. 100ms is more robust.
-        setTimeout(() => {
-            if (gameRenderer) {
-                gameRenderer.resize();
-            }
-        }, 100);
-
-        try { InputManager.setGameRunning(true); } catch(e) { /* ignore */ }
+        // Tell InputManager that the engine is running so it can default to the game canvas
+        try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
         isGamePaused = false;
         lastFrameTime = performance.now();
         console.log("Game Started");
