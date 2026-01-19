@@ -2221,6 +2221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop',
+            'play-mode-selector', 'resolution-selector',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
