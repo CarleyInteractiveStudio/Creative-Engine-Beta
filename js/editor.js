@@ -643,44 +643,49 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
             return;
         }
+
+        const playMode = dom.playModeSelector.value;
+
+        // If a floating window is already open, just focus it instead of starting a new session.
+        if (playMode === 'floating-window' && GameFloatingWindow.isFloatingGameWindowOpen()) {
+            console.log("La ventana flotante ya está abierta. Enfocándola.");
+            // The focus call is handled inside openFloatingGameWindow, so we can just call it.
+             GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem, currentProjectConfig);
+            return;
+        }
+
+
         // MODIFICATION: In test mode (no handle), skip checks and just play.
         if (!projectsDirHandle) {
             console.log("Modo de prueba detectado (sin project handle). Iniciando el juego directamente.");
-            originalStartGame();
+            if (playMode === 'game-view') {
+                originalStartGame();
+            } else {
+                 GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem, currentProjectConfig);
+            }
             return;
         }
 
         // --- 1. Clear and Load All APIs ---
-        // Clear previous runtime APIs to ensure a clean slate for every "Play"
         RuntimeAPIManager.clearAPIs();
-
-        // Load external libraries first
         await loadRuntimeApis();
-
-        // Now, register the internal engine APIs
         const internalApis = EngineAPI.getAllInternalApis();
         for (const [name, apiObject] of Object.entries(internalApis)) {
             RuntimeAPIManager.registerAPI(name, apiObject);
         }
         console.log("Registered internal and external runtime APIs.");
 
-
         console.log("Verificando todos los scripts del proyecto...");
-        dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
+        dom.consoleContent.innerHTML = '';
         const allErrors = [];
-        let mainGameJsCode = null;
 
-        // 1. Encontrar todos los archivos .ces
         const cesFiles = [];
-        async function findCesFiles(dirHandle, currentPath = '') {
-            console.log(`Buscando en: ${currentPath || 'Assets'}`);
+        async function findCesFiles(dirHandle) {
             for await (const entry of dirHandle.values()) {
-                console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
                 if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
-                    console.log(`    -> ¡Script .ces encontrado! Añadiendo a la lista.`);
                     cesFiles.push(entry);
                 } else if (entry.kind === 'directory') {
-                    await findCesFiles(entry, `${currentPath}/${entry.name}`);
+                    await findCesFiles(entry);
                 }
             }
         }
@@ -690,41 +695,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
         await findCesFiles(assetsHandle);
 
-        if (cesFiles.length === 0) {
-            console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
-            originalStartGame(); // Usar la función original que guardamos
-            return;
+        if (cesFiles.length > 0) {
+            const transpilationPromises = cesFiles.map(async (fileHandle) => {
+                const file = await fileHandle.getFile();
+                const code = await file.text();
+                const result = CES_Transpiler.transpile(code, fileHandle.name);
+                if (result.errors && result.errors.length > 0) {
+                    allErrors.push({ fileName: fileHandle.name, errors: result.errors });
+                }
+            });
+            await Promise.all(transpilationPromises);
         }
 
-        // 2. Transpilar cada archivo y recolectar errores
-        const transpilationPromises = cesFiles.map(async (fileHandle) => {
-            const file = await fileHandle.getFile();
-            const code = await file.text();
-            const result = CES_Transpiler.transpile(code, fileHandle.name);
 
-            if (result.errors && result.errors.length > 0) {
-                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
-            }
-        });
-
-        await Promise.all(transpilationPromises);
-
-
-        // 3. Actuar según el resultado
         if (allErrors.length > 0) {
             console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
-            for (const fileErrors of allErrors) {
+            allErrors.forEach(fileErrors => {
                 console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
-                for (const error of fileErrors.errors) {
-                    console.error(`  - ${error}`);
-                }
-            }
-            // Cambiar a la pestaña de la consola para que los errores sean visibles
+                fileErrors.errors.forEach(error => console.error(`  - ${error}`));
+            });
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
             console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
-            // 4. Iniciar el juego. La lógica ahora está en startGame.
-            originalStartGame();
+
+            // --- Start Game Based on Selected Mode ---
+            if (playMode === 'game-view') {
+                // Stop any existing floating window game before starting the in-editor one
+                if (GameFloatingWindow.isFloatingGameWindowOpen()) {
+                    GameFloatingWindow.closeFloatingGameWindow();
+                }
+                originalStartGame();
+            } else if (playMode === 'floating-window') {
+                // Stop any in-editor game before opening the floating window
+                if (isGameRunning) {
+                    stopGame();
+                }
+                GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem, currentProjectConfig);
+                // After opening, select the default resolution
+                const defaultResolution = dom.resolutionSelector.value;
+                const [width, height] = defaultResolution.split('x').map(Number);
+                GameFloatingWindow.resizeFloatingWindow(width, height);
+            }
         }
     };
 
@@ -1247,45 +1258,49 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     stopGame = async function() {
-        if (!isGameRunning) return;
+        // --- Universal Stop Logic ---
+        // This function will now stop EITHER the in-editor game OR the floating window game.
+
+        if (GameFloatingWindow.isFloatingGameWindowOpen()) {
+            GameFloatingWindow.closeFloatingGameWindow();
+        }
+
+        if (!isGameRunning) {
+             updateGameControlsUI(); // Ensure UI is correct even if only floating window was running
+             return;
+        }
+
         isGameRunning = false;
         document.body.classList.remove('game-mode');
-        // Restore InputManager out of game mode
-        try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }
+        try { InputManager.setGameRunning(false); } catch(e) { /* ignore */ }
         console.log("Game Stopped");
 
-        // Notify scripts about disable/destroy so they can clean up
         try {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
                 if (!materia.isActive) continue;
                 const scripts = materia.getComponents(Components.CreativeScript);
                 for (const script of scripts) {
-                    try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
-                    try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en el objeto '${materia.name}':`, e); }
+                    try { script.onDisable(); } catch (e) { console.error(`Error en onDisable() del script '${script.scriptName}' en '${materia.name}':`, e); }
+                    try { script.onDestroy(); } catch (e) { console.error(`Error en onDestroy() del script '${script.scriptName}' en '${materia.name}':`, e); }
                 }
             }
         } catch(e) { console.warn('Error al notificar scripts sobre onDisable/onDestroy:', e); }
 
-        // --- Scene Restoration Logic ---
         if (sceneSnapshotBeforePlay) {
             console.log("Restaurando la escena desde la snapshot...");
             SceneManager.setCurrentScene(sceneSnapshotBeforePlay);
-            sceneSnapshotBeforePlay = null; // Clear the snapshot
-
-            // --- UI Refresh ---
+            sceneSnapshotBeforePlay = null;
             updateHierarchy();
-            selectMateria(null); // Deselect everything
+            selectMateria(null);
             updateInspector();
             console.log("Escena restaurada.");
         } else {
-            console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");
+            console.warn("No se encontró una snapshot para restaurar.");
         }
 
-        // --- ARCHITECTURE FIX: Destroy the old PhysicsSystem instance ---
         console.log("Destroying game session's PhysicsSystem instance.");
         physicsSystem = null;
         uiSystem = null;
-
 
         updateGameControlsUI();
     };
@@ -2707,11 +2722,19 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
+
+            // NEW: Event listener for the play mode selector
+            dom.playModeSelector.addEventListener('change', () => {
+                const isFloatingMode = dom.playModeSelector.value === 'floating-window';
+                dom.resolutionSelector.style.display = isFloatingMode ? 'inline-block' : 'none';
+            });
+
+            // NEW: Event listener for the resolution selector
+            dom.resolutionSelector.addEventListener('change', () => {
+                if (GameFloatingWindow.isFloatingGameWindowOpen()) {
+                    const resolution = dom.resolutionSelector.value;
+                    const [width, height] = resolution.split('x').map(Number);
+                    GameFloatingWindow.resizeFloatingWindow(width, height);
                 }
             });
 

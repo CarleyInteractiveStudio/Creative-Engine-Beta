@@ -364,6 +364,21 @@ body {
     align-items: center;
     gap: 5px;
 }
+
+.game-controls .editor-dropdown {
+    background-color: var(--color-background-light);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 1em;
+    height: 30px; /* Match button height */
+    cursor: pointer;
+}
+
+.game-controls .editor-dropdown:hover {
+    background-color: var(--color-background-lighter);
+}
 .sprite-preview {
     width: 64px;
     height: 64px;

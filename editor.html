@@ -389,9 +389,20 @@ public star() {
                         </div>
                     </div>
                     <div id="game-controls" class="game-controls">
+                        <select id="play-mode-selector" class="editor-dropdown" title="Seleccionar modo de ejecución">
+                            <option value="game-view" selected>Game View</option>
+                            <option value="floating-window">Ventana Flotante</option>
+                        </select>
                         <button id="btn-play" title="Play" disabled>▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
+                        <select id="resolution-selector" class="editor-dropdown" title="Seleccionar resolución" style="display: none;">
+                            <option value="1280x720">1280x720 (HD)</option>
+                            <option value="1920x1080">1920x1080 (Full HD)</option>
+                            <option value="800x600">800x600 (SD)</option>
+                            <option value="600x800">600x800 (Vertical)</option>
+                            <option value="480x320">480x320 (HVGA)</option>
+                        </select>
                     </div>
                 </div>
                 <div class="panel-content-container">
