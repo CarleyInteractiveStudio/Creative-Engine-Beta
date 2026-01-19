@@ -38,6 +38,7 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
+import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1129,12 +1130,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
+        // Ensure game canvas is always resized correctly when active
+        if (activeView === 'game-content' && gameRenderer) {
+            gameRenderer.resize();
+        }
+
         if (isGameRunning && !isGamePaused) {
             runGameLoop();
             if (renderer) {
                 updateScene(renderer, false);
             }
             if (gameRenderer) {
+                gameRenderer.resize(); // Ensure canvas dimensions are correct
                 updateScene(gameRenderer, true);
             }
         } else {
@@ -1182,12 +1189,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
-        document.body.classList.add('game-mode');
-        // Ensure the game view is active
-        const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
-        if (gameViewButton && activeView !== 'game-content') {
-            gameViewButton.click();
-        }
+        // NO auto-cambiar a vista de juego - mantener vista actual
+        // const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
+        // if (gameViewButton && activeView !== 'game-content') {
+        //     gameViewButton.click();
+        // }
 
         // Tell InputManager that the engine is running so it can default to the game canvas
         try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
@@ -2199,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop',
+            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2455,7 +2461,7 @@ public star() {
 
             updateLoadingProgress(20, "Inicializando renderizadores...");
             renderer = new Renderer(dom.sceneCanvas, true);
-            gameRenderer = new Renderer(dom.gameCanvas);
+            gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
             window.renderer = renderer; // Expose after initialization
 
             updateLoadingProgress(30, "Cargando escena principal...");
@@ -2701,6 +2707,13 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
+            dom.btnFloatingGame.addEventListener('click', async () => {
+                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
+                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
+                } else {
+                    GameFloatingWindow.closeFloatingGameWindow();
+                }
+            });
 
 
             originalStartGame = startGame;

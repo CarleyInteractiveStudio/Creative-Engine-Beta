@@ -964,6 +964,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="Canvas" data-prop="showGrid" ${ley.showGrid ? 'checked' : ''}>
                         <label>Show Grid Gizmo</label>
                     </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Canvas" data-prop="scaleChildren" ${ley.scaleChildren ? 'checked' : ''}>
+                        <label>Scale Children</label>
+                    </div>
                 </div>`;
         } else if (ley instanceof Components.Button) {
             const isColorTint = ley.transition === 'Color Tint';

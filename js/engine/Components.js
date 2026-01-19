@@ -1151,6 +1151,7 @@ export class Canvas extends Leyes {
         this.referenceResolution = { width: 800, height: 600 }; // For Screen Space
         this.screenMatchMode = 'Match Width Or Height';
         this.showGrid = false; // Controls the 3x3 grid gizmo visibility
+        this.scaleChildren = false; // If true, child UI elements scale with canvas; if false, they maintain original size
     }
 
     clone() {
@@ -1160,6 +1161,7 @@ export class Canvas extends Leyes {
         newCanvas.referenceResolution = { ...this.referenceResolution };
         newCanvas.screenMatchMode = this.screenMatchMode;
         newCanvas.showGrid = this.showGrid;
+        newCanvas.scaleChildren = this.scaleChildren;
         return newCanvas;
     }
 }
