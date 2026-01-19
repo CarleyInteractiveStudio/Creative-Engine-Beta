@@ -3501,6 +3501,7 @@ html, body.game-mode {
 }
 
 body.game-mode #editor-container,
+body.game-mode #editor-main-content,
 body.game-mode #scene-panel,
 body.game-mode #game-content,
 body.game-mode #game-canvas {
@@ -3511,15 +3512,6 @@ body.game-mode #game-canvas {
     margin: 0;
     border: none;
     border-radius: 0;
-}
-
-body.game-mode #editor-main-content {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: 1fr !important;
-    grid-template-areas: "scene" !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    height: 100vh !important; /* Take full viewport height */
 }
 
 body.game-mode #menubar,

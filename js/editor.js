@@ -1182,12 +1182,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
-        document.body.classList.add('game-mode');
-        // Ensure the game view is active
+
+        // Ensure the game view is active BEFORE hiding other panels with 'game-mode'
         const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         if (gameViewButton && activeView !== 'game-content') {
-            gameViewButton.click();
+            gameViewButton.click(); // This will make the game canvas visible
         }
+
+        // Add a small delay to allow the DOM to update before going fullscreen.
+        // This helps prevent a race condition where the canvas tries to resize
+        // while its container is still hidden or being animated.
+        setTimeout(() => {
+            document.body.classList.add('game-mode');
+            if (gameRenderer) {
+                gameRenderer.resize(); // Force resize after styles are applied
+            }
+        }, 100); // 100ms delay is usually enough for DOM reflow
+
 
         // Tell InputManager that the engine is running so it can default to the game canvas
         try { InputManager.setGameRunning(true); } catch(e) { /* ignore if not available */ }
