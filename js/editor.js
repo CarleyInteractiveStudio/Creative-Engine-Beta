@@ -848,87 +848,95 @@ document.addEventListener('DOMContentLoaded', () => {
     updateScene = function(rendererInstance, isGameView) {
         if (!rendererInstance || !SceneManager.currentScene) return;
 
-        const allMaterias = SceneManager.currentScene.getAllMaterias();
+        if (isGameView) {
+            // --- GAME VIEW RENDER PATH ---
+            const allMaterias = SceneManager.currentScene.getAllMaterias();
 
-        // --- 1. Separate canvases based on their render mode ---
-        const worldCanvases = [];
-        const screenSpaceCanvases = [];
-        allMaterias.forEach(m => {
-            const canvas = m.getComponent(Components.Canvas);
-            if (canvas) {
-                if (canvas.renderMode === 'World Space') {
-                    worldCanvases.push(m);
-                } else {
-                    screenSpaceCanvases.push(m);
+            const worldCanvases = [];
+            const screenSpaceCanvases = [];
+            allMaterias.forEach(m => {
+                const canvas = m.getComponent(Components.Canvas);
+                if (canvas) {
+                    if (canvas.renderMode === 'World Space') {
+                        worldCanvases.push(m);
+                    } else {
+                        screenSpaceCanvases.push(m);
+                    }
                 }
-            }
-        });
-
-        // --- 2. Gather all other world-space renderable objects ---
-        const worldObjects = allMaterias.filter(m =>
-            m.getComponent(Components.Transform) &&
-            !m.getComponent(Components.Canvas) && // Exclude canvases as they're handled separately
-            (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.TilemapRenderer))
-        );
-
-        // Combine all world-space elements (regular objects + world canvases) for rendering
-        const allWorldRenderables = [...worldObjects, ...worldCanvases];
-
-
-        // --- 3. Main Rendering Logic ---
-        const cameras = SceneManager.currentScene.findAllCameras()
-            .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
-
-        let anyCameraRendered = false;
-
-        if (cameras.length > 0) {
-            // --- Multi-camera rendering path ---
-            cameras.forEach(camera => {
-                rendererInstance.beginWorld(camera);
-                const cameraComponent = camera.getComponent(Components.Camera);
-
-                // Draw all world-space objects and world-space canvases
-                for (const materia of allWorldRenderables) {
-                     if (!materia.isActive) continue;
-                     if (((1 << materia.layer) & cameraComponent.cullingMask) === 0) continue;
-
-                     // Perform drawing based on component type
-                     if (materia.getComponent(Components.Canvas)) {
-                         rendererInstance.drawCanvas(materia, isGameView);
-                     } else if (materia.getComponent(Components.SpriteRenderer)) {
-                         rendererInstance.drawSprite(materia.getComponent(Components.SpriteRenderer));
-                     } else if (materia.getComponent(Components.TextureRender)) {
-                         rendererInstance.drawTextureRender(materia.getComponent(Components.TextureRender));
-                     } else if (materia.getComponent(Components.TilemapRenderer)) {
-                         rendererInstance.drawTilemap(materia.getComponent(Components.TilemapRenderer));
-                     }
-                }
-                rendererInstance.end();
             });
-            anyCameraRendered = true;
-        }
 
-        // --- 4. UI Overlay Pass ---
-        // This pass happens after all cameras have rendered the world.
-        // Or, if there are no cameras, it runs on a cleared screen.
-        if (!anyCameraRendered) {
-             rendererInstance.clear();
-        }
+            const worldObjects = allMaterias.filter(m =>
+                m.getComponent(Components.Transform) &&
+                !m.getComponent(Components.Canvas) &&
+                (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.TilemapRenderer))
+            );
 
-        for (const materia of screenSpaceCanvases) {
-            if (materia.isActive) {
-                rendererInstance.drawCanvas(materia, isGameView);
+            const allWorldRenderables = [...worldObjects, ...worldCanvases];
+
+            const cameras = SceneManager.currentScene.findAllCameras()
+                .sort((a, b) => a.getComponent(Components.Camera).depth - b.getComponent(Components.Camera).depth);
+
+            let anyCameraRendered = false;
+            if (cameras.length > 0) {
+                cameras.forEach(camera => {
+                    rendererInstance.beginWorld(camera);
+                    const cameraComponent = camera.getComponent(Components.Camera);
+                    for (const materia of allWorldRenderables) {
+                        if (!materia.isActive) continue;
+                        if (((1 << materia.layer) & cameraComponent.cullingMask) === 0) continue;
+
+                        if (materia.getComponent(Components.Canvas)) {
+                            rendererInstance.drawCanvas(materia, isGameView);
+                        } else if (materia.getComponent(Components.SpriteRenderer)) {
+                            rendererInstance.drawSprite(materia.getComponent(Components.SpriteRenderer));
+                        } else if (materia.getComponent(Components.TextureRender)) {
+                            rendererInstance.drawTextureRender(materia.getComponent(Components.TextureRender));
+                        } else if (materia.getComponent(Components.TilemapRenderer)) {
+                            rendererInstance.drawTilemap(materia.getComponent(Components.TilemapRenderer));
+                        }
+                    }
+                    rendererInstance.end();
+                });
+                anyCameraRendered = true;
             }
-        }
 
-        // --- 5. Draw Editor-only overlays (gizmos, grids, etc.) ---
-        if (!isGameView) {
-            // Set up a default world view if no camera exists, so gizmos can be drawn
             if (!anyCameraRendered) {
-                 rendererInstance.beginWorld(null);
-                 rendererInstance.end();
+                rendererInstance.clear();
             }
-            SceneView.drawOverlay();
+
+            for (const materia of screenSpaceCanvases) {
+                if (materia.isActive) {
+                    rendererInstance.drawCanvas(materia, isGameView);
+                }
+            }
+
+        } else {
+            // --- EDITOR SCENE VIEW RENDER PATH ---
+            rendererInstance.beginWorld(null); // Use the editor's default camera
+
+            const allRenderables = SceneManager.currentScene.getAllMaterias().filter(m =>
+                m.isActive && (
+                    m.getComponent(Components.SpriteRenderer) ||
+                    m.getComponent(Components.TextureRender) ||
+                    m.getComponent(Components.TilemapRenderer) ||
+                    m.getComponent(Components.Canvas)
+                )
+            );
+
+            for (const materia of allRenderables) {
+                if (materia.getComponent(Components.Canvas)) {
+                    rendererInstance.drawCanvas(materia, isGameView);
+                } else if (materia.getComponent(Components.SpriteRenderer)) {
+                    rendererInstance.drawSprite(materia.getComponent(Components.SpriteRenderer));
+                } else if (materia.getComponent(Components.TextureRender)) {
+                    rendererInstance.drawTextureRender(materia.getComponent(Components.TextureRender));
+                } else if (materia.getComponent(Components.TilemapRenderer)) {
+                    rendererInstance.drawTilemap(materia.getComponent(Components.TilemapRenderer));
+                }
+            }
+
+            rendererInstance.end();
+            SceneView.drawOverlay(); // Always draw gizmos and overlays in the editor
         }
     }
 
