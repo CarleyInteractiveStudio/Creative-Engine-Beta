@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark-modern">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor | Creative Engine</title>
+    <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/sprite-slicer.css">
+    <link rel="stylesheet" href="css/debug.css">
+    <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+</head>
+<body>
+    <!-- Loading Overlay Panel -->
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <img src="image/Creative_Engine_beta.png" alt="Creative Engine Logo" class="loading-logo">
+            <h2 id="loading-status-message">Cargando tu proyecto...</h2>
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+            <div id="loading-error-section" style="display: none;">
+                <p id="loading-error-message">Ha ocurrido un error.</p>
+                <div class="error-buttons">
+                    <button id="btn-retry-loading">Reintentar</button>
+                    <button id="btn-back-to-launcher">Volver al Inicio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editor-container" style="display: none;">
+        <div id="menubar">
+            <div class="menubar-left">
+                <div class="logo-area">
+                    <img src="image/Creative_Engine_beta.png" alt="Logo">
+                    <span id="project-name-display"></span>
+                </div>
+            </div>
+            <div class="menubar-center">
+                <div class="menu-item">
+                    <button class="menu-btn">Archivo</button>
+                    <div class="menu-content">
+                        <a href="#" id="menu-new-scene">Nueva Escena</a>
+                        <a href="#" id="menu-open-scene">Abrir Escena...</a>
+                        <a href="#" id="menu-save-scene">Guardar Escena</a>
+                        <hr>
+                        <a href="#" id="menu-import-project">Importar Proyecto...</a>
+                        <a href="#" id="menu-export-project">Exportar Proyecto...</a>
+                        <hr>
+                        <a href="#" id="menu-import-asset">Importar Asset...</a>
+                        <a href="#" id="menu-export-asset" class="disabled">Exportar Asset...</a>
+                        <hr>
+                        <a href="#" id="menu-build">Build</a>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <button class="menu-btn">Editar</button>
+                    <div class="menu-content">
+                        <a href="#" id="menu-project-settings">Configuración del Proyecto</a>
+                        <a href="#" id="menu-preferences">Preferencias</a>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <button class="menu-btn">Ventana</button>
+                    <div class="menu-content" id="window-menu-content">
+                        <a href="#" id="menu-window-scene">Escena</a>
+                        <a href="#" id="menu-window-hierarchy">Jerarquía</a>
+                        <a href="#" id="menu-window-inspector">Inspector</a>
+                        <a href="#" id="menu-window-assets">Navegador</a>
+                        <a href="#" id="menu-window-console">Consola</a>
+                        <hr>
+                        <a href="#" id="menu-window-animation">Editor de Animación</a>
+                        <a href="#" id="menu-window-animator">Controlador de Animación</a>
+                        <a href="#" id="menu-window-tile-palette">Editor de Paleta de Tiles</a>
+                        <a href="#" id="menu-window-sprite-editor">Editor de Sprites</a>
+                        <a href="#" id="menu-window-ambiente-control">Control de Ambiente</a>
+                        <hr>
+                        <a href="#" id="menu-window-verification-system">Sistema de Verificación</a>
+                        <hr>
+                        <a href="#" id="menu-window-asset-store">Tienda de asset</a>
+                        <hr>
+                        <a href="#" id="menu-window-lib" class="disabled">Lib</a>
+                    </div>
+                </div>
+                <div class="menu-item">
+                    <button id="menubar-libraries-btn" class="menu-btn">Librerías</button>
+                </div>
+                <div class="menu-item">
+                    <button id="menubar-carl-ia-btn" class="menu-btn">🤖 Carl IA</button>
+                </div>
+                <div class="menu-item">
+                    <button class="menu-btn">Ayuda</button>
+                    <div class="menu-content">
+                        <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/" target="_blank" id="menu-help">Ayuda</a>
+                    </div>
+                </div>
+            </div>
+            <div class="menubar-right">
+                <button id="toolbar-music-btn" class="toolbar-btn" title="Reproductor de Música">🎵</button>
+            </div>
+        </div>
+        <main id="editor-main-content">
+            <div id="library-panel" class="editor-panel floating-panel hidden" style="width: 700px; height: 500px;">
+                <div class="panel-header">
+                    <span>Librerías</span>
+                    <div class="panel-header-controls">
+                        <button id="library-panel-create-btn" class="panel-tool-btn">Crear</button>
+                        <button id="library-panel-import-btn" class="panel-tool-btn">Importar</button>
+                        <button id="library-panel-export-btn" class="panel-tool-btn">Exportar</button>
+                        <button id="library-api-docs-btn" class="panel-tool-btn">Documentación API</button>
+                        <button class="close-panel-btn" data-panel="library-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content" id="library-list-container">
+                    <!-- Library cards will be populated by JS -->
+                     <div class="panel-overlay-message">
+                        <p>No se encontraron librerías en la carpeta /lib del proyecto.</p>
+                        <p>Usa 'Crear' para empezar una nueva o 'Importar' para añadir un archivo .celib existente.</p>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+            <div id="create-library-modal" class="modal">
+                <div class="modal-content large">
+                    <span class="close-button">&times;</span>
+                    <h2>Crear Nueva Librería</h2>
+                    <form class="settings-form">
+                        <fieldset class="settings-section">
+                            <legend>Información Básica</legend>
+                            <label for="lib-create-name">Nombre de la Librería</label>
+                            <input type="text" id="lib-create-name" placeholder="Ej: MiLibreriaDeFisicas">
+                            <label for="lib-create-author">Autor / Organización</label>
+                            <input type="text" id="lib-create-author" placeholder="Ej: MiEstudio">
+                            <label for="lib-create-version">Versión</label>
+                            <input type="text" id="lib-create-version" placeholder="1.0.0">
+                            <label for="lib-create-signature">Firma (Opcional)</label>
+                            <input type="text" id="lib-create-signature" placeholder="Una clave única para verificar la autoría">
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Apariencia</legend>
+                            <div style="display: flex; gap: 20px;">
+                                <div style="flex: 1;">
+                                    <label>Icono de la Librería</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-icon-preview" src="image/Paquete.png" alt="Vista previa del icono">
+                                        <button id="lib-create-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Icono principal que se mostrará en la tienda.</p>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label>Icono del Autor</label>
+                                    <div class="image-picker">
+                                        <img id="lib-create-author-icon-preview" src="image/Paquete.png" alt="Vista previa del icono del autor">
+                                        <button id="lib-create-author-icon-picker-btn">Seleccionar Icono...</button>
+                                        <input type="file" id="lib-create-author-icon-input" style="display: none;" accept="image/png, image/jpeg">
+                                    </div>
+                                    <p class="field-description">Un logo pequeño o foto de perfil.</p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="settings-section">
+                            <legend>Funcionalidad y Permisos</legend>
+                            <label for="lib-create-description">Descripción / Cómo usar</label>
+                            <textarea id="lib-create-description" rows="4" placeholder="Describe para qué sirve esta librería y cómo pueden usarla otros desarrolladores."></textarea>
+
+                            <label>Archivos de la Librería (.js, .ces)</label>
+                            <div id="lib-create-drop-zone" class="drop-zone">
+                                <p>Arrastra y suelta los archivos aquí, o haz clic para seleccionar.</p>
+                                <input type="file" id="lib-create-file-input" multiple accept=".js,.ces" style="display: none;">
+                            </div>
+                            <ul id="lib-create-file-list" class="file-list">
+                                <!-- Los archivos añadidos se mostrarán aquí -->
+                            </ul>
+                             <p class="field-description">Añade uno o más archivos. El motor los combinará. Si usas la API del editor (paneles, etc.), el script principal debe ser un .js.</p>
+                            <hr>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-req-windows">
+                                <label for="lib-create-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-runtime-access">
+                                <label for="lib-create-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-is-tool">
+                                <label for="lib-create-is-tool">Es una herramienta interna para el motor (ej: traducciones).</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-custom-components">
+                                <label for="lib-create-custom-components">Permitir registrar componentes personalizados.</label>
+                            </div>
+                            <div class="checkbox-field">
+                                <input type="checkbox" id="lib-create-modify-assets">
+                                <label for="lib-create-modify-assets">Permitir crear y modificar assets.</label>
+                            </div>
+                        </fieldset>
+                    </form>
+                    <div class="modal-footer">
+                        <button id="lib-create-cancel-btn">Cancelar</button>
+                        <button id="lib-create-confirm-btn" class="primary-btn">Crear Librería</button>
+                    </div>
+                </div>
+            </div>
+            <div id="library-api-docs-modal" class="modal">
+                <div class="modal-content large">
+                    <span class="close-button">&times;</span>
+                    <h2>Documentación de la API para Crear Librerías</h2>
+                    <div id="library-api-docs-content" class="panel-content" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 15px;">
+
+                        <h3>Conceptos Básicos</h3>
+                        <p>Las librerías te permiten extender la funcionalidad del editor y del motor. Todo comienza con un único archivo JavaScript.</p>
+
+                        <h4>Estructura del Script</h4>
+                        <p>Tu script debe ser una función autoejecutable (IIFE) que interactúa con la API global <code>CreativeEngine.API</code>.</p>
+                        <pre><code>(function() {
+    // Tu código va aquí...
+})();</code></pre>
+
+                        <h4>Registrar una Ventana</h4>
+                        <p>Para que tu librería aparezca en el menú "Ventana", debes registrarla. Esto se hace llamando a <code>registrarVentana</code>.</p>
+                        <pre><code>CreativeEngine.API.registrarVentana({
+    nombre: "Mi Primera Librería",
+    alAbrir: function(panel) {
+        // Esta función se ejecuta cuando el usuario abre tu ventana.
+        // El objeto 'panel' es tu lienzo para construir la UI.
+        panel.agregarTexto("¡Hola, mundo!");
+    }
+});</code></pre>
+
+                        <hr>
+                        <h3>API de Componentes de UI</h3>
+                        <p>Dentro de la función <code>alAbrir</code>, puedes usar el objeto <code>panel</code> para añadir elementos de interfaz.</p>
+
+                        <h4><code>panel.agregarTexto(texto, opciones)</code></h4>
+                        <p>Muestra un texto simple. Opcionalmente puedes pasarle un objeto de opciones para darle un tamaño de fuente específico, como <code>{ tamaño: 'grande' }</code>.</p>
+                        <pre><code>panel.agregarTexto("Este es un texto normal.");
+panel.agregarTexto("Este es un título.", { tamaño: 'grande' });</code></pre>
+
+                        <h4><code>panel.agregarBoton(texto, alHacerClic)</code></h4>
+                        <p>Crea un botón. La función <code>alHacerClic</code> se ejecuta cuando el usuario presiona el botón.</p>
+                        <pre><code>panel.agregarBoton("Haz clic aquí", function() {
+    // Es mejor usar los diálogos del motor
+    window.Dialogs.showNotification("Aviso", "¡Botón presionado!");
+});</code></pre>
+
+                        <h4><code>panel.agregarInputTexto(etiqueta, opciones)</code></h4>
+                        <p>Crea un campo de texto con una etiqueta. Puedes especificar un callback <code>alCambiar</code> para reaccionar a la entrada del usuario.</p>
+                        <pre><code>panel.agregarInputTexto("Nombre:", {
+    placeholder: "Escribe tu nombre...",
+    alCambiar: function(valor) {
+        console.log("El nuevo nombre es:", valor);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarSlider(etiqueta, opciones)</code></h4>
+                        <p>Crea un slider deslizable. Puedes definir <code>min</code>, <code>max</code>, <code>step</code> (incremento) y un valor inicial <code>valor</code>.</p>
+                        <pre><code>panel.agregarSlider("Velocidad:", {
+    min: 0,
+    max: 100,
+    step: 1,
+    valor: 50,
+    alCambiar: function(valor) {
+        console.log("Nueva velocidad:", valor);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarCheckbox(etiqueta, opciones)</code></h4>
+                        <p>Crea una casilla de verificación. Puedes definir si está marcada por defecto con <code>marcado: true</code>.</p>
+                        <pre><code>panel.agregarCheckbox("Activar Modo Turbo", {
+    marcado: true,
+    alCambiar: function(estaMarcado) {
+        console.log("Modo Turbo activado:", estaMarcado);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarDropdown(etiqueta, items, opciones)</code></h4>
+                        <p>Crea un menú desplegable. <code>items</code> debe ser un array de strings.</p>
+                        <pre><code>panel.agregarDropdown("Dificultad:", ["Fácil", "Normal", "Difícil"], {
+    alCambiar: function(opcionSeleccionada) {
+        console.log("Dificultad elegida:", opcionSeleccionada);
+    }
+});</code></pre>
+
+                        <h4><code>panel.agregarImagen(url, opciones)</code></h4>
+                        <p>Muestra una imagen. Puedes pasarle <code>ancho</code> y <code>alto</code> en las opciones.</p>
+                        <pre><code>panel.agregarImagen("https://via.placeholder.com/150", {
+    ancho: "150px",
+    alto: "150px"
+});</code></pre>
+
+                        <h4><code>panel.agregarVideo(url, opciones)</code></h4>
+                        <p>Incrusta un video. Funciona mejor con URLs de video directas o plataformas como YouTube.</p>
+                        <pre><code>// Nota: Puede que necesites una URL 'embed' para algunas plataformas.
+panel.agregarVideo("https://www.youtube.com/embed/dQw4w9WgXcQ");</code></pre>
+
+                        <hr>
+                        <h3>API de Layout</h3>
+
+                        <h4><code>panel.agregarContenedor(opciones)</code></h4>
+                        <p>Crea un contenedor para agrupar otros elementos. Puedes anidarlos y definir su dirección (<code>'vertical'</code> u <code>'horizontal'</code>).</p>
+                        <pre><code>const contenedorHorizontal = panel.agregarContenedor({ direccion: 'horizontal' });
+// Los elementos añadidos a 'contenedorHorizontal' se alinearán uno al lado del otro.
+contenedorHorizontal.agregarBoton("Botón 1", () => {});
+contenedorHorizontal.agregarBoton("Botón 2", () => {});</code></pre>
+
+                        <h4><code>panel.agregarAreaScroll(opciones)</code></h4>
+                        <p>Crea un área con scroll. Todos los elementos que añadas a esta área estarán dentro de un contenedor desplazable.</p>
+                        <pre><code>const areaScroll = panel.agregarAreaScroll({ alto: '200px' });
+for (let i = 0; i < 20; i++) {
+    areaScroll.agregarTexto(`Elemento número ${i + 1}`);
+}</code></pre>
+
+                        <hr>
+                        <h3>API de Runtime (Acceso desde Scripts .ces)</h3>
+                        <p>Si marcaste la casilla "Permitir acceso a sus funciones desde scripts" al crear la librería, tu script debe devolver un objeto. Las funciones dentro de este objeto estarán disponibles en los scripts <code>.ces</code>.</p>
+
+                        <h4>Estructura del Script de Runtime</h4>
+                        <p>El script debe devolver un objeto cuyas claves son los nombres de las funciones que quieres exponer.</p>
+                        <pre><code>// Dentro de tu archivo .js
+return {
+    saludar: function(nombre) {
+        return "Hola, " + nombre + "!";
+    },
+    sumar: function(a, b) {
+        return a + b;
+    }
+};</code></pre>
+
+                        <h4>Uso en un Script <code>.ces</code></h4>
+                        <p>Para usar estas funciones, primero importa la librería con <code>go "NombreDeLaLibreria"</code> y luego llama a las funciones directamente.</p>
+                        <pre><code>// Dentro de un archivo .ces
+go "MiLibreriaDePrueba"
+
+public star() {
+    variable saludo = saludar("Mundo");
+    consola.imprimir(saludo); // Imprime: "Hola, Mundo!"
+
+    variable resultado = sumar(5, 3);
+    consola.imprimir(resultado); // Imprime: 8
+}</code></pre>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button id="library-api-docs-close-btn" class="primary-btn">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+            <!-- The editor panels will go here in the next step -->
+             <div id="hierarchy-panel" class="editor-panel">
+                <div class="panel-header">
+                    <span>Jerarquía</span>
+                    <button class="close-panel-btn" data-panel="hierarchy-panel">&times;</button>
+                </div>
+                <div class="panel-content" id="hierarchy-content"></div>
+             </div>
+             <div id="scene-panel" class="editor-panel">
+                <div class="panel-header">
+                    <div class="left-header-controls">
+                        <span id="current-scene-name">Escena Principal</span>
+                        <div class="viewport-tools">
+                            <div class="tool-dropdown">
+                                <button id="tool-active" class="toolbar-btn">🖐️</button>
+                                <div class="tool-dropdown-content">
+                                    <button id="tool-move" class="toolbar-btn active" title="Mover (Q)">🖐️ Mover</button>
+                                    <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)">🔄 Rotar</button>
+                                    <button id="tool-scale" class="toolbar-btn" title="Escalar (E)">↗️ Escalar</button>
+                                    <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
+                                    <hr class="tilemap-tool-divider" style="display: none;">
+                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
+                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" data-view="scene-content">Escena</button>
+                            <button class="view-toggle-btn" data-view="game-content">Juego</button>
+                            <button class="view-toggle-btn" data-view="code-editor-content">Código</button>
+                            <button id="view-toggle-terminal" class="view-toggle-btn" data-view="terminal-content" style="display: none;">Terminal</button>
+                        </div>
+                    </div>
+                    <div id="game-controls" class="game-controls">
+                        <button id="btn-play" title="Play" disabled>▶️</button>
+                        <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
+                        <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
+                    </div>
+                </div>
+                <div class="panel-content-container">
+                    <div id="scene-content" class="panel-content view-content active">
+                        <canvas id="scene-canvas"></canvas>
+                    </div>
+                    <div id="game-content" class="panel-content view-content">
+                        <canvas id="game-canvas"></canvas>
+                    </div>
+                    <div id="code-editor-content" class="panel-content view-content no-padding">
+                        <div id="code-editor-toolbar">
+                            <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
+                            <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
+                            <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                        </div>
+                        <div id="codemirror-container"></div>
+                    </div>
+                    <div id="terminal-content" class="panel-content view-content no-padding">
+                        <div id="terminal-output">
+                            <span>Creative Engine Terminal [Versión 0.1.0]</span><br>
+                            <span>(c) Carley Interactive Studio. Todos los derechos reservados.</span><br><br>
+                        </div>
+                        <div id="terminal-input-line">
+                            <span class="terminal-prompt">&gt;</span>
+                            <input type="text" id="terminal-input" autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="resizer-v" id="resizer-left"></div>
+            <div class="resizer-v" id="resizer-right"></div>
+            <div class="resizer-h" id="resizer-bottom"></div>
+             <div id="inspector-panel" class="editor-panel">
+                <div class="panel-header">
+                    <span>Inspector</span>
+                    <button class="close-panel-btn" data-panel="inspector-panel">&times;</button>
+                </div>
+                <div class="panel-content"></div>
+            </div>
+             <div id="assets-panel" class="editor-panel">
+                <div class="panel-header tab-bar">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" data-tab="assets-content">Navegador</button>
+                        <button class="tab-btn" data-tab="console-content">Consola</button>
+                        <button class="tab-btn" data-tab="debug-content">Depurador</button>
+                    </div>
+                    <button class="close-panel-btn" data-panel="assets-panel">&times;</button>
+                </div>
+                <div class="panel-content-container">
+                    <div id="assets-content" class="panel-content tab-content active no-padding">
+                        <div id="asset-browser-container">
+                            <div id="asset-folder-tree">
+                                <!-- Folder tree will be populated by JS -->
+                            </div>
+                            <div id="asset-grid-view">
+                                <!-- Asset icons will be populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div id="console-content" class="panel-content tab-content">
+                        <!-- Console messages will go here -->
+                    </div>
+                    <div id="debug-content" class="panel-content tab-content">
+                        <!-- Debug info will be injected here by editor.js -->
+                    </div>
+                </div>
+            </div>
+             <div id="animation-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span>Editor de Animación</span>
+                    <div class="panel-header-controls">
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                        <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div id="animation-toolbar">
+                        <button id="animation-save-btn" title="Guardar Asset">💾 Guardar</button>
+                        <select id="animation-state-selector"></select>
+                        <button id="animation-play-btn">▶️</button>
+                        <button id="animation-stop-btn">⏹️</button>
+                        <label for="animation-speed">Velocidad:</label>
+                        <input type="number" id="animation-speed" value="10" min="1">
+                        <span>FPS</span>
+                        <button id="add-frame-btn">➕ Añadir Frame</button>
+                        <button id="delete-frame-btn" title="Borrar Frame Seleccionado">🗑️</button>
+                        <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo">▲</button>
+                    </div>
+                    <div id="animation-content-container">
+                        <div id="animation-edit-view">
+                            <div id="animation-timeline-container">
+                                <div id="animation-timeline">
+                                    <!-- Frames will be added here -->
+                                </div>
+                            </div>
+                            <div id="timeline-resizer"></div>
+                            <div id="animation-editor-main">
+                                <div id="drawing-tools">
+                                    <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
+                                    <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
+                                    <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
+                                    <hr>
+                                    <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
+                                    <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
+                                </div>
+                                <div id="animation-view-tools">
+                                    <button id="anim-bg-toggle-btn" class="tool-btn" title="Cambiar Fondo (Blanco/Transparente)">⬛</button>
+                                    <button id="anim-grid-toggle-btn" class="tool-btn active" title="Mostrar/Ocultar Rejilla">ızgara</button>
+                                    <button id="anim-onion-toggle-btn" class="tool-btn active" title="Activar/Desactivar Onion Skin">🧅</button>
+                                </div>
+                                <div id="drawing-canvas-container">
+                                    <canvas id="anim-grid-canvas" width="512" height="512"></canvas>
+                                    <canvas id="anim-onion-skin-canvas" width="512" height="512"></canvas>
+                                    <canvas id="drawing-canvas" width="512" height="512"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="animation-playback-view" class="hidden">
+                            <canvas id="animation-playback-canvas" width="512" height="512"></canvas>
+                        </div>
+                    </div>
+                    <div id="animation-panel-overlay">
+                        <p>Selecciona un asset de animación (.cea) para empezar.</p>
+                    </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+                </div>
+            </div>
+            <div id="animator-controller-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span>Controlador de Animación</span>
+                    <div id="animator-controller-toolbar">
+                        <button id="anim-ctrl-new-btn">Nuevo</button>
+                        <button id="anim-ctrl-save-btn">Guardar</button>
+                        <span id="current-anim-ctrl-name">Ninguno</span>
+                    </div>
+                    <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
+                </div>
+                <div class="panel-content no-padding">
+                    <div id="animator-assets-list">
+                        <div class="list-header">Animaciones (.cea)</div>
+        <input type="search" placeholder="Buscar animaciones...">
+                        <div class="list-content"></div>
+                    </div>
+                    <div id="animator-graph-view">
+                        <!-- The visual state machine graph will be rendered here -->
+                    </div>
+                    <div id="animator-controllers-list">
+                        <div class="list-header">Controladores (.ceanim)</div>
+                        <input type="search" placeholder="Buscar controladores...">
+                        <div class="list-content"></div>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="right"></div>
+                <div class="resize-handle" data-direction="bottom"></div>
+                <div class="resize-handle" data-direction="both"></div>
+            </div>
+            <div id="ui-editor-panel" class="editor-panel floating-panel hidden">
+                <div class="panel-header">
+                    <span id="current-ui-asset-name">Editor de UI</span>
+                    <div id="ui-canvas-toolbar">
+                        <button id="ui-editor-save-btn" title="Guardar Asset UI">💾 Guardar</button>
+                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas">🗖</button>
+                    </div>
+                    <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
+                </div>
+                <div id="ui-editor-main-content">
+                    <div id="ui-editor-hierarchy" class="editor-panel">
+                        <div class="panel-header"><span>Jerarquía UI</span></div>
+                        <div class="list-content"></div>
+                    </div>
+                    <div id="ui-resizer-left" class="resizer-v"></div>
+                    <div id="ui-editor-canvas-view">
+                         <div id="ui-editor-canvas-container">
+                            <canvas id="ui-editor-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div id="ui-resizer-right" class="resizer-v"></div>
+                    <div id="ui-editor-inspector" class="editor-panel">
+                        <div class="panel-header"><span>Inspector UI</span></div>
+                        <div class="inspector-content"></div>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+            <div id="asset-store-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+                <div class="panel-header">
+                    <span>Tienda de Asset</span>
+                    <div class="panel-header-controls">
+                        <button id="btn-open-asset-store-ext" class="panel-tool-btn" title="Abrir en nueva pestaña">↗️</button>
+                        <button class="close-panel-btn" data-panel="asset-store-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content no-padding">
+                    <iframe src="https://carleyinteractivestudio.github.io/Creative-Engine-Asset-Store/" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+            <div id="carl-ia-panel" class="editor-panel floating-panel hidden" style="width: 400px; height: 500px;">
+                <div class="panel-header">
+                    <span>🤖 Carl IA</span>
+                    <div class="panel-header-controls">
+                        <div class="menu-item">
+                            <button id="carl-ia-brain-selector-btn" class="panel-tool-btn">Elegir Cerebro</button>
+                            <div class="menu-content">
+                                <a href="#" data-model="carl-v1">Carl V1</a>
+                                <a href="#" data-model="external">Usar modelo externo</a>
+                            </div>
+                        </div>
+                        <button class="close-panel-btn" data-panel="carl-ia-panel">&times;</button>
+                    </div>
+                </div>
+                <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
+                    <div id="carl-ia-messages" style="flex-grow: 1; overflow-y: auto; padding: 10px; background: var(--color-background-deep); border-bottom: 1px solid var(--color-border); display: flex; flex-direction: column;">
+                        <!-- Chat messages will appear here -->
+                         <div style="font-style: italic; color: var(--color-text-secondary); text-align: center; padding: 20px;">
+                            Selecciona un modelo para comenzar.
+                         </div>
+                    </div>
+                    <div id="carl-ia-input-area" style="display: flex; padding: 8px; border-top: 1px solid var(--color-border-dark);">
+                        <textarea id="carl-ia-input" placeholder="Escribe tu mensaje..." style="flex-grow: 1; resize: none; height: 40px; border-radius: 5px; border: 1px solid var(--color-border); background: var(--color-background-light); color: var(--color-text-primary); padding: 5px;"></textarea>
+                        <button id="carl-ia-send-btn" style="margin-left: 8px; font-size: 20px; background: none; border: none; color: var(--color-accent); cursor: pointer;">➤</button>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+
+            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 450px;">
+                <div class="panel-header">
+                    <span>Control de Ambiente</span>
+                    <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
+                </div>
+                <div class="panel-content">
+                    <fieldset class="inspector-section">
+                        <legend>Ciclo Día/Noche</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-luz-ambiental">Luz Ambiental</label>
+                            <input type="color" id="ambiente-luz-ambiental" value="#1a1a2a">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-tiempo">Hora del Día</label>
+                            <input type="range" id="ambiente-tiempo" min="0" max="23" value="6" style="flex-grow: 1;">
+                            <span id="ambiente-tiempo-valor" style="margin-left: 10px; min-width: 40px;">06:00</span>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="ambiente-ciclo-automatico">
+                            <label for="ambiente-ciclo-automatico">Ciclo Automático</label>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-duracion-dia">Duración del Día (segs)</label>
+                            <input type="number" id="ambiente-duracion-dia" min="1" value="60">
+                        </div>
+                    </fieldset>
+                    <fieldset class="inspector-section">
+                        <legend>Máscaras de Iluminación</legend>
+                        <p class="field-description">Usa Layers o Tags para controlar qué luces afectan a qué objetos.</p>
+                        <div class="inspector-row">
+                            <label for="ambiente-mascara-tipo">Tipo de Máscara</label>
+                            <select id="ambiente-mascara-tipo">
+                                <option value="ninguna">Ninguna</option>
+                                <option value="layers">Basado en Layers</option>
+                                <option value="tags" disabled>Basado en Tags (Próximamente)</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="resize-handle" data-direction="n"></div>
+                <div class="resize-handle" data-direction="ne"></div>
+                <div class="resize-handle" data-direction="e"></div>
+                <div class="resize-handle" data-direction="se"></div>
+                <div class="resize-handle" data-direction="s"></div>
+                <div class="resize-handle" data-direction="sw"></div>
+                <div class="resize-handle" data-direction="w"></div>
+                <div class="resize-handle" data-direction="nw"></div>
+            </div>
+        </main>
+    </div>
+    <div id="context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li class="has-submenu">
+                Crear <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-folder">Carpeta</li>
+                    <li data-action="create-script">Script (.ces)</li>
+                    <li data-action="create-readme">Archivo Léame (.md)</li>
+                    <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
+                    <li data-action="create-scene">Escena (.ceScene)</li>
+                </ul>
+            </li>
+            <hr>
+            <li data-action="rename">Renombrar</li>
+            <li data-action="delete" class="danger">Borrar</li>
+            <hr class="folder-only-divider" style="display: none;">
+            <li data-action="export-package" class="folder-only" style="display: none;">Exportar Paquete (.cep)</li>
+        </ul>
+    </div>
+    <div id="anim-node-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="create-transition">Crear Transición</li>
+            <li data-action="set-as-entry">Marcar como Estado de Entrada</li>
+            <hr>
+            <li data-action="delete-state" class="danger">Borrar Estado</li>
+        </ul>
+    </div>
+    <div id="hierarchy-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li class="has-submenu">
+                Crear <span class="arrow">▶</span>
+                <ul class="submenu">
+                    <li data-action="create-empty">Mater Vacío</li>
+                    <li data-action="create-audio">Audio</li>
+                    <li data-action="create-camera">Cámara</li>
+                    <hr>
+                    <li class="has-submenu">
+                        Mater 2D <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-sprite">Sprite</li>
+                            <li data-action="create-tilemap">Tilemap</li>
+                            <li data-action="create-rectangle">Rectángulo</li>
+                            <li data-action="create-circle">Círculo</li>
+                            <li data-action="create-triangle">Triángulo</li>
+                            <li data-action="create-capsule">Cápsula</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
+                        UI <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-canvas">Canvas</li>
+                            <li data-action="create-ui-image">Image</li>
+                             <li data-action="create-ui-button">Botón</li>
+                            <li data-action="create-ui-panel">Panel</li>
+                            <li data-action="create-ui-text">Texto</li>
+                        </ul>
+                    </li>
+                    <li class="has-submenu">
+                        Luz <span class="arrow">▶</span>
+                        <ul class="submenu">
+                            <li data-action="create-point-light">Point Light</li>
+                            <li data-action="create-spot-light">Spot Light</li>
+                            <li data-action="create-freeform-light">Freeform Light</li>
+                            <li data-action="create-sprite-light">Sprite Light</li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <hr>
+            <li data-action="rename">Renombrar</li>
+            <li data-action="duplicate">Duplicar</li>
+            <li data-action="delete" class="danger">Eliminar</li>
+        </ul>
+    </div>
+    <div id="library-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="toggle-library-activation">Activar/Desactivar</li>
+            <li data-action="delete-library" class="danger">Eliminar</li>
+        </ul>
+    </div>
+    <div id="library-details-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2 id="lib-details-title">Detalles de la Librería</h2>
+            <div class="details-bubble-container">
+                <!-- Bubble 1: Main Info -->
+                <div class="details-bubble top-bubble">
+                    <div class="info-column">
+                        <img id="details-lib-icon" src="image/Paquete.png" class="details-lib-icon">
+                        <div class="info-text">
+                            <h3 id="details-lib-name">Nombre de la Librería</h3>
+                            <span id="details-lib-version">v1.0.0</span>
+                        </div>
+                    </div>
+                    <div class="info-column">
+                        <img id="details-author-icon" src="image/Paquete.png" class="details-author-icon">
+                        <div class="info-text">
+                            <h3 id="details-author-name">Nombre del Autor</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bubble 2: Description -->
+                <fieldset class="details-bubble">
+                    <legend>Información</legend>
+                    <p id="details-lib-description">Aquí va la descripción de la librería.</p>
+                </fieldset>
+
+                <!-- Bubble 3: Status & Permissions -->
+                <fieldset class="details-bubble">
+                    <legend>Estado y Permisos</legend>
+                    <div class="status-toggle-container">
+                        <label for="details-status-toggle">Estado:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="details-status-toggle" class="toggle-input">
+                            <label for="details-status-toggle" class="toggle-label"></label>
+                        </div>
+                        <span id="details-status-text">Activo</span>
+                    </div>
+                    <hr>
+                    <div id="details-permissions-content">
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-req-windows" data-permission="requiresWindowAccess">
+                            <label for="lib-details-req-windows">Permitir crear ventanas y paneles en el editor.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-runtime-access" data-permission="runtimeAccess">
+                            <label for="lib-details-runtime-access">Permitir acceso a sus funciones desde scripts (.ces).</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-is-tool" data-permission="isTool">
+                            <label for="lib-details-is-tool">Es una herramienta interna para el motor.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-custom-components" data-permission="allowCustomComponents">
+                            <label for="lib-details-custom-components">Permitir registrar componentes personalizados.</label>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="lib-details-modify-assets" data-permission="allowAssetModification">
+                            <label for="lib-details-modify-assets">Permitir crear y modificar assets.</label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="lib-details-save-btn" class="modern-btn">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+    <div id="sprite-selector-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Seleccionar Sprite</h2>
+            <div id="sprite-selector-grid"></div>
+        </div>
+    </div>
+    <div id="add-component-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Añadir Ley (Componente)</h2>
+            <div id="component-list"></div>
+        </div>
+    </div>
+    <div id="culling-mask-dropdown" class="context-menu" style="display: none;">
+        <!-- Layer checkboxes will be populated by JS -->
+    </div>
+    <div id="project-settings-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Configuración del Proyecto</h2>
+            <div class="settings-form">
+                <fieldset class="settings-section">
+                    <legend>General</legend>
+                    <label for="settings-app-name">Nombre del Proyecto</label>
+                    <input type="text" id="settings-app-name" placeholder="Mi Juego Increíble">
+                    <label for="settings-author-name">Nombre del Autor</label>
+                    <input type="text" id="settings-author-name" placeholder="Un Creador de Mundos">
+                    <label for="settings-app-version">Versión del Juego</label>
+                    <input type="text" id="settings-app-version" placeholder="1.0.0">
+                    <label>Versión del Motor</label>
+                    <input type="text" id="settings-engine-version" value="0.1.0-beta" readonly>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Visual</legend>
+                    <div class="inspector-row">
+                        <label for="settings-renderer-mode">Modo de Renderizado</label>
+                        <select id="settings-renderer-mode">
+                            <option value="canvas2d">Simple (Canvas2D)</option>
+                            <option value="realista">Realista (PixiRenderer)</option>
+                        </select>
+                    </div>
+                    <p class="field-description">Elige el motor gráfico para tu proyecto. 'Simple' para 2D puro, 'Realista' para efectos de iluminación.</p>
+                    <hr>
+                    <label>Icono del Ejecutable</label>
+                    <div class="image-picker">
+                        <img id="settings-icon-preview" src="image/Paquete.png" alt="Vista previa del icono" style="display:none;">
+                        <button id="settings-icon-picker-btn">Seleccionar Icono...</button>
+                    </div>
+                    <p class="field-description">Selecciona una imagen (.png o .ico) para el ejecutable de tu juego.</p>
+                    <hr>
+                    <label>Logos de Inicio (Splash Screen)</label>
+                    <div class="logo-list" id="settings-logo-list">
+                        <!-- Logos añadidos por el usuario irán aquí -->
+                    </div>
+                    <button id="settings-add-logo-btn">Añadir Logo</button>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="settings-show-engine-logo" checked>
+                        <label for="settings-show-engine-logo">Mostrar logo de Creative Engine</label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Layers</legend>
+                    <div class="layer-manager">
+                        <div class="layer-column">
+                            <h4>Sorting Layers</h4>
+                            <p class="field-description">Controlan el orden de dibujado. El de arriba se dibuja primero.</p>
+                            <div id="settings-sorting-layer-list" class="layer-list"></div>
+                            <div class="layer-add-row">
+                                <input type="text" id="new-sorting-layer-name" placeholder="Nuevo layer...">
+                                <button id="add-sorting-layer-btn">Añadir</button>
+                            </div>
+                        </div>
+                        <div class="layer-column">
+                            <h4>Collision Layers</h4>
+                            <p class="field-description">Usados por el motor de físicas para filtrar colisiones.</p>
+                            <div id="settings-collision-layer-list" class="layer-list"></div>
+                             <div class="layer-add-row">
+                                <input type="text" id="new-collision-layer-name" placeholder="Nuevo layer...">
+                                <button id="add-collision-layer-btn">Añadir</button>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Tags & Layers</legend>
+                    <div class="layer-manager">
+                        <div class="layer-column">
+                            <h4>Tags</h4>
+                            <div id="settings-tag-list" class="layer-list"></div>
+                            <div class="layer-add-row">
+                                <input type="text" id="new-tag-name" placeholder="Nuevo tag...">
+                                <button id="add-tag-btn">Añadir Tag</button>
+                            </div>
+                        </div>
+                        <div class="layer-column">
+                            <h4>Layers</h4>
+                            <p class="field-description">Define los nombres para las 32 capas disponibles.</p>
+                            <div id="settings-layer-list" class="layer-list"></div>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Build</legend>
+                    <h4>Firma de Android (Keystore)</h4>
+                    <p class="field-description">Configuración para firmar builds de Android.</p>
+                    <label for="settings-keystore-path">Ruta al Keystore</label>
+                    <div class="file-picker">
+                        <input type="text" id="settings-keystore-path" readonly placeholder="Ninguno seleccionado">
+                        <button id="settings-keystore-picker-btn">...</button>
+                    </div>
+                    <label for="settings-keystore-pass">Contraseña del Keystore</label>
+                    <input type="password" id="settings-keystore-pass">
+                    <label for="settings-key-alias">Alias de la Clave</label>
+                    <input type="text" id="settings-key-alias">
+                    <label for="settings-key-pass">Contraseña de la Clave</label>
+                    <input type="password" id="settings-key-pass">
+                    <button id="keystore-create-btn">Crear Nuevo Keystore...</button>
+                    <hr>
+                    <h4>Acciones de Exportación</h4>
+                    <button id="settings-export-project-btn">Exportar Assets (.cep)</button>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="settings-save-btn" class="primary-btn">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+    <div id="keystore-create-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Crear Nuevo Keystore</h2>
+            <div class="settings-form">
+                <fieldset class="settings-section">
+                    <legend>Información de la Clave</legend>
+                    <label for="ks-alias">Alias</label>
+                    <input type="text" id="ks-alias" placeholder="my-key-alias">
+                    <label for="ks-password">Contraseña de la Clave (mínimo 6 caracteres)</label>
+                    <input type="password" id="ks-password">
+                    <label for="ks-validity">Validez (años)</label>
+                    <input type="number" id="ks-validity" value="30">
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Información del Certificado (Dueño)</legend>
+                    <label for="ks-cn">Nombre y Apellido</label>
+                    <input type="text" id="ks-cn" placeholder="Juan Pérez">
+                    <label for="ks-ou">Unidad Organizativa</label>
+                    <input type="text" id="ks-ou" placeholder="Desarrollo de Juegos">
+                    <label for="ks-o">Organización</label>
+                    <input type="text" id="ks-o" placeholder="Mi Estudio">
+                    <label for="ks-l">Ciudad o Localidad</label>
+                    <input type="text" id="ks-l" placeholder="Madrid">
+                    <label for="ks-st">Estado o Provincia</label>
+                    <input type="text" id="ks-st" placeholder="Madrid">
+                    <label for="ks-c">Código de País (2 letras)</label>
+                    <input type="text" id="ks-c" placeholder="ES" maxlength="2">
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Archivo de Salida</legend>
+                    <label for="ks-filename">Nombre del Archivo Keystore</label>
+                    <input type="text" id="ks-filename" value="my-release-key.keystore">
+                    <label for="ks-storepass">Contraseña del Archivo Keystore</label>
+                    <input type="password" id="ks-storepass">
+                </fieldset>
+                <div id="ks-command-output" class="hidden">
+                    <h4>Comando `keytool` Generado:</h4>
+                    <textarea id="ks-command-textarea" readonly rows="5"></textarea>
+                    <p class="field-description">Copia y ejecuta este comando en una terminal con JDK instalado si la creación automática falla.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="ks-generate-btn" class="primary-btn">Generar</button>
+            </div>
+        </div>
+    </div>
+    <div id="engine-logo-confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>¿Desactivar el logo?</h2>
+            <p>Respetamos tu decisión, y puedes desactivar esta opción en cualquier momento.</p>
+            <p>Sin embargo, nos alegraría mucho que la mantuvieras activa: ayuda a que más personas descubran Creative Engine, fortalece nuestra comunidad y acelera su crecimiento.</p>
+            <p><strong>¿Estás seguro de que deseas desactivarla?</strong></p>
+            <div class="modal-footer">
+                <button id="confirm-disable-logo-btn" class="danger-btn">Sí, desactivar</button>
+                <button id="cancel-disable-logo-btn" class="primary-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <div id="preferences-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Preferencias del Editor</h2>
+            <div class="settings-form">
+                <fieldset class="settings-section">
+                    <legend>Apariencia</legend>
+                    <label for="prefs-theme">Tema del Editor</label>
+                    <select id="prefs-theme">
+                        <option value="dark-modern">Oscuro Moderno</option>
+                        <option value="dark-white">Claro</option>
+                        <option value="dark-blue">Azul Marino</option>
+                        <option value="custom">Personalizado</option>
+                    </select>
+                    <div id="prefs-custom-theme-picker" class="hidden">
+                        <h4>Colores Personalizados</h4>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-bg">Fondo Paneles</label>
+                            <input type="color" id="prefs-color-bg" value="#2d2d30">
+                        </div>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-header">Fondo Cabeceras</label>
+                            <input type="color" id="prefs-color-header" value="#3f3f46">
+                        </div>
+                        <div class="color-picker-group">
+                            <label for="prefs-color-accent">Botones y Acentos</label>
+                            <input type="color" id="prefs-color-accent" value="#0e639c">
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Editor de Código</legend>
+                    <label for="prefs-script-lang">Lenguaje de Scripting Preferido</label>
+                    <select id="prefs-script-lang">
+                        <option value="ces">Creative Engine Script (.ces)</option>
+                        <option value="js">JavaScript (.js)</option>
+                    </select>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-autosave-toggle">
+                        <label for="prefs-autosave-toggle">Guardado automático de scripts</label>
+                    </div>
+                    <div id="prefs-autosave-interval-group" class="hidden">
+                        <label for="prefs-autosave-interval">Intervalo de guardado (segundos)</label>
+                        <input type="number" id="prefs-autosave-interval" min="5" value="30">
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Editor de Escena</legend>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-show-scene-grid" checked>
+                        <label for="prefs-show-scene-grid">Mostrar cuadrícula de la escena</label>
+                    </div>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-snapping-toggle">
+                        <label for="prefs-snapping-toggle">Activar "Snapping" a la rejilla</label>
+                    </div>
+                    <div id="prefs-snapping-grid-size-group" class="hidden">
+                        <label for="prefs-snapping-grid-size">Tamaño de la rejilla (píxeles)</label>
+                        <input type="number" id="prefs-snapping-grid-size" min="1" value="25">
+                    </div>
+                    <hr>
+                    <label for="prefs-zoom-speed">Velocidad del Zoom</label>
+                    <input type="number" id="prefs-zoom-speed" min="1" max="10" step="0.1" value="1.1">
+                    <p class="field-description">Controla la sensibilidad del zoom en la escena. Un valor más alto significa un zoom más rápido.</p>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Integraciones de IA</legend>
+                    <label for="prefs-ai-provider">Proveedor de IA Externo</label>
+                    <select id="prefs-ai-provider">
+                        <option value="none">Ninguno</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="openai">ChatGPT (OpenAI)</option>
+                        <option value="anthropic">Claude (Anthropic)</option>
+                    </select>
+                    <div id="prefs-ai-api-key-group" class="hidden" style="margin-top: 10px;">
+                        <label for="prefs-ai-api-key">API Key</label>
+                        <input type="password" id="prefs-ai-api-key" placeholder="Introduce tu clave de API">
+                        <div class="api-key-buttons" style="margin-top: 5px;">
+                             <button id="prefs-ai-save-key-btn">Guardar Clave</button>
+                             <button id="prefs-ai-delete-key-btn" style="display: none;">Borrar Clave</button>
+                        </div>
+                        <p class="field-description">Tu clave de API se guarda de forma segura en el almacenamiento local de tu navegador y nunca se envía a nuestros servidores. Se utiliza únicamente para la comunicación directa entre tu navegador y el proveedor de IA que elijas.</p>
+                    </div>
+                </fieldset>
+                <fieldset class="settings-section">
+                    <legend>Ventanas</legend>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-show-terminal">
+                        <label for="prefs-show-terminal">Ver terminal en el editor</label>
+                    </div>
+                     <p class="field-description">Muestra una pestaña de terminal junto a la vista de código.</p>
+                    <hr>
+                    <button id="prefs-reset-layout-btn">Restablecer Diseño de Paneles</button>
+                    <p class="field-description">Vuelve a la disposición de paneles por defecto.</p>
+                </fieldset>
+            </div>
+            <div class="modal-footer">
+                <button id="prefs-save-btn" class="primary-btn">Guardar Preferencias</button>
+            </div>
+        </div>
+    </div>
+    <div id="debug-display"></div>
+
+    <div id="export-description-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Descripción del Paquete</h2>
+            <div class="settings-form">
+                <label for="export-description-text">Añade una breve descripción para tu paquete .cep:</label>
+                <textarea id="export-description-text" rows="4" placeholder="Ej: Contiene el personaje principal y sus animaciones."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="export-description-next-btn" class="primary-btn">Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="package-file-tree-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2 id="package-modal-title">Seleccionar Archivos</h2>
+            <div id="package-modal-description">
+                <!-- La descripción del paquete irá aquí -->
+            </div>
+            <div id="package-file-tree-container">
+                <!-- El árbol de archivos se renderizará aquí -->
+            </div>
+            <div id="package-export-controls" class="modal-footer">
+                <label for="export-filename">Nombre del Paquete:</label>
+                <input type="text" id="export-filename" placeholder="MiPaquete.cep">
+                <button id="export-confirm-btn" class="primary-btn">Exportar</button>
+            </div>
+            <div id="package-import-controls" class="modal-footer" style="display: none;">
+                <button id="import-confirm-btn" class="primary-btn">Importar Seleccionados</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="music-player-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span>Reproductor de Música</span>
+            <button class="close-panel-btn" data-panel="music-player-panel">&times;</button>
+        </div>
+    </div>
+
+    <!-- Floating Verification System Panel -->
+    <div id="verification-system-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span>Sistema de Verificación</span>
+            <button class="close-panel-btn" data-panel="verification-system-panel" title="Cerrar Panel">✖</button>
+        </div>
+        <div class="panel-content">
+            <div id="verification-tile-preview">
+                <p>Último Tile Seleccionado:</p>
+                <img id="verification-tile-image" src="" alt="Tile Preview" style="width: 64px; height: 64px; border: 1px solid #ccc;">
+            </div>
+            <div id="verification-status" style="margin-top: 10px;">
+                <p>Estado:</p>
+                <span id="verification-status-text">Esperando acción...</span>
+            </div>
+            <div id="verification-details" style="margin-top: 10px;">
+                <p>Detalles:</p>
+                <pre id="verification-details-text" style="white-space: pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
+        <div class="panel-content no-padding">
+            <div id="now-playing-bar">
+                <span id="now-playing-title">Nada en reproducción</span>
+            </div>
+            <div id="playlist-container">
+                <!-- La lista de canciones irá aquí -->
+            </div>
+            <div id="music-controls">
+                <button id="music-add-btn">Añadir</button>
+                <button id="music-prev-btn">⏮️</button>
+                <button id="music-play-pause-btn">▶️</button>
+                <button id="music-next-btn">⏭️</button>
+                <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <div id="tile-palette-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="palette-asset-name">Paleta de Tiles</span>
+            <div class="panel-header-controls">
+                 <button id="palette-save-btn" title="Guardar Paleta">💾</button>
+                 <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
+            <div id="palette-toolbar">
+                <div class="toolbar-bubble-container">
+                    <div class="toolbar-group">
+                        <label>Paleta:</label>
+                        <span id="palette-file-name">Ninguna</span>
+                        <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
+                    </div>
+                    <div class="tool-bubble">
+                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
+                        <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
+                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
+                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Modo Organizar">✏️</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <label>Tile:</label>
+                        <span id="palette-selected-tile-id">-</span>
+                    </div>
+                </div>
+            </div>
+            <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
+                <div id="palette-organize-sidebar" class="hidden" style="width: 200px; background-color: var(--color-background-deep); padding: 5px; display: flex; flex-direction: column;">
+                    <div class="sidebar-header" style="margin-bottom: 10px; display: flex; gap: 5px;">
+                        <button id="palette-associate-sprite-btn" class="panel-tool-btn" title="Asociar Spritesheet">+</button>
+                        <button id="palette-disassociate-sprite-btn" class="panel-tool-btn" title="Desasociar Spritesheet">-</button>
+                        <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite de la Paleta">🗑️</button>
+                    </div>
+                    <div id="palette-sprite-pack-list" style="overflow-y: auto; flex-grow: 1;">
+                        <!-- Associated sprite previews will be here -->
+                    </div>
+                </div>
+                <div id="palette-view-container" style="flex-grow: 1;">
+                    <canvas id="palette-grid-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+        <div id="palette-panel-overlay">
+            <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <div id="asset-selector-bubble" class="editor-panel floating-panel bubble-style hidden">
+        <div class="panel-header">
+            <span id="asset-selector-title">Seleccionar Asset</span>
+            <button class="close-panel-btn" data-panel="asset-selector-bubble">&times;</button>
+        </div>
+        <div class="panel-content">
+            <div id="asset-selector-toolbar">
+                <div id="asset-selector-view-modes">
+                    <button class="view-mode-btn active" data-mode="folders">Carpetas</button>
+                    <button class="view-mode-btn" data-mode="project">Proyecto</button>
+                </div>
+                <input type="text" id="asset-selector-search" placeholder="Buscar por nombre...">
+            </div>
+            <div id="asset-selector-breadcrumbs"></div>
+            <div id="asset-selector-grid-view" class="asset-grid-view-style">
+                <!-- Asset items will be populated by JS -->
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <script type="module" src="js/editor.js?v=1.9"></script>
+
+    <!-- Markdown Viewer/Editor Panel -->
+    <div id="markdown-viewer-panel" class="editor-panel floating-panel hidden">
+        <div class="panel-header">
+            <span id="markdown-viewer-title">Visor de Markdown</span>
+            <button class="close-panel-btn" data-panel="markdown-viewer-panel">X</button>
+        </div>
+        <div class="panel-toolbar" style="display: flex; justify-content: space-between; padding: 4px; border-bottom: 1px solid var(--color-border);">
+            <div class="tab-buttons">
+                <button id="md-preview-btn" class="tab-btn active">Vista Previa</button>
+                <button id="md-edit-btn" class="tab-btn">Editar</button>
+            </div>
+            <button id="md-save-btn" class="hidden" style="margin-right: 5px;">Guardar Cambios</button>
+        </div>
+        <div class="panel-content" style="padding: 0; height: calc(100% - 60px);">
+            <div id="md-preview-content" class="md-content" style="padding: 15px; height: 100%; overflow-y: auto;">
+                <!-- Rendered Markdown will go here -->
+            </div>
+            <textarea id="md-edit-content" class="md-content hidden" style="width: 100%; height: 100%; border: none; background-color: var(--color-background-dark); color: var(--color-text-primary); font-family: monospace; padding: 10px; resize: none; box-sizing: border-box;"></textarea>
+        </div>
+    </div>
+
+    <div id="animation-from-sprite-modal" class="editor-panel floating-panel hidden bubble-style" style="width: 600px; height: 450px;">
+        <div class="panel-header">
+            <span>Crear Animación desde Sprites</span>
+            <button class="close-panel-btn">&times;</button>
+        </div>
+        <div class="panel-content" style="display: flex; flex-direction: column; gap: 10px;">
+            <fieldset class="inspector-section">
+                <legend>Sprites Disponibles</legend>
+                <div id="anim-sprite-selection-gallery" class="cesprite-gallery" style="height: 150px; overflow-y: auto;">
+                    <!-- Sprites from the .ceSprite file will be populated here -->
+                </div>
+            </fieldset>
+            <fieldset class="inspector-section">
+                <legend>Frames de la Animación</legend>
+                <div id="anim-sprite-timeline" class="mini-timeline" style="height: 100px; overflow-x: auto;">
+                    <!-- Selected frames will appear here -->
+                </div>
+            </fieldset>
+            <div class="modal-footer">
+                <button id="anim-sprite-clear-btn" class="secondary-btn">Limpiar</button>
+                <button id="anim-sprite-create-btn" class="primary-btn">Crear Animación</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sprite-slicer-panel" class="editor-panel floating-panel hidden" style="width: 800px; height: 600px;">
+        <div class="panel-header">
+            <span>Editor de Sprites</span>
+            <div class="panel-header-controls">
+                <button id="slicer-load-image-btn" class="panel-tool-btn">Cargar Imagen</button>
+                <button id="slicer-delete-sprite-btn" class="panel-tool-btn danger-btn">Eliminar Sprite</button>
+                <button id="slicer-create-asset-btn" class="panel-tool-btn primary-btn">Crear Asset de Sprite</button>
+                <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
+            </div>
+        </div>
+        <div class="panel-content no-padding">
+            <div id="sprite-slicer-overlay" class="panel-overlay-message">
+                <p>Carga una imagen para empezar a editar sprites.</p>
+                <p>Puedes hacerlo desde el botón "Cargar Imagen" o abriendo un asset de imagen desde el Inspector.</p>
+            </div>
+            <div class="slicer-main-content hidden">
+                <div class="slicer-preview">
+                    <canvas id="slicer-canvas"></canvas>
+                </div>
+                <div class="slicer-options">
+                    <fieldset class="inspector-section">
+                        <legend>Slice</legend>
+                        <div class="inspector-row">
+                            <label for="slice-type">Type</label>
+                            <select id="slice-type">
+                                <option value="Automatic">Automatic</option>
+                                <option value="Grid by Cell Size">Grid by Cell Size</option>
+                                <option value="Grid by Cell Count">Grid by Cell Count</option>
+                            </select>
+                        </div>
+                        <div id="slice-grid-cell-size-options">
+                             <div class="inspector-row">
+                                <label for="slice-pixel-size-x">Pixel Size</label>
+                                <div class="multi-input">
+                                    <input type="number" id="slice-pixel-size-x" value="64">
+                                    <input type="number" id="slice-pixel-size-y" value="64">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="slice-grid-cell-count-options" class="hidden">
+                            <div class="inspector-row">
+                                <label for="slice-column-count">Column & Row</label>
+                                <div class="multi-input">
+                                    <input type="number" id="slice-column-count" value="1">
+                                    <input type="number" id="slice-row-count" value="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="slice-offset-x">Offset</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-offset-x" value="0">
+                                <input type="number" id="slice-offset-y" value="0">
+                            </div>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="slice-padding-x">Padding</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-padding-x" value="0">
+                                <input type="number" id="slice-padding-y" value="0">
+                            </div>
+                        </div>
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="slice-keep-empty">
+                            <label for="slice-keep-empty">Keep Empty Rects</label>
+                        </div>
+                        <hr>
+                        <div class="inspector-row">
+                            <label for="slice-pivot">Pivot</label>
+                            <select id="slice-pivot">
+                                <option value="Center">Center</option>
+                                <option value="Top Left">Top Left</option>
+                                <option value="Top">Top</option>
+                                <option value="Top Right">Top Right</option>
+                                <option value="Left">Left</option>
+                                <option value="Right">Right</option>
+                                <option value="Bottom Left">Bottom Left</option>
+                                <option value="Bottom">Bottom</option>
+                                <option value="Bottom Right">Bottom Right</option>
+                                <option value="Custom">Custom</option>
+                            </select>
+                        </div>
+                         <div class="inspector-row hidden" id="slice-custom-pivot-container">
+                            <label for="slice-custom-pivot-x">Custom Pivot</label>
+                             <div class="multi-input">
+                                <input type="number" id="slice-custom-pivot-x" value="0.5" step="0.01">
+                                <input type="number" id="slice-custom-pivot-y" value="0.5" step="0.01">
+                            </div>
+                        </div>
+                         <hr>
+                        <button id="slice-btn" class="primary-btn" style="width:100%">Slice</button>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+        <div class="resize-handle" data-direction="n"></div>
+        <div class="resize-handle" data-direction="ne"></div>
+        <div class="resize-handle" data-direction="e"></div>
+        <div class="resize-handle" data-direction="se"></div>
+        <div class="resize-handle" data-direction="s"></div>
+        <div class="resize-handle" data-direction="sw"></div>
+        <div class="resize-handle" data-direction="w"></div>
+        <div class="resize-handle" data-direction="nw"></div>
+    </div>
+
+    <div id="disassociate-sprite-modal" class="editor-panel floating-panel bubble-style hidden" style="width: 400px; height: 300px; z-index: 2700;">
+        <div class="panel-header">
+            <span>Desasociar Paquete de Sprites</span>
+            <button class="close-panel-btn" data-panel="disassociate-sprite-modal">&times;</button>
+        </div>
+        <div class="panel-content">
+            <p>Selecciona el paquete que quieres desasociar:</p>
+            <div id="disassociate-sprite-list" class="dialog-selection-list" style="border-top: none; margin-top: 10px;">
+                <!-- Items will be populated by JS -->
+            </div>
+        </div>
+    </div>
+</body>
+</html>

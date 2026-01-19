@@ -1,0 +1,48 @@
+// ScriptingTests.ces
+// Script to help manually verify lifecycle execution and API helpers.
+
+// This script writes entries to window.TEST_LOG so you can assert in the console.
+public var dummy: Materia = null;
+
+public start() {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('start');
+    this.log('ScriptingTests: start called');
+}
+
+public fixedUpdate(deltaTime) {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('fixedUpdate');
+}
+
+public update(deltaTime) {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('update');
+}
+
+public onEnable() {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('onEnable');
+}
+
+public onDisable() {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('onDisable');
+}
+
+public onDestroy() {
+    if (!window.TEST_LOG) window.TEST_LOG = [];
+    window.TEST_LOG.push('onDestroy');
+}
+
+// Spanish aliases
+public star() { start(); }
+public alHabilitar() { onEnable(); }
+public alDeshabilitar() { onDisable(); }
+public alDestruir() { onDestroy(); }
+
+// Helper: call this from console to dump and clear test log
+public dumpTestLog() {
+    console.log('TEST_LOG:', window.TEST_LOG || []);
+    window.TEST_LOG = [];
+}
