@@ -39,7 +39,6 @@ import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as BuildSystem from './editor/BuildSystem.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1604,11 +1603,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // --- Menubar Scene Actions ---
-        dom.menuBuild.addEventListener('click', (e) => {
-            e.preventDefault();
-            BuildSystem.showBuildModal();
-        });
-
         dom.menuSaveScene.addEventListener('click', (e) => {
             e.preventDefault();
             saveScene();
@@ -2134,7 +2128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = { ...SceneManager };
         window.MateriaFactory = { ...MateriaFactory };
-        window.BuildSystem = BuildSystem;
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
         window.selectMateria = selectMateria;
@@ -2212,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop',
+            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2228,8 +2221,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
-            // Build Modal Elements
-            'build-modal', 'menu-build'
+            // Build Modal
+            'build-modal'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -2628,8 +2621,6 @@ public star() {
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
-            BuildSystem.initialize(dom.buildModal, projectsDirHandle);
-            GameFloatingWindow.initialize();
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
@@ -2703,6 +2694,11 @@ public star() {
 
             updateLoadingProgress(90, "Finalizando...");
             setupEventListeners();
+            BuildSystem.initialize(dom.buildModal, projectsDirHandle);
+            dom.menuBuild.addEventListener('click', (e) => {
+                e.preventDefault();
+                BuildSystem.showBuildModal();
+            });
             initializeFloatingPanels();
             editorLoopId = requestAnimationFrame(editorLoop);
 
@@ -2718,7 +2714,6 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-
 
             originalStartGame = startGame;
             startGame = runChecksAndPlay;

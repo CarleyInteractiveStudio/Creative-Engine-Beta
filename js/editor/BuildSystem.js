@@ -1,498 +1,605 @@
-/**
- * BuildSystem.js
- */
 
 import * as CES_Transpiler from './CES_Transpiler.js';
+
+// Polyfills for browser environment
+window.process = { browser: true, env: { NODE_ENV: 'production' } };
+window.Buffer = require('buffer').Buffer;
 
 let buildModal = null;
 let projectsDirHandle = null;
 let outputDirHandle = null;
-
-// UI Elements
-let progressBar, statusMessage, outputPathDisplay, selectPathBtn, buildWebBtn, buildWappBtn, openFolderBtn, closeModalBtn;
-let projectScenesList, buildScenesList, addSceneBtn, removeSceneBtn, moveSceneUpBtn, moveSceneDownBtn;
-
-let allProjectScenes = [];
-let selectedProjectScene = null;
-let selectedBuildScene = null;
+let selectedBuildFormat = 'html5';
 let draggedItem = null;
 
-// Helper functions
-function _blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = reject;
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.readAsDataURL(blob);
-    });
-}
+// --- UI Element Cache ---
+const ui = {};
 
+// --- Helper Functions ---
 function updateProgress(percentage, message) {
-    if (progressBar) {
-        progressBar.style.width = `${percentage}%`;
-        progressBar.textContent = `${Math.round(percentage)}%`;
+    if (ui.progressBar) {
+        ui.progressBar.style.width = `${percentage}%`;
+        ui.progressBar.textContent = `${Math.round(percentage)}%`;
     }
-    if (statusMessage) statusMessage.textContent = message;
+    if (ui.statusMessage) ui.statusMessage.textContent = message;
     console.log(`[Build] ${percentage}% - ${message}`);
 }
 
 function _handleBuildError(error, userMessage) {
     console.error("Error durante el proceso de build:", error);
     updateProgress(100, `¡Error! ${userMessage}`);
-    if (progressBar) progressBar.style.backgroundColor = 'var(--color-danger)';
-    alert(`Ocurrió un error en el build: ${userMessage}\nRevisa la consola para más detalles técnicos.`);
+    if (ui.progressBar) ui.progressBar.style.backgroundColor = 'var(--color-danger)';
 }
 
-// Scene and Asset Management
-async function findProjectScenes() {
-    allProjectScenes = [];
+const getAssetType = (fileName) => {
+    const extension = fileName.split('.').pop().toLowerCase();
+    const typeMap = {
+        'png': 'images', 'jpg': 'images', 'jpeg': 'images', 'gif': 'images',
+        'mp3': 'audio', 'wav': 'audio', 'ogg': 'audio',
+        'mp4': 'videos', 'webm': 'videos',
+        'ttf': 'fonts', 'otf': 'fonts',
+        'cescene': 'scenes', 'json': 'data',
+    };
+    return typeMap[extension] || 'data';
+};
+
+// --- Core Build Logic (Refactored) ---
+
+async function performBuild() {
+    const scenesInBuildItems = Array.from(ui.scenesToIncludeList.children)
+        .filter(el => el.classList.contains('scene-item')); // Ensure placeholder is not counted
+
+    if (scenesInBuildItems.length === 0) {
+        _handleBuildError(new Error("No scenes in build"), "Añade al menos una escena a la lista 'Escenas a Incluir'.");
+        return;
+    }
+    if (!outputDirHandle) {
+        _handleBuildError(new Error("No output directory selected"), "Por favor, selecciona una carpeta de destino.");
+        return;
+    }
+
+    updateProgress(0, 'Iniciando build...');
+    ui.progressBar.style.backgroundColor = 'var(--color-accent)';
+
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
-        if (!projectName) throw new Error("No se ha seleccionado un proyecto.");
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
-        async function scan(dirHandle, path) {
-            for await (const entry of dirHandle.values()) {
-                const newPath = path ? `${path}/${entry.name}` : entry.name;
-                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                    allProjectScenes.push({ name: entry.name, handle: entry, path: newPath });
-                } else if (entry.kind === 'directory') {
-                    await scan(await dirHandle.getDirectoryHandle(entry.name), newPath);
-                }
-            }
+        updateProgress(5, 'Recolectando assets y dependencias...');
+        const { buildAssetList, scenesInBuild } = await gatherAllRequiredAssets(projectHandle, scenesInBuildItems);
+
+        updateProgress(20, 'Transpilando scripts a JavaScript...');
+        const transpiledScripts = await transpileAllScripts(buildAssetList);
+
+        updateProgress(40, 'Empaquetando el motor y los scripts del juego...');
+        const bundledCode = await bundleCode(scenesInBuild[0].path, transpiledScripts);
+
+        updateProgress(60, 'Ofuscando el código del juego...');
+        const obfuscatedCode = obfuscateCode(bundledCode);
+
+        if (selectedBuildFormat === 'html5') {
+            await buildForWeb({ projectName, outputDirHandle, scenesInBuild, buildAssetList, obfuscatedCode });
+        } else {
+            // Placeholder for .wapp build
+            throw new Error(".wapp format not implemented yet");
         }
-        await scan(assetsHandle, '');
-    } catch (e) {
-        _handleBuildError(e, "No se pudieron encontrar las escenas del proyecto.");
+
+        updateProgress(100, '¡Build completado exitosamente!');
+
+    } catch (error) {
+        _handleBuildError(error, error.message || "Ocurrió un error desconocido.");
     }
-    _renderSceneLists();
 }
 
-async function gatherAssets(projectDirHandle) {
+async function gatherAllRequiredAssets(projectHandle, sceneItems) {
     const allAssets = new Map();
-    const assetsDirHandle = await projectDirHandle.getDirectoryHandle('Assets');
+    const assetsDirHandle = await projectHandle.getDirectoryHandle('Assets');
+
     async function scan(dirHandle, path) {
         for await (const entry of dirHandle.values()) {
             const newPath = path ? `${path}/${entry.name}` : entry.name;
             if (entry.kind === 'file') {
-                allAssets.set(newPath, { name: entry.name, handle: entry, path: newPath });
+                allAssets.set(newPath, { name: entry.name, handle: entry, path: newPath, content: null });
             } else if (entry.kind === 'directory') {
                 await scan(await dirHandle.getDirectoryHandle(entry.name), newPath);
             }
         }
     }
     await scan(assetsDirHandle, '');
-    return allAssets;
+
+    const scenesInBuild = sceneItems.map(item => allAssets.get(item.dataset.path));
+    if (scenesInBuild.some(s => s === undefined)) {
+        throw new Error("Una de las escenas en la lista de build no pudo ser encontrada en el proyecto.");
+    }
+
+    const requiredAssets = new Set(scenesInBuild.map(s => s.path));
+
+    const assetPathRegex = /"filePath":\s*"([^"]+)"/g;
+
+    for (const sceneAsset of scenesInBuild) {
+        const file = await sceneAsset.handle.getFile();
+        const content = await file.text();
+        sceneAsset.content = content;
+
+        let match;
+        while ((match = assetPathRegex.exec(content)) !== null) {
+            requiredAssets.add(match[1]);
+        }
+    }
+
+    return {
+        buildAssetList: Array.from(requiredAssets).map(path => allAssets.get(path)).filter(Boolean),
+        scenesInBuild
+    };
 }
 
-async function findSceneDependencies(scenesInBuild, allAssets) {
-    const dependencies = new Set();
-    const goRegex = /go\s+"(.+?)"/g;
-    for (const sceneInfo of scenesInBuild) {
-        try {
-            const sceneFile = await sceneInfo.handle.getFile();
-            const sceneContent = await sceneFile.text();
-            const sceneJson = JSON.parse(sceneContent);
-            if (!sceneJson.materias) continue;
-            for (const materia of sceneJson.materias) {
-                if (!materia.components) continue;
-                const scriptComponent = materia.components.find(c => c.type === 'Script');
-                if (scriptComponent && scriptComponent.properties.filePath) {
-                    const scriptAsset = allAssets.get(scriptComponent.properties.filePath);
-                    if (!scriptAsset) continue;
-                    dependencies.add(scriptAsset.path);
-                    const scriptFile = await scriptAsset.handle.getFile();
-                    const scriptContent = await scriptFile.text();
-                    let match;
-                    while ((match = goRegex.exec(scriptContent)) !== null) {
-                        const libName = match[1];
-                        const libPath = `libs/${libName}.celib`;
-                        if (allAssets.has(libPath)) {
-                            dependencies.add(libPath);
+
+async function transpileAllScripts(buildAssetList) {
+    const transpiledScripts = new Map();
+    for (const asset of buildAssetList) {
+        if (asset.name.endsWith('.ces')) {
+            const file = await asset.handle.getFile();
+            const content = await file.text();
+            const result = CES_Transpiler.transpile(content, asset.name);
+            if (result.errors && result.errors.length > 0) {
+                throw new Error(`Error de sintaxis en ${asset.name}: ${result.errors.join(', ')}`);
+            }
+            transpiledScripts.set(asset.path, result.jsCode);
+        }
+    }
+    return transpiledScripts;
+}
+
+async function fetchAllEngineFiles() {
+    const engineFiles = [
+        './js/engine.js',
+        './js/engine/AssetUtils.js',
+        './js/engine/CEEngine.js',
+        './js/engine/Components.js',
+        './js/engine/Input.js',
+        './js/engine/Leyes.js',
+        './js/engine/Materia.js',
+        './js/engine/MathUtils.js',
+        './js/engine/Physics.js',
+        './js/engine/Renderer.js',
+        './js/engine/RuntimeAPIManager.js',
+        './js/engine/SceneManager.js',
+        './js/engine/UITransformUtils.js',
+        './js/engine/ui/UISystem.js',
+        './js/engine/ComponentRegistry.js',
+        './js/engine/InputAPI.js',
+        './js/engine/SceneAPI.js',
+    ];
+
+    const fileContents = new Map();
+    const promises = engineFiles.map(path =>
+        fetch(path)
+            .then(res => {
+                if (!res.ok) throw new Error(`No se pudo cargar el archivo del motor: ${path}`);
+                return res.text();
+            })
+            .then(content => fileContents.set(path, content))
+    );
+
+    await Promise.all(promises);
+    return fileContents;
+}
+
+
+async function bundleCode(startScenePath, transpiledScripts) {
+    return new Promise(async (resolve, reject) => {
+        const entryPointContent = `
+            const { Engine } = require('./js/engine.js');
+            window.GameScripts = require('virtual-game-scripts');
+
+            class GameRunner {
+                constructor(canvasId) {
+                    this.canvas = document.getElementById(canvasId);
+                    if (!this.canvas) throw new Error(\`Canvas with id '\${canvasId}' not found\`);
+
+                    this.renderer = new Engine.Renderer(this.canvas, false, true);
+                    this.sceneManager = Engine.SceneManager;
+                    this.inputManager = Engine.InputManager;
+                    this.physicsSystem = null; // To be initialized with scene
+
+                    this.inputManager.initialize(this.canvas, this.canvas);
+                }
+
+                async loadAndRunScene(scenePath) {
+                    try {
+                        const sceneData = await this.sceneManager.loadSceneFromFile(scenePath);
+                        this.sceneManager.setCurrentScene(sceneData);
+
+                        this.physicsSystem = new Engine.PhysicsSystem(this.sceneManager.currentScene);
+
+                        // Initialize scripts, etc.
+                        this.startGameLoop();
+                    } catch (error) {
+                        console.error("Failed to load and run scene:", error);
+                    }
+                }
+
+                startGameLoop() {
+                    let lastTime = 0;
+                    const gameLoop = (timestamp) => {
+                        const deltaTime = (timestamp - lastTime) / 1000;
+                        lastTime = timestamp;
+
+                        if (this.physicsSystem) this.physicsSystem.update(deltaTime);
+
+                        this.sceneManager.currentScene.getAllMaterias().forEach(m => m.update(deltaTime));
+
+                        // Correct render loop
+                        this.renderer.resize();
+                        this.updateScene(this.renderer, true);
+
+                        this.inputManager.update();
+                        requestAnimationFrame(gameLoop);
+                    };
+                    requestAnimationFrame(gameLoop);
+                }
+
+                // This is a simplified version of the main editor's updateScene function
+                updateScene(rendererInstance, isGameView) {
+                    if (!rendererInstance || !this.sceneManager.currentScene) return;
+
+                    const cameras = this.sceneManager.currentScene.findAllCameras()
+                        .sort((a, b) => a.getComponent(Engine.Components.Camera).depth - b.getComponent(Engine.Components.Camera).depth);
+
+                    if (cameras.length === 0) {
+                        rendererInstance.clear();
+                        // Still need to draw Screen Space canvases
+                        const canvases = this.sceneManager.currentScene.getAllMaterias()
+                            .filter(m => m.getComponent(Engine.Components.Canvas) && m.getComponent(Engine.Components.Canvas).renderMode === 'Screen Space');
+                        for (const C of canvases) {
+                            rendererInstance.drawCanvas(C, isGameView);
                         }
+                        return;
+                    }
+
+                    const handleRender = (camera) => {
+                        rendererInstance.beginWorld(camera);
+                        const allObjects = this.sceneManager.currentScene.getAllMaterias();
+
+                        for (const materia of allObjects) {
+                            if (!materia.isActive) continue;
+
+                            // Basic culling and layer mask
+                            const cameraComponent = camera.getComponent(Engine.Components.Camera);
+                            const objectLayerBit = 1 << materia.layer;
+                            if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+
+                            // Draw SpriteRenderers
+                            const spriteRenderer = materia.getComponent(Engine.Components.SpriteRenderer);
+                            if (spriteRenderer && spriteRenderer.sprite) {
+                                rendererInstance.drawSprite(spriteRenderer, materia.getComponent(Engine.Components.Transform));
+                            }
+
+                            // Draw TilemapRenderers
+                            const tilemapRenderer = materia.getComponent(Engine.Components.TilemapRenderer);
+                            if (tilemapRenderer) {
+                                rendererInstance.drawTilemap(tilemapRenderer);
+                            }
+
+                            // Draw World Space Canvases
+                             const canvas = materia.getComponent(Engine.Components.Canvas);
+                            if(canvas && canvas.renderMode === 'World Space') {
+                                rendererInstance.drawCanvas(materia, isGameView);
+                            }
+                        }
+                        rendererInstance.end();
+                    };
+
+                    cameras.forEach(handleRender);
+
+                    // Final pass for Screen Space canvases, drawn on top of everything
+                    const screenSpaceCanvases = this.sceneManager.currentScene.getAllMaterias()
+                        .filter(m => m.getComponent(Engine.Components.Canvas) && m.getComponent(Engine.Components.Canvas).renderMode === 'Screen Space');
+
+                    for (const C of screenSpaceCanvases) {
+                        rendererInstance.drawCanvas(C, isGameView);
                     }
                 }
             }
-        } catch (e) {
-            console.error(`Error procesando dependencias para la escena ${sceneInfo.name}:`, e);
+
+            window.addEventListener('DOMContentLoaded', () => {
+                const runner = new GameRunner('game-canvas');
+                runner.loadAndRunScene('asset/scenes/${startScenePath.split('/').pop()}');
+            });
+        `;
+
+        let gameScriptsModuleContent = 'module.exports = {\\n';
+        for (const [path, code] of transpiledScripts.entries()) {
+            const className = path.split('/').pop().replace('.ces', '');
+            gameScriptsModuleContent += `    '${className}': function() { ${code} },\\n`;
         }
+        gameScriptsModuleContent += '};';
+
+        try {
+            const engineFiles = await fetchAllEngineFiles();
+            const b = browserify({ debug: false });
+
+            // Add engine files as virtual modules
+            for (const [path, content] of engineFiles.entries()) {
+                const stream = new (require('stream').Readable)();
+                stream.push(content);
+                stream.push(null);
+                b.require(stream, { expose: path, basedir: './' });
+            }
+
+            // Add virtual game scripts module
+            const gameStream = new (require('stream').Readable)();
+            gameStream.push(gameScriptsModuleContent);
+            gameStream.push(null);
+            b.require(gameStream, { expose: 'virtual-game-scripts' });
+
+            // Add the main entry point
+            const entryStream = new (require('stream').Readable)();
+            entryStream.push(entryPointContent);
+            entryStream.push(null);
+            b.add(entryStream, { entry: true });
+
+            // Bundle everything
+            b.bundle((err, buf) => {
+                if (err) return reject(new Error(`Error de Bundling: ${err.message}`));
+                resolve(buf.toString());
+            });
+
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function obfuscateCode(code) {
+    try {
+        const obfuscationResult = JavaScriptObfuscator.obfuscate(code, {
+            compact: true,
+            controlFlowFlattening: true,
+        });
+        return obfuscationResult.getObfuscatedCode();
+    } catch (error) {
+        console.warn("La ofuscación falló, se usará el código sin ofuscar.", error);
+        return code;
     }
-    return Array.from(dependencies).map(path => allAssets.get(path));
 }
 
-// UI Rendering and Drag/Drop
-function _renderSceneLists() {
-    projectScenesList.innerHTML = '';
-    const buildSceneNames = Array.from(buildScenesList.children).map(item => item.dataset.name);
-    allProjectScenes.forEach(scene => {
-        if (!buildSceneNames.includes(scene.name)) {
-            const item = document.createElement('div');
-            item.className = 'scene-item';
-            item.textContent = scene.name;
-            item.dataset.name = scene.name;
-            item.dataset.path = scene.path;
-            if (selectedProjectScene === scene.name) item.classList.add('selected');
-            projectScenesList.appendChild(item);
-        }
-    });
-    Array.from(buildScenesList.children).forEach(item => {
-        item.classList.toggle('selected', selectedBuildScene === item.dataset.name);
-    });
-    addDragListenersToList(projectScenesList);
-}
+async function buildForWeb({ projectName, outputDirHandle, scenesInBuild, buildAssetList, obfuscatedCode }) {
+    updateProgress(75, 'Creando estructura de archivos final...');
+    const buildRoot = await outputDirHandle.getDirectoryHandle(projectName, { create: true });
+    const assetRoot = await buildRoot.getDirectoryHandle('asset', { create: true });
 
-function handleDragStart(e) {
-    draggedItem = e.target;
-    setTimeout(() => e.target.style.opacity = '0.5', 0);
-}
+    const gameBundleHandle = await buildRoot.getFileHandle('game.bundle.js', { create: true });
+    let writable = await gameBundleHandle.createWritable();
+    await writable.write(obfuscatedCode);
+    await writable.close();
 
-function handleDragEnd(e) {
-    setTimeout(() => {
-        if (draggedItem) draggedItem.style.opacity = '1';
-        draggedItem = null;
-    }, 0);
-}
+    const indexHtmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${projectName}</title><style>body,html{margin:0;padding:0;overflow:hidden;background-color:#000}</style></head><body><canvas id="game-canvas" style="width:100vw; height:100vh;"></canvas><script src="game.bundle.js"></script></body></html>`;
+    const indexHandle = await buildRoot.getFileHandle('index.html', { create: true });
+    writable = await indexHandle.createWritable();
+    await writable.write(indexHtmlContent);
+    await writable.close();
 
-function handleDragOver(e) { e.preventDefault(); }
+    updateProgress(90, 'Copiando y reescribiendo assets...');
+    for (const asset of buildAssetList) {
+        const assetType = getAssetType(asset.name);
+        const targetDirHandle = await assetRoot.getDirectoryHandle(assetType, { create: true });
 
-function handleDrop(e) {
-    e.preventDefault();
-    const targetList = e.target.closest('.scene-list-box');
-    if (targetList && draggedItem) {
-        const afterElement = getDragAfterElement(targetList, e.clientY);
-        if (afterElement == null) {
-            targetList.appendChild(draggedItem);
+        let content;
+        if (asset.name.endsWith('.ceScene')) {
+            let sceneContent = asset.content;
+            sceneContent = sceneContent.replace(/"filePath":\s*"([^"]+)"/g, (match, oldPath) => {
+                const fileName = oldPath.split('/').pop();
+                const newType = getAssetType(fileName);
+                const newPath = `asset/${newType}/${fileName}`;
+                return `"filePath": "${newPath}"`;
+            });
+            content = sceneContent;
         } else {
-            targetList.insertBefore(draggedItem, afterElement);
+            content = await asset.handle.getFile();
         }
+
+        const fileHandle = await targetDirHandle.getFileHandle(asset.name, { create: true });
+        writable = await fileHandle.createWritable();
+        await writable.write(content);
+        await writable.close();
     }
+}
+
+
+// --- UI and Initialization ---
+
+function cacheUI() {
+    ui.progressBar = buildModal.querySelector('#build-progress-bar');
+    ui.statusMessage = buildModal.querySelector('#build-status-message');
+    ui.outputPathDisplay = buildModal.querySelector('#build-output-path');
+    ui.selectPathBtn = buildModal.querySelector('#build-select-path-btn');
+    ui.buildBtn = buildModal.querySelector('#build-btn');
+    ui.formatHtml5Btn = buildModal.querySelector('#build-format-html5');
+    ui.formatWappBtn = buildModal.querySelector('#build-format-wapp');
+    ui.allScenesList = buildModal.querySelector('#build-all-scenes-list');
+    ui.scenesToIncludeList = buildModal.querySelector('#build-scenes-to-include-list');
+    ui.closeBtn = buildModal.querySelector('.close-button');
+}
+
+function setupEventListeners() {
+    ui.selectPathBtn.addEventListener('click', selectOutputDirectory);
+    ui.buildBtn.addEventListener('click', performBuild);
+    ui.closeBtn.addEventListener('click', () => buildModal.classList.remove('is-open'));
+
+    // Format selection
+    ui.formatHtml5Btn.addEventListener('click', () => setBuildFormat('html5'));
+    ui.formatWappBtn.addEventListener('click', () => setBuildFormat('wapp'));
+
+    // Drag and Drop
+    setupDragAndDrop();
+}
+
+async function selectOutputDirectory() {
+    try {
+        outputDirHandle = await window.showDirectoryPicker();
+        if (outputDirHandle) ui.outputPathDisplay.value = outputDirHandle.name;
+    } catch (error) {
+        if (error.name !== 'AbortError') console.error("Error al seleccionar directorio:", error);
+    }
+}
+
+function setBuildFormat(format) {
+    selectedBuildFormat = format;
+    ui.formatHtml5Btn.classList.toggle('active', format === 'html5');
+    ui.formatWappBtn.classList.toggle('active', format === 'wapp');
+
+    // For now, disable .wapp build button as it's not implemented
+    if (format === 'wapp') {
+        _handleBuildError(new Error("Not Implemented"), "El formato .wapp aún no está disponible.");
+        ui.buildBtn.disabled = true;
+    } else {
+        ui.buildBtn.disabled = false;
+        // Clear previous error message if any
+        updateProgress(0, 'Esperando para iniciar la publicación...');
+        ui.progressBar.style.backgroundColor = 'var(--color-accent)';
+    }
+}
+
+function setupDragAndDrop() {
+    // Make scenes in the main list draggable
+    ui.allScenesList.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('scene-item')) {
+            draggedItem = e.target;
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+    });
+
+    ui.allScenesList.addEventListener('dragend', (e) => {
+        if (draggedItem) {
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        }
+    });
+
+    // Make the "to include" list a drop zone and also sortable
+    ui.scenesToIncludeList.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('scene-item')) {
+            draggedItem = e.target;
+            setTimeout(() => e.target.classList.add('dragging'), 0);
+        }
+    });
+
+    ui.scenesToIncludeList.addEventListener('dragend', (e) => {
+         if (draggedItem) {
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        }
+    });
+
+    ui.scenesToIncludeList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        ui.scenesToIncludeList.classList.add('drag-over');
+        const afterElement = getDragAfterElement(ui.scenesToIncludeList, e.clientY);
+        if (draggedItem) {
+             if (afterElement == null) {
+                ui.scenesToIncludeList.appendChild(draggedItem);
+            } else {
+                ui.scenesToIncludeList.insertBefore(draggedItem, afterElement);
+            }
+        }
+    });
+
+     ui.scenesToIncludeList.addEventListener('dragleave', () => {
+        ui.scenesToIncludeList.classList.remove('drag-over');
+    });
+
+    ui.scenesToIncludeList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        ui.scenesToIncludeList.classList.remove('drag-over');
+        if (draggedItem) {
+            // If the placeholder is there, remove it
+            const placeholder = ui.scenesToIncludeList.querySelector('.empty-list-placeholder');
+            if(placeholder) placeholder.remove();
+
+            // The append/insertBefore is already handled in dragover for live feedback
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        }
+    });
 }
 
 function getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.scene-item:not(.dragging)')];
+
     return draggableElements.reduce((closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
         if (offset < 0 && offset > closest.offset) {
-            return { offset, element: child };
+            return { offset: offset, element: child };
         } else {
             return closest;
         }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function addDragListenersToList(list) {
-    list.querySelectorAll('.scene-item').forEach(item => {
-        item.setAttribute('draggable', true);
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragend', handleDragEnd);
-    });
-}
 
-// Core Build Logic
-async function loadLibraries(assetList) {
-    const loadedLibs = new Map();
-    for (const asset of assetList) {
-        if (asset.name.endsWith('.celib')) {
-            try {
-                const file = await asset.handle.getFile();
-                const content = await file.text();
-                const libraryModule = new Function(content)();
-                const libraryName = asset.name.replace('.celib', '');
-                loadedLibs.set(libraryName, libraryModule);
-            } catch (e) {
-                throw new Error(`Error al cargar la librería ${asset.path}: ${e.message}`);
+async function findAndRenderProjectScenes() {
+    ui.allScenesList.innerHTML = '';
+    const scenes = [];
+
+    async function findScenes(dirHandle, path = '') {
+        for await (const entry of dirHandle.values()) {
+            const newPath = path ? `${path}/${entry.name}` : entry.name;
+            if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                scenes.push({ name: entry.name, path: newPath });
+            } else if (entry.kind === 'directory') {
+                await findScenes(await dirHandle.getDirectoryHandle(entry.name), newPath);
             }
         }
     }
-    return loadedLibs;
-}
 
-async function transpileScripts(assetList, availableLibs) {
-    const transpiledScripts = new Map();
-    for (const asset of assetList) {
-        if (asset.name.endsWith('.ces')) {
-            try {
-                const file = await asset.handle.getFile();
-                const content = await file.text();
-                const result = CES_Transpiler.transpile(content, asset.name, availableLibs);
-                if (result.errors) {
-                    throw new Error(`Errores de sintaxis: ${result.errors.join(', ')}`);
-                }
-                const newPath = asset.path.replace(/\.ces$/, '.js');
-                transpiledScripts.set(newPath, result.jsCode);
-            } catch (e) {
-                throw new Error(`Error al transpilar el script ${asset.path}: ${e.message}`);
-            }
-        }
-    }
-    return transpiledScripts;
-}
-
-async function performBuild(buildFunction) {
-    if (!outputDirHandle) {
-        _handleBuildError(new Error("No output directory selected"), "Por favor, selecciona una carpeta de destino.");
-        return;
-    }
-    const scenesInBuildItems = Array.from(buildScenesList.children);
-    if (scenesInBuildItems.length === 0) {
-        _handleBuildError(new Error("No scenes in build"), "Añade al menos una escena a la lista 'Escenas en el Build'.");
-        return;
-    }
-    updateProgress(0, 'Iniciando build...');
-    progressBar.style.backgroundColor = 'var(--color-accent)';
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        updateProgress(5, 'Recolectando todos los assets del proyecto...');
-        const allAssets = await gatherAssets(projectHandle);
-        const scenesInBuild = scenesInBuildItems.map(item => allAssets.get(item.dataset.path));
-        updateProgress(15, 'Analizando dependencias de las escenas...');
-        const dependencies = await findSceneDependencies(scenesInBuild, allAssets);
-        let buildAssetList = [...new Set([...scenesInBuild, ...dependencies])];
-        updateProgress(25, 'Cargando librerías...');
-        const loadedLibs = await loadLibraries(buildAssetList);
-        updateProgress(30, 'Transpilando scripts a JavaScript...');
-        const transpiledScripts = await transpileScripts(buildAssetList, loadedLibs);
-        const finalAssetList = new Set(buildAssetList);
-        allAssets.forEach(asset => {
-            if (!asset.name.endsWith('.ces') && !asset.name.endsWith('.ceScene')) {
-                finalAssetList.add(asset);
-            }
-        });
-        await buildFunction({
-            projectName,
-            outputDirHandle,
-            scenesInBuild,
-            buildAssetList: Array.from(finalAssetList),
-            transpiledScripts
-        });
-        updateProgress(100, '¡Build completado con éxito!');
-        openFolderBtn.style.display = 'inline-block';
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        await findScenes(assetsHandle, 'Assets');
+
+        if (scenes.length > 0) {
+            scenes.forEach(scene => {
+                const item = document.createElement('div');
+                item.className = 'scene-item';
+                item.textContent = scene.name;
+                item.draggable = true;
+                item.dataset.path = scene.path;
+                ui.allScenesList.appendChild(item);
+            });
+        } else {
+            ui.allScenesList.innerHTML = '<p class="empty-list-placeholder">No se encontraron escenas</p>';
+        }
     } catch (error) {
-        _handleBuildError(error, error.message || "Ocurrió un error desconocido.");
+        console.error("No se pudieron cargar las escenas del proyecto:", error);
+        ui.allScenesList.innerHTML = '<p class="empty-list-placeholder" style="color: var(--color-danger-text);">Error al cargar escenas</p>';
     }
 }
 
-// Build Targets
-async function buildForWeb({ projectName, outputDirHandle, scenesInBuild, buildAssetList, transpiledScripts }) {
-    updateProgress(50, 'Creando estructura de directorios...');
-    const buildRoot = await outputDirHandle.getDirectoryHandle(projectName, { create: true });
 
-    // Copy necessary engine files for a standalone web build
-    const engineDir = await buildRoot.getDirectoryHandle('js', { create: true }).then(js => js.getDirectoryHandle('engine', { create: true }));
-    const engineFiles = [
-        'CEEngine.js', 'SceneManager.js', 'Materia.js', 'Components.js',
-        'Renderer.js', 'Physics.js', 'Input.js', 'AssetUtils.js',
-        'UITransformUtils.js', 'MathUtils.js', 'ui/UISystem.js'
-    ];
-
-    for (const filePath of engineFiles) {
-        const response = await fetch(`js/engine/${filePath}`);
-        const content = await response.text();
-        const parts = filePath.split('/');
-        let currentDir = engineDir;
-        // Create subdirectories if they exist in the path (e.g., 'ui/')
-        if (parts.length > 1) {
-            currentDir = await engineDir.getDirectoryHandle(parts[0], { create: true });
-        }
-        const fileName = parts.pop();
-        const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
-    }
-
-    updateProgress(65, 'Copiando assets y scripts...');
-    const assetsDir = await buildRoot.getDirectoryHandle('Assets', { create: true });
-    for (const asset of buildAssetList) {
-        if (!asset) continue;
-        const pathParts = asset.path.split('/');
-        let currentDir = assetsDir;
-        for (let i = 0; i < pathParts.length - 1; i++) {
-            currentDir = await currentDir.getDirectoryHandle(pathParts[i], { create: true });
-        }
-        const fileHandle = await currentDir.getFileHandle(asset.name, { create: true });
-        const file = await asset.handle.getFile();
-        const writable = await fileHandle.createWritable();
-        await writable.write(file);
-        await writable.close();
-    }
-
-    for (const [path, content] of transpiledScripts.entries()) {
-        const pathParts = path.split('/');
-        let currentDir = assetsDir;
-        for (let i = 0; i < pathParts.length - 1; i++) {
-            currentDir = await currentDir.getDirectoryHandle(pathParts[i], { create: true });
-        }
-        const fileHandle = await currentDir.getFileHandle(path.split('/').pop(), { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
-    }
-
-    updateProgress(85, 'Generando archivos de inicio del juego...');
-    // Fetch the game template
-    const templateResponse = await fetch('js/editor/game-template.js');
-    let gameJsContent = await templateResponse.text();
-
-    // Replace the placeholder with the actual start scene path
-    const startScenePath = `Assets/${scenesInBuild[0].path}`;
-    gameJsContent = gameJsContent.replace('__START_SCENE_PATH__', startScenePath);
-
-    const gameJsHandle = await buildRoot.getFileHandle('game.js', { create: true });
-    let writable = await gameJsHandle.createWritable();
-    await writable.write(gameJsContent);
-    await writable.close();
-
-    const indexHtmlContent = `
-<!DOCTYPE html><html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${projectName}</title>
-<style>body, html { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a1a; } canvas { display: block; }</style>
-</head><body><canvas id="game-canvas"></canvas><script type="module" src="game.js"></script></body></html>`;
-    const indexHtmlHandle = await buildRoot.getFileHandle('index.html', { create: true });
-    writable = await indexHtmlHandle.createWritable();
-    await writable.write(indexHtmlContent);
-    await writable.close();
-}
-
-async function buildForWapp({ projectName, outputDirHandle, scenesInBuild, buildAssetList, transpiledScripts }) {
-    updateProgress(50, 'Compilando y codificando assets...');
-    const wappData = {
-        manifest: {
-            startScene: scenesInBuild[0].path,
-            assets: [],
-            transpiledScripts: {},
-        },
-        files: {}
-    };
-    for (const asset of buildAssetList) {
-        if (!asset) continue;
-        wappData.manifest.assets.push(asset.path);
-        const file = await asset.handle.getFile();
-        const base64Content = await _blobToBase64(file);
-        wappData.files[asset.path] = base64Content;
-    }
-    for (const [path, content] of transpiledScripts.entries()) {
-        wappData.manifest.transpiledScripts[path] = content;
-    }
-    updateProgress(90, 'Escribiendo archivo .wapp...');
-    const wappJsonString = JSON.stringify(wappData);
-    const encodedWappContent = btoa(unescape(encodeURIComponent(wappJsonString)));
-    const fileHandle = await outputDirHandle.getFileHandle(`${projectName}.wapp`, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(encodedWappContent);
-    await writable.close();
-}
-
-// Initialization
 export function initialize(modalElement, projectsHandle) {
     buildModal = modalElement;
     projectsDirHandle = projectsHandle;
-    progressBar = buildModal.querySelector('#build-progress-bar');
-    statusMessage = buildModal.querySelector('#build-status-message');
-    outputPathDisplay = buildModal.querySelector('#build-output-path');
-    selectPathBtn = buildModal.querySelector('#build-select-path-btn');
-    buildWebBtn = buildModal.querySelector('#build-btn-web');
-    buildWappBtn = buildModal.querySelector('#build-btn-wapp');
-    openFolderBtn = buildModal.querySelector('#build-open-folder-btn');
-    closeModalBtn = buildModal.querySelector('#close-build-modal');
-    projectScenesList = buildModal.querySelector('#project-scenes-list');
-    buildScenesList = buildModal.querySelector('#build-scenes-list');
-    addSceneBtn = buildModal.querySelector('#add-scene-btn');
-    removeSceneBtn = buildModal.querySelector('#remove-scene-btn');
-    moveSceneUpBtn = buildModal.querySelector('#move-scene-up-btn');
-    moveSceneDownBtn = buildModal.querySelector('#move-scene-down-btn');
 
-    // Event Listeners
-    const lists = [projectScenesList, buildScenesList];
-    lists.forEach(list => {
-        list.addEventListener('dragover', handleDragOver);
-        list.addEventListener('drop', handleDrop);
-    });
-    projectScenesList.addEventListener('click', e => {
-        if (e.target.classList.contains('scene-item')) {
-            selectedProjectScene = e.target.dataset.name;
-            selectedBuildScene = null;
-            _renderSceneLists();
-            Array.from(buildScenesList.children).forEach(item => item.classList.remove('selected'));
-        }
-    });
-    buildScenesList.addEventListener('click', e => {
-        if (e.target.classList.contains('scene-item')) {
-            selectedBuildScene = e.target.dataset.name;
-            selectedProjectScene = null;
-            _renderSceneLists();
-        }
-    });
-    addSceneBtn.addEventListener('click', () => {
-        if (selectedProjectScene) {
-            const sceneItem = projectScenesList.querySelector(`[data-name="${selectedProjectScene}"]`);
-            if (sceneItem) {
-                buildScenesList.appendChild(sceneItem);
-                addDragListenersToList(buildScenesList);
-                selectedProjectScene = null;
-                _renderSceneLists();
-            }
-        }
-    });
-    removeSceneBtn.addEventListener('click', () => {
-        if (selectedBuildScene) {
-            const sceneItem = buildScenesList.querySelector(`[data-name="${selectedBuildScene}"]`);
-            if (sceneItem) {
-                projectScenesList.appendChild(sceneItem);
-                selectedBuildScene = null;
-                _renderSceneLists();
-            }
-        }
-    });
-    moveSceneUpBtn.addEventListener('click', () => {
-        if (selectedBuildScene) {
-            const sceneItem = buildScenesList.querySelector(`[data-name="${selectedBuildScene}"]`);
-            if (sceneItem && sceneItem.previousElementSibling) {
-                buildScenesList.insertBefore(sceneItem, sceneItem.previousElementSibling);
-            }
-        }
-    });
-    moveSceneDownBtn.addEventListener('click', () => {
-        if (selectedBuildScene) {
-            const sceneItem = buildScenesList.querySelector(`[data-name="${selectedBuildScene}"]`);
-            if (sceneItem && sceneItem.nextElementSibling) {
-                buildScenesList.insertBefore(sceneItem.nextElementSibling, sceneItem);
-            }
-        }
-    });
-    closeModalBtn.addEventListener('click', hideBuildModal);
-    selectPathBtn.addEventListener('click', async () => {
-        try {
-            outputDirHandle = await window.showDirectoryPicker();
-            if (outputDirHandle) outputPathDisplay.value = outputDirHandle.name;
-        } catch (error) {
-            if (error.name !== 'AbortError') console.error("Error al seleccionar directorio:", error);
-        }
-    });
-    buildWebBtn.addEventListener('click', () => performBuild(buildForWeb));
-    buildWappBtn.addEventListener('click', () => performBuild(buildForWapp));
-    console.log("Sistema de Build inicializado.");
+    cacheUI();
+    setupEventListeners();
+
+    console.log("Sistema de Build (UI Mejorada) inicializado.");
 }
 
 export async function showBuildModal() {
     if (buildModal) {
+        // Reset UI
         updateProgress(0, 'Esperando para iniciar la publicación...');
-        if (progressBar) progressBar.style.backgroundColor = 'var(--color-accent)';
-        outputPathDisplay.value = '';
+        if (ui.progressBar) ui.progressBar.style.backgroundColor = 'var(--color-accent)';
+        ui.outputPathDisplay.value = '';
         outputDirHandle = null;
-        openFolderBtn.style.display = 'none';
-        buildScenesList.innerHTML = '';
-        await findProjectScenes();
-        buildModal.classList.add('is-open');
-    } else {
-        console.error("No se puede mostrar el modal de build porque no está inicializado.");
-    }
-}
+        ui.scenesToIncludeList.innerHTML = '<p class="empty-list-placeholder">Arrastra escenas aquí</p>';
+        setBuildFormat('html5');
 
-function hideBuildModal() {
-    if (buildModal) buildModal.classList.remove('is-open');
+        await findAndRenderProjectScenes();
+
+        buildModal.classList.add('is-open');
+    }
 }

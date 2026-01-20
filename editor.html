@@ -697,67 +697,6 @@ public star() {
             </div>
         </main>
     </div>
-
-    <!-- Build Modal -->
-    <div id="build-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="close-build-modal">&times;</span>
-            <h2>Publicar Proyecto</h2>
-
-            <fieldset class="settings-section">
-                <legend>Configuración del Build</legend>
-                <div class="build-section">
-                    <h3>Destino</h3>
-                    <div class="output-path-container">
-                        <input type="text" id="build-output-path" placeholder="Selecciona una carpeta..." readonly>
-                        <button id="build-select-path-btn" class="modern-btn">Elegir...</button>
-                    </div>
-                </div>
-                <div class="build-section">
-                    <h3>Selección de Escenas</h3>
-                <div class="scene-selection-container">
-                    <div class="scene-list-column">
-                        <label>Escenas del Proyecto</label>
-                        <div id="project-scenes-list" class="scene-list-box">
-                            <!-- Las escenas disponibles se añadirán aquí dinámicamente -->
-                        </div>
-                    </div>
-                    <div class="scene-controls-column">
-                        <button id="add-scene-btn" title="Añadir al Build">&gt;</button>
-                        <button id="remove-scene-btn" title="Quitar del Build">&lt;</button>
-                        <hr>
-                        <button id="move-scene-up-btn" title="Mover Arriba">▲</button>
-                        <button id="move-scene-down-btn" title="Mover Abajo">▼</button>
-                    </div>
-                    <div class="scene-list-column">
-                        <label>Escenas en el Build</label>
-                        <div id="build-scenes-list" class="scene-list-box">
-                            <!-- Las escenas a incluir se mostrarán aquí -->
-                        </div>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset class="settings-section">
-                <legend>Publicación</legend>
-                <div class="progress-section">
-                    <p id="build-status-message">Esperando para iniciar la publicación...</p>
-                    <div class="progress-bar-container">
-                        <div id="build-progress-bar">0%</div>
-                    </div>
-                </div>
-
-                <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                     <button id="build-open-folder-btn" class="modern-btn" style="display: none;">Abrir Carpeta</button>
-                     <div class="build-options">
-                        <button id="build-btn-web" class="primary-btn">🌐 Publicar HTML/JS</button>
-                        <button id="build-btn-wapp" class="primary-btn">📦 Publicar .wapp</button>
-                    </div>
-                </div>
-            </fieldset>
-        </div>
-    </div>
-
     <div id="context-menu" class="context-menu" style="display: none;">
         <ul>
             <li class="has-submenu">
@@ -1379,6 +1318,11 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+    <!-- Build Tools -->
+    <script src="https://bundle.run/browserify@17.0.0"></script>
+    <script src="https://bundle.run/javascript-obfuscator@4.0.0"></script>
+
     <script type="module" src="js/editor.js?v=1.9"></script>
 
     <!-- Markdown Viewer/Editor Panel -->
@@ -1541,6 +1485,65 @@ public star() {
             <p>Selecciona el paquete que quieres desasociar:</p>
             <div id="disassociate-sprite-list" class="dialog-selection-list" style="border-top: none; margin-top: 10px;">
                 <!-- Items will be populated by JS -->
+            </div>
+        </div>
+    </div>
+    <!-- Build Modal -->
+    <div id="build-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close-button">&times;</span>
+            <h2>Publicar Proyecto</h2>
+            <div class="build-main-content">
+                <div class="build-section">
+                    <h3><span class="step-number">1</span>Formatos de Publicación</h3>
+                    <div class="build-formats">
+                        <button id="build-format-html5" class="build-format-btn active">
+                            <span class="icon">🌐</span>
+                            <span class="title">Web (HTML5)</span>
+                            <span class="description">Ideal para navegadores web.</span>
+                        </button>
+                        <button id="build-format-wapp" class="build-format-btn">
+                            <span class="icon">📦</span>
+                            <span class="title">Web App (.wapp)</span>
+                            <span class="description">Paquete comprimido para reproductores web.</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="build-section">
+                    <h3><span class="step-number">2</span>Escenas del Juego</h3>
+                    <div class="scene-management-container">
+                        <div class="scene-list-container">
+                            <h4>Escenas en el Proyecto</h4>
+                            <div id="build-all-scenes-list" class="scene-list">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        <div class="scene-list-container">
+                            <h4>Escenas a Incluir (arrastra para ordenar)</h4>
+                            <div id="build-scenes-to-include-list" class="scene-list droppable">
+                                <p class="empty-list-placeholder">Arrastra escenas aquí</p>
+                            </div>
+                            <p class="field-description">La primera escena de la lista será la que se inicie.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="build-section">
+                    <h3><span class="step-number">3</span>Destino y Publicación</h3>
+                    <div class="output-path-container">
+                        <label for="build-output-path">Carpeta de Destino</label>
+                        <div class="file-picker">
+                            <input type="text" id="build-output-path" readonly placeholder="Ninguna seleccionada...">
+                            <button id="build-select-path-btn">Seleccionar</button>
+                        </div>
+                    </div>
+                    <div class="build-progress-container">
+                        <p id="build-status-message">Esperando para iniciar la publicación...</p>
+                        <div class="progress-bar-container-build">
+                            <div id="build-progress-bar" class="progress-bar-build"></div>
+                        </div>
+                    </div>
+                    <button id="build-btn" class="primary-btn build-final-btn">Publicar Juego</button>
+                </div>
             </div>
         </div>
     </div>
