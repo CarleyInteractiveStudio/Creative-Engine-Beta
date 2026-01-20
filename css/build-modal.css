@@ -1,6 +1,6 @@
 /* Build Modal Styles */
 .modal#build-modal .modal-content {
-    width: 500px;
+    width: 650px; /* Ancho aumentado para las listas */
 }
 
 #build-modal .build-section {
@@ -23,7 +23,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 #build-modal #build-output-path {
@@ -36,9 +36,71 @@
     font-size: 12px;
 }
 
-#build-modal #build-select-path-btn {
-    padding: 8px 12px;
+/* Estilos para el sistema de selección de escenas */
+#build-modal .scene-selection-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 200px;
 }
+
+.scene-list-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.scene-list-box {
+    border: 1px solid var(--color-border-dark);
+    border-radius: 3px;
+    background-color: var(--color-background-deep);
+    flex-grow: 1;
+    padding: 5px;
+    overflow-y: auto;
+    min-height: 150px;
+}
+
+.scene-list-box .scene-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-bottom: 3px;
+    background-color: var(--color-background-light);
+    border: 1px solid transparent;
+    transition: background-color 0.2s;
+}
+
+.scene-list-box .scene-item:hover {
+    background-color: var(--color-accent-hover);
+}
+
+.scene-list-box .scene-item.selected {
+    background-color: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent-hover);
+}
+
+.scene-controls-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+}
+
+.scene-controls-column button {
+    padding: 8px;
+    font-size: 18px;
+}
+
+#build-scenes-list .scene-item:first-child::after {
+    content: ' (Inicio)';
+    font-style: italic;
+    font-size: 0.8em;
+    color: #a5d6a7; /* Un verde claro */
+    margin-left: 5px;
+}
+
+/* --- Fin de estilos de escenas --- */
 
 #build-modal .build-options {
     display: flex;
@@ -51,16 +113,7 @@
     padding: 15px 10px;
     font-size: 16px;
     font-weight: bold;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
 }
-
-#build-modal .build-options button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
 
 #build-modal .progress-section {
     margin-top: 20px;
