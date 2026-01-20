@@ -12,6 +12,7 @@ let currentPreferences = {};
 let autoSaveIntervalId = null;
 let _dom = null;
 let _saveCurrentScript = () => {}; // Placeholder for the function passed from editor.js
+let _updateCallback = () => {};
 
 const defaultPrefs = {
     theme: 'dark-modern',
@@ -26,7 +27,11 @@ const defaultPrefs = {
     ai: {
         provider: 'none'
     },
-    showTerminal: false
+    showTerminal: false,
+    debug: {
+        showCanvasBounds: false,
+        showUIBounds: false
+    }
 };
 
 export function getPreferences() {
@@ -110,9 +115,15 @@ function savePreferences() {
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
+    currentPreferences.debug.showCanvasBounds = document.getElementById('prefs-show-canvas-bounds').checked;
+    currentPreferences.debug.showUIBounds = document.getElementById('prefs-show-ui-bounds').checked;
+
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
     applyPreferences();
+    if (_updateCallback) {
+        _updateCallback(currentPreferences);
+    }
     showNotification('Éxito', 'Preferencias guardadas.');
     _dom.preferencesModal.classList.remove('is-open');
 }
@@ -132,6 +143,8 @@ function loadPreferences() {
     currentPreferences = { ...defaultPrefs, ...loadedPrefs };
     currentPreferences.customColors = { ...defaultPrefs.customColors, ...(loadedPrefs.customColors || {}) };
     currentPreferences.ai = { ...defaultPrefs.ai, ...(loadedPrefs.ai || {}) };
+    currentPreferences.debug = { ...defaultPrefs.debug, ...(loadedPrefs.debug || {}) };
+
 
     if (_dom.prefsTheme) _dom.prefsTheme.value = currentPreferences.theme;
     if (_dom.prefsColorBg) _dom.prefsColorBg.value = currentPreferences.customColors.bg;
@@ -146,6 +159,15 @@ function loadPreferences() {
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
     if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
     if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
+    const showCanvasBoundsCheckbox = document.getElementById('prefs-show-canvas-bounds');
+    if (showCanvasBoundsCheckbox) {
+        showCanvasBoundsCheckbox.checked = currentPreferences.debug.showCanvasBounds;
+    }
+
+    const showUIBoundsCheckbox = document.getElementById('prefs-show-ui-bounds');
+    if (showUIBoundsCheckbox) {
+        showUIBoundsCheckbox.checked = currentPreferences.debug.showUIBounds;
+    }
 
 
     if (_dom.prefsTheme) {
@@ -171,7 +193,19 @@ function setupEventListeners() {
     document.getElementById('menu-preferences').addEventListener('click', () => {
         loadPreferences(); // Recargar las preferencias cada vez que se abre
         _dom.preferencesModal.classList.add('is-open');
+         // Asegurarse de que la primera pestaña esté activa al abrir
+        _dom.preferencesModal.querySelector('.tab-btn').click();
     });
+     _dom.preferencesModal.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const tabId = button.dataset.tab;
+            _dom.preferencesModal.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            _dom.preferencesModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
 
     if (_dom.prefsTheme) {
         _dom.prefsTheme.addEventListener('change', (e) => {
@@ -238,10 +272,11 @@ function setupEventListeners() {
     }
 }
 
-export function initialize(dom, saveCurrentScriptFunc) {
+export function initialize(dom, saveCurrentScriptFunc, updateCallback) {
     console.log("Initializing Preferences Window...");
     _dom = dom;
     _saveCurrentScript = saveCurrentScriptFunc;
+    _updateCallback = updateCallback;
 
     loadPreferences();
     setupEventListeners();

@@ -38,7 +38,6 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -673,11 +672,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Encontrar todos los archivos .ces
         const cesFiles = [];
         async function findCesFiles(dirHandle, currentPath = '') {
-            console.log(`Buscando en: ${currentPath || 'Assets'}`);
             for await (const entry of dirHandle.values()) {
-                console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
                 if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
-                    console.log(`    -> ¡Script .ces encontrado! Añadiendo a la lista.`);
                     cesFiles.push(entry);
                 } else if (entry.kind === 'directory') {
                     await findCesFiles(entry, `${currentPath}/${entry.name}`);
@@ -2125,6 +2121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        console.log("initializeEditor: Start");
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = { ...SceneManager };
         window.MateriaFactory = { ...MateriaFactory };
@@ -2205,7 +2202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
+            'btn-play', 'btn-pause', 'btn-stop',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2253,9 +2250,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {
+            console.log("initializeEditor: Try block started.");
             RuntimeAPIManager.clearAPIs(); // Limpiar APIs de sesiones anteriores
             updateLoadingProgress(5, "Conectando a la base de datos local...");
             await openDB();
+            console.log("initializeEditor: DB opened.");
 
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
@@ -2463,6 +2462,7 @@ public star() {
             renderer = new Renderer(dom.sceneCanvas, true);
             gameRenderer = new Renderer(dom.gameCanvas, false, true); // isGameView = true
             window.renderer = renderer; // Expose after initialization
+            console.log("initializeEditor: Renderers initialized.");
 
             updateLoadingProgress(30, "Cargando escena principal...");
             // Only initialize scene from file system if handle is available
@@ -2483,6 +2483,7 @@ public star() {
                 SceneManager.setSceneDirty(false);
             }
 
+            console.log("initializeEditor: Scene loaded.");
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
@@ -2621,7 +2622,13 @@ public star() {
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
-            initializePreferences(dom, CodeEditor.saveCurrentScript);
+            initializePreferences(dom, CodeEditor.saveCurrentScript, (newPrefs) => {
+                // The preferences object in PreferencesWindow is already updated by the time this callback is called.
+                // We just need to trigger a redraw of the scene view to reflect the changes immediately.
+                if (renderer) {
+                    updateScene(renderer, false);
+                }
+            });
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
@@ -2707,13 +2714,6 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
 
 
             originalStartGame = startGame;
@@ -2750,20 +2750,19 @@ public star() {
             }
 
             // Fade out the loading screen and show the editor
-            setTimeout(() => {
-                dom.loadingOverlay.classList.add('hidden');
-                dom.editorContainer.style.display = 'flex';
+            dom.loadingOverlay.classList.add('hidden');
+            dom.editorContainer.style.display = 'flex';
 
-                // Force a resize of the renderers now that the canvas is visible
-                if (renderer) renderer.resize();
-                if (gameRenderer) gameRenderer.resize();
+            // Force a resize of the renderers now that the canvas is visible
+            if (renderer) renderer.resize();
+            if (gameRenderer) gameRenderer.resize();
 
-                // --- Habilitar el botón de Play y marcar el editor como listo ---
-                dom.btnPlay.disabled = false;
-                isEditorReady = true;
-                window.editorInitialized = true; // Signal for Playwright tests
-
-            }, 500);
+            // --- Habilitar el botón de Play y marcar el editor como listo ---
+            console.log("initializeEditor: Finalizing setup...");
+            dom.btnPlay.disabled = false;
+            isEditorReady = true;
+            window.editorInitialized = true; // Signal for Playwright tests
+            console.log("initializeEditor: editorInitialized set to true.");
 
         } catch (error) {
             console.error("Fallo la inicialización del editor:", error);

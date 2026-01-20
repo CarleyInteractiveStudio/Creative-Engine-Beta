@@ -60,7 +60,8 @@ function checkUIGizmoHit(canvasPos) {
 }
 
 function drawUIGizmos(renderer, materia) {
-    if (!materia || !renderer) return;
+    const prefs = getPreferences();
+    if (!prefs.debug.showUIBounds || !materia || !renderer) return;
 
     // A Canvas itself should not draw a UI gizmo, it uses the Canvas gizmo.
     if (materia.getComponent(Components.Canvas)) return;
@@ -1673,6 +1674,9 @@ function paintTile(event) {
 }
 
 function drawCanvasGizmos() {
+    const prefs = getPreferences();
+    if (!prefs.debug.showCanvasBounds) return;
+
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
