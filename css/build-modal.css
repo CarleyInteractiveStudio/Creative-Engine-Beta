@@ -1,29 +1,40 @@
 /* Build Modal Styles */
 .modal#build-modal .modal-content {
-    width: 650px; /* Ancho aumentado para las listas */
+    width: 650px;
+}
+
+#build-modal .settings-section {
+    margin-bottom: 15px;
+    border: 1px solid var(--color-border-dark);
+    padding: 10px 15px 15px 15px;
+    border-radius: 5px;
+}
+
+#build-modal .settings-section legend {
+    font-weight: bold;
+    color: var(--color-text-primary);
+    padding: 0 10px;
 }
 
 #build-modal .build-section {
-    padding: 15px;
-    border: 1px solid var(--color-border);
-    border-radius: 5px;
-    margin-bottom: 20px;
-    background-color: var(--color-background-light);
+    padding: 0;
+    border: none;
+    margin-bottom: 0;
 }
 
 #build-modal .build-section h3 {
-    margin-top: 0;
-    color: var(--color-text-primary);
-    border-bottom: 1px solid var(--color-border-dark);
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+    margin-top: 10px;
+    font-size: 1em;
+    color: var(--color-text-secondary);
+    border-bottom: none;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
 }
 
 #build-modal .output-path-container {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
 }
 
 #build-modal #build-output-path {
@@ -36,7 +47,7 @@
     font-size: 12px;
 }
 
-/* Estilos para el sistema de selección de escenas */
+/* Scene Selection */
 #build-modal .scene-selection-container {
     display: flex;
     justify-content: space-between;
@@ -68,6 +79,7 @@
     background-color: var(--color-background-light);
     border: 1px solid transparent;
     transition: background-color 0.2s;
+    user-select: none; /* Evita seleccionar el texto al arrastrar */
 }
 
 .scene-list-box .scene-item:hover {
@@ -87,43 +99,24 @@
     gap: 10px;
 }
 
-.scene-controls-column button {
-    padding: 8px;
-    font-size: 18px;
-}
-
 #build-scenes-list .scene-item:first-child::after {
     content: ' (Inicio)';
     font-style: italic;
     font-size: 0.8em;
-    color: #a5d6a7; /* Un verde claro */
+    color: #a5d6a7;
     margin-left: 5px;
 }
 
-/* --- Fin de estilos de escenas --- */
-
-#build-modal .build-options {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-}
-
-#build-modal .build-options button {
-    flex-grow: 1;
-    padding: 15px 10px;
-    font-size: 16px;
-    font-weight: bold;
-}
-
+/* Progress Bar & Footer */
 #build-modal .progress-section {
-    margin-top: 20px;
-    text-align: center;
+    padding: 10px 0;
 }
 
 #build-modal #build-status-message {
     margin-bottom: 10px;
     color: var(--color-text-secondary);
     min-height: 20px;
+    text-align: center;
 }
 
 #build-modal .progress-bar-container {
@@ -137,13 +130,17 @@
     width: 0%;
     height: 20px;
     background-color: var(--color-accent);
-    transition: width 0.3s ease-in-out;
+    transition: width 0.3s ease-in-out, background-color 0.5s;
     text-align: center;
     line-height: 20px;
     color: white;
     font-weight: bold;
+    background-size: 30px 30px;
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
+    animation: progress-bar-stripes 1s linear infinite;
 }
 
-#build-modal .modal-footer {
-    margin-top: 20px;
+@keyframes progress-bar-stripes {
+    from { background-position: 30px 0; }
+    to { background-position: 0 0; }
 }

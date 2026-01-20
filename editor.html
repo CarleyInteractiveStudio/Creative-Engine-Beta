@@ -704,16 +704,17 @@ public star() {
             <span class="close-button" id="close-build-modal">&times;</span>
             <h2>Publicar Proyecto</h2>
 
-            <div class="build-section">
-                <h3>Destino</h3>
-                <div class="output-path-container">
-                    <input type="text" id="build-output-path" placeholder="Selecciona una carpeta..." readonly>
-                    <button id="build-select-path-btn" class="modern-btn">Elegir...</button>
+            <fieldset class="settings-section">
+                <legend>Configuración del Build</legend>
+                <div class="build-section">
+                    <h3>Destino</h3>
+                    <div class="output-path-container">
+                        <input type="text" id="build-output-path" placeholder="Selecciona una carpeta..." readonly>
+                        <button id="build-select-path-btn" class="modern-btn">Elegir...</button>
+                    </div>
                 </div>
-            </div>
-
-            <div class="build-section">
-                <h3>Selección de Escenas</h3>
+                <div class="build-section">
+                    <h3>Selección de Escenas</h3>
                 <div class="scene-selection-container">
                     <div class="scene-list-column">
                         <label>Escenas del Proyecto</label>
@@ -735,22 +736,25 @@ public star() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
-            <div class="progress-section">
-                <p id="build-status-message">Esperando para iniciar la publicación...</p>
-                <div class="progress-bar-container">
-                    <div id="build-progress-bar">0%</div>
+            <fieldset class="settings-section">
+                <legend>Publicación</legend>
+                <div class="progress-section">
+                    <p id="build-status-message">Esperando para iniciar la publicación...</p>
+                    <div class="progress-bar-container">
+                        <div id="build-progress-bar">0%</div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
-                 <button id="build-open-folder-btn" class="modern-btn" style="display: none;">Abrir Carpeta</button>
-                 <div class="build-options">
-                    <button id="build-btn-web" class="primary-btn">🌐 Publicar HTML/JS</button>
-                    <button id="build-btn-wapp" class="primary-btn">📦 Publicar .wapp</button>
+                <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                     <button id="build-open-folder-btn" class="modern-btn" style="display: none;">Abrir Carpeta</button>
+                     <div class="build-options">
+                        <button id="build-btn-web" class="primary-btn">🌐 Publicar HTML/JS</button>
+                        <button id="build-btn-wapp" class="primary-btn">📦 Publicar .wapp</button>
+                    </div>
                 </div>
-            </div>
+            </fieldset>
         </div>
     </div>
 

@@ -39,6 +39,7 @@ import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as BuildSystem from './editor/BuildSystem.js';
+import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2133,6 +2134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = { ...SceneManager };
         window.MateriaFactory = { ...MateriaFactory };
+        window.BuildSystem = BuildSystem;
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
         window.selectMateria = selectMateria;
@@ -2627,6 +2629,7 @@ public star() {
             SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
             BuildSystem.initialize(dom.buildModal, projectsDirHandle);
+            GameFloatingWindow.initialize();
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
