@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="css/sprite-slicer.css">
     <link rel="stylesheet" href="css/debug.css">
+    <link rel="stylesheet" href="css/build-modal.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
 </head>
 <body>
@@ -696,6 +697,42 @@ public star() {
             </div>
         </main>
     </div>
+
+    <!-- Build Modal -->
+    <div id="build-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-build-modal">&times;</span>
+            <h2>Publicar Proyecto</h2>
+
+            <div class="build-section">
+                <h3>Destino</h3>
+                <div class="output-path-container">
+                    <input type="text" id="build-output-path" placeholder="Selecciona una carpeta..." readonly>
+                    <button id="build-select-path-btn" class="modern-btn">Elegir...</button>
+                </div>
+            </div>
+
+            <div class="build-section">
+                <h3>Plataforma</h3>
+                <div class="build-options">
+                    <button id="build-btn-web" class="primary-btn">🌐 HTML/JS</button>
+                    <button id="build-btn-wapp" class="primary-btn">📦 .wapp</button>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <p id="build-status-message">Esperando para iniciar la publicación...</p>
+                <div class="progress-bar-container">
+                    <div id="build-progress-bar">0%</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                 <button id="build-open-folder-btn" class="modern-btn" style="display: none;">Abrir Carpeta</button>
+            </div>
+        </div>
+    </div>
+
     <div id="context-menu" class="context-menu" style="display: none;">
         <ul>
             <li class="has-submenu">

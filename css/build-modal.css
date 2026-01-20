@@ -1,0 +1,96 @@
+/* Build Modal Styles */
+.modal#build-modal .modal-content {
+    width: 500px;
+}
+
+#build-modal .build-section {
+    padding: 15px;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    margin-bottom: 20px;
+    background-color: var(--color-background-light);
+}
+
+#build-modal .build-section h3 {
+    margin-top: 0;
+    color: var(--color-text-primary);
+    border-bottom: 1px solid var(--color-border-dark);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+#build-modal .output-path-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#build-modal #build-output-path {
+    flex-grow: 1;
+    padding: 8px;
+    background-color: var(--color-background-deep);
+    border: 1px solid var(--color-border-dark);
+    border-radius: 3px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+
+#build-modal #build-select-path-btn {
+    padding: 8px 12px;
+}
+
+#build-modal .build-options {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+#build-modal .build-options button {
+    flex-grow: 1;
+    padding: 15px 10px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+#build-modal .build-options button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+
+#build-modal .progress-section {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#build-modal #build-status-message {
+    margin-bottom: 10px;
+    color: var(--color-text-secondary);
+    min-height: 20px;
+}
+
+#build-modal .progress-bar-container {
+    background-color: var(--color-background-deep);
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--color-border-dark);
+}
+
+#build-modal #build-progress-bar {
+    width: 0%;
+    height: 20px;
+    background-color: var(--color-accent);
+    transition: width 0.3s ease-in-out;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+    font-weight: bold;
+}
+
+#build-modal .modal-footer {
+    margin-top: 20px;
+}
