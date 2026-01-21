@@ -504,6 +504,87 @@ function handleCanvasMouseDown(event) {
     }
 }
 
+async function loadAndDisplayAssociatedSprites() {
+    dom.spritePackList.innerHTML = '';
+    if (!currentPalette || !currentPalette.associatedSpritePacks) return;
+
+    const imageCache = new Map();
+    const validSpritePacks = [];
+    let wasCleaned = false;
+
+    for (const packPath of currentPalette.associatedSpritePacks) {
+        let isValid = true;
+        try {
+            if (!packPath.toLowerCase().endsWith('.cesprite')) {
+                console.warn(`Invalid association removed: '${packPath}' is not a .ceSprite file.`);
+                isValid = false;
+                wasCleaned = true;
+                continue;
+            }
+
+            const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
+            const packFile = await packFileHandle.getFile();
+            const packData = JSON.parse(await packFile.text());
+
+            let sourceImage = imageCache.get(packData.sourceImage);
+            if (!sourceImage) {
+                const sourceImagePath = `Assets/${packData.sourceImage}`;
+                const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
+                if (!imageUrl) {
+                    console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);
+                    isValid = false;
+                    wasCleaned = true;
+                    continue;
+                }
+                sourceImage = new Image();
+                sourceImage.src = imageUrl;
+                await sourceImage.decode();
+                imageCache.set(packData.sourceImage, sourceImage);
+            }
+
+            validSpritePacks.push(packPath);
+
+            for (const spriteName in packData.sprites) {
+                const spriteData = packData.sprites[spriteName];
+                const canvas = document.createElement('canvas');
+                const tempSize = 64;
+                canvas.width = tempSize;
+                canvas.height = tempSize;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(
+                    sourceImage,
+                    spriteData.rect.x, spriteData.rect.y,
+                    spriteData.rect.width, spriteData.rect.height,
+                    0, 0, tempSize, tempSize
+                );
+
+                const img = new Image();
+                img.src = canvas.toDataURL();
+                img.title = `${spriteName}\n(${packPath})`;
+                img.dataset.spriteName = spriteName;
+                img.dataset.spritePackPath = packPath;
+                img.dataset.imageData = img.src;
+                img.classList.add('sidebar-sprite-preview');
+                img.draggable = true;
+                dom.spritePackList.appendChild(img);
+            }
+
+        } catch (error) {
+            console.error(`Error loading associated sprite pack '${packPath}'. Removing invalid association.`, error);
+            wasCleaned = true;
+            isValid = false;
+        }
+    }
+
+    if (wasCleaned) {
+        currentPalette.associatedSpritePacks = validSpritePacks;
+        showNotification(
+            'Paleta Limpiada',
+            'Se eliminaron las asociaciones de sprites no válidas o corruptas. Guarda la paleta para aplicar los cambios.'
+        );
+    }
+}
+
 function handleCanvasMouseMove(event) {
     if (isPanning) {
         const dx = event.clientX - lastPanPosition.x;

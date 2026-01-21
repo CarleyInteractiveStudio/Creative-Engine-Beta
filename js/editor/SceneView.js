@@ -906,7 +906,7 @@ export function initialize(dependencies) {
         }
 
         // --- Tile Painting Logic (Left-click) ---
-        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-bucket' || activeTool === 'tile-eraser')) {
+        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-bucket' || activeTool === 'tile-eraser' || activeTool === 'tile-rectangle-fill')) {
             e.stopPropagation();
 
             if (activeTool === 'tile-bucket') {
@@ -914,7 +914,7 @@ export function initialize(dependencies) {
                 return;
             }
 
-            paintTile(e); // Paint on the first click for brush/eraser
+            paintTile(e); // Paint on the first click for brush/eraser/stamp
 
             const onPaintMove = (moveEvent) => {
                 paintTile(moveEvent);
@@ -1659,10 +1659,11 @@ function paintTile(event) {
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
-            if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
+             if (activeTool !== 'tile-bucket' && col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const tilesToPaint = getSelectedTile();
-            if (!tilesToPaint || tilesToPaint.length === 0) {
+
+            if ((activeTool === 'tile-brush' || activeTool === 'tile-bucket' || activeTool === 'tile-rectangle-fill') && (!tilesToPaint || tilesToPaint.length === 0)) {
                 VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
                 return;
             }
@@ -1673,7 +1674,6 @@ function paintTile(event) {
                     const targetRow = row + tileStamp.relY;
                     const key = `${targetCol},${targetRow}`;
 
-                    // Ensure the stamp doesn't paint outside the layer bounds
                     if (targetCol >= 0 && targetCol < width && targetRow >= 0 && targetRow < height) {
                         const tileObject = { spriteName: tileStamp.spriteName, imageData: tileStamp.imageData };
                         layer.tileData.set(key, tileObject);
@@ -1681,13 +1681,11 @@ function paintTile(event) {
                 });
                 VerificationSystem.updateStatus(tilesToPaint[0], true, `Pincel de ${tilesToPaint.length} tiles pintado.`);
             } else if (activeTool === 'tile-bucket') {
-                const fillTile = tilesToPaint[0]; // Use the first tile from the selection for filling
-                if (!fillTile) {
-                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado para rellenar.");
-                    return;
-                }
+                const fillTile = tilesToPaint[0];
                 floodFill(tilemap, layer, col, row, fillTile);
+                VerificationSystem.updateStatus(fillTile, true, "Área rellenada.");
             } else if (activeTool === 'tile-eraser') {
+                const key = `${col},${row}`;
                 layer.tileData.delete(key);
                 VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
             }
@@ -1695,7 +1693,6 @@ function paintTile(event) {
             lastPaintedCoords = { col, row };
             tilemapRenderer.setDirty();
 
-            // After painting, find the collider and regenerate its mesh
             const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
             if (collider) {
                 collider.generateMesh();
@@ -1722,10 +1719,8 @@ function floodFill(tilemap, layer, startCol, startRow, newTile) {
         const [col, row] = queue.shift();
         const key = `${col},${row}`;
 
-        // Set the new tile data
         layer.tileData.set(key, newTile);
 
-        // Check neighbors
         const neighbors = [
             [col + 1, row],
             [col - 1, row],
@@ -1745,7 +1740,6 @@ function floodFill(tilemap, layer, startCol, startRow, newTile) {
         }
     }
 }
-
 
 function drawCanvasGizmos() {
     const selectedMateria = getSelectedMateria();

@@ -38,6 +38,7 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
+import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2190,7 +2191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
             'palette-file-name', 'palette-selected-tile-id',
             'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
-            'palette-organize-sidebar', 'palette-new-tile-btn', 'palette-delete-tile-btn', 'palette-sprite-pack-list',
+            'palette-organize-sidebar', 'palette-new-tile-btn', 'palette-delete-tile-btn', 'palette-sprite-pack-list', 'tool-tile-bucket',
             // Sprite Slicer Panel Elements
             'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
             'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
@@ -2706,6 +2707,13 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
+            dom.btnFloatingGame.addEventListener('click', async () => {
+                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
+                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
+                } else {
+                    GameFloatingWindow.closeFloatingGameWindow();
+                }
+            });
 
 
             originalStartGame = startGame;
