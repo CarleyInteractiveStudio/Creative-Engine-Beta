@@ -133,39 +133,6 @@ async function gatherAllRequiredAssets(projectHandle, sceneItems) {
     };
 }
 
-function waitForESBuild() {
-    return new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        const interval = setInterval(() => {
-            if (window.esbuild) {
-                clearInterval(interval);
-                resolve();
-            } else if (Date.now() - startTime > 10000) {
-                clearInterval(interval);
-                reject(new Error("ESBuild no se cargó en 10 segundos."));
-            }
-        }, 50);
-    });
-}
-
-async function initializeESBuild() {
-    if (esbuildInitialized) return;
-    try {
-        await waitForESBuild();
-        await window.esbuild.initialize({
-            wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.39/esbuild.wasm',
-            worker: false
-        });
-        esbuildInitialized = true;
-        console.log("ESBuild-WASM inicializado correctamente.");
-    } catch (error) {
-        console.error("Fallo al inicializar ESBuild-WASM:", error);
-        _handleBuildError(error, "No se pudo cargar el componente de build (ESBuild).");
-        throw error; // Re-throw to stop the build process
-    }
-}
-
-
 async function transpileAllScripts(buildAssetList) {
     const transpiledScripts = new Map();
     for (const asset of buildAssetList) {
@@ -182,148 +149,116 @@ async function transpileAllScripts(buildAssetList) {
     return transpiledScripts;
 }
 
+async function fetchAllEngineFiles() {
+    const engineFiles = [
+        './js/engine/AssetUtils.js',
+        './js/engine/Components.js',
+        './js/engine/Input.js',
+        './js/engine/Materia.js',
+        './js/engine/MathUtils.js',
+        './js/engine/Physics.js',
+        './js/engine/Renderer.js',
+        './js/engine/SceneManager.js',
+        './js/engine/UITransformUtils.js',
+        './js/engine/ui/UISystem.js',
+    ];
+
+    const fileContents = new Map();
+    const promises = engineFiles.map(path =>
+        fetch(path)
+            .then(res => {
+                if (!res.ok) throw new Error(`Could not load engine file: ${path}`);
+                return res.text();
+            })
+            .then(content => fileContents.set(path, content))
+    );
+
+    await Promise.all(promises);
+    return fileContents;
+}
+
 async function bundleCode(startScenePath, transpiledScripts) {
-    const gameRunnerSource = `
-        import * as Engine from './js/engine/CEEngine.js';
-        import * as GameScripts from 'virtual-game-scripts';
+    try {
+        const engineFiles = await fetchAllEngineFiles();
+        let finalCode = '(function() {\\n';
 
-        // Attach scripts to window for components to find them by name
-        window.GameScripts = GameScripts;
+        const stripModules = (code) => code.replace(/^import .* from .*;$/gm, '').replace(/^export /gm, '');
 
-        class GameRunner {
-            constructor(canvasId) {
-                this.canvas = document.getElementById(canvasId);
-                if (!this.canvas) throw new Error(\`Canvas with id '\${canvasId}' not found\`);
-
-                this.renderer = new Engine.Renderer(this.canvas, false, true);
-                this.sceneManager = Engine.SceneManager;
-                this.inputManager = Engine.InputManager;
-                this.physicsSystem = null;
-
-                this.inputManager.initialize(this.canvas, this.canvas);
-                this.sceneManager.initializeForBuild();
-            }
-
-            async loadAndRunScene(scenePath) {
-                try {
-                    const scene = await this.sceneManager.loadSceneFromFile(scenePath);
-                    this.sceneManager.setCurrentScene(scene);
-                    this.physicsSystem = new Engine.PhysicsSystem(this.sceneManager.currentScene);
-                    this.startGameLoop();
-                } catch (error) {
-                    console.error("Failed to load and run scene:", error);
-                }
-            }
-
-            startGameLoop() {
-                let lastTime = 0;
-                const gameLoop = (timestamp) => {
-                    const deltaTime = (timestamp - lastTime) / 1000;
-                    lastTime = timestamp;
-
-                    if (this.physicsSystem) this.physicsSystem.update(deltaTime);
-                    this.sceneManager.currentScene.getAllMaterias().forEach(m => m.update(deltaTime));
-
-                    this.renderer.resize();
-                    this.updateScene(this.renderer, true);
-
-                    this.inputManager.update();
-                    requestAnimationFrame(gameLoop);
-                };
-                requestAnimationFrame(gameLoop);
-            }
-
-            updateScene(rendererInstance, isGameView) {
-                if (!rendererInstance || !this.sceneManager.currentScene) return;
-
-                const cameras = this.sceneManager.currentScene.findAllCameras().sort((a, b) => a.getComponent(Engine.Components.Camera).depth - b.getComponent(Engine.Components.Camera).depth);
-
-                if (cameras.length === 0) {
-                    rendererInstance.clear();
-                    return;
-                }
-
-                cameras.forEach(camera => {
-                    rendererInstance.beginWorld(camera);
-                    const allObjects = this.sceneManager.currentScene.getAllMaterias();
-                    for (const materia of allObjects) {
-                        if (!materia.isActive) continue;
-
-                        const spriteRenderer = materia.getComponent(Engine.Components.SpriteRenderer);
-                        if (spriteRenderer && spriteRenderer.sprite) {
-                            rendererInstance.drawSprite(spriteRenderer, materia.getComponent(Engine.Components.Transform));
-                        }
-                    }
-                    rendererInstance.end();
-                });
-            }
+        for (const content of engineFiles.values()) {
+            finalCode += stripModules(content) + '\\n';
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const runner = new GameRunner('game-canvas');
-            runner.loadAndRunScene('asset/scenes/${startScenePath.split('/').pop()}');
-        });
-    `;
+        finalCode += 'window.GameScripts = {};\\n';
+        for (const [path, code] of transpiledScripts.entries()) {
+            const className = path.split('/').pop().replace('.ces', '');
+            finalCode += `window.GameScripts['${className}'] = function() { ${code} };\\n`;
+        }
 
-    const inMemoryLoader = {
-        name: 'inMemoryLoader',
-        setup(build) {
-            // Intercept paths for virtual modules
-            build.onResolve({ filter: /^virtual-game-scripts$/ }, args => ({
-                path: args.path,
-                namespace: 'virtual'
-            }));
-
-            // Load virtual game scripts module
-            build.onLoad({ filter: /.*/, namespace: 'virtual' }, args => {
-                if (args.path === 'virtual-game-scripts') {
-                    let content = 'export default {\\n';
-                    for (const [path, code] of transpiledScripts.entries()) {
-                        const className = path.split('/').pop().replace('.ces', '');
-                        content += `    '${className}': function() { ${code} },\\n`;
-                    }
-                    content += '};';
-                    return { contents: content, loader: 'js' };
+        const runnerCode = `
+            window.addEventListener('DOMContentLoaded', () => {
+                const canvas = document.getElementById('game-canvas');
+                if (!canvas) {
+                    console.error("Build failed: Canvas 'game-canvas' not found.");
+                    return;
                 }
-                return null;
+                const renderer = new Renderer(canvas, false, true);
+                SceneManager.initializeForBuild();
+                InputManager.initialize(canvas, canvas);
+
+                SceneManager.loadSceneFromFile('asset/scenes/${startScenePath.split('/').pop()}')
+                    .then(scene => {
+                        SceneManager.setCurrentScene(scene);
+                        const physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+
+                        let lastTime = 0;
+                        function gameLoop(timestamp) {
+                            const deltaTime = (timestamp - lastTime) / 1000;
+                            lastTime = timestamp;
+
+                            physicsSystem.update(deltaTime);
+                            SceneManager.currentScene.getAllMaterias().forEach(m => m.update(deltaTime));
+
+                            renderer.resize();
+                            const cameras = SceneManager.currentScene.findAllCameras();
+                            if (cameras.length > 0) {
+                                cameras.forEach(cam => {
+                                    renderer.beginWorld(cam);
+                                    // Full render implementation
+                                    const allObjects = SceneManager.currentScene.getAllMaterias();
+                                    for (const materia of allObjects) {
+                                        if (!materia.isActive) continue;
+                                        const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+                                        if (spriteRenderer && spriteRenderer.sprite) {
+                                            renderer.drawSprite(spriteRenderer, materia.getComponent(Components.Transform));
+                                        }
+                                        const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
+                                        if (tilemapRenderer) {
+                                            renderer.drawTilemap(tilemapRenderer);
+                                        }
+                                        const canvasComp = materia.getComponent(Components.Canvas);
+                                        if(canvasComp) {
+                                            renderer.drawCanvas(materia, true);
+                                        }
+                                    }
+                                    renderer.end();
+                                });
+                            } else {
+                                renderer.clear();
+                            }
+                            InputManager.update();
+                            requestAnimationFrame(gameLoop);
+                        }
+                        requestAnimationFrame(gameLoop);
+                    });
             });
+        `;
+        finalCode += runnerCode + '\\n';
 
-            // Intercept file-system paths to load via fetch
-            build.onResolve({ filter: /^\.\/js\// }, async (args) => {
-                 return {
-                    path: new URL(args.path, location.href).href,
-                    namespace: 'http-url',
-                };
-            });
+        finalCode += '})();';
+        return finalCode;
 
-             build.onLoad({ filter: /.*/, namespace: 'http-url' }, async (args) => {
-                const response = await fetch(args.path);
-                const contents = await response.text();
-                return { contents, loader: 'js' };
-            });
-        },
-    };
-
-    try {
-        const result = await window.esbuild.build({
-            entryPoints: ['index.js'],
-            bundle: true,
-            write: false,
-            format: 'iife',
-            minify: true,
-            plugins: [{
-                name: 'entry',
-                setup(build) {
-                    build.onResolve({ filter: /^index\.js$/ }, args => ({ path: args.path, namespace: 'entry-ns' }));
-                    build.onLoad({ filter: /.*/, namespace: 'entry-ns' }, () => ({ contents: gameRunnerSource, loader: 'js' }));
-                }
-            }, inMemoryLoader],
-        });
-
-        return result.outputFiles[0].text;
     } catch (error) {
-        console.error("ESBuild bundling failed:", error);
-        throw new Error(`ESBuild failed: ${error.message}`);
+        throw new Error(`Failed to bundle code: ${error.message}`);
     }
 }
 
