@@ -353,21 +353,7 @@ function setupEventListeners() {
 
             // Deactivate delete tool when a new sprite is selected for painting
             activeTool = null;
-            dom.deleteSpriteBtn.classList.remove('active');
             dom.gridCanvas.style.cursor = 'grab';
-        }
-    });
-
-    // --- Drag and Drop from Sidebar ---
-    let draggedSpriteData = null;
-
-    dom.spritePackList.addEventListener('dragstart', (e) => {
-        if (e.target.matches('.sidebar-sprite-preview')) {
-            draggedSpriteData = {
-                spriteName: e.target.dataset.spriteName,
-                imageData: e.target.dataset.imageData
-            };
-            e.dataTransfer.effectAllowed = 'copy';
         }
     });
 
