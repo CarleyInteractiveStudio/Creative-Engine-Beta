@@ -2207,7 +2207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
