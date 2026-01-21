@@ -371,7 +371,6 @@ function setupEventListeners() {
         }
     });
 
-    });
 }
 
 function toggleOrganizeMode() {
