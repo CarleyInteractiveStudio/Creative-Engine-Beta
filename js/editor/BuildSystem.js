@@ -133,9 +133,25 @@ async function gatherAllRequiredAssets(projectHandle, sceneItems) {
     };
 }
 
+function waitForESBuild() {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            if (window.esbuild) {
+                clearInterval(interval);
+                resolve();
+            } else if (Date.now() - startTime > 10000) {
+                clearInterval(interval);
+                reject(new Error("ESBuild no se cargó en 10 segundos."));
+            }
+        }, 50);
+    });
+}
+
 async function initializeESBuild() {
     if (esbuildInitialized) return;
     try {
+        await waitForESBuild();
         await window.esbuild.initialize({
             wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.39/esbuild.wasm',
             worker: false
