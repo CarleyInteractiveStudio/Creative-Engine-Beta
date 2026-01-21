@@ -1,0 +1,13 @@
+{
+    "sourceImage": "objects.png",
+    "sprites": {
+        "key": {
+            "rect": { "x": 0, "y": 48, "width": 16, "height": 16 },
+            "pivot": { "x": 0.5, "y": 0.5 }
+        },
+        "door": {
+            "rect": { "x": 0, "y": 16, "width": 16, "height": 16 },
+            "pivot": { "x": 0.5, "y": 0.5 }
+        }
+    }
+}

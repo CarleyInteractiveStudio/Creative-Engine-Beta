@@ -1,0 +1,9 @@
+{
+    "sourceImage": "character.png",
+    "sprites": {
+        "player_down": {
+            "rect": { "x": 0, "y": 0, "width": 16, "height": 16 },
+            "pivot": { "x": 0.5, "y": 0.5 }
+        }
+    }
+}

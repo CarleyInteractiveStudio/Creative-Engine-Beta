@@ -1,0 +1,13 @@
+{
+    "sourceImage": "Overworld.png",
+    "sprites": {
+        "grass": {
+            "rect": { "x": 0, "y": 48, "width": 16, "height": 16 },
+            "pivot": { "x": 0.5, "y": 0.5 }
+        },
+        "wall": {
+            "rect": { "x": 80, "y": 16, "width": 16, "height": 16 },
+            "pivot": { "x": 0.5, "y": 0.5 }
+        }
+    }
+}

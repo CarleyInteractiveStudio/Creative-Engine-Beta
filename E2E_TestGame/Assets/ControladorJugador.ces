@@ -1,0 +1,51 @@
+// ControladorJugador.ces para el juego de prueba E2E
+publico numero velocidad = 150;
+publico booleano tieneLlave = falso;
+
+privado numero movimientoX = 0;
+privado numero movimientoY = 0;
+
+publico iniciar() {
+    imprimir("Script de jugador para prueba E2E iniciado. Usa las flechas para moverte.");
+}
+
+publico actualizar(tiempoDelta) {
+    // Lógica de movimiento
+    movimientoX = 0;
+    movimientoY = 0;
+
+    if (entrada.teclaPresionada("ArrowUp")) movimientoY = -1;
+    if (entrada.teclaPresionada("ArrowDown")) movimientoY = 1;
+    if (entrada.teclaPresionada("ArrowLeft")) movimientoX = -1;
+    if (entrada.teclaPresionada("ArrowRight")) movimientoX = 1;
+
+    if (this.fisica) {
+        const magnitud = Math.sqrt(movimientoX * movimientoX + movimientoY * movimientoY);
+        if (magnitud > 0) {
+            const factor = this.velocidad * tiempoDelta;
+            this.fisica.velocity.x = (movimientoX / magnitud) * factor;
+            this.fisica.velocity.y = (movimientoY / magnitud) * factor;
+        } else {
+            this.fisica.velocity.x = 0;
+            this.fisica.velocity.y = 0;
+        }
+    }
+
+    // Lógica de colisión con triggers
+    const colisionLlave = motor.alEntrarEnColision(this.materia, "Llave");
+    if (colisionLlave) {
+        imprimir("¡Llave recogida!");
+        this.tieneLlave = verdadero;
+        motor.destruir(colisionLlave.materia); // Destruye el objeto de la llave
+    }
+
+    const colisionPuerta = motor.alEntrarEnColision(this.materia, "Puerta");
+    if (colisionPuerta) {
+        if (this.tieneLlave) {
+            imprimir("¡Entrando a la zona secreta!");
+            motor.cambiarEscena("E2E_TestGame/Assets/sc_zona_secreta.ceScene");
+        } else {
+            imprimir("La puerta está cerrada. Necesitas la llave.");
+        }
+    }
+}
