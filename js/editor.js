@@ -38,7 +38,6 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2707,13 +2706,6 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
 
 
             originalStartGame = startGame;

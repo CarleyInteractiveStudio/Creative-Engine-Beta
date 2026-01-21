@@ -509,6 +509,19 @@ export function getActiveTool() {
 
 export function setActiveTool(toolName) {
     if (toolName === activeTool) return;
+
+    // --- Tilemap Tool Validation ---
+    const tilemapTools = ['tile-brush', 'tile-bucket', 'tile-eraser', 'tile-rectangle-fill'];
+    if (tilemapTools.includes(toolName)) {
+        const selected = getSelectedMateria();
+        const hasTilemap = selected && (selected.getComponent(Components.Tilemap) || selected.children.some(c => c.getComponent(Components.Tilemap)));
+        if (!hasTilemap) {
+            console.warn(`No se puede activar la herramienta '${toolName}' porque no hay ningún Tilemap seleccionado.`);
+            // Revert to a safe default if the tool is not applicable
+            toolName = 'move';
+        }
+    }
+
     activeTool = toolName;
     const toolActiveBtn = document.getElementById('tool-active');
     const activeBtnInDropdown = document.getElementById(`tool-${toolName}`);
@@ -893,9 +906,15 @@ export function initialize(dependencies) {
         }
 
         // --- Tile Painting Logic (Left-click) ---
-        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-bucket' || activeTool === 'tile-eraser')) {
             e.stopPropagation();
-            paintTile(e); // Paint on the first click
+
+            if (activeTool === 'tile-bucket') {
+                paintTile(e); // Bucket is a single-click action
+                return;
+            }
+
+            paintTile(e); // Paint on the first click for brush/eraser
 
             const onPaintMove = (moveEvent) => {
                 paintTile(moveEvent);
@@ -911,6 +930,7 @@ export function initialize(dependencies) {
             window.addEventListener('mouseup', onPaintEnd);
             return; // Stop further execution to prevent gizmo logic
         }
+
 
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
@@ -1641,17 +1661,32 @@ function paintTile(event) {
         if (col >= 0 && col < width && row >= 0 && row < height) {
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
-            const key = `${col},${row}`;
-            if (activeTool === 'tile-brush') {
-                const tilesToPaint = getSelectedTile();
-                if (tilesToPaint && tilesToPaint.length > 0) {
-                    const tileObject = tilesToPaint[0];
-                    layer.tileData.set(key, tileObject);
-                    VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nDatos: ${tileObject.spriteName}`);
-                } else {
-                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
+            const tilesToPaint = getSelectedTile();
+            if (!tilesToPaint || tilesToPaint.length === 0) {
+                VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
+                return;
+            }
+
+            if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
+                tilesToPaint.forEach(tileStamp => {
+                    const targetCol = col + tileStamp.relX;
+                    const targetRow = row + tileStamp.relY;
+                    const key = `${targetCol},${targetRow}`;
+
+                    // Ensure the stamp doesn't paint outside the layer bounds
+                    if (targetCol >= 0 && targetCol < width && targetRow >= 0 && targetRow < height) {
+                        const tileObject = { spriteName: tileStamp.spriteName, imageData: tileStamp.imageData };
+                        layer.tileData.set(key, tileObject);
+                    }
+                });
+                VerificationSystem.updateStatus(tilesToPaint[0], true, `Pincel de ${tilesToPaint.length} tiles pintado.`);
+            } else if (activeTool === 'tile-bucket') {
+                const fillTile = tilesToPaint[0]; // Use the first tile from the selection for filling
+                if (!fillTile) {
+                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado para rellenar.");
                     return;
                 }
+                floodFill(tilemap, layer, col, row, fillTile);
             } else if (activeTool === 'tile-eraser') {
                 layer.tileData.delete(key);
                 VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
@@ -1671,6 +1706,46 @@ function paintTile(event) {
     }
     VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");
 }
+
+function floodFill(tilemap, layer, startCol, startRow, newTile) {
+    const targetSpriteName = layer.tileData.get(`${startCol},${startRow}`)?.spriteName || null;
+    const newSpriteName = newTile.spriteName;
+
+    if (targetSpriteName === newSpriteName) {
+        return; // No need to fill if the tile is the same
+    }
+
+    const queue = [[startCol, startRow]];
+    const visited = new Set([`${startCol},${startRow}`]);
+
+    while (queue.length > 0) {
+        const [col, row] = queue.shift();
+        const key = `${col},${row}`;
+
+        // Set the new tile data
+        layer.tileData.set(key, newTile);
+
+        // Check neighbors
+        const neighbors = [
+            [col + 1, row],
+            [col - 1, row],
+            [col, row + 1],
+            [col, row - 1]
+        ];
+
+        for (const [nCol, nRow] of neighbors) {
+            const nKey = `${nCol},${nRow}`;
+            if (nCol >= 0 && nCol < tilemap.width && nRow >= 0 && nRow < tilemap.height && !visited.has(nKey)) {
+                const neighborSpriteName = layer.tileData.get(nKey)?.spriteName || null;
+                if (neighborSpriteName === targetSpriteName) {
+                    visited.add(nKey);
+                    queue.push([nCol, nRow]);
+                }
+            }
+        }
+    }
+}
+
 
 function drawCanvasGizmos() {
     const selectedMateria = getSelectedMateria();
