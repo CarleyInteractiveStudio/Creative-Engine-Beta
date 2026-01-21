@@ -136,7 +136,7 @@ async function gatherAllRequiredAssets(projectHandle, sceneItems) {
 async function initializeESBuild() {
     if (esbuildInitialized) return;
     try {
-        await esbuild.initialize({
+        await window.esbuild.initialize({
             wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.39/esbuild.wasm',
             worker: false
         });
@@ -289,7 +289,7 @@ async function bundleCode(startScenePath, transpiledScripts) {
     };
 
     try {
-        const result = await esbuild.build({
+        const result = await window.esbuild.build({
             entryPoints: ['index.js'],
             bundle: true,
             write: false,
