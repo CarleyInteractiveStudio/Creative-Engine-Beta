@@ -3,13 +3,13 @@ import * as CES_Transpiler from './CES_Transpiler.js';
 
 // Polyfills for browser environment
 window.process = { browser: true, env: { NODE_ENV: 'production' } };
-window.Buffer = require('buffer').Buffer;
 
 let buildModal = null;
 let projectsDirHandle = null;
 let outputDirHandle = null;
 let selectedBuildFormat = 'html5';
 let draggedItem = null;
+let esbuildInitialized = false;
 
 // --- UI Element Cache ---
 const ui = {};
@@ -61,6 +61,7 @@ async function performBuild() {
     ui.progressBar.style.backgroundColor = 'var(--color-accent)';
 
     try {
+        await initializeESBuild(); // Ensure esbuild is ready
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
@@ -132,6 +133,22 @@ async function gatherAllRequiredAssets(projectHandle, sceneItems) {
     };
 }
 
+async function initializeESBuild() {
+    if (esbuildInitialized) return;
+    try {
+        await esbuild.initialize({
+            wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.39/esbuild.wasm',
+            worker: false
+        });
+        esbuildInitialized = true;
+        console.log("ESBuild-WASM inicializado correctamente.");
+    } catch (error) {
+        console.error("Fallo al inicializar ESBuild-WASM:", error);
+        _handleBuildError(error, "No se pudo cargar el componente de build (ESBuild).");
+        throw error; // Re-throw to stop the build process
+    }
+}
+
 
 async function transpileAllScripts(buildAssetList) {
     const transpiledScripts = new Map();
@@ -149,217 +166,183 @@ async function transpileAllScripts(buildAssetList) {
     return transpiledScripts;
 }
 
-async function fetchAllEngineFiles() {
-    const engineFiles = [
-        './js/engine.js',
-        './js/engine/AssetUtils.js',
-        './js/engine/CEEngine.js',
-        './js/engine/Components.js',
-        './js/engine/Input.js',
-        './js/engine/Leyes.js',
-        './js/engine/Materia.js',
-        './js/engine/MathUtils.js',
-        './js/engine/Physics.js',
-        './js/engine/Renderer.js',
-        './js/engine/RuntimeAPIManager.js',
-        './js/engine/SceneManager.js',
-        './js/engine/UITransformUtils.js',
-        './js/engine/ui/UISystem.js',
-        './js/engine/ComponentRegistry.js',
-        './js/engine/InputAPI.js',
-        './js/engine/SceneAPI.js',
-    ];
-
-    const fileContents = new Map();
-    const promises = engineFiles.map(path =>
-        fetch(path)
-            .then(res => {
-                if (!res.ok) throw new Error(`No se pudo cargar el archivo del motor: ${path}`);
-                return res.text();
-            })
-            .then(content => fileContents.set(path, content))
-    );
-
-    await Promise.all(promises);
-    return fileContents;
-}
-
-
 async function bundleCode(startScenePath, transpiledScripts) {
-    return new Promise(async (resolve, reject) => {
-        const entryPointContent = `
-            const { Engine } = require('./js/engine.js');
-            window.GameScripts = require('virtual-game-scripts');
+    const gameRunnerSource = `
+        import * as Engine from './js/engine/CEEngine.js';
+        import * as GameScripts from 'virtual-game-scripts';
 
-            class GameRunner {
-                constructor(canvasId) {
-                    this.canvas = document.getElementById(canvasId);
-                    if (!this.canvas) throw new Error(\`Canvas with id '\${canvasId}' not found\`);
+        // Attach scripts to window for components to find them by name
+        window.GameScripts = GameScripts;
 
-                    this.renderer = new Engine.Renderer(this.canvas, false, true);
-                    this.sceneManager = Engine.SceneManager;
-                    this.inputManager = Engine.InputManager;
-                    this.physicsSystem = null; // To be initialized with scene
+        class GameRunner {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) throw new Error(\`Canvas with id '\${canvasId}' not found\`);
 
-                    this.inputManager.initialize(this.canvas, this.canvas);
+                this.renderer = new Engine.Renderer(this.canvas, false, true);
+                this.sceneManager = Engine.SceneManager;
+                this.inputManager = Engine.InputManager;
+                this.physicsSystem = null;
+
+                this.inputManager.initialize(this.canvas, this.canvas);
+                this.sceneManager.initializeForBuild();
+            }
+
+            async loadAndRunScene(scenePath) {
+                try {
+                    const scene = await this.sceneManager.loadSceneFromFile(scenePath);
+                    this.sceneManager.setCurrentScene(scene);
+                    this.physicsSystem = new Engine.PhysicsSystem(this.sceneManager.currentScene);
+                    this.startGameLoop();
+                } catch (error) {
+                    console.error("Failed to load and run scene:", error);
                 }
+            }
 
-                async loadAndRunScene(scenePath) {
-                    try {
-                        const sceneData = await this.sceneManager.loadSceneFromFile(scenePath);
-                        this.sceneManager.setCurrentScene(sceneData);
+            startGameLoop() {
+                let lastTime = 0;
+                const gameLoop = (timestamp) => {
+                    const deltaTime = (timestamp - lastTime) / 1000;
+                    lastTime = timestamp;
 
-                        this.physicsSystem = new Engine.PhysicsSystem(this.sceneManager.currentScene);
+                    if (this.physicsSystem) this.physicsSystem.update(deltaTime);
+                    this.sceneManager.currentScene.getAllMaterias().forEach(m => m.update(deltaTime));
 
-                        // Initialize scripts, etc.
-                        this.startGameLoop();
-                    } catch (error) {
-                        console.error("Failed to load and run scene:", error);
-                    }
-                }
+                    this.renderer.resize();
+                    this.updateScene(this.renderer, true);
 
-                startGameLoop() {
-                    let lastTime = 0;
-                    const gameLoop = (timestamp) => {
-                        const deltaTime = (timestamp - lastTime) / 1000;
-                        lastTime = timestamp;
-
-                        if (this.physicsSystem) this.physicsSystem.update(deltaTime);
-
-                        this.sceneManager.currentScene.getAllMaterias().forEach(m => m.update(deltaTime));
-
-                        // Correct render loop
-                        this.renderer.resize();
-                        this.updateScene(this.renderer, true);
-
-                        this.inputManager.update();
-                        requestAnimationFrame(gameLoop);
-                    };
+                    this.inputManager.update();
                     requestAnimationFrame(gameLoop);
-                }
-
-                // This is a simplified version of the main editor's updateScene function
-                updateScene(rendererInstance, isGameView) {
-                    if (!rendererInstance || !this.sceneManager.currentScene) return;
-
-                    const cameras = this.sceneManager.currentScene.findAllCameras()
-                        .sort((a, b) => a.getComponent(Engine.Components.Camera).depth - b.getComponent(Engine.Components.Camera).depth);
-
-                    if (cameras.length === 0) {
-                        rendererInstance.clear();
-                        // Still need to draw Screen Space canvases
-                        const canvases = this.sceneManager.currentScene.getAllMaterias()
-                            .filter(m => m.getComponent(Engine.Components.Canvas) && m.getComponent(Engine.Components.Canvas).renderMode === 'Screen Space');
-                        for (const C of canvases) {
-                            rendererInstance.drawCanvas(C, isGameView);
-                        }
-                        return;
-                    }
-
-                    const handleRender = (camera) => {
-                        rendererInstance.beginWorld(camera);
-                        const allObjects = this.sceneManager.currentScene.getAllMaterias();
-
-                        for (const materia of allObjects) {
-                            if (!materia.isActive) continue;
-
-                            // Basic culling and layer mask
-                            const cameraComponent = camera.getComponent(Engine.Components.Camera);
-                            const objectLayerBit = 1 << materia.layer;
-                            if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
-
-                            // Draw SpriteRenderers
-                            const spriteRenderer = materia.getComponent(Engine.Components.SpriteRenderer);
-                            if (spriteRenderer && spriteRenderer.sprite) {
-                                rendererInstance.drawSprite(spriteRenderer, materia.getComponent(Engine.Components.Transform));
-                            }
-
-                            // Draw TilemapRenderers
-                            const tilemapRenderer = materia.getComponent(Engine.Components.TilemapRenderer);
-                            if (tilemapRenderer) {
-                                rendererInstance.drawTilemap(tilemapRenderer);
-                            }
-
-                            // Draw World Space Canvases
-                             const canvas = materia.getComponent(Engine.Components.Canvas);
-                            if(canvas && canvas.renderMode === 'World Space') {
-                                rendererInstance.drawCanvas(materia, isGameView);
-                            }
-                        }
-                        rendererInstance.end();
-                    };
-
-                    cameras.forEach(handleRender);
-
-                    // Final pass for Screen Space canvases, drawn on top of everything
-                    const screenSpaceCanvases = this.sceneManager.currentScene.getAllMaterias()
-                        .filter(m => m.getComponent(Engine.Components.Canvas) && m.getComponent(Engine.Components.Canvas).renderMode === 'Screen Space');
-
-                    for (const C of screenSpaceCanvases) {
-                        rendererInstance.drawCanvas(C, isGameView);
-                    }
-                }
+                };
+                requestAnimationFrame(gameLoop);
             }
 
-            window.addEventListener('DOMContentLoaded', () => {
-                const runner = new GameRunner('game-canvas');
-                runner.loadAndRunScene('asset/scenes/${startScenePath.split('/').pop()}');
-            });
-        `;
+            updateScene(rendererInstance, isGameView) {
+                if (!rendererInstance || !this.sceneManager.currentScene) return;
 
-        let gameScriptsModuleContent = 'module.exports = {\\n';
-        for (const [path, code] of transpiledScripts.entries()) {
-            const className = path.split('/').pop().replace('.ces', '');
-            gameScriptsModuleContent += `    '${className}': function() { ${code} },\\n`;
-        }
-        gameScriptsModuleContent += '};';
+                const cameras = this.sceneManager.currentScene.findAllCameras().sort((a, b) => a.getComponent(Engine.Components.Camera).depth - b.getComponent(Engine.Components.Camera).depth);
 
-        try {
-            const engineFiles = await fetchAllEngineFiles();
-            const b = browserify({ debug: false });
+                if (cameras.length === 0) {
+                    rendererInstance.clear();
+                    return;
+                }
 
-            // Add engine files as virtual modules
-            for (const [path, content] of engineFiles.entries()) {
-                const stream = new (require('stream').Readable)();
-                stream.push(content);
-                stream.push(null);
-                b.require(stream, { expose: path, basedir: './' });
+                cameras.forEach(camera => {
+                    rendererInstance.beginWorld(camera);
+                    const allObjects = this.sceneManager.currentScene.getAllMaterias();
+                    for (const materia of allObjects) {
+                        if (!materia.isActive) continue;
+
+                        const spriteRenderer = materia.getComponent(Engine.Components.SpriteRenderer);
+                        if (spriteRenderer && spriteRenderer.sprite) {
+                            rendererInstance.drawSprite(spriteRenderer, materia.getComponent(Engine.Components.Transform));
+                        }
+                    }
+                    rendererInstance.end();
+                });
             }
+        }
 
-            // Add virtual game scripts module
-            const gameStream = new (require('stream').Readable)();
-            gameStream.push(gameScriptsModuleContent);
-            gameStream.push(null);
-            b.require(gameStream, { expose: 'virtual-game-scripts' });
+        window.addEventListener('DOMContentLoaded', () => {
+            const runner = new GameRunner('game-canvas');
+            runner.loadAndRunScene('asset/scenes/${startScenePath.split('/').pop()}');
+        });
+    `;
 
-            // Add the main entry point
-            const entryStream = new (require('stream').Readable)();
-            entryStream.push(entryPointContent);
-            entryStream.push(null);
-            b.add(entryStream, { entry: true });
+    const inMemoryLoader = {
+        name: 'inMemoryLoader',
+        setup(build) {
+            // Intercept paths for virtual modules
+            build.onResolve({ filter: /^virtual-game-scripts$/ }, args => ({
+                path: args.path,
+                namespace: 'virtual'
+            }));
 
-            // Bundle everything
-            b.bundle((err, buf) => {
-                if (err) return reject(new Error(`Error de Bundling: ${err.message}`));
-                resolve(buf.toString());
+            // Load virtual game scripts module
+            build.onLoad({ filter: /.*/, namespace: 'virtual' }, args => {
+                if (args.path === 'virtual-game-scripts') {
+                    let content = 'export default {\\n';
+                    for (const [path, code] of transpiledScripts.entries()) {
+                        const className = path.split('/').pop().replace('.ces', '');
+                        content += `    '${className}': function() { ${code} },\\n`;
+                    }
+                    content += '};';
+                    return { contents: content, loader: 'js' };
+                }
+                return null;
             });
 
-        } catch (error) {
-            reject(error);
-        }
-    });
+            // Intercept file-system paths to load via fetch
+            build.onResolve({ filter: /^\.\/js\// }, async (args) => {
+                 return {
+                    path: new URL(args.path, location.href).href,
+                    namespace: 'http-url',
+                };
+            });
+
+             build.onLoad({ filter: /.*/, namespace: 'http-url' }, async (args) => {
+                const response = await fetch(args.path);
+                const contents = await response.text();
+                return { contents, loader: 'js' };
+            });
+        },
+    };
+
+    try {
+        const result = await esbuild.build({
+            entryPoints: ['index.js'],
+            bundle: true,
+            write: false,
+            format: 'iife',
+            minify: true,
+            plugins: [{
+                name: 'entry',
+                setup(build) {
+                    build.onResolve({ filter: /^index\.js$/ }, args => ({ path: args.path, namespace: 'entry-ns' }));
+                    build.onLoad({ filter: /.*/, namespace: 'entry-ns' }, () => ({ contents: gameRunnerSource, loader: 'js' }));
+                }
+            }, inMemoryLoader],
+        });
+
+        return result.outputFiles[0].text;
+    } catch (error) {
+        console.error("ESBuild bundling failed:", error);
+        throw new Error(`ESBuild failed: ${error.message}`);
+    }
 }
+
 
 function obfuscateCode(code) {
     try {
+        console.log("Ofuscando el código...");
         const obfuscationResult = JavaScriptObfuscator.obfuscate(code, {
             compact: true,
             controlFlowFlattening: true,
+            controlFlowFlatteningThreshold: 0.75,
+            deadCodeInjection: true,
+            deadCodeInjectionThreshold: 0.4,
+            debugProtection: false,
+            disableConsoleOutput: true,
+            identifierNamesGenerator: 'hexadecimal',
+            log: false,
+            numbersToExpressions: true,
+            renameGlobals: false,
+            selfDefending: true,
+            simplify: true,
+            splitStrings: true,
+            splitStringsChunkLength: 10,
+            stringArray: true,
+            stringArrayEncoding: ['base64'],
+            stringArrayThreshold: 0.75,
+            transformObjectKeys: true,
+            unicodeEscapeSequence: false
         });
+        console.log("Ofuscación completada.");
         return obfuscationResult.getObfuscatedCode();
     } catch (error) {
-        console.warn("La ofuscación falló, se usará el código sin ofuscar.", error);
-        return code;
+        console.warn("La ofuscación falló. El build continuará con el código sin ofuscar.", error);
+        _handleBuildError(error, "La ofuscación falló, pero el build continuará.");
+        return code; // Fallback to non-obfuscated code
     }
 }
 
