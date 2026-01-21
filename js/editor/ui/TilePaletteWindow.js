@@ -345,18 +345,6 @@ function setupEventListeners() {
     dom.gridCanvas.addEventListener('mouseup', handleCanvasMouseUp);
     dom.gridCanvas.addEventListener('mouseleave', handleCanvasMouseLeave);
     dom.gridCanvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
-
-    dom.spritePackList.addEventListener('click', (e) => {
-        if (e.target.matches('.sidebar-sprite-preview')) {
-            dom.spritePackList.querySelectorAll('.sidebar-sprite-preview').forEach(img => img.classList.remove('selected'));
-            e.target.classList.add('selected');
-
-            // Deactivate delete tool when a new sprite is selected for painting
-            activeTool = null;
-            dom.gridCanvas.style.cursor = 'grab';
-        }
-    });
-
 }
 
 function toggleOrganizeMode() {
