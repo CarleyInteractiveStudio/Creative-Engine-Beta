@@ -197,9 +197,10 @@ export class Transform extends Leyes {
 
     clone() {
         const newTransform = new Transform(null);
-        newTransform.localPosition = { ...this.localPosition };
+        // Deep copy plain data objects to prevent reference sharing.
+        newTransform.localPosition = JSON.parse(JSON.stringify(this.localPosition));
         newTransform.localRotation = this.localRotation;
-        newTransform.localScale = { ...this.localScale };
+        newTransform.localScale = JSON.parse(JSON.stringify(this.localScale));
         return newTransform;
     }
 }
@@ -456,7 +457,11 @@ export class CreativeScript extends Leyes {
     }
 
     clone() {
-        return new CreativeScript(null, this.scriptName);
+        const newScript = new CreativeScript(null, this.scriptName);
+        // Deep copy public variables to preserve Inspector values.
+        // The scene cloning process will handle re-mapping any Materia references.
+        newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        return newScript;
     }
 }
 
@@ -518,8 +523,8 @@ export class Rigidbody2D extends Leyes {
         newRb.collisionDetection = this.collisionDetection;
         newRb.sleepingMode = this.sleepingMode;
         newRb.interpolate = this.interpolate;
-        newRb.constraints = { ...this.constraints };
-        newRb.velocity = { ...this.velocity };
+        newRb.constraints = JSON.parse(JSON.stringify(this.constraints));
+        newRb.velocity = JSON.parse(JSON.stringify(this.velocity));
         return newRb;
     }
 }
@@ -537,8 +542,8 @@ export class BoxCollider2D extends Leyes {
         const newCollider = new BoxCollider2D(null);
         newCollider.usedByComposite = this.usedByComposite;
         newCollider.isTrigger = this.isTrigger;
-        newCollider.offset = { ...this.offset };
-        newCollider.size = { ...this.size };
+        newCollider.offset = JSON.parse(JSON.stringify(this.offset));
+        newCollider.size = JSON.parse(JSON.stringify(this.size));
         newCollider.edgeRadius = this.edgeRadius;
         return newCollider;
     }
@@ -555,8 +560,8 @@ export class CapsuleCollider2D extends Leyes {
     clone() {
         const newCollider = new CapsuleCollider2D(null);
         newCollider.isTrigger = this.isTrigger;
-        newCollider.offset = { ...this.offset };
-        newCollider.size = { ...this.size };
+        newCollider.offset = JSON.parse(JSON.stringify(this.offset));
+        newCollider.size = JSON.parse(JSON.stringify(this.size));
         newCollider.direction = this.direction;
         return newCollider;
     }
@@ -767,8 +772,8 @@ export class UITransform extends Leyes {
 
     clone() {
         const newUITransform = new UITransform(null);
-        newUITransform.position = { ...this.position };
-        newUITransform.size = { ...this.size };
+        newUITransform.position = JSON.parse(JSON.stringify(this.position));
+        newUITransform.size = JSON.parse(JSON.stringify(this.size));
         newUITransform.anchorPoint = this.anchorPoint;
         return newUITransform;
     }
@@ -1127,9 +1132,9 @@ export class Button extends Leyes {
         const newButton = new Button(null);
         newButton.interactable = this.interactable;
         newButton.transition = this.transition;
-        newButton.colors = { ...this.colors };
-        newButton.spriteSwap = { ...this.spriteSwap };
-        newButton.animationTriggers = { ...this.animationTriggers };
+        newButton.colors = JSON.parse(JSON.stringify(this.colors));
+        newButton.spriteSwap = JSON.parse(JSON.stringify(this.spriteSwap));
+        newButton.animationTriggers = JSON.parse(JSON.stringify(this.animationTriggers));
         // Deep copy the onClick array
         newButton.onClick = JSON.parse(JSON.stringify(this.onClick));
         return newButton;
@@ -1157,8 +1162,8 @@ export class Canvas extends Leyes {
     clone() {
         const newCanvas = new Canvas(null);
         newCanvas.renderMode = this.renderMode;
-        newCanvas.size = { ...this.size };
-        newCanvas.referenceResolution = { ...this.referenceResolution };
+        newCanvas.size = JSON.parse(JSON.stringify(this.size));
+        newCanvas.referenceResolution = JSON.parse(JSON.stringify(this.referenceResolution));
         newCanvas.screenMatchMode = this.screenMatchMode;
         newCanvas.showGrid = this.showGrid;
         newCanvas.scaleChildren = this.scaleChildren;
@@ -1418,7 +1423,7 @@ export class Grid extends Leyes {
 
     clone() {
         const newGrid = new Grid(null);
-        newGrid.cellSize = { ...this.cellSize };
+        newGrid.cellSize = JSON.parse(JSON.stringify(this.cellSize));
         return newGrid;
     }
 }
@@ -1444,7 +1449,7 @@ export class CompositeCollider2D extends Leyes {
         newCollider.physicsMaterial = this.physicsMaterial;
         newCollider.isTrigger = this.isTrigger;
         newCollider.usedByEffector = this.usedByEffector;
-        newCollider.offset = { ...this.offset };
+        newCollider.offset = JSON.parse(JSON.stringify(this.offset));
         newCollider.geometryType = this.geometryType;
         newCollider.generationType = this.generationType;
         newCollider.vertexDistance = this.vertexDistance;
