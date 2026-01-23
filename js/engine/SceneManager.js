@@ -146,6 +146,138 @@ export function clearScene() {
     console.log("Scene cleared.");
 }
 
+function _serializeMateria(materia, idMap, newIdCounter) {
+    const materiaData = {
+        id: idMap.get(materia.id),
+        name: materia.name,
+        tag: materia.tag,
+        parentId: materia.parent ? idMap.get(materia.parent.id) : null,
+        leyes: []
+    };
+
+    for (const ley of materia.leyes) {
+        // (La misma lógica de serialización de componentes que en serializeScene)
+        if (ley instanceof CustomComponent) {
+            materiaData.leyes.push({
+                type: 'CustomComponent',
+                definitionName: ley.definition.nombre,
+                publicVars: ley.publicVars
+            });
+        } else {
+            const leyData = { type: ley.constructor.name, properties: {} };
+            for (const key in ley) {
+                if (key !== 'materia' && typeof ley[key] !== 'function') {
+                    // (Manejo especial para Tilemap, etc., igual que en serializeScene)
+                    leyData.properties[key] = ley[key];
+                }
+            }
+            materiaData.leyes.push(leyData);
+        }
+    }
+    return materiaData;
+}
+
+export function serializeMateriaHierarchy(rootMateria) {
+    const hierarchyMaterias = currentScene.getMateriasRecursive(rootMateria);
+    const idMap = new Map();
+    let newIdCounter = 1;
+
+    // Crear un mapeo de IDs viejos a nuevos IDs locales del prefab
+    hierarchyMaterias.forEach(m => {
+        idMap.set(m.id, newIdCounter++);
+    });
+
+    const prefabData = {
+        materias: hierarchyMaterias.map(m => _serializeMateria(m, idMap))
+    };
+
+    return prefabData;
+}
+
+export async function instantiatePrefab(prefabData, prefabAssetPath, projectsDirHandle) {
+    if (!prefabData || !prefabData.materias || prefabData.materias.length === 0) {
+        console.error("Datos de prefab no válidos o vacíos.");
+        return null;
+    }
+
+    const idMap = new Map(); // Mapa de ID de prefab a nueva Materia
+    const newMaterias = [];
+    let rootMateria = null;
+
+    // Pass 1: Crear todas las materias y componentes, mapeando IDs antiguos a nuevos
+    for (const materiaData of prefabData.materias) {
+        const newMateria = new Materia(materiaData.name);
+        // El ID único se asigna automáticamente en el constructor de Materia
+        idMap.set(materiaData.id, newMateria);
+        newMaterias.push({ newMateria, materiaData });
+
+        newMateria.tag = materiaData.tag || 'Untagged';
+        newMateria.leyes = []; // Limpiar transform por defecto
+
+        for (const leyData of materiaData.leyes) {
+             if (leyData.type === 'CustomComponent') {
+                const definition = getCustomComponentDefinitions().get(leyData.definitionName);
+                if (definition) {
+                    const newLey = new CustomComponent(definition);
+                    newLey.publicVars = JSON.parse(JSON.stringify(leyData.publicVars || {}));
+                    newMateria.addComponent(newLey);
+                } else {
+                    console.warn(`No se encontró la definición para '${leyData.definitionName}' al instanciar el prefab.`);
+                }
+            } else {
+                const ComponentClass = getComponent(leyData.type);
+                if (ComponentClass) {
+                    const newLey = new ComponentClass(newMateria);
+                     Object.assign(newLey, leyData.properties);
+                    newMateria.addComponent(newLey);
+
+                    // Carga asíncrona post-creación
+                    if (newLey instanceof SpriteRenderer) await newLey.loadSprite(projectsDirHandle);
+                    if (newLey instanceof CreativeScript) await newLey.load(projectsDirHandle);
+                    if (newLey instanceof Animator) await newLey.loadController(projectsDirHandle);
+                }
+            }
+        }
+    }
+
+    // Pass 2: Re-establecer relaciones padre-hijo
+    for (const { newMateria, materiaData } of newMaterias) {
+        if (materiaData.parentId !== null) {
+            const parentMateria = idMap.get(materiaData.parentId);
+            if (parentMateria) {
+                parentMateria.addChild(newMateria);
+            }
+        } else {
+            // Este es el objeto raíz del prefab
+            rootMateria = newMateria;
+        }
+    }
+
+    // Pass 3: Añadir el objeto raíz a la escena y configuración final
+    if (rootMateria) {
+        currentScene.addMateria(rootMateria);
+
+        const allInstantiated = currentScene.getMateriasRecursive(rootMateria);
+
+        // Asignar metadatos del prefab a todas las materias de la instancia
+        for (const materia of allInstantiated) {
+            materia.prefabAssetPath = prefabAssetPath;
+            materia.prefabRootId = rootMateria.id;
+             // Configuración final (como marcar el TilemapRenderer como dirty)
+            if (materia.getComponent(Tilemap)) {
+                const renderer = materia.getComponent(TilemapRenderer);
+                if (renderer) renderer.setDirty();
+            }
+        }
+    } else {
+        console.error("El prefab no tiene un objeto raíz.");
+        return null;
+    }
+
+    return rootMateria; // Devolver la raíz del prefab instanciado
+}
+
+
 export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {

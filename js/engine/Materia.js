@@ -17,6 +17,10 @@ export class Materia {
         this.leyes = [];
         this.parent = null;
         this.children = [];
+
+        // Prefab-related properties
+        this.prefabAssetPath = null; // Path to the .ceprefab asset
+        this.prefabRootId = null;    // The ID of the root Materia in this prefab instance
     }
 
     setFlag(key, value) {

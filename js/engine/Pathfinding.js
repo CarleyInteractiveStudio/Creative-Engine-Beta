@@ -4,10 +4,10 @@
  * Representa un nodo en la rejilla de búsqueda.
  */
 class Node {
-    constructor(x, y, walkable = true) {
+    constructor(x, y, gridCell) {
         this.x = x;
         this.y = y;
-        this.walkable = walkable;
+        this.gridCell = gridCell; // Contiene { walkable: bool, allowedAgents: [] }
         this.gCost = 0; // Costo desde el inicio
         this.hCost = 0; // Heurística (costo estimado hasta el final)
         this.parent = null;
@@ -33,31 +33,41 @@ export class AStar {
         for (let x = 0; x < this.width; x++) {
             this.nodes[x] = [];
             for (let y = 0; y < this.height; y++) {
-                // Suponemos que el valor de la rejilla indica si es transitable
-                this.nodes[x][y] = new Node(x, y, grid[x][y].walkable);
+                // El nodo ahora almacena la información completa de la celda
+                this.nodes[x][y] = new Node(x, y, grid[x][y]);
             }
         }
+    }
+
+    _isWalkable(node, agentType) {
+        if (!node.gridCell.walkable) {
+            return false;
+        }
+        if (node.gridCell.allowedAgents && node.gridCell.allowedAgents.length > 0) {
+            return node.gridCell.allowedAgents.includes(agentType);
+        }
+        return true; // Es transitable y no tiene restricciones de agente
     }
 
     /**
      * Encuentra la ruta desde un punto de inicio a un punto final.
      * @param {object} startPos - {x, y}
      * @param {object} endPos - {x, y}
+     * @param {string} agentType - El tipo de agente que solicita la ruta.
      * @returns {Array<object>} - Una matriz de puntos {x, y} que representan la ruta, o un array vacío si no se encuentra.
      */
-    findPath(startPos, endPos) {
+    findPath(startPos, endPos, agentType) {
         const startNode = this.nodes[startPos.x][startPos.y];
         const endNode = this.nodes[endPos.x][endPos.y];
 
-        if (!startNode || !endNode || !startNode.walkable || !endNode.walkable) {
-            return []; // Inicio o fin no válidos
+        if (!startNode || !endNode || !this._isWalkable(startNode, agentType) || !this._isWalkable(endNode, agentType)) {
+            return []; // Inicio o fin no válidos para este agente
         }
 
-        const openSet = [startNode]; // Lista de nodos por evaluar
-        const closedSet = new Set(); // Conjunto de nodos ya evaluados
+        const openSet = [startNode];
+        const closedSet = new Set();
 
         while (openSet.length > 0) {
-            // Encontrar el nodo con el menor fCost en el openSet
             let currentNode = openSet[0];
             for (let i = 1; i < openSet.length; i++) {
                 if (openSet[i].fCost < currentNode.fCost || (openSet[i].fCost === currentNode.fCost && openSet[i].hCost < currentNode.hCost)) {
@@ -65,20 +75,17 @@ export class AStar {
                 }
             }
 
-            // Mover el nodo actual del openSet al closedSet
             const currentIndex = openSet.indexOf(currentNode);
             openSet.splice(currentIndex, 1);
             closedSet.add(currentNode);
 
-            // Si hemos llegado al final, reconstruir y devolver la ruta
             if (currentNode === endNode) {
                 return this.retracePath(startNode, endNode);
             }
 
-            // Evaluar los vecinos del nodo actual
             const neighbors = this.getNeighbors(currentNode);
             for (const neighbor of neighbors) {
-                if (!neighbor.walkable || closedSet.has(neighbor)) {
+                if (!this._isWalkable(neighbor, agentType) || closedSet.has(neighbor)) {
                     continue;
                 }
 

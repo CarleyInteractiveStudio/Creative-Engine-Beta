@@ -13,6 +13,7 @@ import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
 import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject } from '../MateriaFactory.js';
+import { getFileHandleForPath } from '../../engine/AssetUtils.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -402,42 +403,57 @@ function setupEventListeners() {
     });
 
     // --- The single, robust, unified drop handler ---
-    hierarchyPanel.addEventListener('drop', (e) => {
+    hierarchyPanel.addEventListener('drop', async (e) => {
         e.preventDefault();
         hierarchyPanel.classList.remove('drag-over');
         isDraggingFromHierarchy = false; // Reset state regardless
         const dataText = e.dataTransfer.getData('text/plain');
         const targetItem = e.target.closest('.hierarchy-item');
 
-        // Helper for async asset logic
-        const handleAssetDrop = async (data) => {
-            const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Transform(newMateria));
-            SceneManager.currentScene.addMateria(newMateria);
-            updateHierarchy();
-            selectMateriaCallback(newMateria.id);
-        };
-
         let data;
-        try {
-            data = JSON.parse(dataText);
-        } catch (error) {
-            data = dataText; // Not JSON, assume it's a plain ID
-        }
+        try { data = JSON.parse(dataText); }
+        catch (error) { data = dataText; }
 
-        if (typeof data === 'object' && data !== null && data.path) {
-            // It's an asset drop
-            handleAssetDrop(data);
+        // CASE 1: Dropped an asset from the Asset Browser
+        if (typeof data === 'object' && data !== null && data.path && data.name) {
+             if (data.name.endsWith('.ceprefab')) {
+                const fileHandle = await getFileHandleForPath(data.path, projectsDirHandle);
+                if (fileHandle) {
+                    const file = await fileHandle.getFile();
+                    const content = await file.text();
+                    const prefabData = JSON.parse(content);
+
+                    // Pasar la ruta del asset al instanciar
+                    const newInstance = await SceneManager.instantiatePrefab(prefabData, data.path, projectsDirHandle);
+
+                    if (newInstance) {
+                        // If dropped on an existing item, parent the new instance to it
+                        if (targetItem) {
+                            const targetId = parseInt(targetItem.dataset.id, 10);
+                            const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
+                            if (targetMateria) {
+                                // Remove from root before parenting
+                                SceneManager.currentScene.removeMateria(newInstance.id);
+                                targetMateria.addChild(newInstance);
+                            }
+                        }
+                        updateHierarchy();
+                        setTimeout(() => selectMateriaCallback(newInstance.id), 0);
+                    }
+                }
+            }
+            // Add other asset drop logic here if needed (e.g., creating a sprite by dragging a PNG)
+
+        // CASE 2: Re-parenting an item from within the Hierarchy
         } else {
-            // It's a hierarchy re-parenting drop
-            const draggedId = parseInt(data, 10);
+            const draggedId = parseInt(data, 10); // data is just the ID string
             if (isNaN(draggedId)) return;
 
             const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);
             if (!draggedMateria) return;
 
             if (targetItem) {
-                // Parenting logic
+                // Parenting to another Materia
                 const targetId = parseInt(targetItem.dataset.id, 10);
                 if (draggedId !== targetId) {
                     const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
@@ -447,10 +463,10 @@ function setupEventListeners() {
                     }
                 }
             } else {
-                // Un-parenting logic
+                // Dropped on empty space -> un-parenting to root
                 if (draggedMateria.parent) {
                     draggedMateria.parent.removeChild(draggedMateria);
-                    SceneManager.currentScene.addMateria(draggedMateria);
+                    SceneManager.currentScene.addMateria(draggedMateria); // Add back to scene root
                     updateHierarchy();
                 }
             }

@@ -43,6 +43,59 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
+    // Listen for drops on the grid view itself to handle prefab creation
+    dom.assetGridView.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Allow drop
+        // Check if the drag originates from the hierarchy
+        // A more robust check might involve custom data types if needed
+        const data = e.dataTransfer.getData('text/plain');
+        try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'Materia') {
+                e.dataTransfer.dropEffect = 'copy';
+                dom.assetGridView.classList.add('drag-over-prefab');
+            }
+        } catch {}
+    });
+    dom.assetGridView.addEventListener('dragleave', () => {
+        dom.assetGridView.classList.remove('drag-over-prefab');
+    });
+    dom.assetGridView.addEventListener('drop', async (e) => {
+        dom.assetGridView.classList.remove('drag-over-prefab');
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dataText = e.dataTransfer.getData('text/plain');
+        try {
+            const data = JSON.parse(dataText);
+            if (data.type === 'Materia') {
+                const SceneManager = window.SceneManager;
+                const materiaId = parseInt(data.id, 10);
+                const materiaToPrefab = SceneManager.currentScene.findMateriaById(materiaId);
+
+                if (materiaToPrefab) {
+                    const prefabData = SceneManager.serializeMateriaHierarchy(materiaToPrefab);
+                    const prefabFileName = `${materiaToPrefab.name}.ceprefab`;
+
+                    try {
+                        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(prefabFileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(JSON.stringify(prefabData, null, 2));
+                        await writable.close();
+                        showNotification('Prefab Creado', `Se ha creado '${prefabFileName}' con éxito.`);
+                        await updateAssetBrowserCallback();
+                    } catch (err) {
+                        console.error("Error al crear el archivo del prefab:", err);
+                        showNotification('Error', 'No se pudo crear el archivo del prefab.');
+                    }
+                }
+            }
+        } catch (err) {
+            // This was likely not a Materia drop, so we can ignore it as other handlers will pick it up.
+            // console.log("Drop event was not for prefab creation:", err);
+        }
+    });
+
     // The event listener is now centralized in editor.js
 }
 
@@ -166,6 +219,48 @@ export async function handleContextMenuAction(action) {
                     }
                 },
                 'README.md' // Default value
+            );
+            break;
+        }
+        case 'create-prefab': {
+            showPrompt(
+                'Crear Prefab',
+                'Introduce el nombre del nuevo prefab (.ceprefab):',
+                async (prefabName) => {
+                    if (prefabName) {
+                        const fileName = prefabName.endsWith('.ceprefab') ? prefabName : `${prefabName}.ceprefab`;
+                        const defaultContent = {
+                            "materias": [
+                                {
+                                    "id": 1,
+                                    "name": prefabName.replace('.ceprefab', ''),
+                                    "tag": "Untagged",
+                                    "parentId": null,
+                                    "leyes": [
+                                        {
+                                            "type": "Transform",
+                                            "properties": {
+                                                "localPosition": { "x": 0, "y": 0 },
+                                                "localRotation": 0,
+                                                "localScale": { "x": 1, "y": 1 }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        };
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(JSON.stringify(defaultContent, null, 2));
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el prefab:", err);
+                            showNotification('Error', 'No se pudo crear el prefab.');
+                        }
+                    }
+                }
             );
             break;
         }
@@ -650,4 +745,41 @@ async function handleExternalFileDrop(e) {
 
 export function getCurrentDirectoryHandle() {
     return currentDirectoryHandle.handle;
+}
+
+export async function revealAsset(assetPath) {
+    if (!assetPath) return;
+
+    const pathParts = assetPath.split('/');
+    const fileName = pathParts.pop();
+    const dirPath = pathParts.join('/');
+
+    // Navigate to the correct directory
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+    let targetDirHandle = projectHandle;
+    const dirParts = dirPath.split('/');
+    for (const part of dirParts) {
+        if (part) {
+            targetDirHandle = await targetDirHandle.getDirectoryHandle(part);
+        }
+    }
+
+    currentDirectoryHandle = { handle: targetDirHandle, path: dirPath };
+
+    // Refresh the browser to show the correct folder
+    await updateAssetBrowser();
+
+    // Find and select the item in the grid view
+    const itemToSelect = dom.assetGridView.querySelector(`.grid-item[data-name="${fileName}"]`);
+    if (itemToSelect) {
+        // De-select all others first
+        dom.assetGridView.querySelectorAll('.grid-item').forEach(i => i.classList.remove('active'));
+        itemToSelect.classList.add('active');
+        // Scroll into view
+        itemToSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Notify the editor of the selection
+        onAssetSelected(fileName, assetPath, 'file');
+    }
 }

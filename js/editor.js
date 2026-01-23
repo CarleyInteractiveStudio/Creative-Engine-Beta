@@ -13,7 +13,7 @@ import { initialize as initializeProjectSettings, populateUI as populateProjectS
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
-import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
+import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction, revealAsset } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
 import { initialize as initializeImportExport } from './editor/ui/PackageImportExportWindow.js';
@@ -2414,7 +2414,7 @@ public star() {
                 refreshLibraryList: libraryModule.refreshLibraryList,
                 openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
-            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
+            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode, revealAssetInBrowser: revealAsset });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });

@@ -41,8 +41,14 @@ Nos centraremos en añadir componentes de "alto impacto" que resuelvan problemas
 
 ---
 
-## 3. Próximos Pasos
+## 3. Estado Actual y Próximos Pasos
 
-Seguiremos esta hoja de ruta para implementar los componentes de forma incremental.
+Hemos avanzado significativamente en la implementación de los componentes clave de esta hoja de ruta.
 
-**Paso actual:** **Implementación del componente `CameraFollow2D`.**
+-   [x] **`Sistema de Partículas` (`ParticleSystem`)** - ¡Completado!
+-   [x] **`Agente de Navegación` (`PathfindingAgent`)** - ¡Completado!
+-   [x] **`Seguimiento de Cámara 2D` (`CameraFollow2D`)** - ¡Completado!
+-   [x] **Sistema de Prefabs** - ¡Completado! (Implementado como un prerrequisito fundamental).
+-   [x] **`Piscina de Objetos` (`ObjectPoolComponent`)** - ¡Completado!
+
+**Paso actual:** **Comenzar a utilizar el componente `ObjectPoolComponent` en los proyectos.**

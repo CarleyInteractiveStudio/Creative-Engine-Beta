@@ -4,6 +4,8 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
+import { ObjectPoolComponent } from './components/ObjectPoolComponent.js';
+import { AStar } from './Pathfinding.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
@@ -29,9 +31,13 @@ const componentAliases = {
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
-    'Button': 'boton'
+    'Button': 'boton',
+    'ObjectPoolComponent': 'poolDeObjetos'
 };
 
+
+// Export the new component so it's available for import elsewhere
+export { ObjectPoolComponent };
 
 // --- Base Behavior for Scripts ---
 export class CreativeScriptBehavior {
@@ -1778,7 +1784,6 @@ export class NavigationArea2D extends Leyes {
 
     bake() {
         console.log(`Baking navigation area with size ${this.areaSize.width}x${this.areaSize.height} and cell size ${this.cellSize}`);
-        console.log(`Baking navigation area with size ${this.areaSize.width}x${this.areaSize.height} and cell size ${this.cellSize}`);
         const scene = this.materia.scene;
         if (!scene) {
             console.error("NavigationArea2D no puede generar el mapa sin una escena.");
@@ -1910,34 +1915,93 @@ registerComponent('NavigationArea2D', NavigationArea2D);
 export class PathfindingAgent extends Leyes {
     constructor(materia) {
         super(materia);
-        this.agentType = 'Caminante'; // Default type
-        this.speed = 100; // Units per second for automatic movement
-        this.stoppingDistance = 10; // How close to a waypoint to be considered "arrived"
+        this.agentType = 'Caminante';
+        this.speed = 100;
+        this.stoppingDistance = 10;
 
-        // Internal state
         this._path = [];
         this._currentTargetIndex = 0;
         this._isMoving = false;
+        this._navArea = null;
     }
 
-    setDestination(x, y) {
-        console.log(`PathfindingAgent: Setting destination to (${x}, ${y})`);
-        // Placeholder for path calculation and starting movement.
-        // This will be connected in a later step.
-        this._isMoving = true;
+    start() {
+        // Find the NavigationArea2D in the scene at the start
+        const scene = this.materia.scene;
+        if (scene) {
+            for (const rootMateria of scene.getRootMaterias()) {
+                const navArea = rootMateria.getComponent(NavigationArea2D);
+                if (navArea) {
+                    this._navArea = navArea;
+                    break;
+                }
+            }
+        }
+        if (!this._navArea) {
+            console.warn("PathfindingAgent no pudo encontrar un NavigationArea2D en la escena.");
+        }
     }
 
-    calculatePath(x, y) {
-        console.log(`PathfindingAgent: Calculating path to (${x}, ${y})`);
-        // Placeholder for path calculation.
-        // This will be connected in a later step.
-        return []; // Return a dummy path for now
+    setDestination(worldX, worldY) {
+        this._path = this.calculatePath(worldX, worldY);
+        if (this._path && this._path.length > 0) {
+            this._currentTargetIndex = 0;
+            this._isMoving = true;
+        } else {
+            this._isMoving = false;
+        }
+    }
+
+    calculatePath(worldX, worldY) {
+        if (!this._navArea || !this._navArea.navGrid) {
+            console.error("No hay datos de navegación generados. Asegúrate de 'Generar' el NavigationArea2D.");
+            return [];
+        }
+
+        const agentTransform = this.materia.getComponent(Transform);
+        const navAreaTransform = this._navArea.materia.getComponent(Transform);
+
+        // Convert world coordinates to grid coordinates
+        const startX = Math.floor((agentTransform.position.x - navAreaTransform.position.x + this._navArea.areaSize.width / 2) / this._navArea.cellSize);
+        const startY = Math.floor((agentTransform.position.y - navAreaTransform.position.y + this._navArea.areaSize.height / 2) / this._navArea.cellSize);
+        const endX = Math.floor((worldX - navAreaTransform.position.x + this._navArea.areaSize.width / 2) / this._navArea.cellSize);
+        const endY = Math.floor((worldY - navAreaTransform.position.y + this._navArea.areaSize.height / 2) / this._navArea.cellSize);
+
+        const astar = new AStar(this._navArea.navGrid);
+        const pathInGridCoords = astar.findPath({ x: startX, y: startY }, { x: endX, y: endY }, this.agentType);
+
+        // Convert grid coordinates back to world coordinates
+        return pathInGridCoords.map(node => ({
+            x: navAreaTransform.position.x - this._navArea.areaSize.width / 2 + node.x * this._navArea.cellSize + this._navArea.cellSize / 2,
+            y: navAreaTransform.position.y - this._navArea.areaSize.height / 2 + node.y * this._navArea.cellSize + this._navArea.cellSize / 2,
+        }));
     }
 
     update(deltaTime) {
-        if (!this._isMoving || this._path.length === 0) return;
+        if (!this._isMoving || this._path.length === 0 || this._currentTargetIndex >= this._path.length) {
+            return;
+        }
 
-        // Logic for automatic movement will go here.
+        const agentTransform = this.materia.getComponent(Transform);
+        const currentTarget = this._path[this._currentTargetIndex];
+
+        const dx = currentTarget.x - agentTransform.position.x;
+        const dy = currentTarget.y - agentTransform.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < this.stoppingDistance) {
+            this._currentTargetIndex++;
+            if (this._currentTargetIndex >= this._path.length) {
+                this._isMoving = false; // Reached the end
+                return;
+            }
+        } else {
+            // Move towards the target
+            const moveX = (dx / distance) * this.speed * deltaTime;
+            const moveY = (dy / distance) * this.speed * deltaTime;
+            agentTransform.position.x += moveX;
+            agentTransform.position.y += moveY;
+        }
     }
 
     clone() {
@@ -1963,6 +2027,7 @@ export class NavModifier extends Leyes {
     }
 }
 registerComponent('NavModifier', NavModifier);
+registerComponent('ObjectPoolComponent', ObjectPoolComponent);
 
 
 export class CustomComponent extends Leyes {

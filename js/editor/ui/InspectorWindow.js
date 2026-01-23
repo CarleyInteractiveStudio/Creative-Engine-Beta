@@ -1,6 +1,6 @@
 import * as Components from '../../engine/Components.js';
 import * as UITransformUtils from '../../engine/UITransformUtils.js';
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
 import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
@@ -21,10 +21,12 @@ let createAssetCallback;
 let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
+let revealAssetInBrowser = () => {};
 
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
+    'Gestión': [Components.ObjectPoolComponent],
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
     'Navegación': [Components.NavigationArea2D, Components.PathfindingAgent, Components.NavModifier],
     'Efectos': [Components.ParticleSystem],
@@ -53,6 +55,7 @@ export function initialize(dependencies) {
     createAssetCallback = dependencies.createAssetCallback;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
     enterAddTilemapLayerMode = dependencies.enterAddTilemapLayerMode;
+    revealAssetInBrowser = dependencies.revealAssetInBrowser;
 
     // The inspector is mostly updated by other modules, but we can set up a general event listener for inputs.
     dom.inspectorContent.addEventListener('input', handleInspectorInput);
@@ -240,6 +243,48 @@ function handleInspectorInput(e) {
             }
         }
     }
+
+    if (e.target.matches('#revert-prefab-override-btn')) {
+        if (selectedMateria && selectedMateria.prefabAssetPath && selectedMateria.prefabRootId) {
+            const SceneManager = window.SceneManager;
+            const rootMateriaOfInstance = SceneManager.currentScene.findMateriaById(selectedMateria.prefabRootId);
+
+            if (rootMateriaOfInstance) {
+                const originalParent = rootMateriaOfInstance.parent;
+
+                getFileHandleForPath(selectedMateria.prefabAssetPath, projectsDirHandle).then(async fileHandle => {
+                    if (fileHandle) {
+                        try {
+                            const file = await fileHandle.getFile();
+                            const content = await file.text();
+                            const prefabData = JSON.parse(content);
+
+                            // Remove the old instance
+                            SceneManager.currentScene.removeMateria(rootMateriaOfInstance.id);
+
+                            // Instantiate a fresh copy
+                            const newInstance = await SceneManager.instantiatePrefab(prefabData, selectedMateria.prefabAssetPath, projectsDirHandle);
+
+                            if (newInstance && originalParent) {
+                                // Re-parent it to where the old one was
+                                SceneManager.currentScene.removeMateria(newInstance.id); // Remove from root
+                                originalParent.addChild(newInstance);
+                            }
+
+                            updateSceneCallback(); // This updates hierarchy
+
+                            // Select the new instance
+                            setTimeout(() => window.selectMateriaCallback(newInstance.id), 0);
+
+                        } catch (err) {
+                            console.error("Error al revertir el prefab:", err);
+                            showNotification('Error', 'No se pudo revertir el prefab.');
+                        }
+                    }
+                });
+            }
+        }
+    }
 }
 
 async function handleInspectorChange(e) {
@@ -366,6 +411,15 @@ async function handleInspectorChange(e) {
 
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
+
+    if (e.target.matches('#open-prefab-btn')) {
+        if (selectedMateria && selectedMateria.prefabAssetPath) {
+            if (revealAssetInBrowser) {
+                revealAssetInBrowser(selectedMateria.prefabAssetPath);
+            }
+        }
+        return; // Stop further processing for this click
+    }
 
     if (e.target.closest('[data-component="UIText"][data-prop="fontAssetPath"]')) {
         const component = selectedMateria.getComponent(Components.UIText);
@@ -581,6 +635,31 @@ function handleInspectorClick(e) {
             window.Dialogs.showNotification('Navegación', 'Área de navegación generada (placeholder).');
         }
     }
+
+    if (e.target.matches('#apply-prefab-override-btn')) {
+        if (selectedMateria && selectedMateria.prefabAssetPath && selectedMateria.prefabRootId) {
+            const SceneManager = window.SceneManager;
+            const rootMateriaOfInstance = SceneManager.currentScene.findMateriaById(selectedMateria.prefabRootId);
+
+            if (rootMateriaOfInstance) {
+                const prefabData = SceneManager.serializeMateriaHierarchy(rootMateriaOfInstance);
+
+                getFileHandleForPath(selectedMateria.prefabAssetPath, projectsDirHandle).then(async fileHandle => {
+                    if (fileHandle) {
+                        try {
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(JSON.stringify(prefabData, null, 2));
+                            await writable.close();
+                            showNotification('Prefab Actualizado', `Los cambios se aplicaron a '${fileHandle.name}'.`);
+                        } catch (err) {
+                            console.error("Error al guardar el prefab:", err);
+                            showNotification('Error', 'No se pudo guardar el archivo del prefab.');
+                        }
+                    }
+                });
+            }
+        }
+    }
 }
 
 function getCullingMaskText(mask) {
@@ -765,8 +844,22 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier,
 async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
 
+    // --- Prefab Header ---
+    let prefabHeaderHTML = '';
+    if (selectedMateria.prefabAssetPath) {
+        prefabHeaderHTML = `
+            <div class="inspector-prefab-header">
+                <span>Prefab</span>
+                <button id="open-prefab-btn" class="modern-btn">Abrir</button>
+                <button id="apply-prefab-override-btn" class="modern-btn">Aplicar</button>
+                 <button id="revert-prefab-override-btn" class="modern-btn">Revertir</button>
+            </div>
+        `;
+    }
+
     // Name input and active toggle
     dom.inspectorContent.innerHTML = `
+        ${prefabHeaderHTML}
         <div class="inspector-materia-header">
             <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" id="materia-name-input" value="${selectedMateria.name}">
@@ -1802,6 +1895,24 @@ async function updateInspectorForMateria(selectedMateria) {
                         <select class="prop-input" data-component="NavModifier" data-prop="overrideType">
                             ${agentTypeOptions}
                         </select>
+                    </div>
+                </div>
+            </div>
+            `;
+        } else if (ley instanceof Components.ObjectPoolComponent) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header"><span class="component-icon">📦</span><h4>Object Pool</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Prefab</label>
+                        <div class="asset-dropper" data-component="ObjectPoolComponent" data-prop="prefabAssetPath" data-asset-type=".ceprefab" title="Arrastra un asset de Prefab aquí">
+                            <span class="asset-dropper-text">${ley.prefabAssetPath || 'None (Prefab)'}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Initial Size</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="ObjectPoolComponent" data-prop="initialSize" value="${ley.initialSize}">
                     </div>
                 </div>
             </div>
