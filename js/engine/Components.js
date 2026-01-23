@@ -1524,6 +1524,246 @@ export class CameraFollow2D extends Leyes {
         return newFollow;
     }
 }
+
+class Particle {
+    constructor() {
+        this.isActive = false;
+        this.position = { x: 0, y: 0 };
+        this.velocity = { x: 0, y: 0 };
+        this.life = 0; // Remaining life in seconds
+        this.totalLife = 1;
+
+        this.startSize = 1;
+        this.endSize = 0;
+        this.size = 1;
+
+        this.startColor = { r: 255, g: 255, b: 255, a: 1 };
+        this.endColor = { r: 255, g: 255, b: 255, a: 0 };
+        this.color = 'rgba(255, 255, 255, 1)';
+    }
+
+    reset() {
+        this.isActive = false;
+    }
+}
+
+export class ParticleSystem extends Leyes {
+    constructor(materia) {
+        super(materia);
+
+        // Emission
+        this.duration = 5.0;
+        this.loop = true;
+        this.maxParticles = 1000;
+        this.emissionRate = 10; // Particles per second
+
+        // Shape
+        this.shape = 'cone'; // 'cone', 'box', 'sphere'
+        this.coneAngle = 25; // Degrees
+        this.coneRadius = 1;
+
+        // Lifetime & Movement
+        this.startLifetime = 5.0;
+        this.startSpeed = 5.0;
+        this.gravityModifier = 0;
+
+        // Appearance
+        this.startSize = 1.0;
+        this.endSize = 0.0;
+        this.startColor = '#FFFFFF';
+        this.endColor = '#FFFFFF00'; // White, fully transparent
+        this.texturePath = ''; // Path to the particle texture
+
+        // Internal State
+        this._particles = [];
+        this._pool = [];
+        this._isPlaying = false;
+        this._elapsedTime = 0;
+        this._emissionCounter = 0;
+        this.texture = null;
+    }
+
+    async loadTexture(projectsDirHandle) {
+        this.texture = null; // Reset texture
+        if (!this.texturePath || !projectsDirHandle) {
+            return;
+        }
+        try {
+            const url = await getURLForAssetPath(this.texturePath, projectsDirHandle);
+            if (url) {
+                this.texture = new Image();
+                this.texture.src = url;
+            }
+        } catch(e) {
+            console.error(`Failed to load particle texture: ${this.texturePath}`, e);
+            this.texture = null;
+        }
+    }
+
+    async start() {
+        this.initializePool();
+        const dirHandle = typeof window !== 'undefined' ? window.projectsDirHandle : null;
+        if (this.texturePath) {
+            await this.loadTexture(dirHandle);
+        }
+        this.play();
+    }
+
+    update(deltaTime) {
+        if (!this._isPlaying) return;
+
+        // Ensure colors are consistently in object format for interpolation
+        this.startColor = this.hexToRgba(this.startColor);
+        this.endColor = this.hexToRgba(this.endColor);
+
+        this._elapsedTime += deltaTime;
+
+        // Handle emission
+        const emissionInterval = 1.0 / this.emissionRate;
+        this._emissionCounter += deltaTime;
+        while (this._emissionCounter > emissionInterval) {
+            this.emitParticle();
+            this._emissionCounter -= emissionInterval;
+        }
+
+        // Update active particles
+        for (const particle of this._particles) {
+            if (!particle.isActive) continue;
+
+            particle.life -= deltaTime;
+            if (particle.life <= 0) {
+                particle.isActive = false;
+                continue;
+            }
+
+            // Update position
+            particle.position.x += particle.velocity.x * deltaTime;
+            particle.position.y += particle.velocity.y * deltaTime;
+            particle.velocity.y += this.gravityModifier * 9.81 * deltaTime; // Simple gravity
+
+            // Update appearance (interpolation)
+            const lifePercent = Math.max(0, particle.life / particle.totalLife);
+            particle.size = this.endSize + (this.startSize - this.endSize) * lifePercent;
+
+            const r = this.endColor.r + (this.startColor.r - this.endColor.r) * lifePercent;
+            const g = this.endColor.g + (this.startColor.g - this.endColor.g) * lifePercent;
+            const b = this.endColor.b + (this.startColor.b - this.endColor.b) * lifePercent;
+            const a = this.endColor.a + (this.startColor.a - this.endColor.a) * lifePercent;
+            particle.color = `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+        }
+
+        if (!this.loop && this._elapsedTime >= this.duration) {
+            this.stop();
+        }
+    }
+
+    initializePool() {
+        if (this._pool.length >= this.maxParticles) return;
+        for (let i = 0; i < this.maxParticles; i++) {
+            this._pool.push(new Particle());
+        }
+    }
+
+    emitParticle() {
+        const particle = this._pool.find(p => !p.isActive);
+        if (!particle) return; // Pool is full
+
+        particle.isActive = true;
+        particle.life = this.startLifetime;
+        particle.totalLife = this.startLifetime;
+
+        const systemTransform = this.materia.getComponent('Transform');
+        particle.position = { ...systemTransform.position };
+
+        // Velocity based on shape
+        const angleRad = (Math.random() * this.coneAngle - this.coneAngle / 2) * (Math.PI / 180);
+        const speed = this.startSpeed;
+        particle.velocity = {
+            x: Math.sin(angleRad) * speed,
+            y: -Math.cos(angleRad) * speed // -Y is up in canvas
+        };
+
+        particle.startSize = this.startSize;
+        particle.endSize = this.endSize;
+        particle.size = this.startSize;
+
+        // OPTIMIZATION: Convert colors to objects only once here
+        particle.startColor = this.hexToRgba(this.startColor);
+        particle.endColor = this.hexToRgba(this.endColor);
+
+        // Set initial color
+        const sc = particle.startColor;
+        particle.color = `rgba(${sc.r}, ${sc.g}, ${sc.b}, ${sc.a})`;
+
+        if(!this._particles.includes(particle)) {
+            this._particles.push(particle);
+        }
+    }
+
+    play() {
+        this._isPlaying = true;
+        this._elapsedTime = 0;
+    }
+
+    stop() {
+        this._isPlaying = false;
+    }
+
+    hexToRgba(hex) {
+        if (typeof hex === 'object') return hex; // Already converted
+        let c;
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+            c = hex.substring(1).split('');
+            if (c.length == 3) {
+                c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c = '0x' + c.join('');
+            return {
+                r: (c >> 16) & 255,
+                g: (c >> 8) & 255,
+                b: c & 255,
+                a: 1
+            };
+        }
+         if (/^#([A-Fa-f0-9]{8})$/.test(hex)) { // With alpha
+            const bigint = parseInt(hex.slice(1), 16);
+            return {
+                r: (bigint >> 24) & 255,
+                g: (bigint >> 16) & 255,
+                b: (bigint >> 8) & 255,
+                a: (bigint & 255) / 255
+            };
+        }
+
+        // Fallback for invalid format
+        return { r: 255, g: 255, b: 255, a: 1 };
+    }
+
+
+    clone() {
+        const newSystem = new ParticleSystem(null);
+        // Emission
+        newSystem.duration = this.duration;
+        newSystem.loop = this.loop;
+        newSystem.maxParticles = this.maxParticles;
+        newSystem.emissionRate = this.emissionRate;
+        // Shape
+        newSystem.shape = this.shape;
+        newSystem.coneAngle = this.coneAngle;
+        newSystem.coneRadius = this.coneRadius;
+        // Lifetime & Movement
+        newSystem.startLifetime = this.startLifetime;
+        newSystem.startSpeed = this.startSpeed;
+        newSystem.gravityModifier = this.gravityModifier;
+        // Appearance
+        newSystem.startSize = this.startSize;
+        newSystem.endSize = this.endSize;
+        newSystem.startColor = this.startColor;
+        newSystem.endColor = this.endColor;
+        newSystem.texturePath = this.texturePath;
+        return newSystem;
+    }
+}
 registerComponent('CompositeCollider2D', CompositeCollider2D);
 
 export class CustomComponent extends Leyes {

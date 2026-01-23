@@ -440,6 +440,167 @@ export class Renderer {
         this.end();
     }
 
+    _drawParticleSystems(ctx, scene) {
+        const materias = scene.getAllMaterias();
+        for (const materia of materias) {
+            if (!materia.isActive) continue;
+
+            const particleSystem = materia.getComponent('ParticleSystem');
+            if (particleSystem && particleSystem._isPlaying) {
+                ctx.save();
+                for (const particle of particleSystem._particles) {
+                    if (!particle.isActive) continue;
+
+                    if (particleSystem.texture) {
+                        // Draw texture
+                        ctx.globalAlpha = particle.color.a;
+                        ctx.drawImage(
+                            particleSystem.texture,
+                            particle.position.x - particle.size / 2,
+                            particle.position.y - particle.size / 2,
+                            particle.size,
+                            particle.size
+                        );
+                        ctx.globalAlpha = 1.0;
+                    } else {
+                        // Draw square fallback
+                        ctx.fillStyle = particle.color;
+                        ctx.fillRect(
+                            particle.position.x - particle.size / 2,
+                            particle.position.y - particle.size / 2,
+                            particle.size,
+                            particle.size
+                        );
+                    }
+                }
+                ctx.restore();
+            }
+        }
+    }
+
+    _drawSprite(spriteRenderer, transform) {
+        const image = spriteRenderer.sprite;
+        let sX = 0, sY = 0, sWidth = image.naturalWidth, sHeight = image.naturalHeight;
+        let pivotX = 0.5, pivotY = 0.5;
+
+        // Check for sprite sheet data
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName) {
+            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            if (spriteData) {
+                sX = spriteData.rect.x;
+                sY = spriteData.rect.y;
+                sWidth = spriteData.rect.width;
+                sHeight = spriteData.rect.height;
+                pivotX = spriteData.pivot.x;
+                pivotY = spriteData.pivot.y;
+            }
+        }
+
+        const dWidth = sWidth * transform.scale.x;
+        const dHeight = sHeight * transform.scale.y;
+
+        // Apply pivot point for correct rotation and positioning
+        const dx = -dWidth * pivotX;
+        const dy = -dHeight * pivotY;
+
+        this.ctx.drawImage(image, sX, sY, sWidth, sHeight, dx, dy, dWidth, dHeight);
+    }
+
+    _drawTextureRender(textureRender, transform) {
+        this.ctx.scale(transform.scale.x, transform.scale.y);
+        // Pivot is assumed to be center for TextureRender
+        const dx = -textureRender.width / 2;
+        const dy = -textureRender.height / 2;
+
+        if (textureRender.texture && textureRender.texture.complete) {
+            this.ctx.fillStyle = this.ctx.createPattern(textureRender.texture, 'repeat');
+        } else {
+            this.ctx.fillStyle = textureRender.color;
+        }
+
+        if (textureRender.shape === 'Rectangle') {
+            this.ctx.fillRect(dx, dy, textureRender.width, textureRender.height);
+        } else if (textureRender.shape === 'Circle') {
+            this.ctx.beginPath();
+            // We use width for radius to maintain consistency
+            this.ctx.arc(0, 0, textureRender.width / 2, 0, 2 * Math.PI);
+            this.ctx.fill();
+        }
+    }
+
+    drawScene(scene, activeCameraMateria, isGameView = false) {
+        const cameraComponent = activeCameraMateria ? activeCameraMateria.getComponent(Camera) : null;
+        this.clear(cameraComponent);
+
+        // --- 1. World Rendering Pass ---
+        this.beginWorld(activeCameraMateria);
+
+        const materias = scene.getAllMaterias();
+
+        // --- 1a. Render Solid Objects (Sprites, Tilemaps, etc.) ---
+        for (const materia of materias) {
+            if (!materia.isActive || materia.getComponent(Canvas)) continue;
+
+            const transform = materia.getComponent(Transform);
+            if (!transform) continue;
+
+            const spriteRenderer = materia.getComponent(SpriteRenderer);
+            const tilemapRenderer = materia.getComponent(TilemapRenderer);
+            const textureRender = materia.getComponent(TextureRender);
+
+            if (spriteRenderer || tilemapRenderer || textureRender) {
+                this.ctx.save();
+                this.ctx.translate(transform.position.x, transform.position.y);
+                this.ctx.rotate(transform.rotation * Math.PI / 180);
+
+                if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+                    this._drawSprite(spriteRenderer, transform);
+                }
+                if (textureRender) {
+                    this._drawTextureRender(textureRender, transform);
+                }
+                if (tilemapRenderer) {
+                    // Pass transform so it can be used for scaling
+                    this.drawTilemap(tilemapRenderer, transform);
+                }
+                this.ctx.restore();
+            }
+        }
+
+        // --- 1b. Particle System Pass (drawn on top of solids, but affected by lights) ---
+        this._drawParticleSystems(this.ctx, scene);
+
+        // --- 1c. Lighting Pass (blended over all world objects) ---
+        this.beginLights();
+        for (const materia of materias) {
+            if (!materia.isActive) continue;
+            const transform = materia.getComponent(Transform);
+            if (!transform) continue;
+
+            const pointLight = materia.getComponent(PointLight2D);
+            if (pointLight) this.drawPointLight(pointLight, transform);
+
+            const spotLight = materia.getComponent(SpotLight2D);
+            if (spotLight) this.drawSpotLight(spotLight, transform);
+
+            const freeformLight = materia.getComponent(FreeformLight2D);
+            if (freeformLight) this.drawFreeformLight(freeformLight, transform);
+
+            const spriteLight = materia.getComponent(SpriteLight2D);
+            if (spriteLight) this.drawSpriteLight(spriteLight, transform);
+        }
+        this.endLights();
+
+        this.end(); // End World Pass
+
+        // --- 2. UI Pass (drawn last, on top of everything) ---
+        for (const materia of materias) {
+             if (materia.isActive && materia.getComponent(Canvas)) {
+                this.drawCanvas(materia);
+            }
+        }
+    }
+
     drawWorldSpaceUI(canvasMateria) {
         const canvasComponent = canvasMateria.getComponent(Canvas);
         const canvasTransform = canvasMateria.getComponent(Transform);

@@ -26,6 +26,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
+    'Efectos': [Components.ParticleSystem],
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
@@ -404,8 +405,11 @@ function handleInspectorClick(e) {
                     const componentName = dropper.dataset.component;
                     const component = selectedMateria.getComponent(Components[componentName]);
                     if (component) {
-                        // Special handling for SpriteRenderer
-                        if (component instanceof Components.SpriteRenderer) {
+                        // Special handling for different components
+                        if (component instanceof Components.ParticleSystem) {
+                            component.texturePath = data.path;
+                            await component.loadTexture(projectsDirHandle);
+                        } else if (component instanceof Components.SpriteRenderer) {
                             await component.setSourcePath(data.path, projectsDirHandle);
                         } else {
                             const propName = dropper.dataset.prop;
@@ -1651,6 +1655,80 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
+        } else if (ley instanceof Components.ParticleSystem) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header"><span class="component-icon">✨</span><h4>Particle System</h4></div>
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>Emisión</span></div>
+                    <div class="prop-row-multi">
+                        <label>Duración</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="duration" value="${ley.duration}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label>Loop</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tasa de Emisión</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Máx. Partículas</label>
+                        <input type="number" class="prop-input" step="10" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>Forma</span></div>
+                     <div class="prop-row-multi">
+                        <label>Forma</label>
+                        <select class="prop-input" data-component="ParticleSystem" data-prop="shape">
+                            <option value="cone" ${ley.shape === 'cone' ? 'selected' : ''}>Cono</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Ángulo del Cono</label>
+                        <input type="number" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="coneAngle" value="${ley.coneAngle}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>Movimiento y Vida</span></div>
+                    <div class="prop-row-multi">
+                        <label>Tiempo de Vida</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="startLifetime" value="${ley.startLifetime}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad Inicial</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="ParticleSystem" data-prop="startSpeed" value="${ley.startSpeed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Gravedad</label>
+                        <input type="number" class="prop-input" step="0.1" data-component="ParticleSystem" data-prop="gravityModifier" value="${ley.gravityModifier}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>Apariencia</span></div>
+                    <div class="prop-row-multi">
+                        <label>Tamaño (Inicio/Fin)</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="startSize" value="${ley.startSize}">
+                            <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="endSize" value="${ley.endSize}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color (Inicio)</label>
+                        <input type="color" class="prop-input" data-component="ParticleSystem" data-prop="startColor" value="${ley.startColor}">
+                    </div>
+                     <div class="prop-row-multi">
+                        <label>Color (Fin)</label>
+                        <input type="color" class="prop-input" data-component="ParticleSystem" data-prop="endColor" value="${ley.endColor}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Textura</label>
+                        <div class="asset-dropper" data-component="ParticleSystem" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra una textura aquí">
+                            <span class="asset-dropper-text">${ley.texturePath || 'None (Cuadrado)'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
         } else if (ley instanceof Components.Rigidbody2D) {
             const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `

@@ -1,0 +1,55 @@
+{
+  "materias": [
+    {
+      "id": 1,
+      "name": "ParticleEmitter",
+      "isActive": true,
+      "isCollapsed": false,
+      "children": [],
+      "leyes": [
+        {
+          "type": "Transform",
+          "localPosition": { "x": 0, "y": -150 },
+          "localRotation": 0,
+          "localScale": { "x": 1, "y": 1 }
+        },
+        {
+          "type": "ParticleSystem",
+          "duration": 5.0,
+          "loop": true,
+          "maxParticles": 1000,
+          "emissionRate": 150,
+          "shape": "cone",
+          "coneAngle": 30,
+          "startLifetime": 2.5,
+          "startSpeed": 120,
+          "gravityModifier": 0.1,
+          "startSize": 8.0,
+          "endSize": 0.5,
+          "startColor": "#FFEB3B",
+          "endColor": "#FF572200",
+          "texturePath": "Assets/images/default-particle.png"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "MainCamera",
+      "isActive": true,
+      "isCollapsed": false,
+      "children": [],
+      "leyes": [
+        {
+          "type": "Transform",
+          "localPosition": { "x": 0, "y": 0 },
+          "localRotation": 0,
+          "localScale": { "x": 1, "y": 1 }
+        },
+        {
+          "type": "Camera",
+          "orthographicSize": 300
+        }
+      ]
+    }
+  ]
+}
