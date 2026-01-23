@@ -1766,6 +1766,205 @@ export class ParticleSystem extends Leyes {
 }
 registerComponent('CompositeCollider2D', CompositeCollider2D);
 
+// --- Pathfinding Components ---
+
+export class NavigationArea2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.areaSize = { width: 1000, height: 1000 };
+        this.cellSize = 50;
+        this.navGrid = null; // This will hold the baked grid data
+    }
+
+    bake() {
+        console.log(`Baking navigation area with size ${this.areaSize.width}x${this.areaSize.height} and cell size ${this.cellSize}`);
+        console.log(`Baking navigation area with size ${this.areaSize.width}x${this.areaSize.height} and cell size ${this.cellSize}`);
+        const scene = this.materia.scene;
+        if (!scene) {
+            console.error("NavigationArea2D no puede generar el mapa sin una escena.");
+            return;
+        }
+
+        const cols = Math.floor(this.areaSize.width / this.cellSize);
+        const rows = Math.floor(this.areaSize.height / this.cellSize);
+        this.navGrid = Array(cols).fill(null).map(() => Array(rows).fill(null).map(() => ({ walkable: true, allowedAgents: [] })));
+
+        const allMaterias = scene.getAllMaterias();
+
+        for (let x = 0; x < cols; x++) {
+            for (let y = 0; y < rows; y++) {
+                const cellWorldX = this.materia.getComponent(Transform).position.x - this.areaSize.width / 2 + x * this.cellSize + this.cellSize / 2;
+                const cellWorldY = this.materia.getComponent(Transform).position.y - this.areaSize.height / 2 + y * this.cellSize + this.cellSize / 2;
+                const cellRect = { x: cellWorldX, y: cellWorldY, width: this.cellSize, height: this.cellSize };
+
+                for (const materia of allMaterias) {
+                    if (this._checkCollision(cellRect, materia)) {
+                        this.navGrid[x][y].walkable = false;
+                        break; // Move to the next cell once an obstacle is found
+                    }
+                }
+            }
+        }
+
+        // Apply NavModifiers after checking for collisions
+        for (const materia of allMaterias) {
+            const navModifier = materia.getComponent(NavModifier);
+            const boxCollider = materia.getComponent(BoxCollider2D); // NavModifiers are assumed to use a BoxCollider2D
+            if (navModifier && boxCollider) {
+                const modifierTransform = materia.getComponent(Transform);
+                const worldColliderRect = {
+                    x: modifierTransform.position.x + boxCollider.offset.x,
+                    y: modifierTransform.position.y + boxCollider.offset.y,
+                    width: boxCollider.size.x,
+                    height: boxCollider.size.y,
+                };
+
+                for (let x = 0; x < cols; x++) {
+                    for (let y = 0; y < rows; y++) {
+                        const cellWorldX = this.materia.getComponent(Transform).position.x - this.areaSize.width / 2 + x * this.cellSize + this.cellSize / 2;
+                        const cellWorldY = this.materia.getComponent(Transform).position.y - this.areaSize.height / 2 + y * this.cellSize + this.cellSize / 2;
+
+                        if (cellWorldX > worldColliderRect.x - worldColliderRect.width / 2 &&
+                            cellWorldX < worldColliderRect.x + worldColliderRect.width / 2 &&
+                            cellWorldY > worldColliderRect.y - worldColliderRect.height / 2 &&
+                            cellWorldY < worldColliderRect.y + worldColliderRect.height / 2) {
+
+                            this.navGrid[x][y].walkable = true; // Ensure it's walkable
+                            this.navGrid[x][y].allowedAgents.push(navModifier.overrideType);
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log("Navigation grid baked successfully.", this.navGrid);
+    }
+
+    _checkCollision(rect, materia) {
+        const boxCollider = materia.getComponent(BoxCollider2D);
+        const capsuleCollider = materia.getComponent(CapsuleCollider2D);
+        const tilemapCollider = materia.getComponent(TilemapCollider2D);
+        const transform = materia.getComponent(Transform);
+
+        if (!transform) return false;
+
+        // AABB check function (Axis-Aligned Bounding Box)
+        const checkAABB = (rectA, rectB) => {
+            return (
+                rectA.x - rectA.width / 2 < rectB.x + rectB.width / 2 &&
+                rectA.x + rectA.width / 2 > rectB.x - rectB.width / 2 &&
+                rectA.y - rectA.height / 2 < rectB.y + rectB.height / 2 &&
+                rectA.y + rectA.height / 2 > rectB.y - rectB.height / 2
+            );
+        };
+
+        if (boxCollider) {
+            const worldColliderRect = {
+                x: transform.position.x + boxCollider.offset.x,
+                y: transform.position.y + boxCollider.offset.y,
+                width: boxCollider.size.x,
+                height: boxCollider.size.y,
+            };
+            return checkAABB(rect, worldColliderRect);
+        }
+
+        if (capsuleCollider) {
+            // Approximate capsule with a box for grid collision
+            const worldColliderRect = {
+                x: transform.position.x + capsuleCollider.offset.x,
+                y: transform.position.y + capsuleCollider.offset.y,
+                width: capsuleCollider.size.x,
+                height: capsuleCollider.size.y,
+            };
+            return checkAABB(rect, worldColliderRect);
+        }
+
+        if (tilemapCollider) {
+            // This is more complex. We need to check against each generated collider box.
+            for (const generated of tilemapCollider.generatedColliders) {
+                 const worldColliderRect = {
+                    x: transform.position.x + generated.x,
+                    y: transform.position.y + generated.y,
+                    width: generated.width,
+                    height: generated.height,
+                };
+                if (checkAABB(rect, worldColliderRect)) {
+                    return true; // Found a collision with one of the tiles
+                }
+            }
+        }
+
+        return false;
+    }
+
+    clone() {
+        const newNavArea = new NavigationArea2D(null);
+        newNavArea.areaSize = { ...this.areaSize };
+        newNavArea.cellSize = this.cellSize;
+        // The navGrid is not cloned as it should be rebaked per scene instance if needed.
+        return newNavArea;
+    }
+}
+registerComponent('NavigationArea2D', NavigationArea2D);
+
+export class PathfindingAgent extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.agentType = 'Caminante'; // Default type
+        this.speed = 100; // Units per second for automatic movement
+        this.stoppingDistance = 10; // How close to a waypoint to be considered "arrived"
+
+        // Internal state
+        this._path = [];
+        this._currentTargetIndex = 0;
+        this._isMoving = false;
+    }
+
+    setDestination(x, y) {
+        console.log(`PathfindingAgent: Setting destination to (${x}, ${y})`);
+        // Placeholder for path calculation and starting movement.
+        // This will be connected in a later step.
+        this._isMoving = true;
+    }
+
+    calculatePath(x, y) {
+        console.log(`PathfindingAgent: Calculating path to (${x}, ${y})`);
+        // Placeholder for path calculation.
+        // This will be connected in a later step.
+        return []; // Return a dummy path for now
+    }
+
+    update(deltaTime) {
+        if (!this._isMoving || this._path.length === 0) return;
+
+        // Logic for automatic movement will go here.
+    }
+
+    clone() {
+        const newAgent = new PathfindingAgent(null);
+        newAgent.agentType = this.agentType;
+        newAgent.speed = this.speed;
+        newAgent.stoppingDistance = this.stoppingDistance;
+        return newAgent;
+    }
+}
+registerComponent('PathfindingAgent', PathfindingAgent);
+
+export class NavModifier extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.overrideType = 'Caminante'; // The agent type that can pass through this area
+    }
+
+    clone() {
+        const newModifier = new NavModifier(null);
+        newModifier.overrideType = this.overrideType;
+        return newModifier;
+    }
+}
+registerComponent('NavModifier', NavModifier);
+
+
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
         super(materia);

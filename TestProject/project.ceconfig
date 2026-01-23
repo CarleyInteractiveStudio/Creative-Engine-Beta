@@ -1,0 +1,34 @@
+{
+  "appName": "TestProject",
+  "authorName": "Creative Engine",
+  "appVersion": "1.0.0",
+  "engineVersion": "0.1.0-beta",
+  "iconPath": "",
+  "splashLogos": [],
+  "showEngineLogo": true,
+  "keystore": {
+    "path": "",
+    "pass": "",
+    "alias": "",
+    "aliasPass": ""
+  },
+  "layers": {
+    "sortingLayers": [
+      "Default",
+      "UI"
+    ],
+    "collisionLayers": [
+      "Default",
+      "Player",
+      "Enemy",
+      "Ground"
+    ]
+  },
+  "tags": [
+    "Untagged"
+  ],
+  "agentTypes": [
+    "Caminante",
+    "Fantasma"
+  ]
+}

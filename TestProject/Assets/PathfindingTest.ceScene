@@ -1,0 +1,73 @@
+{
+  "materias": [
+    {
+      "id": 1,
+      "name": "NavArea",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": 0, "y": 0 } },
+        { "type": "NavigationArea2D", "areaSize": { "width": 800, "height": 600 }, "cellSize": 20 }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Caminante",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": -350, "y": -250 } },
+        { "type": "PathfindingAgent", "agentType": "Caminante", "speed": 150 },
+        { "type": "TextureRender", "shape": "Circle", "radius": 10, "color": "#3498db" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Fantasma",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": -350, "y": 250 } },
+        { "type": "PathfindingAgent", "agentType": "Fantasma", "speed": 150 },
+        { "type": "TextureRender", "shape": "Circle", "radius": 10, "color": "#9b59b6" }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Wall_Horizontal",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": 0, "y": 0 } },
+        { "type": "BoxCollider2D", "size": { "x": 600, "y": 50 } },
+        { "type": "TextureRender", "width": 600, "height": 50, "color": "#7f8c8d" }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Wall_Vertical",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": 100, "y": 150 } },
+        { "type": "BoxCollider2D", "size": { "x": 50, "y": 300 } },
+        { "type": "TextureRender", "width": 50, "height": 300, "color": "#7f8c8d" }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "GhostWall_Shortcut",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": -150, "y": 0 } },
+        { "type": "BoxCollider2D", "size": { "x": 50, "y": 200 } },
+        { "type": "NavModifier", "overrideType": "Fantasma" },
+        { "type": "TextureRender", "width": 50, "height": 200, "color": "#2ecc71" }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "MainCamera",
+      "isActive": true,
+      "leyes": [
+        { "type": "Transform", "localPosition": { "x": 0, "y": 0 } },
+        { "type": "Camera", "projection": "Orthographic", "orthographicSize": 300 }
+      ]
+    }
+  ]
+}

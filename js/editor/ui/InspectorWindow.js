@@ -26,6 +26,7 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
+    'Navegación': [Components.NavigationArea2D, Components.PathfindingAgent, Components.NavModifier],
     'Efectos': [Components.ParticleSystem],
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
@@ -569,6 +570,15 @@ function handleInspectorClick(e) {
         if (button && !isNaN(index)) {
             button.onClick.splice(index, 1);
             updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="bake-nav-area"]')) {
+        const navArea = selectedMateria.getComponent(Components.NavigationArea2D);
+        if (navArea) {
+            navArea.bake();
+            // We might want to show a notification here in the future
+            window.Dialogs.showNotification('Navegación', 'Área de navegación generada (placeholder).');
         }
     }
 }
@@ -1725,6 +1735,73 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="asset-dropper" data-component="ParticleSystem" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra una textura aquí">
                             <span class="asset-dropper-text">${ley.texturePath || 'None (Cuadrado)'}</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        } else if (ley instanceof Components.NavigationArea2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header"><span class="component-icon">🗺️</span><h4>Navigation Area 2D</h4></div>
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Tamaño del Área</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="10" min="10" data-component="NavigationArea2D" data-prop="areaSize.width" value="${ley.areaSize.width}" title="Ancho">
+                            <input type="number" class="prop-input" step="10" min="10" data-component="NavigationArea2D" data-prop="areaSize.height" value="${ley.areaSize.height}" title="Alto">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tamaño de Celda</label>
+                        <input type="number" class="prop-input" step="1" min="1" data-component="NavigationArea2D" data-prop="cellSize" value="${ley.cellSize}">
+                    </div>
+                    <hr>
+                    <button class="primary-btn" data-action="bake-nav-area" style="width: 100%;">Generar</button>
+                    <p class="field-description" style="margin-top: 8px;">Genera o actualiza el mapa de navegación para esta área.</p>
+                </div>
+            </div>
+            `;
+        } else if (ley instanceof Components.PathfindingAgent) {
+            const agentTypes = getCurrentProjectConfig().agentTypes || [];
+            const agentTypeOptions = agentTypes.map(type => `<option value="${type}" ${ley.agentType === type ? 'selected' : ''}>${type}</option>`).join('');
+
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header"><span class="component-icon">🤖</span><h4>Pathfinding Agent</h4></div>
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>Configuración</span></div>
+                    <div class="prop-row-multi">
+                        <label>Tipo de Agente</label>
+                        <select class="prop-input" data-component="PathfindingAgent" data-prop="agentType">
+                            ${agentTypeOptions}
+                        </select>
+                    </div>
+                    <div class="inspector-section-header"><span>Movimiento Automático</span></div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" step="10" min="0" data-component="PathfindingAgent" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia de Frenado</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="PathfindingAgent" data-prop="stoppingDistance" value="${ley.stoppingDistance}">
+                    </div>
+                </div>
+            </div>
+            `;
+        } else if (ley instanceof Components.NavModifier) {
+            const agentTypes = getCurrentProjectConfig().agentTypes || [];
+            const agentTypeOptions = agentTypes.map(type => `<option value="${type}" ${ley.overrideType === type ? 'selected' : ''}>${type}</option>`).join('');
+
+            componentHTML = `
+            <div class="component-inspector">
+                <div class="component-header"><span class="component-icon">🏷️</span><h4>Nav Modifier</h4></div>
+                <div class="component-content">
+                    <p class="field-description">Define un área donde las reglas de navegación son diferentes. El área está definida por el BoxCollider2D en este objeto.</p>
+                    <div class="prop-row-multi">
+                        <label>Tipo de Agente Permitido</label>
+                        <select class="prop-input" data-component="NavModifier" data-prop="overrideType">
+                            ${agentTypeOptions}
+                        </select>
                     </div>
                 </div>
             </div>

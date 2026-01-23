@@ -47,6 +47,10 @@ async function saveProjectConfig(showAlert = true) {
         const tagItems = dom.settingsTagList.querySelectorAll('.layer-item');
         currentProjectConfig.tags = Array.from(tagItems).map(item => item.querySelector('span').textContent);
 
+        // Save Agent Types
+        const agentTypeItems = dom.settingsAgentTypeList.querySelectorAll('.layer-item');
+        currentProjectConfig.agentTypes = Array.from(agentTypeItems).map(item => item.querySelector('span').textContent);
+
         // Save Layers
         const layerInputs = dom.settingsLayerList.querySelectorAll('input[type=text]');
         const newLayers = Array.from(layerInputs).map(input => input.value);
@@ -70,7 +74,38 @@ async function saveProjectConfig(showAlert = true) {
 }
 
 function populateTagsAndLayers() {
+    // Ensure agentTypes exists for backward compatibility
+    if (!currentProjectConfig.agentTypes) {
+        currentProjectConfig.agentTypes = [];
+    }
     if (!currentProjectConfig.layers || !currentProjectConfig.tags) return;
+
+    // --- Populate Agent Types ---
+    const agentTypeList = dom.settingsAgentTypeList;
+    agentTypeList.innerHTML = '';
+    currentProjectConfig.agentTypes.forEach(agentType => {
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = agentType;
+        item.appendChild(nameSpan);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-layer-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Quitar tipo de agente';
+        removeBtn.addEventListener('click', () => {
+            const index = currentProjectConfig.agentTypes.indexOf(agentType);
+            if (index > -1) {
+                currentProjectConfig.agentTypes.splice(index, 1);
+                populateTagsAndLayers(); // A bit inefficient, but simple and robust
+            }
+        });
+        item.appendChild(removeBtn);
+        agentTypeList.appendChild(item);
+    });
+
 
     // --- Populate Tags ---
     const tagList = dom.settingsTagList;
@@ -199,6 +234,17 @@ function setupEventListeners() {
             if (!e.target.checked) {
                 e.preventDefault();
                 dom.engineLogoConfirmModal.classList.add('is-open');
+            }
+        });
+    }
+
+    if (dom.addAgentTypeBtn) {
+        dom.addAgentTypeBtn.addEventListener('click', () => {
+            const newAgentTypeName = dom.newAgentTypeName.value.trim();
+            if (newAgentTypeName && !currentProjectConfig.agentTypes.includes(newAgentTypeName)) {
+                currentProjectConfig.agentTypes.push(newAgentTypeName);
+                dom.newAgentTypeName.value = '';
+                populateTagsAndLayers(); // Rerender the list
             }
         });
     }

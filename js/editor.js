@@ -568,6 +568,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentProjectConfig.tags = ['Untagged'];
         }
 
+        // Ensure agentTypes config exists for older projects
+        if (!currentProjectConfig.agentTypes) {
+            currentProjectConfig.agentTypes = [];
+        }
+
         // The UI population is now handled by the module
         populateProjectSettingsUI(currentProjectConfig, projectsDirHandle);
     };
