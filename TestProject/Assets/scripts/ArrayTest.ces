@@ -1,0 +1,68 @@
+// ArrayTest.ces
+// Este script demuestra el uso de arrays como variables públicas.
+//
+// --- CÓMO PROBAR ---
+// 1. Crea una nueva "Materia" vacía en tu escena.
+// 2. Añade este script ("ArrayTest.ces") a la Materia.
+// 3. Selecciona la Materia. En el Inspector, verás las variables de array.
+//
+// 4. Para 'Puntuaciones':
+//    - Cambia el tamaño (Size) a 3.
+//    - Introduce los números 10, 20, 30 en los campos "Element 0", "Element 1", "Element 2".
+//
+// 5. Para 'Nombres de Jugadores':
+//    - Cambia el tamaño a 2.
+//    - Introduce "Link" y "Zelda" en los campos de texto.
+//
+// 6. Para 'Puntos de Patrulla':
+//    - Crea dos Materias más en la escena (pueden ser vacías). Nómbralas "PuntoA" y "PuntoB".
+//    - Vuelve a seleccionar tu objeto con el script.
+//    - Cambia el tamaño de 'Puntos de Patrulla' a 2.
+//    - Arrastra "PuntoA" al campo "Element 0" y "PuntoB" al campo "Element 1".
+//
+// 7. Dale a "Play".
+// 8. Revisa la consola. Deberías ver los contenidos de los arrays impresos, incluyendo los nombres
+//    de los objetos que arrastraste.
+
+publico numero[] puntuaciones;
+publico texto[] nombresDeJugadores;
+publico Materia[] puntosDePatrulla;
+
+publico iniciar() {
+    imprimir("--- Probando Arrays Públicos ---");
+
+    // Probar array de números
+    if (this.puntuaciones && this.puntuaciones.length > 0) {
+        imprimir("Puntuaciones:");
+        for (let i = 0; i < this.puntuaciones.length; i++) {
+            imprimir("  - Elemento " + i + ": " + this.puntuaciones[i]);
+        }
+    } else {
+        imprimir("El array 'puntuaciones' está vacío.");
+    }
+
+    // Probar array de textos
+    if (this.nombresDeJugadores && this.nombresDeJugadores.length > 0) {
+        imprimir("Nombres de Jugadores:");
+        for (let i = 0; i < this.nombresDeJugadores.length; i++) {
+            imprimir("  - Elemento " + i + ": " + this.nombresDeJugadores[i]);
+        }
+    } else {
+        imprimir("El array 'nombresDeJugadores' está vacío.");
+    }
+
+    // Probar array de Materias
+    if (this.puntosDePatrulla && this.puntosDePatrulla.length > 0) {
+        imprimir("Puntos de Patrulla:");
+        for (let i = 0; i < this.puntosDePatrulla.length; i++) {
+            const punto = this.puntosDePatrulla[i];
+            if (punto) {
+                imprimir("  - Elemento " + i + ": Objeto llamado '" + punto.name + "'");
+            } else {
+                imprimir("  - Elemento " + i + ": null (no asignado)");
+            }
+        }
+    } else {
+        imprimir("El array 'puntosDePatrulla' está vacío.");
+    }
+}

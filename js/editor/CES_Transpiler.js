@@ -75,7 +75,7 @@ const typeMap = {
     'Materia': 'Materia'
 };
 
-function getDefaultValueForType(canonicalType) {
+export function getDefaultValueForType(canonicalType) {
     switch (canonicalType) {
         case 'number':
              return 0;
@@ -193,28 +193,30 @@ export function transpile(code, scriptName) {
     }
 
 
-// 1.b: Parse and remove public and private variables (robust version)
-const varRegex = /^\s*(public|private|publico|privado)\s+(?:(var|numero|number|texto|string|booleano|boolean|Materia))\s+([a-zA-Z_]\w*)\s*(?::\s*\w+\s*)?(?:=\s*(.+?))?\s*;/gm;
+// 1.b: Parse and remove public and private variables (supports arrays)
+const varRegex = /^\s*(public|private|publico|privado)\s+(?:(var|numero|number|texto|string|booleano|boolean|Materia))\s*(\[\])?\s+([a-zA-Z_]\w*)\s*(?::\s*\w+\s*)?(?:=\s*(.+?))?\s*;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
         const typeInput = varMatch[2];
-        const name = varMatch[3];
-        const value = varMatch[4];
+        const isArray = varMatch[3] === '[]';
+        const name = varMatch[4];
+        const value = varMatch[5]; // This will be null for arrays, as they can't be initialized inline
 
-    const canonicalType = typeMap[typeInput] || 'any'; // Default to 'any' if 'var' is used
-        if (!canonicalType) {
-        // This block should now be less likely to be hit.
-            errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
-            continue;
-        }
+        const canonicalType = typeMap[typeInput] || 'any'; // Default to 'any' if 'var' is used
 
-        const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);
+        let varData = {
+            name: name,
+            type: canonicalType,
+            isArray: isArray,
+            value: isArray ? '[]' : (value || JSON.stringify(getDefaultValueForType(canonicalType))),
+            defaultValue: isArray ? [] : (value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType))
+        };
 
         if (scope === 'public') {
-            publicVars.push({ type: canonicalType, name: name, value: value, defaultValue: parsedValue });
+            publicVars.push(varData);
         } else {
-            privateVars.push({ name: name, value: value });
+            privateVars.push(varData);
         }
     }
     unprocessedCode = unprocessedCode.replace(varRegex, '');
@@ -235,7 +237,12 @@ const goRegex = /^\s*\bgo\b\s+(?:"([^"]+)"|((?:ce\.)?\w+))\s*/gm;
 
     // Almacenar los metadatos de las variables públicas
     const metadata = {
-        publicVars: publicVars.map(pv => ({ name: pv.name, type: pv.type, defaultValue: pv.defaultValue })),
+        publicVars: publicVars.map(pv => ({
+            name: pv.name,
+            type: pv.type,
+            isArray: pv.isArray,
+            defaultValue: pv.defaultValue
+        })),
         publicFunctions: publicFunctions
     };
     scriptMetadataMap.set(scriptName, metadata);
@@ -314,10 +321,10 @@ if (unprocessedLines.length > 0 && unprocessedLines[0].trim() !== '') {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || JSON.stringify(pv.defaultValue)}; // Type: ${pv.type}\n`;
+        jsCode += `            this.${pv.name} = ${pv.value}; // Type: ${pv.type}${pv.isArray ? '[]' : ''}\n`;
     });
     privateVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || 'null'};\n`;
+        jsCode += `            this.${pv.name} = ${pv.value};\n`;
     });
     jsCode += `        }\n\n`;
 

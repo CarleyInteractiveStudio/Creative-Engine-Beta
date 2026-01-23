@@ -423,12 +423,23 @@ export class CreativeScript extends Leyes {
                             if (savedValue !== null && savedValue !== undefined) {
                                 const metaVar = metadataMap.get(varName);
 
-                                // Resolver referencias a Materia por ID o nombre
+                                // Handle Materia references for both single variables and arrays
                                 if (metaVar.type === 'Materia' && savedValue != null) {
-                                    if (typeof savedValue === 'number') {
-                                        savedValue = this.materia.scene.findMateriaById(savedValue);
-                                    } else if (typeof savedValue === 'string') {
-                                        savedValue = this.materia.scene.getAllMaterias().find(m => m.name === savedValue) || null;
+                                    if (metaVar.isArray && Array.isArray(savedValue)) {
+                                        // It's an array of Materia references (IDs)
+                                        savedValue = savedValue.map(id => {
+                                            if (typeof id === 'number') {
+                                                return this.materia.scene.findMateriaById(id);
+                                            }
+                                            return null; // Or handle string names if needed
+                                        }).filter(Boolean); // Filter out any nulls from failed lookups
+                                    } else if (!metaVar.isArray) {
+                                        // It's a single Materia reference
+                                        if (typeof savedValue === 'number') {
+                                            savedValue = this.materia.scene.findMateriaById(savedValue);
+                                        } else if (typeof savedValue === 'string') {
+                                            savedValue = this.materia.scene.getAllMaterias().find(m => m.name === savedValue) || null;
+                                        }
                                     }
                                 }
 

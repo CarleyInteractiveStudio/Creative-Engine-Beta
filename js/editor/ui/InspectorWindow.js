@@ -142,7 +142,46 @@ function handleInspectorInput(e) {
         const scriptName = e.target.dataset.scriptName;
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
+        // --- Array Input Handling ---
+        if (propPath.includes('[')) {
+            const baseProp = propPath.match(/(\w+)/)[0];
+            const index = parseInt(propPath.match(/\[(\d+)\]/)[1], 10);
+
+            // Ensure the array exists
+            if (!Array.isArray(script.publicVars[baseProp])) {
+                script.publicVars[baseProp] = [];
+            }
+
+            script.publicVars[baseProp][index] = value;
+
+        } else if (e.target.classList.contains('array-size-input')) {
+            const arrayName = propPath;
+            const newSize = Math.max(0, parseInt(value, 10));
+
+            // Ensure the array exists
+            if (!Array.isArray(script.publicVars[arrayName])) {
+                script.publicVars[arrayName] = [];
+            }
+
+            const currentArray = script.publicVars[arrayName];
+            const metadata = CES_Transpiler.getScriptMetadata(scriptName);
+            const varMeta = metadata.publicVars.find(p => p.name === arrayName);
+
+            while (currentArray.length < newSize) {
+                // Add default values for the base type
+                currentArray.push(varMeta ? CES_Transpiler.getDefaultValueForType(varMeta.type) : null);
+            }
+            if (currentArray.length > newSize) {
+                currentArray.length = newSize;
+            }
+
+            // Re-render the inspector to show the new fields
+            updateInspector();
+            return; // Important: stop further processing
+        } else {
+             // --- Single Variable Handling ---
             script.publicVars[propPath] = value;
+        }
         }
         return;
     }
@@ -627,41 +666,68 @@ export async function updateInspector() {
     }
 }
 
-function renderPublicVarInput(variable, currentValue, componentType, identifier) {
-    let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
+function renderPublicVarInput(variable, currentValue, componentType, identifier, index = -1) {
+    let propName = index > -1 ? `${variable.name}[${index}]` : variable.name;
+    let commonAttrs = `class="prop-input" data-prop="${propName}"`;
+
     if (componentType === 'CreativeScript') {
         commonAttrs += ` data-component="CreativeScript" data-script-name="${identifier}"`;
     } else if (componentType === 'CustomComponent') {
         commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
     }
 
+    // --- Array Handling ---
+    if (variable.isArray && index === -1) { // Only render the container for the top-level call
+        const arrayValues = Array.isArray(currentValue) ? currentValue : [];
+        let itemsHTML = '';
+        for (let i = 0; i < arrayValues.length; i++) {
+            // Recursive call to render the input for each element
+            const elementVar = { ...variable, isArray: false }; // Pretend it's a single var for rendering
+            itemsHTML += `
+                <div class="array-item">
+                    <label>Element ${i}</label>
+                    ${renderPublicVarInput(elementVar, arrayValues[i], componentType, identifier, i)}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="array-container">
+                <div class="array-header">
+                    <label>Size</label>
+                    <input type="number" class="array-size-input" value="${arrayValues.length}" min="0" ${commonAttrs}>
+                </div>
+                <div class="array-elements">
+                    ${itemsHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    // --- Single Value Handling ---
+    const value = currentValue ?? variable.defaultValue;
+
     switch (variable.type) {
         case 'number':
         case 'numero':
-            return `<input type="number" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="number" ${commonAttrs} value="${value}">`;
         case 'string':
         case 'texto':
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="text" ${commonAttrs} value="${value}">`;
         case 'boolean':
         case 'booleano':
-            return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
-        case 'Materia':
-            {
-                let displayName = 'None (Materia)';
-                if (typeof currentValue === 'number') {
-                    // We need access to the SceneManager here. Let's assume it's available globally for now.
-                    // This is not ideal, but it's a quick solution for the UI.
-                    const SceneManager = window.SceneManager; // A bit of a hack, but necessary here.
-                    const materia = SceneManager.currentScene.findMateriaById(currentValue);
-                    if (materia) {
-                        displayName = materia.name;
-                    }
-                }
-                return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
+            return `<input type="checkbox" ${commonAttrs} ${value ? 'checked' : ''}>`;
+        case 'Materia': {
+            let displayName = 'None (Materia)';
+            if (typeof value === 'number') {
+                const SceneManager = window.SceneManager;
+                const materia = SceneManager.currentScene.findMateriaById(value);
+                if (materia) displayName = materia.name;
             }
-        default:
-            // Para 'any' o tipos desconocidos, usar un campo de texto
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
+        }
+        default: // For 'any' or unknown types
+            return `<input type="text" ${commonAttrs} value="${value}">`;
     }
 }
 
