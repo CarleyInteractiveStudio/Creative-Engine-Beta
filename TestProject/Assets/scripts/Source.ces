@@ -1,0 +1,38 @@
+// Source.ces
+// Este es el script "emisor". Demuestra cómo llamar a una función en otro script.
+//
+// --- CÓMO PROBAR ---
+// 1. Crea dos objetos en la escena (por ejemplo, dos "Materia" vacíos).
+// 2. Nómbralos "Emisor" y "Receptor".
+// 3. Añade este script ("Source.ces") al objeto "Emisor".
+// 4. Añade el script "Target.ces" al objeto "Receptor".
+// 5. Selecciona el objeto "Emisor". En el Inspector, verás la variable "Objetivo".
+// 6. Arrastra el objeto "Receptor" desde la Jerarquía hasta el campo "Objetivo" en el Inspector.
+// 7. Dale a "Play".
+// 8. Revisa la consola. Deberías ver el mensaje "¡Mensaje recibido en Target.ces!...".
+
+// Variable pública para asignar el objeto que tiene el script Target.ces
+publico Materia objetivo = null;
+
+publico iniciar() {
+    imprimir("Source.ces iniciando...");
+
+    // Comprobar si el objetivo ha sido asignado en el Inspector
+    if (this.objetivo != null) {
+        imprimir("Objetivo encontrado, intentando llamar a su script...");
+
+        // Usar la nueva función para obtener la instancia del script "Target.ces"
+        // Nota: usamos el nombre del archivo del script, 'Target.ces'
+        const targetScript = this.objetivo.obtenerScript('Target.ces');
+
+        // Comprobar si el script fue encontrado
+        if (targetScript != null) {
+            // ¡Llamar a la función pública del otro script!
+            targetScript.recibirMensaje("Hola desde Source.ces!");
+        } else {
+            imprimir("Error: No se pudo encontrar el script 'Target.ces' en el objeto objetivo.");
+        }
+    } else {
+        imprimir("Advertencia: La variable 'objetivo' no ha sido asignada en el Inspector.");
+    }
+}

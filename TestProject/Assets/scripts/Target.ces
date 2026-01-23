@@ -1,0 +1,7 @@
+// Target.ces
+// Este es el script "receptor".
+// Tiene una función pública que puede ser llamada desde otros scripts.
+
+publico funcion recibirMensaje(mensaje) {
+    imprimir("¡Mensaje recibido en Target.ces! El mensaje es: '" + mensaje + "'");
+}

@@ -40,6 +40,29 @@ export class Materia {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
+    /**
+     * Finds and returns the instance of a script component by its name.
+     * This allows scripts to call public functions on other scripts.
+     * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
+     * @returns {object|null} The script instance or null if not found.
+     */
+    getScript(scriptName) {
+        for (const ley of this.leyes) {
+            // Check if the component is a script and its name matches.
+            // The 'scriptName' property is on the CreativeScript component wrapper.
+            if (ley.constructor.name === 'CreativeScript' && ley.scriptName === scriptName) {
+                // Return the actual user script instance, not the wrapper component.
+                return ley.instance;
+            }
+        }
+        return null; // Not found
+    }
+
+    // Spanish alias for getScript
+    obtenerScript(scriptName) {
+        return this.getScript(scriptName);
+    }
+
     findAncestorWithComponent(componentClass) {
         let current = this.parent;
         // If the parent is a number (ID), we need to resolve it to a Materia object first.
