@@ -1,0 +1,22 @@
+publico numero velocidad = 5;
+
+actualizar(dt) {
+    variable x = 0;
+    variable y = 0;
+
+    si (this.entrada.estaTeclaPulsada("ArrowUp")) {
+        y = y + 1;
+    }
+    si (this.entrada.estaTeclaPulsada("ArrowDown")) {
+        y = y - 1;
+    }
+    si (this.entrada.estaTeclaPulsada("ArrowLeft")) {
+        x = x - 1;
+    }
+    si (this.entrada.estaTeclaPulsada("ArrowRight")) {
+        x = x + 1;
+    }
+
+    this.transform.position.x = this.transform.position.x + x * this.velocidad * dt;
+    this.transform.position.y = this.transform.position.y + y * this.velocidad * dt;
+}

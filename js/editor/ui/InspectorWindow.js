@@ -29,7 +29,7 @@ const availableComponents = {
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
-    'Cámara': [Components.Camera],
+    'Cámara': [Components.Camera, Components.CameraFollow2D],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'Scripting': [Components.CreativeScript]
@@ -1263,6 +1263,39 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${statesListHTML}
                     </div>
                 </div>`;
+        } else if (ley instanceof Components.CameraFollow2D) {
+            let targetName = 'None (Materia)';
+            if (ley.target !== null) {
+                const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.target);
+                if (targetMateria) {
+                    targetName = targetMateria.name;
+                }
+            }
+
+            componentHTML = `
+            <div class.component-inspector">
+                <div class="component-header"><span class="component-icon">📹</span><h4>Camera Follow 2D</h4></div>
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Target</label>
+                        <div class="materia-dropper" data-component="CameraFollow2D" data-prop="target" data-asset-type="Materia">${targetName}</div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Smooth Speed</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.01" min="0.01" max="1" data-component="CameraFollow2D" data-prop="smoothSpeed" value="${ley.smoothSpeed}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="CameraFollow2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="1" data-component="CameraFollow2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
+                            <input type="number" class="prop-input" step="1" data-component="CameraFollow2D" data-prop="offset.z" value="${ley.offset.z}" title="Offset Z">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         } else if (ley instanceof Components.Camera) {
             const projection = ley.projection || 'Perspective';
             const clearFlags = ley.clearFlags || 'SolidColor';
