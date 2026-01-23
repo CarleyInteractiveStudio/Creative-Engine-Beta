@@ -1,0 +1,7 @@
+publico vector2 miPosicion;
+publico color miColor = "#ff0000";
+
+iniciar() {
+    imprimir("Mi posición inicial es: ", this.miPosicion.x, ", ", this.miPosicion.y);
+    imprimir("Mi color es: ", this.miColor);
+}

@@ -38,6 +38,17 @@
         },
         {
           "type": "TilemapRenderer"
+        },
+        {
+          "type": "CreativeScript",
+          "scriptName": "TestVectores.ces",
+          "publicVars": {
+            "miPosicion": {
+              "x": 123,
+              "y": 456
+            },
+            "miColor": "#123456"
+          }
         }
       ]
     }

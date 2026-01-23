@@ -72,17 +72,28 @@ const typeMap = {
     'texto': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
-    'Materia': 'Materia'
+    'Materia': 'Materia',
+    'vector': 'Vector2',
+    'vector2': 'Vector2',
+    'color': 'Color'
 };
 
 export function getDefaultValueForType(canonicalType) {
     switch (canonicalType) {
         case 'number':
-             return 0;
-        case 'string': return "";
-        case 'boolean': return false;
-        case 'Materia': return null;
-        default: return null;
+            return 0;
+        case 'string':
+            return "";
+        case 'boolean':
+            return false;
+        case 'Materia':
+            return null;
+        case 'Vector2':
+            return { x: 0, y: 0 };
+        case 'Color':
+            return '#ffffff';
+        default:
+            return null;
     }
 }
 
@@ -100,6 +111,15 @@ function parseInitialValue(value, canonicalType) {
             return value.toLowerCase() === 'verdadero' || value.toLowerCase() === 'true';
         case 'Materia':
             return null; // Las referencias a objetos no se pueden establecer por defecto
+        case 'Vector2':
+            // La inicialización en línea para vectores aún no está soportada.
+            console.warn("Inline initialization for Vector2 is not yet supported. Using default value.");
+            return getDefaultValueForType('Vector2');
+        case 'Color':
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                return value.slice(1, -1);
+            }
+            return value;
         default:
             // This case should not be hit with the new mandatory types, but kept as a fallback.
             if (!isNaN(parseFloat(value)) && isFinite(value)) return parseFloat(value);
@@ -195,7 +215,7 @@ export function transpile(code, scriptName) {
 
 
 // 1.b: Parse and remove public and private variables (supports arrays)
-const varRegex = /^\s*(public|private|publico|privado)\s+(?:(var|numero|number|texto|string|booleano|boolean|Materia))\s*(\[\])?\s+([a-zA-Z_]\w*)\s*(?::\s*\w+\s*)?(?:=\s*(.+?))?\s*;/gm;
+const varRegex = /^\s*(public|private|publico|privado)\s+(?:(var|numero|number|texto|string|booleano|boolean|Materia|vector|vector2|color))\s*(\[\])?\s+([a-zA-Z_]\w*)\s*(?::\s*\w+\s*)?(?:=\s*(.+?))?\s*;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
