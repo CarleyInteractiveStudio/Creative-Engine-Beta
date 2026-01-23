@@ -535,36 +535,57 @@ export class Renderer {
         // --- 1. World Rendering Pass ---
         this.beginWorld(activeCameraMateria);
 
+        // Step 1: Collect all renderable objects
+        let renderables = [];
         const materias = scene.getAllMaterias();
-
-        // --- 1a. Render Solid Objects (Sprites, Tilemaps, etc.) ---
         for (const materia of materias) {
             if (!materia.isActive || materia.getComponent(Canvas)) continue;
 
             const transform = materia.getComponent(Transform);
             if (!transform) continue;
 
-            const spriteRenderer = materia.getComponent(SpriteRenderer);
-            const tilemapRenderer = materia.getComponent(TilemapRenderer);
-            const textureRender = materia.getComponent(TextureRender);
-
-            if (spriteRenderer || tilemapRenderer || textureRender) {
-                this.ctx.save();
-                this.ctx.translate(transform.position.x, transform.position.y);
-                this.ctx.rotate(transform.rotation * Math.PI / 180);
-
-                if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                    this._drawSprite(spriteRenderer, transform);
-                }
-                if (textureRender) {
-                    this._drawTextureRender(textureRender, transform);
-                }
-                if (tilemapRenderer) {
-                    // Pass transform so it can be used for scaling
-                    this.drawTilemap(tilemapRenderer, transform);
-                }
-                this.ctx.restore();
+            // Add any renderable component to the list
+            const component = materia.getComponent(SpriteRenderer) || materia.getComponent(TilemapRenderer) || materia.getComponent(TextureRender);
+            if (component) {
+                renderables.push({ materia, transform, component });
             }
+        }
+
+        // Step 2: Filter by camera culling mask (if a camera is active)
+        if (cameraComponent) {
+            const cullingMask = cameraComponent.cullingMask;
+            renderables = renderables.filter(r => (cullingMask & (1 << r.materia.layer)) !== 0);
+        }
+
+        // Step 3: Sort renderables (Y-sorting for sprites)
+        renderables.sort((a, b) => {
+            const aIsSprite = a.component instanceof SpriteRenderer;
+            const bIsSprite = b.component instanceof SpriteRenderer;
+
+            if (aIsSprite && bIsSprite) {
+                return a.transform.position.y - b.transform.position.y;
+            }
+            // Basic sorting for non-sprites or mixed types (can be improved)
+            // For now, non-sprites are drawn before sprites if at same 'y' level implicitly
+            if (aIsSprite && !bIsSprite) return 1;
+            if (!aIsSprite && bIsSprite) return -1;
+            return 0;
+        });
+
+        // --- 1a. Render Solid Objects (Sorted and Filtered) ---
+        for (const { materia, transform, component } of renderables) {
+            this.ctx.save();
+            this.ctx.translate(transform.position.x, transform.position.y);
+            this.ctx.rotate(transform.rotation * Math.PI / 180);
+
+            if (component instanceof SpriteRenderer && component.sprite && component.sprite.complete && component.sprite.naturalWidth > 0) {
+                this._drawSprite(component, transform);
+            } else if (component instanceof TextureRender) {
+                this._drawTextureRender(component, transform);
+            } else if (component instanceof TilemapRenderer) {
+                this.drawTilemap(component, transform);
+            }
+            this.ctx.restore();
         }
 
         // --- 1b. Particle System Pass (drawn on top of solids, but affected by lights) ---
