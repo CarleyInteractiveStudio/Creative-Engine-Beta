@@ -150,14 +150,15 @@ export function transpile(code, scriptName) {
     // 3. Finally, handle imports.
     let unprocessedCode = cleanCode;
 
-    // 1.a: Parse and extract methods (bilingual)
-    const methodHeaderRegex = /^\s*(public|publico)\s+(?:(function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
+    // 1.a: Parse and extract methods (bilingual, supports sequences)
+    const methodHeaderRegex = /^\s*(public|publico)\s+(?:(sequence|secuencia|function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
 
     while ((methodMatch = methodHeaderRegex.exec(tempCode)) !== null) {
-        const isFunction = methodMatch[2] === 'function' || methodMatch[2] === 'funcion';
+        const keyword = methodMatch[2];
+        const isSequence = keyword === 'sequence' || keyword === 'secuencia';
         let name = methodMatch[3];
         const args = methodMatch[4];
         const bodyStartIndex = methodMatch.index + methodMatch[0].length;
@@ -183,10 +184,10 @@ export function transpile(code, scriptName) {
         const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
         const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
 
-        if (isFunction) {
+        if (keyword === 'function' || keyword === 'funcion') {
             publicFunctions.push(name);
         }
-        methodMatches.push({ name, args, body });
+        methodMatches.push({ name, args, body, isSequence });
 
         // Blank out the matched method to prevent it from being processed again
         unprocessedCode = unprocessedCode.replace(fullMethodText, '');
@@ -250,9 +251,14 @@ const goRegex = /^\s*\bgo\b\s+(?:"([^"]+)"|((?:ce\.)?\w+))\s*/gm;
 
     // --- Phase 2: Transpile method bodies ---
     for (const match of methodMatches) {
-        let { name, args, body } = match;
+        let { name, args, body, isSequence } = match;
 
-// 2.a: Replace console shortcuts with word boundaries for safety
+        // 2.a: Replace coroutine wait command
+        if (isSequence) {
+            body = body.replace(/\besperar\s*\(([^)]*)\)/g, 'yield $1');
+        }
+
+// 2.b: Replace console shortcuts with word boundaries for safety
 body = body.replace(/\b(imprimir|log)\s*\(/g, 'console.log(');
 
 // 2.b: Auto-prefix core APIs with 'this.', using word boundaries
@@ -282,7 +288,8 @@ body = body.replace(/\b(scene|escena)\./g, 'this.$1.');
         } else if (name === 'update') {
             updateMethod = body;
         } else {
-            customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
+            const functionMarker = isSequence ? '*' : '';
+            customMethods += `    ${name}${functionMarker}(${args}) {\n${body}\n    }\n\n`;
         }
     }
 

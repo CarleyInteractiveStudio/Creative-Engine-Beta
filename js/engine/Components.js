@@ -392,11 +392,14 @@ export class CreativeScript extends Leyes {
                         getCollisionEnter: createCollisionWrapper(engineAPI.getCollisionEnter),
                         getCollisionStay: createCollisionWrapper(engineAPI.getCollisionStay),
                         getCollisionExit: createCollisionWrapper(engineAPI.getCollisionExit),
+                        startSequence: (sequenceName, ...args) => engineAPI.startSequence(this.instance, sequenceName, ...args),
+
                         // Spanish Aliases
-                        buscar: engineAPI.buscar,
-                        alEntrarEnColision: createCollisionWrapper(engineAPI.alEntrarEnColision),
-                        alPermanecerEnColision: createCollisionWrapper(engineAPI.alPermanecerEnColision),
-                        alSalirDeColision: createCollisionWrapper(engineAPI.alSalirDeColision),
+                        buscar: engineAPI.find, // Corrected alias
+                        alEntrarEnColision: createCollisionWrapper(engineAPI.getCollisionEnter),
+                        alPermanecerEnColision: createCollisionWrapper(engineAPI.getCollisionStay),
+                        alSalirDeColision: createCollisionWrapper(engineAPI.getCollisionExit),
+                        iniciarSecuencia: (sequenceName, ...args) => engineAPI.startSequence(this.instance, sequenceName, ...args),
                     };
                     this.instance.motor = this.instance.engine;
                 }

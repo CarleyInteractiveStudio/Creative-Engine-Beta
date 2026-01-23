@@ -37,6 +37,7 @@ import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
+import { CoroutineManagerInstance } from './engine/CoroutineManager.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
@@ -836,6 +837,9 @@ document.addEventListener('DOMContentLoaded', () => {
             physicsSystem.update(deltaTime);
         }
 
+    // Update all coroutines
+    CoroutineManagerInstance.update(deltaTime);
+
         // Update all game objects scripts (frame-dependent)
         for (const materia of SceneManager.currentScene.getAllMaterias()) {
             if (!materia.isActive) continue;
@@ -1285,6 +1289,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Destroying game session's PhysicsSystem instance.");
         physicsSystem = null;
         uiSystem = null;
+
+        // Stop all running coroutines
+        CoroutineManagerInstance.stopAll();
 
 
         updateGameControlsUI();

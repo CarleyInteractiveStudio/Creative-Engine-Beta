@@ -1,0 +1,37 @@
+// CoroutineTest.ces
+// Este script demuestra el uso de secuencias (corutinas).
+//
+// --- CÓMO PROBAR ---
+// 1. Crea una "Materia" vacía en tu escena.
+// 2. Añade este script ("CoroutineTest.ces") a la Materia.
+// 3. Dale a "Play".
+// 4. Revisa la consola. Deberías ver una secuencia de mensajes aparecer con pausas de tiempo:
+//    - "La secuencia ha comenzado..." (inmediatamente)
+//    - "Han pasado 2 segundos." (después de 2 segundos)
+//    - "Secuencia finalizada." (1 segundo después del mensaje anterior)
+
+publico iniciar() {
+    imprimir("Llamando a iniciarSecuencia desde el método iniciar().");
+
+    // Así es como se inicia una secuencia desde cualquier otra función.
+    // Pasamos el nombre de la secuencia que queremos ejecutar como un string.
+    motor.iniciarSecuencia("miSecuenciaDePrueba");
+}
+
+// Declaramos este método con la palabra clave "secuencia" para convertirlo en una corutina.
+publico secuencia miSecuenciaDePrueba() {
+
+    imprimir("La secuencia ha comenzado...");
+
+    // La función "esperar()" pausará la ejecución de ESTA secuencia por el número de segundos especificado.
+    // El resto del juego (otros scripts, física, etc.) seguirá funcionando.
+    esperar(2);
+
+    imprimir("Han pasado 2 segundos.");
+
+    esperar(1);
+
+    imprimir("Secuencia finalizada.");
+
+    // Una vez que la secuencia termina, simplemente se detiene.
+}
