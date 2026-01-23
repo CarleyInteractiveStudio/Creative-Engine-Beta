@@ -142,46 +142,48 @@ function handleInspectorInput(e) {
         const scriptName = e.target.dataset.scriptName;
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
-        // --- Array Input Handling ---
-        if (propPath.includes('[')) {
-            const baseProp = propPath.match(/(\w+)/)[0];
-            const index = parseInt(propPath.match(/\[(\d+)\]/)[1], 10);
+            // --- Nested Property, Array, or Single Variable Handling ---
+            const parts = propPath.split(/[.\[\]]/).filter(Boolean); // Handles obj.prop, array[0], etc.
 
-            // Ensure the array exists
-            if (!Array.isArray(script.publicVars[baseProp])) {
-                script.publicVars[baseProp] = [];
+            if (parts.length > 1) {
+                let current = script.publicVars;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const part = parts[i];
+                    const nextPartIsNumber = !isNaN(parseInt(parts[i + 1], 10));
+
+                    // If current part doesn't exist, create it (object or array)
+                    if (!current[part]) {
+                        current[part] = nextPartIsNumber ? [] : {};
+                    }
+                    current = current[part];
+                }
+                current[parts[parts.length - 1]] = value;
+
+            } else if (e.target.classList.contains('array-size-input')) {
+                const arrayName = propPath;
+                const newSize = Math.max(0, parseInt(value, 10));
+
+                if (!Array.isArray(script.publicVars[arrayName])) {
+                    script.publicVars[arrayName] = [];
+                }
+
+                const currentArray = script.publicVars[arrayName];
+                const metadata = CES_Transpiler.getScriptMetadata(scriptName);
+                const varMeta = metadata.publicVars.find(p => p.name === arrayName);
+
+                while (currentArray.length < newSize) {
+                    currentArray.push(varMeta ? CES_Transpiler.getDefaultValueForType(varMeta.type) : null);
+                }
+                if (currentArray.length > newSize) {
+                    currentArray.length = newSize;
+                }
+
+                updateInspector();
+                return;
+            } else {
+                // Single variable
+                script.publicVars[propPath] = value;
             }
-
-            script.publicVars[baseProp][index] = value;
-
-        } else if (e.target.classList.contains('array-size-input')) {
-            const arrayName = propPath;
-            const newSize = Math.max(0, parseInt(value, 10));
-
-            // Ensure the array exists
-            if (!Array.isArray(script.publicVars[arrayName])) {
-                script.publicVars[arrayName] = [];
-            }
-
-            const currentArray = script.publicVars[arrayName];
-            const metadata = CES_Transpiler.getScriptMetadata(scriptName);
-            const varMeta = metadata.publicVars.find(p => p.name === arrayName);
-
-            while (currentArray.length < newSize) {
-                // Add default values for the base type
-                currentArray.push(varMeta ? CES_Transpiler.getDefaultValueForType(varMeta.type) : null);
-            }
-            if (currentArray.length > newSize) {
-                currentArray.length = newSize;
-            }
-
-            // Re-render the inspector to show the new fields
-            updateInspector();
-            return; // Important: stop further processing
-        } else {
-             // --- Single Variable Handling ---
-            script.publicVars[propPath] = value;
-        }
         }
         return;
     }
@@ -717,15 +719,29 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier,
         case 'boolean':
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${value ? 'checked' : ''}>`;
-        case 'Materia': {
-            let displayName = 'None (Materia)';
-            if (typeof value === 'number') {
-                const SceneManager = window.SceneManager;
-                const materia = SceneManager.currentScene.findMateriaById(value);
-                if (materia) displayName = materia.name;
+        case 'Materia':
+            {
+                let displayName = 'None (Materia)';
+                if (typeof value === 'number') {
+                    const SceneManager = window.SceneManager;
+                    const materia = SceneManager.currentScene.findMateriaById(value);
+                    if (materia) displayName = materia.name;
+                }
+                return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
             }
-            return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
-        }
+        case 'Vector2':
+            {
+                const vecValue = value || { x: 0, y: 0 };
+                const baseAttrs = commonAttrs.replace(/class="prop-input"/g, '').replace(/data-prop="[^"]*"/g, '');
+                return `
+                <div class="prop-inputs">
+                    <input type="number" class="prop-input" step="0.1" data-prop="${propName}.x" ${baseAttrs} value="${vecValue.x}" title="X">
+                    <input type="number" class="prop-input" step="0.1" data-prop="${propName}.y" ${baseAttrs} value="${vecValue.y}" title="Y">
+                </div>
+            `;
+            }
+        case 'Color':
+            return `<input type="color" ${commonAttrs} value="${value}">`;
         default: // For 'any' or unknown types
             return `<input type="text" ${commonAttrs} value="${value}">`;
     }
