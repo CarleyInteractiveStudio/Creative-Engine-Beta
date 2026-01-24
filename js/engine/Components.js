@@ -978,9 +978,65 @@ registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
-registerComponent('CameraFollow2D', CameraFollow2D);
 registerComponent('SpriteRenderer', SpriteRenderer);
 registerComponent('Animator', Animator);
+
+export class CameraFollow2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.target = null; // ID of the Materia to follow
+        this.smoothSpeed = 0.125;
+        this.offset = { x: 0, y: 0, z: -10 };
+
+        this._targetMateria = null; // To hold the actual Materia reference
+    }
+
+    start() {
+        if (this.target !== null && this.materia && this.materia.scene) {
+            this._targetMateria = this.materia.scene.findMateriaById(this.target);
+            if (!this._targetMateria) {
+                console.warn(`CameraFollow2D: No se pudo encontrar el objetivo (target) con ID: ${this.target}`);
+            }
+        }
+    }
+
+    update(deltaTime) {
+        if (!this._targetMateria) {
+            // Si el objetivo no se ha encontrado todavía (quizás se cargó después), inténtalo de nuevo.
+            if (this.target !== null && this.materia && this.materia.scene && !this._targetMateria) {
+                this.start();
+            }
+            if (!this._targetMateria) return;
+        }
+
+        const targetTransform = this._targetMateria.getComponent('Transform');
+        const cameraTransform = this.materia.getComponent('Transform');
+
+        if (!targetTransform || !cameraTransform) {
+            return;
+        }
+
+        const desiredPosition = {
+            x: targetTransform.position.x + this.offset.x,
+            y: targetTransform.position.y + this.offset.y
+        };
+
+        const smoothedPosition = {
+            x: cameraTransform.position.x + (desiredPosition.x - cameraTransform.position.x) * this.smoothSpeed,
+            y: cameraTransform.position.y + (desiredPosition.y - cameraTransform.position.y) * this.smoothSpeed
+        };
+
+        cameraTransform.position = smoothedPosition;
+    }
+
+    clone() {
+        const newFollow = new CameraFollow2D(null);
+        newFollow.target = this.target;
+        newFollow.smoothSpeed = this.smoothSpeed;
+        newFollow.offset = { ...this.offset };
+        return newFollow;
+    }
+}
 
 export class AnimatorController extends Leyes {
     constructor(materia) {
@@ -1446,6 +1502,7 @@ export class Grid extends Leyes {
 
 registerComponent('Grid', Grid);
 registerComponent('TilemapCollider2D', TilemapCollider2D);
+registerComponent('CameraFollow2D', CameraFollow2D);
 
 export class CompositeCollider2D extends Leyes {
     constructor(materia) {
@@ -1471,63 +1528,6 @@ export class CompositeCollider2D extends Leyes {
         newCollider.vertexDistance = this.vertexDistance;
         newCollider.offsetDistance = this.offsetDistance;
         return newCollider;
-    }
-}
-
-export class CameraFollow2D extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.target = null; // ID of the Materia to follow
-        this.smoothSpeed = 0.125;
-        this.offset = { x: 0, y: 0, z: -10 };
-
-        this._targetMateria = null; // To hold the actual Materia reference
-    }
-
-    start() {
-        if (this.target !== null && this.materia && this.materia.scene) {
-            this._targetMateria = this.materia.scene.findMateriaById(this.target);
-            if (!this._targetMateria) {
-                console.warn(`CameraFollow2D: No se pudo encontrar el objetivo (target) con ID: ${this.target}`);
-            }
-        }
-    }
-
-    update(deltaTime) {
-        if (!this._targetMateria) {
-            // Si el objetivo no se ha encontrado todavía (quizás se cargó después), inténtalo de nuevo.
-            if (this.target !== null && this.materia && this.materia.scene && !this._targetMateria) {
-                this.start();
-            }
-            if (!this._targetMateria) return;
-        }
-
-        const targetTransform = this._targetMateria.getComponent('Transform');
-        const cameraTransform = this.materia.getComponent('Transform');
-
-        if (!targetTransform || !cameraTransform) {
-            return;
-        }
-
-        const desiredPosition = {
-            x: targetTransform.position.x + this.offset.x,
-            y: targetTransform.position.y + this.offset.y
-        };
-
-        const smoothedPosition = {
-            x: cameraTransform.position.x + (desiredPosition.x - cameraTransform.position.x) * this.smoothSpeed,
-            y: cameraTransform.position.y + (desiredPosition.y - cameraTransform.position.y) * this.smoothSpeed
-        };
-
-        cameraTransform.position = smoothedPosition;
-    }
-
-    clone() {
-        const newFollow = new CameraFollow2D(null);
-        newFollow.target = this.target;
-        newFollow.smoothSpeed = this.smoothSpeed;
-        newFollow.offset = { ...this.offset };
-        return newFollow;
     }
 }
 
