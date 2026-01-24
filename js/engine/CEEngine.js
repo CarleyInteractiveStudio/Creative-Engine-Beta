@@ -3,6 +3,7 @@
 import * as SceneManager from './SceneManager.js';
 import { Materia } from './Materia.js';
 import { loadTextAsset } from './AssetUtils.js';
+import { Transform } from './Components.js';
 
 let physicsSystem = null;
 
@@ -38,56 +39,58 @@ function getCollisionExit(materia, tag = null) {
     return physicsSystem.getCollisionInfo(materia, 'exit', 'collision', tag);
 }
 
+async function instantiate(prefabPath, position = null, parent = null) {
+    if (!prefabPath || typeof prefabPath !== 'string') {
+        console.error("motor.instanciar() requiere la ruta al archivo .cePrefab como una cadena de texto.");
+        return null;
+    }
+
+    const prefabContent = await loadTextAsset(prefabPath);
+    if (!prefabContent) {
+        console.error(`No se pudo cargar el prefab de la ruta: ${prefabPath}`);
+        return null;
+    }
+
+    try {
+        const prefabData = JSON.parse(prefabContent);
+        const newMateria = Materia.deserialize(prefabData);
+
+        // Set position if provided
+        if (position) {
+            const transform = newMateria.getComponent(Transform);
+            if (transform) {
+                transform.position.x = position.x;
+                transform.position.y = position.y;
+            }
+        }
+
+        // Add to scene or parent
+        if (parent && parent.addChild) {
+            parent.addChild(newMateria);
+        } else {
+            SceneManager.currentScene.addMateria(newMateria);
+        }
+
+        return newMateria;
+
+    } catch (error) {
+        console.error(`Error al instanciar el prefab de la ruta: ${prefabPath}`, error);
+        return null;
+    }
+}
+
 // --- The Public API Object ---
 // This object will be exposed to the user scripts.
 // We can add more global functions here in the future.
 const engineAPIs = {
-    instantiate: async function(prefabPath, position = null, parent = null) {
-        if (!prefabPath || typeof prefabPath !== 'string') {
-            console.error("motor.instanciar() requiere la ruta al archivo .cePrefab como una cadena de texto.");
-            return null;
-        }
-
-        const prefabContent = await loadTextAsset(prefabPath);
-        if (!prefabContent) {
-            console.error(`No se pudo cargar el prefab de la ruta: ${prefabPath}`);
-            return null;
-        }
-
-        try {
-            const prefabData = JSON.parse(prefabContent);
-            const newMateria = Materia.deserialize(prefabData);
-
-            // Set position if provided
-            if (position) {
-                const transform = newMateria.getComponent('Transform');
-                if (transform) {
-                    transform.position.x = position.x;
-                    transform.position.y = position.y;
-                }
-            }
-
-            // Add to scene or parent
-            if (parent && parent.addChild) {
-                parent.addChild(newMateria);
-            } else {
-                SceneManager.currentScene.addMateria(newMateria);
-            }
-
-            return newMateria;
-
-        } catch (error) {
-            console.error(`Error al instanciar el prefab de la ruta: ${prefabPath}`, error);
-            return null;
-        }
-    },
+    instantiate: instantiate,
     find: find,
     getCollisionEnter: getCollisionEnter,
     getCollisionStay: getCollisionStay,
     getCollisionExit: getCollisionExit,
 
     // Spanish aliases
-    instanciar: this.instantiate,
+    instanciar: instantiate,
     buscar: find,
     alEntrarEnColision: getCollisionEnter,
     alPermanecerEnColision: getCollisionStay,

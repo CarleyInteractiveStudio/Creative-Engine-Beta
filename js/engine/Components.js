@@ -5,6 +5,7 @@ import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import * as CES_Transpiler from '../editor/CES_Transpiler.js';
+import { findPath } from './Pathfinding.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 
 // --- Bilingual Component Aliases ---
@@ -1583,34 +1584,84 @@ export class PathfindingAgent extends Leyes {
     constructor(materia) {
         super(materia);
         this.speed = 3.5;
-        this.stoppingDistance = 0.1;
+        this.stoppingDistance = 0.5; // Increased for grid-based movement
         this.acceleration = 8;
         this.agentType = 'default';
+
+        // Grid configuration
+        this.gridSize = { width: 50, height: 30 };
+        this.nodeSize = 1.0; // World units per grid node
+
         // Internal state
         this._path = [];
         this._currentTargetIndex = 0;
     }
 
-    setDestination(x, y) {
-        // In a real scenario, this would call the pathfinding system
-        console.log(`[PathfindingAgent] Calculating path to (${x}, ${y})`);
-        // For now, we'll just simulate a direct path for testing.
-        const startPos = this.materia.getComponent(Transform).position;
-        this._path = [{x: startPos.x, y: startPos.y}, {x, y}];
-        this._currentTargetIndex = 1;
+    _worldToGrid(worldPos) {
+        return {
+            x: Math.floor(worldPos.x / this.nodeSize),
+            y: Math.floor(worldPos.y / this.nodeSize)
+        };
     }
 
-    calculatePath(x, y) {
-        // Returns a simulated path without moving the agent
-        const startPos = this.materia.getComponent(Transform).position;
-        return [{x: startPos.x, y: startPos.y}, {x, y}];
+    _gridToWorld(gridPos) {
+        return {
+            x: gridPos.x * this.nodeSize + this.nodeSize / 2,
+            y: gridPos.y * this.nodeSize + this.nodeSize / 2
+        };
+    }
+
+    setDestination(worldX, worldY) {
+        const transform = this.materia.getComponent(Transform);
+        const startWorldPos = transform.position;
+        const startGridPos = this._worldToGrid(startWorldPos);
+        const targetGridPos = this._worldToGrid({ x: worldX, y: worldY });
+
+        // Find all colliders to act as obstacles
+        const obstacles = [];
+        const allMaterias = this.materia.scene.getAllMaterias();
+        for (const m of allMaterias) {
+            if (m.getComponent(BoxCollider2D)) {
+                const colliderPos = m.getComponent(Transform).position;
+                obstacles.push(this._worldToGrid(colliderPos));
+            }
+        }
+
+        const gridConfig = { width: this.gridSize.width, height: this.gridSize.height };
+        const path = findPath(startGridPos, targetGridPos, gridConfig, obstacles);
+
+        if (path) {
+            this._path = path.map(p => this._gridToWorld(p));
+            this._currentTargetIndex = 0;
+        } else {
+            console.warn("[PathfindingAgent] No path found.");
+            this._path = [];
+        }
+    }
+
+    calculatePath(worldX, worldY) {
+        const transform = this.materia.getComponent(Transform);
+        const startWorldPos = transform.position;
+        const startGridPos = this._worldToGrid(startWorldPos);
+        const targetGridPos = this._worldToGrid({ x: worldX, y: worldY });
+
+        const obstacles = [];
+        const allMaterias = this.materia.scene.getAllMaterias();
+        for (const m of allMaterias) {
+            if (m.getComponent(BoxCollider2D)) {
+                const colliderPos = m.getComponent(Transform).position;
+                obstacles.push(this._worldToGrid(colliderPos));
+            }
+        }
+
+        const gridConfig = { width: this.gridSize.width, height: this.gridSize.height };
+        const path = findPath(startGridPos, targetGridPos, gridConfig, obstacles);
+
+        return path ? path.map(p => this._gridToWorld(p)) : null;
     }
 
     update(deltaTime) {
-        if (!this._path || this._currentTargetIndex >= this._path.length) {
-            // No path, or path is complete.
-            return;
-        }
+        if (!this._path || this._currentTargetIndex >= this._path.length) return;
 
         const transform = this.materia.getComponent(Transform);
         const currentPos = transform.position;
@@ -1685,7 +1736,7 @@ export class ObjectPoolComponent extends Leyes {
         }
         this._pool = [];
         for (let i = 0; i < this.initialSize; i++) {
-            const instance = await this.materia.scene.engine.instanciar(this.prefabPath);
+            const instance = await this.materia.scene.engine.motor.instanciar(this.prefabPath);
             if (instance) {
                 instance.isActive = false;
                 this._pool.push(instance);

@@ -7,11 +7,13 @@ import { Leyes } from './Leyes.js';
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
 import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
+import { getAllInternalApis } from './EngineAPI.js';
 
 
 export class Scene {
-    constructor() {
+    constructor(engineAPI = null) {
         this.materias = [];
+        this.engine = engineAPI || getAllInternalApis(); // Store the engine API
         this.ambiente = {
             luzAmbiental: '#1a1a2a',
             hora: '6',
@@ -100,7 +102,7 @@ export class Scene {
     }
 
     clone() {
-        const newScene = new Scene();
+        const newScene = new Scene(this.engine);
         newScene.ambiente = JSON.parse(JSON.stringify(this.ambiente));
 
         // Clone all root materias. The Materia.clone method is recursive.
@@ -140,7 +142,7 @@ export function setSceneDirty(dirty) {
 }
 
 export function clearScene() {
-    currentScene = new Scene();
+    currentScene = new Scene(); // It will get the default engine API
     currentSceneFileHandle = null;
     isSceneDirty = false;
     console.log("Scene cleared.");
@@ -207,7 +209,8 @@ export function serializeScene(scene, dom) {
 import { getComponent } from './ComponentRegistry.js';
 
 export async function deserializeScene(sceneData, projectsDirHandle) {
-    const newScene = new Scene();
+    const engineAPI = getAllInternalApis();
+    const newScene = new Scene(engineAPI);
     const materiaMap = new Map();
 
     // Load ambiente settings, providing defaults for older scenes
@@ -349,7 +352,7 @@ export function createSprite(name, imagePath) {
 
 
 function createDefaultScene() {
-    const scene = new Scene();
+    const scene = new Scene(); // Gets default API
 
     // Create the root node
     const rootNode = new Materia('Scene');
