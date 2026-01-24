@@ -225,10 +225,10 @@ export function transpile(code, scriptName) {
             }
         }
 
-        if (name === 'iniciar') name = 'star';
+        if (name === 'iniciar') name = 'start';
         if (name === 'actualizar') name = 'update';
 
-        if (name === 'star') starMethod = body;
+        if (name === 'start') starMethod = body;
         else if (name === 'update') updateMethod = body;
         else customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
     }

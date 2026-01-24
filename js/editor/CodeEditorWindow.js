@@ -15,20 +15,39 @@ let showConsoleCallback = () => {}; // Placeholder for the callback
 
 // --- Autocomplete Logic ---
 const cesKeywords = [
-    { label: "public", type: "keyword" },
-    { label: "private", type: "keyword" },
-    { label: "sprite", type: "type" },
-    { label: "SpriteAnimacion", type: "type" },
-    { label: "crear", type: "function" },
-    { label: "destruir", type: "function" },
-    { label: "reproducir", type: "function" },
-    { label: "obtener", type: "function" },
-    { label: "si", type: "keyword" },
-    { label: "sino", type: "keyword" },
-    { label: "para", type: "keyword" },
-    { label: "mientras", type: "keyword" },
-    { label: "start", type: "function" },
-    { label: "update", type: "function" }
+    // Scopes & Keywords
+    { label: "public", type: "keyword" }, { label: "publico", type: "keyword" },
+    { label: "private", type: "keyword" }, { label: "privado", type: "keyword" },
+    { label: "enum", type: "keyword" }, { label: "go", type: "keyword" },
+    { label: "if", type: "keyword" }, { label: "else", type: "keyword" },
+    { label: "for", type: "keyword" }, { label: "while", type: "keyword" },
+    { label: "return", type: "keyword" }, { label: "true", type: "constant" },
+    { label: "false", type: "constant" }, { label: "verdadero", type: "constant" },
+    { label: "falso", type: "constant" }, { label: "null", type: "constant" },
+
+    // Types
+    { label: "number", type: "type" }, { label: "numero", type: "type" },
+    { label: "string", type: "type" }, { label: "texto", type: "type" },
+    { label: "boolean", type: "type" }, { label: "booleano", type: "type" },
+    { label: "Materia", type: "class" }, { label: "Vector2", type: "class" },
+    { label: "Color", type: "class" }, { label: "Prefab", type: "class" },
+
+    // Lifecycle Functions
+    { label: "function", type: "keyword" }, { label: "funcion", type: "keyword" },
+    { label: "iniciar", type: "function" }, { label: "actualizar", type: "function" },
+
+    // Built-in Functions & Objects
+    { label: "imprimir", type: "function" }, { label: "log", type: "function" },
+    { label: "input", type: "variable" }, { label: "entrada", type: "variable" },
+    { label: "engine", type: "variable" }, { label: "motor", type: "variable" },
+    { label: "scene", type: "variable" }, { label: "escena", type: "variable" },
+
+    // Engine API Functions (from 'motor' object)
+    { label: "instanciar", type: "method" }, { label: "instantiate", type: "method" },
+    { label: "buscar", type: "method" }, { label: "find", type: "method" },
+    { label: "alEntrarEnColision", type: "method" }, { label: "getCollisionEnter", type: "method" },
+    { label: "alPermanecerEnColision", type: "method" }, { label: "getCollisionStay", type: "method" },
+    { label: "alSalirDeColision", type: "method" }, { label: "getCollisionExit", type: "method" }
 ];
 
 function cesCompletions(context) {

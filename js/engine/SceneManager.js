@@ -177,6 +177,10 @@ export function serializeScene(scene, dom) {
                     publicVars: ley.publicVars
                 };
                 materiaData.leyes.push(customLeyData);
+            } else if (ley instanceof CreativeScript) {
+                // Use the new serialize method for CreativeScripts
+                const scriptData = ley.serialize();
+                materiaData.leyes.push(scriptData);
             } else {
                 const leyData = {
                     type: ley.constructor.name,
