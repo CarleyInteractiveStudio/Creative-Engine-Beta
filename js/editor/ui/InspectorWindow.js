@@ -748,6 +748,14 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
     const propName = variable.name.includes('[') ? variable.name.replace(/\[\d+\]/, '') : variable.name;
     const itemCommonAttrs = `class="prop-input" data-prop="${variable.name}" data-component="${componentType}" ${componentType === 'CreativeScript' ? `data-script-name="${identifier}"` : `data-component-id="${identifier}"`}`;
 
+    // --- ENUM Support ---
+    const metadata = CES_Transpiler.getScriptMetadata(identifier);
+    if (metadata && metadata.enums && metadata.enums[variable.type]) {
+        const options = metadata.enums[variable.type];
+        let optionsHTML = options.map(opt => `<option value="${opt}" ${currentValue === opt ? 'selected' : ''}>${opt}</option>`).join('');
+        return `<select ${itemCommonAttrs}>${optionsHTML}</select>`;
+    }
+
 
     switch (variable.type) {
         case 'number':

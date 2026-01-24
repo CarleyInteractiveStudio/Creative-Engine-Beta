@@ -1,0 +1,5 @@
+// EnumTestScript.ces
+public enum EstadoEnemigo { Patrullando, Persiguiendo, Atacando };
+
+public EstadoEnemigo estadoActual = Atacando;
+public numero velocidad;

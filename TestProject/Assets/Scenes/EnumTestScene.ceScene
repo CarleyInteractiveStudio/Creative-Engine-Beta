@@ -1,0 +1,22 @@
+{
+    "materias": [
+      {
+        "id": 1,
+        "name": "EnumTestObject",
+        "leyes": [
+          {
+            "type": "Transform"
+          },
+          {
+            "type": "CreativeScript",
+            "scriptName": "EnumTestScript.ces",
+            "publicVars": {
+              "estadoActual": "Atacando",
+              "velocidad": 5
+            }
+          }
+        ]
+      }
+    ],
+    "ambiente": {}
+  }
