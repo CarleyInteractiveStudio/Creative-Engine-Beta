@@ -29,7 +29,11 @@ const componentAliases = {
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
-    'Button': 'boton'
+    'Button': 'boton',
+    'PathfindingAgent': 'agenteDeNavegacion',
+    'ObjectPoolComponent': 'poolDeObjetos',
+    'CameraFollow2D': 'seguimientoDeCamara2D',
+    'ParticleSystem': 'sistemaDeParticulas'
 };
 
 
@@ -1572,3 +1576,202 @@ export class CustomComponent extends Leyes {
         return newCustom;
     }
 }
+
+// --- High-Level Gameplay Components ---
+
+export class PathfindingAgent extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.speed = 3.5;
+        this.stoppingDistance = 0.1;
+        this.acceleration = 8;
+        this.agentType = 'default';
+        // Internal state
+        this._path = [];
+        this._currentTargetIndex = 0;
+    }
+
+    setDestination(x, y) {
+        // In a real scenario, this would call the pathfinding system
+        console.log(`[PathfindingAgent] Calculating path to (${x}, ${y})`);
+        // For now, we'll just simulate a direct path for testing.
+        const startPos = this.materia.getComponent(Transform).position;
+        this._path = [{x: startPos.x, y: startPos.y}, {x, y}];
+        this._currentTargetIndex = 1;
+    }
+
+    calculatePath(x, y) {
+        // Returns a simulated path without moving the agent
+        const startPos = this.materia.getComponent(Transform).position;
+        return [{x: startPos.x, y: startPos.y}, {x, y}];
+    }
+
+    update(deltaTime) {
+        if (!this._path || this._currentTargetIndex >= this._path.length) return;
+
+        const transform = this.materia.getComponent(Transform);
+        const currentPos = transform.position;
+        const targetPos = this._path[this._currentTargetIndex];
+
+        const dx = targetPos.x - currentPos.x;
+        const dy = targetPos.y - currentPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= this.stoppingDistance) {
+            this._currentTargetIndex++;
+            if (this._currentTargetIndex >= this._path.length) {
+                this._path = []; // Path complete
+            }
+        } else {
+            const dirX = dx / distance;
+            const dirY = dy / distance;
+            transform.position.x += dirX * this.speed * deltaTime;
+            transform.position.y += dirY * this.speed * deltaTime;
+        }
+    }
+
+    clone() {
+        const newAgent = new PathfindingAgent(null);
+        newAgent.speed = this.speed;
+        newAgent.stoppingDistance = this.stoppingDistance;
+        newAgent.acceleration = this.acceleration;
+        newAgent.agentType = this.agentType;
+        return newAgent;
+    }
+}
+registerComponent('PathfindingAgent', PathfindingAgent);
+
+export class ObjectPoolComponent extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.prefab = null; // Prefab asset to pool
+        this.initialSize = 10;
+        this._pool = [];
+        this._activeObjects = new Set();
+    }
+
+    // This would be called by the engine after scene load
+    initializePool() {
+        this._pool = [];
+        this._activeObjects.clear();
+        // In a real implementation, we would instantiate from the prefab
+        for(let i = 0; i < this.initialSize; i++) {
+            // Placeholder: create a dummy object
+             const dummy = { active: false, name: `Pooled_${i}` };
+             this._pool.push(dummy);
+        }
+    }
+
+    getObject() {
+        const obj = this._pool.find(o => !o.active);
+        if (obj) {
+            obj.active = true;
+            this._activeObjects.add(obj);
+            console.log(`[ObjectPool] Re-using object: ${obj.name}`);
+            return obj;
+        }
+        console.warn("[ObjectPool] Pool exhausted! Consider increasing the initial size.");
+        return null; // Or dynamically create a new one
+    }
+
+    returnObject(materia) {
+         if (this._activeObjects.has(materia)) {
+            materia.active = false;
+            this._activeObjects.delete(materia);
+            console.log(`[ObjectPool] Returning object to pool: ${materia.name}`);
+        }
+    }
+    clone() {
+        const newPool = new ObjectPoolComponent(null);
+        newPool.prefab = this.prefab;
+        newPool.initialSize = this.initialSize;
+        return newPool;
+    }
+}
+registerComponent('ObjectPoolComponent', ObjectPoolComponent);
+
+export class CameraFollow2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.target = null; // Materia ID or name
+        this.smoothSpeed = 0.125;
+        this.offset = { x: 0, y: 0 };
+    }
+
+    update(deltaTime) {
+        if (!this.target) return;
+
+        let targetMateria = null;
+        if (typeof this.target === 'number') {
+            targetMateria = this.materia.scene.findMateriaById(this.target);
+        } else if (typeof this.target === 'string') {
+            targetMateria = this.materia.scene.findMateriaByName(this.target);
+        }
+
+        if (targetMateria) {
+            const cameraTransform = this.materia.getComponent(Transform);
+            const targetTransform = targetMateria.getComponent(Transform);
+            if (cameraTransform && targetTransform) {
+                const desiredPosition = {
+                    x: targetTransform.position.x + this.offset.x,
+                    y: targetTransform.position.y + this.offset.y
+                };
+                const smoothedPosition = {
+                    x: cameraTransform.position.x + (desiredPosition.x - cameraTransform.position.x) * this.smoothSpeed,
+                    y: cameraTransform.position.y + (desiredPosition.y - cameraTransform.position.y) * this.smoothSpeed
+                };
+                cameraTransform.position = smoothedPosition;
+            }
+        }
+    }
+    clone() {
+        const newFollow = new CameraFollow2D(null);
+        newFollow.target = this.target;
+        newFollow.smoothSpeed = this.smoothSpeed;
+        newFollow.offset = { ...this.offset };
+        return newFollow;
+    }
+}
+registerComponent('CameraFollow2D', CameraFollow2D);
+
+export class ParticleSystem extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.duration = 5.0;
+        this.looping = true;
+        this.startLifetime = 1.0;
+        this.startSpeed = 5.0;
+        this.startSize = 1.0;
+        this.startColor = '#FFFFFF';
+        this.maxParticles = 1000;
+        this._isPlaying = false;
+    }
+
+    play() {
+        this._isPlaying = true;
+        console.log("[ParticleSystem] Playing!");
+    }
+
+    stop() {
+        this._isPlaying = false;
+         console.log("[ParticleSystem] Stopped.");
+    }
+
+    update(deltaTime) {
+        if (!this._isPlaying) return;
+        // Particle simulation logic would go here
+    }
+
+     clone() {
+        const newSystem = new ParticleSystem(null);
+        newSystem.duration = this.duration;
+        newSystem.looping = this.looping;
+        newSystem.startLifetime = this.startLifetime;
+        newSystem.startSpeed = this.startSpeed;
+        newSystem.startSize = this.startSize;
+        newSystem.startColor = this.startColor;
+        newSystem.maxParticles = this.maxParticles;
+        return newSystem;
+    }
+}
+registerComponent('ParticleSystem', ParticleSystem);

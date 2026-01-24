@@ -3,6 +3,7 @@
 import * as CEEngine from './CEEngine.js';
 import * as SceneAPI from './SceneAPI.js';
 import * as InputAPI from './InputAPI.js';
+import * as DataTypes from './DataTypes.js';
 
 /**
  * Retrieves all registered internal engine APIs.
@@ -19,7 +20,8 @@ export function getAllInternalApis() {
         'scene': sceneAPIs,
         'escena': sceneAPIs, // Spanish alias
         'input': inputAPIs,
-        'entrada': inputAPIs // Spanish alias
+        'entrada': inputAPIs, // Spanish alias
+        'ce.DataTypes': DataTypes
     };
 }
 
