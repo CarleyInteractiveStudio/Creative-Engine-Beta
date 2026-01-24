@@ -462,8 +462,18 @@ export class CreativeScript extends Leyes {
 
     clone() {
         const newScript = new CreativeScript(null, this.scriptName);
-        // Deep copy public vars to ensure no shared references
-        newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        // Perform a deep copy that preserves object types (like Vector2, Color).
+        for (const key in this.publicVars) {
+            if (this.publicVars.hasOwnProperty(key)) {
+                const value = this.publicVars[key];
+                if (value && typeof value.clone === 'function') {
+                    newScript.publicVars[key] = value.clone();
+                } else {
+                    // For primitives, null, or objects without a clone method
+                    newScript.publicVars[key] = value;
+                }
+            }
+        }
         return newScript;
     }
 

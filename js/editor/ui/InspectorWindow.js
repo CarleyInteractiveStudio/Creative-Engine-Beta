@@ -77,6 +77,19 @@ export function initialize(dependencies) {
         }
     });
     dom.inspectorContent.addEventListener('drop', handleInspectorDrop);
+
+    // Add drag and drop listeners for general assets
+    dom.inspectorContent.addEventListener('dragover', (e) => {
+        if (e.target.closest('.asset-dropper')) {
+            e.preventDefault();
+            e.target.closest('.asset-dropper').classList.add('drag-over');
+        }
+    });
+    dom.inspectorContent.addEventListener('dragleave', (e) => {
+        if (e.target.closest('.asset-dropper')) {
+            e.target.closest('.asset-dropper').classList.remove('drag-over');
+        }
+    });
 }
 
 // --- Event Handlers ---
@@ -120,6 +133,42 @@ function handleInspectorDrop(e) {
         }
 
         updateInspector(); // Re-render to show the new name
+    } else if (data.path) { // Asset drop
+        const assetDropper = e.target.closest('.asset-dropper');
+        if (!assetDropper) return;
+
+        const expectedTypes = (assetDropper.dataset.assetType || '').split(',');
+        const fileExtension = `.${data.name.split('.').pop()}`;
+
+        if (expectedTypes.includes(fileExtension)) {
+            const componentName = assetDropper.dataset.component;
+            const propName = assetDropper.dataset.prop;
+
+            if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
+                const script = componentName === 'CreativeScript'
+                    ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === assetDropper.dataset.scriptName)
+                    : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == assetDropper.dataset.componentId);
+                if (script) {
+                    script.publicVars[propName] = data.path;
+                }
+            } else {
+                const component = selectedMateria.getComponent(Components[componentName]);
+                if (component) {
+                    if (component instanceof Components.SpriteRenderer) {
+                        component.setSourcePath(data.path, projectsDirHandle);
+                    } else if (component instanceof Components.UIText) {
+                        component.fontAssetPath = data.path;
+                        component.loadFont(projectsDirHandle);
+                    } else {
+                        component[propName] = data.path;
+                    }
+                }
+            }
+            updateInspector();
+            updateSceneCallback();
+        } else {
+            showNotification('Tipo de Asset Incorrecto', `Se esperaba ${expectedTypes.join(', ')} pero se soltó ${fileExtension}.`);
+        }
     }
 }
 
@@ -366,21 +415,55 @@ async function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
 
-    if (e.target.closest('[data-component="UIText"][data-prop="fontAssetPath"]')) {
-        const component = selectedMateria.getComponent(Components.UIText);
-        if (component) {
-            openSpriteSelectorCallback(async (fileHandle, fullPath) => {
-                component.fontAssetPath = fullPath;
-                await component.loadFont(projectsDirHandle);
-                updateInspector();
-                updateSceneCallback();
-            }, {
-                filter: ['.ttf', '.otf', '.woff', '.woff2'],
-                title: 'Seleccionar Fuente'
-            });
+    // --- Asset Field Click Logic ---
+    const assetDropper = e.target.closest('.asset-dropper');
+    if (assetDropper && selectedMateria) {
+        const componentName = assetDropper.dataset.component;
+        const propName = assetDropper.dataset.prop;
+        const assetFilter = assetDropper.dataset.assetType.split(',');
+
+        // Handle scripts
+        if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
+            const script = componentName === 'CreativeScript'
+                ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === assetDropper.dataset.scriptName)
+                : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == assetDropper.dataset.componentId);
+
+            if (script) {
+                openSpriteSelectorCallback(
+                    (fileHandle, fullPath) => {
+                        script.publicVars[propName] = fullPath;
+                        updateInspector();
+                    },
+                    { filter: assetFilter, title: `Seleccionar ${propName}` }
+                );
+            }
+        } else {
+            // Handle native engine components
+            const component = selectedMateria.getComponent(Components[componentName]);
+            if (component) {
+                openSpriteSelectorCallback(
+                    async (fileHandle, fullPath) => {
+                        // Special handling for components that need to load the asset
+                        if (component instanceof Components.SpriteRenderer) {
+                            await component.setSourcePath(fullPath, projectsDirHandle);
+                        } else if (component instanceof Components.UIText) {
+                            component.fontAssetPath = fullPath;
+                            await component.loadFont(projectsDirHandle);
+                        } else {
+                            // Generic assignment for simple path properties
+                            component[propName] = fullPath;
+                        }
+                        updateInspector();
+                        updateSceneCallback(); // Update the scene to reflect visual changes
+                    },
+                    { filter: assetFilter, title: `Seleccionar ${propName}` }
+                );
+            }
         }
-        return; // Stop further processing for this click
+        return; // Stop further processing
     }
+
+
 
     // --- Drag and Drop for Asset Fields ---
     if (e.target.matches('.asset-dropper, .asset-dropper *')) {
@@ -791,12 +874,23 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 return `<div class="materia-dropper" ${itemCommonAttrs} data-asset-type="Materia">${displayName}</div>`;
             }
         case 'Prefab':
-            const prefabName = currentValue || 'None (Prefab)';
-            return `<div class="asset-dropper" ${itemCommonAttrs} data-asset-type=".cePrefab">
-                        <span class="asset-dropper-text">${prefabName}</span>
+        case 'Sprite':
+        case 'Audio':
+        case 'Scene':
+            const assetPath = currentValue || `None (${variable.type})`;
+            const displayName = assetPath.split('/').pop().replace(/\.\w+$/, '');
+            let assetFilter = '';
+            switch (variable.type) {
+                case 'Prefab': assetFilter = '.cePrefab'; break;
+                case 'Sprite': assetFilter = '.png,.jpg,.jpeg,.ceSprite'; break;
+                case 'Audio': assetFilter = '.mp3,.wav,.ogg'; break;
+                case 'Scene': assetFilter = '.ceScene'; break;
+            }
+            return `<div class="asset-dropper" ${itemCommonAttrs} data-asset-type="${assetFilter}" title="Haz clic para seleccionar o arrastra un asset aquí.">
+                        <span class="asset-dropper-text">${displayName}</span>
                     </div>`;
         default:
-            return `<input type="text" ${itemCommonAttrs} value="${currentValue}">`;
+            return `<input type="text" ${itemCommonAttrs} value="${currentValue || ''}">`;
     }
 }
 

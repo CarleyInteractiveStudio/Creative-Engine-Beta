@@ -430,7 +430,17 @@ export async function updateAssetBrowser() {
 
             const name = document.createElement('div');
             name.className = 'name';
-            name.textContent = entry.name;
+            // Ocultar la extensión para los archivos
+            if (entry.kind === 'file') {
+                const lastDot = entry.name.lastIndexOf('.');
+                if (lastDot > 0) { // Asegurarse de que el punto no es el primer carácter
+                    name.textContent = entry.name.substring(0, lastDot);
+                } else {
+                    name.textContent = entry.name;
+                }
+            } else {
+                name.textContent = entry.name; // Las carpetas se muestran como están
+            }
 
             item.appendChild(iconContainer);
             item.appendChild(name);

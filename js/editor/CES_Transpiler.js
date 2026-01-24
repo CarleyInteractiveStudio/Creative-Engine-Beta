@@ -15,7 +15,10 @@ const baseTypeMap = {
     'Materia': 'Materia',
     'Vector2': 'Vector2',
     'Color': 'Color',
-    'Prefab': 'Prefab'
+    'Prefab': 'Prefab',
+    'Sprite': 'Sprite',
+    'Audio': 'Audio',
+    'Scene': 'Scene'
 };
 
 function getDefaultValueForType(canonicalType, enums = {}) {
@@ -31,6 +34,9 @@ function getDefaultValueForType(canonicalType, enums = {}) {
         case 'boolean': return false;
         case 'Materia': return null;
         case 'Prefab': return null;
+        case 'Sprite': return null;
+        case 'Audio': return null;
+        case 'Scene': return null;
         case 'Vector2': return new Vector2(0, 0);
         case 'Color': return new Color(255, 255, 255, 255);
         default: return null;
