@@ -1009,8 +1009,8 @@ export class CameraFollow2D extends Leyes {
             if (!this._targetMateria) return;
         }
 
-        const targetTransform = this._targetMateria.getComponent('Transform');
-        const cameraTransform = this.materia.getComponent('Transform');
+        const targetTransform = this._targetMateria.getComponent(Transform);
+        const cameraTransform = this.materia.getComponent(Transform);
 
         if (!targetTransform || !cameraTransform) {
             return;
@@ -1678,7 +1678,7 @@ export class ParticleSystem extends Leyes {
         particle.life = this.startLifetime;
         particle.totalLife = this.startLifetime;
 
-        const systemTransform = this.materia.getComponent('Transform');
+        const systemTransform = this.materia.getComponent(Transform);
         particle.position = { ...systemTransform.position };
 
         // Velocity based on shape

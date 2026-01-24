@@ -7,6 +7,7 @@ import { Leyes } from './Leyes.js';
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
 import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
+import { getComponent } from './ComponentRegistry.js';
 
 
 export class Scene {
@@ -335,8 +336,6 @@ export function serializeScene(scene, dom) {
     }
     return sceneData;
 }
-
-import { getComponent } from './ComponentRegistry.js';
 
 export async function deserializeScene(sceneData, projectsDirHandle) {
     const newScene = new Scene();

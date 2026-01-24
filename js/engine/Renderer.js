@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, ParticleSystem } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -445,7 +445,7 @@ export class Renderer {
         for (const materia of materias) {
             if (!materia.isActive) continue;
 
-            const particleSystem = materia.getComponent('ParticleSystem');
+            const particleSystem = materia.getComponent(ParticleSystem);
             if (particleSystem && particleSystem._isPlaying) {
                 ctx.save();
                 for (const particle of particleSystem._particles) {
