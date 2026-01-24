@@ -1,5 +1,6 @@
 // CES_Transpiler.js
 import * as RuntimeAPIManager from '../engine/RuntimeAPIManager.js';
+import { Vector2, Color } from '../engine/DataTypes.js';
 
 // --- State ---
 const transpiledCodeMap = new Map();
@@ -16,26 +17,34 @@ const typeMap = {
     'texto': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
-    'Materia': 'Materia'
+    'Materia': 'Materia',
+    'Vector2': 'Vector2',
+    'Color': 'Color'
 };
 
 function getDefaultValueForType(canonicalType) {
     switch (canonicalType) {
         case 'number':
-             return 0;
+            return 0;
         case 'string': return "";
         case 'boolean': return false;
         case 'Materia': return null;
+        case 'Vector2': return new Vector2(0, 0);
+        case 'Color': return new Color(255, 255, 255, 255);
         default: return null;
     }
 }
 
 function parseInitialValue(value, canonicalType) {
+    if (!value) {
+        return getDefaultValueForType(canonicalType);
+    }
+    value = value.trim();
+
     switch (canonicalType) {
         case 'number':
             return parseFloat(value) || 0;
         case 'string':
-            // Eliminar comillas si existen
             if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
                 return value.slice(1, -1);
             }
@@ -43,14 +52,28 @@ function parseInitialValue(value, canonicalType) {
         case 'boolean':
             return value.toLowerCase() === 'verdadero' || value.toLowerCase() === 'true';
         case 'Materia':
-            return null; // Las referencias a objetos no se pueden establecer por defecto
+            return null; // References can't be set by default
+        case 'Vector2': {
+            const match = value.match(/new\s+Vector2\s*\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/);
+            if (match) {
+                return new Vector2(parseFloat(match[1]), parseFloat(match[2]));
+            }
+            return new Vector2(0, 0);
+        }
+        case 'Color': {
+            const match = value.match(/new\s+Color\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+))?\s*\)/);
+            if (match) {
+                return new Color(
+                    parseInt(match[1], 10),
+                    parseInt(match[2], 10),
+                    parseInt(match[3], 10),
+                    match[4] !== undefined ? parseInt(match[4], 10) : 255
+                );
+            }
+            return new Color(255, 255, 255, 255);
+        }
         default:
-            // This case should not be hit with the new mandatory types, but kept as a fallback.
-            if (!isNaN(parseFloat(value)) && isFinite(value)) return parseFloat(value);
-            if (value.toLowerCase() === 'true' || value.toLowerCase() === 'verdadero') return true;
-            if (value.toLowerCase() === 'false' || value.toLowerCase() === 'falso') return false;
-            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
-            return value;
+            return value; // Fallback
     }
 }
 
@@ -235,10 +258,19 @@ export function transpile(code, scriptName) {
 
     // --- Phase 3: Build the JavaScript class ---
     let jsCode = `(function(CreativeScriptBehavior, RuntimeAPIManager) {\n`;
+    jsCode += `    // Import classes needed at runtime\n`;
+    jsCode += `    const { Vector2, Color } = RuntimeAPIManager.getAPI('ce.DataTypes');\n\n`;
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || JSON.stringify(pv.defaultValue)}; // Type: ${pv.type}\n`;
+        let valueStr;
+        if (pv.type === 'Vector2' || pv.type === 'Color') {
+            // For these types, the 'value' from the regex match is the correct 'new Vector2(...)' string
+            valueStr = pv.value || `new ${pv.type}()`;
+        } else {
+            valueStr = pv.value || JSON.stringify(pv.defaultValue);
+        }
+        jsCode += `            this.${pv.name} = ${valueStr}; // Type: ${pv.type}\n`;
     });
     privateVars.forEach(pv => {
         jsCode += `            this.${pv.name} = ${pv.value || 'null'};\n`;

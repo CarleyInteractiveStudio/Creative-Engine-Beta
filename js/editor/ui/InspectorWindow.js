@@ -29,8 +29,9 @@ const availableComponents = {
     'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
-    'Cámara': [Components.Camera],
+    'Cámara': [Components.Camera, Components.CameraFollow2D],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
+    'Gameplay': [Components.PathfindingAgent, Components.ObjectPoolComponent, Components.ParticleSystem],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'Scripting': [Components.CreativeScript]
 };
@@ -132,26 +133,37 @@ function handleInspectorInput(e) {
     const componentName = e.target.dataset.component;
     const propPath = e.target.dataset.prop;
     let value;
+
     if (e.target.type === 'checkbox') {
         value = e.target.checked;
     } else {
         value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
     }
 
-    if (componentName === 'CreativeScript') {
-        const scriptName = e.target.dataset.scriptName;
-        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
-        if (script) {
-            script.publicVars[propPath] = value;
-        }
-        return;
-    }
+    if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
+        const script = componentName === 'CreativeScript'
+            ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === e.target.dataset.scriptName)
+            : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == e.target.dataset.componentId);
 
-    if (componentName === 'CustomComponent') {
-        const componentId = e.target.dataset.componentId; // Unique identifier if multiple custom components
-        const component = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
-        if (component) {
-            component.publicVars[propPath] = value;
+        if (script) {
+            const props = propPath.split('.');
+            if (props.length > 1) { // Nested property like vector.x
+                const varName = props[0];
+                const subProp = props[1];
+                if (script.publicVars[varName] && typeof script.publicVars[varName] === 'object') {
+                    script.publicVars[varName][subProp] = value;
+                }
+            } else if (e.target.type === 'color') { // Color property
+                const colorVar = script.publicVars[propPath];
+                if (colorVar) {
+                    const hex = e.target.value;
+                    colorVar.r = parseInt(hex.slice(1, 3), 16);
+                    colorVar.g = parseInt(hex.slice(3, 5), 16);
+                    colorVar.b = parseInt(hex.slice(5, 7), 16);
+                }
+            } else {
+                script.publicVars[propPath] = value;
+            }
         }
         return;
     }
@@ -165,10 +177,9 @@ function handleInspectorInput(e) {
     if (propPath === 'simplifiedSize') {
         component.cellSize.x = value;
         component.cellSize.y = value;
-        return; // Early return to avoid nested property logic
+        return;
     }
 
-    // Handle nested properties like scale.x
     const props = propPath.split('.');
     let current = component;
     for (let i = 0; i < props.length - 1; i++) {
@@ -176,12 +187,10 @@ function handleInspectorInput(e) {
     }
     current[props[props.length - 1]] = value;
 
-    // After updating the property, trigger a scene update to reflect changes visually.
     if (updateSceneCallback) {
         updateSceneCallback();
     }
 
-     // --- DYNAMIC UI LOGIC for Canvas ---
     if (componentName === 'Canvas' && propPath === 'renderMode') {
         const componentContent = e.target.closest('.component-content');
         if (componentContent) {
@@ -191,9 +200,7 @@ function handleInspectorInput(e) {
             if (worldSpaceProps && screenSpaceProps.length > 0) {
                 const isWorld = value === 'World Space';
                 worldSpaceProps.style.display = isWorld ? 'flex' : 'none';
-                screenSpaceProps.forEach(el => {
-                    el.style.display = isWorld ? 'none' : 'flex';
-                });
+                screenSpaceProps.forEach(el => el.style.display = isWorld ? 'none' : 'flex');
             }
         }
     }
@@ -635,23 +642,31 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
     }
 
+    // Helper function to convert RGB to Hex
+    const toHex = (c) => ('0' + Math.round(c).toString(16)).slice(-2);
+
     switch (variable.type) {
         case 'number':
-        case 'numero':
             return `<input type="number" ${commonAttrs} value="${currentValue}">`;
         case 'string':
-        case 'texto':
             return `<input type="text" ${commonAttrs} value="${currentValue}">`;
         case 'boolean':
-        case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
+        case 'Vector2':
+            return `
+                <div class="prop-inputs">
+                    <input type="number" class="prop-input" data-prop="${variable.name}.x" value="${currentValue.x}" title="X" ${commonAttrs.replace(/data-prop="[^"]*"/, '')}>
+                    <input type="number" class="prop-input" data-prop="${variable.name}.y" value="${currentValue.y}" title="Y" ${commonAttrs.replace(/data-prop="[^"]*"/, '')}>
+                </div>
+            `;
+        case 'Color':
+            const hexColor = `#${toHex(currentValue.r)}${toHex(currentValue.g)}${toHex(currentValue.b)}`;
+            return `<input type="color" ${commonAttrs} value="${hexColor}">`;
         case 'Materia':
             {
                 let displayName = 'None (Materia)';
                 if (typeof currentValue === 'number') {
-                    // We need access to the SceneManager here. Let's assume it's available globally for now.
-                    // This is not ideal, but it's a quick solution for the UI.
-                    const SceneManager = window.SceneManager; // A bit of a hack, but necessary here.
+                    const SceneManager = window.SceneManager;
                     const materia = SceneManager.currentScene.findMateriaById(currentValue);
                     if (materia) {
                         displayName = materia.name;
@@ -660,7 +675,6 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
             }
         default:
-            // Para 'any' o tipos desconocidos, usar un campo de texto
             return `<input type="text" ${commonAttrs} value="${currentValue}">`;
     }
 }
