@@ -2,6 +2,7 @@
 // This file contains the Materia class.
 
 import { Transform } from './Components.js';
+import { Leyes } from './Leyes.js';
 import { currentScene } from './SceneManager.js';
 
 let MATERIA_ID_COUNTER = 0;
@@ -170,6 +171,64 @@ export class Materia {
         for (const child of this.children) {
             const newChild = child.clone(preserveId);
             newMateria.addChild(newChild);
+        }
+
+        return newMateria;
+    }
+
+    /**
+     * Serializes the Materia and its entire hierarchy into a JSON object.
+     * This is used for creating prefabs.
+     * @returns {object} A serializable representation of the Materia.
+     */
+    serialize() {
+        const serializedMateria = {
+            name: this.name,
+            isActive: this.isActive,
+            layer: this.layer,
+            tag: this.tag,
+            flags: JSON.parse(JSON.stringify(this.flags)),
+            leyes: this.leyes.map(ley => ley.serialize()),
+            children: this.children.map(child => child.serialize())
+        };
+        return serializedMateria;
+    }
+
+    /**
+     * Creates a new Materia instance from serialized prefab data.
+     * @param {object} data - The serialized materia data from a .cePrefab file.
+     * @param {Materia} parent - The parent for the new materia. Can be null for root objects.
+     * @returns {Materia} The newly created Materia instance.
+     */
+    static deserialize(data, parent = null) {
+        const newMateria = new Materia(data.name);
+
+        // Assign basic properties
+        newMateria.isActive = data.isActive;
+        newMateria.layer = data.layer;
+        newMateria.tag = data.tag;
+        newMateria.flags = JSON.parse(JSON.stringify(data.flags || {}));
+
+        // Deserialize and add components
+        if (data.leyes) {
+            for (const leyData of data.leyes) {
+                // The Transform component is added by default, so we remove it before adding the deserialized one.
+                if (leyData.type === 'Transform') {
+                    newMateria.removeComponent(Transform);
+                }
+                const newLey = Leyes.deserialize(leyData, newMateria);
+                if (newLey) {
+                    newMateria.addComponent(newLey);
+                }
+            }
+        }
+
+        // Recursively deserialize children
+        if (data.children) {
+            for (const childData of data.children) {
+                const childMateria = Materia.deserialize(childData, newMateria);
+                newMateria.addChild(childMateria);
+            }
         }
 
         return newMateria;

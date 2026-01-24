@@ -1,0 +1,5 @@
+public Prefab miPrefab;
+
+public star() {
+
+}

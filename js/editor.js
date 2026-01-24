@@ -24,6 +24,7 @@ import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
 import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
+import { loadTextAsset } from './engine/AssetUtils.js'; // Importar para inicialización
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
 import * as TilePalette from './editor/ui/TilePaletteWindow.js';
@@ -2260,6 +2261,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
+
+            // Initialize the asset loader with the directory handle so it's available at runtime
+            if (projectsDirHandle) {
+                loadTextAsset(null, projectsDirHandle);
+            }
+
             if (!projectsDirHandle) {
                 console.warn("No directory handle found. Entering test/limited mode.");
                 // This allows the editor to initialize for Playwright tests
@@ -2647,7 +2654,7 @@ public star() {
                 openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
-            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
+            initializeAssetBrowser({ dom, projectsDirHandle, exportContext, SceneManager, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
             AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });

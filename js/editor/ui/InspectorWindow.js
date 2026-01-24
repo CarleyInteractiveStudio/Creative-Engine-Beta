@@ -146,60 +146,58 @@ function handleInspectorInput(e) {
             : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == e.target.dataset.componentId);
 
         if (script) {
-            // Handle array size change
+            // --- New Robust Property Resolver ---
+            // This function safely navigates a property path like "myArray[0].position.x"
+            const resolveProperty = (obj, path) => {
+                // Split by dots and brackets, and filter out empty strings
+                const parts = path.split(/[.\[\]]+/).filter(Boolean);
+                let current = obj;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (current === undefined) return { parent: undefined, key: null };
+                    current = current[parts[i]];
+                }
+                return { parent: current, key: parts[parts.length - 1] };
+            };
+
+            // --- Array Size Change Logic (remains the same) ---
             if (e.target.classList.contains('array-size-input')) {
-                const varName = e.target.dataset.prop;
+                 const varName = e.target.dataset.prop;
                 const newSize = Math.max(0, parseInt(e.target.value, 10) || 0);
                 let currentArray = script.publicVars[varName];
                 if (!Array.isArray(currentArray)) {
                     currentArray = [];
                 }
-
                 const metadata = (componentName === 'CreativeScript'
                     ? CES_Transpiler.getScriptMetadata(e.target.dataset.scriptName)
                     : script.definition.metadata) || { publicVars: [] };
 
                 const varInfo = metadata.publicVars.find(p => p.name === varName);
                 const baseType = varInfo ? varInfo.type.slice(0, -2) : null;
-
                 while (currentArray.length < newSize) {
                     currentArray.push(CES_Transpiler.getDefaultValueForType(baseType));
                 }
-                if (currentArray.length > newSize) {
-                    currentArray.length = newSize;
-                }
+                currentArray.length = newSize; // Truncate if new size is smaller
                 script.publicVars[varName] = currentArray;
-                updateInspector();
+                updateInspector(); // Re-render the inspector to show new array fields
                 return;
             }
 
-            const props = propPath.split('.');
-            if (propPath.includes('[')) { // Array element modification like miArray[0]
-                 const varName = propPath.substring(0, propPath.indexOf('['));
-                 const index = parseInt(propPath.substring(propPath.indexOf('[') + 1, propPath.indexOf(']')), 10);
-                 if (script.publicVars[varName] && script.publicVars[varName][index] !== undefined) {
-                     script.publicVars[varName][index] = value;
-                 }
-            }
-            else if (props.length > 1) { // Nested property like vector.x or miArray[0].x
-                 const varName = propPath.substring(0, propPath.indexOf('['));
-                 const index = parseInt(propPath.substring(propPath.indexOf('[') + 1, propPath.indexOf(']')), 10);
-                 const subProp = props[1];
-                 if(script.publicVars[varName] && script.publicVars[varName][index] && typeof script.publicVars[varName][index] === 'object') {
-                    script.publicVars[varName][index][subProp] = value;
-                 } else if (script.publicVars[props[0]] && typeof script.publicVars[props[0]] === 'object') { // Regular Vector/Color
-                    script.publicVars[props[0]][subProp] = value;
-                 }
-            } else if (e.target.type === 'color') { // Color property
-                const colorVar = script.publicVars[propPath];
-                if (colorVar) {
-                    const hex = e.target.value;
-                    colorVar.r = parseInt(hex.slice(1, 3), 16);
-                    colorVar.g = parseInt(hex.slice(3, 5), 16);
-                    colorVar.b = parseInt(hex.slice(5, 7), 16);
+            // --- Simplified Update Logic ---
+            const { parent, key } = resolveProperty(script.publicVars, propPath);
+            if (parent && key) {
+                 if (e.target.type === 'color') {
+                    const colorVar = parent[key];
+                    if (colorVar && typeof colorVar.setHex === 'function') {
+                        colorVar.setHex(e.target.value);
+                    } else {
+                         parent[key] = value; // Fallback for simple properties
+                    }
+                }
+                else {
+                    parent[key] = value;
                 }
             } else {
-                script.publicVars[propPath] = value;
+                console.warn(`Could not resolve property path: ${propPath}`);
             }
         }
         return;
@@ -405,27 +403,36 @@ function handleInspectorClick(e) {
             if (expectedTypes.includes(fileExtension)) {
                 if (selectedMateria) {
                     const componentName = dropper.dataset.component;
-                    const component = selectedMateria.getComponent(Components[componentName]);
-                    if (component) {
-                        // Special handling for SpriteRenderer
-                        if (component instanceof Components.SpriteRenderer) {
-                            await component.setSourcePath(data.path, projectsDirHandle);
-                        } else {
-                            const propName = dropper.dataset.prop;
-                            component[propName] = data.path;
-                        }
+                    const propName = dropper.dataset.prop;
 
-                        // If it's a tilemap, trigger the palette reload
-                        if (component instanceof Components.Tilemap) {
-                            const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
-                            if (renderer) {
-                                await renderer.loadPalette(projectsDirHandle);
+                    // Handle Prefab type in scripts
+                    if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
+                         const script = componentName === 'CreativeScript'
+                            ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === dropper.dataset.scriptName)
+                            : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == dropper.dataset.componentId);
+                        if(script) {
+                            script.publicVars[propName] = data.path;
+                        }
+                    } else {
+                        const component = selectedMateria.getComponent(Components[componentName]);
+                        if (component) {
+                            // Special handling for SpriteRenderer
+                            if (component instanceof Components.SpriteRenderer) {
+                                await component.setSourcePath(data.path, projectsDirHandle);
+                            } else {
+                                component[propName] = data.path;
+                            }
+                             // If it's a tilemap, trigger the palette reload
+                            if (component instanceof Components.Tilemap) {
+                                const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
+                                if (renderer) {
+                                    await renderer.loadPalette(projectsDirHandle);
+                                }
                             }
                         }
-
-                        updateInspector();
-                        updateSceneCallback();
                     }
+                    updateInspector();
+                    updateSceneCallback();
                 }
             } else {
                 window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedTypes.join(', ')}.`);
@@ -741,9 +748,6 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
     }
 
 
-    // Helper function to convert RGB to Hex
-    const toHex = (c) => ('0' + Math.round(c).toString(16)).slice(-2);
-
     // Handle individual items within an array
     const propName = variable.name.includes('[') ? variable.name.replace(/\[\d+\]/, '') : variable.name;
     const itemCommonAttrs = `class="prop-input" data-prop="${variable.name}" data-component="${componentType}" ${componentType === 'CreativeScript' ? `data-script-name="${identifier}"` : `data-component-id="${identifier}"`}`;
@@ -772,7 +776,7 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 </div>
             `;
         case 'Color':
-            const hexColor = `#${toHex(currentValue.r)}${toHex(currentValue.g)}${toHex(currentValue.b)}`;
+             const hexColor = (currentValue && typeof currentValue.toHex === 'function') ? currentValue.toHex() : '#000000';
             return `<input type="color" ${itemCommonAttrs} value="${hexColor}">`;
         case 'Materia':
             {
@@ -786,6 +790,11 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 }
                 return `<div class="materia-dropper" ${itemCommonAttrs} data-asset-type="Materia">${displayName}</div>`;
             }
+        case 'Prefab':
+            const prefabName = currentValue || 'None (Prefab)';
+            return `<div class="asset-dropper" ${itemCommonAttrs} data-asset-type=".cePrefab">
+                        <span class="asset-dropper-text">${prefabName}</span>
+                    </div>`;
         default:
             return `<input type="text" ${itemCommonAttrs} value="${currentValue}">`;
     }

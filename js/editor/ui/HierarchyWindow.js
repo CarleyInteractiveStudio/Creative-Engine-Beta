@@ -422,15 +422,13 @@ function setupEventListeners() {
         try {
             data = JSON.parse(dataText);
         } catch (error) {
-            data = dataText; // Not JSON, assume it's a plain ID
+            console.warn("Dropped data was not valid JSON:", dataText);
+            return;
         }
 
-        if (typeof data === 'object' && data !== null && data.path) {
-            // It's an asset drop
-            handleAssetDrop(data);
-        } else {
-            // It's a hierarchy re-parenting drop
-            const draggedId = parseInt(data, 10);
+        if (data.type === 'Materia') {
+            // It's a hierarchy re-parenting drop from within this window
+            const draggedId = parseInt(data.id, 10);
             if (isNaN(draggedId)) return;
 
             const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);

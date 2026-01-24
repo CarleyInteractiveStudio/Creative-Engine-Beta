@@ -39,6 +39,42 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
     }
 }
 
+
+// --- Runtime Asset Loading ---
+
+// Cache the projects directory handle so it can be used at runtime
+let projectsDirHandleCache = null;
+
+/**
+ * Loads a text-based asset (like a .cePrefab, .json, or .ces) from the project's file system.
+ * This is designed to work at runtime, relying on a cached handle to the project directory.
+ * @param {string} path The full path to the asset (e.g., 'Assets/MyPrefab.cePrefab').
+ * @param {FileSystemDirectoryHandle} [projectsDirHandle] - The handle to the projects directory. Should be passed from the editor during setup.
+ * @returns {Promise<string|null>} The text content of the file, or null if it fails.
+ */
+export async function loadTextAsset(path, projectsDirHandle) {
+    if (projectsDirHandle) {
+        projectsDirHandleCache = projectsDirHandle;
+    }
+
+    if (!projectsDirHandleCache) {
+        console.error("Asset loader has not been initialized with a project directory handle.");
+        return null;
+    }
+
+    try {
+        const fileHandle = await getFileHandleForPath(path, projectsDirHandleCache);
+        if (!fileHandle) {
+            throw new Error("File handle could not be retrieved.");
+        }
+        const file = await fileHandle.getFile();
+        return await file.text();
+    } catch (error) {
+        console.error(`Could not load text asset from path: ${path}`, error);
+        return null;
+    }
+}
+
 async function generateSpritePreview(spriteFile, directoryHandle) {
     return new Promise(async (resolve, reject) => {
         try {

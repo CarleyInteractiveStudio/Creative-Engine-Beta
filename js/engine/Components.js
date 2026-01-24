@@ -1607,7 +1607,10 @@ export class PathfindingAgent extends Leyes {
     }
 
     update(deltaTime) {
-        if (!this._path || this._currentTargetIndex >= this._path.length) return;
+        if (!this._path || this._currentTargetIndex >= this._path.length) {
+            // No path, or path is complete.
+            return;
+        }
 
         const transform = this.materia.getComponent(Transform);
         const currentPos = transform.position;
@@ -1618,15 +1621,37 @@ export class PathfindingAgent extends Leyes {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance <= this.stoppingDistance) {
+            // Reached the current target point, move to the next one
             this._currentTargetIndex++;
             if (this._currentTargetIndex >= this._path.length) {
-                this._path = []; // Path complete
+                // End of the path
+                this._path = [];
+                transform.position = targetPos; // Snap to final position
             }
         } else {
-            const dirX = dx / distance;
-            const dirY = dy / distance;
-            transform.position.x += dirX * this.speed * deltaTime;
-            transform.position.y += dirY * this.speed * deltaTime;
+            // Move towards the target
+            const desiredVelocityX = (dx / distance) * this.speed;
+            const desiredVelocityY = (dy / distance) * this.speed;
+
+            // Simple interpolation for smooth movement
+            const currentVelocity = { x: transform.velocity ? transform.velocity.x : 0, y: transform.velocity ? transform.velocity.y : 0 };
+
+            const smoothFactor = Math.min(this.acceleration * deltaTime, 1.0);
+
+            const newVelocityX = currentVelocity.x + (desiredVelocityX - currentVelocity.x) * smoothFactor;
+            const newVelocityY = currentVelocity.y + (desiredVelocityY - currentVelocity.y) * smoothFactor;
+
+            transform.position.x += newVelocityX * deltaTime;
+            transform.position.y += newVelocityY * deltaTime;
+
+            // Storing velocity back on transform if it exists, for continuity.
+            // This is a bit of a hack; a proper implementation would likely use Rigidbody.
+            if (transform.velocity) {
+                transform.velocity.x = newVelocityX;
+                transform.velocity.y = newVelocityY;
+            } else {
+                transform.velocity = {x: newVelocityX, y: newVelocityY};
+            }
         }
     }
 
@@ -1644,46 +1669,72 @@ registerComponent('PathfindingAgent', PathfindingAgent);
 export class ObjectPoolComponent extends Leyes {
     constructor(materia) {
         super(materia);
-        this.prefab = null; // Prefab asset to pool
+        this.prefabPath = ''; // Prefab asset path to pool
         this.initialSize = 10;
         this._pool = [];
-        this._activeObjects = new Set();
     }
 
-    // This would be called by the engine after scene load
-    initializePool() {
+    start() {
+        this.initializePool();
+    }
+
+    async initializePool() {
+        if (!this.prefabPath) {
+            console.error("[ObjectPool] No prefab path assigned.");
+            return;
+        }
         this._pool = [];
-        this._activeObjects.clear();
-        // In a real implementation, we would instantiate from the prefab
-        for(let i = 0; i < this.initialSize; i++) {
-            // Placeholder: create a dummy object
-             const dummy = { active: false, name: `Pooled_${i}` };
-             this._pool.push(dummy);
+        for (let i = 0; i < this.initialSize; i++) {
+            const instance = await this.materia.scene.engine.instanciar(this.prefabPath);
+            if (instance) {
+                instance.isActive = false;
+                this._pool.push(instance);
+            } else {
+                console.error(`[ObjectPool] Failed to instantiate prefab for pool: ${this.prefabPath}`);
+            }
         }
     }
 
-    getObject() {
-        const obj = this._pool.find(o => !o.active);
+    getObject(position = null, parent = null) {
+        let obj = this._pool.find(o => !o.isActive);
         if (obj) {
-            obj.active = true;
-            this._activeObjects.add(obj);
-            console.log(`[ObjectPool] Re-using object: ${obj.name}`);
-            return obj;
+            obj.isActive = true;
+        } else {
+            // Optionally, create a new one if the pool is empty
+            console.warn("[ObjectPool] Pool exhausted, creating new instance. Consider increasing initialSize.");
+            // This part is tricky because instantiate is async. For simplicity, we'll just return null for now.
+            // A more robust implementation might return a promise.
+             return null;
         }
-        console.warn("[ObjectPool] Pool exhausted! Consider increasing the initial size.");
-        return null; // Or dynamically create a new one
+
+        const transform = obj.getComponent(Transform);
+        if (transform && position) {
+            transform.position.x = position.x;
+            transform.position.y = position.y;
+        }
+
+        if (parent && obj.parent !== parent) {
+            parent.addChild(obj);
+        }
+
+        return obj;
     }
 
-    returnObject(materia) {
-         if (this._activeObjects.has(materia)) {
-            materia.active = false;
-            this._activeObjects.delete(materia);
-            console.log(`[ObjectPool] Returning object to pool: ${materia.name}`);
+    returnObject(materiaInstance) {
+        if (materiaInstance && this._pool.includes(materiaInstance)) {
+            materiaInstance.isActive = false;
+        } else {
+            // If the object wasn't from this pool, we might want to just destroy it
+            console.warn("[ObjectPool] Attempted to return an object that does not belong to this pool. It will be destroyed.", materiaInstance);
+            if (materiaInstance && materiaInstance.scene) {
+                materiaInstance.scene.removeMateria(materiaInstance.id);
+            }
         }
     }
+
     clone() {
         const newPool = new ObjectPoolComponent(null);
-        newPool.prefab = this.prefab;
+        newPool.prefabPath = this.prefabPath;
         newPool.initialSize = this.initialSize;
         return newPool;
     }
@@ -1702,7 +1753,10 @@ export class CameraFollow2D extends Leyes {
         if (!this.target) return;
 
         let targetMateria = null;
-        if (typeof this.target === 'number') {
+        // The target can be a Materia object directly, an ID, or a name.
+        if (this.target.constructor.name === 'Materia') {
+            targetMateria = this.target;
+        } else if (typeof this.target === 'number') {
             targetMateria = this.materia.scene.findMateriaById(this.target);
         } else if (typeof this.target === 'string') {
             targetMateria = this.materia.scene.findMateriaByName(this.target);
@@ -1716,9 +1770,13 @@ export class CameraFollow2D extends Leyes {
                     x: targetTransform.position.x + this.offset.x,
                     y: targetTransform.position.y + this.offset.y
                 };
+
+                // Use deltaTime for frame-rate independent smoothing
+                const smoothFactor = 1.0 - Math.exp(-this.smoothSpeed * deltaTime * 10);
+
                 const smoothedPosition = {
-                    x: cameraTransform.position.x + (desiredPosition.x - cameraTransform.position.x) * this.smoothSpeed,
-                    y: cameraTransform.position.y + (desiredPosition.y - cameraTransform.position.y) * this.smoothSpeed
+                    x: cameraTransform.position.x + (desiredPosition.x - cameraTransform.position.x) * smoothFactor,
+                    y: cameraTransform.position.y + (desiredPosition.y - cameraTransform.position.y) * smoothFactor
                 };
                 cameraTransform.position = smoothedPosition;
             }
@@ -1749,17 +1807,19 @@ export class ParticleSystem extends Leyes {
 
     play() {
         this._isPlaying = true;
-        console.log("[ParticleSystem] Playing!");
     }
 
     stop() {
         this._isPlaying = false;
-         console.log("[ParticleSystem] Stopped.");
     }
 
     update(deltaTime) {
         if (!this._isPlaying) return;
-        // Particle simulation logic would go here
+
+        // This is where the actual particle simulation logic would go.
+        // For now, we'll just log to show it's running.
+        // The renderer will handle the visual part based on this component's properties.
+        console.log("[ParticleSystem] Simulating particles...");
     }
 
      clone() {

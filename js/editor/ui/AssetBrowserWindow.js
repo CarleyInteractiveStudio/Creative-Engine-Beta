@@ -5,6 +5,7 @@ import { showNotification, showConfirmation, showPrompt } from './DialogWindow.j
 // --- Module State ---
 let dom;
 let projectsDirHandle;
+let SceneManager; // To access scene data for prefab creation
 let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
@@ -23,6 +24,7 @@ let openLibraryDetailsCallback; // New callback for double-click
 export function initialize(dependencies) {
     dom = dependencies.dom;
     projectsDirHandle = dependencies.projectsDirHandle;
+    SceneManager = dependencies.SceneManager; // Store SceneManager
     onAssetSelected = dependencies.onAssetSelected;
     onAssetOpened = dependencies.onAssetOpened;
     onShowContextMenu = dependencies.onShowContextMenu;
@@ -397,6 +399,9 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.cePrefab')) {
+                imgIcon.src = 'image/Prefab.png';
+                iconContainer.appendChild(imgIcon);
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
@@ -597,7 +602,43 @@ async function handleExternalFileDrop(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    // This handles files from the user's OS
+    // First, try to parse data as JSON. This is how we'll pass special types.
+    const dataText = e.dataTransfer.getData('text/plain');
+    let dragData;
+    try {
+        dragData = JSON.parse(dataText);
+    } catch (error) {
+        // If it's not JSON, it's likely a file from the OS, so we proceed with the old logic.
+        dragData = null;
+    }
+
+    // --- PREFAB CREATION LOGIC ---
+    if (dragData && dragData.type === 'Materia') {
+        const materiaId = parseInt(dragData.id, 10);
+        const materiaToPrefab = SceneManager.currentScene.findMateriaById(materiaId);
+
+        if (materiaToPrefab) {
+            try {
+                const prefabObject = materiaToPrefab.serialize();
+                const prefabContent = JSON.stringify(prefabObject, null, 2);
+                const fileName = `${materiaToPrefab.name}.cePrefab`;
+
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(prefabContent);
+                await writable.close();
+
+                showNotification('Prefab Creado', `Se ha creado el prefab '${fileName}'.`);
+                await updateAssetBrowserCallback();
+            } catch (err) {
+                console.error("Error al crear el prefab:", err);
+                showNotification('Error', 'No se pudo crear el prefab.');
+            }
+        }
+        return; // End execution here for prefab drop
+    }
+
+    // --- EXTERNAL FILE (from OS) LOGIC ---
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
         let filesImported = 0;
