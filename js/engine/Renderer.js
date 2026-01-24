@@ -90,18 +90,19 @@ export class Renderer {
             this.clear(cameraComponent);
 
             let effectiveZoom = 1.0;
-            if (cameraComponent.projection === 'Orthographic') {
+            if (this.isEditor) {
+                effectiveZoom = this.camera.zoom;
+            } else if (cameraComponent.projection === 'Orthographic') {
                 effectiveZoom = this.canvas.height / (cameraComponent.orthographicSize * 2 || 1);
-            } else {
+            } else { // Perspective
                 effectiveZoom = 1 / Math.tan(cameraComponent.fov * 0.5 * Math.PI / 180);
             }
-            activeCamera = { x: cameraTransform.x, y: cameraTransform.y, effectiveZoom };
+
+            const cameraX = this.isEditor ? this.camera.x : cameraTransform.x;
+            const cameraY = this.isEditor ? this.camera.y : cameraTransform.y;
+
+            activeCamera = { x: cameraX, y: cameraY, effectiveZoom };
             transform = cameraTransform;
-        } else if (this.isEditor) {
-            this.clear(null);
-            this.camera.effectiveZoom = this.camera.zoom;
-            activeCamera = this.camera;
-            transform = { rotation: 0 };
         } else {
             this.clear(null);
             activeCamera = { x: 0, y: 0, effectiveZoom: 1.0 };
