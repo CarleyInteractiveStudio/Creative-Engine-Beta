@@ -461,7 +461,17 @@ export class CreativeScript extends Leyes {
     }
 
     clone() {
-        return new CreativeScript(null, this.scriptName);
+        const newScript = new CreativeScript(null, this.scriptName);
+        // Deep copy public vars to ensure no shared references
+        newScript.publicVars = JSON.parse(JSON.stringify(this.publicVars));
+        return newScript;
+    }
+
+    serialize() {
+        const data = super.serialize();
+        // Ensure publicVars are included, as they are the most important part.
+        data.properties.publicVars = this.publicVars;
+        return data;
     }
 }
 
