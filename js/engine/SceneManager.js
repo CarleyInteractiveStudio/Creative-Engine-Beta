@@ -368,16 +368,30 @@ function createDefaultScene() {
 
 export async function initialize(projectsDirHandle) {
     const defaultSceneName = 'default.ceScene';
-    const projectName = new URLSearchParams(window.location.search).get('project');
+    const params = new URLSearchParams(window.location.search);
+    const projectName = params.get('project');
+    const sceneToLoadFromURL = params.get('scene');
+
     const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
     const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
-    // Check if any scene file exists
+    // --- Priority 1: Load scene from URL parameter ---
+    if (sceneToLoadFromURL) {
+        try {
+            console.log(`Intentando cargar la escena desde el parámetro URL: ${sceneToLoadFromURL}`);
+            const fileHandle = await assetsHandle.getFileHandle(sceneToLoadFromURL, { create: false });
+            return await loadScene(fileHandle, projectsDirHandle);
+        } catch (e) {
+            console.error(`No se pudo cargar la escena '${sceneToLoadFromURL}' especificada en la URL. Buscando una escena por defecto.`);
+        }
+    }
+
+    // --- Priority 2: Find any existing scene ---
     let sceneFileToLoad = null;
     for await (const entry of assetsHandle.values()) {
         if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
             sceneFileToLoad = entry.name;
-            break; // Found one, load it
+            break;
         }
     }
 
@@ -385,25 +399,21 @@ export async function initialize(projectsDirHandle) {
         console.log(`Encontrada escena existente: ${sceneFileToLoad}. Cargando...`);
         const fileHandle = await assetsHandle.getFileHandle(sceneFileToLoad);
         return await loadScene(fileHandle, projectsDirHandle);
-    } else {
-        // If no scene files exist, create a default one with a camera
-        console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
-        try {
-            const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
-            const writable = await fileHandle.createWritable();
+    }
 
-            const defaultScene = createDefaultScene();
-            // Pass a null DOM object for default scene creation
-            const sceneData = serializeScene(defaultScene, null);
-
-            await writable.write(JSON.stringify(sceneData, null, 2));
-            await writable.close();
-
-            console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
-            const newFileHandle = await assetsHandle.getFileHandle(defaultSceneName);
-            return await loadScene(newFileHandle, projectsDirHandle);
-        } catch (createError) {
-            console.error(`Error al crear la escena por defecto:`, createError);
-        }
+    // --- Priority 3: Create a default scene ---
+    console.warn("No se encontró ninguna escena en el proyecto. Creando una nueva por defecto con una cámara.");
+    try {
+        const fileHandle = await assetsHandle.getFileHandle(defaultSceneName, { create: true });
+        const writable = await fileHandle.createWritable();
+        const defaultScene = createDefaultScene();
+        const sceneData = serializeScene(defaultScene, null);
+        await writable.write(JSON.stringify(sceneData, null, 2));
+        await writable.close();
+        console.log(`Escena por defecto '${defaultSceneName}' creada con éxito.`);
+        const newFileHandle = await assetsHandle.getFileHandle(defaultSceneName);
+        return await loadScene(newFileHandle, projectsDirHandle);
+    } catch (createError) {
+        console.error(`Error al crear la escena por defecto:`, createError);
     }
 }

@@ -38,7 +38,7 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
+// import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2205,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
+            'btn-play', 'btn-pause', 'btn-stop',// 'btn-floating-game',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2707,13 +2707,13 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
+            // dom.btnFloatingGame.addEventListener('click', async () => {
+            //     if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
+            //         await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
+            //     } else {
+            //         GameFloatingWindow.closeFloatingGameWindow();
+            //     }
+            // });
 
 
             originalStartGame = startGame;
