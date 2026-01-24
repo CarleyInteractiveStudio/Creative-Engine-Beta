@@ -9,16 +9,51 @@ const scriptMetadataMap = new Map();
 // --- Helper Functions ---
 
 const baseTypeMap = {
+    // Primitives & Core Types
     'number': 'number', 'numero': 'number',
     'string': 'string', 'texto': 'string',
     'boolean': 'boolean', 'booleano': 'boolean',
     'Materia': 'Materia',
     'Vector2': 'Vector2',
     'Color': 'Color',
+
+    // Asset Types
     'Prefab': 'Prefab',
     'Sprite': 'Sprite',
     'Audio': 'Audio',
-    'Scene': 'Scene'
+    'Scene': 'Scene',
+
+    // Component Types
+    'Transform': 'Transform',
+    'Camera': 'Camera',
+    'CreativeScript': 'CreativeScript',
+    'Rigidbody2D': 'Rigidbody2D',
+    'BoxCollider2D': 'BoxCollider2D',
+    'CapsuleCollider2D': 'CapsuleCollider2D',
+    'SpriteRenderer': 'SpriteRenderer',
+    'Animator': 'Animator',
+    'UITransform': 'UITransform',
+    'UIImage': 'UIImage',
+    'PointLight2D': 'PointLight2D',
+    'SpotLight2D': 'SpotLight2D',
+    'FreeformLight2D': 'FreeformLight2D',
+    'SpriteLight2D': 'SpriteLight2D',
+    'AudioSource': 'AudioSource',
+    'TextureRender': 'TextureRender',
+    'AnimatorController': 'AnimatorController',
+    'UIText': 'UIText',
+    'Button': 'Button',
+    'Canvas': 'Canvas',
+    'Tilemap': 'Tilemap',
+    'TilemapRenderer': 'TilemapRenderer',
+    'TilemapCollider2D': 'TilemapCollider2D',
+    'Grid': 'Grid',
+    'CompositeCollider2D': 'CompositeCollider2D',
+    'CustomComponent': 'CustomComponent',
+    'PathfindingAgent': 'PathfindingAgent',
+    'ObjectPoolComponent': 'ObjectPoolComponent',
+    'CameraFollow2D': 'CameraFollow2D',
+    'ParticleSystem': 'ParticleSystem'
 };
 
 function getDefaultValueForType(canonicalType, enums = {}) {
@@ -39,7 +74,12 @@ function getDefaultValueForType(canonicalType, enums = {}) {
         case 'Scene': return null;
         case 'Vector2': return new Vector2(0, 0);
         case 'Color': return new Color(255, 255, 255, 255);
-        default: return null;
+        default:
+            // All other types, including all Component types, default to null.
+            if (baseTypeMap[canonicalType]) {
+                return null;
+            }
+            return null; // Fallback for unknown types
     }
 }
 

@@ -22,7 +22,33 @@ let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
+const assetSearchCache = new Map();
+async function findFileInAssets(fileName, rootDirHandle) {
+    if (assetSearchCache.has(fileName)) {
+        return assetSearchCache.get(fileName);
+    }
+    async function search(dirHandle) {
+        for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file' && entry.name === fileName) {
+                return entry;
+            } else if (entry.kind === 'directory') {
+                const found = await search(entry);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    const projectHandle = await rootDirHandle.getDirectoryHandle(projectName);
+    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+    const handle = await search(assetsHandle);
+    if (handle) assetSearchCache.set(fileName, handle);
+    return handle;
+}
+
 const markdownConverter = new showdown.Converter();
+
+const componentClassNames = new Set(Object.keys(Components));
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
@@ -64,16 +90,18 @@ export function initialize(dependencies) {
     });
     dom.inspectorContent.addEventListener('click', handleInspectorClick);
 
-    // Add drag and drop listeners for Materia assignment
+    // Add drag and drop listeners for Materia and Component assignment
     dom.inspectorContent.addEventListener('dragover', (e) => {
-        if (e.target.closest('.materia-dropper')) {
+        const dropper = e.target.closest('.materia-dropper, .component-dropper');
+        if (dropper) {
             e.preventDefault();
-            e.target.closest('.materia-dropper').classList.add('drag-over');
+            dropper.classList.add('drag-over');
         }
     });
     dom.inspectorContent.addEventListener('dragleave', (e) => {
-        if (e.target.closest('.materia-dropper')) {
-            e.target.closest('.materia-dropper').classList.remove('drag-over');
+        const dropper = e.target.closest('.materia-dropper, .component-dropper');
+        if (dropper) {
+            dropper.classList.remove('drag-over');
         }
     });
     dom.inspectorContent.addEventListener('drop', handleInspectorDrop);
@@ -95,11 +123,14 @@ export function initialize(dependencies) {
 // --- Event Handlers ---
 
 function handleInspectorDrop(e) {
-    const dropper = e.target.closest('.materia-dropper');
-    if (!dropper) return;
+    const materiaDropper = e.target.closest('.materia-dropper');
+    const assetDropper = e.target.closest('.asset-dropper');
+
+    if (!materiaDropper && !assetDropper) return;
 
     e.preventDefault();
-    dropper.classList.remove('drag-over');
+    if (materiaDropper) materiaDropper.classList.remove('drag-over');
+    if (assetDropper) assetDropper.classList.remove('drag-over');
 
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
@@ -111,17 +142,16 @@ function handleInspectorDrop(e) {
         return; // Not valid JSON
     }
 
-    if (data.type === 'Materia') {
+    // Handle Materia Drop
+    if (materiaDropper && data.type === 'Materia') {
         const droppedMateriaId = parseInt(data.id, 10);
-
-        const scriptName = dropper.dataset.scriptName;
-        const propName = dropper.dataset.prop;
+        const scriptName = materiaDropper.dataset.scriptName;
+        const propName = materiaDropper.dataset.prop;
 
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
             script.publicVars[propName] = droppedMateriaId;
         } else {
-            // Handle onClick event materia drop
             const button = selectedMateria.getComponent(Components.Button);
             if (button && propName.startsWith('onClick')) {
                 const parts = propName.split('.');
@@ -131,12 +161,35 @@ function handleInspectorDrop(e) {
                 }
             }
         }
+        updateInspector();
+        return;
+    }
 
-        updateInspector(); // Re-render to show the new name
-    } else if (data.path) { // Asset drop
-        const assetDropper = e.target.closest('.asset-dropper');
-        if (!assetDropper) return;
+    const componentDropper = e.target.closest('.component-dropper');
 
+    // Handle Component Drop
+    if (componentDropper && data.type === 'Component') {
+        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === componentDropper.dataset.scriptName);
+        if (script) {
+            const propName = componentDropper.dataset.prop;
+            const metadata = CES_Transpiler.getScriptMetadata(script.scriptName);
+            const varInfo = metadata.publicVars.find(p => p.name === propName);
+
+            if (varInfo && varInfo.type === data.componentIdentifier) {
+                script.publicVars[propName] = {
+                    materiaId: data.materiaId,
+                    componentIdentifier: data.componentIdentifier
+                };
+                updateInspector();
+            } else {
+                showNotification('Error de Asignación', `El tipo de componente no coincide. Se esperaba '${varInfo.type}' pero se soltó '${data.componentIdentifier}'.`);
+            }
+        }
+        return;
+    }
+
+    // Handle Asset Drop
+    if (assetDropper && data.path) {
         const expectedTypes = (assetDropper.dataset.assetType || '').split(',');
         const fileExtension = `.${data.name.split('.').pop()}`;
 
@@ -465,63 +518,6 @@ function handleInspectorClick(e) {
 
 
 
-    // --- Drag and Drop for Asset Fields ---
-    if (e.target.matches('.asset-dropper, .asset-dropper *')) {
-        const dropper = e.target.closest('.asset-dropper');
-
-        dropper.ondragover = (ev) => {
-            ev.preventDefault();
-            dropper.classList.add('drag-over');
-        };
-        dropper.ondragleave = () => {
-            dropper.classList.remove('drag-over');
-        };
-        dropper.ondrop = async (ev) => {
-            ev.preventDefault();
-            dropper.classList.remove('drag-over');
-            const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
-            const expectedTypes = dropper.dataset.assetType.split(',');
-            const fileExtension = `.${data.name.split('.').pop()}`;
-
-            if (expectedTypes.includes(fileExtension)) {
-                if (selectedMateria) {
-                    const componentName = dropper.dataset.component;
-                    const propName = dropper.dataset.prop;
-
-                    // Handle Prefab type in scripts
-                    if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
-                         const script = componentName === 'CreativeScript'
-                            ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === dropper.dataset.scriptName)
-                            : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == dropper.dataset.componentId);
-                        if(script) {
-                            script.publicVars[propName] = data.path;
-                        }
-                    } else {
-                        const component = selectedMateria.getComponent(Components[componentName]);
-                        if (component) {
-                            // Special handling for SpriteRenderer
-                            if (component instanceof Components.SpriteRenderer) {
-                                await component.setSourcePath(data.path, projectsDirHandle);
-                            } else {
-                                component[propName] = data.path;
-                            }
-                             // If it's a tilemap, trigger the palette reload
-                            if (component instanceof Components.Tilemap) {
-                                const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
-                                if (renderer) {
-                                    await renderer.loadPalette(projectsDirHandle);
-                                }
-                            }
-                        }
-                    }
-                    updateInspector();
-                    updateSceneCallback();
-                }
-            } else {
-                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedTypes.join(', ')}.`);
-            }
-        };
-    }
 
 
     if (e.target.matches('#add-component-btn')) {
@@ -890,6 +886,18 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                         <span class="asset-dropper-text">${displayName}</span>
                     </div>`;
         default:
+            // --- NEW: Handle Component Types ---
+            if (componentClassNames.has(variable.type)) {
+                let displayName = `None (${variable.type})`;
+                if (currentValue && typeof currentValue === 'object' && currentValue.materiaId && currentValue.componentIdentifier) {
+                     const SceneManager = window.SceneManager;
+                     const targetMateria = SceneManager.currentScene.findMateriaById(parseInt(currentValue.materiaId, 10));
+                     if (targetMateria) {
+                         displayName = `${targetMateria.name} (${variable.type})`;
+                     }
+                }
+                return `<div class="component-dropper" ${itemCommonAttrs}>${displayName}</div>`;
+            }
             return `<input type="text" ${itemCommonAttrs} value="${currentValue || ''}">`;
     }
 }
@@ -1344,7 +1352,25 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.CreativeScript) {
             let publicVarsHTML = '';
-            const metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+            let metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+
+            // If metadata is not in the cache, try to transpile the script to get it
+            if (!metadata) {
+                const scriptFileHandle = await findFileInAssets(ley.scriptName, projectsDirHandle);
+                if (scriptFileHandle) {
+                    try {
+                        const file = await scriptFileHandle.getFile();
+                        const scriptContent = await file.text();
+                        // The transpile function now automatically caches the metadata
+                        const transpilationResult = await CES_Transpiler.transpile(scriptContent, ley.scriptName);
+                        if (transpilationResult && transpilationResult.metadata) {
+                            metadata = transpilationResult.metadata;
+                        }
+                    } catch (e) {
+                        console.error(`Could not transpile script ${ley.scriptName} on the fly:`, e);
+                    }
+                }
+            }
 
             if (metadata && metadata.publicVars) {
                 for (const pv of metadata.publicVars) {

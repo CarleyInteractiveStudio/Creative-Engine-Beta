@@ -1,0 +1,5 @@
+public Rigidbody2D miRigidbody;
+
+iniciar() {
+    //
+}
