@@ -23,6 +23,9 @@ const typeMap = {
 };
 
 function getDefaultValueForType(canonicalType) {
+    if (canonicalType.endsWith('[]')) {
+        return [];
+    }
     switch (canonicalType) {
         case 'number':
             return 0;
@@ -40,6 +43,19 @@ function parseInitialValue(value, canonicalType) {
         return getDefaultValueForType(canonicalType);
     }
     value = value.trim();
+
+    // Handle array initialization
+    if (canonicalType.endsWith('[]')) {
+        if (value.startsWith('[') && value.endsWith(']')) {
+            const baseType = canonicalType.slice(0, -2);
+            const content = value.slice(1, -1).trim();
+            if (content === '') return [];
+            // This is a simplified parser; it won't handle nested arrays or commas inside strings.
+            const elements = content.split(',').map(el => el.trim());
+            return elements.map(el => parseInitialValue(el, baseType));
+        }
+        return []; // Return empty array if initialization syntax is incorrect
+    }
 
     switch (canonicalType) {
         case 'number':
@@ -159,18 +175,23 @@ export function transpile(code, scriptName) {
 
 
     // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
-    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
+    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s*(\[\])?\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
         const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
         const typeInput = varMatch[2];
-        const name = varMatch[3];
-        const value = varMatch[4];
+        const isArray = varMatch[3] === '[]';
+        const name = varMatch[4];
+        const value = varMatch[5];
 
-        const canonicalType = typeMap[typeInput];
+        let canonicalType = typeMap[typeInput];
         if (!canonicalType) {
             errors.push(`Error: Tipo de variable desconocido '${typeInput}' en la declaración de '${name}'.`);
             continue;
+        }
+
+        if (isArray) {
+            canonicalType += '[]';
         }
 
         const parsedValue = value ? parseInitialValue(value.trim(), canonicalType) : getDefaultValueForType(canonicalType);

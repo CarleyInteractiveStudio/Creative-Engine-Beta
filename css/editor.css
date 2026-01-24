@@ -3525,3 +3525,57 @@ body.game-mode #scene-content,
 body.game-mode #loading-overlay {
     display: none !important;
 }
+
+/* --- Inspector Array Styles --- */
+.array-container {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 4px;
+    background-color: var(--bg-primary);
+}
+
+.array-container .prop-row-multi {
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--bg-tertiary);
+}
+.array-container .prop-row-multi:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+
+.array-elements .array-item {
+    padding: 6px 0 6px 10px;
+    border-left: 2px solid var(--border-color);
+    margin-top: 6px;
+    background-color: var(--bg-tertiary);
+    border-radius: 0 4px 4px 0;
+}
+
+.array-size-input {
+    max-width: 80px;
+}
+
+.array-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.array-btn {
+    width: 28px;
+    height: 28px;
+    font-weight: bold;
+    font-size: 16px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.array-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}

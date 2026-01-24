@@ -1,0 +1,4 @@
+// TestArrayScript.ces
+public numero[] listaDeNumeros = [10, 20];
+public Vector2[] puntosDeRuta;
+public Materia[] objetosDeJuego;

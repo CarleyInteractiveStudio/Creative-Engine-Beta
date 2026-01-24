@@ -146,13 +146,50 @@ function handleInspectorInput(e) {
             : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == e.target.dataset.componentId);
 
         if (script) {
-            const props = propPath.split('.');
-            if (props.length > 1) { // Nested property like vector.x
-                const varName = props[0];
-                const subProp = props[1];
-                if (script.publicVars[varName] && typeof script.publicVars[varName] === 'object') {
-                    script.publicVars[varName][subProp] = value;
+            // Handle array size change
+            if (e.target.classList.contains('array-size-input')) {
+                const varName = e.target.dataset.prop;
+                const newSize = Math.max(0, parseInt(e.target.value, 10) || 0);
+                let currentArray = script.publicVars[varName];
+                if (!Array.isArray(currentArray)) {
+                    currentArray = [];
                 }
+
+                const metadata = (componentName === 'CreativeScript'
+                    ? CES_Transpiler.getScriptMetadata(e.target.dataset.scriptName)
+                    : script.definition.metadata) || { publicVars: [] };
+
+                const varInfo = metadata.publicVars.find(p => p.name === varName);
+                const baseType = varInfo ? varInfo.type.slice(0, -2) : null;
+
+                while (currentArray.length < newSize) {
+                    currentArray.push(CES_Transpiler.getDefaultValueForType(baseType));
+                }
+                if (currentArray.length > newSize) {
+                    currentArray.length = newSize;
+                }
+                script.publicVars[varName] = currentArray;
+                updateInspector();
+                return;
+            }
+
+            const props = propPath.split('.');
+            if (propPath.includes('[')) { // Array element modification like miArray[0]
+                 const varName = propPath.substring(0, propPath.indexOf('['));
+                 const index = parseInt(propPath.substring(propPath.indexOf('[') + 1, propPath.indexOf(']')), 10);
+                 if (script.publicVars[varName] && script.publicVars[varName][index] !== undefined) {
+                     script.publicVars[varName][index] = value;
+                 }
+            }
+            else if (props.length > 1) { // Nested property like vector.x or miArray[0].x
+                 const varName = propPath.substring(0, propPath.indexOf('['));
+                 const index = parseInt(propPath.substring(propPath.indexOf('[') + 1, propPath.indexOf(']')), 10);
+                 const subProp = props[1];
+                 if(script.publicVars[varName] && script.publicVars[varName][index] && typeof script.publicVars[varName][index] === 'object') {
+                    script.publicVars[varName][index][subProp] = value;
+                 } else if (script.publicVars[props[0]] && typeof script.publicVars[props[0]] === 'object') { // Regular Vector/Color
+                    script.publicVars[props[0]][subProp] = value;
+                 }
             } else if (e.target.type === 'color') { // Color property
                 const colorVar = script.publicVars[propPath];
                 if (colorVar) {
@@ -533,6 +570,36 @@ function handleInspectorClick(e) {
             updateInspector();
         }
     }
+
+    // --- Array Interaction Logic ---
+    if (e.target.matches('[data-action="add-array-element"]') || e.target.matches('[data-action="remove-array-element"]')) {
+        const componentType = e.target.dataset.component;
+        const script = componentType === 'CreativeScript'
+            ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === e.target.dataset.scriptName)
+            : selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == e.target.dataset.componentId);
+
+        if (script) {
+            const varName = e.target.dataset.prop;
+            let currentArray = script.publicVars[varName];
+            if (!Array.isArray(currentArray)) {
+                currentArray = [];
+            }
+
+            if (e.target.dataset.action === 'add-array-element') {
+                const metadata = (componentType === 'CreativeScript'
+                    ? CES_Transpiler.getScriptMetadata(e.target.dataset.scriptName)
+                    : script.definition.metadata) || { publicVars: [] };
+                const varInfo = metadata.publicVars.find(p => p.name === varName);
+                const baseType = varInfo ? varInfo.type.slice(0, -2) : null;
+                currentArray.push(CES_Transpiler.getDefaultValueForType(baseType));
+            } else if (currentArray.length > 0) {
+                currentArray.pop();
+            }
+
+            script.publicVars[varName] = currentArray;
+            updateInspector();
+        }
+    }
 }
 
 function getCullingMaskText(mask) {
@@ -642,26 +709,63 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
     }
 
+    // Handle Arrays
+    if (variable.type.endsWith('[]')) {
+        const baseType = variable.type.slice(0, -2);
+        const array = Array.isArray(currentValue) ? currentValue : [];
+        let itemsHTML = '';
+        if (array.length > 0) {
+            itemsHTML = array.map((item, index) => {
+                const itemVar = { name: `${variable.name}[${index}]`, type: baseType };
+                // Pass a modified data-prop for individual item handling
+                return `<div class="prop-row-multi array-item">
+                            <label>Element ${index}</label>
+                            ${renderPublicVarInput(itemVar, item, componentType, identifier)}
+                        </div>`;
+            }).join('');
+        }
+
+        return `
+            <div class="array-container">
+                <div class="prop-row-multi">
+                    <label>Size</label>
+                    <div class="prop-inputs array-controls">
+                        <input type="number" class="prop-input array-size-input" value="${array.length}" ${commonAttrs}>
+                        <button class="array-btn" data-action="add-array-element" ${commonAttrs}>+</button>
+                        <button class="array-btn" data-action="remove-array-element" ${commonAttrs}>-</button>
+                    </div>
+                </div>
+                <div class="array-elements">${itemsHTML}</div>
+            </div>
+        `;
+    }
+
+
     // Helper function to convert RGB to Hex
     const toHex = (c) => ('0' + Math.round(c).toString(16)).slice(-2);
 
+    // Handle individual items within an array
+    const propName = variable.name.includes('[') ? variable.name.replace(/\[\d+\]/, '') : variable.name;
+    const itemCommonAttrs = `class="prop-input" data-prop="${variable.name}" data-component="${componentType}" ${componentType === 'CreativeScript' ? `data-script-name="${identifier}"` : `data-component-id="${identifier}"`}`;
+
+
     switch (variable.type) {
         case 'number':
-            return `<input type="number" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="number" ${itemCommonAttrs} value="${currentValue}">`;
         case 'string':
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="text" ${itemCommonAttrs} value="${currentValue}">`;
         case 'boolean':
-            return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
+            return `<input type="checkbox" ${itemCommonAttrs} ${currentValue ? 'checked' : ''}>`;
         case 'Vector2':
             return `
                 <div class="prop-inputs">
-                    <input type="number" class="prop-input" data-prop="${variable.name}.x" value="${currentValue.x}" title="X" ${commonAttrs.replace(/data-prop="[^"]*"/, '')}>
-                    <input type="number" class="prop-input" data-prop="${variable.name}.y" value="${currentValue.y}" title="Y" ${commonAttrs.replace(/data-prop="[^"]*"/, '')}>
+                    <input type="number" class="prop-input" data-prop="${variable.name}.x" value="${currentValue.x}" title="X" ${itemCommonAttrs.replace(/data-prop="[^"]*"/, '')}>
+                    <input type="number" class="prop-input" data-prop="${variable.name}.y" value="${currentValue.y}" title="Y" ${itemCommonAttrs.replace(/data-prop="[^"]*"/, '')}>
                 </div>
             `;
         case 'Color':
             const hexColor = `#${toHex(currentValue.r)}${toHex(currentValue.g)}${toHex(currentValue.b)}`;
-            return `<input type="color" ${commonAttrs} value="${hexColor}">`;
+            return `<input type="color" ${itemCommonAttrs} value="${hexColor}">`;
         case 'Materia':
             {
                 let displayName = 'None (Materia)';
@@ -672,10 +776,10 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                         displayName = materia.name;
                     }
                 }
-                return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
+                return `<div class="materia-dropper" ${itemCommonAttrs} data-asset-type="Materia">${displayName}</div>`;
             }
         default:
-            return `<input type="text" ${commonAttrs} value="${currentValue}">`;
+            return `<input type="text" ${itemCommonAttrs} value="${currentValue}">`;
     }
 }
 

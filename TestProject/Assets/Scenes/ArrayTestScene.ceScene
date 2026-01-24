@@ -1,0 +1,32 @@
+{
+    "materias": [
+      {
+        "id": 1,
+        "name": "ArrayTestObject",
+        "leyes": [
+          {
+            "type": "Transform",
+            "localPosition": { "x": 0, "y": 0 },
+            "localRotation": 0,
+            "localScale": { "x": 1, "y": 1 }
+          },
+          {
+            "type": "CreativeScript",
+            "scriptName": "TestArrayScript.ces",
+            "publicVars": {
+              "listaDeNumeros": [10, 20],
+              "puntosDeRuta": [],
+              "objetosDeJuego": []
+            }
+          }
+        ]
+      }
+    ],
+    "ambiente": {
+      "luzAmbiental": "#1a1a2a",
+      "hora": "6",
+      "cicloAutomatico": false,
+      "duracionDia": "60",
+      "mascaraTipo": "ninguna"
+    }
+  }
