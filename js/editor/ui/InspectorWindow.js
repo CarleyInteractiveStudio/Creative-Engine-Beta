@@ -982,7 +982,7 @@ async function updateInspectorForMateria(selectedMateria) {
     componentsWrapper.className = 'inspector-components-wrapper';
     console.log('2. Created componentsWrapper. Looping through components...');
 
-    selectedMateria.leyes.forEach((ley, index) => {
+    for (const [index, ley] of selectedMateria.leyes.entries()) {
         console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
@@ -1886,7 +1886,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 componentsWrapper.appendChild(componentWrapper.firstChild);
             }
         }
-    });
+    }
 
     console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
