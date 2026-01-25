@@ -1,0 +1,43 @@
+{
+  "materias": [
+    {
+      "id": 1,
+      "name": "TestMateria",
+      "parent": null,
+      "children": [],
+      "isActive": true,
+      "layer": 0,
+      "tag": "Untagged",
+      "leyes": [
+        {
+          "type": "Transform",
+          "properties": {
+            "isActive": true,
+            "localPosition": { "x": 0, "y": 0 },
+            "localRotation": 0,
+            "localScale": { "x": 1, "y": 1 }
+          }
+        },
+        {
+          "type": "SpriteRenderer",
+          "properties": {
+            "isActive": true,
+            "source": "",
+            "spriteAssetPath": "",
+            "spriteName": "",
+            "color": "#ff0000",
+            "spriteSheet": null
+          }
+        }
+      ]
+    }
+  ],
+  "ambiente": {
+    "luzAmbiental": "#1a1a2a",
+    "hora": "12:00",
+    "cicloAutomatico": false,
+    "duracionDia": 1440,
+    "mascaraTipo": "global"
+  },
+  "cameras": []
+}
