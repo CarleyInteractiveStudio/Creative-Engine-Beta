@@ -289,9 +289,9 @@ function handleInspectorInput(e) {
                 if (!Array.isArray(currentArray)) {
                     currentArray = [];
                 }
-                const metadata = (componentName === 'CreativeScript'
-                    ? CES_Transpiler.getScriptMetadata(e.target.dataset.scriptName)
-                    : script.definition.metadata) || { publicVars: [] };
+                const metadata = (componentName === 'CreativeScript' ?
+                    script.metadata :
+                    script.definition.metadata) || { publicVars: [] };
 
                 const varInfo = metadata.publicVars.find(p => p.name === varName);
                 const baseType = varInfo ? varInfo.type.slice(0, -2) : null;
@@ -853,11 +853,13 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
     const itemCommonAttrs = `class="prop-input" data-prop="${variable.name}" data-component="${componentType}" ${componentType === 'CreativeScript' ? `data-script-name="${identifier}"` : `data-component-id="${identifier}"`}`;
 
     // --- ENUM Support ---
-    const metadata = CES_Transpiler.getScriptMetadata(identifier);
-    if (metadata && metadata.enums && metadata.enums[variable.type]) {
-        const options = metadata.enums[variable.type];
-        let optionsHTML = options.map(opt => `<option value="${opt}" ${currentValue === opt ? 'selected' : ''}>${opt}</option>`).join('');
-        return `<select ${itemCommonAttrs}>${optionsHTML}</select>`;
+    if (componentType === 'CreativeScript') {
+        const scriptComponent = getSelectedMateria().getComponents(Components.CreativeScript).find(s => s.scriptName === identifier);
+        if (scriptComponent && scriptComponent.metadata && scriptComponent.metadata.enums && scriptComponent.metadata.enums[variable.type]) {
+            const options = scriptComponent.metadata.enums[variable.type];
+            let optionsHTML = options.map(opt => `<option value="${opt}" ${currentValue === opt ? 'selected' : ''}>${opt}</option>`).join('');
+            return `<select ${itemCommonAttrs}>${optionsHTML}</select>`;
+        }
     }
 
 
@@ -1381,7 +1383,7 @@ async function updateInspectorForMateria(selectedMateria) {
         }
         else if (ley instanceof Components.CreativeScript) {
             let publicVarsHTML = '';
-            let metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+            let metadata = ley.metadata;
 
             // If metadata is not in the cache, try to transpile the script to get it
             if (!metadata) {
@@ -1393,7 +1395,8 @@ async function updateInspectorForMateria(selectedMateria) {
                         // The transpile function now automatically caches the metadata
                         const transpilationResult = await CES_Transpiler.transpile(scriptContent, ley.scriptName);
                         if (transpilationResult && transpilationResult.metadata) {
-                            metadata = transpilationResult.metadata;
+                            ley.metadata = transpilationResult.metadata; // Store it on the component
+                            metadata = ley.metadata;
                         }
                     } catch (e) {
                         console.error(`Could not transpile script ${ley.scriptName} on the fly:`, e);

@@ -285,6 +285,10 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                     await newLey.loadSprite(projectsDirHandle);
                 }
                 if (newLey instanceof CreativeScript) {
+                    // Restore metadata before loading/initializing
+                    if (leyData.properties.metadata) {
+                        newLey.metadata = leyData.properties.metadata;
+                    }
                     await newLey.load(projectsDirHandle);
                 }
                 if (newLey instanceof Animator) {
