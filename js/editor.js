@@ -921,7 +921,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(worldRotation * Math.PI / 180);
+
+                        // Draw the original sprite
                         ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+
+                        // Apply color tint if not white
+                        if (spriteRenderer.color !== '#ffffff') {
+                            ctx.globalCompositeOperation = 'multiply';
+                            ctx.fillStyle = spriteRenderer.color;
+                            ctx.fillRect(dx, dy, dWidth, dHeight);
+                            // Reset composite operation for subsequent draws
+                            ctx.globalCompositeOperation = 'source-over';
+                        }
+
                         ctx.restore();
                     } else {
                         // If there's a renderer but no sprite, draw a white box placeholder

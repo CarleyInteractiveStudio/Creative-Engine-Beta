@@ -1,0 +1,12 @@
+// VerifyColorScript.ces
+public Color tintColor;
+public Materia targetSprite;
+
+public start() {
+    if (targetSprite != null) {
+        SpriteRenderer renderer = targetSprite.getSpriteRenderer();
+        if (renderer != null) {
+            renderer.color = tintColor;
+        }
+    }
+}

@@ -285,10 +285,28 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                     await newLey.loadSprite(projectsDirHandle);
                 }
                 if (newLey instanceof CreativeScript) {
-                    // Restore metadata before loading/initializing
                     if (leyData.properties.metadata) {
                         newLey.metadata = leyData.properties.metadata;
                     }
+
+                    // Reconstruct complex data types that were stringified
+                    const Color = newScene.engine['Color'];
+                    const Vector2 = newScene.engine['Vector2'];
+                    const typeMap = {
+                        Color: (data) => new Color(data.r, data.g, data.b, data.a),
+                        Vector2: (data) => new Vector2(data.x, data.y)
+                    };
+
+                    if (newLey.metadata && newLey.publicVars) {
+                        for (const key in newLey.publicVars) {
+                            const value = newLey.publicVars[key];
+                            const varInfo = newLey.metadata.publicVars.find(p => p.name === key);
+                            if (varInfo && typeMap[varInfo.type] && typeof value === 'object' && value !== null) {
+                                newLey.publicVars[key] = typeMap[varInfo.type](value);
+                            }
+                        }
+                    }
+
                     await newLey.load(projectsDirHandle);
                 }
                 if (newLey instanceof Animator) {

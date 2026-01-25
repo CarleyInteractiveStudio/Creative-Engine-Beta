@@ -470,15 +470,30 @@ export class CreativeScript extends Leyes {
         const newScript = new CreativeScript(null, this.scriptName);
         newScript.metadata = this.metadata ? JSON.parse(JSON.stringify(this.metadata)) : null;
 
-        // Perform a deep copy that preserves object types (like Vector2, Color).
+        const Color = RuntimeAPIManager.getAPI('Color');
+        const Vector2 = RuntimeAPIManager.getAPI('Vector2');
+
+        const typeMap = {
+            Color: (data) => new Color(data.r, data.g, data.b, data.a),
+            Vector2: (data) => new Vector2(data.x, data.y)
+        };
+
         for (const key in this.publicVars) {
             if (this.publicVars.hasOwnProperty(key)) {
                 const value = this.publicVars[key];
+                const varInfo = this.metadata?.publicVars.find(p => p.name === key);
+
                 if (value && typeof value.clone === 'function') {
                     newScript.publicVars[key] = value.clone();
-                } else {
-                    // For primitives, null, or objects without a clone method
-                    newScript.publicVars[key] = value;
+                }
+                // If it's a plain object that should be a specific type, reconstruct it.
+                else if (varInfo && typeMap[varInfo.type] && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                    newScript.publicVars[key] = typeMap[varInfo.type](value);
+                }
+                // For primitives, arrays, null, or other objects without special handling.
+                else {
+                    // Basic deep copy for arrays of primitives/simple objects.
+                    newScript.publicVars[key] = JSON.parse(JSON.stringify(value));
                 }
             }
         }

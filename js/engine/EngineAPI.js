@@ -21,6 +21,8 @@ export function getAllInternalApis() {
         'escena': sceneAPIs, // Spanish alias
         'input': inputAPIs,
         'entrada': inputAPIs, // Spanish alias
+        'Color': DataTypes.Color,
+        'Vector2': DataTypes.Vector2,
         'ce.DataTypes': DataTypes
     };
 }
