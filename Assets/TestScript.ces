@@ -1,0 +1,6 @@
+// TestScript.ces
+public Sprite icon;
+public Prefab projectile;
+public Materia target;
+public number speed;
+public boolean active;

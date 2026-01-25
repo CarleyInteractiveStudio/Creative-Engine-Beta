@@ -188,13 +188,21 @@ function handleInspectorDrop(e) {
     // Handle Materia Drop
     if (materiaDropper && data.type === 'Materia') {
         const droppedMateriaId = parseInt(data.id, 10);
-        const scriptName = materiaDropper.dataset.scriptName;
+        const componentType = materiaDropper.dataset.component;
         const propName = materiaDropper.dataset.prop;
 
-        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+        let script = null;
+        if (componentType === 'CreativeScript') {
+            script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === materiaDropper.dataset.scriptName);
+        } else if (componentType === 'CustomComponent') {
+            script = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == materiaDropper.dataset.componentId);
+        }
+
         if (script) {
             script.publicVars[propName] = droppedMateriaId;
-        } else {
+        }
+        // Fallback for non-script components like Button that might also use a materia-dropper
+        else {
             const button = selectedMateria.getComponent(Components.Button);
             if (button && propName.startsWith('onClick')) {
                 const parts = propName.split('.');
@@ -204,6 +212,7 @@ function handleInspectorDrop(e) {
                 }
             }
         }
+
         updateInspector();
         return;
     }
@@ -240,7 +249,7 @@ function handleInspectorDrop(e) {
             updateInspector();
             updateSceneCallback();
         } else {
-            showNotification('Tipo de Asset Incorrecto', `Se esperaba ${expectedTypes.join(', ')} pero se soltó ${fileExtension}.`);
+            console.warn(`[Inspector] Tipo de Asset Incorrecto. Se esperaba ${expectedTypes.join(', ')} pero se soltó ${fileExtension}. Este no es el tipo de archivo esperado`);
         }
     }
 }

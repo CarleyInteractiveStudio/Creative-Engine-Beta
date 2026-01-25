@@ -1,0 +1,9 @@
+{
+  "name": "TestPrefab",
+  "components": [
+    {
+      "type": "Transform",
+      "properties": {}
+    }
+  ]
+}
