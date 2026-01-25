@@ -12,6 +12,15 @@ export class Leyes {
     update() {}
 
     /**
+     * Returns a stable identifier for the component type.
+     * For CreativeScript, this will be overridden to return the script name.
+     * @returns {string} The component's constructor name.
+     */
+    getIdentifier() {
+        return this.constructor.name;
+    }
+
+    /**
      * Serializes the component into a JSON-friendly object.
      * This base implementation iterates over own properties and packs them.
      * It automatically calls .serialize() on nested objects if they have the method.
