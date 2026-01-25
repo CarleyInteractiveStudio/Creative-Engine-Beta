@@ -236,25 +236,26 @@ function checkGizmoHit(canvasPos) {
             break;
         case 'scale':
             {
-                const rad = transform.rotation * Math.PI / 180;
-                const cos = Math.cos(-rad);
-                const sin = Math.sin(-rad);
+                const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
+                if (!spriteRenderer) return null;
+
+                const rad = -transform.rotation * Math.PI / 180;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
                 const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
                 const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
 
-                const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
-                const width = (boxCollider ? boxCollider.width : 100) * transform.scale.x;
-                const height = (boxCollider ? boxCollider.height : 100) * transform.scale.y;
-
+                const width = spriteRenderer.width * transform.scale.x;
+                const height = spriteRenderer.height * transform.scale.y;
                 const hx = width / 2;
                 const hy = height / 2;
                 const handleHitboxSizeLocal = 12 / zoom;
 
                 const handles = [
-                    { x: -hx, y: hy, name: 'scale-tl' },
-                    { x: hx, y: hy, name: 'scale-tr' },
-                    { x: hx, y: -hy, name: 'scale-br' },
-                    { x: -hx, y: -hy, name: 'scale-bl' },
+                    { x: -hx, y: -hy, name: 'scale-tl' },
+                    { x: hx, y: -hy, name: 'scale-tr' },
+                    { x: hx, y: hy, name: 'scale-br' },
+                    { x: -hx, y: hy, name: 'scale-bl' },
                 ];
 
                 for (const handle of handles) {
@@ -478,22 +479,36 @@ function drawGizmos(renderer, materia) {
             break;
 
         case 'scale':
-             ctx.lineWidth = HANDLE_THICKNESS;
-             ctx.strokeStyle = '#ffffff'; // White for scale handles
-             const halfBox = SCALE_BOX_SIZE / 2;
-             // Draw 4 boxes at the corners relative to the object's center
-             const corners = [
-                 { x: centerX - halfBox, y: centerY - halfBox },
-                 { x: centerX + GIZMO_SIZE - halfBox, y: centerY - halfBox },
-                 { x: centerX - halfBox, y: centerY + GIZMO_SIZE - halfBox },
-                 { x: centerX + GIZMO_SIZE, y: centerY + GIZMO_SIZE }
-             ];
-            // This is a simplified version. A real implementation would rotate with the object.
-            // For now, axis-aligned boxes.
-            ctx.fillStyle = '#ffffff';
-            ctx.strokeRect(centerX - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Center handle
-            ctx.strokeRect(centerX + GIZMO_SIZE - halfBox, centerY - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Right
-            ctx.strokeRect(centerX - halfBox, centerY + GIZMO_SIZE - halfBox, SCALE_BOX_SIZE, SCALE_BOX_SIZE); // Top
+            const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+            if (!spriteRenderer) break;
+
+            const width = spriteRenderer.width * transform.scale.x;
+            const height = spriteRenderer.height * transform.scale.y;
+            const halfWidth = width / 2;
+            const halfHeight = height / 2;
+
+            ctx.translate(centerX, centerY);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+
+            // Draw the bounding box
+            ctx.strokeStyle = 'rgba(0, 150, 255, 0.8)';
+            ctx.lineWidth = 1 / zoom;
+            ctx.setLineDash([4 / zoom, 2 / zoom]);
+            ctx.strokeRect(-halfWidth, -halfHeight, width, height);
+            ctx.setLineDash([]);
+
+            // Draw scale handles at the corners
+            ctx.fillStyle = '#0090ff';
+            const halfHandleSize = SCALE_BOX_SIZE / 2;
+            const handles = [
+                { x: -halfWidth, y: -halfHeight }, // Top-left
+                { x: halfWidth, y: -halfHeight },  // Top-right
+                { x: -halfWidth, y: halfHeight },  // Bottom-left
+                { x: halfWidth, y: halfHeight }   // Bottom-right
+            ];
+            handles.forEach(handle => {
+                ctx.fillRect(handle.x - halfHandleSize, handle.y - halfHandleSize, SCALE_BOX_SIZE, SCALE_BOX_SIZE);
+            });
             break;
     }
 
@@ -632,6 +647,51 @@ export function initialize(dependencies) {
                 transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
                 break;
             }
+            case 'scale-br':
+            case 'scale-bl':
+            case 'scale-tr':
+            case 'scale-tl':
+                {
+                    const spriteRenderer = dragState.materia.getComponent(Components.SpriteRenderer);
+                    if (!spriteRenderer || spriteRenderer.width === 0 || spriteRenderer.height === 0) break;
+
+                    const rad = transform.rotation * Math.PI / 180;
+                    const cos = Math.cos(rad);
+                    const sin = Math.sin(rad);
+
+                    // Rotate mouse delta to local space
+                    const localDx = dx * cos + dy * sin;
+                    const localDy = -dx * sin + dy * cos;
+
+                    // Calculate change in scale
+                    // The '2' is because dragging a corner out by 'd' should increase the total dimension by '2d'
+                    const deltaScaleX = (2 * localDx) / spriteRenderer.width;
+                    const deltaScaleY = (2 * localDy) / spriteRenderer.height;
+
+                    switch (dragState.handle) {
+                        case 'scale-br':
+                            transform.scale.x += deltaScaleX;
+                            transform.scale.y += deltaScaleY;
+                            break;
+                        case 'scale-bl':
+                            transform.scale.x -= deltaScaleX;
+                            transform.scale.y += deltaScaleY;
+                            break;
+                        case 'scale-tr':
+                            transform.scale.x += deltaScaleX;
+                            transform.scale.y -= deltaScaleY;
+                            break;
+                        case 'scale-tl':
+                            transform.scale.x -= deltaScaleX;
+                            transform.scale.y -= deltaScaleY;
+                            break;
+                    }
+                     // Prevent negative scaling
+                    if (transform.scale.x < 0) transform.scale.x = 0;
+                    if (transform.scale.y < 0) transform.scale.y = 0;
+
+                    break;
+                }
         }
 
         // --- Collider Gizmo Logic ---
@@ -925,13 +985,6 @@ export function initialize(dependencies) {
                 isDragging = true;
                 dragState = { handle: hitHandle, materia: selectedMateria };
                 lastMousePosition = { x: e.clientX, y: e.clientY };
-
-                if (hitHandle.startsWith('scale-')) {
-                    const transform = selectedMateria.getComponent(Components.Transform);
-                    const boxCollider = selectedMateria.getComponent(Components.BoxCollider);
-                    dragState.unscaledWidth = boxCollider ? boxCollider.width : 100;
-                    dragState.unscaledHeight = boxCollider ? boxCollider.height : 100;
-                }
 
                 // Attach the predefined handlers
                 window.addEventListener('mousemove', onGizmoDrag);

@@ -925,14 +925,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Draw the original sprite
                         ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 
-                        // Apply color tint if not white
-                        if (spriteRenderer.color !== '#ffffff') {
-                            ctx.globalCompositeOperation = 'multiply';
-                            ctx.fillStyle = spriteRenderer.color;
-                            ctx.fillRect(dx, dy, dWidth, dHeight);
-                            // Reset composite operation for subsequent draws
-                            ctx.globalCompositeOperation = 'source-over';
-                        }
+                        // Apply color tint
+                        ctx.globalCompositeOperation = 'source-atop';
+                        ctx.fillStyle = spriteRenderer.color.toString(); // Use the Color object's toString method
+                        ctx.fillRect(dx, dy, dWidth, dHeight);
+                        ctx.globalCompositeOperation = 'source-over'; // Reset for other rendering
 
                         ctx.restore();
                     } else {
