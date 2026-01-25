@@ -1385,18 +1385,21 @@ async function updateInspectorForMateria(selectedMateria) {
             let publicVarsHTML = '';
             let metadata = ley.metadata;
 
-            // If metadata is not in the cache, try to transpile the script to get it
+            // If metadata is not on the component, try to transpile the script to get it
             if (!metadata) {
                 const scriptFileHandle = await findFileInAssets(ley.scriptName, projectsDirHandle);
                 if (scriptFileHandle) {
                     try {
                         const file = await scriptFileHandle.getFile();
                         const scriptContent = await file.text();
-                        // The transpile function now automatically caches the metadata
+                        // The transpile function automatically caches the metadata upon success.
                         const transpilationResult = await CES_Transpiler.transpile(scriptContent, ley.scriptName);
-                        if (transpilationResult && transpilationResult.metadata) {
-                            ley.metadata = transpilationResult.metadata; // Store it on the component
-                            metadata = ley.metadata;
+                        // If transpilation was successful, get the metadata from the cache and store it on the component
+                        if (transpilationResult && !transpilationResult.errors) {
+                            metadata = CES_Transpiler.getScriptMetadata(ley.scriptName);
+                            if (metadata) {
+                                ley.metadata = metadata; // Store it on the component for persistence
+                            }
                         }
                     } catch (e) {
                         console.error(`Could not transpile script ${ley.scriptName} on the fly:`, e);
