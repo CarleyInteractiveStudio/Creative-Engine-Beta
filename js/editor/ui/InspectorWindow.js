@@ -105,6 +105,8 @@ export function initialize(dependencies) {
         }
     });
     dom.inspectorContent.addEventListener('drop', handleInspectorDrop);
+    dom.inspectorContent.addEventListener('dragstart', handleInspectorDragStart);
+
 
     // Add drag and drop listeners for general assets
     dom.inspectorContent.addEventListener('dragover', (e) => {
@@ -121,12 +123,29 @@ export function initialize(dependencies) {
 }
 
 // --- Event Handlers ---
+function handleInspectorDragStart(e) {
+    const componentHeader = e.target.closest('.component-header[draggable="true"]');
+    if (componentHeader) {
+        const materiaId = componentHeader.dataset.materiaId;
+        const componentIdentifier = componentHeader.dataset.componentIdentifier;
+        const dragData = {
+            type: 'Component',
+            materiaId: parseInt(materiaId, 10),
+            componentIdentifier: componentIdentifier
+        };
+        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+        e.dataTransfer.effectAllowed = 'copy';
+    }
+}
+
 
 function handleInspectorDrop(e) {
     const materiaDropper = e.target.closest('.materia-dropper');
     const assetDropper = e.target.closest('.asset-dropper');
+    const componentDropper = e.target.closest('.component-dropper');
 
-    if (!materiaDropper && !assetDropper) return;
+
+    if (!materiaDropper && !assetDropper && !componentDropper) return;
 
     e.preventDefault();
     if (materiaDropper) materiaDropper.classList.remove('drag-over');
@@ -141,6 +160,30 @@ function handleInspectorDrop(e) {
     } catch {
         return; // Not valid JSON
     }
+
+        // Handle Component Drop
+    if (componentDropper && data.type === 'Component') {
+        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === componentDropper.dataset.scriptName);
+        if (script) {
+            const propName = componentDropper.dataset.prop;
+            const metadata = CES_Transpiler.getScriptMetadata(script.scriptName);
+            const varInfo = metadata.publicVars.find(p => p.name === propName);
+
+            // The componentIdentifier from drag data is the CONSTRUCTOR NAME (e.g., "Rigidbody2D")
+            // The varInfo.type is also the constructor name.
+            if (varInfo && varInfo.type === data.componentIdentifier) {
+                script.publicVars[propName] = {
+                    materiaId: data.materiaId,
+                    componentIdentifier: data.componentIdentifier // Store the constructor name as the identifier
+                };
+                updateInspector();
+            } else {
+                showNotification('Error de Asignación', `El tipo de componente no coincide. Se esperaba '${varInfo.type}' pero se soltó '${data.componentIdentifier}'.`);
+            }
+        }
+        return;
+    }
+
 
     // Handle Materia Drop
     if (materiaDropper && data.type === 'Materia') {
@@ -162,29 +205,6 @@ function handleInspectorDrop(e) {
             }
         }
         updateInspector();
-        return;
-    }
-
-    const componentDropper = e.target.closest('.component-dropper');
-
-    // Handle Component Drop
-    if (componentDropper && data.type === 'Component') {
-        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === componentDropper.dataset.scriptName);
-        if (script) {
-            const propName = componentDropper.dataset.prop;
-            const metadata = CES_Transpiler.getScriptMetadata(script.scriptName);
-            const varInfo = metadata.publicVars.find(p => p.name === propName);
-
-            if (varInfo && varInfo.type === data.componentIdentifier) {
-                script.publicVars[propName] = {
-                    materiaId: data.materiaId,
-                    componentIdentifier: data.componentIdentifier
-                };
-                updateInspector();
-            } else {
-                showNotification('Error de Asignación', `El tipo de componente no coincide. Se esperaba '${varInfo.type}' pero se soltó '${data.componentIdentifier}'.`);
-            }
-        }
         return;
     }
 
@@ -686,6 +706,7 @@ function handleInspectorClick(e) {
             updateInspector();
         }
     }
+
 }
 
 function getCullingMaskText(mask) {
@@ -988,6 +1009,14 @@ async function updateInspectorForMateria(selectedMateria) {
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || '⚙️';
         const iconHTML = `<span class="component-icon">${icon}</span>`;
+        const componentIdentifier = ley.getIdentifier(); // Get a stable identifier for the component
+        const draggableHeader = `
+            <div class="component-header" draggable="true"
+                 data-materia-id="${selectedMateria.id}"
+                 data-component-identifier="${componentIdentifier}">
+                ${iconHTML}<h4>${ley.constructor.name === 'CreativeScript' ? ley.scriptName : ley.constructor.name}</h4>
+            </div>`;
+
 
         if (ley instanceof Components.TextureRender) {
             let dimensionsHTML = '';
@@ -1013,7 +1042,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Texture Render</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Shape</label>
@@ -1049,7 +1078,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Position</label>
@@ -1091,7 +1120,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-            <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
+            ${draggableHeader}
             <div class="component-content">
                  <div class="anchor-grid-container">
                     ${anchorGridHTML}
@@ -1113,7 +1142,7 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
+            componentHTML = `${draggableHeader}
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
@@ -1121,7 +1150,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
             componentHTML = `
-                <div class="component-header"><span class="component-icon">📝</span><h4>UI Text</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Text</label>
@@ -1164,7 +1193,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
             componentHTML = `
-                <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
@@ -1211,7 +1240,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
             componentHTML = `
-                <div class="component-header"><span class="component-icon">🖲️</span><h4>Button</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
@@ -1335,7 +1364,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Source</label>
@@ -1385,14 +1414,14 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4><a href="#">${ley.scriptName}</a></h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
                 </div>
             `;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Animator</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Animation Clip</label>
@@ -1423,7 +1452,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 statesListHTML += '</ul>';
             }
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Animator Controller</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Controller</label>
@@ -1441,7 +1470,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const clearFlags = ley.clearFlags || 'SolidColor';
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Camera</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Depth</label>
@@ -1511,7 +1540,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is PointLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1537,7 +1566,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is SpotLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1569,7 +1598,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is FreeformLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1591,9 +1620,7 @@ async function updateInspectorForMateria(selectedMateria) {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
-                    <div class="component-header">
-                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                    </div>
+                    ${draggableHeader}
                     <div class="component-content">
                         <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
@@ -1623,9 +1650,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
 
                 componentHTML = `
-                    <div class="component-header">
-                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                    </div>
+                    ${draggableHeader}
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
@@ -1654,9 +1679,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
-                </div>
+                ${draggableHeader}
                 <div class="component-content">
                     <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
                 </div>
@@ -1671,9 +1694,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
-                </div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label for="collider-source-layer">Capa de Origen</label>
@@ -1719,7 +1740,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Grid</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
@@ -1731,7 +1752,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.CapsuleCollider2D) {
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Capsule Collider 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -1768,7 +1789,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Sprite Light 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                      <div class="prop-row-multi">
                         <label>Sprite</label>
@@ -1795,7 +1816,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Body Type</label>
@@ -1842,7 +1863,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
             }
             componentHTML = `
-                <div class="component-header"><span class="component-icon">⚙️</span><h4>${ley.definition.nombre}</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
@@ -1850,7 +1871,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Box Collider 2D</h4></div>
+                ${draggableHeader}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>

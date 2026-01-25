@@ -1,0 +1,9 @@
+public class ComponentAssigner
+{
+    public Rigidbody2D rb;
+
+    public void iniciar()
+    {
+        // Do nothing
+    }
+}

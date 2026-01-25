@@ -50,9 +50,8 @@ export function updateHierarchy() {
         item.draggable = true;
         item.style.marginLeft = `${depth * 18}px`;
 
-        // Add toggle arrow if the materia has children or components to show
-        const hasExpandableContent = (materia.children && materia.children.length > 0) || (materia.leyes && materia.leyes.length > 1);
-        if (hasExpandableContent) {
+        // Add toggle arrow if the materia has children
+        if (materia.children && materia.children.length > 0) {
             const toggle = document.createElement('span');
             toggle.className = 'toggle';
             if (!materia.isCollapsed) {
@@ -71,44 +70,11 @@ export function updateHierarchy() {
 
         container.appendChild(item);
 
-        // Render components and children if the parent is not collapsed
-        if (!materia.isCollapsed) {
-            // Render components
-            materia.leyes.forEach(ley => {
-                if (ley instanceof Components.Transform) return; // Skip transform
-
-                const componentItem = document.createElement('div');
-                componentItem.className = 'hierarchy-item component-item'; // New class
-                componentItem.style.marginLeft = `${(depth + 1) * 18}px`;
-                componentItem.draggable = true;
-                componentItem.dataset.materiaId = materia.id;
-
-                let identifier;
-                let displayName;
-
-                if (ley instanceof Components.CreativeScript) {
-                    identifier = ley.scriptName;
-                    displayName = identifier.replace(/\.ces$/, '');
-                } else {
-                    identifier = ley.constructor.name;
-                    displayName = identifier;
-                }
-
-                componentItem.dataset.componentIdentifier = identifier;
-
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = `↳ ${displayName}`;
-                componentItem.appendChild(nameSpan);
-
-                container.appendChild(componentItem);
+        // Only render children if the parent is not collapsed
+        if (!materia.isCollapsed && materia.children && materia.children.length > 0) {
+            materia.children.forEach(child => {
+                renderNode(child, container, depth + 1);
             });
-
-            // Render children
-            if (materia.children && materia.children.length > 0) {
-                materia.children.forEach(child => {
-                    renderNode(child, container, depth + 1);
-                });
-            }
         }
     }
 
@@ -419,28 +385,16 @@ function setupEventListeners() {
 
     hierarchyContent.addEventListener('dragstart', (e) => {
         const item = e.target.closest('.hierarchy-item');
-        if (!item) return;
-
-        let dragData;
-        if (item.classList.contains('component-item')) {
-            // It's a component being dragged
-            dragData = {
-                type: 'Component',
-                materiaId: item.dataset.materiaId,
-                componentIdentifier: item.dataset.componentIdentifier
-            };
-            e.dataTransfer.effectAllowed = 'link'; // Indicate it can be linked/assigned
-        } else {
-            // It's a Materia being dragged for re-parenting
-            dragData = {
+        if (item) {
+            const materiaId = item.dataset.id;
+            const dragData = {
                 type: 'Materia',
-                id: item.dataset.id
+                id: materiaId
             };
+            e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
             e.dataTransfer.effectAllowed = 'move';
+            isDraggingFromHierarchy = true;
         }
-
-        e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-        isDraggingFromHierarchy = true;
     });
 
     hierarchyContent.addEventListener('dragend', (e) => {
