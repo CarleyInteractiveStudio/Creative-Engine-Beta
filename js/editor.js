@@ -913,9 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldPosition = transform.position;
                         const worldRotation = transform.rotation;
 
-                        // Use a consistent base size (e.g., 100x100) that is affected by scale
-                        const dWidth = 100 * worldScale.x;
-                        const dHeight = 100 * worldScale.y;
+                        const dWidth = spriteRenderer.width * worldScale.x;
+                        const dHeight = spriteRenderer.height * worldScale.y;
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
@@ -926,10 +925,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Draw the original sprite
                         ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 
-                        // Apply color tint if not white, preserving transparency
-                        if (spriteRenderer.color !== '#ffffff' && spriteRenderer.color !== '#ffffffff') {
-                            // Use 'source-atop' to draw the tint color only on top of the existing sprite pixels
-                            ctx.globalCompositeOperation = 'source-atop';
+                        // Apply color tint if not white
+                        if (spriteRenderer.color !== '#ffffff') {
+                            ctx.globalCompositeOperation = 'multiply';
                             ctx.fillStyle = spriteRenderer.color;
                             ctx.fillRect(dx, dy, dWidth, dHeight);
                             // Reset composite operation for subsequent draws
@@ -938,21 +936,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         ctx.restore();
                     } else {
-                        // If there's a renderer but no sprite, draw a colored box placeholder
                         const worldScale = transform.scale;
                         const worldPosition = transform.position;
                         const worldRotation = transform.rotation;
 
-                        // Use a consistent base size (e.g., 100x100) that is affected by scale
-                        const dWidth = 100 * worldScale.x;
-                        const dHeight = 100 * worldScale.y;
+                        const dWidth = spriteRenderer.width * worldScale.x;
+                        const dHeight = spriteRenderer.height * worldScale.y;
                         const dx = -dWidth * 0.5;
                         const dy = -dHeight * 0.5;
 
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.fillStyle = spriteRenderer.color || 'white'; // Use component color, fallback to white
+                        ctx.fillStyle = spriteRenderer.color || 'white';
                         ctx.fillRect(dx, dy, dWidth, dHeight);
                         ctx.restore();
                     }

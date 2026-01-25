@@ -616,6 +616,8 @@ export class SpriteRenderer extends Leyes {
         super(materia);
         this.sprite = new Image();
         this.source = ''; // Path to the source image file (e.g., player.png)
+        this.width = 100;
+        this.height = 100;
         this.spriteAssetPath = ''; // Path to the .ceSprite asset
         this.spriteName = ''; // Name of the specific sprite from the .ceSprite asset
         this.color = '#ffffff';
@@ -683,6 +685,8 @@ export class SpriteRenderer extends Leyes {
         newRenderer.source = this.source;
         newRenderer.spriteName = this.spriteName;
         newRenderer.color = this.color;
+        newRenderer.width = this.width;
+        newRenderer.height = this.height;
         // The sprite and spritesheet will be loaded automatically
         return newRenderer;
     }
