@@ -1,4 +1,1 @@
-// Assets/TestScript.ces
-public Vector2 posicionInicial;
-public Color colorDeParticula = new Color(255, 100, 50);
-public numero velocidad;
+public number myPublicVar = 10;\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}

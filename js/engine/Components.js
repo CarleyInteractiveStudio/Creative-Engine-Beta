@@ -243,6 +243,7 @@ export class CreativeScript extends Leyes {
         super(materia);
         this.scriptName = scriptName;
         this.publicVars = {}; // Nuevo: para almacenar los valores del Inspector
+        this.metadata = null; // To store the script's public variable definitions
         this.instance = null;
         this.isInitialized = false;
     }
@@ -419,7 +420,8 @@ export class CreativeScript extends Leyes {
                 // guardado en la escena (proveniente del Inspector).
 
                 if (this.publicVars) {
-                    const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
+                    // Use the component's own metadata if available
+                    const metadata = this.metadata || CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
                     const metadataMap = new Map(metadata.publicVars.map(p => [p.name, p]));
 
                     for (const varName in this.publicVars) {
@@ -466,6 +468,8 @@ export class CreativeScript extends Leyes {
 
     clone() {
         const newScript = new CreativeScript(null, this.scriptName);
+        newScript.metadata = this.metadata ? JSON.parse(JSON.stringify(this.metadata)) : null;
+
         // Perform a deep copy that preserves object types (like Vector2, Color).
         for (const key in this.publicVars) {
             if (this.publicVars.hasOwnProperty(key)) {
@@ -485,6 +489,7 @@ export class CreativeScript extends Leyes {
         const data = super.serialize();
         // Ensure publicVars are included, as they are the most important part.
         data.properties.publicVars = this.publicVars;
+        data.properties.metadata = this.metadata;
         return data;
     }
 }
