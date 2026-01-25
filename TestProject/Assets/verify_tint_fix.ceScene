@@ -1,0 +1,68 @@
+{
+  "materias": [
+    {
+      "id": 1,
+      "name": "Placeholder",
+      "parent": null,
+      "children": [],
+      "isActive": true,
+      "layer": 0,
+      "tag": "Untagged",
+      "leyes": [
+        {
+          "type": "Transform",
+          "properties": {
+            "isActive": true,
+            "localPosition": { "x": -150, "y": 0 },
+            "localRotation": 0,
+            "localScale": { "x": 1, "y": 1 }
+          }
+        },
+        {
+          "type": "SpriteRenderer",
+          "properties": {
+            "isActive": true,
+            "source": "",
+            "color": "#ff0000"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "TintedSprite",
+      "parent": null,
+      "children": [],
+      "isActive": true,
+      "layer": 0,
+      "tag": "Untagged",
+      "leyes": [
+        {
+          "type": "Transform",
+          "properties": {
+            "isActive": true,
+            "localPosition": { "x": 150, "y": 0 },
+            "localRotation": 0,
+            "localScale": { "x": 1, "y": 1 }
+          }
+        },
+        {
+          "type": "SpriteRenderer",
+          "properties": {
+            "isActive": true,
+            "source": "image/Creative_Engine_beta.png",
+            "color": "#00ff00"
+          }
+        }
+      ]
+    }
+  ],
+  "ambiente": {
+    "luzAmbiental": "#ffffff",
+    "hora": "12:00",
+    "cicloAutomatico": false,
+    "duracionDia": 1440,
+    "mascaraTipo": "global"
+  },
+  "cameras": []
+}
