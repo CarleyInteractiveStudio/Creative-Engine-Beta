@@ -177,6 +177,7 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let getSelectedComponent = () => null;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -237,7 +238,7 @@ function checkGizmoHit(canvasPos) {
         case 'scale':
             {
                 const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
-                if (!spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) return null;
+                if (!spriteRenderer) return null;
 
                 const rad = -transform.rotation * Math.PI / 180;
                 const cos = Math.cos(rad);
@@ -245,8 +246,8 @@ function checkGizmoHit(canvasPos) {
                 const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
                 const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
 
-                const sWidth = spriteRenderer.sprite.naturalWidth;
-                const sHeight = spriteRenderer.sprite.naturalHeight;
+                const sWidth = (spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth) ? spriteRenderer.sprite.naturalWidth : 100;
+                const sHeight = (spriteRenderer.sprite && spriteRenderer.sprite.naturalHeight) ? spriteRenderer.sprite.naturalHeight : 100;
 
                 const width = sWidth * transform.scale.x;
                 const height = sHeight * transform.scale.y;
@@ -483,10 +484,10 @@ function drawGizmos(renderer, materia) {
 
         case 'scale':
             const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-            if (!spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) break;
+            if (!spriteRenderer) break;
 
-            const sWidth = spriteRenderer.sprite.naturalWidth;
-            const sHeight = spriteRenderer.sprite.naturalHeight;
+            const sWidth = (spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth) ? spriteRenderer.sprite.naturalWidth : 100;
+            const sHeight = (spriteRenderer.sprite && spriteRenderer.sprite.naturalHeight) ? spriteRenderer.sprite.naturalHeight : 100;
 
             const width = sWidth * transform.scale.x;
             const height = sHeight * transform.scale.y;
@@ -564,6 +565,7 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    getSelectedComponent = dependencies.getSelectedComponent;
 
     // --- Gizmo Drag Handlers (defined at a higher scope) ---
     const onGizmoDrag = (moveEvent) => {
@@ -1325,7 +1327,7 @@ export function drawOverlay() {
     drawTilemapColliders();
 
     // Draw physics colliders for selected object
-    drawPhysicsGizmos();
+    drawPhysicsGizmos(getSelectedComponent());
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
@@ -1453,7 +1455,7 @@ function drawCapsulePath(ctx, width, height, direction) {
     }
 }
 
-function drawPhysicsGizmos() {
+function drawPhysicsGizmos(selectedComponent = null) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -1463,9 +1465,9 @@ function drawPhysicsGizmos() {
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
 
-    // Draw BoxCollider2D
+    // Draw BoxCollider2D only if it's the selected component
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
-    if (boxCollider) {
+    if (boxCollider && selectedComponent === boxCollider) {
         const width = boxCollider.size.x * transform.scale.x;
         const height = boxCollider.size.y * transform.scale.y;
         const centerX = transform.x + boxCollider.offset.x;
@@ -1495,9 +1497,9 @@ function drawPhysicsGizmos() {
         ctx.restore();
     }
 
-    // Draw CapsuleCollider2D
+    // Draw CapsuleCollider2D only if it's the selected component
     const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
-    if (capsuleCollider) {
+    if (capsuleCollider && selectedComponent === capsuleCollider) {
         const width = capsuleCollider.size.x * transform.scale.x;
         const height = capsuleCollider.size.y * transform.scale.y;
         const centerX = transform.x + capsuleCollider.offset.x;

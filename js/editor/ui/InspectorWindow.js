@@ -22,6 +22,12 @@ let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 
+let selectedComponent = null;
+
+export function getSelectedComponent() {
+    return selectedComponent;
+}
+
 const assetSearchCache = new Map();
 async function findFileInAssets(fileName, rootDirHandle) {
     if (assetSearchCache.has(fileName)) {
@@ -496,6 +502,17 @@ async function handleInspectorChange(e) {
 
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
+    selectedComponent = null; // Reset on any click in the inspector
+
+    const componentHeader = e.target.closest('.component-header');
+    if (componentHeader && selectedMateria) {
+        const componentIdentifier = componentHeader.dataset.componentIdentifier;
+        selectedComponent = selectedMateria.leyes.find(ley => ley.getIdentifier() === componentIdentifier);
+
+        // Visually mark the component as selected
+        document.querySelectorAll('.component-header.selected').forEach(el => el.classList.remove('selected'));
+        componentHeader.classList.add('selected');
+    }
 
     // --- Asset Field Click Logic ---
     const assetDropper = e.target.closest('.asset-dropper');

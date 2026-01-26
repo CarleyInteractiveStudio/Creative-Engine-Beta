@@ -12,7 +12,7 @@ import { initialize as initializePreferences, getPreferences } from './editor/ui
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
-import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
+import { initialize as initializeInspector, updateInspector, getSelectedComponent } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
@@ -896,6 +896,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         const img = spriteRenderer.sprite;
                         let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
                         let pivotX = 0.5, pivotY = 0.5;
+
+                        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                            if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
+                                sx = spriteData.rect.x;
+                                sy = spriteData.rect.y;
+                                sWidth = spriteData.rect.width;
+                                sHeight = spriteData.rect.height;
+                                pivotX = spriteData.pivot.x;
+                                pivotY = spriteData.pivot.y;
+                            }
+                        }
 
                         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
                             const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
@@ -2638,7 +2650,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, getSelectedComponent });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
