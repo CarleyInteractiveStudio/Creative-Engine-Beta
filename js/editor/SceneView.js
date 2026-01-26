@@ -237,7 +237,7 @@ function checkGizmoHit(canvasPos) {
         case 'scale':
             {
                 const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
-                if (!spriteRenderer) return null;
+                if (!spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) return null;
 
                 const rad = -transform.rotation * Math.PI / 180;
                 const cos = Math.cos(rad);
@@ -245,8 +245,11 @@ function checkGizmoHit(canvasPos) {
                 const localMouseX = (worldMouse.x - centerX) * cos - (worldMouse.y - centerY) * sin;
                 const localMouseY = (worldMouse.x - centerX) * sin + (worldMouse.y - centerY) * cos;
 
-                const width = spriteRenderer.width * transform.scale.x;
-                const height = spriteRenderer.height * transform.scale.y;
+                const sWidth = spriteRenderer.sprite.naturalWidth;
+                const sHeight = spriteRenderer.sprite.naturalHeight;
+
+                const width = sWidth * transform.scale.x;
+                const height = sHeight * transform.scale.y;
                 const hx = width / 2;
                 const hy = height / 2;
                 const handleHitboxSizeLocal = 12 / zoom;
@@ -480,10 +483,13 @@ function drawGizmos(renderer, materia) {
 
         case 'scale':
             const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-            if (!spriteRenderer) break;
+            if (!spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) break;
 
-            const width = spriteRenderer.width * transform.scale.x;
-            const height = spriteRenderer.height * transform.scale.y;
+            const sWidth = spriteRenderer.sprite.naturalWidth;
+            const sHeight = spriteRenderer.sprite.naturalHeight;
+
+            const width = sWidth * transform.scale.x;
+            const height = sHeight * transform.scale.y;
             const halfWidth = width / 2;
             const halfHeight = height / 2;
 
@@ -652,43 +658,32 @@ export function initialize(dependencies) {
             case 'scale-tr':
             case 'scale-tl':
                 {
-                    const spriteRenderer = dragState.materia.getComponent(Components.SpriteRenderer);
-                    if (!spriteRenderer || spriteRenderer.width === 0 || spriteRenderer.height === 0) break;
-
-                    const rad = transform.rotation * Math.PI / 180;
-                    const cos = Math.cos(rad);
-                    const sin = Math.sin(rad);
-
-                    // Rotate mouse delta to local space
-                    const localDx = dx * cos + dy * sin;
-                    const localDy = -dx * sin + dy * cos;
-
-                    // Calculate change in scale
-                    // The '2' is because dragging a corner out by 'd' should increase the total dimension by '2d'
-                    const deltaScaleX = (2 * localDx) / spriteRenderer.width;
-                    const deltaScaleY = (2 * localDy) / spriteRenderer.height;
+                    const sensitivity = 0.01;
+                    const deltaX = dx * sensitivity;
+                    const deltaY = dy * sensitivity;
 
                     switch (dragState.handle) {
                         case 'scale-br':
-                            transform.scale.x += deltaScaleX;
-                            transform.scale.y += deltaScaleY;
+                            transform.scale.x += deltaX;
+                            transform.scale.y += deltaY;
                             break;
                         case 'scale-bl':
-                            transform.scale.x -= deltaScaleX;
-                            transform.scale.y += deltaScaleY;
+                            transform.scale.x -= deltaX;
+                            transform.scale.y += deltaY;
                             break;
                         case 'scale-tr':
-                            transform.scale.x += deltaScaleX;
-                            transform.scale.y -= deltaScaleY;
+                            transform.scale.x += deltaX;
+                            transform.scale.y -= deltaY;
                             break;
                         case 'scale-tl':
-                            transform.scale.x -= deltaScaleX;
-                            transform.scale.y -= deltaScaleY;
+                            transform.scale.x -= deltaX;
+                            transform.scale.y -= deltaY;
                             break;
                     }
-                     // Prevent negative scaling
-                    if (transform.scale.x < 0) transform.scale.x = 0;
-                    if (transform.scale.y < 0) transform.scale.y = 0;
+
+                    // Prevent negative or zero scaling which makes the object invisible
+                    if (transform.scale.x < 0.01) transform.scale.x = 0.01;
+                    if (transform.scale.y < 0.01) transform.scale.y = 0.01;
 
                     break;
                 }

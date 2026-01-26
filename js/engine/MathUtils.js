@@ -16,13 +16,13 @@ export function getOOB(materia) {
     const transform = materia.getComponent(Transform);
     const spriteRenderer = materia.getComponent(SpriteRenderer);
 
-    if (!transform || !spriteRenderer) {
+    if (!transform || !spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) {
         return null;
     }
 
     // Use the component's width/height properties, not the sprite's natural size
-    const w = spriteRenderer.width;
-    const h = spriteRenderer.height;
+    const w = spriteRenderer.sprite.naturalWidth;
+    const h = spriteRenderer.sprite.naturalHeight;
     const sx = transform.scale.x;
     const sy = transform.scale.y;
 

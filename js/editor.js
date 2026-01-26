@@ -913,8 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldPosition = transform.position;
                         const worldRotation = transform.rotation;
 
-                        const dWidth = spriteRenderer.width * worldScale.x;
-                        const dHeight = spriteRenderer.height * worldScale.y;
+                        const dWidth = sWidth * worldScale.x;
+                        const dHeight = sHeight * worldScale.y;
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
@@ -937,8 +937,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldPosition = transform.position;
                         const worldRotation = transform.rotation;
 
-                        const dWidth = spriteRenderer.width * worldScale.x;
-                        const dHeight = spriteRenderer.height * worldScale.y;
+                        const placeholderSize = 100;
+                        const dWidth = placeholderSize * worldScale.x;
+                        const dHeight = placeholderSize * worldScale.y;
                         const dx = -dWidth * 0.5;
                         const dy = -dHeight * 0.5;
 
