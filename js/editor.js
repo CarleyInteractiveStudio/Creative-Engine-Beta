@@ -893,7 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (spriteRenderer) {
                     if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                        const img = spriteRenderer.sprite;
+                                                const img = spriteRenderer.sprite;
                         let sx = 0, sy = 0;
                         let sWidth = img.naturalWidth, sHeight = img.naturalHeight; // Initialize with natural size
                         let pivotX = 0.5, pivotY = 0.5;

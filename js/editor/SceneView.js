@@ -661,42 +661,26 @@ export function initialize(dependencies) {
                     const spriteRenderer = dragState.materia.getComponent(Components.SpriteRenderer);
                     if (!spriteRenderer) break;
 
-                    const sWidth = (spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth) ? spriteRenderer.sprite.naturalWidth : 100;
-                    const sHeight = (spriteRenderer.sprite && spriteRenderer.sprite.naturalHeight) ? spriteRenderer.sprite.naturalHeight : 100;
+                    // 1. Get current mouse position in world space.
+                    const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
 
-
-                    // Convert mouse delta to local space of the object
+                    // 2. Transform this world mouse position into the object's local space
                     const rad = -transform.rotation * Math.PI / 180;
                     const cos = Math.cos(rad);
                     const sin = Math.sin(rad);
-                    const localDx = dx * cos - dy * sin;
-                    const localDy = dx * sin + dy * cos;
+                    const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                    const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
 
-                    let scaleChangeX = 0;
-                    let scaleChangeY = 0;
+                    // 3. The absolute localMouseX/Y now represents the new half-width/height of the object.
+                    const newHalfWidth = Math.abs(localMouseX);
+                    const newHalfHeight = Math.abs(localMouseY);
 
-                    // Determine how the local delta affects scale based on which handle is dragged
-                    switch (dragState.handle) {
-                        case 'scale-br':
-                            scaleChangeX = localDx / sWidth;
-                            scaleChangeY = localDy / sHeight;
-                            break;
-                        case 'scale-bl':
-                            scaleChangeX = -localDx / sWidth;
-                            scaleChangeY = localDy / sHeight;
-                            break;
-                        case 'scale-tr':
-                            scaleChangeX = localDx / sWidth;
-                            scaleChangeY = -localDy / sHeight;
-                            break;
-                        case 'scale-tl':
-                            scaleChangeX = -localDx / sWidth;
-                            scaleChangeY = -localDy / sHeight;
-                            break;
-                    }
+                    // 4. Calculate the new scale based on the sprite's original dimensions.
+                    const sWidth = (spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth) ? spriteRenderer.sprite.naturalWidth : 100;
+                    const sHeight = (spriteRenderer.sprite && spriteRenderer.sprite.naturalHeight) ? spriteRenderer.sprite.naturalHeight : 100;
 
-                    transform.scale.x += scaleChangeX;
-                    transform.scale.y += scaleChangeY;
+                    transform.scale.x = (newHalfWidth * 2) / sWidth;
+                    transform.scale.y = (newHalfHeight * 2) / sHeight;
 
                     // Prevent negative or zero scaling
                     if (transform.scale.x < 0.01) transform.scale.x = 0.01;

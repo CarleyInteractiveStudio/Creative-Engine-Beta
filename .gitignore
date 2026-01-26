@@ -3,3 +3,9 @@ test-results/
 
 # Ignore log files
 *.log
+
+# Ignore node modules
+node_modules/
+
+# Ignore verification scripts
+verify_gizmos_programmatic.py
