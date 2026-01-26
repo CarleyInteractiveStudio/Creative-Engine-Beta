@@ -659,31 +659,48 @@ export function initialize(dependencies) {
             case 'scale-bl':
             case 'scale-tr':
             case 'scale-tl':
-                {
-                    const sensitivity = 0.01;
-                    const deltaX = dx * sensitivity;
-                    const deltaY = dy * sensitivity;
+                 {
+                    const spriteRenderer = dragState.materia.getComponent(Components.SpriteRenderer);
+                    if (!spriteRenderer) break;
 
+                    const sWidth = (spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth) ? spriteRenderer.sprite.naturalWidth : 100;
+                    const sHeight = (spriteRenderer.sprite && spriteRenderer.sprite.naturalHeight) ? spriteRenderer.sprite.naturalHeight : 100;
+
+
+                    // Convert mouse delta to local space of the object
+                    const rad = -transform.rotation * Math.PI / 180;
+                    const cos = Math.cos(rad);
+                    const sin = Math.sin(rad);
+                    const localDx = dx * cos - dy * sin;
+                    const localDy = dx * sin + dy * cos;
+
+                    let scaleChangeX = 0;
+                    let scaleChangeY = 0;
+
+                    // Determine how the local delta affects scale based on which handle is dragged
                     switch (dragState.handle) {
                         case 'scale-br':
-                            transform.scale.x += deltaX;
-                            transform.scale.y += deltaY;
+                            scaleChangeX = localDx / sWidth;
+                            scaleChangeY = localDy / sHeight;
                             break;
                         case 'scale-bl':
-                            transform.scale.x -= deltaX;
-                            transform.scale.y += deltaY;
+                            scaleChangeX = -localDx / sWidth;
+                            scaleChangeY = localDy / sHeight;
                             break;
                         case 'scale-tr':
-                            transform.scale.x += deltaX;
-                            transform.scale.y -= deltaY;
+                            scaleChangeX = localDx / sWidth;
+                            scaleChangeY = -localDy / sHeight;
                             break;
                         case 'scale-tl':
-                            transform.scale.x -= deltaX;
-                            transform.scale.y -= deltaY;
+                            scaleChangeX = -localDx / sWidth;
+                            scaleChangeY = -localDy / sHeight;
                             break;
                     }
 
-                    // Prevent negative or zero scaling which makes the object invisible
+                    transform.scale.x += scaleChangeX;
+                    transform.scale.y += scaleChangeY;
+
+                    // Prevent negative or zero scaling
                     if (transform.scale.x < 0.01) transform.scale.x = 0.01;
                     if (transform.scale.y < 0.01) transform.scale.y = 0.01;
 

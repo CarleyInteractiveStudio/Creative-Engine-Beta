@@ -894,21 +894,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (spriteRenderer) {
                     if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
                         const img = spriteRenderer.sprite;
-                        let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+                        let sx = 0, sy = 0;
+                        let sWidth = img.naturalWidth, sHeight = img.naturalHeight; // Initialize with natural size
                         let pivotX = 0.5, pivotY = 0.5;
 
-                        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-                            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-                            if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
-                                sx = spriteData.rect.x;
-                                sy = spriteData.rect.y;
-                                sWidth = spriteData.rect.width;
-                                sHeight = spriteData.rect.height;
-                                pivotX = spriteData.pivot.x;
-                                pivotY = spriteData.pivot.y;
-                            }
-                        }
-
+                        // If using a sprite sheet, override the dimensions and pivot
                         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
                             const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
                             if (spriteData.rect && spriteData.rect.width > 0 && spriteData.rect.height > 0) {
