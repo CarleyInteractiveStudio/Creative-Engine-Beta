@@ -177,7 +177,6 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
-let getSelectedComponent = () => null;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -565,7 +564,6 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
-    getSelectedComponent = dependencies.getSelectedComponent;
 
     // --- Gizmo Drag Handlers (defined at a higher scope) ---
     const onGizmoDrag = (moveEvent) => {
@@ -1344,7 +1342,7 @@ export function drawOverlay() {
     drawTilemapColliders();
 
     // Draw physics colliders for selected object
-    drawPhysicsGizmos(getSelectedComponent());
+    drawPhysicsGizmos();
 
     // Draw outline for selected Tilemap
     drawTilemapOutline();
@@ -1472,7 +1470,7 @@ function drawCapsulePath(ctx, width, height, direction) {
     }
 }
 
-function drawPhysicsGizmos(selectedComponent = null) {
+function drawPhysicsGizmos() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
 
@@ -1482,9 +1480,9 @@ function drawPhysicsGizmos(selectedComponent = null) {
     const { ctx, camera } = renderer;
     if (!ctx || !camera) return;
 
-    // Draw BoxCollider2D only if it's the selected component
+    // Draw BoxCollider2D
     const boxCollider = selectedMateria.getComponent(Components.BoxCollider2D);
-    if (boxCollider && selectedComponent === boxCollider) {
+    if (boxCollider) {
         const width = boxCollider.size.x * transform.scale.x;
         const height = boxCollider.size.y * transform.scale.y;
         const centerX = transform.x + boxCollider.offset.x;
@@ -1514,9 +1512,9 @@ function drawPhysicsGizmos(selectedComponent = null) {
         ctx.restore();
     }
 
-    // Draw CapsuleCollider2D only if it's the selected component
+    // Draw CapsuleCollider2D
     const capsuleCollider = selectedMateria.getComponent(Components.CapsuleCollider2D);
-    if (capsuleCollider && selectedComponent === capsuleCollider) {
+    if (capsuleCollider) {
         const width = capsuleCollider.size.x * transform.scale.x;
         const height = capsuleCollider.size.y * transform.scale.y;
         const centerX = transform.x + capsuleCollider.offset.x;
