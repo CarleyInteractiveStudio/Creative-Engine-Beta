@@ -1074,7 +1074,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is Transform component.');
             if (selectedMateria.getComponent(Components.UITransform)) {
                 console.log('  - UITransform also exists, skipping render of Transform.');
-                return;
+                continue;
             }
             componentHTML = `
             <div class="component-inspector">

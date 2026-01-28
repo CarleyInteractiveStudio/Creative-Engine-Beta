@@ -247,6 +247,10 @@ export class CreativeScript extends Leyes {
         this.isInitialized = false;
     }
 
+    getIdentifier() {
+        return this.scriptName;
+    }
+
     // --- Lifecycle wrappers ---
     start() {
         if (!this.instance) return;

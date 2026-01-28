@@ -11,6 +11,10 @@ export class Leyes {
     }
     update() {}
 
+    getIdentifier() {
+        return this.constructor.name;
+    }
+
     /**
      * Serializes the component into a JSON-friendly object.
      * This base implementation iterates over own properties and packs them.
