@@ -200,7 +200,12 @@ function getMateriaDimensions(materia) {
 
     // 1. Check SpriteRenderer
     const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
-    if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete) {
+    if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
+        // Handle Sprite Sheets
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+            const data = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            return { width: data.rect.width, height: data.rect.height };
+        }
         return {
             width: spriteRenderer.sprite.naturalWidth,
             height: spriteRenderer.sprite.naturalHeight
@@ -211,9 +216,9 @@ function getMateriaDimensions(materia) {
     const textureRender = materia.getComponent(Components.TextureRender);
     if (textureRender) {
         if (textureRender.shape === 'Rectangle' || textureRender.shape === 'Capsule' || textureRender.shape === 'Triangle') {
-            return { width: textureRender.width, height: textureRender.height };
+            return { width: textureRender.width || 100, height: textureRender.height || 100 };
         } else if (textureRender.shape === 'Circle') {
-            return { width: textureRender.radius * 2, height: textureRender.radius * 2 };
+            return { width: (textureRender.radius || 50) * 2, height: (textureRender.radius || 50) * 2 };
         }
     }
 
@@ -223,8 +228,8 @@ function getMateriaDimensions(materia) {
         return { width: boxCollider.size.x, height: boxCollider.size.y };
     }
 
-    // Default fallback
-    return { width: 100, height: 100 };
+    // Default fallback (matching editor.js placeholder size)
+    return { width: 50, height: 50 };
 }
 
 function screenToWorld(screenX, screenY) {
@@ -234,44 +239,66 @@ function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
+function getGizmoMetrics(materia) {
+    const transform = materia.getComponent(Components.Transform);
+    const dims = getMateriaDimensions(materia);
+    const zoom = renderer ? renderer.camera.effectiveZoom : 1;
+
+    const w = dims.width * Math.abs(transform.scale.x);
+    const h = dims.height * Math.abs(transform.scale.y);
+    const hx = w / 2;
+    const hy = h / 2;
+
+    // Gizmo Size: Proportional to object, but with minimum world size
+    const moveSize = Math.max(60, Math.max(hx, hy) + 30);
+    const rotateRadius = Math.sqrt(hx * hx + hy * hy) + 15; // Keep circle slightly outside the object
+
+    // Handle interactive sizes (in world units)
+    // User wants them to shrink/grow with the object, so we use fixed world units.
+    const handleSize = 10;
+    const thickness = 2;
+
+    return {
+        w, h, hx, hy,
+        moveSize,
+        rotateRadius,
+        handleSize,
+        thickness
+    };
+}
+
 function checkMoveHit(materia, canvasPos) {
     const transform = materia.getComponent(Components.Transform);
-    const zoom = renderer.camera.effectiveZoom;
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const GIZMO_SIZE = 60 / zoom;
-    const HIT_SIZE = 12 / zoom;
+    const metrics = getGizmoMetrics(materia);
+
+    const hitSize = metrics.handleSize;
 
     // Center square
-    if (Math.abs(worldMouse.x - transform.x) < 10 / zoom / 2 && Math.abs(worldMouse.y - transform.y) < 10 / zoom / 2) return 'move-xy';
+    if (Math.abs(worldMouse.x - transform.x) < hitSize / 2 && Math.abs(worldMouse.y - transform.y) < hitSize / 2) return 'move-xy';
 
     // X Axis
-    if (Math.abs(worldMouse.y - transform.y) < HIT_SIZE / 2 && worldMouse.x > transform.x && worldMouse.x < transform.x + GIZMO_SIZE) return 'move-x';
+    if (Math.abs(worldMouse.y - transform.y) < hitSize / 2 && worldMouse.x > transform.x && worldMouse.x < transform.x + metrics.moveSize) return 'move-x';
     // Y Axis
-    if (Math.abs(worldMouse.x - transform.x) < HIT_SIZE / 2 && worldMouse.y < transform.y && worldMouse.y > transform.y - GIZMO_SIZE) return 'move-y';
+    if (Math.abs(worldMouse.x - transform.x) < hitSize / 2 && worldMouse.y < transform.y && worldMouse.y > transform.y - metrics.moveSize) return 'move-y';
 
     return null;
 }
 
 function checkRotateHit(materia, canvasPos) {
     const transform = materia.getComponent(Components.Transform);
-    const zoom = renderer.camera.effectiveZoom;
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const GIZMO_SIZE = 60 / zoom;
-    const radius = GIZMO_SIZE * 0.8;
+    const metrics = getGizmoMetrics(materia);
+
     const dist = Math.sqrt(Math.pow(worldMouse.x - transform.x, 2) + Math.pow(worldMouse.y - transform.y, 2));
-    if (Math.abs(dist - radius) < 8 / zoom) return 'rotate';
+    if (Math.abs(dist - metrics.rotateRadius) < metrics.handleSize / 2) return 'rotate';
     return null;
 }
 
 function checkScaleHit(materia, canvasPos) {
     const transform = materia.getComponent(Components.Transform);
-    const zoom = renderer.camera.effectiveZoom;
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const dims = getMateriaDimensions(materia);
-    const w = dims.width * transform.scale.x;
-    const h = dims.height * transform.scale.y;
-    const hx = w / 2;
-    const hy = h / 2;
+    const metrics = getGizmoMetrics(materia);
 
     const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(-rad);
@@ -279,8 +306,9 @@ function checkScaleHit(materia, canvasPos) {
     const localMouseX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
     const localMouseY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
 
-    const s = 12 / zoom;
-    const hs = s / 2;
+    const hs = metrics.handleSize / 2;
+    const hx = metrics.hx;
+    const hy = metrics.hy;
 
     const handles = [
         { x: -hx, y: -hy, name: 'scale-tl' }, { x: hx, y: -hy, name: 'scale-tr' },
@@ -454,32 +482,29 @@ function drawGizmos(renderer, materia) {
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
-
-    const GIZMO_SIZE = 60 / zoom;
-    const HANDLE_THICKNESS = 2 / zoom;
-    const ARROW_HEAD_SIZE = 8 / zoom;
-    const ROTATE_RADIUS = GIZMO_SIZE * 0.8;
-    const SCALE_HANDLE_SIZE = 8 / zoom;
+    const metrics = getGizmoMetrics(materia);
 
     const centerX = transform.x;
     const centerY = transform.y;
     const rotationRad = transform.rotation * Math.PI / 180;
 
+    const arrowHead = metrics.handleSize * 0.8;
+
     const drawMove = () => {
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.lineWidth = HANDLE_THICKNESS;
+        ctx.lineWidth = metrics.thickness;
 
         // Y-Axis (Green)
         ctx.strokeStyle = '#00ff00';
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, -GIZMO_SIZE);
+        ctx.lineTo(0, -metrics.moveSize);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(0, -GIZMO_SIZE);
-        ctx.lineTo(-ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
-        ctx.lineTo(ARROW_HEAD_SIZE / 2, -GIZMO_SIZE + ARROW_HEAD_SIZE);
+        ctx.moveTo(0, -metrics.moveSize);
+        ctx.lineTo(-arrowHead / 2, -metrics.moveSize + arrowHead);
+        ctx.lineTo(arrowHead / 2, -metrics.moveSize + arrowHead);
         ctx.closePath();
         ctx.fillStyle = '#00ff00';
         ctx.fill();
@@ -488,18 +513,18 @@ function drawGizmos(renderer, materia) {
         ctx.strokeStyle = '#ff0000';
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(GIZMO_SIZE, 0);
+        ctx.lineTo(metrics.moveSize, 0);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(GIZMO_SIZE, 0);
-        ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, -ARROW_HEAD_SIZE / 2);
-        ctx.lineTo(GIZMO_SIZE - ARROW_HEAD_SIZE, ARROW_HEAD_SIZE / 2);
+        ctx.moveTo(metrics.moveSize, 0);
+        ctx.lineTo(metrics.moveSize - arrowHead, -arrowHead / 2);
+        ctx.lineTo(metrics.moveSize - arrowHead, arrowHead / 2);
         ctx.closePath();
         ctx.fillStyle = '#ff0000';
         ctx.fill();
 
         // Center square
-        const SQ = 10 / zoom;
+        const SQ = metrics.handleSize;
         ctx.fillStyle = 'rgba(0, 150, 255, 0.5)';
         ctx.fillRect(-SQ / 2, -SQ / 2, SQ, SQ);
         ctx.strokeStyle = 'white';
@@ -510,10 +535,10 @@ function drawGizmos(renderer, materia) {
     const drawRotate = () => {
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.lineWidth = HANDLE_THICKNESS;
+        ctx.lineWidth = metrics.thickness;
         ctx.strokeStyle = '#33ccff';
         ctx.beginPath();
-        ctx.arc(0, 0, ROTATE_RADIUS, 0, Math.PI * 2);
+        ctx.arc(0, 0, metrics.rotateRadius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
     };
@@ -523,14 +548,13 @@ function drawGizmos(renderer, materia) {
         ctx.translate(centerX, centerY);
         ctx.rotate(rotationRad);
 
-        const dims = getMateriaDimensions(materia);
-        const w = dims.width * transform.scale.x;
-        const h = dims.height * transform.scale.y;
-        const hx = w / 2;
-        const hy = h / 2;
+        const hx = metrics.hx;
+        const hy = metrics.hy;
+        const w = metrics.w;
+        const h = metrics.h;
 
         // Bounding box
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.lineWidth = 1 / zoom;
         ctx.setLineDash([5 / zoom, 5 / zoom]);
         ctx.strokeRect(-hx, -hy, w, h);
@@ -540,7 +564,7 @@ function drawGizmos(renderer, materia) {
         ctx.fillStyle = 'white';
         ctx.strokeStyle = '#0090ff';
         ctx.lineWidth = 1 / zoom;
-        const s = SCALE_HANDLE_SIZE;
+        const s = metrics.handleSize;
         const hs = s / 2;
 
         const handles = [
