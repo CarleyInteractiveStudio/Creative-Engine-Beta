@@ -335,11 +335,11 @@ function checkScaleHit(materia, canvasPos, isUniversal = false) {
         if (Math.abs(localMouseX - (-hx)) < hs && Math.abs(localMouseY - hy) < hs) return 'scale-bl';
     }
 
-    // Edge Hits (Single-Axis)
-    if (Math.abs(localMouseX - hx) < hs && Math.abs(localMouseY) < hy) return 'scale-r';
-    if (Math.abs(localMouseX - (-hx)) < hs && Math.abs(localMouseY) < hy) return 'scale-l';
-    if (Math.abs(localMouseY - (-hy)) < hs && Math.abs(localMouseX) < hx) return 'scale-t';
-    if (Math.abs(localMouseY - hy) < hs && Math.abs(localMouseX) < hx) return 'scale-b';
+    // Edge Hits (Single-Axis) - Use max(dim, hs) to ensure interactability on thin objects
+    if (Math.abs(localMouseX - hx) < hs && Math.abs(localMouseY) < Math.max(hy, hs)) return 'scale-r';
+    if (Math.abs(localMouseX - (-hx)) < hs && Math.abs(localMouseY) < Math.max(hy, hs)) return 'scale-l';
+    if (Math.abs(localMouseY - (-hy)) < hs && Math.abs(localMouseX) < Math.max(hx, hs)) return 'scale-t';
+    if (Math.abs(localMouseY - hy) < hs && Math.abs(localMouseX) < Math.max(hx, hs)) return 'scale-b';
 
     return null;
 }
@@ -744,17 +744,25 @@ export function initialize(dependencies) {
                 const initialScale = dragState.initialTransform.scale;
 
                 let visualDW = 0, visualDH = 0;
-                let localOX = 0, localOY = 0;
 
-                if (dragState.handle.includes('r')) { visualDW += localTotalDx; localOX += localTotalDx / 2; }
-                if (dragState.handle.includes('l')) { visualDW -= localTotalDx; localOX += localTotalDx / 2; }
-                if (dragState.handle.includes('b')) { visualDH += localTotalDy; localOY += localTotalDy / 2; }
-                if (dragState.handle.includes('t')) { visualDH -= localTotalDy; localOY += localTotalDy / 2; }
+                if (dragState.handle.includes('r')) visualDW += localTotalDx;
+                if (dragState.handle.includes('l')) visualDW -= localTotalDx;
+                if (dragState.handle.includes('b')) visualDH += localTotalDy;
+                if (dragState.handle.includes('t')) visualDH -= localTotalDy;
 
                 const initialVisualW = baseW * Math.abs(initialScale.x);
                 const initialVisualH = baseH * Math.abs(initialScale.y);
 
-                // Snap the visual delta
+                // Uniform scaling when Shift is held
+                if (InputManager.getKey('Shift') && initialVisualW > 0 && initialVisualH > 0) {
+                    const fw = (initialVisualW + visualDW) / initialVisualW;
+                    const fh = (initialVisualH + visualDH) / initialVisualH;
+                    const f = (Math.abs(fw - 1) > Math.abs(fh - 1)) ? fw : fh;
+                    visualDW = (initialVisualW * f) - initialVisualW;
+                    visualDH = (initialVisualH * f) - initialVisualH;
+                }
+
+                // Snap the visual delta to avoid messy numbers
                 const snappedVisualDW = snapVal(visualDW, 10);
                 const snappedVisualDH = snapVal(visualDH, 10);
 
@@ -766,7 +774,7 @@ export function initialize(dependencies) {
                     y: (newVisualH / baseH) * Math.sign(initialScale.y || 1)
                 };
 
-                // Re-calculate position offset based on snapped deltas
+                // Re-calculate position offset based on snapped deltas to keep opposite side anchored
                 let sLocalOX = 0, sLocalOY = 0;
                 if (dragState.handle.includes('r')) sLocalOX += (newVisualW - initialVisualW) / 2;
                 if (dragState.handle.includes('l')) sLocalOX -= (newVisualW - initialVisualW) / 2;
@@ -775,8 +783,11 @@ export function initialize(dependencies) {
 
                 const worldOx = sLocalOX * Math.cos(rad) - sLocalOY * Math.sin(rad);
                 const worldOy = sLocalOX * Math.sin(rad) + sLocalOY * Math.cos(rad);
-                transform.x = snapVal(dragState.initialTransform.x + worldOx);
-                transform.y = snapVal(dragState.initialTransform.y + worldOy);
+
+                // CRITICAL: We DO NOT snap the resulting position here.
+                // Position adjustment for scale must be exact to maintain the anchor point.
+                transform.x = dragState.initialTransform.x + worldOx;
+                transform.y = dragState.initialTransform.y + worldOy;
                 break;
             }
             case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
