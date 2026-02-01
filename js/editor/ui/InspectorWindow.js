@@ -176,6 +176,11 @@ function handleInspectorInput(e) {
     }
     current[props[props.length - 1]] = value;
 
+    // Trigger setter if nested (important for properties that return clones like Transform.scale)
+    if (props.length > 1) {
+        component[props[0]] = component[props[0]];
+    }
+
     // After updating the property, trigger a scene update to reflect changes visually.
     if (updateSceneCallback) {
         updateSceneCallback();

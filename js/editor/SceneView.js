@@ -560,11 +560,29 @@ function drawGizmos(renderer, materia) {
         const hy = metrics.hy;
         const w = metrics.w;
         const h = metrics.h;
+        const hs = 8 / zoom; // Handle visual size in world pixels
 
-        // Bounding box as the scale tool
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3 / zoom; // Thicker for better visibility
+        // Dashed bounding box
+        ctx.setLineDash([5 / zoom, 5 / zoom]);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2 / zoom;
         ctx.strokeRect(-hx, -hy, w, h);
+        ctx.setLineDash([]);
+
+        // Draw handles (squares)
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1 / zoom;
+
+        const handles = [
+            [-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy], // Corners
+            [hx, 0], [-hx, 0], [0, -hy], [0, hy]       // Midpoints
+        ];
+
+        handles.forEach(([x, y]) => {
+            ctx.fillRect(x - hs/2, y - hs/2, hs, hs);
+            ctx.strokeRect(x - hs/2, y - hs/2, hs, hs);
+        });
 
         ctx.restore();
     };
@@ -661,22 +679,28 @@ export function initialize(dependencies) {
                 const baseH = dims.height;
                 const initialScale = dragState.initialTransform.scale;
 
-                let dw = 0, dh = 0;
-                let ox = 0, oy = 0;
+                let visualDW = 0, visualDH = 0;
+                let localOX = 0, localOY = 0;
 
-                if (dragState.handle.includes('r')) { dw = localTotalDx; ox = dw / 2; }
-                if (dragState.handle.includes('l')) { dw = -localTotalDx; ox = localTotalDx / 2; }
-                if (dragState.handle.includes('b')) { dh = localTotalDy; oy = dh / 2; }
-                if (dragState.handle.includes('t')) { dh = -localTotalDy; oy = localTotalDy / 2; }
+                if (dragState.handle.includes('r')) { visualDW += localTotalDx; localOX += localTotalDx / 2; }
+                if (dragState.handle.includes('l')) { visualDW -= localTotalDx; localOX += localTotalDx / 2; }
+                if (dragState.handle.includes('b')) { visualDH += localTotalDy; localOY += localTotalDy / 2; }
+                if (dragState.handle.includes('t')) { visualDH -= localTotalDy; localOY += localTotalDy / 2; }
 
-                const newW = Math.max(1, baseW * initialScale.x + dw);
-                const newH = Math.max(1, baseH * initialScale.y + dh);
+                const initialVisualW = baseW * Math.abs(initialScale.x);
+                const initialVisualH = baseH * Math.abs(initialScale.y);
 
-                transform.scale = { x: newW / baseW, y: newH / baseH };
+                const newVisualW = Math.max(1, initialVisualW + visualDW);
+                const newVisualH = Math.max(1, initialVisualH + visualDH);
+
+                transform.scale = {
+                    x: (newVisualW / baseW) * Math.sign(initialScale.x || 1),
+                    y: (newVisualH / baseH) * Math.sign(initialScale.y || 1)
+                };
 
                 // Adjust position to keep opposite side anchored (relative to initial position)
-                const worldOx = ox * Math.cos(rad) - oy * Math.sin(rad);
-                const worldOy = ox * Math.sin(rad) + oy * Math.cos(rad);
+                const worldOx = localOX * Math.cos(rad) - localOY * Math.sin(rad);
+                const worldOy = localOX * Math.sin(rad) + localOY * Math.cos(rad);
                 transform.x = dragState.initialTransform.x + worldOx;
                 transform.y = dragState.initialTransform.y + worldOy;
                 break;

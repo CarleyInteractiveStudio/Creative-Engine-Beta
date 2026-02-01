@@ -424,6 +424,30 @@ document.addEventListener('DOMContentLoaded', () => {
         updateInspector();
     };
 
+    function setEditorActiveTool(tool) {
+        const toolMap = {
+            'move': 'tool-move',
+            'rotate': 'tool-rotate',
+            'scale': 'tool-scale',
+            'pan': 'tool-pan',
+            'camera-move': 'tool-pan',
+            'universal': 'tool-universal'
+        };
+
+        const btnId = toolMap[tool];
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            document.querySelectorAll('.viewport-tools .toolbar-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const icon = btn.textContent.trim().split(' ')[0];
+            const activeToolBtn = document.getElementById('tool-active');
+            if (activeToolBtn) activeToolBtn.textContent = icon;
+        }
+
+        const internalToolName = tool === 'pan' ? 'camera-move' : tool;
+        setActiveTool(internalToolName);
+    }
+
     function handleKeyboardShortcuts(e) {
         // Si el juego está en marcha y la vista activa es la del juego, no procesar los atajos del editor.
         if (isGameRunning && activeView === 'game-content') {
@@ -457,19 +481,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!e.ctrlKey && !e.altKey) {
             switch (e.key.toLowerCase()) {
                 case 'q':
-                    setActiveTool('move');
+                    setEditorActiveTool('move');
                     break;
                 case 'w':
-                    setActiveTool('pan');
+                    setEditorActiveTool('pan');
                     break;
                 case 'e':
-                    setActiveTool('scale');
+                    setEditorActiveTool('scale');
                     break;
                 case 'r':
-                    setActiveTool('rotate');
+                    setEditorActiveTool('rotate');
                     break;
                 case 't':
-                    setActiveTool('universal');
+                    setEditorActiveTool('universal');
                     break;
                 case 'delete':
                 case 'backspace':
@@ -1705,6 +1729,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => { gameRenderer.resize(); try { InputManager.setActiveCanvas(gameRenderer.canvas); } catch(e) {}} , 0);
                 }
             }
+        });
+
+        // Viewport Tool Dropdown Listeners
+        document.querySelectorAll('.viewport-tools .toolbar-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (btn.id === 'tool-active') return;
+
+                const toolMap = {
+                    'tool-move': 'move',
+                    'tool-rotate': 'rotate',
+                    'tool-scale': 'scale',
+                    'tool-pan': 'pan',
+                    'tool-universal': 'universal'
+                };
+
+                const tool = toolMap[btn.id];
+                if (tool) {
+                    setEditorActiveTool(tool);
+                }
+            });
         });
 
         // Panel Close Button Logic
