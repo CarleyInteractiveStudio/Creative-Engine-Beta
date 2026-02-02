@@ -671,15 +671,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const allErrors = [];
         let mainGameJsCode = null;
 
-        // 1. Encontrar todos los archivos .ces
+        // 1. Encontrar todos los archivos .ces y .chc
         const cesFiles = [];
         async function findCesFiles(dirHandle, currentPath = '') {
             console.log(`Buscando en: ${currentPath || 'Assets'}`);
             for await (const entry of dirHandle.values()) {
                 console.log(`  - Encontrado: ${entry.name} (Tipo: ${entry.kind})`);
-                if (entry.kind === 'file' && entry.name.endsWith('.ces')) {
-                    console.log(`    -> ¡Script .ces encontrado! Añadiendo a la lista.`);
-                    cesFiles.push(entry);
+                if (entry.kind === 'file' && (entry.name.endsWith('.ces') || entry.name.endsWith('.chc'))) {
+                    console.log(`    -> ¡Script encontrado! Añadiendo a la lista.`);
+                    cesFiles.push({ handle: entry, dir: dirHandle });
                 } else if (entry.kind === 'directory') {
                     await findCesFiles(entry, `${currentPath}/${entry.name}`);
                 }
@@ -698,13 +698,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 2. Transpilar cada archivo y recolectar errores
-        const transpilationPromises = cesFiles.map(async (fileHandle) => {
-            const file = await fileHandle.getFile();
-            const code = await file.text();
-            const result = CES_Transpiler.transpile(code, fileHandle.name);
+        const transpilationPromises = cesFiles.map(async ({ handle, dir }) => {
+            const file = await handle.getFile();
+            let code = await file.text();
+
+            // Si es CHC, cargar el código generado de la meta
+            if (handle.name.endsWith('.chc')) {
+                try {
+                    const metaHandle = await dir.getFileHandle(`${handle.name}.meta`);
+                    const metaFile = await metaHandle.getFile();
+                    const metaData = JSON.parse(await metaFile.text());
+                    code = metaData.generatedCode;
+                } catch (e) {
+                    console.warn(`CHC script ${handle.name} no ha sido traducido aún. Omitiendo.`);
+                    return;
+                }
+            }
+
+            const result = CES_Transpiler.transpile(code, handle.name);
 
             if (result.errors && result.errors.length > 0) {
-                allErrors.push({ fileName: fileHandle.name, errors: result.errors });
+                allErrors.push({ fileName: handle.name, errors: result.errors });
             }
         });
 
@@ -2234,7 +2248,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
-            'md-preview-content', 'md-edit-content'
+            'md-preview-content', 'md-edit-content',
+            // CHC Editor Elements
+            'chc-editor-panel', 'chc-editor-title', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());

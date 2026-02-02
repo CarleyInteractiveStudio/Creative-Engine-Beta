@@ -69,6 +69,29 @@ export async function handleContextMenuAction(action) {
             );
             break;
         }
+        case 'create-chc-script': {
+            showPrompt(
+                'Crear Script H-Code',
+                'Introduce el nombre del nuevo script (.chc):',
+                async (scriptName) => {
+                    if (scriptName) {
+                        const fileName = scriptName.endsWith('.chc') ? scriptName : `${scriptName}.chc`;
+                        const defaultContent = `# Mi Script Humano\n\nCuando se presione la tecla W, mover arriba.\nSi hay colisión con un enemigo, destruir este objeto.`;
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el script CHC:", err);
+                            showNotification('Error', 'No se pudo crear el script.');
+                        }
+                    }
+                }
+            );
+            break;
+        }
         case 'create-script': {
             showPrompt(
                 'Crear Script',
@@ -375,6 +398,8 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ces')) {
                 imgIcon.src = 'image/Script.png';
                 iconContainer.appendChild(imgIcon);
+            } else if (entry.name.endsWith('.chc')) {
+                iconContainer.textContent = '🧠';
             } else if (entry.name.endsWith('.cea')) {
                 imgIcon.src = 'image/cea.png';
                 iconContainer.appendChild(imgIcon);

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/sprite-slicer.css">
     <link rel="stylesheet" href="css/debug.css">
     <link rel="icon" href="image/Creative_Engine_beta.png" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <!-- Loading Overlay Panel -->
@@ -581,6 +582,23 @@ public star() {
                         <div class="inspector-content"></div>
                     </div>
                 </div>
+
+            <!-- CHC Editor Panel -->
+            <div id="chc-editor-panel" class="editor-panel floating-panel hidden" style="width: 600px; height: 400px;">
+                <div class="panel-header">
+                    <span id="chc-editor-title">CHC Editor</span>
+                    <button class="close-panel-btn" data-panel="chc-editor-panel">&times;</button>
+                </div>
+                <div class="panel-content chc-editor-container">
+                    <textarea id="chc-human-text" placeholder="Describe aquí la lógica de tu script en lenguaje humano..."></textarea>
+                    <button id="chc-run-btn" class="chc-floating-run-btn">🚀 Correr</button>
+                    <div id="chc-loading-overlay" class="chc-overlay hidden">
+                        <div class="spinner"></div>
+                        <p>Carl IA está traduciendo tu lógica...</p>
+                    </div>
+                </div>
+                <div class="resize-handle" data-direction="both"></div>
+            </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
                 <div class="resize-handle" data-direction="e"></div>
@@ -703,6 +721,7 @@ public star() {
                 <ul class="submenu">
                     <li data-action="create-folder">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
+                    <li data-action="create-chc-script">Script H-Code (.chc)</li>
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
                     <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
