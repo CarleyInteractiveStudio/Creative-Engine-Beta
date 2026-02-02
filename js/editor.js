@@ -38,7 +38,6 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2141,7 +2140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
         const ids = [
-            'editor-container', 'menubar', 'editor-toolbar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
+            'editor-container', 'menubar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
@@ -2180,8 +2179,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
             'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
-            'ui-editor-panel', 'ui-save-btn', 'ui-maximize-btn', 'ui-editor-layout', 'ui-hierarchy-panel', 'ui-canvas-panel',
-            'ui-canvas-container', 'ui-canvas', 'ui-inspector-panel', 'ui-resizer-left', 'ui-resizer-right',
+            'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
+            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
@@ -2205,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
+            'btn-play', 'btn-pause', 'btn-stop',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2707,13 +2706,6 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
 
 
             originalStartGame = startGame;

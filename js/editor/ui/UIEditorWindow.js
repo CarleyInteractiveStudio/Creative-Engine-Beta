@@ -8,8 +8,8 @@ let uiEditorFileHandle = null;
 let uiResizersInitialized = false;
 
 function renderUiHierarchy() {
-    if (!dom.uiHierarchyPanel || !currentUiAsset) return;
-    const container = dom.uiHierarchyPanel.querySelector('.panel-content');
+    if (!dom.uiEditorHierarchy || !currentUiAsset) return;
+    const container = dom.uiEditorHierarchy.querySelector('.panel-content');
     container.innerHTML = '';
 
     function renderNode(element, parentElement, depth) {
@@ -38,11 +38,11 @@ function renderUiHierarchy() {
 }
 
 function renderUiCanvas() {
-    if (!dom.uiCanvas || !currentUiAsset) return;
-    const canvas = dom.uiCanvas;
+    if (!dom.uiEditorCanvas || !currentUiAsset) return;
+    const canvas = dom.uiEditorCanvas;
     const ctx = canvas.getContext('2d');
 
-    const containerRect = dom.uiCanvasContainer.getBoundingClientRect();
+    const containerRect = dom.uiEditorCanvasContainer.getBoundingClientRect();
     canvas.width = containerRect.width;
     canvas.height = containerRect.height;
 
@@ -77,8 +77,8 @@ function renderUiCanvas() {
 }
 
 function renderUiInspector() {
-    if (!dom.uiInspectorPanel) return;
-    const container = dom.uiInspectorPanel.querySelector('.panel-content');
+    if (!dom.uiEditorInspector) return;
+    const container = dom.uiEditorInspector.querySelector('.panel-content');
 
     if (!selectedUiElement) {
         container.innerHTML = '<p class="inspector-placeholder">Selecciona un elemento UI</p>';
@@ -115,8 +115,8 @@ function initUIEditorResizers() {
 
     const resizerLeft = dom.uiResizerLeft;
     const resizerRight = dom.uiResizerRight;
-    const hierarchyPanel = dom.uiHierarchyPanel;
-    const inspectorPanel = dom.uiInspectorPanel;
+    const hierarchyPanel = dom.uiEditorHierarchy;
+    const inspectorPanel = dom.uiEditorInspector;
 
     let startX, startWidth;
 
@@ -225,8 +225,8 @@ export async function createUiSystemFile(dirHandle, updateAssetBrowser) {
 }
 
 function setupEventListeners() {
-    if (dom.uiSaveBtn) {
-        dom.uiSaveBtn.addEventListener('click', async () => {
+    if (dom.uiEditorSaveBtn) {
+        dom.uiEditorSaveBtn.addEventListener('click', async () => {
             if (!uiEditorFileHandle || !currentUiAsset) {
                 showNotification('Error', 'No hay ningún asset de UI abierto para guardar.');
                 return;
@@ -242,15 +242,15 @@ function setupEventListeners() {
             }
         });
     }
-    if (dom.uiMaximizeBtn) {
-        dom.uiMaximizeBtn.addEventListener('click', () => {
+    if (dom.uiCanvasMaximizeBtn) {
+        dom.uiCanvasMaximizeBtn.addEventListener('click', () => {
             const panel = dom.uiEditorPanel;
             panel.classList.toggle('maximized');
             setTimeout(renderUiCanvas, 50);
         });
     }
-    if (dom.uiInspectorPanel) {
-        dom.uiInspectorPanel.addEventListener('input', (e) => {
+    if (dom.uiEditorInspector) {
+        dom.uiEditorInspector.addEventListener('input', (e) => {
             if (!selectedUiElement) return;
 
             if (e.target.matches('.prop-input')) {
