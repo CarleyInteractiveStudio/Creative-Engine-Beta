@@ -152,49 +152,132 @@ export class StandaloneRuntime {
         const scene = SceneManager.currentScene;
         const materias = scene.getAllMaterias();
 
-        // 1. Geometry
-        const spriteRenderers = materias.filter(m => m.getComponent(Components.SpriteRenderer));
-        const tilemaps = materias.filter(m => m.getComponent(Components.TilemapRenderer));
-        const textureRenderers = materias.filter(m => m.getComponent(Components.TextureRender));
+        // 1. Filter and Sort Geometry
+        const materiasToRender = materias
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
+            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
 
-        // 2. Lights (simplified for now, using project setting would be better)
-        const lights = {
-            point: materias.filter(m => m.getComponent(Components.PointLight2D)),
-            spot: materias.filter(m => m.getComponent(Components.SpotLight2D)),
-            freeform: materias.filter(m => m.getComponent(Components.FreeformLight2D)),
-            sprite: materias.filter(m => m.getComponent(Components.SpriteLight2D))
+        const textureRenderersToRender = materias
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
+
+        const tilemapsToRender = materias
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
+
+        const canvasesToRender = materias
+            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+
+        // 2. Filter Lights
+        const allLights = {
+            point: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D)),
+            spot: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D)),
+            freeform: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D)),
+            sprite: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D))
         };
 
         const ctx = this.renderer.ctx;
 
-        // Draw sprites
-        spriteRenderers.sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y)
-            .forEach(m => {
-                if (!m.isActive) return;
-                const sr = m.getComponent(Components.SpriteRenderer);
-                const t = m.getComponent(Components.Transform);
+        const drawObjects = () => {
+            // Draw Sprites
+            for (const materia of materiasToRender) {
+                if (!materia.isActive) continue;
+                const sr = materia.getComponent(Components.SpriteRenderer);
+                const transform = materia.getComponent(Components.Transform);
+
                 if (sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
-                    const worldPos = t.position;
-                    const worldScale = t.scale;
-                    const dWidth = sr.sprite.naturalWidth * worldScale.x;
-                    const dHeight = sr.sprite.naturalHeight * worldScale.y;
+                    const img = sr.sprite;
+                    let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+                    let pivotX = 0.5, pivotY = 0.5;
+
+                    if (sr.spriteSheet && sr.spriteName && sr.spriteSheet.sprites[sr.spriteName]) {
+                        const spriteData = sr.spriteSheet.sprites[sr.spriteName];
+                        sx = spriteData.rect.x;
+                        sy = spriteData.rect.y;
+                        sWidth = spriteData.rect.width;
+                        sHeight = spriteData.rect.height;
+                        pivotX = spriteData.pivot.x;
+                        pivotY = spriteData.pivot.y;
+                    }
+
+                    const worldPos = transform.position;
+                    const worldScale = transform.scale;
+                    const dWidth = sWidth * worldScale.x;
+                    const dHeight = sHeight * worldScale.y;
 
                     ctx.save();
                     ctx.translate(worldPos.x, worldPos.y);
-                    ctx.rotate(t.rotation * Math.PI / 180);
-                    ctx.drawImage(sr.sprite, -dWidth/2, -dHeight/2, dWidth, dHeight);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.drawImage(img, sx, sy, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
                     ctx.restore();
                 }
+            }
+
+            // Draw Texture Renderers
+            for (const materia of textureRenderersToRender) {
+                if (!materia.isActive) continue;
+                const tr = materia.getComponent(Components.TextureRender);
+                const transform = materia.getComponent(Components.Transform);
+                const worldPos = transform.position;
+
+                ctx.save();
+                ctx.translate(worldPos.x, worldPos.y);
+                ctx.rotate(transform.rotation * Math.PI / 180);
+                ctx.scale(transform.scale.x, transform.scale.y);
+
+                if (tr.texture && tr.texture.complete) {
+                    ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
+                } else {
+                    ctx.fillStyle = tr.color;
+                }
+
+                if (tr.shape === 'Rectangle') {
+                    ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                } else if (tr.shape === 'Circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else if (tr.shape === 'Triangle') {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -tr.height / 2);
+                    ctx.lineTo(-tr.width / 2, tr.height / 2);
+                    ctx.lineTo(tr.width / 2, tr.height / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Draw Tilemaps
+            for (const materia of tilemapsToRender) {
+                if (materia.isActive) this.renderer.drawTilemap(materia.getComponent(Components.TilemapRenderer));
+            }
+
+            // Draw UI Canvases
+            for (const materia of canvasesToRender) {
+                this.renderer.drawCanvas(materia);
+            }
+        };
+
+        const drawLights = (lights) => {
+            if (this.config.rendererMode !== 'realista') return;
+
+            this.renderer.beginLights();
+            lights.point.forEach(m => {
+                if (m.isActive) this.renderer.drawPointLight(m.getComponent(Components.PointLight2D), m.getComponent(Components.Transform));
             });
+            lights.spot.forEach(m => {
+                if (m.isActive) this.renderer.drawSpotLight(m.getComponent(Components.SpotLight2D), m.getComponent(Components.Transform));
+            });
+            lights.freeform.forEach(m => {
+                if (m.isActive) this.renderer.drawFreeformLight(m.getComponent(Components.FreeformLight2D), m.getComponent(Components.Transform));
+            });
+            lights.sprite.forEach(m => {
+                if (m.isActive) this.renderer.drawSpriteLight(m.getComponent(Components.SpriteLight2D), m.getComponent(Components.Transform));
+            });
+            this.renderer.endLights();
+        };
 
-        // Draw tilemaps
-        tilemaps.forEach(m => {
-            if (m.isActive) this.renderer.drawTilemap(m.getComponent(Components.TilemapRenderer));
-        });
-
-        // Draw UI
-        materias.filter(m => m.getComponent(Components.Canvas)).forEach(m => {
-            this.renderer.drawCanvas(m);
-        });
+        // Execution of render passes
+        drawObjects();
+        drawLights(allLights);
     }
 }
