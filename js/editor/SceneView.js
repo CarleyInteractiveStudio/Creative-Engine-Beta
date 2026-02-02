@@ -198,6 +198,11 @@ let dragState = {}; // To hold info about the current drag operation
 function getMateriaDimensions(materia) {
     if (!materia) return { width: 100, height: 100 };
 
+    const uiTransform = materia.getComponent(Components.UITransform);
+    if (uiTransform) {
+        return { width: uiTransform.size.width, height: uiTransform.size.height };
+    }
+
     // 1. Check SpriteRenderer
     const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
     if (spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
@@ -241,29 +246,25 @@ function screenToWorld(screenX, screenY) {
 
 function getGizmoMetrics(materia) {
     const transform = materia.getComponent(Components.Transform);
-    const dims = getMateriaDimensions(materia);
     const zoom = renderer ? renderer.camera.effectiveZoom : 1;
+    const dims = getMateriaDimensions(materia);
+
+    // Constant screen-space sizes for a modern look
+    const SCREEN_HANDLE_SIZE = 12;
+    const SCREEN_MOVE_SIZE = 80;
+    const SCREEN_ROTATE_RADIUS = 100;
 
     const w = dims.width * Math.abs(transform.scale.x);
     const h = dims.height * Math.abs(transform.scale.y);
     const hx = w / 2;
     const hy = h / 2;
 
-    // Gizmo Size: Proportional to object, but with minimum world size
-    const moveSize = Math.max(30, Math.max(hx, hy) + 15);
-    const rotateRadius = Math.max(hx, hy) + 15; // Keep circle closer to the object
-
-    // Handle interactive sizes (in world units)
-    // User wants them to shrink/grow with the object, so we use fixed world units.
-    const handleSize = 15; // Slightly larger hitbox for edges
-    const thickness = 2;
-
     return {
-        w, h, hx, hy,
-        moveSize,
-        rotateRadius,
-        handleSize,
-        thickness
+        hx, hy,
+        handleSize: SCREEN_HANDLE_SIZE / zoom,
+        moveSize: SCREEN_MOVE_SIZE / zoom,
+        rotateRadius: SCREEN_ROTATE_RADIUS / zoom,
+        zoom
     };
 }
 
@@ -272,16 +273,19 @@ function checkMoveHit(materia, canvasPos) {
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
     const metrics = getGizmoMetrics(materia);
 
-    const zoom = renderer.camera.effectiveZoom;
-    const hitSize = Math.max(metrics.handleSize, 15 / zoom);
+    const hs = metrics.handleSize;
 
-    // Center square
-    if (Math.abs(worldMouse.x - transform.x) < hitSize / 2 && Math.abs(worldMouse.y - transform.y) < hitSize / 2) return 'move-xy';
+    // XY Planar Handle (Higher priority)
+    const planarSize = hs * 1.5;
+    if (worldMouse.x >= transform.x && worldMouse.x <= transform.x + planarSize &&
+        worldMouse.y <= transform.y && worldMouse.y >= transform.y - planarSize) {
+        return 'move-xy';
+    }
 
-    // X Axis
-    if (Math.abs(worldMouse.y - transform.y) < hitSize / 2 && worldMouse.x > transform.x && worldMouse.x < transform.x + metrics.moveSize) return 'move-x';
-    // Y Axis
-    if (Math.abs(worldMouse.x - transform.x) < hitSize / 2 && worldMouse.y < transform.y && worldMouse.y > transform.y - metrics.moveSize) return 'move-y';
+    // X Axis (Red)
+    if (Math.abs(worldMouse.y - transform.y) < hs && worldMouse.x > transform.x && worldMouse.x < transform.x + metrics.moveSize) return 'move-x';
+    // Y Axis (Green)
+    if (Math.abs(worldMouse.x - transform.x) < hs && worldMouse.y < transform.y && worldMouse.y > transform.y - metrics.moveSize) return 'move-y';
 
     return null;
 }
@@ -291,18 +295,18 @@ function checkRotateHit(materia, canvasPos) {
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
     const metrics = getGizmoMetrics(materia);
 
-    const zoom = renderer.camera.effectiveZoom;
-    const hitSize = Math.max(metrics.handleSize, 15 / zoom);
-
     const dist = Math.sqrt(Math.pow(worldMouse.x - transform.x, 2) + Math.pow(worldMouse.y - transform.y, 2));
-    if (Math.abs(dist - metrics.rotateRadius) < hitSize / 2) return 'rotate';
+    if (Math.abs(dist - metrics.rotateRadius) < metrics.handleSize) return 'rotate';
+
     return null;
 }
 
-function checkScaleHit(materia, canvasPos) {
+function checkScaleHit(materia, canvasPos, isUniversal = false) {
     const transform = materia.getComponent(Components.Transform);
+    const uiTransform = materia.getComponent(Components.UITransform);
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
     const metrics = getGizmoMetrics(materia);
+    const hs = metrics.handleSize;
 
     const rad = transform.rotation * Math.PI / 180;
     const cos = Math.cos(-rad);
@@ -342,9 +346,9 @@ function checkGizmoHit(canvasPos) {
     if (activeTool === 'rotate') return checkRotateHit(selectedMateria, canvasPos);
     if (activeTool === 'scale') return checkScaleHit(selectedMateria, canvasPos);
     if (activeTool === 'universal') {
-        return checkMoveHit(selectedMateria, canvasPos) ||
-               checkRotateHit(selectedMateria, canvasPos) ||
-               checkScaleHit(selectedMateria, canvasPos);
+        return checkScaleHit(selectedMateria, canvasPos, true) ||
+               checkMoveHit(selectedMateria, canvasPos) ||
+               checkRotateHit(selectedMateria, canvasPos);
     }
     return null;
 }
@@ -489,101 +493,119 @@ function drawGizmos(renderer, materia) {
     if (!transform) return;
 
     const { ctx, camera } = renderer;
-    const zoom = camera.effectiveZoom;
     const metrics = getGizmoMetrics(materia);
-
     const centerX = transform.x;
     const centerY = transform.y;
     const rotationRad = transform.rotation * Math.PI / 180;
+    const hs = metrics.handleSize;
+    const hx = metrics.hx;
+    const hy = metrics.hy;
 
-    const arrowHead = metrics.handleSize * 0.8;
+    const hoverHandle = checkGizmoHit(lastMousePosition);
 
-    const drawMove = () => {
+    ctx.save();
+    ctx.lineWidth = 2 / metrics.zoom;
+
+    const getCol = (base, handle) => (hoverHandle === handle) ? '#ffff00' : base;
+
+    const drawMove = (isUniversal = false) => {
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.lineWidth = metrics.thickness;
 
-        // Y-Axis (Green)
-        ctx.strokeStyle = '#00ff00';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -metrics.moveSize);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, -metrics.moveSize);
-        ctx.lineTo(-arrowHead / 2, -metrics.moveSize + arrowHead);
-        ctx.lineTo(arrowHead / 2, -metrics.moveSize + arrowHead);
-        ctx.closePath();
-        ctx.fillStyle = '#00ff00';
-        ctx.fill();
+        // XY Planar Handle
+        ctx.fillStyle = getCol('rgba(255, 255, 255, 0.3)', 'move-xy');
+        const planarSize = hs * 1.5;
+        ctx.fillRect(0, -planarSize, planarSize, planarSize);
+        ctx.strokeStyle = getCol('white', 'move-xy');
+        ctx.strokeRect(0, -planarSize, planarSize, planarSize);
 
         // X-Axis (Red)
-        ctx.strokeStyle = '#ff0000';
+        const colX = getCol('#ff4444', 'move-x');
+        ctx.strokeStyle = colX;
+        ctx.fillStyle = colX;
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(metrics.moveSize, 0);
         ctx.stroke();
+        // Arrow head
         ctx.beginPath();
         ctx.moveTo(metrics.moveSize, 0);
-        ctx.lineTo(metrics.moveSize - arrowHead, -arrowHead / 2);
-        ctx.lineTo(metrics.moveSize - arrowHead, arrowHead / 2);
-        ctx.closePath();
-        ctx.fillStyle = '#ff0000';
+        ctx.lineTo(metrics.moveSize - hs, -hs/2);
+        ctx.lineTo(metrics.moveSize - hs, hs/2);
         ctx.fill();
 
-        // Center square
-        const SQ = metrics.handleSize;
-        ctx.fillStyle = 'rgba(0, 150, 255, 0.5)';
-        ctx.fillRect(-SQ / 2, -SQ / 2, SQ, SQ);
-        ctx.strokeStyle = 'white';
-        ctx.strokeRect(-SQ / 2, -SQ / 2, SQ, SQ);
+        // Y-Axis (Green)
+        const colY = getCol('#44ff44', 'move-y');
+        ctx.strokeStyle = colY;
+        ctx.fillStyle = colY;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -metrics.moveSize); // UP
+        ctx.stroke();
+        // Arrow head
+        ctx.beginPath();
+        ctx.moveTo(0, -metrics.moveSize);
+        ctx.lineTo(-hs/2, -metrics.moveSize + hs);
+        ctx.lineTo(hs/2, -metrics.moveSize + hs);
+        ctx.fill();
+
         ctx.restore();
     };
 
-    const drawRotate = () => {
+    const drawRotate = (isUniversal = false) => {
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.lineWidth = metrics.thickness;
-        ctx.strokeStyle = '#33ccff';
+        ctx.strokeStyle = getCol('#44ccff', 'rotate');
         ctx.beginPath();
         ctx.arc(0, 0, metrics.rotateRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        // Visual indicator line
+        ctx.rotate(rotationRad);
+        ctx.setLineDash([5/metrics.zoom, 5/metrics.zoom]);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(metrics.rotateRadius, 0);
         ctx.stroke();
         ctx.restore();
     };
 
-    const drawScale = () => {
+    const drawScale = (isUniversal = false) => {
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(rotationRad);
 
-        const hx = metrics.hx;
-        const hy = metrics.hy;
-        const w = metrics.w;
-        const h = metrics.h;
-        const hs = 8 / zoom; // Handle visual size in world pixels
-
-        // Dashed bounding box
-        ctx.setLineDash([5 / zoom, 5 / zoom]);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.lineWidth = 2 / zoom;
-        ctx.strokeRect(-hx, -hy, w, h);
+        ctx.strokeStyle = 'white';
+        ctx.setLineDash([4/metrics.zoom, 4/metrics.zoom]);
+        ctx.strokeRect(-hx, -hy, hx * 2, hy * 2);
         ctx.setLineDash([]);
 
-        // Draw handles (squares)
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1 / zoom;
+        const uiTransform = materia.getComponent(Components.UITransform);
+        const prefix = uiTransform ? 'ui-scale-' : 'scale-';
 
-        const handles = [
-            [-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy], // Corners
-            [hx, 0], [-hx, 0], [0, -hy], [0, hy]       // Midpoints
-        ];
-
-        handles.forEach(([x, y]) => {
+        const drawBox = (x, y, handle) => {
+            const fullHandle = prefix + handle;
+            ctx.fillStyle = getCol('white', fullHandle);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 1/metrics.zoom;
             ctx.fillRect(x - hs/2, y - hs/2, hs, hs);
             ctx.strokeRect(x - hs/2, y - hs/2, hs, hs);
-        });
+        };
 
+        if (isUniversal) {
+            drawBox(hx, 0, 'r');
+            drawBox(-hx, 0, 'l');
+            drawBox(0, -hy, 't');
+            drawBox(0, hy, 'b');
+        } else {
+            drawBox(hx, 0, 'r');
+            drawBox(-hx, 0, 'l');
+            drawBox(0, -hy, 't');
+            drawBox(0, hy, 'b');
+            drawBox(-hx, -hy, 'tl');
+            drawBox(hx, -hy, 'tr');
+            drawBox(hx, hy, 'br');
+            drawBox(-hx, hy, 'bl');
+        }
         ctx.restore();
     };
 
@@ -592,9 +614,10 @@ function drawGizmos(renderer, materia) {
         case 'rotate': drawRotate(); break;
         case 'scale': drawScale(); break;
         case 'universal':
-            drawScale();
-            drawRotate();
-            drawMove();
+            // Layering: Move and Rotate at bottom, Scale on top
+            drawMove(true);
+            drawRotate(true);
+            drawScale(true);
             break;
     }
 }
@@ -663,15 +686,20 @@ export function initialize(dependencies) {
         const localTotalDx = totalDx * cos + totalDy * sin;
         const localTotalDy = -totalDx * sin + totalDy * cos;
 
+        const snapVal = (val, step = 10) => Math.round(val / step) * step;
+
         // Incremental deltas still useful for some tools
-        const dx = (moveEvent.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
-        const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+        const dx = (moveEvent.clientX - rect.left - lastMousePosition.x) / renderer.camera.effectiveZoom;
+        const dy = (moveEvent.clientY - rect.top - lastMousePosition.y) / renderer.camera.effectiveZoom;
 
         switch (dragState.handle) {
             case 'camera-move': transform.x += dx; transform.y += dy; break;
-            case 'move-x': transform.x += dx; break;
-            case 'move-y': transform.y += dy; break;
-            case 'move-xy': transform.x += dx; transform.y += dy; break;
+            case 'move-x': transform.x = snapVal(dragState.initialTransform.x + totalDx); break;
+            case 'move-y': transform.y = snapVal(dragState.initialTransform.y + totalDy); break;
+            case 'move-xy':
+                transform.x = snapVal(dragState.initialTransform.x + totalDx);
+                transform.y = snapVal(dragState.initialTransform.y + totalDy);
+                break;
             case 'scale-r': case 'scale-l': case 'scale-t': case 'scale-b':
             case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br': {
                 const dims = getMateriaDimensions(dragState.materia);
@@ -679,30 +707,49 @@ export function initialize(dependencies) {
                 const baseH = dims.height;
                 const initialScale = dragState.initialTransform.scale;
 
-                let visualDW = 0, visualDH = 0;
-                let localOX = 0, localOY = 0;
-
-                if (dragState.handle.includes('r')) { visualDW += localTotalDx; localOX += localTotalDx / 2; }
-                if (dragState.handle.includes('l')) { visualDW -= localTotalDx; localOX += localTotalDx / 2; }
-                if (dragState.handle.includes('b')) { visualDH += localTotalDy; localOY += localTotalDy / 2; }
-                if (dragState.handle.includes('t')) { visualDH -= localTotalDy; localOY += localTotalDy / 2; }
-
                 const initialVisualW = baseW * Math.abs(initialScale.x);
                 const initialVisualH = baseH * Math.abs(initialScale.y);
 
-                const newVisualW = Math.max(1, initialVisualW + visualDW);
-                const newVisualH = Math.max(1, initialVisualH + visualDH);
+                let visualDW = 0, visualDH = 0;
+
+                if (dragState.handle.includes('r')) visualDW += localTotalDx;
+                if (dragState.handle.includes('l')) visualDW -= localTotalDx;
+                if (dragState.handle.includes('b')) visualDH += localTotalDy;
+                if (dragState.handle.includes('t')) visualDH -= localTotalDy;
+
+                // Uniform scaling when Shift is held (Only for corner handles)
+                const isCorner = dragState.handle.length > 7;
+                if (InputManager && InputManager.getKey('Shift') && isCorner && initialVisualW > 0 && initialVisualH > 0) {
+                    const fw = (initialVisualW + visualDW) / initialVisualW;
+                    const fh = (initialVisualH + visualDH) / initialVisualH;
+                    const f = (Math.abs(fw - 1) > Math.abs(fh - 1)) ? fw : fh;
+                    visualDW = (initialVisualW * f) - initialVisualW;
+                    visualDH = (initialVisualH * f) - initialVisualH;
+                }
+
+                const snappedVisualDW = snapVal(visualDW, 10);
+                const snappedVisualDH = snapVal(visualDH, 10);
+
+                const newVisualW = Math.max(1, initialVisualW + snappedVisualDW);
+                const newVisualH = Math.max(1, initialVisualH + snappedVisualDH);
 
                 transform.scale = {
                     x: (newVisualW / baseW) * Math.sign(initialScale.x || 1),
                     y: (newVisualH / baseH) * Math.sign(initialScale.y || 1)
                 };
 
-                // Adjust position to keep opposite side anchored (relative to initial position)
-                const worldOx = localOX * Math.cos(rad) - localOY * Math.sin(rad);
-                const worldOy = localOX * Math.sin(rad) + localOY * Math.cos(rad);
-                transform.x = dragState.initialTransform.x + worldOx;
-                transform.y = dragState.initialTransform.y + worldOy;
+                // Re-calculate position offset based on snapped deltas to keep opposite side anchored
+                let sLocalOX = 0, sLocalOY = 0;
+                if (dragState.handle.includes('r')) sLocalOX += (newVisualW - initialVisualW) / 2;
+                if (dragState.handle.includes('l')) sLocalOX -= (newVisualW - initialVisualW) / 2;
+                if (dragState.handle.includes('b')) sLocalOY += (newVisualH - initialVisualH) / 2;
+                if (dragState.handle.includes('t')) sLocalOY -= (newVisualH - initialVisualH) / 2;
+
+                const worldOX = sLocalOX * cos - sLocalOY * sin;
+                const worldOY = sLocalOX * sin + sLocalOY * cos;
+
+                transform.x = dragState.initialTransform.x + worldOX;
+                transform.y = dragState.initialTransform.y + worldOY;
                 break;
             }
             case 'camera-resize-tl': case 'camera-resize-tr': case 'camera-resize-bl': case 'camera-resize-br': {
@@ -753,31 +800,69 @@ export function initialize(dependencies) {
                 }
 
             // --- UI Scaling with new Offset-based logic ---
-            case 'ui-scale-r': uiTransform.size.width += dx; uiTransform.position.x += dx / 2; break;
-            case 'ui-scale-l': uiTransform.size.width -= dx; uiTransform.position.x += dx / 2; break;
-            case 'ui-scale-b': uiTransform.size.height += dy; uiTransform.position.y += dy / 2; break;
-            case 'ui-scale-t': uiTransform.size.height -= dy; uiTransform.position.y += dy / 2; break;
+            case 'ui-scale-r':
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width + snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / 2;
+                }
+                break;
+            case 'ui-scale-l':
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width - snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / -2;
+                }
+                break;
+            case 'ui-scale-b':
+                if (dragState.initialUITransform) {
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height + snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / 2;
+                }
+                break;
+            case 'ui-scale-t':
+                if (dragState.initialUITransform) {
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height - snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / -2;
+                }
+                break;
             case 'ui-scale-tr':
-                uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width + snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / 2;
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height - snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / -2;
+                }
                 break;
             case 'ui-scale-tl':
-                uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height -= dy; uiTransform.position.y += dy / 2;
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width - snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / -2;
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height - snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / -2;
+                }
                 break;
             case 'ui-scale-br':
-                uiTransform.size.width += dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width + snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / 2;
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height + snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / 2;
+                }
                 break;
             case 'ui-scale-bl':
-                uiTransform.size.width -= dx; uiTransform.position.x += dx / 2;
-                uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
+                if (dragState.initialUITransform) {
+                    uiTransform.size.width = Math.max(1, dragState.initialUITransform.width - snapVal(totalDx));
+                    uiTransform.position.x = dragState.initialUITransform.x + (uiTransform.size.width - dragState.initialUITransform.width) / -2;
+                    uiTransform.size.height = Math.max(1, dragState.initialUITransform.height + snapVal(totalDy));
+                    uiTransform.position.y = dragState.initialUITransform.y + (uiTransform.size.height - dragState.initialUITransform.height) / 2;
+                }
                 break;
-            case 'rotate': {
-                const worldMouse = screenToWorld(moveEvent.clientX - dom.sceneCanvas.getBoundingClientRect().left, moveEvent.clientY - dom.sceneCanvas.getBoundingClientRect().top);
-                transform.rotation = Math.atan2(worldMouse.y - transform.y, worldMouse.x - transform.x) * 180 / Math.PI;
+            case 'rotate':
+                const center = { x: dragState.initialTransform.x, y: dragState.initialTransform.y };
+                const initialAngle = Math.atan2(dragState.initialMouseWorld.y - center.y, dragState.initialMouseWorld.x - center.x);
+                const currentAngle = Math.atan2(currentMouseWorld.y - center.y, currentMouseWorld.x - center.x);
+                let newRot = dragState.initialTransform.rotation + (currentAngle - initialAngle) * 180 / Math.PI;
+                transform.rotation = Math.round(newRot / 15) * 15; // 15 degree snapping
                 break;
-            }
         }
 
         // --- Collider Gizmo Logic ---
@@ -863,7 +948,7 @@ export function initialize(dependencies) {
         }
 
 
-        lastMousePosition = { x: moveEvent.clientX, y: moveEvent.clientY };
+        lastMousePosition = { x: moveEvent.clientX - rect.left, y: moveEvent.clientY - rect.top };
         updateInspector();
     };
 
@@ -958,6 +1043,11 @@ export function initialize(dependencies) {
         // Clamp zoom to avoid issues
         renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
     }, { passive: false });
+
+    dom.sceneCanvas.addEventListener('mousemove', (e) => {
+        const rect = dom.sceneCanvas.getBoundingClientRect();
+        lastMousePosition = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {
         // --- Layer Placement Logic ---
@@ -1068,6 +1158,7 @@ export function initialize(dependencies) {
             if (hitHandle) {
                 e.stopPropagation();
                 isDragging = true;
+                const uiTransform = selectedMateria.getComponent(Components.UITransform);
                 dragState = {
                     handle: hitHandle,
                     materia: selectedMateria,
@@ -1077,9 +1168,16 @@ export function initialize(dependencies) {
                         rotation: selectedMateria.getComponent(Components.Transform).rotation,
                         scale: { ...selectedMateria.getComponent(Components.Transform).scale }
                     },
+                    initialUITransform: uiTransform ? {
+                        x: uiTransform.position.x,
+                        y: uiTransform.position.y,
+                        width: uiTransform.size.width,
+                        height: uiTransform.size.height
+                    } : null,
                     initialMouseWorld: screenToWorld(e.clientX - dom.sceneCanvas.getBoundingClientRect().left, e.clientY - dom.sceneCanvas.getBoundingClientRect().top)
                 };
-                lastMousePosition = { x: e.clientX, y: e.clientY };
+                const rect = dom.sceneCanvas.getBoundingClientRect();
+                lastMousePosition = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
                 // Attach the predefined handlers
                 window.addEventListener('mousemove', onGizmoDrag);
