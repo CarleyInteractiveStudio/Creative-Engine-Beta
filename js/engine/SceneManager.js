@@ -1,13 +1,16 @@
 // SceneManager.js
 // This file will contain all the logic for managing scenes.
 
-import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
 
 import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
-import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
 
+let customComponentProvider = null;
+
+export function setCustomComponentProvider(provider) {
+    customComponentProvider = provider;
+}
 
 export class Scene {
     constructor() {
@@ -224,7 +227,13 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
 
         for (const leyData of materiaData.leyes) {
             if (leyData.type === 'CustomComponent') {
-                const definition = getCustomComponentDefinitions().get(leyData.definitionName);
+                let definition = null;
+                if (customComponentProvider && typeof customComponentProvider.get === 'function') {
+                    definition = customComponentProvider.get(leyData.definitionName);
+                } else if (window.CE_Custom_Components) {
+                    definition = window.CE_Custom_Components[leyData.definitionName];
+                }
+
                 if (definition) {
                     const newLey = new CustomComponent(definition);
                     newLey.publicVars = leyData.publicVars || {};

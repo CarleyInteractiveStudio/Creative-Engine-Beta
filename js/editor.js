@@ -36,8 +36,10 @@ import { showNotification as showNotificationDialog, showConfirmation as showCon
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
+import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
+import { buildProject } from './editor/BuildSystem.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1607,6 +1609,11 @@ document.addEventListener('DOMContentLoaded', () => {
             saveScene();
         });
 
+        dom.menuBuild.addEventListener('click', (e) => {
+            e.preventDefault();
+            buildProject(projectsDirHandle, currentProjectConfig);
+        });
+
         dom.menuOpenScene.addEventListener('click', (e) => {
             e.preventDefault();
             openAssetSelector(async (fileHandle) => {
@@ -2124,6 +2131,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        // Inject editor logic into engine components for editor mode
+        Components.setEditorLogic({
+            getTranspiledCode: (name) => CES_Transpiler.getTranspiledCode(name),
+            getAllMetadata: () => CES_Transpiler.getAllMetadata(),
+            getComponentDefinition: (name) => getCustomComponentDefinitions().get(name)
+        });
+        SceneManager.setCustomComponentProvider(getCustomComponentDefinitions());
+
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = { ...SceneManager };
         window.MateriaFactory = { ...MateriaFactory };
@@ -2206,7 +2221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',

@@ -4,8 +4,13 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
-import * as CES_Transpiler from '../editor/CES_Transpiler.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+
+let editorLogic = null;
+
+export function setEditorLogic(logic) {
+    editorLogic = logic;
+}
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
@@ -320,7 +325,15 @@ export class CreativeScript extends Leyes {
         if (this.isInitialized || !this.scriptName) return;
 
         try {
-            const transpiledCode = CES_Transpiler.getTranspiledCode(this.scriptName);
+            let transpiledCode;
+
+            // Standalone support
+            if (window.CE_Standalone_Scripts) {
+                transpiledCode = window.CE_Standalone_Scripts[this.scriptName];
+            } else if (editorLogic) {
+                transpiledCode = editorLogic.getTranspiledCode(this.scriptName);
+            }
+
             if (!transpiledCode) {
                 throw new Error(`No se encontró código transpilado para '${this.scriptName}'.`);
             }
@@ -410,7 +423,8 @@ export class CreativeScript extends Leyes {
                 // guardado en la escena (proveniente del Inspector).
 
                 if (this.publicVars) {
-                    const metadata = CES_Transpiler.getScriptMetadata(this.scriptName) || { publicVars: [] };
+                    const metadataSource = window.CE_Script_Metadata || (editorLogic ? editorLogic.getAllMetadata() : {});
+                    const metadata = (metadataSource[this.scriptName]) || { publicVars: [] };
                     const metadataMap = new Map(metadata.publicVars.map(p => [p.name, p]));
 
                     for (const varName in this.publicVars) {
@@ -1480,7 +1494,8 @@ export class CustomComponent extends Leyes {
     // Use a getter for the definition to ensure it's loaded lazily
     get definition() {
         if (!this._definition) {
-            this._definition = CES_Transpiler.getComponentDefinition(this.definitionName);
+            this._definition = window.CE_Custom_Components ? window.CE_Custom_Components[this.definitionName] : (editorLogic ? editorLogic.getComponentDefinition(this.definitionName) : null);
+
             if (!this._definition) {
                 console.error(`[CustomComponent] Definición '${this.definitionName}' no encontrada.`);
                 // Return a dummy definition to prevent further errors

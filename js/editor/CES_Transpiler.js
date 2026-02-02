@@ -267,3 +267,11 @@ export function transpile(code, scriptName) {
 export function getTranspiledCode(scriptName) {
     return transpiledCodeMap.get(scriptName);
 }
+
+export function getAllTranspiledCode() {
+    return Object.fromEntries(transpiledCodeMap);
+}
+
+export function getAllMetadata() {
+    return Object.fromEntries(scriptMetadataMap);
+}

@@ -1,5 +1,19 @@
+let isStandalone = false;
+
+export function setStandaloneMode(value) {
+    isStandalone = value;
+}
+
 export async function getURLForAssetPath(path, projectsDirHandle) {
-    if (!projectsDirHandle || !path) return null;
+    if (!path) return null;
+
+    if (isStandalone) {
+        // In standalone mode, we assume assets are served relative to the root
+        // and paths are already correct (e.g., 'Assets/image.png')
+        return path;
+    }
+
+    if (!projectsDirHandle) return null;
 
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
