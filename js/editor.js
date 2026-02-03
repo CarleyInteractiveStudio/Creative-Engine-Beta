@@ -1975,11 +1975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initResizer(dom.resizerBottom, 'row');
 
         // --- Carl IA Menubar Button ---
-        if (dom.menubarCarlIaBtn) {
-            dom.menubarCarlIaBtn.addEventListener('click', () => {
-                dom.carlIaPanel.classList.toggle('hidden');
-            });
-        }
+        // Listener handled in Carl IA Panel Logic section
 
         // --- Terminal Logic --- is now handled by the Terminal module
 
@@ -2007,14 +2003,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         newOption.dataset.model = provider;
                         newOption.dataset.external = true;
                         const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
-                        newOption.textContent = `${displayName} (Externo)`;
+                        newOption.textContent = `${displayName} (Preferencias)`;
                         brainSelectorMenu.appendChild(newOption);
+
+                        // Auto-select if nothing selected
+                        if (!selectedProvider) {
+                             selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
+                             brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
+                        }
                     }
                 }
             };
 
             dom.menubarCarlIaBtn.addEventListener('click', () => {
                 updateCarlIaBrainMenu();
+                dom.carlIaPanel.classList.toggle('hidden');
             });
 
             brainSelectorMenu.parentElement.addEventListener('click', (e) => {
@@ -2024,7 +2027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const modelName = e.target.textContent;
                     selectedProvider = { type: modelType, name: modelName };
                     brainButton.textContent = `Cerebro: ${modelName}`;
-                    messagesDiv.innerHTML = `<div style="font-style: italic; color: var(--color-text-secondary); text-align: center; padding: 20px;">Modelo '${modelName}' seleccionado. ¡Hola! ¿En qué puedo ayudarte hoy?</div>`;
+                    messagesDiv.innerHTML = `<div style="font-style: italic; color: var(--color-text-secondary); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. ¡Hola! Soy Carl, ¿en qué puedo ayudarte hoy?</div>`;
                     brainSelectorMenu.style.display = 'none';
                     setTimeout(() => brainSelectorMenu.style.display = '', 200);
                 }
@@ -2071,8 +2074,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const userPrompt = input.value.trim();
                 if (!userPrompt) return;
 
+                const prefs = getPreferences();
+
+                // If nothing selected but prefs have AI, auto-sync
+                if (!selectedProvider && prefs.ai?.provider !== 'none') {
+                    const provider = prefs.ai.provider;
+                    const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
+                    selectedProvider = { type: provider, name: `${displayName} (Preferencias)` };
+                    brainButton.textContent = `Cerebro: ${selectedProvider.name}`;
+                }
+
                 if (!selectedProvider) {
-                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro antes de enviar un mensaje.');
+                    showNotificationDialog('Sin Cerebro Seleccionado', 'Por favor, elige un cerebro en el menú o configura Carl IA en Preferencias antes de enviar un mensaje.');
                     return;
                 }
 
@@ -2081,7 +2094,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.focus();
 
                 if (selectedProvider.type === 'carl-v1') {
-                     addMessage("Tengo problemas para conectarme con mi cerebro. Esta funcionalidad aún no está disponible.", 'ia', true);
+                     addMessage("Carl V1 está actualmente en mantenimiento cerebral. Por favor, usa un modelo externo (Gemini/OpenAI/Claude) configurándolo en Preferencias.", 'ia', true);
                      return;
                 }
 
@@ -2089,7 +2102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
                 if (!apiKey) {
-                    addMessage(`No puedes usar ${selectedProvider.name}. Por favor, configura tu API Key en Preferencias.`, 'ia', true);
+                    addMessage(`No puedo conectar con ${selectedProvider.name}. Por favor, asegúrate de haber configurado tu API Key correctamente en el panel de Preferencias.`, 'ia', true);
                     return;
                 }
 
@@ -2109,10 +2122,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     return { status: 'failed', code: result.code, error: result.error };
                 };
 
-                let modelToUse = knownWorkingModel[provider] || 'models/gemini-1.5-flash';
+                // Determine best model to use
+                let modelToUse = knownWorkingModel[provider];
+                if (!modelToUse) {
+                    // Try Preferences first
+                    if (prefs.ai?.provider === provider && prefs.ai?.model) {
+                        modelToUse = prefs.ai.model;
+                    } else {
+                        // Fallback defaults
+                        if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
+                        else if (provider === 'openai') modelToUse = 'gpt-3.5-turbo';
+                        else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
+                    }
+                }
+
                 let result = await executeApiCall(modelToUse, userPrompt);
 
-                const isAccessError = (result.code === 404 || result.code === 400 || (result.error && result.error.includes("Quota")));
+                const isAccessError = (result.code === 404 || result.code === 400 || (result.error && (result.error.includes("Quota") || result.error.includes("not found"))));
                 if (result.status === 'failed' && isAccessError) {
                     console.warn(`El modelo por defecto '${modelToUse}' falló. Buscando un modelo compatible...`);
                     addMessage(`El modelo por defecto no funcionó. Buscando uno compatible para ti...`, 'ia', true);
