@@ -82,14 +82,19 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
     let body = {};
 
     if (provider === 'gemini') {
-        endpoint = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
+        // Use v1beta for better compatibility with system_instruction
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
 
         const contents = [];
+        const isGemini15 = modelName.includes('1.5');
+
         if (systemPrompt) {
-            // Note: In newer Gemini API, system_instruction is separate but we'll try to include it in content if model is older or use system_instruction if supported
-            // For simplicity and compatibility across more Gemini models, we'll use a combined prompt or the system_instruction field if modelName supports it.
-            // However, the standard generateContent body for 1.5-flash/pro supports system_instruction at the root.
-            body.system_instruction = { parts: [{ text: systemPrompt }] };
+            if (isGemini15) {
+                body.system_instruction = { parts: [{ text: systemPrompt }] };
+            } else {
+                // Fallback for Gemini 1.0: Prepend to prompt
+                prompt = `[SYSTEM INSTRUCTION: ${systemPrompt}]\n\nUSER MESSAGE: ${prompt}`;
+            }
         }
         contents.push({ role: 'user', parts: [{ text: prompt }] });
         body.contents = contents;

@@ -2169,15 +2169,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             modelsResult.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && !m.id.includes('embedding')) :
                             modelsResult.models;
 
-                        let suitableModel = generativeModels.find(m => m.name.includes('flash'));
+                        let suitableModel = generativeModels.find(m => m.id.includes('flash') || m.name.toLowerCase().includes('flash'));
                         if (!suitableModel && generativeModels.length > 0) {
                             suitableModel = generativeModels[0];
                         }
 
                         if (suitableModel) {
-                            console.log(`Modelo compatible encontrado: ${suitableModel.name}. Reintentando...`);
-                            addMessage(`¡Encontré un modelo compatible! Usando '${suitableModel.name.split('/')[1]}'. Reintentando...`, 'ia', false);
-                            await executeApiCall(suitableModel.name, userPrompt);
+                            const modelId = suitableModel.id;
+                            const displayName = modelId.includes('/') ? modelId.split('/')[1] : modelId;
+
+                            console.log(`Modelo compatible encontrado: ${modelId}. Reintentando...`);
+                            addMessage(`¡Encontré un modelo compatible! Usando '${displayName}'. Reintentando...`, 'ia', false);
+                            await executeApiCall(modelId, userPrompt);
                         } else {
                             addMessage("No pude encontrar un modelo de chat compatible en la lista de tu API key.", 'ia', true);
                         }
