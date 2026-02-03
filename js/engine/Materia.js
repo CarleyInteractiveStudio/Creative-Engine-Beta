@@ -40,6 +40,10 @@ export class Materia {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
+    getComponentByName(name) {
+        return this.leyes.find(ley => ley.constructor.name === name);
+    }
+
     findAncestorWithComponent(componentClass) {
         let current = this.parent;
         // If the parent is a number (ID), we need to resolve it to a Materia object first.

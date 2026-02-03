@@ -957,6 +957,61 @@ body {
     margin-right: 8px;
 }
 
+.property-dropper {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.property-dropper:hover {
+    border-color: var(--accent-color);
+    background-color: var(--bg-tertiary);
+}
+
+.property-dropper.drag-over {
+    background-color: rgba(14, 99, 156, 0.2);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
+.property-dropper.empty {
+    border-style: dashed;
+    opacity: 0.6;
+}
+
+.dropper-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.dropper-icon {
+    font-size: 1.1em;
+    flex-shrink: 0;
+}
+
+.dropper-name {
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+}
+
+.property-dropper.empty .dropper-name {
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
 .tag-layer-container select {
     width: 100%;
 }

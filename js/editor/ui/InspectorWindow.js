@@ -35,6 +35,23 @@ const availableComponents = {
     'Scripting': [Components.CreativeScript]
 };
 
+const componentIcons = {
+    Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
+    Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
+    UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
+    Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
+    Button: '🖲️', UIText: '📝', Canvas: '🖼️'
+};
+
+const fileIcons = {
+    png: '🖼️', jpg: '🖼️', jpeg: '🖼️',
+    mp3: '🔊', wav: '🔊',
+    cePrefab: '📦',
+    ceScene: '🎬',
+    ces: '📜',
+    chc: '🤖'
+};
+
 // --- Initialization ---
 export function initialize(dependencies) {
     dom = dependencies.dom;
@@ -63,16 +80,18 @@ export function initialize(dependencies) {
     });
     dom.inspectorContent.addEventListener('click', handleInspectorClick);
 
-    // Add drag and drop listeners for Materia assignment
+    // Add drag and drop listeners for Property Droppers
     dom.inspectorContent.addEventListener('dragover', (e) => {
-        if (e.target.closest('.materia-dropper')) {
+        const dropper = e.target.closest('.property-dropper');
+        if (dropper) {
             e.preventDefault();
-            e.target.closest('.materia-dropper').classList.add('drag-over');
+            dropper.classList.add('drag-over');
         }
     });
     dom.inspectorContent.addEventListener('dragleave', (e) => {
-        if (e.target.closest('.materia-dropper')) {
-            e.target.closest('.materia-dropper').classList.remove('drag-over');
+        const dropper = e.target.closest('.property-dropper');
+        if (dropper) {
+            dropper.classList.remove('drag-over');
         }
     });
     dom.inspectorContent.addEventListener('drop', handleInspectorDrop);
@@ -80,8 +99,8 @@ export function initialize(dependencies) {
 
 // --- Event Handlers ---
 
-function handleInspectorDrop(e) {
-    const dropper = e.target.closest('.materia-dropper');
+async function handleInspectorDrop(e) {
+    const dropper = e.target.closest('.property-dropper');
     if (!dropper) return;
 
     e.preventDefault();
@@ -94,31 +113,116 @@ function handleInspectorDrop(e) {
     try {
         data = JSON.parse(e.dataTransfer.getData('text/plain'));
     } catch {
-        return; // Not valid JSON
+        return;
     }
+
+    const expectedType = dropper.dataset.expectedType;
+    const componentName = dropper.dataset.component;
+    const propName = dropper.dataset.prop;
+    const scriptName = dropper.dataset.scriptName;
+    const componentId = dropper.dataset.componentId;
+
+    let valueToAssign = null;
+    let isValid = false;
 
     if (data.type === 'Materia') {
         const droppedMateriaId = parseInt(data.id, 10);
+        const droppedMateria = window.SceneManager.currentScene.findMateriaById(droppedMateriaId);
 
-        const scriptName = dropper.dataset.scriptName;
-        const propName = dropper.dataset.prop;
+        if (!droppedMateria) return;
 
-        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
-        if (script) {
-            script.publicVars[propName] = droppedMateriaId;
-        } else {
-            // Handle onClick event materia drop
-            const button = selectedMateria.getComponent(Components.Button);
-            if (button && propName.startsWith('onClick')) {
-                const parts = propName.split('.');
-                const index = parseInt(parts[1], 10);
-                if (!isNaN(index) && button.onClick[index]) {
-                    button.onClick[index].targetMateriaId = droppedMateriaId;
-                }
+        if (expectedType === 'Materia' || expectedType === 'any') {
+            valueToAssign = droppedMateriaId;
+            isValid = true;
+        } else if (componentIcons[expectedType]) {
+            // Check if dropped Materia has the required component
+            const component = droppedMateria.getComponent(Components[expectedType]);
+            if (component) {
+                valueToAssign = droppedMateriaId;
+                isValid = true;
+            } else {
+                window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente ${expectedType}.`);
             }
         }
+    } else if (data.type === 'Asset') {
+        const fileExtension = `.${data.name.split('.').pop()}`.toLowerCase();
 
-        updateInspector(); // Re-render to show the new name
+        const typeExtensionMap = {
+            'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
+            'Audio': ['.mp3', '.wav'],
+            'Prefab': ['.cePrefab'],
+            'Scene': ['.ceScene'],
+            'Font': ['.ttf', '.otf', '.woff', '.woff2']
+        };
+
+        if (typeExtensionMap[expectedType]) {
+            if (typeExtensionMap[expectedType].includes(fileExtension)) {
+                valueToAssign = data.path;
+                isValid = true;
+            } else {
+                window.Dialogs.showNotification('Tipo Incorrecto', `Se esperaba un archivo de tipo ${typeExtensionMap[expectedType].join(', ')}.`);
+            }
+        } else if (expectedType === 'Materia' || expectedType === 'any') {
+            valueToAssign = data.path;
+            isValid = true;
+        } else if (componentIcons[expectedType]) {
+             window.Dialogs.showNotification('Tipo Incorrecto', `Se esperaba un objeto de escena con el componente ${expectedType}.`);
+        }
+    }
+
+    if (isValid && valueToAssign !== null) {
+        // Find the target component instance
+        let targetComponent;
+        if (componentName === 'CreativeScript') {
+             targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+        } else if (componentName === 'CustomComponent') {
+             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        } else if (componentName) {
+             targetComponent = selectedMateria.getComponent(Components[componentName]);
+        } else {
+             // Handle special cases without explicit componentName in dropper (like nested props)
+             if (propName && propName.startsWith('onClick')) {
+                 const button = selectedMateria.getComponent(Components.Button);
+                 if (button) {
+                     const parts = propName.split('.');
+                     const index = parseInt(parts[1], 10);
+                     if (!isNaN(index) && button.onClick[index]) {
+                         button.onClick[index].targetMateriaId = valueToAssign;
+                         updateInspector();
+                         return;
+                     }
+                 }
+             }
+        }
+
+        if (targetComponent) {
+            if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
+                targetComponent.publicVars[propName] = valueToAssign;
+            } else if (targetComponent instanceof Components.SpriteRenderer && propName === 'source') {
+                await targetComponent.setSourcePath(valueToAssign, projectsDirHandle);
+            } else {
+                // Generic property assignment
+                const props = propName.split('.');
+                let current = targetComponent;
+                for (let i = 0; i < props.length - 1; i++) {
+                    if (!current[props[i]]) current[props[i]] = {};
+                    current = current[props[i]];
+                }
+                current[props[props.length - 1]] = valueToAssign;
+            }
+
+            // Post-assignment logic
+            if (targetComponent instanceof Components.Tilemap) {
+                const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
+                if (renderer) await renderer.loadPalette(projectsDirHandle);
+            }
+            if (targetComponent instanceof Components.UIText && propName === 'fontAssetPath') {
+                await targetComponent.loadFont(projectsDirHandle);
+            }
+
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
     }
 }
 
@@ -330,75 +434,44 @@ async function handleInspectorChange(e) {
 function handleInspectorClick(e) {
     const selectedMateria = getSelectedMateria();
 
-    if (e.target.closest('[data-component="UIText"][data-prop="fontAssetPath"]')) {
-        const component = selectedMateria.getComponent(Components.UIText);
-        if (component) {
-            openSpriteSelectorCallback(async (fileHandle, fullPath) => {
-                component.fontAssetPath = fullPath;
-                await component.loadFont(projectsDirHandle);
-                updateInspector();
-                updateSceneCallback();
-            }, {
-                filter: ['.ttf', '.otf', '.woff', '.woff2'],
-                title: 'Seleccionar Fuente'
-            });
-        }
-        return; // Stop further processing for this click
-    }
+    if (e.target.closest('.property-dropper')) {
+        const dropper = e.target.closest('.property-dropper');
+        const expectedType = dropper.dataset.expectedType;
+        const componentName = dropper.dataset.component;
+        const propName = dropper.dataset.prop;
+        const scriptName = dropper.dataset.scriptName;
+        const componentId = dropper.dataset.componentId;
 
-    // --- Drag and Drop for Asset Fields ---
-    if (e.target.matches('.asset-dropper, .asset-dropper *')) {
-        const dropper = e.target.closest('.asset-dropper');
-
-        dropper.ondragover = (ev) => {
-            ev.preventDefault();
-            dropper.classList.add('drag-over');
+        const typeExtensionMap = {
+            'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
+            'Audio': ['.mp3', '.wav'],
+            'Prefab': ['.cePrefab'],
+            'Scene': ['.ceScene'],
+            'Font': ['.ttf', '.otf', '.woff', '.woff2'],
+            'Animation': ['.ceanimclip', '.cea'],
+            'AnimatorController': ['.ceanim']
         };
-        dropper.ondragleave = () => {
-            dropper.classList.remove('drag-over');
-        };
-        dropper.ondrop = async (ev) => {
-            ev.preventDefault();
-            dropper.classList.remove('drag-over');
-            const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
-            const expectedTypes = dropper.dataset.assetType.split(',');
-            const fileExtension = `.${data.name.split('.').pop()}`;
 
-            if (expectedTypes.includes(fileExtension)) {
-                if (selectedMateria) {
-                    const componentName = dropper.dataset.component;
-                    const component = componentName === 'CreativeScript'
-                        ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === dropper.dataset.scriptName)
-                        : selectedMateria.getComponent(Components[componentName]);
-
-                    if (component) {
-                        // Special handling for SpriteRenderer
-                        if (component instanceof Components.SpriteRenderer) {
-                            await component.setSourcePath(data.path, projectsDirHandle);
-                        } else if (component instanceof Components.CreativeScript) {
-                             const propName = dropper.dataset.prop;
-                             component.publicVars[propName] = data.path;
-                        } else {
-                            const propName = dropper.dataset.prop;
-                            component[propName] = data.path;
+        if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any') {
+            if (openSpriteSelectorCallback) {
+                 openSpriteSelectorCallback(async (fileHandle, fullPath) => {
+                    const fakeEvent = {
+                        target: dropper,
+                        preventDefault: () => {},
+                        dataTransfer: {
+                            getData: () => JSON.stringify({ type: 'Asset', name: fileHandle.name, path: fullPath })
                         }
-
-                        // If it's a tilemap, trigger the palette reload
-                        if (component instanceof Components.Tilemap) {
-                            const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
-                            if (renderer) {
-                                await renderer.loadPalette(projectsDirHandle);
-                            }
-                        }
-
-                        updateInspector();
-                        updateSceneCallback();
-                    }
-                }
-            } else {
-                window.Dialogs.showNotification('Asset Incorrecto', `Se esperaba un archivo de tipo ${expectedTypes.join(', ')}.`);
+                    };
+                    await handleInspectorDrop(fakeEvent);
+                }, {
+                    filter: typeExtensionMap[expectedType] || [],
+                    title: `Seleccionar ${expectedType}`
+                });
             }
-        };
+        } else if (componentIcons[expectedType]) {
+             window.Dialogs.showNotification('Aviso', `Para asignar un ${expectedType}, arrastra un objeto de la jerarquía que tenga dicho componente.`);
+        }
+        return;
     }
 
 
@@ -681,6 +754,57 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
     `;
 }
 
+function renderPropertyDropper(type, currentValue, commonAttrs) {
+    let displayName = 'None';
+    let icon = '❓';
+    const isEmpty = currentValue === null || currentValue === undefined || currentValue === '';
+
+    if (!isEmpty) {
+        if (typeof currentValue === 'number') {
+            // Assume Scene Object ID
+            const materia = window.SceneManager.currentScene.findMateriaById(currentValue);
+            displayName = materia ? materia.name : `Objeto #${currentValue}`;
+            // If type is a specific component, use its icon, otherwise use generic Materia icon
+            icon = componentIcons[type] || '✥';
+        } else if (typeof currentValue === 'string') {
+            // Assume Asset Path
+            displayName = currentValue.split('/').pop();
+            const ext = currentValue.split('.').pop().toLowerCase();
+            icon = fileIcons[ext] || '📄';
+
+            // Check if it's a reference to a Materia by name (old system)
+            if (type === 'Materia' && !currentValue.includes('/')) {
+                icon = '✥';
+            }
+        }
+    } else {
+        displayName = `Ninguno (${type})`;
+        icon = componentIcons[type] || '❓';
+        if (type === 'Sprite') icon = '🖼️';
+        if (type === 'Audio') icon = '🔊';
+        if (type === 'Prefab') icon = '📦';
+        if (type === 'Scene') icon = '🎬';
+    }
+
+    // Ensure commonAttrs includes the class but doesn't double it
+    if (!commonAttrs.includes('class=')) {
+        commonAttrs += ' class="property-dropper"';
+    } else {
+        commonAttrs = commonAttrs.replace('class="', 'class="property-dropper ');
+    }
+
+    if (isEmpty) commonAttrs = commonAttrs.replace('class="', 'class="empty ');
+
+    return `
+        <div ${commonAttrs} data-expected-type="${type}">
+            <div class="dropper-main">
+                <span class="dropper-icon">${icon}</span>
+                <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
+            </div>
+        </div>
+    `;
+}
+
 function renderPublicVarInput(variable, currentValue, componentType, identifier) {
     let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
     if (componentType === 'CreativeScript') {
@@ -699,14 +823,6 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'boolean':
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
-        case 'Sprite':
-            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".png,.jpg,.jpeg,.ceSprite">${currentValue || 'None (Sprite)'}</div>`;
-        case 'Audio':
-            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".mp3,.wav">${currentValue || 'None (Audio)'}</div>`;
-        case 'Prefab':
-            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".cePrefab">${currentValue || 'None (Prefab)'}</div>`;
-        case 'Scene':
-            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".ceScene">${currentValue || 'None (Scene)'}</div>`;
         case 'Color':
             return `<input type="color" ${commonAttrs} value="${currentValue || '#ffffff'}">`;
         case 'Vector2':
@@ -716,21 +832,17 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                     <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
+        case 'Sprite':
+        case 'Audio':
+        case 'Prefab':
+        case 'Scene':
         case 'Materia':
-            {
-                let displayName = 'None (Materia)';
-                if (typeof currentValue === 'number') {
-                    // We need access to the SceneManager here. Let's assume it's available globally for now.
-                    // This is not ideal, but it's a quick solution for the UI.
-                    const SceneManager = window.SceneManager; // A bit of a hack, but necessary here.
-                    const materia = SceneManager.currentScene.findMateriaById(currentValue);
-                    if (materia) {
-                        displayName = materia.name;
-                    }
-                }
-                return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
-            }
+            return renderPropertyDropper(variable.type, currentValue, commonAttrs);
         default:
+            // Check if it's a component type
+            if (componentIcons[variable.type]) {
+                return renderPropertyDropper(variable.type, currentValue, commonAttrs);
+            }
             // Para 'any' o tipos desconocidos, usar un campo de texto
             return `<input type="text" ${commonAttrs} value="${currentValue}">`;
     }
@@ -805,12 +917,6 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(addLayerOption);
     }
 
-    const componentIcons = {
-        Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
-        Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-        UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-        Grid: '▦'
-    };
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
@@ -869,9 +975,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="inspector-row">
                         <label>Texture</label>
-                        <div class="asset-dropper" data-component="TextureRender" data-prop="texturePath" data-asset-type=".png,.jpg,.jpeg" title="Arrastra un asset de imagen aquí">
-                            <span class="asset-dropper-text">${ley.texturePath || 'None'}</span>
-                        </div>
+                        ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="TextureRender" data-prop="texturePath"')}
                     </div>
                 </div>
             `;
@@ -963,9 +1067,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="inspector-row">
                         <label>Font</label>
-                        <div class="asset-dropper" data-component="UIText" data-prop="fontAssetPath" data-asset-type=".ttf,.otf,.woff,.woff2" title="Haz clic para seleccionar o arrastra una fuente aquí">
-                            <span class="asset-dropper-text">${fontName}</span>
-                        </div>
+                        ${renderPropertyDropper('Font', ley.fontAssetPath, 'data-component="UIText" data-prop="fontAssetPath"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>Font Size</label>
@@ -1078,21 +1180,15 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div id="sprite-swap-settings" style="display: ${isSpriteSwap ? 'block' : 'none'};">
                         <div class="inspector-row">
                             <label>Highlighted Sprite</label>
-                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.highlightedSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
-                                <span class="asset-dropper-text">${ley.spriteSwap.highlightedSprite || 'None'}</span>
-                            </div>
+                            ${renderPropertyDropper('Sprite', ley.spriteSwap.highlightedSprite, 'data-component="Button" data-prop="spriteSwap.highlightedSprite"')}
                         </div>
                         <div class="inspector-row">
                             <label>Pressed Sprite</label>
-                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.pressedSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
-                                <span class="asset-dropper-text">${ley.spriteSwap.pressedSprite || 'None'}</span>
-                            </div>
+                            ${renderPropertyDropper('Sprite', ley.spriteSwap.pressedSprite, 'data-component="Button" data-prop="spriteSwap.pressedSprite"')}
                         </div>
                         <div class="inspector-row">
                             <label>Disabled Sprite</label>
-                            <div class="asset-dropper" data-component="Button" data-prop="spriteSwap.disabledSprite" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
-                                <span class="asset-dropper-text">${ley.spriteSwap.disabledSprite || 'None'}</span>
-                            </div>
+                            ${renderPropertyDropper('Sprite', ley.spriteSwap.disabledSprite, 'data-component="Button" data-prop="spriteSwap.disabledSprite"')}
                         </div>
                     </div>
                     <div id="animation-settings" style="display: ${isAnimation ? 'block' : 'none'};">
@@ -1137,7 +1233,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
                             return `
                             <div class="onclick-event-item" data-event-index="${index}">
-                                <div class="materia-dropper" data-prop="onClick.${index}.targetMateriaId" data-asset-type="Materia" title="Arrastra una Materia con un script aquí.">${targetName}</div>
+                                ${renderPropertyDropper('Materia', event.targetMateriaId, `data-prop="onClick.${index}.targetMateriaId"`)}
                                 <select class="prop-input" data-component="Button" data-prop="onClick.${index}.functionName">
                                     ${functionsDropdown}
                                 </select>
@@ -1173,9 +1269,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Source</label>
-                        <div class="asset-dropper" data-component="SpriteRenderer" data-prop="source" data-asset-type=".png,.jpg,.jpeg,.ceSprite" title="Arrastra un asset de imagen o .ceSprite aquí">
-                            <span class="asset-dropper-text">${ley.spriteAssetPath || ley.source || 'None'}</span>
-                        </div>
+                        ${renderPropertyDropper('Sprite', ley.spriteAssetPath || ley.source, 'data-component="SpriteRenderer" data-prop="source"')}
                     </div>
                     ${spriteSelectorHTML}
                     <div class="inspector-row">
@@ -1212,9 +1306,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Animation Clip</label>
-                        <div class="asset-dropper" data-component="Animator" data-prop="animationClipPath" data-asset-type=".ceanimclip,.cea" title="Arrastra un .ceanimclip o .cea aquí">
-                            <span class="asset-dropper-text">${ley.animationClipPath || 'None'}</span>
-                        </div>
+                        ${renderPropertyDropper('Animation', ley.animationClipPath, 'data-component="Animator" data-prop="animationClipPath"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>Speed</label>
@@ -1243,9 +1335,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Controller</label>
-                        <div class="asset-dropper" data-component="AnimatorController" data-prop="controllerPath" data-asset-type=".ceanim" title="Arrastra un asset .ceanim aquí">
-                            <span class="asset-dropper-text">${ley.controllerPath || 'None'}</span>
-                        </div>
+                        ${renderPropertyDropper('AnimatorController', ley.controllerPath, 'data-component="AnimatorController" data-prop="controllerPath"')}
                     </div>
                     <div class="inspector-field-group">
                         <label>States</label>

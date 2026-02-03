@@ -22,7 +22,29 @@ const typeMap = {
     'Prefab': 'Prefab',
     'Scene': 'Scene',
     'Vector2': 'Vector2',
-    'Color': 'Color'
+    'Color': 'Color',
+    // Engine Components
+    'Transform': 'Transform',
+    'UITransform': 'UITransform',
+    'SpriteRenderer': 'SpriteRenderer',
+    'Rigidbody2D': 'Rigidbody2D',
+    'BoxCollider2D': 'BoxCollider2D',
+    'CapsuleCollider2D': 'CapsuleCollider2D',
+    'Animator': 'Animator',
+    'AnimatorController': 'AnimatorController',
+    'Camera': 'Camera',
+    'CreativeScript': 'CreativeScript',
+    'PointLight2D': 'PointLight2D',
+    'SpotLight2D': 'SpotLight2D',
+    'FreeformLight2D': 'FreeformLight2D',
+    'SpriteLight2D': 'SpriteLight2D',
+    'Tilemap': 'Tilemap',
+    'TilemapRenderer': 'TilemapRenderer',
+    'TilemapCollider2D': 'TilemapCollider2D',
+    'UIImage': 'UIImage',
+    'UIText': 'UIText',
+    'Canvas': 'Canvas',
+    'Button': 'Button'
 };
 
 function getDefaultValueForType(canonicalType) {

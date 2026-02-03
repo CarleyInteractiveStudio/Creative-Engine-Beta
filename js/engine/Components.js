@@ -437,11 +437,19 @@ export class CreativeScript extends Leyes {
                             if (savedValue !== null && savedValue !== undefined) {
                                 const metaVar = metadataMap.get(varName);
 
-                                // Resolver referencias a Materia por ID o nombre
-                                if (metaVar.type === 'Materia' && savedValue != null) {
+                                // Resolver referencias a Materia o Componentes por ID o nombre
+                                if (savedValue != null && metaVar.type !== 'number' && metaVar.type !== 'string' && metaVar.type !== 'boolean') {
                                     if (typeof savedValue === 'number') {
-                                        savedValue = this.materia.scene.findMateriaById(savedValue);
-                                    } else if (typeof savedValue === 'string') {
+                                        const targetMateria = this.materia.scene.findMateriaById(savedValue);
+                                        if (targetMateria) {
+                                            if (metaVar.type === 'Materia') {
+                                                savedValue = targetMateria;
+                                            } else {
+                                                // Intentar obtener el componente específico por nombre
+                                                savedValue = targetMateria.getComponentByName(metaVar.type) || targetMateria;
+                                            }
+                                        }
+                                    } else if (typeof savedValue === 'string' && metaVar.type === 'Materia') {
                                         savedValue = this.materia.scene.getAllMaterias().find(m => m.name === savedValue) || null;
                                     }
                                 }
