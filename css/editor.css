@@ -2283,12 +2283,26 @@ body {
 }
 
 #component-list .component-item {
-  padding: 8px 12px;
+  padding: 6px 10px;
   background-color: var(--bg-primary);
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   border-radius: 4px;
   cursor: pointer;
   border: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.component-item-indicator {
+    color: #44ff44;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.component-item.already-added {
+    border-left: 3px solid #44ff44;
 }
 
 #component-list .component-item:hover {
@@ -2398,17 +2412,62 @@ body {
     background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 
 .component-header {
     background-color: var(--bg-tertiary);
-    padding: 6px 10px;
+    padding: 4px 8px;
     font-weight: bold;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
+}
+
+.component-header-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+}
+
+.component-header-main h4 {
+    margin: 0;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.component-header-controls {
+    display: flex;
+    align-items: center;
+}
+
+.inspector-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.remove-component-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2em;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.remove-component-btn:hover {
+    background-color: #ff4444;
+    color: white;
 }
 
 .component-icon {
@@ -2422,16 +2481,17 @@ body {
 }
 
 .component-content {
-    padding: 10px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .prop-row-multi {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 2px;
 }
 
 .prop-row-multi label {

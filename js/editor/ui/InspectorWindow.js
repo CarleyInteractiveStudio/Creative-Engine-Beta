@@ -406,6 +406,34 @@ function handleInspectorClick(e) {
         showAddComponentModal();
     }
 
+    if (e.target.matches('.remove-component-btn')) {
+        const index = parseInt(e.target.dataset.leyIndex, 10);
+        if (selectedMateria && !isNaN(index)) {
+            const ley = selectedMateria.leyes[index];
+            if (ley) {
+                // Prevent removing Transform if it's the only transform-like component
+                const isTransform = ley.constructor.name === 'Transform';
+                const isUITransform = ley.constructor.name === 'UITransform';
+
+                if (isTransform || isUITransform) {
+                     const hasOtherTransform = selectedMateria.leyes.some(l =>
+                        (isTransform && l.constructor.name === 'UITransform') ||
+                        (isUITransform && l.constructor.name === 'Transform')
+                     );
+
+                     if (!hasOtherTransform) {
+                        window.Dialogs.showNotification('Aviso', 'No puedes eliminar el componente de transformación base.');
+                        return;
+                     }
+                }
+
+                selectedMateria.removeComponentByInstance(ley);
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+            }
+        }
+    }
+
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
         if (componentName && openSpriteSelectorCallback) {
@@ -639,6 +667,20 @@ export async function updateInspector() {
     }
 }
 
+function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
+    return `
+        <div class="component-header" data-ley-index="${leyIndex}">
+            <div class="component-header-main">
+                <span class="component-icon">${icon}</span>
+                <h4>${title}</h4>
+            </div>
+            <div class="component-header-controls">
+                ${canRemove ? `<button class="remove-component-btn" title="Eliminar Componente" data-ley-index="${leyIndex}">&times;</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
 function renderPublicVarInput(variable, currentValue, componentType, identifier) {
     let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
     if (componentType === 'CreativeScript') {
@@ -805,7 +847,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Texture Render</h4></div>
+                ${renderComponentHeader("Texture Render", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Shape</label>
@@ -841,7 +883,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Transform</h4></div>
+                ${renderComponentHeader("Transform", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Position</label>
@@ -883,7 +925,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-            <div class="component-header">${iconHTML}<h4>UI Transform</h4></div>
+            ${renderComponentHeader("UI Transform", icon, index)}
             <div class="component-content">
                  <div class="anchor-grid-container">
                     ${anchorGridHTML}
@@ -905,7 +947,7 @@ async function updateInspectorForMateria(selectedMateria) {
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
-            componentHTML = `<div class="component-header">${iconHTML}<h4>UI Image</h4></div>
+            componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
                 <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
@@ -913,7 +955,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
             componentHTML = `
-                <div class="component-header"><span class="component-icon">📝</span><h4>UI Text</h4></div>
+                ${renderComponentHeader("UI Text", "📝", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Text</label>
@@ -956,7 +998,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
             componentHTML = `
-                <div class="component-header"><span class="component-icon">🖼️</span><h4>Canvas</h4></div>
+                ${renderComponentHeader("Canvas", "🖼️", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
@@ -1003,7 +1045,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
             componentHTML = `
-                <div class="component-header"><span class="component-icon">🖲️</span><h4>Button</h4></div>
+                ${renderComponentHeader("Button", "🖲️", index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
@@ -1127,7 +1169,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Sprite Renderer</h4></div>
+                ${renderComponentHeader("Sprite Renderer", icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Source</label>
@@ -1159,14 +1201,14 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4><a href="#">${ley.scriptName}</a></h4></div>
+                ${renderComponentHeader(`<a href="#">${ley.scriptName}</a>`, icon, index)}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este script no tiene variables públicas.</p>'}
                 </div>
             `;
         } else if (ley instanceof Components.Animator) {
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Animator</h4></div>
+                ${renderComponentHeader("Animator", icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Animation Clip</label>
@@ -1197,7 +1239,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 statesListHTML += '</ul>';
             }
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Animator Controller</h4></div>
+                ${renderComponentHeader("Animator Controller", icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>Controller</label>
@@ -1215,7 +1257,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const clearFlags = ley.clearFlags || 'SolidColor';
 
             componentHTML = `
-                <div class="component-header">${iconHTML}<h4>Camera</h4></div>
+                ${renderComponentHeader("Camera", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Depth</label>
@@ -1285,7 +1327,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is PointLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Point Light 2D</h4></div>
+                ${renderComponentHeader("Point Light 2D", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1311,7 +1353,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is SpotLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Spot Light 2D</h4></div>
+                ${renderComponentHeader("Spot Light 2D", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1343,7 +1385,7 @@ async function updateInspectorForMateria(selectedMateria) {
             console.log('  - Is FreeformLight2D component.');
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Freeform Light 2D</h4></div>
+                ${renderComponentHeader("Freeform Light 2D", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Color</label>
@@ -1365,9 +1407,7 @@ async function updateInspectorForMateria(selectedMateria) {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
-                    <div class="component-header">
-                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                    </div>
+                    ${renderComponentHeader('Tilemap', '🗺️', index)}
                     <div class="component-content">
                         <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
@@ -1397,9 +1437,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
 
                 componentHTML = `
-                    <div class="component-header">
-                        <span class="component-icon">🗺️</span><h4>Tilemap</h4>
-                    </div>
+                    ${renderComponentHeader('Tilemap', '🗺️', index)}
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
@@ -1428,9 +1466,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">🖌️</span><h4>Tilemap Renderer</h4>
-                </div>
+                ${renderComponentHeader('Tilemap Renderer', '🖌️', index)}
                 <div class="component-content">
                     <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
                 </div>
@@ -1445,9 +1481,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                <div class="component-header">
-                    <span class="component-icon">▦</span><h4>Tilemap Collider 2D</h4>
-                </div>
+                ${renderComponentHeader('Tilemap Collider 2D', '▦', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label for="collider-source-layer">Capa de Origen</label>
@@ -1493,7 +1527,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Grid</h4></div>
+                ${renderComponentHeader("Grid", icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
@@ -1505,7 +1539,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.CapsuleCollider2D) {
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Capsule Collider 2D</h4></div>
+                ${renderComponentHeader("Capsule Collider 2D", icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -1542,7 +1576,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Sprite Light 2D</h4></div>
+                ${renderComponentHeader("Sprite Light 2D", icon, index)}
                 <div class="component-content">
                      <div class="prop-row-multi">
                         <label>Sprite</label>
@@ -1569,7 +1603,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Rigidbody 2D</h4></div>
+                ${renderComponentHeader("Rigidbody 2D", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Body Type</label>
@@ -1616,7 +1650,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
             }
             componentHTML = `
-                <div class="component-header"><span class="component-icon">⚙️</span><h4>${ley.definition.nombre}</h4></div>
+                ${renderComponentHeader(ley.definition.nombre, '⚙️', index)}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
@@ -1624,7 +1658,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">
-                <div class="component-header">${iconHTML}<h4>Box Collider 2D</h4></div>
+                ${renderComponentHeader("Box Collider 2D", icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
@@ -2282,11 +2316,19 @@ export async function showAddComponentModal() {
         dom.componentList.appendChild(categoryHeader);
 
         availableComponents[category].forEach(ComponentClass => {
-            if (existingComponents.has(ComponentClass)) return;
+            const isPresent = existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
-            componentItem.className = 'component-item';
-            componentItem.textContent = ComponentClass.name;
+            componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+            componentItem.innerHTML = `
+                <span>${ComponentClass.name}</span>
+                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+            `;
+
             componentItem.addEventListener('click', () => {
+                if (isPresent) {
+                    window.Dialogs.showNotification('Aviso', 'Este componente ya está en el objeto.');
+                    return;
+                }
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
@@ -2317,12 +2359,19 @@ export async function showAddComponentModal() {
         dom.componentList.appendChild(customHeader);
 
         for (const [name, definition] of customComponentDefinitions.entries()) {
-            if (existingCustomComponents.has(name)) continue;
-
+            const isPresent = existingCustomComponents.has(name);
             const componentItem = document.createElement('div');
-            componentItem.className = 'component-item';
-            componentItem.textContent = name;
+            componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+            componentItem.innerHTML = `
+                <span>${name}</span>
+                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+            `;
+
             componentItem.addEventListener('click', () => {
+                if (isPresent) {
+                    window.Dialogs.showNotification('Aviso', 'Este componente ya está en el objeto.');
+                    return;
+                }
                 const newComponent = new Components.CustomComponent(definition);
                 selectedMateria.addComponent(newComponent);
                 dom.addComponentModal.classList.remove('is-open');
@@ -2384,11 +2433,21 @@ export async function showAddComponentModal() {
             dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: "No se encontraron scripts (.ces) en la carpeta Assets." }));
         } else {
             scriptFiles.forEach(fileHandle => {
-                if (existingScripts.has(fileHandle.name)) return;
+                const isPresent = existingScripts.has(fileHandle.name);
                 const componentItem = document.createElement('div');
-                componentItem.className = 'component-item';
-                componentItem.textContent = fileHandle.name;
+                componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+                componentItem.innerHTML = `
+                    <span>${fileHandle.name}</span>
+                    ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                `;
+
                 componentItem.addEventListener('click', () => {
+                    // For scripts, we might want to allow multiple instances?
+                    // Usually it's better to avoid it unless necessary.
+                    if (isPresent) {
+                        window.Dialogs.showNotification('Aviso', 'Este script ya está en el objeto.');
+                        return;
+                    }
                     const newScript = new Components.CreativeScript(selectedMateria, fileHandle.name);
                     selectedMateria.addComponent(newScript);
                     dom.addComponentModal.classList.remove('is-open');

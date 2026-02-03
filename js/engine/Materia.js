@@ -76,6 +76,16 @@ export class Materia {
     removeComponent(ComponentClass) {
         const index = this.leyes.findIndex(ley => ley instanceof ComponentClass);
         if (index !== -1) {
+            const component = this.leyes[index];
+            if (typeof component.onDestroy === 'function') component.onDestroy();
+            this.leyes.splice(index, 1);
+        }
+    }
+
+    removeComponentByInstance(componentInstance) {
+        const index = this.leyes.indexOf(componentInstance);
+        if (index !== -1) {
+            if (typeof componentInstance.onDestroy === 'function') componentInstance.onDestroy();
             this.leyes.splice(index, 1);
         }
     }
