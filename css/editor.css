@@ -3533,46 +3533,73 @@ body.game-mode #loading-overlay {
     height: 100%;
     position: relative;
     padding: 0 !important;
-    background-color: #1e1e1e;
+    background-color: #121212;
+    background-image: radial-gradient(circle at top right, rgba(110, 142, 251, 0.05), transparent),
+                      radial-gradient(circle at bottom left, rgba(167, 119, 227, 0.05), transparent);
 }
 
 #chc-human-text {
     flex-grow: 1;
     background: transparent;
-    color: #d4d4d4;
+    color: #e0e0e0;
     border: none;
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 16px;
-    line-height: 1.6;
+    padding: 40px;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 18px;
+    line-height: 1.8;
     resize: none;
     outline: none;
+    caret-color: #a777e3;
+}
+
+#chc-human-text::placeholder {
+    color: #444;
+    font-style: italic;
 }
 
 .chc-floating-run-btn {
     position: absolute;
-    bottom: 20px;
-    right: 20px;
-    padding: 12px 24px;
+    bottom: 30px;
+    right: 30px;
+    padding: 16px 32px;
     background: linear-gradient(135deg, #6e8efb, #a777e3);
     color: white;
     border: none;
-    border-radius: 30px;
-    font-weight: bold;
-    font-size: 14px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 8px 25px rgba(110, 142, 251, 0.4);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .chc-floating-run-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 12px 30px rgba(110, 142, 251, 0.6);
+    filter: brightness(1.1);
 }
 
 .chc-floating-run-btn:active {
-    transform: scale(0.95);
+    transform: translateY(-2px) scale(0.98);
+}
+
+.chc-floating-run-btn.compiling {
+    background: #333;
+    pointer-events: none;
+    box-shadow: none;
+    animation: pulsate 1.5s infinite;
+}
+
+@keyframes pulsate {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
 }
 
 .chc-overlay {
@@ -3581,14 +3608,15 @@ body.game-mode #loading-overlay {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(10, 10, 10, 0.8);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: white;
     z-index: 20;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    transition: opacity 0.3s;
 }
 
 .chc-overlay.hidden {
@@ -3603,6 +3631,22 @@ body.game-mode #loading-overlay {
     height: 40px;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
+}
+
+#chc-loading-text {
+    font-size: 1.2em;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-top: 20px;
+    background: linear-gradient(to right, #6e8efb, #a777e3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 2s infinite linear;
+}
+
+@keyframes shine {
+    from { filter: hue-rotate(0deg); }
+    to { filter: hue-rotate(360deg); }
 }
 
 @keyframes spin {

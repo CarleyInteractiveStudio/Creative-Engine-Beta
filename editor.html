@@ -409,6 +409,15 @@ public star() {
                             <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
                         </div>
                         <div id="codemirror-container"></div>
+                        <!-- CHC Editor Integrated -->
+                        <div id="chc-integrated-editor" class="chc-editor-container hidden">
+                            <textarea id="chc-human-text" placeholder="Escribe aquí lo que quieres que haga tu script... Carl IA se encargará del resto."></textarea>
+                            <button id="chc-run-btn" class="chc-floating-run-btn">🚀 Correr</button>
+                            <div id="chc-loading-overlay" class="chc-overlay hidden">
+                                <div class="spinner"></div>
+                                <p id="chc-loading-text">Carl IA está traduciendo tu lógica...</p>
+                            </div>
+                        </div>
                     </div>
                     <div id="terminal-content" class="panel-content view-content no-padding">
                         <div id="terminal-output">
@@ -583,22 +592,6 @@ public star() {
                     </div>
                 </div>
 
-            <!-- CHC Editor Panel -->
-            <div id="chc-editor-panel" class="editor-panel floating-panel hidden" style="width: 600px; height: 400px;">
-                <div class="panel-header">
-                    <span id="chc-editor-title">CHC Editor</span>
-                    <button class="close-panel-btn" data-panel="chc-editor-panel">&times;</button>
-                </div>
-                <div class="panel-content chc-editor-container">
-                    <textarea id="chc-human-text" placeholder="Describe aquí la lógica de tu script en lenguaje humano..."></textarea>
-                    <button id="chc-run-btn" class="chc-floating-run-btn">🚀 Correr</button>
-                    <div id="chc-loading-overlay" class="chc-overlay hidden">
-                        <div class="spinner"></div>
-                        <p>Carl IA está traduciendo tu lógica...</p>
-                    </div>
-                </div>
-                <div class="resize-handle" data-direction="both"></div>
-            </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
                 <div class="resize-handle" data-direction="e"></div>

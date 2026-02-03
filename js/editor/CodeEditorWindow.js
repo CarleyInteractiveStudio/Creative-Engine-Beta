@@ -61,8 +61,9 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             return;
         }
 
-        // Hide CHC panel if it was open
-        if (dom.chcEditorPanel) dom.chcEditorPanel.classList.add('hidden');
+        // Switch to Code Editor View
+        if (dom.chcIntegratedEditor) dom.chcIntegratedEditor.classList.add('hidden');
+        dom.codeEditorToolbar.classList.remove('hidden');
         dom.codemirrorContainer.style.display = 'block';
 
         if (!codeEditor) {
@@ -128,11 +129,11 @@ export function redoLastChange() {
 }
 
 function openChcEditor(content) {
-    if (!dom.chcEditorPanel) return;
+    if (!dom.chcIntegratedEditor) return;
 
     dom.codemirrorContainer.style.display = 'none';
-    dom.chcEditorPanel.classList.remove('hidden');
-    dom.chcEditorTitle.textContent = `H-Code Editor: ${currentlyOpenFileHandle.name}`;
+    dom.codeEditorToolbar.classList.add('hidden');
+    dom.chcIntegratedEditor.classList.remove('hidden');
     dom.chcHumanText.value = content;
 }
 
@@ -155,6 +156,9 @@ async function runChc() {
     }
 
     dom.chcLoadingOverlay.classList.remove('hidden');
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl IA está analizando tu lógica...';
+    dom.chcRunBtn.classList.add('compiling');
+    dom.chcRunBtn.textContent = '⏳ Compilando...';
 
     const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
@@ -178,6 +182,7 @@ ENTRADA DEL USUARIO:
         const result = await AIHandler.callGenerativeAI(modelToUse, apiKey, prompt);
 
         if (result.success) {
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Generando código del motor...';
             let generatedCode = result.text.trim();
             // Clean markdown if AI included it
             generatedCode = generatedCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '');
@@ -205,15 +210,17 @@ ENTRADA DEL USUARIO:
             // Notify engine to reload transpilation maps
             transpile(generatedCode, currentlyOpenFileHandle.name);
 
-            window.Dialogs.showNotification('CHC Listo', '¡Magia! Carl IA ha traducido tu lógica. El script está listo para funcionar.');
+            window.Dialogs.showNotification('Carl IA', '¡Lógica procesada con éxito! He traducido tu código humano a algo que el motor entiende.');
         } else {
             throw new Error(result.error);
         }
     } catch (error) {
         console.error("CHC Error:", error);
-        window.Dialogs.showNotification('Error de Carl IA', `No se pudo traducir la lógica: ${error.message}`);
+        window.Dialogs.showNotification('Error de Carl IA', `Vaya, algo salió mal al procesar tu lógica: ${error.message}`);
     } finally {
         dom.chcLoadingOverlay.classList.add('hidden');
+        dom.chcRunBtn.classList.remove('compiling');
+        dom.chcRunBtn.textContent = '🚀 Correr';
     }
 }
 

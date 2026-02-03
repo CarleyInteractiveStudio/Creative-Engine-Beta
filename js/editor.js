@@ -2174,7 +2174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
-            'drawing-canvas', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
+            'drawing-canvas', 'code-editor-toolbar', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
             'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
             'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
@@ -2250,7 +2250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
             // CHC Editor Elements
-            'chc-editor-panel', 'chc-editor-title', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay'
+            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
