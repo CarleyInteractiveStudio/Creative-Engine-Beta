@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
 
     hotReloadScript = async function(scriptName) {
         if (!isGameRunning || !SceneManager.currentScene) return;
@@ -548,6 +548,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    scanAndTranspileAllScripts = async function(dirHandle) {
+        console.log(`[ScriptScanner] Escaneando scripts en: ${dirHandle.name}`);
+        for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file') {
+                if (entry.name.endsWith('.ces')) {
+                    try {
+                        const file = await entry.getFile();
+                        const content = await file.text();
+                        CES_Transpiler.transpile(content, entry.name);
+                        console.log(`[ScriptScanner] CES Transpilado: ${entry.name}`);
+                    } catch (e) {
+                        console.error(`[ScriptScanner] Error al transpilar CES ${entry.name}:`, e);
+                    }
+                } else if (entry.name.endsWith('.chc')) {
+                    try {
+                        // Look for .chc.meta
+                        const metaName = `${entry.name}.meta`;
+                        const metaHandle = await dirHandle.getFileHandle(metaName, { create: false });
+                        const metaFile = await metaHandle.getFile();
+                        const metaContent = await metaFile.text();
+                        const metaData = JSON.parse(metaContent);
+                        if (metaData && metaData.generatedCode) {
+                            CES_Transpiler.transpile(metaData.generatedCode, entry.name);
+                            console.log(`[ScriptScanner] CHC Transpilado (desde meta): ${entry.name}`);
+                        }
+                    } catch (e) {
+                        // Meta might not exist or other error
+                        console.warn(`[ScriptScanner] No se pudo cargar meta para CHC ${entry.name}:`, e.message);
+                    }
+                }
+            } else if (entry.kind === 'directory') {
+                await scanAndTranspileAllScripts(entry);
+            }
+        }
+    };
 
     loadProjectConfig = async function() {
         try {
@@ -2374,6 +2410,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (projectsDirHandle) {
                 // Ensure the 'lib' directory exists for the current project
                 const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                updateLoadingProgress(12, "Compilando scripts del proyecto...");
+                await scanAndTranspileAllScripts(projectHandle);
+
                 try {
                     const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
                     console.log("Directorio 'lib' asegurado. Verificando README...");
