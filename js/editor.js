@@ -84,7 +84,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript;
+
+    hotReloadScript = async function(scriptName) {
+        if (!isGameRunning || !SceneManager.currentScene) return;
+
+        console.log(`[CHC] Hot-reloading script: ${scriptName}`);
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
+            if (!materia.isActive) continue;
+            const scripts = materia.getComponents(Components.CreativeScript).filter(s => s.scriptName === scriptName);
+            for (const script of scripts) {
+                // Notificar desactivación antes de reiniciar
+                try { script.onDisable(); } catch(e) {}
+
+                // Marcar como no inicializado para forzar recarga de código
+                script.isInitialized = false;
+                script.instance = null;
+
+                await script.initializeInstance();
+                if (script.isInitialized) {
+                    try { script.start(); } catch(e) {}
+                    try { script.onEnable(); } catch(e) {}
+                }
+            }
+        }
+    };
 
     saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
         try {
@@ -2565,7 +2589,7 @@ public star() {
                 }
 
                 // Handle other text-based files with the code editor
-                const textExtensions = ['ces', 'js', 'json', 'txt', 'html', 'css'];
+                const textExtensions = ['ces', 'chc', 'js', 'json', 'txt', 'html', 'css'];
                 if (textExtensions.includes(extension) || lowerName === 'license') {
                     console.log(`Opening text-based asset: ${name}`);
                     await CodeEditor.openScriptInEditor(name, dirHandle, dom.scenePanel);
@@ -2635,7 +2659,8 @@ public star() {
                     consoleTab.click();
                 }
             };
-            CodeEditor.initialize(dom, showConsole);
+            window._CodeEditor = CodeEditor; // Expose for testing
+            CodeEditor.initialize(dom, showConsole, hotReloadScript);
             SpriteSlicer.initialize({
                 dom: dom,
                 openAssetSelectorCallback: openAssetSelector,
@@ -2677,6 +2702,7 @@ public star() {
                 refreshLibraryList: libraryModule.refreshLibraryList,
                 openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
+            window._onAssetOpened = onAssetOpened; // Expose for testing
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });

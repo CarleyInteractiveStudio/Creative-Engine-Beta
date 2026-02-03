@@ -15,8 +15,7 @@ let codeEditor = null;
 let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
 let showConsoleCallback = () => {}; // Placeholder for the callback
-
-// --- Autocomplete Logic ---
+let hotReloadCallback = () => {}; // Placeholder for hot reload
 const cesKeywords = [
     { label: "public", type: "keyword" },
     { label: "private", type: "keyword" },
@@ -56,8 +55,10 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         const content = await file.text();
 
         if (fileName.endsWith('.chc')) {
+            console.log(`[CHC] Abriendo editor integrado para ${fileName}`);
             openChcEditor(content);
-            scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
+            const toggleBtn = scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]');
+            if (toggleBtn) toggleBtn.click();
             return;
         }
 
@@ -92,12 +93,19 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
 }
 
 export async function saveCurrentScript() {
-    if (!currentlyOpenFileHandle || !codeEditor) {
+    if (!currentlyOpenFileHandle) {
         window.Dialogs.showNotification('Aviso', 'No hay ningún script abierto para guardar.');
         return;
     }
+
+    const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
+    if (!isChc && !codeEditor) {
+        window.Dialogs.showNotification('Aviso', 'No hay ningún script abierto para guardar.');
+        return;
+    }
+
     try {
-        const scriptContent = codeEditor.state.doc.toString();
+        const scriptContent = isChc ? dom.chcHumanText.value : codeEditor.state.doc.toString();
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(scriptContent);
         await writable.close();
@@ -128,7 +136,7 @@ export function redoLastChange() {
     if (codeEditor) redo(codeEditor);
 }
 
-function openChcEditor(content) {
+export function openChcEditor(content) {
     if (!dom.chcIntegratedEditor) return;
 
     dom.codemirrorContainer.style.display = 'none';
@@ -156,9 +164,13 @@ async function runChc() {
     }
 
     dom.chcLoadingOverlay.classList.remove('hidden');
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl IA está analizando tu lógica...';
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Estableciendo conexión con Carl IA...';
     dom.chcRunBtn.classList.add('compiling');
     dom.chcRunBtn.textContent = '⏳ Compilando...';
+
+    // Simulate analysis phase for better UX
+    await new Promise(r => setTimeout(r, 800));
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl IA está analizando tu lógica humana...';
 
     const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
@@ -168,8 +180,10 @@ REGLAS ESTRICTAS:
 2. Solo implementa EXACTAMENTE lo que el usuario describe. No añadas funcionalidades extra. Si el usuario no menciona una acción, NO la inventes.
 3. El script DEBE ser independiente y funcional por sí solo.
 4. Las variables de configuración deben ser 'public' para aparecer en el Inspector.
-5. Usa consola.imprimir() para depuración si el usuario lo sugiere.
-6. Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
+5. Usa 'consola.imprimir()' para depuración.
+6. El motor usa un sistema de coordenadas Y hacia abajo (Y aumenta al bajar).
+7. Para detectar teclas usa: Entrada.tecla("nombre_tecla").
+8. Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
 
 EJEMPLOS DE TRADUCCIÓN:
 
@@ -185,22 +199,20 @@ public update(deltaTime) {
     }
 }
 
-Usuario: "Al iniciar, imprime 'Hola Mundo'. En cada frame rota el objeto poco a poco."
+Usuario: "Al iniciar, imprime 'Hola'. Rota el objeto constantemente."
 IA:
-public number velocidadRotacion = 1;
+public number velocidadGiro = 2;
 public star() {
-    consola.imprimir("Hola Mundo");
+    consola.imprimir("Hola");
 }
 public update(deltaTime) {
-    transform.rotation += velocidadRotacion;
+    transform.rotation += velocidadGiro;
 }
 
 ENTRADA DEL USUARIO:
 "${humanText}"`;
 
     try {
-        const savedKey = apiKey === '****************' ? localStorage.getItem(`creativeEngine_${provider}_apiKey`) : apiKey;
-
         // Find a working model
         let modelToUse = prefs.ai?.model;
         if (!modelToUse) {
@@ -213,7 +225,7 @@ ENTRADA DEL USUARIO:
         const result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, prompt);
 
         if (result.success) {
-            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Generando código del motor...';
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Traducción completada. Generando código del motor...';
             let generatedCode = result.text.trim();
             // Clean markdown if AI included it
             generatedCode = generatedCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '');
@@ -241,6 +253,11 @@ ENTRADA DEL USUARIO:
             // Notify engine to reload transpilation maps
             transpile(generatedCode, currentlyOpenFileHandle.name);
 
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Sincronizando con el motor...';
+            // Hot reload in engine
+            await hotReloadCallback(currentlyOpenFileHandle.name);
+            await new Promise(r => setTimeout(r, 500));
+
             window.Dialogs.showNotification('Carl IA', '¡Lógica procesada con éxito! He traducido tu código humano a algo que el motor entiende.');
         } else {
             throw new Error(result.error);
@@ -255,9 +272,10 @@ ENTRADA DEL USUARIO:
     }
 }
 
-export function initialize(domCache, showConsole) {
+export function initialize(domCache, showConsole, hotReload) {
     dom = domCache;
     showConsoleCallback = showConsole; // Almacena el callback
+    hotReloadCallback = hotReload;
 
     // Configura los event listeners para los botones de la barra de herramientas
     dom.codeSaveBtn.addEventListener('click', () => saveCurrentScript());

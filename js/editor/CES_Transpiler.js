@@ -74,7 +74,8 @@ export function getScriptMetadata(scriptName) {
  */
 export function transpile(code, scriptName) {
     const errors = [];
-    const className = scriptName.replace('.ces', '');
+    // Strip both .ces and .chc to get the base class name
+    const className = scriptName.replace(/\.(ces|chc)$/, '');
 
     let publicVars = [];
     let privateVars = [];
