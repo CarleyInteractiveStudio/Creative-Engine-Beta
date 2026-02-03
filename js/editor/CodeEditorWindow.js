@@ -165,11 +165,35 @@ Tu tarea es traducir la descripción humana del comportamiento de un objeto en u
 
 REGLAS ESTRICTAS:
 1. Usa sintaxis de .ces (ej: public number speed = 5;, public star() { ... }, public update(deltaTime) { ... }).
-2. Solo implementa EXACTAMENTE lo que el usuario describe. No añadas funcionalidades extra.
+2. Solo implementa EXACTAMENTE lo que el usuario describe. No añadas funcionalidades extra. Si el usuario no menciona una acción, NO la inventes.
 3. El script DEBE ser independiente y funcional por sí solo.
 4. Las variables de configuración deben ser 'public' para aparecer en el Inspector.
 5. Usa consola.imprimir() para depuración si el usuario lo sugiere.
 6. Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
+
+EJEMPLOS DE TRADUCCIÓN:
+
+Usuario: "Si se presiona la tecla W que se mueva arriba. Si se presiona D que se mueva a la derecha."
+IA:
+public number velocidad = 5;
+public update(deltaTime) {
+    si (Entrada.tecla("w")) {
+        transform.y -= velocidad;
+    }
+    si (Entrada.tecla("d")) {
+        transform.x += velocidad;
+    }
+}
+
+Usuario: "Al iniciar, imprime 'Hola Mundo'. En cada frame rota el objeto poco a poco."
+IA:
+public number velocidadRotacion = 1;
+public star() {
+    consola.imprimir("Hola Mundo");
+}
+public update(deltaTime) {
+    transform.rotation += velocidadRotacion;
+}
 
 ENTRADA DEL USUARIO:
 "${humanText}"`;
