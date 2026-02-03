@@ -16,7 +16,13 @@ const typeMap = {
     'texto': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
-    'Materia': 'Materia'
+    'Materia': 'Materia',
+    'Sprite': 'Sprite',
+    'Audio': 'Audio',
+    'Prefab': 'Prefab',
+    'Scene': 'Scene',
+    'Vector2': 'Vector2',
+    'Color': 'Color'
 };
 
 function getDefaultValueForType(canonicalType) {
@@ -26,6 +32,12 @@ function getDefaultValueForType(canonicalType) {
         case 'string': return "";
         case 'boolean': return false;
         case 'Materia': return null;
+        case 'Sprite': return null;
+        case 'Audio': return null;
+        case 'Prefab': return null;
+        case 'Scene': return null;
+        case 'Vector2': return { x: 0, y: 0 };
+        case 'Color': return { r: 255, g: 255, b: 255, a: 1 };
         default: return null;
     }
 }
@@ -74,8 +86,7 @@ export function getScriptMetadata(scriptName) {
  */
 export function transpile(code, scriptName) {
     const errors = [];
-    // Strip both .ces and .chc to get the base class name
-    const className = scriptName.replace(/\.(ces|chc)$/, '');
+    const className = scriptName.replace('.ces', '');
 
     let publicVars = [];
     let privateVars = [];

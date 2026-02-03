@@ -446,6 +446,10 @@ export class CreativeScript extends Leyes {
                                     }
                                 }
 
+                                // Reconstrucción de tipos complejos (Vector2, Color) si es necesario
+                                // Por ahora se asume que son objetos planos {x,y} o {r,g,b,a}
+                                // pero aquí se podría añadir lógica de 'new Vector2()' si las clases estuvieran disponibles.
+
                                 // Sobrescribir el valor por defecto con el valor guardado
                                 try {
                                     this.instance[varName] = savedValue;

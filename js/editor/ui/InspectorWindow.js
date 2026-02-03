@@ -142,7 +142,13 @@ function handleInspectorInput(e) {
         const scriptName = e.target.dataset.scriptName;
         const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
         if (script) {
-            script.publicVars[propPath] = value;
+            const props = propPath.split('.');
+            let current = script.publicVars;
+            for (let i = 0; i < props.length - 1; i++) {
+                if (!current[props[i]] || typeof current[props[i]] !== 'object') current[props[i]] = {};
+                current = current[props[i]];
+            }
+            current[props[props.length - 1]] = value;
         }
         return;
     }
@@ -361,11 +367,17 @@ function handleInspectorClick(e) {
             if (expectedTypes.includes(fileExtension)) {
                 if (selectedMateria) {
                     const componentName = dropper.dataset.component;
-                    const component = selectedMateria.getComponent(Components[componentName]);
+                    const component = componentName === 'CreativeScript'
+                        ? selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === dropper.dataset.scriptName)
+                        : selectedMateria.getComponent(Components[componentName]);
+
                     if (component) {
                         // Special handling for SpriteRenderer
                         if (component instanceof Components.SpriteRenderer) {
                             await component.setSourcePath(data.path, projectsDirHandle);
+                        } else if (component instanceof Components.CreativeScript) {
+                             const propName = dropper.dataset.prop;
+                             component.publicVars[propName] = data.path;
                         } else {
                             const propName = dropper.dataset.prop;
                             component[propName] = data.path;
@@ -645,6 +657,23 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'boolean':
         case 'booleano':
             return `<input type="checkbox" ${commonAttrs} ${currentValue ? 'checked' : ''}>`;
+        case 'Sprite':
+            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".png,.jpg,.jpeg,.ceSprite">${currentValue || 'None (Sprite)'}</div>`;
+        case 'Audio':
+            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".mp3,.wav">${currentValue || 'None (Audio)'}</div>`;
+        case 'Prefab':
+            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".cePrefab">${currentValue || 'None (Prefab)'}</div>`;
+        case 'Scene':
+            return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".ceScene">${currentValue || 'None (Scene)'}</div>`;
+        case 'Color':
+            return `<input type="color" ${commonAttrs} value="${currentValue || '#ffffff'}">`;
+        case 'Vector2':
+            return `
+                <div class="prop-inputs">
+                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.x"`)} value="${currentValue?.x || 0}" title="X">
+                    <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
+                </div>
+            `;
         case 'Materia':
             {
                 let displayName = 'None (Materia)';
