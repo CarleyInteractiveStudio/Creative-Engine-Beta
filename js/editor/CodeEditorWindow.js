@@ -164,13 +164,13 @@ async function runChc() {
     }
 
     dom.chcLoadingOverlay.classList.remove('hidden');
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Estableciendo conexión con Carl IA...';
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Llamando a Carl IA...';
     dom.chcRunBtn.classList.add('compiling');
-    dom.chcRunBtn.textContent = '⏳ Compilando...';
+    dom.chcRunBtn.textContent = '🤖 Carl está pensando...';
 
     // Simulate analysis phase for better UX
     await new Promise(r => setTimeout(r, 800));
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl IA está analizando tu lógica humana...';
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl está analizando tu lógica creativa...';
 
     const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
@@ -258,7 +258,7 @@ ENTRADA DEL USUARIO:
             await hotReloadCallback(currentlyOpenFileHandle.name);
             await new Promise(r => setTimeout(r, 500));
 
-            window.Dialogs.showNotification('Carl IA', '¡Lógica procesada con éxito! He traducido tu código humano a algo que el motor entiende.');
+            window.Dialogs.showNotification('Carl IA', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!');
         } else {
             throw new Error(result.error);
         }

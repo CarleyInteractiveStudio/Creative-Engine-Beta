@@ -1990,6 +1990,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
 
+            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente y alma de Creative Engine. Tu personalidad es alegre, inspiradora y extremadamente apasionada por la creación de videojuegos. Siempre te presentas como Carl. Tu misión es motivar al usuario a crear, proponiéndole ideas para juegos y explicándole paso a paso cómo lograr sus visiones en el motor. Si el usuario te pide algo que aún no puedes hacer (como generar el juego completo automáticamente o realizar cambios profundos en el código base), dile con entusiasmo que estás en constante desarrollo y que muy pronto serás capaz de hacer de todo, ¡incluso crear juegos enteros por ti mismo! Habla siempre en el idioma que el usuario te hable.`;
+
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
                 brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
@@ -2018,6 +2020,14 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.menubarCarlIaBtn.addEventListener('click', () => {
                 updateCarlIaBrainMenu();
                 dom.carlIaPanel.classList.toggle('hidden');
+
+                // If it's the first time opening or it's empty, add a welcoming message from Carl
+                if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
+                    const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
+                    if (!hasWelcome && selectedProvider) {
+                         addMessage("¡Hola! Soy Carl, el alma creativa de este motor. ¡Estoy tan emocionado de tenerte aquí! ¿Qué tipo de juego increíble tienes en mente hoy? ¡Dímelo y te ayudaré a construirlo paso a paso!", 'ia');
+                    }
+                }
             });
 
             brainSelectorMenu.parentElement.addEventListener('click', (e) => {
@@ -2027,7 +2037,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const modelName = e.target.textContent;
                     selectedProvider = { type: modelType, name: modelName };
                     brainButton.textContent = `Cerebro: ${modelName}`;
-                    messagesDiv.innerHTML = `<div style="font-style: italic; color: var(--color-text-secondary); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. ¡Hola! Soy Carl, ¿en qué puedo ayudarte hoy?</div>`;
+                    messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu compañero creativo. ¿Qué mundo increíble vamos a construir hoy?</div>`;
                     brainSelectorMenu.style.display = 'none';
                     setTimeout(() => brainSelectorMenu.style.display = '', 200);
                 }
@@ -2035,22 +2045,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const addMessage = (text, sender, isError = false) => {
                 const messageWrapper = document.createElement('div');
+                messageWrapper.className = `carl-message-wrapper ${sender}`;
                 messageWrapper.style.display = 'flex';
                 messageWrapper.style.alignItems = 'flex-end';
                 messageWrapper.style.marginBottom = '12px';
                 messageWrapper.style.maxWidth = '90%';
 
                 const msgDiv = document.createElement('div');
+                msgDiv.className = `carl-message-bubble carl-message-${sender} ${isError ? 'error' : ''}`;
                 msgDiv.textContent = text;
                 msgDiv.style.padding = '10px 14px';
                 msgDiv.style.borderRadius = '18px';
                 msgDiv.style.lineHeight = '1.4';
+                msgDiv.style.position = 'relative';
+                msgDiv.style.wordBreak = 'break-word';
 
                 if (sender === 'user') {
                     messageWrapper.style.alignSelf = 'flex-end';
-                    msgDiv.style.backgroundColor = 'var(--color-accent)';
+                    msgDiv.style.background = 'linear-gradient(135deg, #0e639c, #007acc)';
                     msgDiv.style.color = 'white';
                     msgDiv.style.borderBottomRightRadius = '4px';
+                    msgDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
                     messageWrapper.appendChild(msgDiv);
                 } else { // 'ia'
                     messageWrapper.style.alignSelf = 'flex-start';
@@ -2060,9 +2075,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     avatar.style.height = '32px';
                     avatar.style.borderRadius = '50%';
                     avatar.style.marginRight = '10px';
+                    avatar.style.border = '2px solid rgba(255,255,255,0.2)';
                     messageWrapper.appendChild(avatar);
-                    msgDiv.style.backgroundColor = isError ? 'var(--color-danger-bg)' : 'var(--color-background-light)';
-                    msgDiv.style.color = isError ? 'var(--color-danger-text)' : 'var(--color-text-primary)';
+
+                    msgDiv.style.background = isError ? 'rgba(255, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+                    msgDiv.style.color = isError ? '#ff8888' : 'white';
+                    msgDiv.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                    msgDiv.style.backdropFilter = 'blur(5px)';
                     msgDiv.style.borderBottomLeftRadius = '4px';
                     messageWrapper.appendChild(msgDiv);
                 }
@@ -2109,7 +2128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
                     const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt);
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {

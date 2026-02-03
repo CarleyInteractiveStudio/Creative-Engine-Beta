@@ -69,9 +69,10 @@ export async function listModels(provider, apiKey) {
  * @param {string} modelName - El nombre completo del modelo.
  * @param {string} apiKey - La clave de API para el proveedor.
  * @param {string} prompt - El mensaje a enviar a la IA.
+ * @param {string} [systemPrompt=""] - Instrucciones de sistema opcionales para definir la personalidad.
  * @returns {Promise<{success: boolean, text?: string, error?: string, code?: number | string}>} - Un objeto con el resultado.
  */
-export async function callGenerativeAI(provider, modelName, apiKey, prompt) {
+export async function callGenerativeAI(provider, modelName, apiKey, prompt, systemPrompt = "") {
     if (!modelName) {
         return { success: false, error: "No se ha especificado un nombre de modelo.", code: 400 };
     }
@@ -82,26 +83,42 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt) {
 
     if (provider === 'gemini') {
         endpoint = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
-        body = {
-            contents: [{ parts: [{ text: prompt }] }]
-        };
+
+        const contents = [];
+        if (systemPrompt) {
+            // Note: In newer Gemini API, system_instruction is separate but we'll try to include it in content if model is older or use system_instruction if supported
+            // For simplicity and compatibility across more Gemini models, we'll use a combined prompt or the system_instruction field if modelName supports it.
+            // However, the standard generateContent body for 1.5-flash/pro supports system_instruction at the root.
+            body.system_instruction = { parts: [{ text: systemPrompt }] };
+        }
+        contents.push({ role: 'user', parts: [{ text: prompt }] });
+        body.contents = contents;
+
     } else if (provider === 'openai') {
         endpoint = 'https://api.openai.com/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;
+
+        const messages = [];
+        if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+        messages.push({ role: 'user', content: prompt });
+
         body = {
             model: modelName,
-            messages: [{ role: 'user', content: prompt }]
+            messages: messages
         };
     } else if (provider === 'anthropic') {
         endpoint = 'https://api.anthropic.com/v1/messages';
         headers['x-api-key'] = apiKey;
         headers['anthropic-version'] = '2023-06-01';
         headers['anthropic-dangerous-direct-browser-access'] = 'true'; // Needed for browser calls
+
         body = {
             model: modelName,
             max_tokens: 4096,
             messages: [{ role: 'user', content: prompt }]
         };
+        if (systemPrompt) body.system = systemPrompt;
+
     } else {
         return { success: false, error: 'Proveedor no soportado.' };
     }
