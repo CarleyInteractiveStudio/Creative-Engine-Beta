@@ -1131,6 +1131,13 @@ public star() {
                              <button id="prefs-ai-save-key-btn">Guardar Clave</button>
                              <button id="prefs-ai-delete-key-btn" style="display: none;">Borrar Clave</button>
                         </div>
+                        <div id="prefs-ai-model-selection-group" class="hidden" style="margin-top: 10px;">
+                            <label for="prefs-ai-model-selector">Modelo (Cerebro)</label>
+                            <select id="prefs-ai-model-selector">
+                                <option value="">Selecciona un modelo...</option>
+                            </select>
+                        </div>
+                        <div id="prefs-ai-error-display" class="hidden" style="color: #ff4444; margin-top: 10px; font-size: 0.9em; padding: 8px; background: rgba(255,0,0,0.1); border-radius: 4px;"></div>
                         <p class="field-description">Tu clave de API se guarda de forma segura en el almacenamiento local de tu navegador y nunca se envía a nuestros servidores. Se utiliza únicamente para la comunicación directa entre tu navegador y el proveedor de IA que elijas.</p>
                     </div>
                 </fieldset>

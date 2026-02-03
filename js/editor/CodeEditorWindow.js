@@ -202,8 +202,15 @@ ENTRADA DEL USUARIO:
         const savedKey = apiKey === '****************' ? localStorage.getItem(`creativeEngine_${provider}_apiKey`) : apiKey;
 
         // Find a working model
-        let modelToUse = 'models/gemini-1.5-flash';
-        const result = await AIHandler.callGenerativeAI(modelToUse, apiKey, prompt);
+        let modelToUse = prefs.ai?.model;
+        if (!modelToUse) {
+            // Fallback defaults if no model selected
+            if (provider === 'gemini') modelToUse = 'models/gemini-1.5-flash';
+            else if (provider === 'openai') modelToUse = 'gpt-3.5-turbo';
+            else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
+        }
+
+        const result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, prompt);
 
         if (result.success) {
             if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Generando código del motor...';

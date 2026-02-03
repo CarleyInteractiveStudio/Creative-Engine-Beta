@@ -6,6 +6,7 @@
  */
 
 import { showNotification, showConfirmation } from './DialogWindow.js';
+import * as AIHandler from '../AIHandler.js';
 
 // Module-level state
 let currentPreferences = {};
@@ -33,12 +34,43 @@ export function getPreferences() {
     return currentPreferences;
 }
 
+async function fetchAndPopulateModels(provider, apiKey) {
+    if (!_dom.prefsAiModelSelector || !_dom.prefsAiModelSelectionGroup || !_dom.prefsAiErrorDisplay) return;
+
+    _dom.prefsAiModelSelectionGroup.classList.remove('hidden');
+    _dom.prefsAiModelSelector.innerHTML = '<option value="">Cargando modelos...</option>';
+    _dom.prefsAiErrorDisplay.classList.add('hidden');
+    _dom.prefsAiErrorDisplay.textContent = '';
+
+    const result = await AIHandler.listModels(provider, apiKey);
+
+    if (result.success) {
+        _dom.prefsAiModelSelector.innerHTML = '<option value="">Selecciona un modelo...</option>';
+        result.models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            _dom.prefsAiModelSelector.appendChild(option);
+        });
+
+        // Restore selected model if it exists in current preferences and is in the list
+        if (currentPreferences.ai && currentPreferences.ai.model) {
+            _dom.prefsAiModelSelector.value = currentPreferences.ai.model;
+        }
+    } else {
+        _dom.prefsAiModelSelector.innerHTML = '<option value="">Error al cargar modelos</option>';
+        _dom.prefsAiErrorDisplay.textContent = result.error;
+        _dom.prefsAiErrorDisplay.classList.remove('hidden');
+    }
+}
+
 function updateAiProviderUi() {
     if (!_dom.prefsAiProvider) return;
     const provider = _dom.prefsAiProvider.value;
 
     if (provider === 'none') {
         _dom.prefsAiApiKeyGroup.classList.add('hidden');
+        if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
     } else {
         _dom.prefsAiApiKeyGroup.classList.remove('hidden');
         const savedKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
@@ -48,12 +80,14 @@ function updateAiProviderUi() {
             _dom.prefsAiApiKey.disabled = true;
             _dom.prefsAiSaveKeyBtn.style.display = 'none';
             _dom.prefsAiDeleteKeyBtn.style.display = 'inline-block';
+            fetchAndPopulateModels(provider, savedKey);
         } else {
             _dom.prefsAiApiKey.value = '';
             _dom.prefsAiApiKey.placeholder = `Introduce tu clave de API para ${provider}`;
             _dom.prefsAiApiKey.disabled = false;
             _dom.prefsAiSaveKeyBtn.style.display = 'inline-block';
             _dom.prefsAiDeleteKeyBtn.style.display = 'none';
+            if (_dom.prefsAiModelSelectionGroup) _dom.prefsAiModelSelectionGroup.classList.add('hidden');
         }
     }
 }
@@ -109,6 +143,7 @@ function savePreferences() {
     currentPreferences.gridSize = _dom.prefsSnappingGridSize.value;
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
+    currentPreferences.ai.model = _dom.prefsAiModelSelector ? _dom.prefsAiModelSelector.value : null;
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));

@@ -2072,7 +2072,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const executeApiCall = async (model, prompt) => {
                     addMessage("...", 'ia');
                     const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(model, apiKey, prompt);
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
@@ -2093,11 +2093,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn(`El modelo por defecto '${modelToUse}' falló. Buscando un modelo compatible...`);
                     addMessage(`El modelo por defecto no funcionó. Buscando uno compatible para ti...`, 'ia', true);
 
-                    const modelsResult = await AIHandler.listModels(apiKey);
+                    const modelsResult = await AIHandler.listModels(provider, apiKey);
                     if (modelsResult.success && modelsResult.models.length > 0) {
-                        const generativeModels = modelsResult.models.filter(m =>
-                            m.supportedGenerationMethods.includes("generateContent") && !m.name.includes('embedding')
-                        );
+                        // Filtering is specific to Gemini for now, for others we just take what we have
+                        const generativeModels = provider === 'gemini' ?
+                            modelsResult.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && !m.id.includes('embedding')) :
+                            modelsResult.models;
 
                         let suitableModel = generativeModels.find(m => m.name.includes('flash'));
                         if (!suitableModel && generativeModels.length > 0) {
@@ -2193,6 +2194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
+            'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
             // Library Window Elements
             'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
             'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
