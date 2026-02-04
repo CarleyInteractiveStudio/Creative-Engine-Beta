@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // NEW: Check if we're in file list mode.
         const isFileListMode = options && options.fileList && Array.isArray(options.fileList);
-        const filter = (options && options.filter) ? options.filter : null;
+        const filter = (options && options.filter && (Array.isArray(options.filter) ? options.filter.length > 0 : true)) ? options.filter : null;
 
         let currentDirHandle;
         let currentPath;
@@ -315,12 +315,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     let shouldRender = !filter; // Render if no filter
 
                     if (Array.isArray(filter)) {
-                        for (const ext of filter) { if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; } }
+                        for (const ext of filter) {
+                            if (ext === 'image') { if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) { shouldRender = true; break; } }
+                            else if (ext === 'audio') { if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav')) { shouldRender = true; break; } }
+                            else if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; }
+                        }
                     } else if (typeof filter === 'string') {
                         // Handle simple string filters like 'image'
                         switch (filter) {
                             case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
                             case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
+                            default: shouldRender = lowerName.endsWith(filter.toLowerCase());
                         }
                     }
                     if (shouldRender) { filteredEntries.push(entry); }
@@ -335,11 +340,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const lowerName = fileInfo.handle.name.toLowerCase();
                     let shouldRender = !filter;
                     if (Array.isArray(filter)) {
-                        for (const ext of filter) { if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; } }
+                        for (const ext of filter) {
+                            if (ext === 'image') { if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) { shouldRender = true; break; } }
+                            else if (ext === 'audio') { if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav')) { shouldRender = true; break; } }
+                            else if (lowerName.endsWith(ext.toLowerCase())) { shouldRender = true; break; }
+                        }
                     } else if (typeof filter === 'string') {
                         switch (filter) {
                             case 'image': shouldRender = lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'); break;
                             case 'audio': shouldRender = lowerName.endsWith('.mp3') || lowerName.endsWith('.wav'); break;
+                            default: shouldRender = lowerName.endsWith(filter.toLowerCase());
                         }
                     }
                      if (shouldRender) { filteredFiles.push(fileInfo); }
@@ -2791,7 +2801,7 @@ public star() {
                 openLibraryDetails: libraryModule.openLibraryDetails // Pass the new function
             };
             window._onAssetOpened = onAssetOpened; // Expose for testing
-            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openSpriteSelectorCallback: openSpriteSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
+            initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openAssetSelectorCallback: openAssetSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });

@@ -12,7 +12,7 @@ let projectsDirHandle;
 let currentDirectoryHandle;
 let getSelectedMateria;
 let getSelectedAsset;
-let openSpriteSelectorCallback;
+let openAssetSelectorCallback;
 let saveAssetMetaCallback;
 let extractFramesFromSheetCallback;
 let updateSceneCallback;
@@ -52,6 +52,17 @@ const fileIcons = {
     chc: '🤖'
 };
 
+const typeExtensionMap = {
+    'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
+    'Audio': ['.mp3', '.wav'],
+    'Prefab': ['.cePrefab'],
+    'Scene': ['.ceScene'],
+    'Font': ['.ttf', '.otf', '.woff', '.woff2'],
+    'Animation': ['.ceanimclip', '.cea'],
+    'AnimatorController': ['.ceanim'],
+    'CreativeScript': ['.ces', '.chc']
+};
+
 // --- Initialization ---
 export function initialize(dependencies) {
     dom = dependencies.dom;
@@ -60,7 +71,7 @@ export function initialize(dependencies) {
     currentDirectoryHandle = dependencies.currentDirectoryHandle;
     getSelectedMateria = dependencies.getSelectedMateria;
     getSelectedAsset = dependencies.getSelectedAsset;
-    openSpriteSelectorCallback = dependencies.openSpriteSelectorCallback;
+    openAssetSelectorCallback = dependencies.openAssetSelectorCallback;
     saveAssetMetaCallback = dependencies.saveAssetMetaCallback;
     extractFramesFromSheetCallback = dependencies.extractFramesFromSheetCallback;
     updateSceneCallback = dependencies.updateSceneCallback;
@@ -145,15 +156,11 @@ async function handleInspectorDrop(e) {
             }
         }
     } else if (data.type === 'Asset') {
+        if (data.kind === 'directory') {
+             window.Dialogs.showNotification('Acción no permitida', 'No se pueden asignar carpetas a variables.');
+             return;
+        }
         const fileExtension = `.${data.name.split('.').pop()}`.toLowerCase();
-
-        const typeExtensionMap = {
-            'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
-            'Audio': ['.mp3', '.wav'],
-            'Prefab': ['.cePrefab'],
-            'Scene': ['.ceScene'],
-            'Font': ['.ttf', '.otf', '.woff', '.woff2']
-        };
 
         if (typeExtensionMap[expectedType]) {
             if (typeExtensionMap[expectedType].includes(fileExtension)) {
@@ -442,19 +449,9 @@ function handleInspectorClick(e) {
         const scriptName = dropper.dataset.scriptName;
         const componentId = dropper.dataset.componentId;
 
-        const typeExtensionMap = {
-            'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
-            'Audio': ['.mp3', '.wav'],
-            'Prefab': ['.cePrefab'],
-            'Scene': ['.ceScene'],
-            'Font': ['.ttf', '.otf', '.woff', '.woff2'],
-            'Animation': ['.ceanimclip', '.cea'],
-            'AnimatorController': ['.ceanim']
-        };
-
-        if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any') {
-            if (openSpriteSelectorCallback) {
-                 openSpriteSelectorCallback(async (fileHandle, fullPath) => {
+        if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any' || componentIcons[expectedType]) {
+            if (openAssetSelectorCallback) {
+                 openAssetSelectorCallback(async (fileHandle, fullPath) => {
                     const fakeEvent = {
                         target: dropper,
                         preventDefault: () => {},
@@ -509,8 +506,18 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
-        if (componentName && openSpriteSelectorCallback) {
-            openSpriteSelectorCallback(componentName);
+        if (componentName && openAssetSelectorCallback) {
+            openAssetSelectorCallback(async (fileHandle, path) => {
+                const component = selectedMateria.getComponent(Components[componentName]);
+                if (component) {
+                    await component.setSourcePath(path, projectsDirHandle);
+                    updateInspector();
+                    updateSceneCallback();
+                }
+            }, {
+                filter: ['image'],
+                title: `Seleccionar Sprite para ${componentName}`
+            });
         }
     }
 

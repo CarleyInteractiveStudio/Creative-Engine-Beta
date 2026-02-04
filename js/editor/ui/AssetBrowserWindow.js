@@ -597,6 +597,7 @@ function handleGridDragStart(e) {
     const item = e.target.closest('.grid-item');
     if (item) {
         e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'Asset',
             name: item.dataset.name,
             kind: item.dataset.kind,
             path: item.dataset.path
