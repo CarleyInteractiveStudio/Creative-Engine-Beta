@@ -204,8 +204,10 @@ function getRotateRadius(materia, transform, zoom) {
     const h = dims.height * Math.abs(transform.scale.y);
     // Use the maximum dimension or diagonal to surround the object
     const baseRadius = Math.sqrt(w * w + h * h) / 2;
-    const padding = 15 / zoom; // Padding in world units
-    const minRadius = 40 / zoom; // Minimum size so it's always interactable
+    // Padding proportional to object size (15%)
+    const padding = baseRadius * 0.15;
+    // Minimum size in world units so it doesn't disappear
+    const minRadius = 20;
     return Math.max(minRadius, baseRadius + padding);
 }
 
@@ -302,11 +304,21 @@ function checkGizmoHit(canvasPos) {
             { x: -hx, y: hy, name: 'scale-bl' }, { x: 0, y: hy, name: 'scale-b' }, { x: hx, y: hy, name: 'scale-br' }
         ];
 
+        let bestHandle = null;
+        let minDistanceSq = Infinity;
+
         for (const handle of handles) {
-            if (Math.abs(lx - handle.x) < handleHitboxSize / 2 && Math.abs(ly - handle.y) < handleHitboxSize / 2) {
-                return handle.name;
+            const dx = lx - handle.x;
+            const dy = ly - handle.y;
+            if (Math.abs(dx) < handleHitboxSize / 2 && Math.abs(dy) < handleHitboxSize / 2) {
+                const distSq = dx * dx + dy * dy;
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    bestHandle = handle.name;
+                }
             }
         }
+        if (bestHandle) return bestHandle;
     }
 
     if (activeTool === 'scale-axis') {
