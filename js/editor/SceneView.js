@@ -202,12 +202,12 @@ function getRotateRadius(materia, transform, zoom) {
     const dims = getMateriaDimensions(materia);
     const w = dims.width * Math.abs(transform.scale.x);
     const h = dims.height * Math.abs(transform.scale.y);
-    // Use the maximum dimension or diagonal to surround the object
+    // Use the diagonal to surround the object
     const baseRadius = Math.sqrt(w * w + h * h) / 2;
-    // Padding proportional to object size (15%)
-    const padding = baseRadius * 0.15;
-    // Minimum size in world units so it doesn't disappear
-    const minRadius = 20;
+    // Strictly proportional padding (10%)
+    const padding = baseRadius * 0.1;
+    // Very small minimum radius in world units
+    const minRadius = 5;
     return Math.max(minRadius, baseRadius + padding);
 }
 
@@ -305,15 +305,21 @@ function checkGizmoHit(canvasPos) {
         ];
 
         let bestHandle = null;
-        let minDistanceSq = Infinity;
+        let minScore = Infinity;
 
         for (const handle of handles) {
             const dx = lx - handle.x;
             const dy = ly - handle.y;
             if (Math.abs(dx) < handleHitboxSize / 2 && Math.abs(dy) < handleHitboxSize / 2) {
-                const distSq = dx * dx + dy * dy;
-                if (distSq < minDistanceSq) {
-                    minDistanceSq = distSq;
+                // Score combines distance and prioritize midpoints if mouse is near axis
+                let score = dx * dx + dy * dy;
+
+                // Prioritize midpoints (index 1, 3, 4, 6 in handles array)
+                const isMidpoint = handle.x === 0 || handle.y === 0;
+                if (isMidpoint) score *= 0.5; // Better score for midpoints
+
+                if (score < minScore) {
+                    minScore = score;
                     bestHandle = handle.name;
                 }
             }
@@ -743,12 +749,13 @@ export function initialize(dependencies) {
                 uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
 
-            // --- Normal Scaling logic (Anchored) ---
+            // --- Normal Scaling logic (Anchored, Ratio-based to avoid jumps) ---
             case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br':
             case 'scale-t': case 'scale-b': case 'scale-l': case 'scale-r':
                 {
                     const dims = getMateriaDimensions(dragState.materia);
                     const init = dragState.initialTransform;
+                    const initMouseWorld = dragState.initialMouseWorld;
                     const rect = dom.sceneCanvas.getBoundingClientRect();
                     const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
 
@@ -756,8 +763,10 @@ export function initialize(dependencies) {
                     const cos = Math.cos(-rad), sin = Math.sin(-rad);
 
                     // Mouse in local space relative to INITIAL center
-                    const lx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
-                    const ly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
+                    const ilx = (initMouseWorld.x - init.x) * cos - (initMouseWorld.y - init.y) * sin;
+                    const ily = (initMouseWorld.x - init.x) * sin + (initMouseWorld.y - init.y) * cos;
+                    const clx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
+                    const cly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
 
                     const curW = dims.width * Math.abs(init.scale.x);
                     const curH = dims.height * Math.abs(init.scale.y);
@@ -772,26 +781,32 @@ export function initialize(dependencies) {
                     const anchorX = -factorX * (curW / 2);
                     const anchorY = -factorY * (curH / 2);
 
-                    // New dimensions if we follow the mouse exactly
-                    let newW = curW;
-                    let newH = curH;
-                    if (factorX !== 0) newW = Math.abs(lx - anchorX);
-                    if (factorY !== 0) newH = Math.abs(ly - anchorY);
+                    let scaleRatioX = 1;
+                    let scaleRatioY = 1;
 
-                    // Maintain original sign of scale
-                    const signX = Math.sign(init.scale.x) || 1;
-                    const signY = Math.sign(init.scale.y) || 1;
+                    if (factorX !== 0) {
+                        const initDist = Math.abs(ilx - anchorX);
+                        const curDist = Math.abs(clx - anchorX);
+                        if (initDist > 0.001) scaleRatioX = curDist / initDist;
+                    }
+                    if (factorY !== 0) {
+                        const initDist = Math.abs(ily - anchorY);
+                        const curDist = Math.abs(cly - anchorY);
+                        if (initDist > 0.001) scaleRatioY = curDist / initDist;
+                    }
 
                     transform.scale = {
-                        x: (newW / dims.width) * signX,
-                        y: (newH / dims.height) * signY
+                        x: init.scale.x * scaleRatioX,
+                        y: init.scale.y * scaleRatioY
                     };
 
-                    // New local center relative to initial center
-                    const newCenterLocalX = factorX === 0 ? 0 : (lx + anchorX) / 2;
-                    const newCenterLocalY = factorY === 0 ? 0 : (ly + anchorY) / 2;
+                    const newW = curW * scaleRatioX;
+                    const newH = curH * scaleRatioY;
 
-                    // Convert local center offset to world
+                    // Center moves by half of the change in dimension in the direction of the factor
+                    const newCenterLocalX = factorX * (newW - curW) / 2;
+                    const newCenterLocalY = factorY * (newH - curH) / 2;
+
                     const worldOffsetX = newCenterLocalX * Math.cos(rad) - newCenterLocalY * Math.sin(rad);
                     const worldOffsetY = newCenterLocalX * Math.sin(rad) + newCenterLocalY * Math.cos(rad);
 
