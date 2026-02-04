@@ -977,7 +977,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Color</label>
                         <div class="prop-inputs">
-                            <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color}">
+                            <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="text" class="prop-input hex-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="inspector-row">
@@ -1061,7 +1062,13 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
                 <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
-                <div class="prop-row-multi"><label>Color</label><input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color}"></div>
+                <div class="prop-row-multi">
+                    <label>Color</label>
+                    <div class="prop-inputs">
+                        <input type="color" class="prop-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                        <input type="text" class="prop-input hex-input" data-component="UIImage" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                    </div>
+                </div>
             </div>`;
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
@@ -1082,7 +1089,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="prop-row-multi">
                         <label>Color</label>
-                        <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color}">
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="text" class="prop-input hex-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                        </div>
                     </div>
                     <div class="prop-row-multi">
                         <label>Alignment</label>
@@ -1279,9 +1289,19 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${renderPropertyDropper('Sprite', ley.spriteAssetPath || ley.source, 'data-component="SpriteRenderer" data-prop="source"')}
                     </div>
                     ${spriteSelectorHTML}
-                    <div class="inspector-row">
+                    <div class="prop-row-multi">
                         <label>Color</label>
-                        <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color}">
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="text" class="prop-input hex-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Opacity</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" data-component="SpriteRenderer" data-prop="opacity" value="${ley.opacity ?? 1}" min="0" max="1" step="0.01" style="flex-grow: 1;" oninput="this.nextElementSibling.innerText = Math.round(this.value * 100) + '%'">
+                            <span style="min-width: 30px; text-align: right;">${Math.round((ley.opacity ?? 1) * 100)}%</span>
+                        </div>
                     </div>
                 </div>`;
         }
@@ -1387,35 +1407,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
 
-                    <div class="prop-row-multi">
-                        <label>Projection</label>
-                        <div class="prop-inputs">
-                            <select class="prop-input inspector-re-render" data-component="Camera" data-prop="projection">
-                                <option value="Perspective" ${projection === 'Perspective' ? 'selected' : ''}>Perspective</option>
-                                <option value="Orthographic" ${projection === 'Orthographic' ? 'selected' : ''}>Orthographic</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="prop-row-multi" style="display: ${projection === 'Perspective' ? 'flex' : 'none'};">
-                        <label>Field of View</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="Camera" data-prop="fov" value="${ley.fov || 60}" min="1" max="179">
-                        </div>
-                    </div>
-
-                     <div class="prop-row-multi" style="display: ${projection === 'Orthographic' ? 'flex' : 'none'};">
-                        <label>Size</label>
+                     <div class="prop-row-multi">
+                        <label>Size (Zoom)</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
-                        </div>
-                    </div>
-
-                    <div class="prop-row-multi">
-                        <label>Clipping Planes</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" placeholder="Near" data-component="Camera" data-prop="nearClipPlane" value="${ley.nearClipPlane || 0.1}" title="Near Clip Plane">
-                            <input type="number" class="prop-input" placeholder="Far" data-component="Camera" data-prop="farClipPlane" value="${ley.farClipPlane || 1000}" title="Far Clip Plane">
                         </div>
                     </div>
                 </div>
@@ -1429,7 +1424,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Color</label>
                         <div class="prop-inputs">
-                            <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color}">
+                            <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="text" class="prop-input hex-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -1455,7 +1451,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Color</label>
                         <div class="prop-inputs">
-                            <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color}">
+                            <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
+                            <input type="text" class="prop-input hex-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">

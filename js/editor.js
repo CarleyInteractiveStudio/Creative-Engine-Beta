@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let projectsDirHandle = null;
     let selectedMateria = null;
     let selectedAsset = null;
+
+    // Scratch canvas for tinting sprites
+    const scratchCanvas = document.createElement('canvas');
+    const scratchCtx = scratchCanvas.getContext('2d');
     let renderer = null, gameRenderer = null;
     let activeView = 'scene-content'; // 'scene-content', 'game-content', or 'code-editor-content'
     const panelVisibility = {
@@ -1004,7 +1008,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                        ctx.globalAlpha = spriteRenderer.opacity ?? 1.0;
+
+                        if (spriteRenderer.color && spriteRenderer.color.toLowerCase() !== '#ffffff') {
+                            // Tinting logic using scratch canvas
+                            scratchCanvas.width = sWidth;
+                            scratchCanvas.height = sHeight;
+                            scratchCtx.clearRect(0, 0, sWidth, sHeight);
+                            scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+
+                            scratchCtx.globalCompositeOperation = 'source-atop';
+                            scratchCtx.fillStyle = spriteRenderer.color;
+                            scratchCtx.fillRect(0, 0, sWidth, sHeight);
+                            scratchCtx.globalCompositeOperation = 'source-over';
+
+                            ctx.drawImage(scratchCanvas, 0, 0, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                        } else {
+                            ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                        }
                         ctx.restore();
                     } else {
                         // If there's a renderer but no sprite, draw a white box placeholder

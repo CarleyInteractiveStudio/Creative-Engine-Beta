@@ -213,11 +213,10 @@ export class Camera extends Leyes {
     constructor(materia) {
         super(materia);
         this.depth = 0; // Rendering order. Higher is drawn on top.
-        this.projection = 'Perspective'; // 'Perspective' or 'Orthographic'
-        this.fov = 60; // Field of View for Perspective
+        this.projection = 'Orthographic'; // Strict 2D
         this.orthographicSize = 5; // Size for Orthographic
-        this.nearClipPlane = 0.1;
-        this.farClipPlane = 1000;
+        this.nearClipPlane = -1; // Standard 2D values
+        this.farClipPlane = 1;
         this.clearFlags = 'SolidColor'; // 'SolidColor', 'Skybox', or 'DontClear'
         this.backgroundColor = '#1e293b'; // Default solid color
         this.cullingMask = -1; // Bitmask, -1 means 'Everything'
@@ -227,7 +226,6 @@ export class Camera extends Leyes {
         const newCamera = new Camera(null);
         newCamera.depth = this.depth;
         newCamera.projection = this.projection;
-        newCamera.fov = this.fov;
         newCamera.orthographicSize = this.orthographicSize;
         newCamera.nearClipPlane = this.nearClipPlane;
         newCamera.farClipPlane = this.farClipPlane;
@@ -596,6 +594,7 @@ export class SpriteRenderer extends Leyes {
         this.spriteAssetPath = ''; // Path to the .ceSprite asset
         this.spriteName = ''; // Name of the specific sprite from the .ceSprite asset
         this.color = '#ffffff';
+        this.opacity = 1.0;
         this.spriteSheet = null; // Holds the loaded .ceSprite data
     }
 
@@ -660,6 +659,7 @@ export class SpriteRenderer extends Leyes {
         newRenderer.source = this.source;
         newRenderer.spriteName = this.spriteName;
         newRenderer.color = this.color;
+        newRenderer.opacity = this.opacity;
         // The sprite and spritesheet will be loaded automatically
         return newRenderer;
     }

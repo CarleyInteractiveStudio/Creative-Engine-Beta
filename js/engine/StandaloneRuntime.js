@@ -17,6 +17,10 @@ export class StandaloneRuntime {
         this.lastTime = 0;
         this.config = null;
         this.deltaTime = 0;
+
+        // Scratch canvas for tinting sprites
+        this.scratchCanvas = document.createElement('canvas');
+        this.scratchCtx = this.scratchCanvas.getContext('2d');
     }
 
     async start() {
@@ -206,7 +210,24 @@ export class StandaloneRuntime {
                     ctx.save();
                     ctx.translate(worldPos.x, worldPos.y);
                     ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.drawImage(img, sx, sy, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
+                    ctx.globalAlpha = sr.opacity ?? 1.0;
+
+                    if (sr.color && sr.color.toLowerCase() !== '#ffffff') {
+                        // Tinting logic using scratch canvas
+                        this.scratchCanvas.width = sWidth;
+                        this.scratchCanvas.height = sHeight;
+                        this.scratchCtx.clearRect(0, 0, sWidth, sHeight);
+                        this.scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+
+                        this.scratchCtx.globalCompositeOperation = 'source-atop';
+                        this.scratchCtx.fillStyle = sr.color;
+                        this.scratchCtx.fillRect(0, 0, sWidth, sHeight);
+                        this.scratchCtx.globalCompositeOperation = 'source-over';
+
+                        ctx.drawImage(this.scratchCanvas, 0, 0, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
+                    } else {
+                        ctx.drawImage(img, sx, sy, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
+                    }
                     ctx.restore();
                 }
             }
