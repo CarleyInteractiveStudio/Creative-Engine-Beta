@@ -575,7 +575,6 @@ function drawGizmos(renderer, materia) {
     const GIZMO_SIZE = 60 / zoom; // Size in world units, adjusted for zoom
     const HANDLE_THICKNESS = 2 / zoom;
     const ARROW_HEAD_SIZE = 8 / zoom;
-    const ROTATE_RADIUS = GIZMO_SIZE * 0.8;
     const SCALE_BOX_SIZE = 8 / zoom;
 
 
