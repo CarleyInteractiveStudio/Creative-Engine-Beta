@@ -535,6 +535,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateEditorLayout() {
+        const mainContent = dom.editorMainContent;
+        if (!mainContent) return;
+
+        // Apply grid classes based on panel visibility
+        mainContent.classList.toggle('no-hierarchy', !panelVisibility.hierarchy);
+        mainContent.classList.toggle('no-inspector', !panelVisibility.inspector);
+        mainContent.classList.toggle('no-assets', !panelVisibility.assets);
+
+        // Sync resizers
+        if (dom.resizerLeft) dom.resizerLeft.style.display = panelVisibility.hierarchy ? 'block' : 'none';
+        if (dom.resizerRight) dom.resizerRight.style.display = panelVisibility.inspector ? 'block' : 'none';
+        if (dom.resizerBottom) dom.resizerBottom.style.display = panelVisibility.assets ? 'block' : 'none';
+
+        // Wait for next frame to resize renderers so CSS has applied
+        requestAnimationFrame(() => {
+            if (renderer) renderer.resize();
+            if (gameRenderer) gameRenderer.resize();
+        });
+    }
+
     function updateWindowMenuUI() {
         const menuItems = {
             'hierarchy-panel': 'menu-window-hierarchy',
@@ -2678,7 +2699,24 @@ public star() {
 
             // --- Define Callbacks & Helpers ---
             const getSelectedAsset = () => selectedAsset;
-            const extractFramesAndCreateAsset = async (assetPath, metaData, animName, dirHandle) => { /* ... (existing code) ... */ };
+            const extractFramesAndCreateAsset = async (assetPath, metaData, animName, dirHandle) => {
+                try {
+                    const frames = await extractFramesFromSheet(assetPath, metaData);
+                    const animationData = {
+                        name: animName,
+                        frames: frames,
+                        frameRate: 10,
+                        loop: true
+                    };
+                    const fileName = `${animName}.cea`;
+                    await createAsset(fileName, JSON.stringify(animationData, null, 2), dirHandle);
+                    updateAssetBrowser();
+                    showNotificationDialog('Éxito', `Animación '${animName}' creada correctamente.`);
+                } catch (error) {
+                    console.error("Error al extraer frames:", error);
+                    showNotificationDialog('Error', "No se pudo crear la animación.");
+                }
+            };
             const onAssetSelected = (assetName, assetPath, assetKind) => {
                 if (assetName) {
                     // When an asset is selected, deselect any Materia

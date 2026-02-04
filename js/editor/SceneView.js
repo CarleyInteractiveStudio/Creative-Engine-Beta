@@ -777,12 +777,14 @@ export function initialize(dependencies) {
                     if (dragState.handle.includes('b')) factorY = 1;
                     else if (dragState.handle.includes('t')) factorY = -1;
 
+                    const newScale = transform.scale;
                     if (factorX !== 0) {
-                        transform.scale.x += (ldx * factorX) / dims.width;
+                        newScale.x += (ldx * factorX) / dims.width;
                     }
                     if (factorY !== 0) {
-                        transform.scale.y += (ldy * factorY) / dims.height;
+                        newScale.y += (ldy * factorY) / dims.height;
                     }
+                    transform.scale = newScale;
 
                     // Shift center by half of the local delta in the dragged axis to keep the opposite side fixed
                     const localShiftX = factorX !== 0 ? ldx / 2 : 0;
@@ -804,14 +806,16 @@ export function initialize(dependencies) {
                     const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);
                     const ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
 
+                    const newScale = transform.scale;
                     if (dragState.handle === 'scale-axis-x') {
-                        transform.scale.x += (ldx * 2) / dims.width;
+                        newScale.x += (ldx * 2) / dims.width;
                     } else {
                         // Axis Y is pointing UP on screen (negative world Y)
                         // Moving mouse up (negative dy) should increase scale.
                         // factorY for Y-axis handle is effectively -1.
-                        transform.scale.y -= (ldy * 2) / dims.height;
+                        newScale.y -= (ldy * 2) / dims.height;
                     }
+                    transform.scale = newScale;
                 }
                 break;
             case 'rotate': {
