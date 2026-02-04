@@ -198,6 +198,17 @@ function screenToWorld(screenX, screenY) {
     return { x: worldX, y: worldY };
 }
 
+function getRotateRadius(materia, transform, zoom) {
+    const dims = getMateriaDimensions(materia);
+    const w = dims.width * Math.abs(transform.scale.x);
+    const h = dims.height * Math.abs(transform.scale.y);
+    // Use the maximum dimension or diagonal to surround the object
+    const baseRadius = Math.sqrt(w * w + h * h) / 2;
+    const padding = 15 / zoom; // Padding in world units
+    const minRadius = 40 / zoom; // Minimum size so it's always interactable
+    return Math.max(minRadius, baseRadius + padding);
+}
+
 function getMateriaDimensions(materia) {
     if (!materia) return { width: 50, height: 50 };
 
@@ -266,7 +277,7 @@ function checkGizmoHit(canvasPos) {
     }
 
     if (activeTool === 'rotate' || activeTool === 'universal') {
-        const radius = gizmoSize * 0.8;
+        const radius = getRotateRadius(selectedMateria, transform, zoom);
         const dist = Math.sqrt(Math.pow(worldMouse.x - centerX, 2) + Math.pow(worldMouse.y - centerY, 2));
         if (Math.abs(dist - radius) < handleHitboxSize / 2) return 'rotate';
     }
@@ -572,6 +583,8 @@ function drawGizmos(renderer, materia) {
     const centerX = transform.x;
     const centerY = transform.y;
 
+    const ROTATE_RADIUS = getRotateRadius(materia, transform, zoom);
+
     ctx.save();
 
     if (activeTool === 'move') {
@@ -719,60 +732,88 @@ export function initialize(dependencies) {
                 uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
 
-            // --- Normal Scaling logic ---
-            case 'scale-tl':
-            case 'scale-tr':
-            case 'scale-bl':
-            case 'scale-br':
-            case 'scale-t':
-            case 'scale-b':
-            case 'scale-l':
-            case 'scale-r':
+            // --- Normal Scaling logic (Anchored) ---
+            case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br':
+            case 'scale-t': case 'scale-b': case 'scale-l': case 'scale-r':
                 {
                     const dims = getMateriaDimensions(dragState.materia);
-                    const rad = transform.rotation * Math.PI / 180;
-                    // Rotate the mouse delta into the object's local space
-                    const ldx = dx * Math.cos(-rad) - dy * Math.sin(-rad);
-                    const ldy = dx * Math.sin(-rad) + dy * Math.cos(-rad);
+                    const init = dragState.initialTransform;
+                    const rect = dom.sceneCanvas.getBoundingClientRect();
+                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
+
+                    const rad = init.rotation * Math.PI / 180;
+                    const cos = Math.cos(-rad), sin = Math.sin(-rad);
+
+                    // Mouse in local space relative to INITIAL center
+                    const lx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
+                    const ly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
+
+                    const curW = dims.width * Math.abs(init.scale.x);
+                    const curH = dims.height * Math.abs(init.scale.y);
 
                     let factorX = 0, factorY = 0;
-                    let localMoveX = 0, localMoveY = 0;
+                    if (dragState.handle.includes('r')) factorX = 1;
+                    else if (dragState.handle.includes('l')) factorX = -1;
+                    if (dragState.handle.includes('b')) factorY = 1;
+                    else if (dragState.handle.includes('t')) factorY = -1;
 
-                    if (dragState.handle.includes('r')) { factorX = 1; localMoveX = 0.5; }
-                    else if (dragState.handle.includes('l')) { factorX = -1; localMoveX = 0.5; }
+                    // Fixed anchor point in local space relative to initial center
+                    const anchorX = -factorX * (curW / 2);
+                    const anchorY = -factorY * (curH / 2);
 
-                    if (dragState.handle.includes('b')) { factorY = 1; localMoveY = 0.5; }
-                    else if (dragState.handle.includes('t')) { factorY = -1; localMoveY = 0.5; }
+                    // New dimensions if we follow the mouse exactly
+                    let newW = curW;
+                    let newH = curH;
+                    if (factorX !== 0) newW = Math.abs(lx - anchorX);
+                    if (factorY !== 0) newH = Math.abs(ly - anchorY);
 
-                    const deltaScaleX = (ldx * factorX) / dims.width;
-                    const deltaScaleY = (ldy * factorY) / dims.height;
+                    // Maintain original sign of scale
+                    const signX = Math.sign(init.scale.x) || 1;
+                    const signY = Math.sign(init.scale.y) || 1;
 
                     transform.scale = {
-                        x: transform.scale.x + deltaScaleX,
-                        y: transform.scale.y + deltaScaleY
+                        x: (newW / dims.width) * signX,
+                        y: (newH / dims.height) * signY
                     };
 
-                    // Move the center to keep the opposite side fixed
-                    const worldMoveX = (ldx * localMoveX) * Math.cos(rad) - (ldy * localMoveY) * Math.sin(rad);
-                    const worldMoveY = (ldx * localMoveX) * Math.sin(rad) + (ldy * localMoveY) * Math.cos(rad);
+                    // New local center relative to initial center
+                    const newCenterLocalX = factorX === 0 ? 0 : (lx + anchorX) / 2;
+                    const newCenterLocalY = factorY === 0 ? 0 : (ly + anchorY) / 2;
 
-                    transform.x += worldMoveX;
-                    transform.y += worldMoveY;
+                    // Convert local center offset to world
+                    const worldOffsetX = newCenterLocalX * Math.cos(rad) - newCenterLocalY * Math.sin(rad);
+                    const worldOffsetY = newCenterLocalX * Math.sin(rad) + newCenterLocalY * Math.cos(rad);
+
+                    transform.x = init.x + worldOffsetX;
+                    transform.y = init.y + worldOffsetY;
                 }
                 break;
 
             case 'scale-axis-x':
-                {
-                    const dims = getMateriaDimensions(dragState.materia);
-                    const deltaScaleX = (dx * 2) / dims.width;
-                    transform.scale = { x: transform.scale.x + deltaScaleX, y: transform.scale.y };
-                }
-                break;
             case 'scale-axis-y':
                 {
                     const dims = getMateriaDimensions(dragState.materia);
-                    const deltaScaleY = (-dy * 2) / dims.height;
-                    transform.scale = { x: transform.scale.x, y: transform.scale.y + deltaScaleY };
+                    const init = dragState.initialTransform;
+                    const rect = dom.sceneCanvas.getBoundingClientRect();
+                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
+
+                    const rad = init.rotation * Math.PI / 180;
+                    const cos = Math.cos(-rad), sin = Math.sin(-rad);
+
+                    // Mouse delta since start, in local space
+                    const dxWorld = worldMouse.x - dragState.initialMouseWorld.x;
+                    const dyWorld = worldMouse.y - dragState.initialMouseWorld.y;
+                    const ldx = dxWorld * cos - dyWorld * sin;
+                    const ldy = dxWorld * sin + dyWorld * cos;
+
+                    if (dragState.handle === 'scale-axis-x') {
+                        const deltaScaleX = (ldx * 2) / dims.width;
+                        transform.scale = { x: init.scale.x + deltaScaleX, y: init.scale.y };
+                    } else {
+                        // In Y-down, negative ldy means moving "up" away from center
+                        const deltaScaleY = (-ldy * 2) / dims.height;
+                        transform.scale = { x: init.scale.x, y: init.scale.y + deltaScaleY };
+                    }
                 }
                 break;
             case 'rotate': {
@@ -1071,7 +1112,18 @@ export function initialize(dependencies) {
             if (hitHandle) {
                 e.stopPropagation();
                 isDragging = true;
-                dragState = { handle: hitHandle, materia: selectedMateria };
+                const transform = selectedMateria.getComponent(Components.Transform);
+                dragState = {
+                    handle: hitHandle,
+                    materia: selectedMateria,
+                    initialTransform: transform ? {
+                        x: transform.x,
+                        y: transform.y,
+                        rotation: transform.rotation,
+                        scale: { x: transform.scale.x, y: transform.scale.y }
+                    } : null,
+                    initialMouseWorld: screenToWorld(canvasPos.x, canvasPos.y)
+                };
                 lastMousePosition = { x: e.clientX, y: e.clientY };
 
 
