@@ -289,19 +289,24 @@ function checkGizmoHit(canvasPos) {
         for (const handle of handles) {
             const dx = lx - handle.x;
             const dy = ly - handle.y;
+            const isMidpoint = handle.x === 0 || handle.y === 0;
+
             // Larger hitbox for midpoint handles to make them easier to grab
-            const currentHitbox = (handle.x === 0 || handle.y === 0) ? handleHitboxSize * 1.2 : handleHitboxSize;
+            const currentHitbox = isMidpoint ? handleHitboxSize * 1.5 : handleHitboxSize;
 
             if (Math.abs(dx) < currentHitbox / 2 && Math.abs(dy) < currentHitbox / 2) {
                 // Score combines distance and prioritize midpoints significantly if mouse is near axis
                 let score = (dx * dx + dy * dy);
 
-                const isMidpoint = handle.x === 0 || handle.y === 0;
                 if (isMidpoint) {
-                    // Strongly favor midpoints if we are close to the axis
+                    // EXTREMELY high priority for midpoints if mouse is close to the local axis.
+                    // This prevents accidental corner grabs when clicking near the middle of an edge.
                     const axisDist = handle.x === 0 ? Math.abs(dx) : Math.abs(dy);
-                    if (axisDist < handleHitboxSize * 0.4) score *= 0.1;
-                    else score *= 0.5;
+                    if (axisDist < handleHitboxSize * 0.6) {
+                        score *= 0.01;
+                    } else {
+                        score *= 0.1;
+                    }
                 }
 
                 if (score < minScore) {
@@ -755,27 +760,16 @@ export function initialize(dependencies) {
                 uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
 
-            // --- Normal Scaling logic (Anchored, Signed Ratio-based to allow flipping and avoid jumps) ---
+            // --- Normal Scaling logic (Incremental Delta-based like BoxCollider2D) ---
             case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br':
             case 'scale-t': case 'scale-b': case 'scale-l': case 'scale-r':
                 {
                     const dims = getMateriaDimensions(dragState.materia);
-                    const init = dragState.initialTransform;
-                    const initMouseWorld = dragState.initialMouseWorld;
-                    const rect = dom.sceneCanvas.getBoundingClientRect();
-                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-
-                    const rad = init.rotation * Math.PI / 180;
-                    const cos = Math.cos(-rad), sin = Math.sin(-rad);
-
-                    // Mouse in local space relative to INITIAL center
-                    const ilx = (initMouseWorld.x - init.x) * cos - (initMouseWorld.y - init.y) * sin;
-                    const ily = (initMouseWorld.x - init.x) * sin + (initMouseWorld.y - init.y) * cos;
-                    const clx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
-                    const cly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
-
-                    const curW = dims.width * Math.abs(init.scale.x);
-                    const curH = dims.height * Math.abs(init.scale.y);
+                    const rad = -transform.rotation * Math.PI / 180;
+                    const cos = Math.cos(rad);
+                    const sin = Math.sin(rad);
+                    const ldx = dx * cos - dy * sin;
+                    const ldy = dx * sin + dy * cos;
 
                     let factorX = 0, factorY = 0;
                     if (dragState.handle.includes('r')) factorX = 1;
@@ -783,46 +777,22 @@ export function initialize(dependencies) {
                     if (dragState.handle.includes('b')) factorY = 1;
                     else if (dragState.handle.includes('t')) factorY = -1;
 
-                    // Fixed anchor point in local space relative to initial center
-                    const anchorX = -factorX * (curW / 2);
-                    const anchorY = -factorY * (curH / 2);
-
-                    let scaleRatioX = 1;
-                    let scaleRatioY = 1;
-
-                    // Use signed distances to anchor to support flipping and eliminate jumps
                     if (factorX !== 0) {
-                        const initDist = ilx - anchorX;
-                        const curDist = clx - anchorX;
-                        if (Math.abs(initDist) > 0.001) scaleRatioX = curDist / initDist;
+                        transform.scale.x += (ldx * factorX) / dims.width;
                     }
                     if (factorY !== 0) {
-                        const initDist = ily - anchorY;
-                        const curDist = cly - anchorY;
-                        if (Math.abs(initDist) > 0.001) scaleRatioY = curDist / initDist;
+                        transform.scale.y += (ldy * factorY) / dims.height;
                     }
 
-                    transform.scale = {
-                        x: init.scale.x * scaleRatioX,
-                        y: init.scale.y * scaleRatioY
-                    };
+                    // Shift center by half of the local delta in the dragged axis to keep the opposite side fixed
+                    const localShiftX = factorX !== 0 ? ldx / 2 : 0;
+                    const localShiftY = factorY !== 0 ? ldy / 2 : 0;
 
-                    const newW = curW * Math.abs(scaleRatioX);
-                    const newH = curH * Math.abs(scaleRatioY);
-
-                    // The center moves to be exactly between the anchor and the current mouse position
-                    // but constrained by axis if it's a midpoint handle.
-                    const newCenterLocalX = factorX === 0 ? 0 : (clx + anchorX) / 2;
-                    const newCenterLocalY = factorY === 0 ? 0 : (cly + anchorY) / 2;
-
-                    // Offset of new center from initial center in world space
-                    const dxLocal = newCenterLocalX;
-                    const dyLocal = newCenterLocalY;
-                    const worldOffsetX = dxLocal * Math.cos(rad) - dyLocal * Math.sin(rad);
-                    const worldOffsetY = dxLocal * Math.sin(rad) + dyLocal * Math.cos(rad);
-
-                    transform.x = init.x + worldOffsetX;
-                    transform.y = init.y + worldOffsetY;
+                    // Convert local shift back to world units
+                    const worldRad = transform.rotation * Math.PI / 180;
+                    const wcos = Math.cos(worldRad), wsin = Math.sin(worldRad);
+                    transform.x += localShiftX * wcos - localShiftY * wsin;
+                    transform.y += localShiftX * wsin + localShiftY * wcos;
                 }
                 break;
 
@@ -830,27 +800,17 @@ export function initialize(dependencies) {
             case 'scale-axis-y':
                 {
                     const dims = getMateriaDimensions(dragState.materia);
-                    const init = dragState.initialTransform;
-                    const initMouseWorld = dragState.initialMouseWorld;
-                    const rect = dom.sceneCanvas.getBoundingClientRect();
-                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
-
-                    const rad = init.rotation * Math.PI / 180;
-                    const cos = Math.cos(-rad), sin = Math.sin(-rad);
-
-                    // Mouse in local space relative to center
-                    const ilx = (initMouseWorld.x - init.x) * cos - (initMouseWorld.y - init.y) * sin;
-                    const ily = (initMouseWorld.x - init.x) * sin + (initMouseWorld.y - init.y) * cos;
-                    const clx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
-                    const cly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
+                    const rad = -transform.rotation * Math.PI / 180;
+                    const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);
+                    const ldy = dx * Math.sin(rad) + dy * Math.cos(rad);
 
                     if (dragState.handle === 'scale-axis-x') {
-                        // For axis, we scale from center, so ratio is simply clx / ilx
-                        const ratioX = Math.abs(ilx) > 0.001 ? clx / ilx : 1;
-                        transform.scale = { x: init.scale.x * ratioX, y: init.scale.y };
+                        transform.scale.x += (ldx * 2) / dims.width;
                     } else {
-                        const ratioY = Math.abs(ily) > 0.001 ? cly / ily : 1;
-                        transform.scale = { x: init.scale.x, y: init.scale.y * ratioY };
+                        // Axis Y is pointing UP on screen (negative world Y)
+                        // Moving mouse up (negative dy) should increase scale.
+                        // factorY for Y-axis handle is effectively -1.
+                        transform.scale.y -= (ldy * 2) / dims.height;
                     }
                 }
                 break;
