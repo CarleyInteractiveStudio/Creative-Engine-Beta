@@ -210,18 +210,22 @@ export class StandaloneRuntime {
                     ctx.save();
                     ctx.translate(worldPos.x, worldPos.y);
                     ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.globalAlpha = sr.opacity ?? 1.0;
+                    const opacity = typeof sr.opacity === 'number' ? sr.opacity : parseFloat(sr.opacity || 1);
+                    ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
 
-                    if (sr.color && sr.color.toLowerCase() !== '#ffffff') {
+                    const color = sr.color || '#ffffff';
+                    const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
+
+                    if (!isWhite) {
                         // Tinting logic using scratch canvas
-                        this.scratchCanvas.width = sWidth;
-                        this.scratchCanvas.height = sHeight;
-                        this.scratchCtx.clearRect(0, 0, sWidth, sHeight);
+                        this.scratchCanvas.width = Math.ceil(sWidth);
+                        this.scratchCanvas.height = Math.ceil(sHeight);
+                        this.scratchCtx.clearRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
                         this.scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
 
                         this.scratchCtx.globalCompositeOperation = 'source-atop';
-                        this.scratchCtx.fillStyle = sr.color;
-                        this.scratchCtx.fillRect(0, 0, sWidth, sHeight);
+                        this.scratchCtx.fillStyle = color;
+                        this.scratchCtx.fillRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
                         this.scratchCtx.globalCompositeOperation = 'source-over';
 
                         ctx.drawImage(this.scratchCanvas, 0, 0, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);

@@ -1008,18 +1008,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.globalAlpha = spriteRenderer.opacity ?? 1.0;
+                        const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
+                        ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
 
-                        if (spriteRenderer.color && spriteRenderer.color.toLowerCase() !== '#ffffff') {
+                        const color = spriteRenderer.color || '#ffffff';
+                        const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
+
+                        if (!isWhite) {
                             // Tinting logic using scratch canvas
-                            scratchCanvas.width = sWidth;
-                            scratchCanvas.height = sHeight;
-                            scratchCtx.clearRect(0, 0, sWidth, sHeight);
+                            scratchCanvas.width = Math.ceil(sWidth);
+                            scratchCanvas.height = Math.ceil(sHeight);
+                            scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
                             scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
 
                             scratchCtx.globalCompositeOperation = 'source-atop';
-                            scratchCtx.fillStyle = spriteRenderer.color;
-                            scratchCtx.fillRect(0, 0, sWidth, sHeight);
+                            scratchCtx.fillStyle = color;
+                            scratchCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
                             scratchCtx.globalCompositeOperation = 'source-over';
 
                             ctx.drawImage(scratchCanvas, 0, 0, sWidth, sHeight, dx, dy, dWidth, dHeight);
@@ -1037,7 +1041,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.save();
                         ctx.translate(transform.x, transform.y);
                         ctx.rotate(transform.rotation * Math.PI / 180);
-                        ctx.fillStyle = 'white';
+
+                        const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
+                        ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
+
+                        ctx.fillStyle = spriteRenderer.color || 'white';
                         ctx.fillRect(dx, dy, dWidth, dHeight);
                         ctx.restore();
                     }

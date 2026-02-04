@@ -245,8 +245,10 @@ function handleInspectorInput(e) {
     let value;
     if (e.target.type === 'checkbox') {
         value = e.target.checked;
+    } else if (e.target.type === 'number' || e.target.type === 'range') {
+        value = parseFloat(e.target.value);
     } else {
-        value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+        value = e.target.value;
     }
 
     if (componentName === 'CreativeScript') {
@@ -296,6 +298,15 @@ function handleInspectorInput(e) {
     // After updating the property, trigger a scene update to reflect changes visually.
     if (updateSceneCallback) {
         updateSceneCallback();
+    }
+
+    // Synchronize color inputs if one was changed
+    if (propPath === 'color' && (e.target.type === 'color' || e.target.classList.contains('hex-input'))) {
+        const parent = e.target.closest('.prop-inputs');
+        if (parent) {
+            const other = parent.querySelector(e.target.type === 'color' ? '.hex-input' : 'input[type="color"]');
+            if (other) other.value = value;
+        }
     }
 
      // --- DYNAMIC UI LOGIC for Canvas ---
