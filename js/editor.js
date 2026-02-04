@@ -507,6 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'r':
                     setActiveTool('rotate');
                     break;
+                case 't':
+                    setActiveTool('universal');
+                    break;
                 case 'delete':
                 case 'backspace':
                     if (selectedMateria) {
