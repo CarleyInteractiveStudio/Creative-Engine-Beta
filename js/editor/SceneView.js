@@ -262,28 +262,7 @@ function checkGizmoHit(canvasPos) {
     const handleHitboxSize = 12 / zoom;
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
 
-    const checkHit = (targetX, targetY) => {
-        return Math.abs(worldMouse.x - targetX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - targetY) < handleHitboxSize / 2;
-    };
-
-    if (activeTool === 'move' || activeTool === 'universal') {
-        // Central square hit detection
-        const squareHitboxSize = 10 / zoom;
-        if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
-            return 'move-xy';
-        }
-
-        // Axis arrows hit detection
-        if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
-        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'move-y';
-    }
-
-    if (activeTool === 'rotate' || activeTool === 'universal') {
-        const radius = getRotateRadius(selectedMateria, transform, zoom);
-        const dist = Math.sqrt(Math.pow(worldMouse.x - centerX, 2) + Math.pow(worldMouse.y - centerY, 2));
-        if (Math.abs(dist - radius) < handleHitboxSize / 2) return 'rotate';
-    }
-
+    // 1. Check SCALE HANDLES (High Priority in Universal mode)
     if (activeTool === 'scale' || activeTool === 'universal') {
         const rad = -transform.rotation * Math.PI / 180;
         const cos = Math.cos(rad);
@@ -310,13 +289,20 @@ function checkGizmoHit(canvasPos) {
         for (const handle of handles) {
             const dx = lx - handle.x;
             const dy = ly - handle.y;
-            if (Math.abs(dx) < handleHitboxSize / 2 && Math.abs(dy) < handleHitboxSize / 2) {
-                // Score combines distance and prioritize midpoints if mouse is near axis
-                let score = dx * dx + dy * dy;
+            // Larger hitbox for midpoint handles to make them easier to grab
+            const currentHitbox = (handle.x === 0 || handle.y === 0) ? handleHitboxSize * 1.2 : handleHitboxSize;
 
-                // Prioritize midpoints (index 1, 3, 4, 6 in handles array)
+            if (Math.abs(dx) < currentHitbox / 2 && Math.abs(dy) < currentHitbox / 2) {
+                // Score combines distance and prioritize midpoints significantly if mouse is near axis
+                let score = (dx * dx + dy * dy);
+
                 const isMidpoint = handle.x === 0 || handle.y === 0;
-                if (isMidpoint) score *= 0.5; // Better score for midpoints
+                if (isMidpoint) {
+                    // Strongly favor midpoints if we are close to the axis
+                    const axisDist = handle.x === 0 ? Math.abs(dx) : Math.abs(dy);
+                    if (axisDist < handleHitboxSize * 0.4) score *= 0.1;
+                    else score *= 0.5;
+                }
 
                 if (score < minScore) {
                     minScore = score;
@@ -325,6 +311,26 @@ function checkGizmoHit(canvasPos) {
             }
         }
         if (bestHandle) return bestHandle;
+    }
+
+    // 2. Check ROTATE circle
+    if (activeTool === 'rotate' || activeTool === 'universal') {
+        const radius = getRotateRadius(selectedMateria, transform, zoom);
+        const dist = Math.sqrt(Math.pow(worldMouse.x - centerX, 2) + Math.pow(worldMouse.y - centerY, 2));
+        if (Math.abs(dist - radius) < handleHitboxSize / 2) return 'rotate';
+    }
+
+    // 3. Check MOVE axes (Lower priority than specific handles)
+    if (activeTool === 'move' || activeTool === 'universal') {
+        // Central square hit detection
+        const squareHitboxSize = 10 / zoom;
+        if (Math.abs(worldMouse.x - centerX) < squareHitboxSize / 2 && Math.abs(worldMouse.y - centerY) < squareHitboxSize / 2) {
+            return 'move-xy';
+        }
+
+        // Axis arrows hit detection
+        if (Math.abs(worldMouse.y - centerY) < handleHitboxSize / 2 && worldMouse.x > centerX && worldMouse.x < centerX + gizmoSize) return 'move-x';
+        if (Math.abs(worldMouse.x - centerX) < handleHitboxSize / 2 && worldMouse.y < centerY && worldMouse.y > centerY - gizmoSize) return 'move-y';
     }
 
     if (activeTool === 'scale-axis') {
@@ -749,7 +755,7 @@ export function initialize(dependencies) {
                 uiTransform.size.height += dy; uiTransform.position.y += dy / 2;
                 break;
 
-            // --- Normal Scaling logic (Anchored, Ratio-based to avoid jumps) ---
+            // --- Normal Scaling logic (Anchored, Signed Ratio-based to allow flipping and avoid jumps) ---
             case 'scale-tl': case 'scale-tr': case 'scale-bl': case 'scale-br':
             case 'scale-t': case 'scale-b': case 'scale-l': case 'scale-r':
                 {
@@ -784,15 +790,16 @@ export function initialize(dependencies) {
                     let scaleRatioX = 1;
                     let scaleRatioY = 1;
 
+                    // Use signed distances to anchor to support flipping and eliminate jumps
                     if (factorX !== 0) {
-                        const initDist = Math.abs(ilx - anchorX);
-                        const curDist = Math.abs(clx - anchorX);
-                        if (initDist > 0.001) scaleRatioX = curDist / initDist;
+                        const initDist = ilx - anchorX;
+                        const curDist = clx - anchorX;
+                        if (Math.abs(initDist) > 0.001) scaleRatioX = curDist / initDist;
                     }
                     if (factorY !== 0) {
-                        const initDist = Math.abs(ily - anchorY);
-                        const curDist = Math.abs(cly - anchorY);
-                        if (initDist > 0.001) scaleRatioY = curDist / initDist;
+                        const initDist = ily - anchorY;
+                        const curDist = cly - anchorY;
+                        if (Math.abs(initDist) > 0.001) scaleRatioY = curDist / initDist;
                     }
 
                     transform.scale = {
@@ -800,15 +807,19 @@ export function initialize(dependencies) {
                         y: init.scale.y * scaleRatioY
                     };
 
-                    const newW = curW * scaleRatioX;
-                    const newH = curH * scaleRatioY;
+                    const newW = curW * Math.abs(scaleRatioX);
+                    const newH = curH * Math.abs(scaleRatioY);
 
-                    // Center moves by half of the change in dimension in the direction of the factor
-                    const newCenterLocalX = factorX * (newW - curW) / 2;
-                    const newCenterLocalY = factorY * (newH - curH) / 2;
+                    // The center moves to be exactly between the anchor and the current mouse position
+                    // but constrained by axis if it's a midpoint handle.
+                    const newCenterLocalX = factorX === 0 ? 0 : (clx + anchorX) / 2;
+                    const newCenterLocalY = factorY === 0 ? 0 : (cly + anchorY) / 2;
 
-                    const worldOffsetX = newCenterLocalX * Math.cos(rad) - newCenterLocalY * Math.sin(rad);
-                    const worldOffsetY = newCenterLocalX * Math.sin(rad) + newCenterLocalY * Math.cos(rad);
+                    // Offset of new center from initial center in world space
+                    const dxLocal = newCenterLocalX;
+                    const dyLocal = newCenterLocalY;
+                    const worldOffsetX = dxLocal * Math.cos(rad) - dyLocal * Math.sin(rad);
+                    const worldOffsetY = dxLocal * Math.sin(rad) + dyLocal * Math.cos(rad);
 
                     transform.x = init.x + worldOffsetX;
                     transform.y = init.y + worldOffsetY;
@@ -820,25 +831,26 @@ export function initialize(dependencies) {
                 {
                     const dims = getMateriaDimensions(dragState.materia);
                     const init = dragState.initialTransform;
+                    const initMouseWorld = dragState.initialMouseWorld;
                     const rect = dom.sceneCanvas.getBoundingClientRect();
                     const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
 
                     const rad = init.rotation * Math.PI / 180;
                     const cos = Math.cos(-rad), sin = Math.sin(-rad);
 
-                    // Mouse delta since start, in local space
-                    const dxWorld = worldMouse.x - dragState.initialMouseWorld.x;
-                    const dyWorld = worldMouse.y - dragState.initialMouseWorld.y;
-                    const ldx = dxWorld * cos - dyWorld * sin;
-                    const ldy = dxWorld * sin + dyWorld * cos;
+                    // Mouse in local space relative to center
+                    const ilx = (initMouseWorld.x - init.x) * cos - (initMouseWorld.y - init.y) * sin;
+                    const ily = (initMouseWorld.x - init.x) * sin + (initMouseWorld.y - init.y) * cos;
+                    const clx = (worldMouse.x - init.x) * cos - (worldMouse.y - init.y) * sin;
+                    const cly = (worldMouse.x - init.x) * sin + (worldMouse.y - init.y) * cos;
 
                     if (dragState.handle === 'scale-axis-x') {
-                        const deltaScaleX = (ldx * 2) / dims.width;
-                        transform.scale = { x: init.scale.x + deltaScaleX, y: init.scale.y };
+                        // For axis, we scale from center, so ratio is simply clx / ilx
+                        const ratioX = Math.abs(ilx) > 0.001 ? clx / ilx : 1;
+                        transform.scale = { x: init.scale.x * ratioX, y: init.scale.y };
                     } else {
-                        // In Y-down, negative ldy means moving "up" away from center
-                        const deltaScaleY = (-ldy * 2) / dims.height;
-                        transform.scale = { x: init.scale.x, y: init.scale.y + deltaScaleY };
+                        const ratioY = Math.abs(ily) > 0.001 ? cly / ily : 1;
+                        transform.scale = { x: init.scale.x, y: init.scale.y * ratioY };
                     }
                 }
                 break;
