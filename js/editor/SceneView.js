@@ -582,21 +582,21 @@ function drawGizmos(renderer, materia) {
     const centerX = transform.x;
     const centerY = transform.y;
 
-    const ROTATE_RADIUS = getRotateRadius(materia, transform, zoom);
+    const dynamicRotateRadius = getRotateRadius(materia, transform, zoom);
 
     ctx.save();
 
     if (activeTool === 'move') {
         drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, ARROW_HEAD_SIZE);
     } else if (activeTool === 'rotate') {
-        drawRotateGizmo(ctx, centerX, centerY, zoom, ROTATE_RADIUS, HANDLE_THICKNESS);
+        drawRotateGizmo(ctx, centerX, centerY, zoom, dynamicRotateRadius, HANDLE_THICKNESS);
     } else if (activeTool === 'scale') {
         drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_THICKNESS);
     } else if (activeTool === 'scale-axis') {
         drawScaleAxisGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, SCALE_BOX_SIZE);
     } else if (activeTool === 'universal') {
         drawMoveGizmo(ctx, centerX, centerY, zoom, GIZMO_SIZE, HANDLE_THICKNESS, ARROW_HEAD_SIZE);
-        drawRotateGizmo(ctx, centerX, centerY, zoom, ROTATE_RADIUS, HANDLE_THICKNESS);
+        drawRotateGizmo(ctx, centerX, centerY, zoom, dynamicRotateRadius, HANDLE_THICKNESS);
         drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_THICKNESS);
     }
 
