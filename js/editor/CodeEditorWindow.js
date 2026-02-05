@@ -175,38 +175,52 @@ async function runChc() {
     const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
 
-REGLAS ESTRICTAS:
-1. Usa sintaxis de .ces (ej: public number speed = 5;, public star() { ... }, public update(deltaTime) { ... }).
-2. Solo implementa EXACTAMENTE lo que el usuario describe. No añadas funcionalidades extra. Si el usuario no menciona una acción, NO la inventes.
-3. El script DEBE ser independiente y funcional por sí solo.
-4. Las variables de configuración deben ser 'public' para aparecer en el Inspector.
-5. Usa 'consola.imprimir()' para depuración.
-6. El motor usa un sistema de coordenadas Y hacia abajo (Y aumenta al bajar).
-7. Para detectar teclas usa: Entrada.tecla("nombre_tecla").
-8. Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
+REGLAS TÉCNICAS (Sintaxis CES):
+1. ESTRUCTURA: Usa 'public variable nombre = valor;' para variables del Inspector.
+2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante).
+3. ACCESO: Puedes acceder directamente a componentes sin 'this.' (transformacion, fisica, animador, renderizadorDeSprite, camara, colisionadorCaja2D, fuenteDeAudio).
+4. EVENTOS: Usa 'alEmpezar()', 'alActualizar(deltaTime)', 'alEntrarEnColision(otro)', 'alEntrarEnTrigger(otro)', 'alRecibir(mensaje, datos)'.
+5. CORRUTINAS: Usa 'esperar(segundos)' para pausas no bloqueantes.
+6. TIMERS: Usa 'cada(segundos) { ... }' para lógica periódica.
+7. APIs:
+   - lanzarRayo(origen, direccion, distancia, color): Devuelve objeto con .materia, .point, .normal.
+   - difundir(mensaje, datos): Mensajería global.
+   - instanciar(prefab, posicion), destruir(materia), obtenerScript(nombre).
+   - entrada.tecla("nombre"): Control de teclado.
+8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
 
 EJEMPLOS DE TRADUCCIÓN:
 
-Usuario: "Si se presiona la tecla W que se mueva arriba. Si se presiona D que se mueva a la derecha."
+Usuario: "Si presiono W sube. Si presiono D a la derecha."
 IA:
-public number velocidad = 5;
-public update(deltaTime) {
-    si (Entrada.tecla("w")) {
-        transform.y -= velocidad;
+public variable velocidad = 5;
+alActualizar(deltaTime) {
+    si (entrada.tecla("w")) {
+        transformacion.y -= velocidad;
     }
-    si (Entrada.tecla("d")) {
-        transform.x += velocidad;
+    si (entrada.tecla("d")) {
+        transformacion.x += velocidad;
     }
 }
 
-Usuario: "Al iniciar, imprime 'Hola'. Rota el objeto constantemente."
+Usuario: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
 IA:
-public number velocidadGiro = 2;
-public star() {
-    consola.imprimir("Hola");
+alEmpezar() {
+    cada(2) {
+        variable hit = lanzarRayo(transformacion.posicion, {x: 0, y: 1}, 100);
+        si (hit && hit.materia.tieneTag("suelo")) {
+            log("suelo");
+        }
+    }
 }
-public update(deltaTime) {
-    transform.rotation += velocidadGiro;
+
+Usuario: "Al chocar con el enemigo, espera 1 segundo y destruye este objeto."
+IA:
+alEntrarEnColision(otro) {
+    si (otro.tieneTag("enemigo")) {
+        esperar(1);
+        destruir(materia);
+    }
 }
 
 ENTRADA DEL USUARIO:
