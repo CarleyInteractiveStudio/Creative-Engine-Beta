@@ -143,6 +143,49 @@ export class PhysicsSystem {
                 this.collisionStates.delete(key);
             }
         }
+
+        // --- 6. Trigger Script Events ---
+        for (const [key, info] of this.collisionStates.entries()) {
+            // Only process events from the current frame
+            if (info.frame !== this.currentFrame) continue;
+
+            const [idA, idB] = key.split('-').map(Number);
+            const materiaA = this.scene.findMateriaById(idA);
+            const materiaB = this.scene.findMateriaById(idB);
+
+            if (!materiaA || !materiaB) continue;
+
+            this._triggerScriptEvents(materiaA, materiaB, info.state, info.type);
+            this._triggerScriptEvents(materiaB, materiaA, info.state, info.type);
+        }
+    }
+
+    _triggerScriptEvents(materia, other, state, type) {
+        const scripts = materia.getComponents(Components.CreativeScript);
+        if (scripts.length === 0) return;
+
+        const otherCollider = this.getCollider(other);
+        const collision = new Collision(materia, other, otherCollider);
+
+        let methodName = '';
+        let englishMethodName = '';
+
+        if (type === 'collision') {
+            if (state === 'enter') { methodName = 'alEntrarEnColision'; englishMethodName = 'OnCollisionEnter'; }
+            else if (state === 'stay') { methodName = 'alPermanecerEnColision'; englishMethodName = 'OnCollisionStay'; }
+            else if (state === 'exit') { methodName = 'alSalirDeColision'; englishMethodName = 'OnCollisionExit'; }
+        } else {
+            if (state === 'enter') { methodName = 'alEntrarEnTrigger'; englishMethodName = 'OnTriggerEnter'; }
+            else if (state === 'stay') { methodName = 'alPermanecerEnTrigger'; englishMethodName = 'OnTriggerStay'; }
+            else if (state === 'exit') { methodName = 'alSalirDeTrigger'; englishMethodName = 'OnTriggerExit'; }
+        }
+
+        for (const script of scripts) {
+            // We call the Spanish one. If the user defined the English one,
+            // the stub in CreativeScriptBehavior will forward it.
+            // If they defined the Spanish one, it works directly.
+            script._safeInvoke(methodName, collision);
+        }
     }
 
     /**

@@ -74,6 +74,23 @@ export class CreativeScriptBehavior {
     }
     star() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
+
+    /**
+     * Pausa la ejecución del script por una cantidad determinada de segundos.
+     * Solo funciona dentro de métodos marcados como 'async' (todos los métodos .ces lo son por defecto).
+     * @param {number} segundos - Tiempo a esperar en segundos.
+     */
+    async esperar(segundos) {
+        return new Promise(resolve => setTimeout(resolve, segundos * 1000));
+    }
+
+    // --- Collision & Trigger Event Stubs ---
+    alEntrarEnColision(colision) {}
+    alPermanecerEnColision(colision) {}
+    alSalirDeColision(colision) {}
+    alEntrarEnTrigger(colision) {}
+    alPermanecerEnTrigger(colision) {}
+    alSalirDeTrigger(colision) {}
 }
 
 // --- Component Class Definitions ---
@@ -246,70 +263,43 @@ export class CreativeScript extends Leyes {
     }
 
     // --- Lifecycle wrappers ---
-    start() {
-        if (!this.instance) return;
+    async _safeInvoke(methodName, ...args) {
+        if (!this.instance || typeof this.instance[methodName] !== 'function') return;
         try {
-            if (typeof this.instance.start === 'function') {
-                this.instance.start();
-            } else if (typeof this.instance.star === 'function') {
-                // Backwards compat
-                this.instance.star();
-            }
+            // We await it so if it's async, it catches errors correctly.
+            // Note: For frame-based updates, we don't wait for the promise to resolve before the next frame,
+            // but we do await it here for error handling.
+            await this.instance[methodName](...args);
         } catch (e) {
-            console.error(`Error en start() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
+            console.error(`[CreativeScript] Error en el método '${methodName}' del script '${this.scriptName}' en el objeto '${this.materia ? this.materia.name : 'Desconocido'}':\n`, e);
         }
+    }
+
+    start() {
+        this._safeInvoke('start');
     }
 
     // Keep the old name as alias
     star() { this.start(); }
 
     update(deltaTime) {
-        if (!this.instance) return;
-        try {
-            if (typeof this.instance.update === 'function') {
-                this.instance.update(deltaTime);
-            }
-        } catch (e) {
-            console.error(`Error en update() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
-        }
+        this._safeInvoke('update', deltaTime);
     }
 
     fixedUpdate(deltaTime) {
-        if (!this.instance) return;
-        try {
-            if (typeof this.instance.fixedUpdate === 'function') {
-                this.instance.fixedUpdate(deltaTime);
-            }
-        } catch (e) {
-            console.error(`Error en fixedUpdate() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
-        }
+        this._safeInvoke('fixedUpdate', deltaTime);
     }
 
     onEnable() {
-        if (!this.instance) return;
-        try {
-            if (typeof this.instance.onEnable === 'function') this.instance.onEnable();
-        } catch (e) {
-            console.error(`Error en onEnable() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
-        }
+        this._safeInvoke('onEnable');
     }
 
     onDisable() {
-        if (!this.instance) return;
-        try {
-            if (typeof this.instance.onDisable === 'function') this.instance.onDisable();
-        } catch (e) {
-            console.error(`Error en onDisable() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
-        }
+        this._safeInvoke('onDisable');
     }
 
     onDestroy() {
-        if (!this.instance) return;
-        try {
-            if (typeof this.instance.onDestroy === 'function') this.instance.onDestroy();
-        } catch (e) {
-            console.error(`Error en onDestroy() del script '${this.scriptName}' en '${this.materia ? this.materia.name : 'Unknown'}':`, e);
-        }
+        this._safeInvoke('onDestroy');
     }
 
     // Called during scene load. Just notes the script name.
@@ -348,7 +338,13 @@ export class CreativeScript extends Leyes {
                     onEnable: ['alHabilitar', 'activar'],
                     onDisable: ['alDeshabilitar', 'desactivar'],
                     onDestroy: ['alDestruir'],
-                    fixedUpdate: ['actualizarFijo']
+                    fixedUpdate: ['actualizarFijo'],
+                    alEntrarEnColision: ['OnCollisionEnter'],
+                    alPermanecerEnColision: ['OnCollisionStay'],
+                    alSalirDeColision: ['OnCollisionExit'],
+                    alEntrarEnTrigger: ['OnTriggerEnter'],
+                    alPermanecerEnTrigger: ['OnTriggerStay'],
+                    alSalirDeTrigger: ['OnTriggerExit']
                 };
 
                 for (const [canonical, aliases] of Object.entries(aliasMap)) {

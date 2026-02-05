@@ -44,8 +44,35 @@ const typeMap = {
     'UIImage': 'UIImage',
     'UIText': 'UIText',
     'Canvas': 'Canvas',
-    'Button': 'Button'
+    'Button': 'Button',
+    'variable': 'any',
+    'any': 'any'
 };
+
+const componentShortcuts = [
+    'transform', 'transformacion',
+    'rigidbody2D', 'fisica',
+    'animatorController', 'controladorAnimacion',
+    'spriteRenderer', 'renderizadorDeSprite',
+    'audioSource', 'fuenteDeAudio',
+    'boxCollider2D', 'colisionadorCaja2D',
+    'capsuleCollider2D', 'colisionadorCapsula2D',
+    'camera', 'camara',
+    'animator', 'animador',
+    'pointLight2D', 'luzPuntual2D',
+    'spotLight2D', 'luzFocal2D',
+    'tilemap', 'mapaDeAzulejos',
+    'tilemapRenderer', 'renderizadorMapaDeAzulejos',
+    'tilemapCollider2D', 'colisionadorMapaDeAzulejos2D',
+    'grid', 'rejilla',
+    'textureRender', 'renderizadorDeTextura',
+    'canvas', 'lienzo',
+    'uiImage', 'imagenUI',
+    'uiTransform', 'transformacionUI',
+    'uiText', 'textoUI',
+    'button', 'boton',
+    'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine'
+];
 
 function getDefaultValueForType(canonicalType) {
     switch (canonicalType) {
@@ -113,8 +140,9 @@ export function transpile(code, scriptName) {
     let publicVars = [];
     let privateVars = [];
     let starMethod = '';
+    let starArgs = '';
     let updateMethod = '';
-    let customMethods = '';
+    let updateArgs = '';
     let publicFunctions = [];
     const importedLibs = new Set();
 
@@ -223,12 +251,28 @@ export function transpile(code, scriptName) {
         // 2.a: Replace console shortcuts
         body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
 
-        // 2.b: Auto-prefix 'input.', 'engine.', 'scene.' with 'this.' for core APIs (bilingual)
-        body = body.replace(/(?<![.\w])(input|entrada)\./g, 'this.$1.');
-        body = body.replace(/(?<![.\w])(engine|motor)\./g, 'this.$1.');
-        body = body.replace(/(?<![.\w])(scene|escena)\./g, 'this.$1.');
+        // 2.b: Replace Spanish keywords
+        body = body.replace(/(?<![.\w])si\s*\(/g, 'if (');
+        body = body.replace(/(?<![.\w])sino\b/g, 'else');
+        body = body.replace(/(?<![.\w])mientras\s*\(/g, 'while (');
+        body = body.replace(/(?<![.\w])para\s*\(/g, 'for (');
+        body = body.replace(/(?<![.\w])retornar\b/g, 'return');
+        body = body.replace(/(?<![.\w])nuevo\b/g, 'new');
+        body = body.replace(/(?<![.\w])verdadero\b/g, 'true');
+        body = body.replace(/(?<![.\w])falso\b/g, 'false');
+        body = body.replace(/(?<![.\w])variable\b/g, 'let');
+        body = body.replace(/(?<![.\w])constante\b/g, 'const');
 
-        // 2.c: Replace custom library function calls (explicitly 'go' imported)
+        // 2.c: Coroutines support (esperar -> await this.esperar)
+        body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
+
+        // 2.d: Auto-prefix component shortcuts with 'this.'
+        componentShortcuts.forEach(shortcut => {
+            const regex = new RegExp(`(?<![.\\w])\\b${shortcut}\\b`, 'g');
+            body = body.replace(regex, `this.${shortcut}`);
+        });
+
+        // 2.e: Replace custom library function calls (explicitly 'go' imported)
         for (const libName of importedLibs) {
             const api = RuntimeAPIManager.getAPI(libName);
             if (!api) continue; // Should have been caught by an error earlier, but safe guard
@@ -241,17 +285,30 @@ export function transpile(code, scriptName) {
             }
         }
 
-        // 2.c: Map Spanish lifecycle methods to their English counterparts
+        // 2.f: Auto-prefix public and private variables defined in this script
+        publicVars.forEach(pv => {
+            const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
+            body = body.replace(regex, `this.${pv.name}`);
+        });
+        privateVars.forEach(pv => {
+            const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
+            body = body.replace(regex, `this.${pv.name}`);
+        });
+
+        // 2.g: Map Spanish lifecycle methods to their English counterparts
         if (name === 'iniciar') name = 'star';
         if (name === 'actualizar') name = 'update';
 
         if (name === 'star') {
             starMethod = body;
+            starArgs = args;
         } else if (name === 'update') {
             updateMethod = body;
-        } else {
-            customMethods += `    ${name}(${args}) {\n${body}\n    }\n\n`;
+            updateArgs = args;
         }
+
+        match.name = name;
+        match.body = body;
     }
 
     // 1.d: Final check for leftover code
@@ -272,20 +329,30 @@ export function transpile(code, scriptName) {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || JSON.stringify(pv.defaultValue)}; // Type: ${pv.type}\n`;
+        let val = pv.value || JSON.stringify(pv.defaultValue);
+        // Replace Spanish booleans in default values
+        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
+        jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
     });
     privateVars.forEach(pv => {
-        jsCode += `            this.${pv.name} = ${pv.value || 'null'};\n`;
+        let val = pv.value || 'null';
+        val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
+        jsCode += `            this.${pv.name} = ${val};\n`;
     });
     jsCode += `        }\n\n`;
 
-    const indentBody = (body) => body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n');
+    const indentBody = (body) => body ? body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n') : '';
 
-    jsCode += `        star() {\n${indentBody(starMethod)}\n        }\n\n`;
-    jsCode += `        update(deltaTime) {\n${indentBody(updateMethod)}\n        }\n\n`;
+    jsCode += `        async star(${starArgs}) {\n${indentBody(starMethod)}\n        }\n\n`;
+    jsCode += `        async update(${updateArgs || 'deltaTime'}) {\n${indentBody(updateMethod)}\n        }\n\n`;
 
-    const indentCustomMethods = (methods) => methods.trim().split('\n').map(line => `        ${line.trim()}`).join('\n');
-    jsCode += `${indentCustomMethods(customMethods)}\n`;
+    // Process custom methods to be async too
+    const processedCustomMethods = methodMatches
+        .filter(m => m.name !== 'star' && m.name !== 'update')
+        .map(m => `        async ${m.name}(${m.args}) {\n${indentBody(m.body)}\n        }\n`)
+        .join('\n');
+
+    jsCode += `${processedCustomMethods}\n`;
 
     jsCode += `    }\n\n    return ${className};\n});`;
 
