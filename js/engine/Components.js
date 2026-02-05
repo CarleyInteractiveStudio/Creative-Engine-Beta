@@ -458,10 +458,13 @@ export class CreativeScript extends Leyes {
 
                 for (const [canonical, aliases] of Object.entries(aliasMap)) {
                     for (const alt of aliases) {
-                        if (typeof this.instance[alt] === 'function' && typeof this.instance[canonical] !== 'function') {
+                        // Check if the method is defined/overridden in the instance (not just the base class stub)
+                        const hasAlt = typeof this.instance[alt] === 'function' && this.instance[alt] !== CreativeScriptBehavior.prototype[alt];
+                        const hasCan = typeof this.instance[canonical] === 'function' && this.instance[canonical] !== CreativeScriptBehavior.prototype[canonical];
+
+                        if (hasAlt && !hasCan) {
                             this.instance[canonical] = this.instance[alt];
-                        }
-                        if (typeof this.instance[canonical] === 'function' && typeof this.instance[alt] !== 'function') {
+                        } else if (hasCan && !hasAlt) {
                             this.instance[alt] = this.instance[canonical];
                         }
                     }

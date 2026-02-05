@@ -786,8 +786,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        await findCesFiles(assetsHandle);
+        // Escanear todo el proyecto para encontrar scripts
+        await findCesFiles(projectHandle);
 
         if (cesFiles.length === 0) {
             console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");

@@ -236,46 +236,76 @@ ENTRADA DEL USUARIO:
             else if (provider === 'anthropic') modelToUse = 'claude-3-haiku-20240307';
         }
 
-        const result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, prompt);
+        let currentPrompt = prompt;
+        let attempts = 0;
+        const maxAttempts = 3;
+        let finalGeneratedCode = null;
 
-        if (result.success) {
-            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Traducción completada. Generando código del motor...';
+        while (attempts < maxAttempts) {
+            attempts++;
+            const result = await AIHandler.callGenerativeAI(provider, modelToUse, apiKey, currentPrompt);
+
+            if (!result.success) throw new Error(result.error);
+
             let generatedCode = result.text.trim();
             // Clean markdown if AI included it
             generatedCode = generatedCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '');
 
-            console.log(`CHC Traducido con éxito para ${currentlyOpenFileHandle.name}`);
+            // Validar código generado
+            const validation = transpile(generatedCode, currentlyOpenFileHandle.name);
+            if (!validation.errors || validation.errors.length === 0) {
+                finalGeneratedCode = generatedCode;
+                console.log(`CHC Traducido con éxito para ${currentlyOpenFileHandle.name} (Intento ${attempts})`);
+                break;
+            }
 
-            // Save Human text to .chc
-            const writable = await currentlyOpenFileHandle.createWritable();
-            await writable.write(humanText);
-            await writable.close();
+            console.warn(`[CHC] Intento ${attempts} fallido con errores de sintaxis:`, validation.errors);
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = `Carl está corrigiendo errores (${attempts})...`;
 
-            // Save Generated code to .chc.meta (used by the engine at runtime)
-            const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
-            const metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName, { create: true });
-            const metaWritable = await metaHandle.createWritable();
+            currentPrompt = `El código que generaste tiene errores de compilación. Por favor, corrígelo para que funcione en Creative Engine.
+CÓDIGO ANTERIOR:
+${generatedCode}
 
-            const metaData = {
-                generatedCode: generatedCode,
-                lastGenerated: Date.now()
-            };
+ERRORES ENCONTRADOS:
+${validation.errors.join('\n')}
 
-            await metaWritable.write(JSON.stringify(metaData, null, 2));
-            await metaWritable.close();
-
-            // Notify engine to reload transpilation maps
-            transpile(generatedCode, currentlyOpenFileHandle.name);
-
-            if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Sincronizando con el motor...';
-            // Hot reload in engine
-            await hotReloadCallback(currentlyOpenFileHandle.name);
-            await new Promise(r => setTimeout(r, 500));
-
-            window.Dialogs.showNotification('Carl IA', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!');
-        } else {
-            throw new Error(result.error);
+Devuelve ÚNICAMENTE el código corregido sin explicaciones.`;
         }
+
+        if (!finalGeneratedCode) {
+            throw new Error("Carl IA no pudo generar un código libre de errores tras varios intentos.");
+        }
+
+        if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Guardando lógica traducida...';
+
+        // Save Human text to .chc
+        const writable = await currentlyOpenFileHandle.createWritable();
+        await writable.write(humanText);
+        await writable.close();
+
+        // Save Generated code to .chc.meta (used by the engine at runtime)
+        const metaFileName = `${currentlyOpenFileHandle.name}.meta`;
+        const metaHandle = await currentlyOpenDirHandle.getFileHandle(metaFileName, { create: true });
+        const metaWritable = await metaHandle.createWritable();
+
+        const metaData = {
+            generatedCode: finalGeneratedCode,
+            lastGenerated: Date.now()
+        };
+
+        await metaWritable.write(JSON.stringify(metaData, null, 2));
+        await metaWritable.close();
+
+        // Notify engine to reload transpilation maps
+        transpile(finalGeneratedCode, currentlyOpenFileHandle.name);
+
+        if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Sincronizando con el motor...';
+        // Hot reload in engine
+        await hotReloadCallback(currentlyOpenFileHandle.name);
+        await new Promise(r => setTimeout(r, 500));
+
+        window.Dialogs.showNotification('Carl IA', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!');
+
     } catch (error) {
         console.error("CHC Error:", error);
         window.Dialogs.showNotification('Error de Carl IA', `Vaya, algo salió mal al procesar tu lógica: ${error.message}`);
