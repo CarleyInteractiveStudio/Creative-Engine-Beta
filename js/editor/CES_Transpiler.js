@@ -71,7 +71,9 @@ const componentShortcuts = [
     'uiTransform', 'transformacionUI',
     'uiText', 'textoUI',
     'button', 'boton',
-    'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine'
+    'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
+    'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
+    'tieneTag', 'hasTag'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -248,6 +250,14 @@ export function transpile(code, scriptName) {
     for (const match of methodMatches) {
         let { name, args, body } = match;
 
+        // --- Protected String and Comment Extraction ---
+        const protectedBlocks = [];
+        // Matches strings, single-line comments, and multi-line comments
+        body = body.replace(/(["'])(?:(?=(\\?))\2.)*?\1|\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+            protectedBlocks.push(match);
+            return `__CES_PROT_${protectedBlocks.length - 1}__`;
+        });
+
         // 2.a: Replace console shortcuts
         body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
 
@@ -293,6 +303,11 @@ export function transpile(code, scriptName) {
         privateVars.forEach(pv => {
             const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
             body = body.replace(regex, `this.${pv.name}`);
+        });
+
+        // --- Protected Block Restoration ---
+        body = body.replace(/__CES_PROT_(\d+)__/g, (match, index) => {
+            return protectedBlocks[parseInt(index)];
         });
 
         // 2.g: Map Spanish lifecycle methods to their English counterparts

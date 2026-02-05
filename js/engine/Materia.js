@@ -44,6 +44,30 @@ export class Materia {
         return this.leyes.find(ley => ley.constructor.name === name);
     }
 
+    /**
+     * Busca un script específico en esta Materia por su nombre.
+     * @param {string} name - El nombre del script (ej: 'ControladorJugador').
+     * @returns {object|null} La instancia del script o null si no se encuentra.
+     */
+    obtenerScript(name) {
+        const scriptComp = this.leyes.find(ley => ley.constructor.name === 'CreativeScript' && ley.scriptName === name);
+        return scriptComp ? scriptComp.instance : null;
+    }
+
+    // Alias en inglés
+    getScript(name) { return this.obtenerScript(name); }
+
+    /**
+     * Comprueba si esta materia tiene un tag específico.
+     * @param {string} tag
+     */
+    tieneTag(tag) {
+        return this.tag === tag;
+    }
+
+    // Alias en inglés
+    hasTag(tag) { return this.tieneTag(tag); }
+
     findAncestorWithComponent(componentClass) {
         let current = this.parent;
         // If the parent is a number (ID), we need to resolve it to a Materia object first.

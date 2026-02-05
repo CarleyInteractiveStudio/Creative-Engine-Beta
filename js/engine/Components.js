@@ -84,6 +84,45 @@ export class CreativeScriptBehavior {
         return new Promise(resolve => setTimeout(resolve, segundos * 1000));
     }
 
+    /**
+     * Busca un script en la materia actual.
+     * @param {string} nombre - Nombre del script.
+     */
+    obtenerScript(nombre) {
+        return this.materia.obtenerScript(nombre);
+    }
+
+    /**
+     * Destruye una Materia (objeto) del juego.
+     * @param {Materia} materia - El objeto a destruir.
+     */
+    destruir(materia) {
+        if (!materia) return;
+        const scene = materia.scene || (this.materia ? this.materia.scene : null);
+        if (scene) {
+            scene.removeMateria(materia.id);
+        }
+    }
+
+    /**
+     * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
+     */
+    instanciar(original, x, y) {
+        // We import it dynamically or just use the global/RuntimeManager if available.
+        // But the easiest is to just use what's already imported in this file if we add it.
+        // Actually, SceneManager is not imported here.
+        // Let's use the global one which is usually available or inject it.
+        if (window.SceneManager && window.SceneManager.instanciar) {
+            return window.SceneManager.instanciar(original, x, y);
+        }
+        return null;
+    }
+
+    // English Aliases
+    getScript(name) { return this.obtenerScript(name); }
+    destroy(materia) { this.destruir(materia); }
+    instantiate(original, x, y) { return this.instanciar(original, x, y); }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
@@ -344,7 +383,8 @@ export class CreativeScript extends Leyes {
                     alSalirDeColision: ['OnCollisionExit'],
                     alEntrarEnTrigger: ['OnTriggerEnter'],
                     alPermanecerEnTrigger: ['OnTriggerStay'],
-                    alSalirDeTrigger: ['OnTriggerExit']
+                    alSalirDeTrigger: ['OnTriggerExit'],
+                    alFinalizarAnimacion: ['OnAnimationEnd']
                 };
 
                 for (const [canonical, aliases] of Object.entries(aliasMap)) {
@@ -750,6 +790,13 @@ export class Animator extends Leyes {
             const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length -1;
 
             if (this.currentFrame > endFrame) {
+                // Notificar finalización de animación
+                const scripts = this.materia.getComponents(CreativeScript);
+                for (const script of scripts) {
+                    script._safeInvoke('alFinalizarAnimacion', this.animationClip.name);
+                    script._safeInvoke('OnAnimationEnd', this.animationClip.name);
+                }
+
                 if (this.loop) {
                     this.currentFrame = this.startFrame || 0;
                 } else {

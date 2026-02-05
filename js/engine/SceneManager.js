@@ -27,6 +27,7 @@ export class Scene {
     addMateria(materia) {
         if (materia instanceof Materia) {
             this.materias.push(materia);
+            materia.scene = this;
         }
     }
 
@@ -355,6 +356,30 @@ export function createSprite(name, imagePath) {
     currentScene.addMateria(newMateria);
     return newMateria;
 }
+
+/**
+ * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
+ * @param {Materia} original - El objeto a copiar.
+ * @param {number} [x] - Posición X opcional.
+ * @param {number} [y] - Posición Y opcional.
+ * @returns {Materia} La nueva instancia creada.
+ */
+export function instanciar(original, x, y) {
+    if (!original || !(original instanceof Materia)) {
+        console.error("instanciar: Se requiere una Materia válida para copiar.");
+        return null;
+    }
+    const copia = original.clone(false); // false = generar nuevos IDs
+    if (x !== undefined && y !== undefined) {
+        const transform = copia.getComponent(Transform);
+        if (transform) transform.position = { x, y };
+    }
+    currentScene.addMateria(copia);
+    return copia;
+}
+
+// Alias en inglés
+export const instantiate = instanciar;
 
 
 function createDefaultScene() {

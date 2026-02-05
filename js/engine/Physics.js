@@ -23,6 +23,13 @@ class Collision {
         this.contacts = [];
         /** @type {Materia} An alias for the other materia involved in the collision. */
         this.gameObject = materiaB;
+
+        // --- Spanish Aliases ---
+        this.materiaA = materiaA;
+        this.otro = materiaB;
+        this.objeto = materiaB;
+        this.transformacion = this.transform;
+        this.colisionador = colliderB;
     }
 }
 
