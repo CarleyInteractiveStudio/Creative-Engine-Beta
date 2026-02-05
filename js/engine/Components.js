@@ -5,6 +5,7 @@ import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
+import { bus as MessageBus } from './Messaging.js';
 
 let editorLogic = null;
 
@@ -42,6 +43,7 @@ const componentAliases = {
 export class CreativeScriptBehavior {
     constructor(materia) {
         this.materia = materia;
+        this._messageSubscriptions = [];
 
         // --- Component Shortcuts ---
         this._initializeComponentShortcuts();
@@ -85,6 +87,29 @@ export class CreativeScriptBehavior {
     }
 
     /**
+     * @private
+     * Ejecuta una función repetidamente cada X segundos.
+     */
+    _runInterval(segundos, callback) {
+        const intervalId = setInterval(async () => {
+            if (!this.materia || !this.materia.isActive) {
+                clearInterval(intervalId);
+                return;
+            }
+            try {
+                await callback();
+            } catch (e) {
+                console.error(`[Timer] Error en intervalo de ${this.materia.name}:`, e);
+                clearInterval(intervalId);
+            }
+        }, segundos * 1000);
+
+        // Registrar para limpieza si es necesario
+        if (!this._intervals) this._intervals = [];
+        this._intervals.push(intervalId);
+    }
+
+    /**
      * Busca un script en la materia actual.
      * @param {string} nombre - Nombre del script.
      */
@@ -122,6 +147,39 @@ export class CreativeScriptBehavior {
     getScript(name) { return this.obtenerScript(name); }
     destroy(materia) { this.destruir(materia); }
     instantiate(original, x, y) { return this.instanciar(original, x, y); }
+
+    /**
+     * Difunde un mensaje global a todos los scripts interesados.
+     * @param {string} mensaje - Nombre del mensaje.
+     * @param {any} [datos] - Datos opcionales.
+     */
+    difundir(mensaje, datos) {
+        MessageBus.broadcast(mensaje, datos);
+    }
+
+    /**
+     * Se suscribe a un mensaje global.
+     * @param {string} mensaje - Nombre del mensaje.
+     * @param {Function} callback - Función a ejecutar.
+     */
+    alRecibir(mensaje, callback) {
+        const unsub = MessageBus.subscribe(mensaje, callback.bind(this));
+        this._messageSubscriptions.push(unsub);
+    }
+
+    // English Aliases
+    broadcast(message, data) { this.difundir(message, data); }
+    onReceive(message, callback) { this.alRecibir(message, callback); }
+
+    _cleanupSubscriptions() {
+        this._messageSubscriptions.forEach(unsub => unsub());
+        this._messageSubscriptions = [];
+
+        if (this._intervals) {
+            this._intervals.forEach(id => clearInterval(id));
+            this._intervals = [];
+        }
+    }
 
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
@@ -339,6 +397,9 @@ export class CreativeScript extends Leyes {
 
     onDestroy() {
         this._safeInvoke('onDestroy');
+        if (this.instance && typeof this.instance._cleanupSubscriptions === 'function') {
+            this.instance._cleanupSubscriptions();
+        }
     }
 
     // Called during scene load. Just notes the script name.
@@ -531,6 +592,7 @@ export class Rigidbody2D extends Leyes {
         this.linearDrag = 0.0;
         this.angularDrag = 0.05;
         this.gravityScale = 1.0;
+        this.rebote = 0.0; // Bounciness (0-1)
         this.collisionDetection = 'Discrete'; // 'Discrete', 'Continuous'
         this.sleepingMode = 'StartAwake'; // 'StartAwake', 'StartAsleep', 'NeverSleep'
         this.interpolate = 'None'; // 'None', 'Interpolate', 'Extrapolate'
@@ -575,6 +637,7 @@ export class Rigidbody2D extends Leyes {
         newRb.linearDrag = this.linearDrag;
         newRb.angularDrag = this.angularDrag;
         newRb.gravityScale = this.gravityScale;
+        newRb.rebote = this.rebote;
         newRb.collisionDetection = this.collisionDetection;
         newRb.sleepingMode = this.sleepingMode;
         newRb.interpolate = this.interpolate;

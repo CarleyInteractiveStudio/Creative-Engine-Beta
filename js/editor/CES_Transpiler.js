@@ -73,7 +73,8 @@ const componentShortcuts = [
     'button', 'boton',
     'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
-    'tieneTag', 'hasTag'
+    'tieneTag', 'hasTag', 'lanzarRayo', 'raycast',
+    'difundir', 'broadcast', 'alRecibir', 'onReceive'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -250,6 +251,37 @@ export function transpile(code, scriptName) {
     for (const match of methodMatches) {
         let { name, args, body } = match;
 
+        // 2.0: Handle 'cada' blocks (Simplified Timers)
+        // We do this before protecting strings/comments because 'cada' is a keyword
+        let cadaMatch;
+        const cadaRegex = /\bcada\s*\(([^)]+)\)\s*{/g;
+        while ((cadaMatch = cadaRegex.exec(body)) !== null) {
+            const startIdx = cadaMatch.index;
+            const contentStartIdx = cadaMatch.index + cadaMatch[0].length;
+            let braceCount = 1;
+            let endIdx = -1;
+
+            for (let i = contentStartIdx; i < body.length; i++) {
+                if (body[i] === '{') braceCount++;
+                else if (body[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0) {
+                        endIdx = i;
+                        break;
+                    }
+                }
+            }
+
+            if (endIdx !== -1) {
+                const interval = cadaMatch[1];
+                const cadaBody = body.substring(contentStartIdx, endIdx);
+                const replacement = `this._runInterval(${interval}, async () => {${cadaBody}});`;
+                body = body.substring(0, startIdx) + replacement + body.substring(endIdx + 1);
+                // Reset regex since we modified the string
+                cadaRegex.lastIndex = startIdx + replacement.length;
+            }
+        }
+
         // --- Protected String and Comment Extraction ---
         const protectedBlocks = [];
         // Matches strings, single-line comments, and multi-line comments
@@ -268,6 +300,7 @@ export function transpile(code, scriptName) {
         body = body.replace(/(?<![.\w])para\s*\(/g, 'for (');
         body = body.replace(/(?<![.\w])retornar\b/g, 'return');
         body = body.replace(/(?<![.\w])nuevo\b/g, 'new');
+        body = body.replace(/(?<![.\w])funcion\b/g, 'function');
         body = body.replace(/(?<![.\w])verdadero\b/g, 'true');
         body = body.replace(/(?<![.\w])falso\b/g, 'false');
         body = body.replace(/(?<![.\w])variable\b/g, 'let');
@@ -276,7 +309,7 @@ export function transpile(code, scriptName) {
         // 2.c: Coroutines support (esperar -> await this.esperar)
         body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
 
-        // 2.d: Auto-prefix component shortcuts with 'this.'
+        // 2.e: Auto-prefix component shortcuts with 'this.'
         componentShortcuts.forEach(shortcut => {
             const regex = new RegExp(`(?<![.\\w])\\b${shortcut}\\b`, 'g');
             body = body.replace(regex, `this.${shortcut}`);

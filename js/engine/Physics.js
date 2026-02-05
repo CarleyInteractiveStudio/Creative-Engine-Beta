@@ -266,23 +266,37 @@ export class PhysicsSystem {
         // --- 2. Velocity Correction (Impulse Resolution) ---
         const normal = this._normalize({ x: mtv.x, y: mtv.y });
 
-        // For simplicity, remove the velocity component along the collision normal
-        // to prevent objects from retaining penetration velocity (simple separation).
-        const EPS = 1e-6;
-        if (isADynamic && rbA.velocity) {
-            const velDotNormalA = this._dot(rbA.velocity, normal);
-            if (Math.abs(velDotNormalA) > EPS) {
-                rbA.velocity.x -= velDotNormalA * normal.x;
-                rbA.velocity.y -= velDotNormalA * normal.y;
-            }
+        const velA = rbA ? rbA.velocity : { x: 0, y: 0 };
+        const velB = rbB ? rbB.velocity : { x: 0, y: 0 };
+        const relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
+        const velAlongNormal = this._dot(relativeVelocity, normal);
+
+        // Do not resolve if velocities are separating
+        if (velAlongNormal > 0) return;
+
+        // Use the maximum bounciness of the two objects
+        const reboteA = rbA ? (rbA.rebote || 0) : 0;
+        const reboteB = rbB ? (rbB.rebote || 0) : 0;
+        const e = Math.max(reboteA, reboteB);
+
+        // Calculate impulse scalar
+        let invMassA = isADynamic ? 1 / (rbA.mass || 1) : 0;
+        let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
+
+        let j = -(1 + e) * velAlongNormal;
+        j /= (invMassA + invMassB);
+
+        // Apply impulse
+        const impulse = { x: j * normal.x, y: j * normal.y };
+
+        if (isADynamic) {
+            rbA.velocity.x += impulse.x * invMassA;
+            rbA.velocity.y += impulse.y * invMassA;
         }
 
-        if (isBDynamic && rbB.velocity) {
-            const velDotNormalB = this._dot(rbB.velocity, normal);
-            if (Math.abs(velDotNormalB) > EPS) {
-                rbB.velocity.x -= velDotNormalB * normal.x;
-                rbB.velocity.y -= velDotNormalB * normal.y;
-            }
+        if (isBDynamic) {
+            rbB.velocity.x -= impulse.x * invMassB;
+            rbB.velocity.y -= impulse.y * invMassB;
         }
     }
 
@@ -662,5 +676,151 @@ export class PhysicsSystem {
             }
         }
         return collisions;
+    }
+
+    /**
+     * Lanza un rayo en la escena y devuelve información sobre el primer objeto que impacta.
+     * @param {{x: number, y: number}} origin - Punto de origen.
+     * @param {{x: number, y: number}} direction - Dirección (normalizada).
+     * @param {number} maxDistance - Distancia máxima.
+     * @param {string} [tag] - Opcional, filtrar por tag.
+     * @returns {object|null} Información del impacto o null.
+     */
+    raycast(origin, direction, maxDistance = Infinity, tag = null) {
+        let closestHit = null;
+        let minDistance = maxDistance;
+
+        const collidables = this.scene.getAllMaterias().filter(m =>
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D))
+        );
+
+        for (const materia of collidables) {
+            if (tag && materia.tag !== tag) continue;
+
+            const transform = materia.getComponent(Components.Transform);
+            const collider = this.getCollider(materia);
+
+            let hit = null;
+            if (collider instanceof Components.BoxCollider2D) {
+                hit = this._rayVsBox(origin, direction, transform, collider);
+            } else if (collider instanceof Components.CapsuleCollider2D) {
+                hit = this._rayVsCapsule(origin, direction, transform, collider);
+            }
+
+            if (hit && hit.distance < minDistance) {
+                minDistance = hit.distance;
+                closestHit = {
+                    materia: materia,
+                    point: hit.point,
+                    normal: hit.normal,
+                    distance: hit.distance
+                };
+            }
+        }
+
+        return closestHit;
+    }
+
+    _rayVsBox(origin, direction, transform, collider) {
+        const w = collider.size.x * transform.scale.x;
+        const h = collider.size.y * transform.scale.y;
+        const angle = transform.rotation * Math.PI / 180;
+
+        // Transformar rayo a espacio local de la caja
+        const cos = Math.cos(-angle);
+        const sin = Math.sin(-angle);
+
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+        const worldOffsetX = scaledOffsetX * Math.cos(angle) - scaledOffsetY * Math.sin(angle);
+        const worldOffsetY = scaledOffsetX * Math.sin(angle) + scaledOffsetY * Math.cos(angle);
+
+        const centerX = transform.x + worldOffsetX;
+        const centerY = transform.y + worldOffsetY;
+
+        const localOriginX = (origin.x - centerX) * cos - (origin.y - centerY) * sin;
+        const localOriginY = (origin.x - centerX) * sin + (origin.y - centerY) * cos;
+        const localDirX = direction.x * cos - direction.y * sin;
+        const localDirY = direction.x * sin + direction.y * cos;
+
+        // Ray vs AABB en espacio local
+        const halfW = w / 2;
+        const halfH = h / 2;
+
+        let tmin = -Infinity, tmax = Infinity;
+
+        if (localDirX !== 0) {
+            let t1 = (-halfW - localOriginX) / localDirX;
+            let t2 = (halfW - localOriginX) / localDirX;
+            tmin = Math.max(tmin, Math.min(t1, t2));
+            tmax = Math.min(tmax, Math.max(t1, t2));
+        } else if (localOriginX < -halfW || localOriginX > halfW) return null;
+
+        if (localDirY !== 0) {
+            let t1 = (-halfH - localOriginY) / localDirY;
+            let t2 = (halfH - localOriginY) / localDirY;
+            tmin = Math.max(tmin, Math.min(t1, t2));
+            tmax = Math.min(tmax, Math.max(t1, t2));
+        } else if (localOriginY < -halfH || localOriginY > halfH) return null;
+
+        if (tmax >= tmin && tmax >= 0) {
+            const t = tmin > 0 ? tmin : tmax;
+            if (t < 0) return null;
+
+            const hitPointLocal = { x: localOriginX + localDirX * t, y: localOriginY + localDirY * t };
+
+            // Calcular normal local
+            let normalLocal = { x: 0, y: 0 };
+            const eps = 1e-4;
+            if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
+            else if (Math.abs(hitPointLocal.x + halfW) < eps) normalLocal.x = -1;
+            else if (Math.abs(hitPointLocal.y - halfH) < eps) normalLocal.y = 1;
+            else if (Math.abs(hitPointLocal.y + halfH) < eps) normalLocal.y = -1;
+
+            // Transformar normal y punto de vuelta al espacio mundial
+            const worldCos = Math.cos(angle);
+            const worldSin = Math.sin(angle);
+
+            return {
+                distance: t,
+                point: {
+                    x: centerX + (hitPointLocal.x * worldCos - hitPointLocal.y * worldSin),
+                    y: centerY + (hitPointLocal.x * worldSin + hitPointLocal.y * worldCos)
+                },
+                normal: {
+                    x: normalLocal.x * worldCos - normalLocal.y * worldSin,
+                    y: normalLocal.x * worldSin + normalLocal.y * worldCos
+                }
+            };
+        }
+
+        return null;
+    }
+
+    _rayVsCapsule(origin, direction, transform, collider) {
+        // Implementación simplificada tratándola como un círculo (mejor que nada)
+        // O mejor, una esfera vs rayo es fácil.
+        const radius = (collider.size.x * transform.scale.x) / 2;
+        const centerX = transform.x + collider.offset.x * transform.scale.x;
+        const centerY = transform.y + collider.offset.y * transform.scale.y;
+
+        const oc = { x: origin.x - centerX, y: origin.y - centerY };
+        const b = this._dot(oc, direction);
+        const c = this._dot(oc, oc) - radius * radius;
+        const h = b * b - c;
+
+        if (h < 0) return null; // No impacta
+        const t = -b - Math.sqrt(h);
+
+        if (t < 0) return null;
+
+        const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t };
+        const normal = this._normalize({ x: hitPoint.x - centerX, y: hitPoint.y - centerY });
+
+        return {
+            distance: t,
+            point: hitPoint,
+            normal: normal
+        };
     }
 }

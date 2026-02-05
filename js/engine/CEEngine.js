@@ -36,6 +36,11 @@ function getCollisionExit(materia, tag = null) {
     return physicsSystem.getCollisionInfo(materia, 'exit', 'collision', tag);
 }
 
+function raycast(origin, direction, maxDistance = Infinity, tag = null) {
+    if (!physicsSystem) return null;
+    return physicsSystem.raycast(origin, direction, maxDistance, tag);
+}
+
 // --- The Public API Object ---
 // This object will be exposed to the user scripts.
 // We can add more global functions here in the future.
@@ -44,12 +49,14 @@ const engineAPIs = {
     getCollisionEnter: getCollisionEnter,
     getCollisionStay: getCollisionStay,
     getCollisionExit: getCollisionExit,
+    raycast: raycast,
 
     // Spanish aliases
     buscar: find,
     alEntrarEnColision: getCollisionEnter,
     alPermanecerEnColision: getCollisionStay,
     alSalirDeColision: getCollisionExit,
+    lanzarRayo: raycast,
 };
 
 export function getAPIs() {

@@ -1731,6 +1731,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label>Gravity Scale</label>
                             <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
                         </div>
+                        <div class="prop-row-multi">
+                            <label>Rebote (Bounciness)</label>
+                            <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="Rigidbody2D" data-prop="rebote" value="${rigidbody.rebote || 0}">
+                        </div>
                     </div>
                     <div class="inspector-field-group">
                         <label>Constraints</label>
