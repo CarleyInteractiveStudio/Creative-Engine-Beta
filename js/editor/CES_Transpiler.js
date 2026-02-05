@@ -158,7 +158,8 @@ export function transpile(code, scriptName) {
     let unprocessedCode = code;
 
     // 1.a: Parse and extract methods (bilingual)
-    const methodHeaderRegex = /^\s*(public|publico)\s+(?:(function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
+    // Scope (public/private) is now optional, defaults to public
+    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:(function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
@@ -201,10 +202,12 @@ export function transpile(code, scriptName) {
 
 
     // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
-    const varRegex = /^\s*(public|private|publico|privado)\s+([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
+    // Scope is optional, defaults to public
+    const varRegex = /^\s*(?:(public|private|publico|privado)\s+)?([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
     let varMatch;
     while ((varMatch = varRegex.exec(unprocessedCode)) !== null) {
-        const scope = varMatch[1].replace('publico', 'public').replace('privado', 'private');
+        const scopeMatch = varMatch[1] || 'public';
+        const scope = scopeMatch.replace('publico', 'public').replace('privado', 'private');
         const typeInput = varMatch[2];
         const name = varMatch[3];
         const value = varMatch[4];

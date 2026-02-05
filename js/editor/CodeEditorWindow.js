@@ -187,12 +187,12 @@ REGLAS TÉCNICAS (Sintaxis CES):
    - difundir(mensaje, datos): Mensajería global.
    - instanciar(prefab, posicion), destruir(materia), obtenerScript(nombre).
    - entrada.tecla("nombre"): Control de teclado.
-8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces, sin explicaciones ni bloques de markdown.
+8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. No incluyas explicaciones, ni introducciones, ni comentarios adicionales. No uses markdown.
 
 EJEMPLOS DE TRADUCCIÓN:
 
-Usuario: "Si presiono W sube. Si presiono D a la derecha."
-IA:
+ENTRADA: "Si presiono W sube. Si presiono D a la derecha."
+SALIDA:
 public variable velocidad = 5;
 alActualizar(deltaTime) {
     si (entrada.tecla("w")) {
@@ -203,8 +203,8 @@ alActualizar(deltaTime) {
     }
 }
 
-Usuario: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
-IA:
+ENTRADA: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
+SALIDA:
 alEmpezar() {
     cada(2) {
         variable hit = lanzarRayo(transformacion.posicion, {x: 0, y: 1}, 100);
@@ -214,8 +214,8 @@ alEmpezar() {
     }
 }
 
-Usuario: "Al chocar con el enemigo, espera 1 segundo y destruye este objeto."
-IA:
+ENTRADA: "Al chocar con el enemigo, espera 1 segundo y destruye este objeto."
+SALIDA:
 alEntrarEnColision(otro) {
     si (otro.tieneTag("enemigo")) {
         esperar(1);
@@ -248,8 +248,24 @@ ENTRADA DEL USUARIO:
             if (!result.success) throw new Error(result.error);
 
             let generatedCode = result.text.trim();
-            // Clean markdown if AI included it
-            generatedCode = generatedCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '');
+
+            // Clean markdown blocks and conversational filler
+            const codeBlockRegex = /```(?:[a-z]*\n)?([\s\S]*?)```/gi;
+            const matches = [...generatedCode.matchAll(codeBlockRegex)];
+            if (matches.length > 0) {
+                generatedCode = matches.map(m => m[1]).join('\n');
+            } else {
+                // If no code blocks, try to strip leading text before the first known keyword
+                const firstKeyword = generatedCode.search(/\b(public|publico|private|privado|variable|constante|numero|texto|booleano|go|alEmpezar|alActualizar)\b/i);
+                if (firstKeyword !== -1) {
+                    generatedCode = generatedCode.substring(firstKeyword);
+                }
+                // Also remove trailing conversational filler if it seems to follow the last semicolon or brace
+                const lastStructuralChar = Math.max(generatedCode.lastIndexOf(';'), generatedCode.lastIndexOf('}'));
+                if (lastStructuralChar !== -1) {
+                    generatedCode = generatedCode.substring(0, lastStructuralChar + 1);
+                }
+            }
 
             // Validar código generado
             const validation = transpile(generatedCode, currentlyOpenFileHandle.name);
@@ -262,14 +278,19 @@ ENTRADA DEL USUARIO:
             console.warn(`[CHC] Intento ${attempts} fallido con errores de sintaxis:`, validation.errors);
             if (dom.chcLoadingText) dom.chcLoadingText.textContent = `Carl está corrigiendo errores (${attempts})...`;
 
-            currentPrompt = `El código que generaste tiene errores de compilación. Por favor, corrígelo para que funcione en Creative Engine.
-CÓDIGO ANTERIOR:
+            currentPrompt = `El código que generaste tiene ERRORES DE SINTAXIS. Por favor, corrígelo.
+Asegúrate de:
+- Definir las variables correctamente (ej: variable x = 1;)
+- Definir los métodos correctamente (ej: alActualizar() { ... })
+- NO incluir NINGUNA explicación ni texto fuera del código.
+
+CÓDIGO CON ERRORES:
 ${generatedCode}
 
 ERRORES ENCONTRADOS:
 ${validation.errors.join('\n')}
 
-Devuelve ÚNICAMENTE el código corregido sin explicaciones.`;
+Por favor, devuelve solo el código corregido y funcional.`;
         }
 
         if (!finalGeneratedCode) {
