@@ -36,6 +36,7 @@ const inputAPI = {
     isKeyReleased: isKeyReleased,
 
     // Spanish aliases
+    tecla: isKeyPressed, // Alias for ease of use in CHC
     teclaPresionada: isKeyPressed,
     teclaRecienPresionada: isKeyJustPressed,
     teclaLiberada: isKeyReleased,

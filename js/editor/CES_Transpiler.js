@@ -347,8 +347,8 @@ export function transpile(code, scriptName) {
         });
 
         // 2.g: Map Spanish lifecycle methods to their English counterparts
-        if (name === 'iniciar') name = 'star';
-        if (name === 'actualizar') name = 'update';
+        if (name === 'iniciar' || name === 'alEmpezar') name = 'star';
+        if (name === 'actualizar' || name === 'alActualizar') name = 'update';
 
         if (name === 'star') {
             starMethod = body;

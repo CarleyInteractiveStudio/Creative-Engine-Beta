@@ -442,7 +442,8 @@ export class CreativeScript extends Leyes {
 
                 // Ensure common aliases exist on the instance so script authors can write in either language
                 const aliasMap = {
-                    start: ['star', 'iniciar'],
+                    start: ['star', 'iniciar', 'alEmpezar'],
+                    update: ['actualizar', 'alActualizar'],
                     onEnable: ['alHabilitar', 'activar'],
                     onDisable: ['alDeshabilitar', 'desactivar'],
                     onDestroy: ['alDestruir'],
