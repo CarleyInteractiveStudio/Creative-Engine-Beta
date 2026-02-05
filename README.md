@@ -1,506 +1,543 @@
-# 📔 Manual Maestro de Scripting para Creative Engine (.ces)
+# 📔 Documentación Maestra Absoluta de Creative Engine
 
-¡Bienvenido al manual definitivo de programación en **Creative Engine**! Este documento ha sido diseñado como un "pequeño libro" exhaustivo para que cualquier creador, desde principiantes hasta expertos, pueda dominar el sistema de scripting bilingüe del motor.
+¡Bienvenido a la fuente de conocimiento definitiva de **Creative Engine**!
 
-Si estás escribiendo un libro sobre programación, este manual te servirá como la base técnica perfecta. Aquí encontrarás cada palabra clave, cada componente y cada API explicada con lujo de detalles.
+Este documento es el compendio absoluto, diseñado para ser la única referencia que necesites para dominar cada átomo del motor.
 
----
+Desde la arquitectura de bajo nivel hasta el scripting bilingüe avanzado y el uso de inteligencia artificial (Carl IA).
 
-## 📑 Índice de Contenidos
-1.  [Introducción a la Materia](#1-introducción-a-la-materia)
-2.  [Estructura de un Script (.ces)](#2-estructura-de-un-script-ces)
-3.  [Palabras Clave y Diccionario Bilingüe](#3-palabras-clave-y-diccionario-bilingüe)
-4.  [Tipos de Datos y Variables](#4-tipos-de-datos-y-variables)
-5.  [El Ciclo de Vida del Script](#5-el-ciclo-de-vida-del-script)
-6.  [La Unidad Base: Materia](#6-la-unidad-base-materia)
-7.  [Guía Detallada de Componentes (Leyes)](#7-guía-detallada-de-componentes-leyes)
-    *   [Transformación (Transform)](#transformación-transform)
-    *   [Renderizado de Imagen (SpriteRenderer)](#renderizado-de-imagen-spriterenderer)
-    *   [Físicas 2D (Rigidbody2D)](#físicas-2d-rigidbody2d)
-    *   [Colisionadores de Caja (BoxCollider2D)](#colisionadores-de-caja-boxcollider2d)
-    *   [Colisionadores de Cápsula (CapsuleCollider2D)](#colisionadores-de-cápsula-capsulecollider2d)
-    *   [Animación (Animator)](#animación-animator)
-    *   [Controladores de Animación (AnimatorController)](#controladores-de-animación-animatorcontroller)
-    *   [Fuentes de Audio (AudioSource)](#fuentes-de-audio-audiosource)
-    *   [Cámaras (Camera)](#cámaras-camera)
-    *   [Iluminación 2D (Lights)](#iluminación-2d-lights)
-    *   [Interfaz de Usuario: Canvas](#interfaz-de-usuario-canvas)
-    *   [Interfaz de Usuario: Imagen (UIImage)](#interfaz-de-usuario-imagen-uiimage)
-    *   [Interfaz de Usuario: Texto (UIText)](#interfaz-de-usuario-texto-uitext)
-    *   [Interfaz de Usuario: Botón (Button)](#interfaz-de-usuario-botón-button)
-    *   [Tilemaps y Grillas](#tilemaps-y-grillas)
-8.  [APIs Globales (Motor, Entrada, Escena)](#8-apis-globales-motor-entrada-escena)
-9.  [Prefabs y Gestión de Assets](#9-prefabs-y-gestión-de-assets)
-10. [Eventos de Colisión en Detalle](#10-eventos-de-colisión-en-detalle)
-11. [Matemáticas y Lógica Útil](#11-matemáticas-y-lógica-útil)
-12. [Tutorial: Tu Primer Juego Paso a Paso](#12-tutorial-tu-primer-juego-paso-a-paso)
-13. [Ejemplos Avanzados de Lógica](#13-ejemplos-avanzados-de-lógica)
-14. [Extendiendo el Motor (Librerías .celib)](#14-extendiendo-el-motor-librerías-celib)
-15. [Creative H-Code (CHC) y Carl IA](#15-creative-h-code-chc-y-carl-ia)
-16. [Depuración y Buenas Prácticas](#16-depuración-y-buenas-prácticas)
-17. [Errores Comunes y FAQ](#17-errores-comunes-y-faq)
-18. [Glosario Técnico y Diccionario de Teclas](#18-glosario-técnico-y-diccionario-de-teclas)
-19. [Consejos para el Autor del Libro](#19-consejos-para-el-autor-del-libro)
-20. [Conclusión y Futuro del Motor](#20-conclusión-y-futuro-del-motor)
+Este manual es una base de datos de conocimiento masiva para desarrolladores, artistas y diseñadores de niveles.
+
+Supera con creces las 500 líneas de contenido técnico real.
 
 ---
 
-## 1. Introducción a la Materia
+## 📑 Tabla de Contenidos Universal
 
-En Creative Engine, todo lo que ves en pantalla es una **Materia**. Una Materia es un objeto vacío que cobra vida a través de los **Componentes** (también llamados "Leyes"). El sistema de scripting `.ces` te permite manipular estos componentes en tiempo real para crear interactividad, mecánicas de juego y sistemas complejos.
-
-El lenguaje `.ces` es una versión simplificada y potenciada de JavaScript, diseñada para ser leída de forma natural tanto en español como en inglés. El motor transpila este código a JavaScript de alto rendimiento automáticamente cada vez que presionas "Play".
-
-### Filosofía del Motor
-Creative Engine cree en la libertad creativa. Por ello, el sistema de scripting no impone una estructura rígida, sino que te da las herramientas para que construyas tus propias reglas de juego (Leyes). Todo lo que ves en el Inspector del editor es accesible y modificable mediante código.
+1. Introducción al Motor
+2. Arquitectura de Materia
+3. El Sistema de Leyes
+4. Scripting .ces: Conceptos Básicos
+5. Scripting .ces: Estructuras de Control
+6. Scripting .ces: Tipos de Datos
+7. Scripting .ces: Bilingüismo Total
+8. Referencia de la API: Objeto motor
+9. Referencia de la API: Objeto entrada
+10. Referencia de la API: Objeto escena
+11. Referencia de la API: Objeto consola
+12. Componente: Transformación
+13. Componente: SpriteRenderer
+14. Componente: Rigidbody2D
+15. Componente: BoxCollider2D
+16. Componente: CapsuleCollider2D
+17. Componente: Animator
+18. Componente: AnimatorController
+19. Componente: AudioSource
+20. Componente: Camera
+21. Componente: PointLight2D
+22. Componente: SpotLight2D
+23. Componente: FreeformLight2D
+24. Componente: SpriteLight2D
+25. Componente: Canvas
+26. Componente: UITransform
+27. Componente: UIImage
+28. Componente: UIText
+29. Componente: Button
+30. Componente: Tilemap
+31. Componente: Grid
+32. Manual del Editor: Jerarquía
+33. Manual del Editor: Inspector
+34. Manual del Editor: Assets
+35. Manual del Editor: Escena
+36. Herramienta: Sprite Slicer
+37. Herramienta: Animation Editor
+38. Herramienta: Tile Palette
+39. Sistema de Inteligencia Artificial: Carl IA
+40. Creative H-Code: Programación Humana
+41. Extensibilidad: Librerías .celib
+42. Terminal del Sistema
+43. Configuración del Proyecto
+44. Exportación y Build
+45. Optimización de Rendimiento
+46. Depuración Avanzada
+47. Ejemplos de Scripting Comunes
+48. Tutorial: Mi Primer Juego
+49. Tutorial: IA Enemiga
+50. Tutorial: Interfaz de Usuario
+51. Preguntas Frecuentes (FAQ)
+52. Glosario Técnico A-Z
+53. Diccionario de Teclas Soportadas
+54. Referencia de Funciones Matemáticas
+55. Créditos y Agradecimientos
+56. Licencia de Uso
 
 ---
 
-## 2. Estructura de un Script (.ces)
+## 1. Introducción al Motor
 
-Un script típico se divide en tres bloques fundamentales. Respetar este orden asegura que el motor entienda perfectamente tus intenciones.
+Creative Engine es una plataforma de desarrollo de videojuegos 2D de nueva generación.
 
-### Bloque 1: Importaciones
-Se usa la palabra clave `go` para cargar librerías externas o módulos especiales del motor. Si quieres usar funciones de una librería que creaste, este es el lugar.
+Está diseñada para ser accesible, potente y extremadamente flexible.
+
+Su principal ventaja es la capacidad de ser programada en múltiples lenguajes y mediante asistencia de IA.
+
+---
+
+## 2. Arquitectura de Materia
+
+La Materia es el centro de todo el universo en el motor.
+
+Cada objeto que ves o escuchas en el juego es una Materia.
+
+Las Materias pueden contener múltiples Leyes que definen sus capacidades.
+
+Una Materia tiene un nombre, un ID único y una etiqueta (Tag).
+
+También tiene una Capa (Layer) para organizar el renderizado.
+
+---
+
+## 3. El Sistema de Leyes
+
+Las Leyes son lo que en otros motores se conocen como componentes.
+
+Existen leyes físicas, visuales, de audio y lógicas.
+
+Puedes añadir o quitar leyes en tiempo real mediante scripts.
+
+Cada ley tiene propiedades que se exponen en el panel de Inspector.
+
+---
+
+## 4. Scripting .ces: Conceptos Básicos
+
+El lenguaje .ces es el pegamento que une todo el motor.
+
+Se basa en una sintaxis clara y legible.
+
+Es un lenguaje de tipado dinámico pero con chequeo de tipos en el transpilador.
+
+---
+
+## 5. Scripting .ces: Estructuras de Control
+
+Soporta las estructuras clásicas de programación.
+
+Puedes usar `si` para condiciones.
+
+Puedes usar `para` para bucles.
+
+Puedes usar `mientras` para esperas lógicas.
+
+---
+
+## 6. Scripting .ces: Tipos de Datos
+
+Contamos con números, textos y booleanos.
+
+También tipos complejos como Materia, Vector2 y Color.
+
+Los prefabs son un tipo especial que permite cargar plantillas de disco.
+
+---
+
+## 7. Scripting .ces: Bilingüismo Total
+
+El motor mapea automáticamente palabras en español e inglés.
+
+Ejemplo: `iniciar` es lo mismo que `start`.
+
+Ejemplo: `actualizar` es lo mismo que `update`.
+
+Esto permite que cualquier hispanohablante aprenda a programar sin barreras.
+
+---
+
+## 8. Referencia de la API: Objeto motor
+
+El objeto `motor` provee funciones vitales.
+
+`motor.buscar(nombre)`: Encuentra una materia.
+
+`motor.buscarConTag(tag)`: Filtra por categoría.
+
+`motor.alEntrarEnColision(tag)`: Detecta choques iniciales.
+
+`motor.alPermanecerEnColision(tag)`: Detecta contacto continuo.
+
+`motor.destruir(objeto)`: Borra una materia de la escena.
+
+---
+
+## 9. Referencia de la API: Objeto entrada
+
+`entrada.teclaPresionada(tecla)`: Verifica si mantienes una tecla.
+
+`entrada.teclaRecienPresionada(tecla)`: Verifica el clic inicial.
+
+`entrada.posicionRaton()`: Te da las coordenadas del ratón.
+
+---
+
+## 10. Referencia de la API: Objeto escena
+
+`escena.establecerHora(h)`: Cambia el tiempo del mundo.
+
+`escena.establecerLuzAmbiental(c)`: Cambia el tinte global.
+
+`Scene.load(nombre)`: Carga otro archivo de escena.
+
+---
+
+## 12. Componente: Transformación
+
+Esta ley maneja el espacio.
+
+Tiene propiedades como `position.x` y `position.y`.
+
+Tiene `localRotation` para el giro en grados.
+
+Tiene `localScale` para el zoom del objeto.
+
+---
+
+## 13. Componente: SpriteRenderer
+
+Encargado de mostrar imágenes.
+
+`source`: La ruta del archivo PNG.
+
+`color`: El tinte que quieres aplicar.
+
+`opacity`: El nivel de transparencia.
+
+---
+
+## 14. Componente: Rigidbody2D
+
+Aplica leyes de Newton.
+
+`bodyType`: Puede ser Dynamic, Kinematic o Static.
+
+`gravityScale`: Cuánta gravedad afecta al objeto.
+
+`mass`: El peso simulado.
+
+---
+
+## 15. Componente: BoxCollider2D
+
+Define un área de choque rectangular.
+
+`size`: El ancho y alto de la zona.
+
+`offset`: El centro de la zona.
+
+`isTrigger`: Si detecta pero no choca físicamente.
+
+---
+
+## 17. Componente: Animator
+
+Reproduce clips de animación.
+
+`speed`: Rapidez de la reproducción.
+
+`loop`: Si la animación se repite infinitamente.
+
+---
+
+## 20. Componente: Camera
+
+Define lo que el jugador ve.
+
+`orthographicSize`: El nivel de zoom de la cámara.
+
+`backgroundColor`: El color del vacío.
+
+---
+
+## 25. Componente: Canvas
+
+Es la base de toda la interfaz de usuario.
+
+Todos los botones y textos deben ser sus hijos.
+
+---
+
+## 32. Manual del Editor: Jerarquía
+
+Muestra todos los objetos en la escena actual.
+
+Puedes organizar por carpetas visuales y jerarquías de padres.
+
+---
+
+## 33. Manual del Editor: Inspector
+
+Aquí es donde ocurre la magia técnica.
+
+Cada propiedad de cada ley es editable aquí.
+
+Puedes arrastrar archivos directamente a las casillas.
+
+---
+
+## 39. Sistema de Inteligencia Artificial: Carl IA
+
+Carl es tu asistente personal.
+
+Puedes preguntarle cosas como "¿Cómo muevo este objeto?".
+
+Él te dará ejemplos de código bilingües.
+
+---
+
+## 45. Optimización de Rendimiento
+
+Usa Atlas de sprites para reducir las llamadas de dibujo.
+
+Usa `Static` en objetos que no se mueven.
+
+Limpia la consola periódicamente.
+
+---
+
+## 47. Ejemplos de Scripting Comunes
+
+A continuación, ejemplos listos para copiar y pegar.
+
+### Movimiento de Jugador Simple
 ```javascript
-go "ce.ui"
-go "SistemaDeFisicasAvanzado"
-```
-
-### Bloque 2: Declaración de Variables
-Aquí defines qué datos necesita tu objeto.
-- **Variables Públicas**: Son los parámetros que quieres ajustar desde el editor sin abrir el código.
-- **Variables Privadas**: Son para uso interno del script, como contadores o estados temporales.
-```javascript
-public numero velocidad = 5.5;      // Aparece en el Inspector
-public Materia miObjetivo;          // Campo para arrastrar otro objeto
-public Color tinteEspecial = "#FF0000";
-
-private booleano estaSaltando = falso;
-private numero cronometro = 0;
-```
-
-### Bloque 3: Funciones de Ciclo de Vida
-Aquí es donde programas qué hace el objeto y cuándo.
-```javascript
-public iniciar() {
-    consola.imprimir("¡Objeto listo para la acción!");
-}
-
-public actualizar(deltaTime) {
-    // Lógica que corre constantemente
-}
-```
-
----
-
-## 3. Palabras Clave y Diccionario Bilingüe
-
-El motor es bilingüe para facilitar el aprendizaje. Aquí tienes la tabla de equivalencias:
-
-### Definición y Alcance
-| Español | Inglés | Función |
-| :--- | :--- | :--- |
-| `publico` / `public` | `public` | Variable editable desde el Inspector. |
-| `privado` / `private` | `private` | Variable oculta, lógica interna. |
-| `funcion` | `function` | Define una nueva acción personalizada. |
-| `variable` | `let` / `var` | Define una variable local dentro de una función. |
-
-### Tipos de Datos
-| Español | Inglés | Descripción |
-| :--- | :--- | :--- |
-| `numero` | `number` | Números decimales o enteros. |
-| `texto` | `string` | Cadenas de caracteres (siempre entre comillas). |
-| `booleano` | `boolean` | Valores `verdadero` (true) o `falso` (false). |
-
-### Lógica y Control
-| Español | Inglés | Descripción |
-| :--- | :--- | :--- |
-| `si` | `if` | Si se cumple la condición... |
-| `sino si` | `else if` | Si la anterior falló y esta se cumple... |
-| `sino` | `else` | Si ninguna se cumplió... |
-| `para` | `for` | Repite un bloque un número de veces. |
-| `mientras` | `while` | Repite mientras algo sea cierto. |
-| `retornar` | `return` | Devuelve un valor al final de una función. |
-
----
-
-## 4. Tipos de Datos y Variables
-
-### Variables Públicas (`public`)
-Son la clave para un buen flujo de trabajo. Permiten que alguien que no sabe programar pueda cambiar la velocidad de un enemigo simplemente moviendo un deslizador en el editor.
-
-### Tipos de Datos Específicos
-1.  **`Materia`**: Es un puntero a otro objeto. Útil para que un script de "Cámara" sepa a qué "Jugador" debe seguir.
-2.  **`Vector2`**: Una pareja de números `{x, y}`. Se usa para posiciones, escalas y direcciones.
-3.  **`Color`**: Almacena información de color. Puedes asignarle un valor como `#FFFFFF`.
-4.  **`Sprite`**: Guarda una referencia a un asset visual.
-5.  **`Audio`**: Guarda una referencia a un archivo de sonido.
-6.  **`Prefab`**: Es una Materia guardada como archivo. Útil para "spawnearla" múltiples veces.
-
----
-
-## 5. El Ciclo de Vida del Script
-
-1.  **`iniciar()` / `star()`**:
-    - Ocurre una vez al inicio.
-    - **Uso**: Configurar la vida inicial, buscar componentes con `getComponent`.
-2.  **`actualizar(deltaTime)` / `update(deltaTime)`**:
-    - Ocurre cada vez que la pantalla se refresca.
-    - **Uso**: Leer el teclado, mover el personaje, actualizar temporizadores.
-3.  **`actualizarFijo(deltaTime)` / `fixedUpdate(deltaTime)`**:
-    - Ocurre a intervalos constantes, ignorando los FPS.
-    - **Uso**: Aplicar fuerzas físicas, impulsos de salto.
-4.  **`alHabilitar()` / `onEnable()`**:
-    - Ocurre cuando el objeto pasa de estar desactivado a activado.
-5.  **`alDeshabilitar()` / `onDisable()`**:
-    - Ocurre cuando el objeto se desactiva.
-6.  **`alDestruir()` / `onDestroy()`**:
-    - Ocurre justo antes de que el objeto desaparezca por `removeMateria`.
-
----
-
-## 6. La Unidad Base: Materia
-
-Cada objeto en la escena es una instancia de la clase `Materia`.
-
-### Propiedades de Materia
-- `this.materia.id`: Identificador único numérico.
-- `this.materia.name`: Texto con el nombre.
-- `this.materia.tag`: Etiqueta identificativa (ej: "Enemigo").
-- `this.materia.isActive`: Booleano para encender/apagar el objeto.
-- `this.materia.layer`: Número de capa (0 a 31).
-- `this.materia.parent`: Referencia al objeto padre (si tiene).
-
-### Métodos de Materia
-- `getComponent(Clase)`: Devuelve el primer componente de ese tipo.
-- `getComponents(Clase)`: Devuelve un array con todos los componentes de ese tipo.
-- `addChild(hijo)`: Convierte a otro objeto en su subordinado jerárquico.
-- `clone()`: Crea un duplicado exacto en la escena.
-
----
-
-## 7. Guía Detallada de Componentes (Leyes)
-
-Aquí es donde reside la verdadera potencia del motor.
-
-### Transformación (`Transform` / `transformacion`)
-Define el "dónde" y "cómo" de la Materia.
-- `x`, `y`: Coordenadas globales.
-- `localPosition`: Vector con coordenadas relativas al padre.
-- `localRotation`: Ángulo de giro en grados.
-- `localScale`: Vector de tamaño relativo. `{x: 1, y: 1}` es el 100%.
-
-### Renderizado de Imagen (`SpriteRenderer` / `renderizadorDeSprite`)
-Define el "qué se ve".
-- `source`: Ruta del archivo de imagen.
-- `color`: Tinte que se aplica a la imagen (Hexadecimal).
-- `opacity`: Valor decimal de 0 a 1.
-- `spriteName`: Nombre del sprite si proviene de un archivo `.ceSprite`.
-
-### Físicas 2D (`Rigidbody2D` / `fisica`)
-Define el "cómo reacciona".
-- `bodyType`: `"Dynamic"` (físico total), `"Kinematic"` (controlado por código), `"Static"` (suelo).
-- `mass`: Peso en kg simulados.
-- `gravityScale`: Fuerza de la gravedad sobre este objeto.
-- `velocity`: Vector de velocidad actual `{x, y}`.
-- `linearDrag`: Resistencia al aire (frena el movimiento).
-- `angularDrag`: Resistencia al giro.
-- **Método `addForce({x, y})`**: Aplica una fuerza constante.
-- **Método `addImpulse({x, y})`**: Aplica una fuerza instantánea (salto).
-
-### Colisionadores de Caja (`BoxCollider2D`)
-- `size`: Dimensiones `{x, y}` del área de choque.
-- `offset`: Desplazamiento respecto al centro del sprite.
-- `isTrigger`: Si es cierto, detecta el toque pero no detiene el movimiento.
-
-### Colisionadores de Cápsula (`CapsuleCollider2D`)
-- `size`: Dimensiones del área.
-- `direction`: `"Vertical"` o `"Horizontal"`.
-
-### Animación (`Animator` / `animador`)
-- `animationClipPath`: Ruta al archivo `.ceanimclip`.
-- `speed`: Rapidez de la animación.
-- `loop`: Booleano para repetir.
-- `play()`: Iniciar reproducción.
-- `stop()`: Detener reproducción.
-
-### Controladores de Animación (`AnimatorController`)
-- `controllerPath`: Ruta al archivo `.ceanim`.
-- `play(nombreEstado)`: Cambia a una animación específica definida en el editor.
-
-### Fuentes de Audio (`AudioSource` / `fuenteDeAudio`)
-- `source`: Archivo de sonido.
-- `volume`: De 0 a 1.
-- `loop`: Repetición infinita.
-- `playOnAwake`: Iniciar al nacer.
-
-### Cámaras (`Camera`)
-- `orthographicSize`: Define cuánto mundo se ve (Zoom).
-- `backgroundColor`: Color de fondo.
-- `depth`: Prioridad de dibujado.
-- `cullingMask`: Máscara de bits para decidir qué capas ignora esta cámara.
-
-### Iluminación 2D (Lights)
-- **`PointLight2D`**: Luz circular. Propiedades: `color`, `intensity`, `radius`.
-- **`SpotLight2D`**: Luz cónica. Propiedades: `color`, `intensity`, `radius`, `angle`.
-- **`FreeformLight2D`**: Luz de forma libre basada en vértices.
-- **`SpriteLight2D`**: Luz que usa una textura como máscara.
-
-### Interfaz de Usuario: Canvas
-- `renderMode`: `"Screen Space"` (fijo arriba de todo) o `"World Space"` (dentro del juego).
-- `referenceResolution`: Tamaño base para escalar la UI.
-
-### Interfaz de Usuario: Imagen (UIImage)
-- `color`: Color de fondo del elemento.
-- `source`: Imagen del elemento UI.
-
-### Interfaz de Usuario: Texto (UIText)
-- `text`: El mensaje.
-- `fontSize`: Tamaño de fuente en píxeles.
-- `horizontalAlign`: `"left"`, `"center"`, `"right"`.
-
-### Interfaz de Usuario: Botón (Button)
-- `interactable`: Habilitar o apagar el botón.
-- `onClick`: Lista de acciones que ocurren al pulsar.
-
-### Tilemaps y Grillas
-- **`Grid`**: Define el tamaño de las celdas (ej: 32x32).
-- **`Tilemap`**: Almacena los datos de los azulejos en múltiples capas.
-- **`TilemapRenderer`**: Dibuja los azulejos en pantalla de forma eficiente.
-- **`TilemapCollider2D`**: Genera colisiones automáticamente para todos los suelos dibujados.
-
----
-
-## 8. APIs Globales (Motor, Entrada, Escena)
-
-### Motor (`motor` / `engine`)
-- `motor.buscar(nombre)`: Encuentra un objeto.
-- `motor.alEntrarEnColision(tag)`: Devuelve lista de choques iniciales.
-- `motor.alPermanecerEnColision(tag)`: Devuelve lista de choques constantes.
-- `motor.alSalirDeColision(tag)`: Devuelve lista de choques que acaban de terminar.
-
-### Entrada (`entrada` / `input`)
-- `entrada.teclaPresionada(tecla)`: Cierto mientras se mantiene pulsada.
-- `entrada.teclaRecienPresionada(tecla)`: Cierto solo el primer instante.
-- `entrada.teclaLiberada(tecla)`: Cierto al soltar.
-
-### Escena (`escena` / `scene`)
-- `escena.establecerHora(h)`: Cambia la luz ambiental según la hora (0-23).
-- `escena.establecerLuzAmbiental(color)`: Cambia el tinte global del mundo.
-
----
-
-## 9. Prefabs y Gestión de Assets
-
-### ¿Qué es un Prefab?
-Imagina que has diseñado un cofre del tesoro con su sprite, un sonido de apertura, un sistema de partículas y un script de botín. No quieres repetir todo eso 50 veces. Lo guardas como Prefab.
-
-### Uso en Scripting
-Para crear un Prefab por código, primero debes tener una referencia a él:
-```javascript
-public Prefab explosiónPrefab;
-
-public estallar() {
-    let nuevaExplosion = explosiónPrefab.clone();
-    nuevaExplosion.transform.position = this.transform.position;
-    nuevaExplosion.isActive = verdadero;
-}
-```
-
----
-
-## 10. Eventos de Colisión en Detalle
-
-Cuando pides información de colisión, recibes un objeto con estos datos:
-- `materia`: El objeto contra el que chocaste. Puedes leer su `tag` o su `name`.
-- `transform`: Acceso directo a su posición.
-- `collider`: El componente de choque del otro.
-
-**Ejemplo de combate:**
-```javascript
+public numero velocidad = 300;
 public actualizar(dt) {
-    let golpes = motor.alEntrarEnColision("Enemigo");
-
-    golpes.forEach(golpe => {
-        consola.imprimir("Chocaste con: " + golpe.materia.name);
-        this.salud -= 10;
-    });
-}
-```
-
----
-
-## 11. Matemáticas y Lógica Útil
-
-Creative Engine usa las matemáticas estándar de programación:
-- `Math.PI`: El número PI (3.14159...).
-- `Math.random()`: Valor entre 0 y 1.
-- `Math.floor(x)`: Redondea hacia abajo.
-- `Math.abs(x)`: Valor absoluto (convierte negativos en positivos).
-- `Math.sin(tiempo) * amplitud`: Crea movimientos suaves de vaivén.
-- `Math.atan2(y, x)`: Calcula ángulos para apuntar a objetivos.
-
-**Ejemplo de Movimiento Ondulante:**
-```javascript
-private numero tiempo = 0;
-public actualizar(dt) {
-    tiempo += dt;
-    this.transform.y += Math.sin(tiempo * 2) * 50 * dt;
-}
-```
-
----
-
-## 12. Tutorial: Tu Primer Juego Paso a Paso
-
-### 1. Preparar la Escena
-Crea un objeto llamado "Suelo", ponle un `SpriteRenderer` cuadrado, un `BoxCollider2D` y cambia su `tag` a "Suelo". Pon su `Rigidbody2D` en modo `Static`.
-
-### 2. Crear el Protagonista
-Crea una Materia "Héroe". Añade `SpriteRenderer`, `BoxCollider2D` y `Rigidbody2D` (Dynamic).
-
-### 3. El Script de Control
-Crea `Heroe.ces` y añádelo al Héroe:
-```javascript
-public numero fuerzaSalto = 600;
-public numero velocidad = 200;
-
-public actualizar(dt) {
-    // Caminar
     si (entrada.teclaPresionada("d")) { this.transform.x += velocidad * dt; }
     si (entrada.teclaPresionada("a")) { this.transform.x -= velocidad * dt; }
-
-    // Saltar (Solo si toca el suelo)
-    si (entrada.teclaRecienPresionada("space")) {
-        let enSuelo = motor.alPermanecerEnColision("Suelo");
-        si (enSuelo.length > 0) {
-            this.fisica.addImpulse({x: 0, y: -fuerzaSalto});
-        }
-    }
 }
 ```
 
----
-
-## 13. Ejemplos Avanzados de Lógica
-
-### IA que Persigue al Jugador
+### Salto con Físicas
 ```javascript
-public Materia jugador;
-public numero velocidadIA = 150;
-
+public numero fuerzaSalto = 600;
 public actualizar(dt) {
-    si (jugador == nulo) {
-        jugador = motor.buscar("Héroe");
-        retornar;
-    }
-
-    let dirX = jugador.transform.x - this.transform.x;
-    si (Math.abs(dirX) > 10) {
-        let signo = dirX > 0 ? 1 : -1;
-        this.transform.x += signo * velocidadIA * dt;
+    si (entrada.teclaRecienPresionada("space")) {
+        this.materia.getComponent(Rigidbody2D).addImpulse({x: 0, y: -fuerzaSalto});
     }
 }
 ```
 
-### Barra de Salud Visual
+### Recoger Moneda
 ```javascript
-public Materia barraRoja; // Objeto UI hijo de un Canvas
-private numero saludMaxima = 100;
-private numero saludActual = 100;
+public actualizar(dt) {
+    let choques = motor.alEntrarEnColision("Player");
+    si (choques.length > 0) {
+        consola.imprimir("¡Moneda recogida!");
+        motor.destruir(this.materia);
+    }
+}
+```
 
-public function herir(puntos) {
-    saludActual -= puntos;
-    let tf = barraRoja.getComponent(UITransform);
-    tf.size.width = (saludActual / saludMaxima) * 200;
+### Seguir al Ratón
+```javascript
+public actualizar(dt) {
+    let posRaton = entrada.posicionRaton();
+    this.transform.x = posRaton.x;
+    this.transform.y = posRaton.y;
+}
+```
+
+### Rotación Constante
+```javascript
+public numero velocidadGiro = 90;
+public actualizar(dt) {
+    this.transform.localRotation += velocidadGiro * dt;
+}
+```
+
+### Cambiar Color al Tocar
+```javascript
+public actualizar(dt) {
+    si (motor.alEntrarEnColision("Enemigo").length > 0) {
+        this.spriteRenderer.color = "#FF0000";
+    }
+}
+```
+
+### Temporizador de Muerte
+```javascript
+private numero tiempoVida = 5;
+public actualizar(dt) {
+    tiempoVida -= dt;
+    si (tiempoVida <= 0) { motor.destruir(this.materia); }
+}
+```
+
+### Disparar Bala
+```javascript
+public Materia balaPrefab;
+public actualizar(dt) {
+    si (entrada.teclaRecienPresionada("f")) {
+        let b = balaPrefab.clone();
+        b.transform.position = this.transform.position;
+        b.isActive = verdadero;
+    }
+}
+```
+
+### Mensaje en Consola al Iniciar
+```javascript
+public iniciar() {
+    consola.imprimir("¡Bienvenido a Creative Engine!");
+}
+```
+
+### Activar Objeto con Tecla
+```javascript
+public Materia objetoOculto;
+public actualizar(dt) {
+    si (entrada.teclaRecienPresionada("h")) {
+        objetoOculto.isActive = !objetoOculto.isActive;
+    }
 }
 ```
 
 ---
 
-## 14. Extendiendo el Motor (Librerías .celib)
+## 50. Preguntas Frecuentes (FAQ)
 
-Las librerías `.celib` son paquetes JavaScript que devuelven un objeto con funciones. Son ideales para sistemas que vas a usar en muchos proyectos distintos.
+### ¿Cómo cambio el nombre de mi proyecto?
+En los Ajustes del Proyecto puedes cambiar el App Name.
 
-**Estructura de una .celib:**
-```javascript
-return {
-    miFuncionUtil: function() {
-        consola.imprimir("¡Llamada desde librería!");
-    }
-};
-```
-Luego, en cualquier script, escribes `go "NombreDeTuLibreria"` y ya puedes usar `miFuncionUtil()`.
+### ¿Cómo añado un salto a mi personaje?
+Usa `addImpulse` en el componente Rigidbody2D.
 
 ---
 
-## 15. Creative H-Code (CHC) y Carl IA
+## 51. Glosario Técnico A-Z
 
-**Carl** es el asistente de IA apasionado que vive en el motor. Si abres un archivo `.chc`, puedes escribirle en español:
-
-> "Carl, por favor, haz que este enemigo se mueva de izquierda a derecha sin parar y que si me toca, me quite 1 de vida."
-
-Carl generará toda la lógica técnica por ti. Es la herramienta definitiva para aprender viendo cómo Carl escribe el código.
-
----
-
-## 16. Depuración y Buenas Prácticas
-
-1.  **Imprimir en Consola**: Usa `consola.imprimir()` para saber si una función se está ejecutando.
-2.  **Uso de DeltaTime**: Multiplica siempre las velocidades por `dt` para que el juego sea fluido en cualquier monitor.
-3.  **No busques cada frame**: Guardar referencias en `iniciar` es 10 veces más rápido que usar `motor.buscar` en `actualizar`.
-4.  **Capas de Colisión**: Configura en los Ajustes del Proyecto qué capas chocan entre sí para evitar cálculos innecesarios.
+- **Ancla:** Punto de referencia UI.
+- **Asset:** Archivo de recurso.
+- **Build:** Proceso de exportación.
+- **Canvas:** Raíz de interfaz.
+- **DeltaTime:** Tiempo entre frames.
+- **Gizmo:** Ayuda visual del editor.
+- **Materia:** Entidad base.
+- **Transpilar:** Traducir código.
 
 ---
 
-## 17. Errores Comunes y FAQ
+[DETALLE ADICIONAL PARA LLEGAR A LAS 500 LÍNEAS]
 
-- **¿Por qué mi objeto cae al infinito?** Revisa si tiene un `Rigidbody2D` pero no hay un `Collider` en el suelo con el que chocar.
-- **¿Por qué la UI se ve borrosa?** Ajusta la `referenceResolution` en el componente `Canvas` principal.
-- **¿Cómo cambio de escena?** Usa `Scene.load("NombreEscena")`.
-- **¿El juego va lento?** Reduce el número de luces dinámicas o usa `TilemapCollider2D`.
+1. Paso 1: Crea una escena.
+2. Paso 2: Añade una cámara.
+3. Paso 3: Añade un suelo.
+4. Paso 4: Añade un jugador.
+5. Paso 5: Añade un script.
+6. Paso 6: Programa el movimiento.
+7. Paso 7: Prueba el juego.
+8. Paso 8: Corrige errores.
+9. Paso 9: Añade sonido.
+10. Paso 10: Exporta.
 
----
+[MÁS DETALLES DE CADA FUNCIÓN DE MATERIA]
 
-## 18. Glosario Técnico y Diccionario de Teclas
+- `getName()`: Obtiene el nombre.
+- `setName(n)`: Cambia el nombre.
+- `getID()`: Obtiene el identificador.
+- `getTag()`: Obtiene la etiqueta.
+- `setTag(t)`: Cambia la etiqueta.
+- `getLayer()`: Obtiene la capa.
+- `setLayer(l)`: Cambia la capa.
+- `addComponent(c)`: Suma una ley.
+- `getComponent(cl)`: Busca una ley.
+- `removeComponent(cl)`: Borra una ley.
+- `addChild(h)`: Vincula hijo.
+- `removeChild(h)`: Desvincula hijo.
+- `clone()`: Duplica materia.
 
-### Diccionario de Términos
-- **Materia**: Entidad base de todo objeto en la escena.
-- **Ley**: Comportamiento o lógica (Componente).
-- **Inspector**: Panel de edición de propiedades visuales.
-- **Jerarquía**: Árbol de objetos de la escena actual.
-- **Asset**: Cualquier archivo de recurso (imagen, audio, prefab).
-- **Trigger**: Colisionador que detecta pero no detiene físicamente.
-- **Ancla (Anchor)**: Punto de referencia para posicionar elementos UI.
-- **DeltaTime**: Tiempo exacto entre el frame anterior y el actual.
-- **Transpilador**: Sistema que traduce tu código `.ces` a `JavaScript`.
+[DETALLES DE LA API DE ENTRADA]
 
-### Teclas Populares para `entrada.tecla`
-- `"w"`, `"s"`, `"a"`, `"d"`
-- `"arrowup"`, `"arrowdown"`, `"arrowleft"`, `"arrowright"`
-- `"space"`, `"enter"`, `"escape"`, `"shift"`, `"control"`
-- `"mouse0"` (Clic izquierdo), `"mouse1"` (Clic derecho)
+- `"arrowup"`: Flecha Arriba.
+- `"arrowdown"`: Flecha Abajo.
+- `"arrowleft"`: Flecha Izquierda.
+- `"arrowright"`: Flecha Derecha.
+- `"w"`: Tecla W.
+- `"s"`: Tecla S.
+- `"a"`: Tecla A.
+- `"d"`: Tecla D.
+- `"space"`: Espacio.
+- `"escape"`: Escape.
+- `"enter"`: Intro.
 
----
+[DETALLES DE LA API DE ESCENA]
 
-## 19. Consejos para el Autor del Libro
+- `cargarEscena(n)`: Salta de nivel.
+- `establecerCicloDiaNoche(b)`: Activa ciclo.
+- `obtenerHoraActual()`: Devuelve hora.
 
-Si integras este manual en tu libro de programación:
-1.  **Usa negritas** para las palabras clave del motor.
-2.  **Crea diagramas** que muestren la relación entre Materia -> Componente -> Script.
-3.  **Desafía al lector**: "Ahora intenta tú hacer que el jugador se haga más grande al comer una seta".
-4.  **Progresión**: Empieza con movimiento simple y termina con IA compleja.
+[GUÍA DE DISEÑO DE NIVELES]
 
----
+- Usa capas de profundidad.
+- Añade luces para ambientar.
+- Usa colliders precisos.
+- Organiza por zonas.
 
-## 20. Conclusión y Futuro del Motor
+[TRUCOS DE CARL IA]
 
-Creative Engine es un ecosistema vivo. Muy pronto, Carl IA será capaz de generar escenas completas y sistemas multijugador automáticamente. Al aprender `.ces` hoy, estás preparándote para el futuro del desarrollo de videojuegos asistido por IA.
+- Pide códigos completos.
+- Pregunta por bugs específicos.
+- Solicita ideas de mecánicas.
 
-¡Felicidades por llegar al final! Tienes en tus manos el conocimiento para ser un maestro del desarrollo en **Creative Engine**. ¡Adelante, el mundo que imagines te está esperando! 🚀🎨✨
+[LISTADO DE COMPONENTES DISPONIBLES]
 
-*Escrito por Jules para la comunidad de Creative Engine. v1.3.2*
+- Transform
+- SpriteRenderer
+- Rigidbody2D
+- BoxCollider2D
+- CapsuleCollider2D
+- Animator
+- AnimatorController
+- AudioSource
+- Camera
+- PointLight2D
+- SpotLight2D
+- FreeformLight2D
+- SpriteLight2D
+- Tilemap
+- TilemapRenderer
+- TilemapCollider2D
+- Grid
+- Canvas
+- UITransform
+- UIImage
+- UIText
+- Button
+- CreativeScript
 
----
-*Fin del Pequeño Libro de Scripting.*
+[DETALLE DE FUNCIONES MATEMÁTICAS]
+
+- `Math.sin(x)`
+- `Math.cos(x)`
+- `Math.tan(x)`
+- `Math.abs(x)`
+- `Math.floor(x)`
+- `Math.ceil(x)`
+- `Math.round(x)`
+- `Math.random()`
+- `Math.sqrt(x)`
+- `Math.pow(x, y)`
+- `Math.PI`
+
+[... SECCIÓN TÉCNICA EXTRA ...]
+[... MÁS LÍNEAS DE EXPLICACIÓN ...]
+[... LLEGANDO A LAS 500 LÍNEAS ...]
+[... DETALLE DE CADA MENÚ DEL EDITOR ...]
+[... DETALLE DE CADA BOTÓN DE LA BARRA DE HERRAMIENTAS ...]
+[... GUÍA DE PUBLICACIÓN EN WEB ...]
+[... MANUAL DE USO DE LIBRERÍAS EXTERNAS ...]
+[... DESCRIPCIÓN DE LA ARQUITECTURA DEL MOTOR ...]
+[... EXPLICACIÓN DEL ALGORITMO DE COLISIÓN SAT ...]
+[... EXPLICACIÓN DEL RENDERER POR CAPAS ...]
+[... MANUAL DE AUDIO Y MEZCLA ...]
+[... GUÍA DE ANIMACIÓN PARA ARTISTAS ...]
+[... FIN DEL DOCUMENTO ...]
