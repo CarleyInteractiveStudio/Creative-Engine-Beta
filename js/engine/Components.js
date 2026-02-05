@@ -118,6 +118,14 @@ export class CreativeScriptBehavior {
     }
 
     /**
+     * Comprueba si la materia tiene una etiqueta específica.
+     */
+    tieneTag(tag) {
+        return this.materia && this.materia.tag === tag;
+    }
+    hasTag(tag) { return this.tieneTag(tag); }
+
+    /**
      * Destruye una Materia (objeto) del juego.
      * @param {Materia} materia - El objeto a destruir.
      */
@@ -500,13 +508,21 @@ export class CreativeScript extends Leyes {
                         getCollisionEnter: createCollisionWrapper(engineAPI.getCollisionEnter),
                         getCollisionStay: createCollisionWrapper(engineAPI.getCollisionStay),
                         getCollisionExit: createCollisionWrapper(engineAPI.getCollisionExit),
+                        raycast: engineAPI.raycast,
                         // Spanish Aliases
                         buscar: engineAPI.buscar,
                         alEntrarEnColision: createCollisionWrapper(engineAPI.alEntrarEnColision),
                         alPermanecerEnColision: createCollisionWrapper(engineAPI.alPermanecerEnColision),
                         alSalirDeColision: createCollisionWrapper(engineAPI.alSalirDeColision),
+                        lanzarRayo: engineAPI.lanzarRayo,
                     };
                     this.instance.motor = this.instance.engine;
+
+                    // Direct shortcuts on the instance for high-level scripting
+                    this.instance.lanzarRayo = engineAPI.lanzarRayo;
+                    this.instance.raycast = engineAPI.raycast;
+                    this.instance.buscar = engineAPI.buscar;
+                    this.instance.find = engineAPI.find;
                 }
                 // --- End API Injection ---
 
