@@ -3079,7 +3079,15 @@ body {
     color: white;
 }
 
+#console-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
 #console-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.9em;
     line-height: 1.4;
