@@ -2110,6 +2110,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
+                // Tab switching logic for Carl IA
+                const carlTabBar = dom.carlIaPanel.querySelector('.carl-tab-bar');
+                if (carlTabBar) {
+                    carlTabBar.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.carl-tab-btn');
+                        if (btn) {
+                            const viewName = btn.dataset.view;
+
+                            // Update buttons
+                            carlTabBar.querySelectorAll('.carl-tab-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+
+                            // Update views
+                            dom.carlIaPanel.querySelectorAll('.carl-view').forEach(view => view.classList.remove('active'));
+                            const activeView = dom.carlIaPanel.querySelector(`#carl-ia-${viewName}-view`);
+                            if (activeView) {
+                                activeView.classList.add('active');
+                            }
+                        }
+                    });
+                }
+
             const brainSelectorMenu = dom.carlIaPanel.querySelector('.menu-content');
             const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
@@ -2118,6 +2140,217 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
+
+            // --- Carl IA Activity & Command Engine ---
+            const logCarlActivity = (action, params, result, isError = false) => {
+                const logDiv = dom.carlIaActivityLog;
+                if (!logDiv) return;
+
+                if (logDiv.querySelector('.carl-initial-info')) {
+                    logDiv.innerHTML = '';
+                }
+
+                const item = document.createElement('div');
+                item.className = 'carl-activity-item';
+
+                const header = document.createElement('div');
+                header.className = 'carl-activity-header';
+                header.innerHTML = `<span>Acción Ejecutada</span><span>${new Date().toLocaleTimeString()}</span>`;
+
+                const commandDiv = document.createElement('div');
+                commandDiv.className = 'carl-activity-command';
+                commandDiv.textContent = `${action}(${JSON.stringify(params)})`;
+
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `carl-activity-result ${isError ? 'error' : 'success'}`;
+                resultDiv.textContent = result;
+
+                item.appendChild(header);
+                item.appendChild(commandDiv);
+                item.appendChild(resultDiv);
+                logDiv.appendChild(item);
+                logDiv.scrollTop = logDiv.scrollHeight;
+            };
+
+            const carlCommandHandlers = {
+                'listarArchivos': async (params) => {
+                    try {
+                        const path = params.path || 'Assets';
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        const parts = path.split('/').filter(p => p);
+                        for (const part of parts) {
+                            handle = await handle.getDirectoryHandle(part);
+                        }
+
+                        const entries = [];
+                        for await (const entry of handle.values()) {
+                            entries.push(`${entry.kind === 'directory' ? '[DIR]' : '[FILE]'} ${entry.name}`);
+                        }
+
+                        return { success: true, message: `Archivos en ${path}: ${entries.join(', ') || 'Vacío'}` };
+                    } catch (e) {
+                        return { success: false, message: `Error al listar: ${e.message}` };
+                    }
+                },
+                'crearArchivo': async (params) => {
+                    try {
+                        const path = params.path || 'Assets';
+                        const name = params.name;
+                        const content = params.content || '';
+
+                        if (!name) return { success: false, message: "Falta el nombre del archivo." };
+
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        const parts = path.split('/').filter(p => p);
+                        for (const part of parts) {
+                            handle = await handle.getDirectoryHandle(part, { create: true });
+                        }
+
+                        await createAsset(name, content, handle);
+                        updateAssetBrowser();
+                        return { success: true, message: `Archivo '${name}' creado en ${path}.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al crear archivo: ${e.message}` };
+                    }
+                },
+                'borrarArchivo': async (params) => {
+                    try {
+                        const fullPath = params.path;
+                        if (!fullPath) return { success: false, message: "Falta la ruta del archivo." };
+
+                        const parts = fullPath.split('/').filter(p => p);
+                        const fileName = parts.pop();
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        for (const part of parts) {
+                            handle = await handle.getDirectoryHandle(part);
+                        }
+
+                        await handle.removeEntry(fileName, { recursive: true });
+                        updateAssetBrowser();
+                        return { success: true, message: `Archivo/Carpeta '${fileName}' eliminado.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al borrar: ${e.message}` };
+                    }
+                },
+                'renombrarArchivo': async (params) => {
+                    try {
+                        const path = params.path || 'Assets';
+                        const oldName = params.oldName;
+                        const newName = params.newName;
+
+                        if (!oldName || !newName) return { success: false, message: "Faltan nombres para renombrar." };
+
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        const parts = path.split('/').filter(p => p);
+                        for (const part of parts) {
+                            handle = await handle.getDirectoryHandle(part);
+                        }
+
+                        const fileHandle = await handle.getFileHandle(oldName);
+                        if (fileHandle.move) {
+                            await fileHandle.move(newName);
+                        } else {
+                            const file = await fileHandle.getFile();
+                            const newFileHandle = await handle.getFileHandle(newName, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(await file.arrayBuffer());
+                            await writable.close();
+                            await handle.removeEntry(oldName);
+                        }
+
+                        updateAssetBrowser();
+                        return { success: true, message: `Renombrado '${oldName}' a '${newName}' en ${path}.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al renombrar: ${e.message}` };
+                    }
+                },
+                'moverArchivo': async (params) => {
+                    try {
+                        const oldPath = params.oldPath; // Full path from Assets
+                        const newPath = params.newPath; // Full path from Assets
+
+                        if (!oldPath || !newPath) return { success: false, message: "Faltan rutas para mover." };
+
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        // Resolve old file
+                        const oldParts = oldPath.split('/').filter(p => p);
+                        const fileName = oldParts.pop();
+                        let oldDirHandle = projectHandle;
+                        for (const part of oldParts) {
+                            oldDirHandle = await oldDirHandle.getDirectoryHandle(part);
+                        }
+                        const fileHandle = await oldDirHandle.getFileHandle(fileName);
+
+                        // Resolve new dir
+                        const newParts = newPath.split('/').filter(p => p);
+                        let newDirHandle = projectHandle;
+                        for (const part of newParts) {
+                            newDirHandle = await newDirHandle.getDirectoryHandle(part, { create: true });
+                        }
+
+                        if (fileHandle.move) {
+                            await fileHandle.move(newDirHandle);
+                        } else {
+                            // Fallback
+                            const file = await fileHandle.getFile();
+                            const newFileHandle = await newDirHandle.getFileHandle(fileName, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(await file.arrayBuffer());
+                            await writable.close();
+                            await oldDirHandle.removeEntry(fileName);
+                        }
+
+                        updateAssetBrowser();
+                        return { success: true, message: `Movido '${fileName}' de ${oldPath} a ${newPath}.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al mover: ${e.message}` };
+                    }
+                }
+            };
+
+            const processCarlCommands = async (text) => {
+                const commandRegex = /COMMAND:\s*({.*})/g;
+                let match;
+                let executedSomething = false;
+
+                while ((match = commandRegex.exec(text)) !== null) {
+                    try {
+                        const command = JSON.parse(match[1]);
+                        const { action, params } = command;
+
+                        if (carlCommandHandlers[action]) {
+                            const perms = getPreferences().carlPermissions || {};
+                            let hasPerm = false;
+
+                            if (action === 'listarArchivos' || action === 'crearArchivo' || action === 'borrarArchivo' || action === 'renombrarArchivo' || action === 'moverArchivo') {
+                                hasPerm = perms.canManageFiles;
+                            }
+
+                            if (!hasPerm) {
+                                logCarlActivity(action, params, "Permiso denegado por el usuario en Preferencias.", true);
+                                continue;
+                            }
+
+                            const result = await carlCommandHandlers[action](params);
+                            logCarlActivity(action, params, result.message, !result.success);
+                            executedSomething = true;
+                        }
+                    } catch (e) {
+                        console.error("[Carl] Error parsing command:", e);
+                    }
+                }
+                return executedSomething;
+            };
 
             const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, servicial y culta. Te expresas con propiedad y distinción, manteniendo siempre un tono profesional pero cercano. Tu misión es asistir al usuario en la creación de sus visiones de juego, proporcionando orientación experta y técnica con refinamiento.
 
@@ -2157,6 +2390,19 @@ No necesitas usar 'this.'. Puedes acceder directamente a:
 - destruir(objeto): Elimina un objeto.
 - obtenerScript(nombre): Obtiene otro script del mismo objeto.
 - tieneTag(tag): Comprueba la etiqueta del objeto.
+
+6. COMANDOS DE ACCIÓN (MODO ASISTENTE):
+Para realizar acciones técnicas, debes incluir un bloque de comando en tu respuesta con el siguiente formato exacto:
+COMMAND: {"action": "nombre_accion", "params": {...}}
+
+Acciones disponibles:
+- listarArchivos: {"action": "listarArchivos", "params": {"path": "Assets"}}
+- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}}
+- borrarArchivo: {"action": "borrarArchivo", "params": {"path": "Assets/Scripts/viejo.ces"}}
+- renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "viejo.ces", "newName": "nuevo.ces"}}
+- moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "Assets/viejo.ces", "newPath": "Assets/Scripts"}}
+
+IMPORTANTE: Ejecuta estas acciones solo si el permiso correspondiente está 'CONCEDIDO'. Siempre confirma al usuario que has ejecutado la acción. No preguntes por permiso si ya está concedido en el sistema, simplemente actúa y confirma con elegancia. El usuario verá el resultado de estas acciones en una pestaña de 'Actividad' dedicada.
 
 Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
 
@@ -2336,6 +2582,10 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     if (result.success) {
                         addMessage(result.text, 'ia', false);
                         knownWorkingModel[provider] = model;
+
+                        // Process commands if present in response
+                        await processCarlCommands(result.text);
+
                         return { status: 'success', error: null, code: 200 };
                     }
 
@@ -2490,6 +2740,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
