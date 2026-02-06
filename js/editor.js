@@ -2110,6 +2110,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
+            // Helper for dropdown menus
+            const setupDropdown = (btn, content) => {
+                if (!btn || !content) return;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isVisible = content.classList.contains('visible');
+                    document.querySelectorAll('.menu-content').forEach(m => m.classList.remove('visible'));
+                    if (!isVisible) content.classList.add('visible');
+                });
+            };
+
+            setupDropdown(dom.carlIaViewSelectorBtn, dom.carlIaViewSelectorBtn.nextElementSibling);
+            setupDropdown(dom.carlIaBrainSelectorBtn, dom.carlIaBrainOptions);
+
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.menu-content').forEach(m => m.classList.remove('visible'));
+            });
+
             // View switching logic via Menu
             const carlMenuContent = dom.carlIaViewSelectorBtn.nextElementSibling;
             if (carlMenuContent) {
@@ -2133,9 +2151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             activeView.classList.add('active');
                         }
 
-                        // Close menu briefly
-                        carlMenuContent.style.display = 'none';
-                        setTimeout(() => carlMenuContent.style.display = '', 100);
+                        carlMenuContent.classList.remove('visible');
                     }
                 });
             }
@@ -2148,6 +2164,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
+            let carlChatHistory = []; // { role: 'user'|'assistant', content: string }
 
             // --- Carl IA Activity & Command Engine ---
             const logCarlActivity = (action, params, resultData, isError = false) => {
@@ -2188,6 +2205,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.appendChild(resultDiv);
                 logDiv.appendChild(item);
                 logDiv.scrollTop = logDiv.scrollHeight;
+            };
+
+            const resolveMateria = (materiaIdOrName) => {
+                if (materiaIdOrName === null || materiaIdOrName === undefined) return null;
+                let materia = null;
+                const id = parseInt(materiaIdOrName);
+                if (!isNaN(id)) {
+                    materia = SceneManager.currentScene.findMateriaById(id);
+                }
+                if (!materia) {
+                    materia = SceneManager.currentScene.getAllMaterias().find(m => m.name === materiaIdOrName);
+                }
+                return materia;
             };
 
             const carlCommandHandlers = {
@@ -2372,9 +2402,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'obtenerDetallesObjeto': async (params) => {
                     try {
-                        const id = parseInt(params.id);
-                        const materia = SceneManager.currentScene.findMateriaById(id);
-                        if (!materia) return { success: false, message: `Objeto con ID ${id} no encontrado.` };
+                        const idOrName = params.id || params.materiaId || params.name;
+                        const materia = resolveMateria(idOrName);
+                        if (!materia) return { success: false, message: `Objeto '${idOrName}' no encontrado.` };
 
                         const details = {
                             id: materia.id,
@@ -2418,9 +2448,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'borrarObjeto': async (params) => {
                     try {
-                        const id = parseInt(params.id);
-                        const materia = SceneManager.currentScene.findMateriaById(id);
-                        if (!materia) return { success: false, message: `Objeto con ID ${id} no encontrado.` };
+                        const idOrName = params.id || params.materiaId || params.name;
+                        const materia = resolveMateria(idOrName);
+                        if (!materia) return { success: false, message: `Objeto '${idOrName}' no encontrado.` };
 
                         const name = materia.name;
                         SceneManager.currentScene.removeMateria(materia);
@@ -2432,10 +2462,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'agregarComponente': async (params) => {
                     try {
-                        const materiaId = parseInt(params.materiaId);
+                        const materiaId = params.materiaId;
                         const type = params.type;
-                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
-                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+                        const materia = resolveMateria(materiaId);
+                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
 
                         const ComponentClass = Components[type];
                         if (!ComponentClass) return { success: false, message: `Tipo de componente '${type}' no existe.` };
@@ -2464,10 +2494,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'removerComponente': async (params) => {
                     try {
-                        const materiaId = parseInt(params.materiaId);
+                        const materiaId = params.materiaId;
                         const type = params.type;
-                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
-                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+                        const materia = resolveMateria(materiaId);
+                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
 
                         const component = materia.getComponent(Components[type]);
                         if (!component) return { success: false, message: `Componente '${type}' no encontrado en el objeto.` };
@@ -2482,15 +2512,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'modificarPropiedad': async (params) => {
                     try {
-                        const materiaId = parseInt(params.materiaId);
+                        const materiaId = params.materiaId;
                         const componentType = params.componentType || 'Materia';
                         const propPath = params.propPath;
                         const value = params.value;
 
                         if (!propPath) return { success: false, message: "Falta la ruta de la propiedad (propPath)." };
 
-                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
-                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+                        const materia = resolveMateria(materiaId);
+                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
 
                         const component = componentType === 'Materia' ? materia : materia.getComponent(Components[componentType]);
                         if (!component) return { success: false, message: `Componente '${componentType}' no encontrado en el objeto.` };
@@ -2519,7 +2549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const processCarlCommands = async (text) => {
                 const commandRegex = /COMMAND:\s*({.*})/g;
                 let match;
-                let executedSomething = false;
+                const results = [];
 
                 while ((match = commandRegex.exec(text)) !== null) {
                     try {
@@ -2538,18 +2568,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             if (!hasPerm) {
                                 logCarlActivity(action, params, "Permiso denegado por el usuario en Preferencias.", true);
+                                results.push({ action, success: false, message: "Permiso denegado por el usuario en Preferencias." });
                                 continue;
                             }
 
                             const result = await carlCommandHandlers[action](params);
                             logCarlActivity(action, params, result, !result.success);
-                            executedSomething = true;
+                            results.push({ action, ...result });
                         }
                     } catch (e) {
                         console.error("[Carl] Error parsing command:", e);
+                        results.push({ success: false, message: `Error parseando comando: ${e.message}` });
                     }
                 }
-                return executedSomething;
+                return results;
             };
 
             const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, servicial y culta. Te expresas con propiedad y distinción, manteniendo siempre un tono profesional pero cercano. Tu misión es asistir al usuario en la creación de sus visiones de juego, proporcionando orientación experta y técnica con refinamiento.
@@ -2592,25 +2624,29 @@ No necesitas usar 'this.'. Puedes acceder directamente a:
 - tieneTag(tag): Comprueba la etiqueta del objeto.
 
 6. COMANDOS DE ACCIÓN (MODO ASISTENTE):
-Para realizar acciones técnicas, debes incluir un bloque de comando en tu respuesta con el siguiente formato exacto:
-COMMAND: {"action": "nombre_accion", "params": {...}}
+Para realizar acciones técnicas, incluye bloques de comando en tu respuesta. El motor los ejecutará automáticamente y te devolverá los resultados de forma invisible para el usuario.
+FORMATO: COMMAND: {"action": "nombre_accion", "params": {...}}
 
-Acciones disponibles:
+Acciones Disponibles:
 - listarArchivos: {"action": "listarArchivos", "params": {"path": "Assets"}}
 - leerArchivo: {"action": "leerArchivo", "params": {"path": "Assets/Scripts/miScript.ces"}}
-- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}} (Úsalo también para MODIFICAR o SOBREESCRIBIR archivos existentes)
+- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}} (Sirve también para MODIFICAR)
 - borrarArchivo: {"action": "borrarArchivo", "params": {"path": "Assets/Scripts/viejo.ces"}}
-- renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "viejo.ces", "newName": "nuevo.ces"}}
-- moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "Assets/viejo.ces", "newPath": "Assets/Scripts"}}
+- renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "v.ces", "newName": "n.ces"}}
+- moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "A/v.ces", "newPath": "A/Scripts"}}
 - listarObjetos: {"action": "listarObjetos", "params": {}}
 - obtenerDetallesObjeto: {"action": "obtenerDetallesObjeto", "params": {"id": 123}}
-- crearObjeto: {"action": "crearObjeto", "params": {"name": "Enemigo", "parentId": null}}
+- crearObjeto: {"action": "crearObjeto", "params": {"name": "Cubo", "parentId": null}}
 - borrarObjeto: {"action": "borrarObjeto", "params": {"id": 123}}
 - agregarComponente: {"action": "agregarComponente", "params": {"materiaId": 123, "type": "SpriteRenderer"}}
 - removerComponente: {"action": "removerComponente", "params": {"materiaId": 123, "type": "Rigidbody2D"}}
-- modificarPropiedad: {"action": "modificarPropiedad", "params": {"materiaId": 123, "componentType": "Transform", "propPath": "localPosition.x", "value": 10}} (Usa "Materia" como componentType para propiedades del objeto base como 'name', 'tag', 'isActive' o 'layer')
+- modificarPropiedad: {"action": "modificarPropiedad", "params": {"materiaId": 123, "componentType": "Transform", "propPath": "localPosition.x", "value": 10}}
 
-IMPORTANTE: Ejecuta estas acciones solo si el permiso correspondiente está 'CONCEDIDO'. Siempre confirma al usuario que has ejecutado la acción. No preguntes por permiso si ya está concedido en el sistema, simplemente actúa y confirma con elegancia. El usuario verá el resultado de estas acciones en una pestaña de 'Actividad' dedicada. Puedes usar estos comandos para construir niveles enteros, configurar personajes y mucho más.
+REGLAS CRÍTICAS:
+1. REFERENCIAS: Al crear un objeto, el motor te devolverá su ID. Usa ese ID para comandos posteriores (parámetro 'materiaId'). Si no tienes el ID, puedes usar el Nombre exacto entre comillas, pero el ID es mucho más fiable.
+2. BUCLE DE FEEDBACK: Tras emitir un COMMAND, el motor ejecutará la acción y te enviará de vuelta un mensaje de "SISTEMA" con el resultado (incluyendo IDs de nuevos objetos). NO te despidas del usuario hasta haber recibido el feedback y confirmado que todo está listo. Puedes encadenar hasta 3 comandos seguidos.
+3. VISIBILIDAD: Los bloques COMMAND: {...} son invisibles para el usuario. Él solo ve tus palabras de aliento y explicaciones. No menciones el formato JSON al usuario.
+4. PERMISOS: Solo actúa si el permiso está 'CONCEDIDO'. Si está 'DENEGADO', no intentes el comando; informa al usuario que necesita habilitarlo en Preferencias.
 
 Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
 
@@ -2675,9 +2711,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu compañero creativo. ¿Qué mundo increíble vamos a construir hoy?</div>`;
 
                     // Close menu
-                    const menuContent = brainOptionsList;
-                    menuContent.style.display = 'none';
-                    setTimeout(() => menuContent.style.display = '', 100);
+                    brainOptionsList.classList.remove('visible');
                 }
             });
 
@@ -2785,23 +2819,64 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     return;
                 }
 
+                let callCount = 0;
+                const MAX_RECURSION = 3;
+
                 const executeApiCall = async (model, prompt, customSystemPrompt) => {
-                    addMessage("...", 'ia');
-                    const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, customSystemPrompt || CARL_SYSTEM_PROMPT);
+                    if (callCount >= MAX_RECURSION) {
+                        console.warn("[Carl] Máxima recursión de comandos alcanzada.");
+                        return { status: 'success' };
+                    }
+                    callCount++;
+
+                    const isFeedback = prompt.startsWith("SISTEMA:");
+                    if (!isFeedback) addMessage("...", 'ia');
+
+                    const thinkingMessage = isFeedback ? null : messagesDiv.lastElementChild;
+
+                    // Call API with history
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, customSystemPrompt || CARL_SYSTEM_PROMPT, carlChatHistory);
+
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
-                        addMessage(result.text, 'ia', false);
+                        // Update history with user prompt and assistant response
+                        if (!isFeedback) {
+                            carlChatHistory.push({ role: 'user', content: prompt });
+                        } else {
+                            // Append feedback to last assistant message or as a separate system entry if supported?
+                            // For simplicity, we add feedback as 'user' (system) content in history.
+                            carlChatHistory.push({ role: 'user', content: prompt });
+                        }
+                        carlChatHistory.push({ role: 'assistant', content: result.text });
+
+                        // Keep history manageable
+                        if (carlChatHistory.length > 20) carlChatHistory.splice(0, 2);
+
+                        // Strip commands for visible chat
+                        const visibleText = result.text.replace(/COMMAND:\s*({.*})/g, '').replace(/<execute_request\/>/g, '').trim();
+                        if (visibleText) {
+                            addMessage(visibleText, 'ia', false);
+                        }
+
                         knownWorkingModel[provider] = model;
 
-                        // Process commands if present in response
-                        await processCarlCommands(result.text);
+                        // Process commands
+                        const cmdResults = await processCarlCommands(result.text);
+
+                        if (cmdResults.length > 0) {
+                            const feedback = "SISTEMA: Resultados de los comandos:\n" +
+                                cmdResults.map(r => `- ${r.action}: ${r.success ? 'ÉXITO' : 'FALLO'}. ${r.message}`).join('\n') +
+                                "\nContinúa si falta algo, o confirma al usuario si terminaste.";
+
+                            // Recursive call for feedback
+                            return await executeApiCall(model, feedback, customSystemPrompt);
+                        }
 
                         return { status: 'success', error: null, code: 200 };
                     }
 
-                    addMessage(result.error, 'ia', true);
+                    if (!isFeedback) addMessage(result.error, 'ia', true);
                     return { status: 'failed', code: result.code, error: result.error };
                 };
 

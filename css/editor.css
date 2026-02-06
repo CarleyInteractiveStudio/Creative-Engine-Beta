@@ -111,10 +111,6 @@ body.is-dragging-panel {
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
 }
 
-.menu-item:hover .menu-content {
-    display: block;
-}
-
 .menu-content.visible {
     display: block;
 }

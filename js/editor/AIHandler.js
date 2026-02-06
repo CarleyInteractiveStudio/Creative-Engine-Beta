@@ -70,9 +70,10 @@ export async function listModels(provider, apiKey) {
  * @param {string} apiKey - La clave de API para el proveedor.
  * @param {string} prompt - El mensaje a enviar a la IA.
  * @param {string} [systemPrompt=""] - Instrucciones de sistema opcionales para definir la personalidad.
+ * @param {any[]} [history=[]] - Historial de chat previo.
  * @returns {Promise<{success: boolean, text?: string, error?: string, code?: number | string}>} - Un objeto con el resultado.
  */
-export async function callGenerativeAI(provider, modelName, apiKey, prompt, systemPrompt = "") {
+export async function callGenerativeAI(provider, modelName, apiKey, prompt, systemPrompt = "", history = []) {
     if (!modelName) {
         return { success: false, error: "No se ha especificado un nombre de modelo.", code: 400 };
     }
@@ -82,20 +83,20 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
     let body = {};
 
     if (provider === 'gemini') {
-        // Use v1beta for better compatibility with system_instruction
         endpoint = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
-
-        const contents = [];
         const isGemini15 = modelName.includes('1.5');
 
-        if (systemPrompt) {
-            if (isGemini15) {
-                body.system_instruction = { parts: [{ text: systemPrompt }] };
-            } else {
-                // Fallback for Gemini 1.0: Prepend to prompt
-                prompt = `[SYSTEM INSTRUCTION: ${systemPrompt}]\n\nUSER MESSAGE: ${prompt}`;
-            }
+        const contents = history.map(h => ({
+            role: h.role === 'user' ? 'user' : 'model',
+            parts: [{ text: h.content }]
+        }));
+
+        if (systemPrompt && isGemini15) {
+            body.system_instruction = { parts: [{ text: systemPrompt }] };
+        } else if (systemPrompt) {
+            prompt = `[SYSTEM INSTRUCTION: ${systemPrompt}]\n\nUSER MESSAGE: ${prompt}`;
         }
+
         contents.push({ role: 'user', parts: [{ text: prompt }] });
         body.contents = contents;
 
@@ -105,6 +106,11 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
 
         const messages = [];
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+
+        history.forEach(h => {
+            messages.push({ role: h.role, content: h.content });
+        });
+
         messages.push({ role: 'user', content: prompt });
 
         body = {
@@ -115,12 +121,15 @@ export async function callGenerativeAI(provider, modelName, apiKey, prompt, syst
         endpoint = 'https://api.anthropic.com/v1/messages';
         headers['x-api-key'] = apiKey;
         headers['anthropic-version'] = '2023-06-01';
-        headers['anthropic-dangerous-direct-browser-access'] = 'true'; // Needed for browser calls
+        headers['anthropic-dangerous-direct-browser-access'] = 'true';
+
+        const messages = history.map(h => ({ role: h.role, content: h.content }));
+        messages.push({ role: 'user', content: prompt });
 
         body = {
             model: modelName,
             max_tokens: 4096,
-            messages: [{ role: 'user', content: prompt }]
+            messages: messages
         };
         if (systemPrompt) body.system = systemPrompt;
 
