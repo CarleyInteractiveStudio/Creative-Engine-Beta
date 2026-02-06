@@ -2150,9 +2150,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
 
             // --- Carl IA Activity & Command Engine ---
-            const logCarlActivity = (action, params, result, isError = false) => {
+            const logCarlActivity = (action, params, resultData, isError = false) => {
                 const logDiv = dom.carlIaActivityLog;
                 if (!logDiv) return;
+
+                const resultMessage = typeof resultData === 'string' ? resultData : resultData.message;
+                const resultContent = typeof resultData === 'object' ? resultData.content : null;
 
                 if (logDiv.querySelector('.carl-initial-info')) {
                     logDiv.innerHTML = '';
@@ -2171,7 +2174,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const resultDiv = document.createElement('div');
                 resultDiv.className = `carl-activity-result ${isError ? 'error' : 'success'}`;
-                resultDiv.textContent = result;
+                resultDiv.textContent = resultMessage;
+
+                if (resultContent) {
+                    const contentPre = document.createElement('pre');
+                    contentPre.className = 'carl-activity-content';
+                    contentPre.textContent = resultContent;
+                    resultDiv.appendChild(contentPre);
+                }
 
                 item.appendChild(header);
                 item.appendChild(commandDiv);
@@ -2223,6 +2233,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         return { success: true, message: `Archivo '${name}' creado en ${path}.` };
                     } catch (e) {
                         return { success: false, message: `Error al crear archivo: ${e.message}` };
+                    }
+                },
+                'leerArchivo': async (params) => {
+                    try {
+                        const fullPath = params.path;
+                        if (!fullPath) return { success: false, message: "Falta la ruta del archivo." };
+
+                        const parts = fullPath.split('/').filter(p => p);
+                        const fileName = parts.pop();
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        for (const part of parts) {
+                            handle = await handle.getDirectoryHandle(part);
+                        }
+
+                        const fileHandle = await handle.getFileHandle(fileName);
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+
+                        return {
+                            success: true,
+                            message: `Archivo '${fullPath}' leído con éxito.`,
+                            content: content
+                        };
+                    } catch (e) {
+                        return { success: false, message: `Error al leer: ${e.message}` };
                     }
                 },
                 'borrarArchivo': async (params) => {
@@ -2340,7 +2377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const perms = getPreferences().carlPermissions || {};
                             let hasPerm = false;
 
-                            if (action === 'listarArchivos' || action === 'crearArchivo' || action === 'borrarArchivo' || action === 'renombrarArchivo' || action === 'moverArchivo') {
+                            if (action === 'listarArchivos' || action === 'crearArchivo' || action === 'borrarArchivo' || action === 'renombrarArchivo' || action === 'moverArchivo' || action === 'leerArchivo') {
                                 hasPerm = perms.canManageFiles;
                             }
 
@@ -2350,7 +2387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
 
                             const result = await carlCommandHandlers[action](params);
-                            logCarlActivity(action, params, result.message, !result.success);
+                            logCarlActivity(action, params, result, !result.success);
                             executedSomething = true;
                         }
                     } catch (e) {
@@ -2405,7 +2442,8 @@ COMMAND: {"action": "nombre_accion", "params": {...}}
 
 Acciones disponibles:
 - listarArchivos: {"action": "listarArchivos", "params": {"path": "Assets"}}
-- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}}
+- leerArchivo: {"action": "leerArchivo", "params": {"path": "Assets/Scripts/miScript.ces"}}
+- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}} (Úsalo también para MODIFICAR o SOBREESCRIBIR archivos existentes)
 - borrarArchivo: {"action": "borrarArchivo", "params": {"path": "Assets/Scripts/viejo.ces"}}
 - renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "viejo.ces", "newName": "nuevo.ces"}}
 - moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "Assets/viejo.ces", "newPath": "Assets/Scripts"}}
