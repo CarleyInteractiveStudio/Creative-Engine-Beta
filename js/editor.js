@@ -2123,6 +2123,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         carlMenuContent.querySelectorAll('.carl-view-option').forEach(b => b.classList.remove('active'));
                         opt.classList.add('active');
 
+                        // Update button label
+                        dom.carlIaViewSelectorBtn.textContent = opt.textContent;
+
                         // Update views
                         dom.carlIaPanel.querySelectorAll('.carl-view').forEach(view => view.classList.remove('active'));
                         const activeView = dom.carlIaPanel.querySelector(`#carl-ia-${viewName}-view`);
