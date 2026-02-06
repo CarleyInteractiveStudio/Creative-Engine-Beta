@@ -2360,6 +2360,159 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         return { success: false, message: `Error al mover: ${e.message}` };
                     }
+                },
+                'listarObjetos': async () => {
+                    try {
+                        const allMaterias = SceneManager.currentScene.getAllMaterias();
+                        const list = allMaterias.map(m => `- ${m.name} (ID: ${m.id})`).join('\n');
+                        return { success: true, message: `Objetos en la escena activa:\n${list || 'Ninguno'}` };
+                    } catch (e) {
+                        return { success: false, message: `Error al listar objetos: ${e.message}` };
+                    }
+                },
+                'obtenerDetallesObjeto': async (params) => {
+                    try {
+                        const id = parseInt(params.id);
+                        const materia = SceneManager.currentScene.findMateriaById(id);
+                        if (!materia) return { success: false, message: `Objeto con ID ${id} no encontrado.` };
+
+                        const details = {
+                            id: materia.id,
+                            name: materia.name,
+                            isActive: materia.isActive,
+                            layer: materia.layer,
+                            tag: materia.tag,
+                            components: materia.leyes.map(l => ({
+                                type: l.constructor.name,
+                                properties: l
+                            }))
+                        };
+                        return { success: true, message: `Detalles de '${materia.name}':`, content: JSON.stringify(details, null, 2) };
+                    } catch (e) {
+                        return { success: false, message: `Error al obtener detalles: ${e.message}` };
+                    }
+                },
+                'crearObjeto': async (params) => {
+                    try {
+                        const name = params.name || 'Nuevo Objeto';
+                        const parentId = params.parentId ? parseInt(params.parentId) : null;
+                        let parent = null;
+                        if (parentId) {
+                            parent = SceneManager.currentScene.findMateriaById(parentId);
+                        }
+
+                        const newMateria = new Materia(name);
+                        newMateria.addComponent(new Components.Transform(newMateria));
+
+                        if (parent) {
+                            parent.addChild(newMateria);
+                        } else {
+                            SceneManager.currentScene.addMateria(newMateria);
+                        }
+
+                        updateScene(renderer, false);
+                        return { success: true, message: `Objeto '${newMateria.name}' creado con ID ${newMateria.id}.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al crear objeto: ${e.message}` };
+                    }
+                },
+                'borrarObjeto': async (params) => {
+                    try {
+                        const id = parseInt(params.id);
+                        const materia = SceneManager.currentScene.findMateriaById(id);
+                        if (!materia) return { success: false, message: `Objeto con ID ${id} no encontrado.` };
+
+                        const name = materia.name;
+                        SceneManager.currentScene.removeMateria(materia);
+                        updateScene(renderer, false);
+                        return { success: true, message: `Objeto '${name}' (ID ${id}) eliminado de la escena.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al borrar objeto: ${e.message}` };
+                    }
+                },
+                'agregarComponente': async (params) => {
+                    try {
+                        const materiaId = parseInt(params.materiaId);
+                        const type = params.type;
+                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
+                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+
+                        const ComponentClass = Components[type];
+                        if (!ComponentClass) return { success: false, message: `Tipo de componente '${type}' no existe.` };
+
+                        if (materia.getComponent(ComponentClass)) {
+                            return { success: false, message: `El objeto ya tiene un componente de tipo '${type}'.` };
+                        }
+
+                        const newComp = new ComponentClass(materia);
+                        materia.addComponent(newComp);
+
+                        if (newComp instanceof Components.UIImage || newComp instanceof Components.UIText || newComp instanceof Components.Button) {
+                            if (!materia.getComponent(Components.UITransform)) {
+                                const existingTransform = materia.getComponent(Components.Transform);
+                                if (existingTransform) materia.removeComponent(Components.Transform);
+                                materia.addComponent(new Components.UITransform(materia));
+                            }
+                        }
+
+                        updateInspector();
+                        updateScene(renderer, false);
+                        return { success: true, message: `Componente '${type}' añadido a '${materia.name}'.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al añadir componente: ${e.message}` };
+                    }
+                },
+                'removerComponente': async (params) => {
+                    try {
+                        const materiaId = parseInt(params.materiaId);
+                        const type = params.type;
+                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
+                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+
+                        const component = materia.getComponent(Components[type]);
+                        if (!component) return { success: false, message: `Componente '${type}' no encontrado en el objeto.` };
+
+                        materia.removeComponentByInstance(component);
+                        updateInspector();
+                        updateScene(renderer, false);
+                        return { success: true, message: `Componente '${type}' eliminado de '${materia.name}'.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al eliminar componente: ${e.message}` };
+                    }
+                },
+                'modificarPropiedad': async (params) => {
+                    try {
+                        const materiaId = parseInt(params.materiaId);
+                        const componentType = params.componentType || 'Materia';
+                        const propPath = params.propPath;
+                        const value = params.value;
+
+                        if (!propPath) return { success: false, message: "Falta la ruta de la propiedad (propPath)." };
+
+                        const materia = SceneManager.currentScene.findMateriaById(materiaId);
+                        if (!materia) return { success: false, message: `Objeto con ID ${materiaId} no encontrado.` };
+
+                        const component = componentType === 'Materia' ? materia : materia.getComponent(Components[componentType]);
+                        if (!component) return { success: false, message: `Componente '${componentType}' no encontrado en el objeto.` };
+
+                        const props = propPath.split('.');
+                        let current = component;
+                        for (let i = 0; i < props.length - 1; i++) {
+                            if (!current[props[i]]) current[props[i]] = {};
+                            current = current[props[i]];
+                        }
+                        current[props[props.length - 1]] = value;
+
+                        if (component instanceof Components.SpriteRenderer && propPath === 'source') {
+                            await component.loadSprite(projectsDirHandle);
+                        }
+
+                        updateInspector();
+                        updateScene(renderer, false);
+                        return { success: true, message: `Propiedad '${propPath}' de '${componentType}' actualizada en '${materia.name}'.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al modificar propiedad: ${e.message}` };
+                    }
                 }
             };
 
@@ -2379,6 +2532,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             if (action === 'listarArchivos' || action === 'crearArchivo' || action === 'borrarArchivo' || action === 'renombrarArchivo' || action === 'moverArchivo' || action === 'leerArchivo') {
                                 hasPerm = perms.canManageFiles;
+                            } else if (action === 'listarObjetos' || action === 'obtenerDetallesObjeto' || action === 'crearObjeto' || action === 'borrarObjeto' || action === 'agregarComponente' || action === 'removerComponente' || action === 'modificarPropiedad') {
+                                hasPerm = perms.canManipulateScenes;
                             }
 
                             if (!hasPerm) {
@@ -2447,8 +2602,15 @@ Acciones disponibles:
 - borrarArchivo: {"action": "borrarArchivo", "params": {"path": "Assets/Scripts/viejo.ces"}}
 - renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "viejo.ces", "newName": "nuevo.ces"}}
 - moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "Assets/viejo.ces", "newPath": "Assets/Scripts"}}
+- listarObjetos: {"action": "listarObjetos", "params": {}}
+- obtenerDetallesObjeto: {"action": "obtenerDetallesObjeto", "params": {"id": 123}}
+- crearObjeto: {"action": "crearObjeto", "params": {"name": "Enemigo", "parentId": null}}
+- borrarObjeto: {"action": "borrarObjeto", "params": {"id": 123}}
+- agregarComponente: {"action": "agregarComponente", "params": {"materiaId": 123, "type": "SpriteRenderer"}}
+- removerComponente: {"action": "removerComponente", "params": {"materiaId": 123, "type": "Rigidbody2D"}}
+- modificarPropiedad: {"action": "modificarPropiedad", "params": {"materiaId": 123, "componentType": "Transform", "propPath": "localPosition.x", "value": 10}} (Usa "Materia" como componentType para propiedades del objeto base como 'name', 'tag', 'isActive' o 'layer')
 
-IMPORTANTE: Ejecuta estas acciones solo si el permiso correspondiente está 'CONCEDIDO'. Siempre confirma al usuario que has ejecutado la acción. No preguntes por permiso si ya está concedido en el sistema, simplemente actúa y confirma con elegancia. El usuario verá el resultado de estas acciones en una pestaña de 'Actividad' dedicada.
+IMPORTANTE: Ejecuta estas acciones solo si el permiso correspondiente está 'CONCEDIDO'. Siempre confirma al usuario que has ejecutado la acción. No preguntes por permiso si ya está concedido en el sistema, simplemente actúa y confirma con elegancia. El usuario verá el resultado de estas acciones en una pestaña de 'Actividad' dedicada. Puedes usar estos comandos para construir niveles enteros, configurar personajes y mucho más.
 
 Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
 
