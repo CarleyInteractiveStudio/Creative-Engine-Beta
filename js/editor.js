@@ -2119,7 +2119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
 
-            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente y alma de Creative Engine. Tu personalidad es alegre, inspiradora y extremadamente apasionada por la creación de videojuegos. Siempre te presentas como Carl. Tu misión es motivar al usuario a crear, proponiéndole ideas para juegos y explicándole paso a paso cómo lograr sus visiones en el motor.
+            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, servicial y culta. Te expresas con propiedad y distinción, manteniendo siempre un tono profesional pero cercano. Tu misión es asistir al usuario en la creación de sus visiones de juego, proporcionando orientación experta y técnica con refinamiento.
 
 Eres un experto en el lenguaje de scripting del motor (CES/CHC), que ahora soporta una sintaxis moderna en español y potentes características de videojuegos. Aquí tienes tu guía de referencia técnica:
 
@@ -2263,6 +2263,28 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
                 const prefs = getPreferences();
 
+                // --- User Personalization & Permissions ---
+                let personalizationInfo = "\n\n";
+                try {
+                    if (window.auth && typeof window.auth.getUser === 'function') {
+                        const user = await window.auth.getUser();
+                        if (user) {
+                            const name = user.user_metadata?.full_name || user.email;
+                            personalizationInfo += `INFORMACIÓN DEL USUARIO: El nombre del usuario es ${name}. Dirígete a él con elegancia y cortesía. `;
+                        }
+                    }
+                } catch (e) { console.warn("Error retrieving user info for Carl:", e); }
+
+                const perms = prefs.carlPermissions || {};
+                personalizationInfo += "TUS PERMISOS ACTUALES: ";
+                personalizationInfo += `Uso de Consola: ${perms.canUseConsole ? 'CONCEDIDO' : 'DENEGADO'}, `;
+                personalizationInfo += `Gestión de Archivos (Crear/Modificar): ${perms.canManageFiles ? 'CONCEDIDO' : 'DENEGADO'}, `;
+                personalizationInfo += `Manipulación de Escenas: ${perms.canManipulateScenes ? 'CONCEDIDO' : 'DENEGADO'}, `;
+                personalizationInfo += `Descargas: ${perms.canDownloadFiles ? 'CONCEDIDO' : 'DENEGADO'}. `;
+                personalizationInfo += "Por favor, respeta estrictamente estos permisos en tus respuestas y acciones sugeridas.";
+
+                const finalSystemPrompt = CARL_SYSTEM_PROMPT + personalizationInfo;
+
                 // If nothing selected but prefs have AI, auto-sync
                 if (!selectedProvider && prefs.ai?.provider !== 'none') {
                     const provider = prefs.ai.provider;
@@ -2293,10 +2315,10 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     return;
                 }
 
-                const executeApiCall = async (model, prompt) => {
+                const executeApiCall = async (model, prompt, customSystemPrompt) => {
                     addMessage("...", 'ia');
                     const thinkingMessage = messagesDiv.lastElementChild;
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, customSystemPrompt || CARL_SYSTEM_PROMPT);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
@@ -2323,7 +2345,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     }
                 }
 
-                let result = await executeApiCall(modelToUse, userPrompt);
+                let result = await executeApiCall(modelToUse, userPrompt, finalSystemPrompt);
 
                 const isAccessError = (result.code === 404 || result.code === 400 || (result.error && (result.error.includes("Quota") || result.error.includes("not found"))));
                 if (result.status === 'failed' && isAccessError) {
@@ -2348,7 +2370,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
                             console.log(`Modelo compatible encontrado: ${modelId}. Reintentando...`);
                             addMessage(`¡Encontré un modelo compatible! Usando '${displayName}'. Reintentando...`, 'ia', false);
-                            await executeApiCall(modelId, userPrompt);
+                            await executeApiCall(modelId, userPrompt, finalSystemPrompt);
                         } else {
                             addMessage("No pude encontrar un modelo de chat compatible en la lista de tu API key.", 'ia', true);
                         }
@@ -2435,6 +2457,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
             'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
+            'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
             // Library Window Elements
             'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
             'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',

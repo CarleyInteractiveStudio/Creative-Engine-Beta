@@ -27,6 +27,12 @@ const defaultPrefs = {
     ai: {
         provider: 'none'
     },
+    carlPermissions: {
+        canUseConsole: false,
+        canManageFiles: false,
+        canManipulateScenes: false,
+        canDownloadFiles: false
+    },
     showTerminal: false
 };
 
@@ -144,6 +150,14 @@ function savePreferences() {
     currentPreferences.zoomSpeed = parseFloat(_dom.prefsZoomSpeed.value) || 1.1;
     currentPreferences.ai.provider = _dom.prefsAiProvider.value;
     currentPreferences.ai.model = _dom.prefsAiModelSelector ? _dom.prefsAiModelSelector.value : null;
+
+    currentPreferences.carlPermissions = {
+        canUseConsole: _dom.prefsCarlCanUseConsole.checked,
+        canManageFiles: _dom.prefsCarlCanManageFiles.checked,
+        canManipulateScenes: _dom.prefsCarlCanManipulateScenes.checked,
+        canDownloadFiles: _dom.prefsCarlCanDownloadFiles.checked
+    };
+
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
@@ -167,6 +181,7 @@ function loadPreferences() {
     currentPreferences = { ...defaultPrefs, ...loadedPrefs };
     currentPreferences.customColors = { ...defaultPrefs.customColors, ...(loadedPrefs.customColors || {}) };
     currentPreferences.ai = { ...defaultPrefs.ai, ...(loadedPrefs.ai || {}) };
+    currentPreferences.carlPermissions = { ...defaultPrefs.carlPermissions, ...(loadedPrefs.carlPermissions || {}) };
 
     if (_dom.prefsTheme) _dom.prefsTheme.value = currentPreferences.theme;
     if (_dom.prefsColorBg) _dom.prefsColorBg.value = currentPreferences.customColors.bg;
@@ -180,6 +195,12 @@ function loadPreferences() {
     if (_dom.prefsSnappingGridSize) _dom.prefsSnappingGridSize.value = currentPreferences.gridSize;
     if (_dom.prefsZoomSpeed) _dom.prefsZoomSpeed.value = currentPreferences.zoomSpeed;
     if (_dom.prefsAiProvider) _dom.prefsAiProvider.value = currentPreferences.ai.provider;
+
+    if (_dom.prefsCarlCanUseConsole) _dom.prefsCarlCanUseConsole.checked = currentPreferences.carlPermissions.canUseConsole;
+    if (_dom.prefsCarlCanManageFiles) _dom.prefsCarlCanManageFiles.checked = currentPreferences.carlPermissions.canManageFiles;
+    if (_dom.prefsCarlCanManipulateScenes) _dom.prefsCarlCanManipulateScenes.checked = currentPreferences.carlPermissions.canManipulateScenes;
+    if (_dom.prefsCarlCanDownloadFiles) _dom.prefsCarlCanDownloadFiles.checked = currentPreferences.carlPermissions.canDownloadFiles;
+
     if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
 
 
