@@ -294,7 +294,7 @@ export function transpile(code, scriptName) {
         });
 
         // 2.a: Replace console shortcuts
-        body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'console.log(');
+        body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'this._userLog(');
 
         // 2.b: Replace Spanish keywords
         body = body.replace(/(?<![.\w])si\s*\(/g, 'if (');

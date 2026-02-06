@@ -70,6 +70,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
+
+    let consoleMessages = [];
+    let activeConsoleFilter = 'all';
     // Fixed-timestep accumulator for scripts
     let fixedAccumulator = 0;
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
@@ -88,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts, logToUIConsole, clearUIConsole, renderConsoleMessages, appendLogToUI;
 
     hotReloadScript = async function(scriptName) {
         if (!isGameRunning || !SceneManager.currentScene) return;
@@ -738,7 +741,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runChecksAndPlay = async function() {
+        console.log("[Play] Iniciando verificaciones antes de Play...");
         if (!isEditorReady) {
+            console.warn("[Play] El editor no está listo todavía.");
             showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
             return;
         }
@@ -784,8 +789,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+        let projectHandle;
+        try {
+            projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        } catch (e) {
+            console.error(`[Play] No se pudo acceder al directorio del proyecto '${projectName}':`, e);
+            showNotificationDialog('Error de Proyecto', `No se pudo encontrar la carpeta del proyecto: ${projectName}`);
+            return;
+        }
+
         // Escanear todo el proyecto para encontrar scripts
         await findCesFiles(projectHandle);
 
@@ -2003,6 +2016,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // --- Console Toolbar Listeners ---
+        if (dom.btnClearConsole) {
+            dom.btnClearConsole.addEventListener('click', clearUIConsole);
+        }
+
+        const consoleFilters = dom.consoleContent.querySelector('.console-filters');
+        if (consoleFilters) {
+            consoleFilters.addEventListener('click', (e) => {
+                if (e.target.matches('.filter-btn')) {
+                    activeConsoleFilter = e.target.dataset.filter;
+                    consoleFilters.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    renderConsoleMessages();
+                }
+            });
+        }
+
         // --- Panel Resizing Logic ---
         function initResizer(resizer, direction) {
             resizer.addEventListener('mousedown', (e) => {
@@ -2448,6 +2478,8 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             'btn-play', 'btn-pause', 'btn-stop',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
+            // Console Elements
+            'console-messages', 'btn-clear-console',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2481,56 +2513,100 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
         // --- 7c. Override console.log to also log to UI ---
         const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
-        let lastLogMessage = '';
-        let lastLogType = '';
-        let lastLogElement = null;
-        let lastLogCount = 1;
 
-        function logToUIConsole(message, type = 'log') {
-            if (!dom.consoleContent) return;
+    // Define console helper variables here (global to DOMContentLoaded)
+    let lastLogMessage = '';
+    let lastLogType = '';
+    let lastLogElement = null;
+    let lastLogCount = 1;
+    let lastLogIsSystem = null;
 
-            // Group identical messages
-            if (message === lastLogMessage && type === lastLogType && lastLogElement) {
-                lastLogCount++;
-                let badge = lastLogElement.querySelector('.log-count-badge');
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'log-count-badge';
-                    lastLogElement.appendChild(badge);
-                }
-                badge.textContent = lastLogCount;
-                // Keep scroll at bottom
-                dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
-                return;
+    renderConsoleMessages = function() {
+        if (!dom.consoleMessages) return;
+        dom.consoleMessages.innerHTML = '';
+
+        lastLogMessage = '';
+        lastLogType = '';
+        lastLogElement = null;
+        lastLogCount = 1;
+        lastLogIsSystem = null;
+
+        const filtered = consoleMessages.filter(m => {
+            if (activeConsoleFilter === 'all') return true;
+            if (activeConsoleFilter === 'system') return m.isSystem;
+            if (activeConsoleFilter === 'warn') return m.type === 'warn';
+            if (activeConsoleFilter === 'error') return m.type === 'error';
+            return true;
+        });
+
+        filtered.forEach(m => {
+            appendLogToUI(m.message, m.type, m.isSystem);
+        });
+    };
+
+    appendLogToUI = function(message, type, isSystem) {
+        if (!dom.consoleMessages) return;
+
+        // Group identical messages
+        if (message === lastLogMessage && type === lastLogType && isSystem === lastLogIsSystem && lastLogElement) {
+            lastLogCount++;
+            let badge = lastLogElement.querySelector('.log-count-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'log-count-badge';
+                lastLogElement.appendChild(badge);
             }
-
-            lastLogMessage = message;
-            lastLogType = type;
-            lastLogCount = 1;
-
-            const msgEl = document.createElement('p');
-            msgEl.className = `console-msg log-${type}`;
-
-            const textSpan = document.createElement('span');
-            textSpan.textContent = `> ${message}`;
-            msgEl.appendChild(textSpan);
-
-            dom.consoleContent.appendChild(msgEl);
-            dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
-            lastLogElement = msgEl;
+            badge.textContent = lastLogCount;
+            dom.consoleMessages.scrollTop = dom.consoleMessages.scrollHeight;
+            return;
         }
 
-        function clearUIConsole() {
-            if (dom.consoleContent) dom.consoleContent.innerHTML = '';
-            lastLogMessage = '';
-            lastLogType = '';
-            lastLogElement = null;
-            lastLogCount = 1;
-        }
+        lastLogMessage = message;
+        lastLogType = type;
+        lastLogIsSystem = isSystem;
+        lastLogCount = 1;
 
-        console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); };
-        console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); };
-        console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
+        const msgEl = document.createElement('p');
+        msgEl.className = `console-msg log-${type} ${isSystem ? 'is-system' : 'is-user'}`;
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = `> ${message}`;
+        msgEl.appendChild(textSpan);
+
+        dom.consoleMessages.appendChild(msgEl);
+        dom.consoleMessages.scrollTop = dom.consoleMessages.scrollHeight;
+        lastLogElement = msgEl;
+    };
+
+    logToUIConsole = function(message, type = 'log', isSystem = true) {
+        consoleMessages.push({ message: String(message), type, isSystem });
+
+        // Should we show it?
+        let shouldShow = false;
+        if (activeConsoleFilter === 'all') shouldShow = true;
+        else if (activeConsoleFilter === 'system') shouldShow = isSystem;
+        else if (activeConsoleFilter === 'warn') shouldShow = type === 'warn';
+        else if (activeConsoleFilter === 'error') shouldShow = type === 'error';
+
+        if (shouldShow) {
+            appendLogToUI(String(message), type, isSystem);
+        }
+    };
+    window.logToUIConsole = logToUIConsole; // Expose globally
+
+    clearUIConsole = function() {
+        consoleMessages = [];
+        if (dom.consoleMessages) dom.consoleMessages.innerHTML = '';
+        lastLogMessage = '';
+        lastLogType = '';
+        lastLogElement = null;
+        lastLogCount = 1;
+        lastLogIsSystem = null;
+    };
+
+        console.log = function(message, ...args) { logToUIConsole(message, 'log', true); originalLog.apply(console, [message, ...args]); };
+        console.warn = function(message, ...args) { logToUIConsole(message, 'warn', true); originalWarn.apply(console, [message, ...args]); };
+        console.error = function(message, ...args) { logToUIConsole(message, 'error', true); originalError.apply(console, [message, ...args]); };
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {

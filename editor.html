@@ -463,8 +463,19 @@ public star() {
                             </div>
                         </div>
                     </div>
-                    <div id="console-content" class="panel-content tab-content">
-                        <!-- Console messages will go here -->
+                    <div id="console-content" class="panel-content tab-content no-padding" style="display: flex; flex-direction: column;">
+                        <div class="console-toolbar">
+                            <button id="btn-clear-console" class="panel-tool-btn" title="Borrar todo">🗑️ Borrar</button>
+                            <div class="console-filters">
+                                <button class="filter-btn active" data-filter="all">Todo</button>
+                                <button class="filter-btn" data-filter="system">Sistema</button>
+                                <button class="filter-btn" data-filter="warn">Advertencias</button>
+                                <button class="filter-btn" data-filter="error">Errores</button>
+                            </div>
+                        </div>
+                        <div id="console-messages" style="flex-grow: 1; overflow-y: auto; padding: 10px;">
+                            <!-- Console messages will go here -->
+                        </div>
                     </div>
                     <div id="debug-content" class="panel-content tab-content">
                         <!-- Debug info will be injected here by editor.js -->

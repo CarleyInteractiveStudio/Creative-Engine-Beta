@@ -189,6 +189,18 @@ export class CreativeScriptBehavior {
         }
     }
 
+    /**
+     * Internal method used to log messages from user scripts, marking them as non-system.
+     * @private
+     */
+    _userLog(message, type = 'log') {
+        if (typeof window !== 'undefined' && window.logToUIConsole) {
+            window.logToUIConsole(message, type, false);
+        } else {
+            console[type](message);
+        }
+    }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
