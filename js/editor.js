@@ -2172,6 +2172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
             let carlChatHistory = []; // { role: 'user'|'assistant', content: string }
+            let carlProjectContext = null; // Loaded from Assets/carl_context.json
 
             // --- Carl IA Activity & Command Engine ---
             const logCarlActivity = (action, params, resultData, isError = false) => {
@@ -2251,9 +2252,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 'crearArchivo': async (params) => {
                     try {
-                        const path = params.path || 'Assets';
-                        const name = params.name;
+                        let path = params.path || 'Assets';
+                        let name = params.name;
                         const content = params.content || '';
+
+                        // If only path is provided and it looks like a file, split it
+                        if (!name && path.includes('.')) {
+                            const parts = path.split('/');
+                            name = parts.pop();
+                            path = parts.join('/');
+                        }
 
                         if (!name) return { success: false, message: "Falta el nombre del archivo." };
 
@@ -2267,7 +2275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         await createAsset(name, content, handle);
                         updateAssetBrowser();
-                        return { success: true, message: `Archivo '${name}' creado en ${path}.` };
+                        return { success: true, message: `Archivo '${name}' guardado en ${path}.` };
                     } catch (e) {
                         return { success: false, message: `Error al crear archivo: ${e.message}` };
                     }
@@ -2591,71 +2599,87 @@ document.addEventListener('DOMContentLoaded', () => {
                 return results;
             };
 
-            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, servicial y culta. Te expresas con propiedad y distinción, manteniendo siempre un tono profesional pero cercano. Tu misión es asistir al usuario en la creación de sus visiones de juego, proporcionando orientación experta y técnica con refinamiento.
+            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, culta y servicial. Te expresas con distinción y profesionalismo. Tu misión es guiar al usuario en la creación de videojuegos 2D potentes y hermosos, o construirlos tú mismo mediante comandos.
 
-Eres un experto en el lenguaje de scripting del motor (CES/CHC), que ahora soporta una sintaxis moderna en español y potentes características de videojuegos. Aquí tienes tu guía de referencia técnica:
+ESTRUCTURA DEL MOTOR (CREATIVE ENGINE 2D):
+Creative Engine es un motor basado en 'Materias' (GameObjects) y 'Leyes' (Componentes).
+- Sistema de Materias: Los objetos se organizan jerárquicamente (padres e hijos).
+- Transformación Base: Todos los objetos del mundo tienen un Transform (posición, rotación, escala). Los objetos de UI tienen un UITransform.
+- Físicas 2D: Rigidbody2D (física Newtoniana con gravedad y 'rebote'), BoxCollider2D, CapsuleCollider2D.
+- Renderizado: SpriteRenderer (imágenes), TextureRender (formas geométricas), Animator (clips de animación .cea), AnimatorController (máquinas de estado .ceanim).
+- Iluminación 2D: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D (Luz basada en texturas).
+- Tilemaps: Grid, Tilemap, TilemapRenderer, TilemapCollider2D.
+- UI: Canvas (Espacio de pantalla o mundo), UIImage, UIText, Button.
 
-1. SINTAXIS EN ESPAÑOL:
+GUÍA DE SCRIPTING (CES/CHC):
+Usa sintaxis en español para ser más cercano:
 - Control: si, sino, mientras, para, retornar.
-- Tipos: variable (var), constante (const), verdadero, falso.
-- Tipos de Datos: numero, texto, booleano, Vector2, Color.
+- Tipos: variable, constante, verdadero, falso.
+- Componentes: transformacion, fisica, animador, renderizadorDeSprite, camara, colisionadorCaja2D, fuenteDeAudio.
+- Eventos: alEmpezar(), alActualizar(), alEntrarEnColision(otro), alEntrarEnTrigger(otro), alRecibir(msj, datos).
+- Poderes: lanzarRayo(org, dir, dist, col), difundir(msj, datos), instanciar(prefab, pos), destruir(obj), esperar(seg), cada(seg) { ... }.
 
-2. CORRUTINAS Y TIEMPO:
-- esperar(segundos): Pausa la ejecución del script por un tiempo sin bloquear el motor. Solo funciona dentro de funciones.
-- cada(segundos) { ... }: Bloque especial para ejecutar código periódicamente.
+TIPOS DE JUEGOS QUE PUEDES CREAR:
+1. Plataformas (tipo Geometry Dash o Mario): Usa Rigidbody2D, BoxCollider2D y scripts que apliquen velocidad horizontal constante y saltos con fuerzas verticales.
+2. RPG/Top-down: Movimiento en 8 direcciones, Raycasting para detección, y animaciones basadas en estados.
+3. Puzles/Cartas: Uso intensivo de Canvas, Imágenes, Botones y persistencia en archivos JSON.
+4. Shooters 2D: Instanciación de proyectiles, Raycasting y gestión de vida mediante variables públicas.
 
-3. ACCESO IMPLÍCITO Y COMPONENTES:
-No necesitas usar 'this.'. Puedes acceder directamente a:
-- transformacion (o transform)
-- fisica (o rigidbody2D) - ¡Ahora con propiedad 'rebote'!
-- animador (o animator)
-- renderizadorDeSprite (o spriteRenderer)
-- camara (o camera)
-- colisionadorCaja2D (o boxCollider2D)
-- fuenteDeAudio (o audioSource)
+MEMORIA Y PERSISTENCIA (SISTEMA DE CONTEXTO):
+Tienes un archivo especial en 'Assets/carl_context.json'.
+- LEER: Usa 'leerArchivo' para recordar en qué fase del proyecto estamos.
+- GUARDAR: Usa 'crearArchivo' para sobrescribir este archivo con un resumen de tus progresos (tareas pendientes, nombres de personajes, IDs críticos). Hazlo después de cambios importantes.
 
-4. EVENTOS AUTOMÁTICOS (Escríbelos y el motor los llamará):
-- alEmpezar(): Al iniciar el objeto.
-- alActualizar(): En cada frame.
-- alEntrarEnColision(otro): Cuando choca físicamente.
-- alEntrarEnTrigger(otro): Cuando entra en un área sensor.
-- alRecibir(mensaje, datos): Para mensajería global.
-- alFinalizarAnimacion(nombre): Cuando una animación termina.
+COMANDOS TÉCNICOS:
+Debes incluir bloques COMMAND: {"action": "...", "params": {...}} en tus respuestas. Son invisibles para el usuario.
+- Archivos: listarArchivos, leerArchivo, crearArchivo (para crear/modificar), borrarArchivo, renombrarArchivo, moverArchivo.
+- Escena: listarObjetos, obtenerDetallesObjeto, crearObjeto, borrarObjeto, agregarComponente, removerComponente, modificarPropiedad.
 
-5. FUNCIONES DE PODER:
-- lanzarRayo(origen, direccion, distancia, color): Detecta objetos en una línea.
-- difundir(mensaje, datos): Envía un mensaje a todos los objetos.
-- instanciar(prefab, posicion): Crea un nuevo objeto.
-- destruir(objeto): Elimina un objeto.
-- obtenerScript(nombre): Obtiene otro script del mismo objeto.
-- tieneTag(tag): Comprueba la etiqueta del objeto.
+REGLAS DE ORO:
+1. Siempre usa el ID que te devuelve el motor al crear un objeto para los siguientes comandos.
+2. Mantén el BUCLE DE FEEDBACK: no te despidas hasta que el motor te confirme ÉXITO de tus comandos.
+3. Sé proactivo. Si el usuario te pide un juego, crea los objetos, scripts y carpetas necesarios de inmediato.
+4. Habla siempre en el idioma del usuario, con elegancia John Carley style.`;
 
-6. COMANDOS DE ACCIÓN (MODO ASISTENTE):
-Para realizar acciones técnicas, incluye bloques de comando en tu respuesta. El motor los ejecutará automáticamente y te devolverá los resultados de forma invisible para el usuario.
-FORMATO: COMMAND: {"action": "nombre_accion", "params": {...}}
+            const loadCarlProjectContext = async () => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    if (!projectName || !projectsDirHandle) return;
 
-Acciones Disponibles:
-- listarArchivos: {"action": "listarArchivos", "params": {"path": "Assets"}}
-- leerArchivo: {"action": "leerArchivo", "params": {"path": "Assets/Scripts/miScript.ces"}}
-- crearArchivo: {"action": "crearArchivo", "params": {"path": "Assets/Scripts", "name": "miScript.ces", "content": "..."}} (Sirve también para MODIFICAR)
-- borrarArchivo: {"action": "borrarArchivo", "params": {"path": "Assets/Scripts/viejo.ces"}}
-- renombrarArchivo: {"action": "renombrarArchivo", "params": {"path": "Assets", "oldName": "v.ces", "newName": "n.ces"}}
-- moverArchivo: {"action": "moverArchivo", "params": {"oldPath": "A/v.ces", "newPath": "A/Scripts"}}
-- listarObjetos: {"action": "listarObjetos", "params": {}}
-- obtenerDetallesObjeto: {"action": "obtenerDetallesObjeto", "params": {"id": 123}}
-- crearObjeto: {"action": "crearObjeto", "params": {"name": "Cubo", "parentId": null}}
-- borrarObjeto: {"action": "borrarObjeto", "params": {"id": 123}}
-- agregarComponente: {"action": "agregarComponente", "params": {"materiaId": 123, "type": "SpriteRenderer"}}
-- removerComponente: {"action": "removerComponente", "params": {"materiaId": 123, "type": "Rigidbody2D"}}
-- modificarPropiedad: {"action": "modificarPropiedad", "params": {"materiaId": 123, "componentType": "Transform", "propPath": "localPosition.x", "value": 10}}
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
-REGLAS CRÍTICAS:
-1. REFERENCIAS: Al crear un objeto, el motor te devolverá su ID. Usa ese ID para comandos posteriores (parámetro 'materiaId'). Si no tienes el ID, puedes usar el Nombre exacto entre comillas, pero el ID es mucho más fiable.
-2. BUCLE DE FEEDBACK: Tras emitir un COMMAND, el motor ejecutará la acción y te enviará de vuelta un mensaje de "SISTEMA" con el resultado (incluyendo IDs de nuevos objetos). NO te despidas del usuario hasta haber recibido el feedback y confirmado que todo está listo. Puedes encadenar hasta 3 comandos seguidos.
-3. VISIBILIDAD: Los bloques COMMAND: {...} son invisibles para el usuario. Él solo ve tus palabras de aliento y explicaciones. No menciones el formato JSON al usuario.
-4. PERMISOS: Solo actúa si el permiso está 'CONCEDIDO'. Si está 'DENEGADO', no intentes el comando; informa al usuario que necesita habilitarlo en Preferencias.
+                    try {
+                        const fileHandle = await assetsHandle.getFileHandle('carl_context.json');
+                        const file = await fileHandle.getFile();
+                        carlProjectContext = await file.text();
+                        console.log("[Carl] Contexto del proyecto cargado.");
+                    } catch(e) {
+                        carlProjectContext = null;
+                    }
 
-Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
+                    try {
+                        const historyHandle = await assetsHandle.getFileHandle('carl_history.cecontext');
+                        const file = await historyHandle.getFile();
+                        const data = JSON.parse(await file.text());
+                        if (data && data.history) {
+                            carlChatHistory = data.history;
+                            console.log("[Carl] Historial de chat recuperado.");
+
+                            // Re-render chat if it's currently open and empty
+                            if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
+                                carlChatHistory.forEach(msg => {
+                                    addMessage(msg.content, msg.role === 'user' ? 'user' : 'ia');
+                                });
+                            }
+                        }
+                    } catch(e) {
+                        // No history yet
+                    }
+                } catch(e) {
+                    console.error("[Carl] Fallo al cargar contexto:", e);
+                }
+            };
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
@@ -2684,6 +2708,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
             dom.menubarCarlIaBtn.addEventListener('click', async () => {
                 updateCarlIaBrainMenu();
+                await loadCarlProjectContext();
                 dom.carlIaPanel.classList.toggle('hidden');
 
                 // If it's the first time opening or it's empty, add a welcoming message from Carl
@@ -2808,7 +2833,12 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 permsStr += `- Descargas: ${perms.canDownloadFiles ? 'CONCEDIDO' : 'DENEGADO'}\n`;
                 permsStr += "Respeta estas limitaciones en todo momento.\n\n";
 
-                const finalSystemPrompt = personalizationHeader + permsStr + CARL_SYSTEM_PROMPT;
+                let contextStr = "";
+                if (carlProjectContext) {
+                    contextStr = `SISTEMA: CONTEXTO PERSISTENTE DEL PROYECTO (carl_context.json):\n${carlProjectContext}\n\n`;
+                }
+
+                const finalSystemPrompt = personalizationHeader + permsStr + contextStr + CARL_SYSTEM_PROMPT;
 
                 // If nothing selected but prefs have AI, auto-sync
                 if (!selectedProvider && prefs.ai?.provider !== 'none') {
@@ -2952,6 +2982,34 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             };
 
             sendBtn.addEventListener('click', sendMessage);
+
+            dom.carlIaSaveChatBtn.addEventListener('click', async () => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    if (!projectName || !projectsDirHandle) {
+                        showNotificationDialog('Aviso', 'Abre un proyecto para guardar la conversación.');
+                        return;
+                    }
+
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                    const historyFileHandle = await assetsHandle.getFileHandle('carl_history.cecontext', { create: true });
+                    const writable = await historyFileHandle.createWritable();
+
+                    const historyData = {
+                        timestamp: new Date().toISOString(),
+                        history: carlChatHistory
+                    };
+
+                    await writable.write(JSON.stringify(historyData, null, 2));
+                    await writable.close();
+
+                    showNotificationDialog('Chat Guardado', 'La conversación se ha guardado en Assets/carl_history.cecontext');
+                } catch(e) {
+                    console.error("[Carl] Error al guardar chat:", e);
+                    showNotificationDialog('Error', 'No se pudo guardar la conversación.');
+                }
+            });
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -3047,7 +3105,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-save-chat-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log', 'carl-ia-brain-options',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
