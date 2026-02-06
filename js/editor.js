@@ -2174,6 +2174,28 @@ document.addEventListener('DOMContentLoaded', () => {
             let carlChatHistory = []; // { role: 'user'|'assistant', content: string }
             let carlProjectContext = null; // Loaded from Assets/carl_context.json
 
+            const saveCarlChatAutomatically = async () => {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    if (!projectName || !projectsDirHandle) return;
+
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                    const historyFileHandle = await assetsHandle.getFileHandle('carl_history.cecontext', { create: true });
+                    const writable = await historyFileHandle.createWritable();
+
+                    const historyData = {
+                        timestamp: new Date().toISOString(),
+                        history: carlChatHistory
+                    };
+
+                    await writable.write(JSON.stringify(historyData, null, 2));
+                    await writable.close();
+                } catch(e) {
+                    console.error("[Carl] Error en auto-guardado:", e);
+                }
+            };
+
             // --- Carl IA Activity & Command Engine ---
             const logCarlActivity = (action, params, resultData, isError = false) => {
                 const logDiv = dom.carlIaActivityLog;
@@ -2900,6 +2922,7 @@ REGLAS DE ORO:
                             carlChatHistory.push({ role: 'user', content: prompt });
                         }
                         carlChatHistory.push({ role: 'assistant', content: result.text });
+                        saveCarlChatAutomatically();
 
                         // Keep history manageable
                         if (carlChatHistory.length > 20) carlChatHistory.splice(0, 2);
@@ -2920,6 +2943,7 @@ REGLAS DE ORO:
                                 cmdResults.map(r => `- ${r.action}: ${r.success ? 'ÉXITO' : 'FALLO'}. ${r.message}`).join('\n') +
                                 "\nContinúa si falta algo, o confirma al usuario si terminaste.";
 
+                            saveCarlChatAutomatically();
                             // Recursive call for feedback
                             return await executeApiCall(model, feedback, customSystemPrompt);
                         }
@@ -2983,33 +3007,6 @@ REGLAS DE ORO:
 
             sendBtn.addEventListener('click', sendMessage);
 
-            dom.carlIaSaveChatBtn.addEventListener('click', async () => {
-                try {
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    if (!projectName || !projectsDirHandle) {
-                        showNotificationDialog('Aviso', 'Abre un proyecto para guardar la conversación.');
-                        return;
-                    }
-
-                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-                    const historyFileHandle = await assetsHandle.getFileHandle('carl_history.cecontext', { create: true });
-                    const writable = await historyFileHandle.createWritable();
-
-                    const historyData = {
-                        timestamp: new Date().toISOString(),
-                        history: carlChatHistory
-                    };
-
-                    await writable.write(JSON.stringify(historyData, null, 2));
-                    await writable.close();
-
-                    showNotificationDialog('Chat Guardado', 'La conversación se ha guardado en Assets/carl_history.cecontext');
-                } catch(e) {
-                    console.error("[Carl] Error al guardar chat:", e);
-                    showNotificationDialog('Error', 'No se pudo guardar la conversación.');
-                }
-            });
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -3105,7 +3102,7 @@ REGLAS DE ORO:
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-save-chat-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log', 'carl-ia-brain-options',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
