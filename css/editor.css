@@ -3999,7 +3999,7 @@ body.game-mode #loading-overlay {
     }
 }
 
-/* --- Carl IA Tab Styles --- */
+/* --- Carl IA View Styles --- */
 .carl-tabs-container {
     display: flex;
     flex-direction: column;
@@ -4007,35 +4007,9 @@ body.game-mode #loading-overlay {
     background: transparent;
 }
 
-.carl-tab-bar {
-    display: flex;
-    background: rgba(0, 0, 0, 0.2);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
-}
-
-.carl-tab-btn {
-    flex: 1;
-    background: none;
-    border: none;
-    padding: 10px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.9em;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    border-bottom: 2px solid transparent;
-}
-
-.carl-tab-btn:hover {
-    color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.carl-tab-btn.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
-    background: rgba(255, 255, 255, 0.08);
+.carl-view-option.active {
+    background-color: var(--accent-color) !important;
+    color: white !important;
 }
 
 .carl-view {

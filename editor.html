@@ -645,8 +645,15 @@ public star() {
                     </div>
                     <div class="panel-header-controls">
                         <div class="menu-item">
-                            <button id="carl-ia-brain-selector-btn" class="panel-tool-btn">Elegir Cerebro</button>
+                            <button id="carl-ia-view-selector-btn" class="panel-tool-btn">Menú</button>
                             <div class="menu-content">
+                                <a href="#" class="carl-view-option active" data-view="chat">Chat</a>
+                                <a href="#" class="carl-view-option" data-view="activity">Actividad</a>
+                            </div>
+                        </div>
+                        <div class="menu-item">
+                            <button id="carl-ia-brain-selector-btn" class="panel-tool-btn">Cerebro</button>
+                            <div class="menu-content" id="carl-ia-brain-options">
                                 <a href="#" data-model="carl-v1">Carl V1</a>
                                 <a href="#" data-model="external">Usar modelo externo</a>
                             </div>
@@ -655,10 +662,6 @@ public star() {
                     </div>
                 </div>
                 <div class="panel-content no-padding carl-tabs-container">
-                    <div class="carl-tab-bar">
-                        <button class="carl-tab-btn active" data-view="chat">Chat</button>
-                        <button class="carl-tab-btn" data-view="activity">Actividad</button>
-                    </div>
                     <div id="carl-ia-chat-view" class="carl-view active">
                         <div id="carl-ia-messages">
                             <!-- Chat messages will appear here -->

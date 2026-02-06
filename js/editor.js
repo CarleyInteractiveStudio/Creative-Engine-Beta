@@ -2110,29 +2110,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
-                // Tab switching logic for Carl IA
-                const carlTabBar = dom.carlIaPanel.querySelector('.carl-tab-bar');
-                if (carlTabBar) {
-                    carlTabBar.addEventListener('click', (e) => {
-                        const btn = e.target.closest('.carl-tab-btn');
-                        if (btn) {
-                            const viewName = btn.dataset.view;
+            // View switching logic via Menu
+            const carlMenuContent = dom.carlIaViewSelectorBtn.nextElementSibling;
+            if (carlMenuContent) {
+                carlMenuContent.addEventListener('click', (e) => {
+                    const opt = e.target.closest('.carl-view-option');
+                    if (opt) {
+                        e.preventDefault();
+                        const viewName = opt.dataset.view;
 
-                            // Update buttons
-                            carlTabBar.querySelectorAll('.carl-tab-btn').forEach(b => b.classList.remove('active'));
-                            btn.classList.add('active');
+                        // Update option active states
+                        carlMenuContent.querySelectorAll('.carl-view-option').forEach(b => b.classList.remove('active'));
+                        opt.classList.add('active');
 
-                            // Update views
-                            dom.carlIaPanel.querySelectorAll('.carl-view').forEach(view => view.classList.remove('active'));
-                            const activeView = dom.carlIaPanel.querySelector(`#carl-ia-${viewName}-view`);
-                            if (activeView) {
-                                activeView.classList.add('active');
-                            }
+                        // Update views
+                        dom.carlIaPanel.querySelectorAll('.carl-view').forEach(view => view.classList.remove('active'));
+                        const activeView = dom.carlIaPanel.querySelector(`#carl-ia-${viewName}-view`);
+                        if (activeView) {
+                            activeView.classList.add('active');
                         }
-                    });
-                }
 
-            const brainSelectorMenu = dom.carlIaPanel.querySelector('.menu-content');
+                        // Close menu briefly
+                        carlMenuContent.style.display = 'none';
+                        setTimeout(() => carlMenuContent.style.display = '', 100);
+                    }
+                });
+            }
+
+            const brainOptionsList = dom.carlIaBrainOptions;
             const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
             const input = dom.carlIaInput;
@@ -2408,7 +2413,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
-                brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
+                brainOptionsList.querySelectorAll('[data-external]').forEach(el => el.remove());
 
                 if (prefs.ai && prefs.ai.provider !== 'none') {
                     const provider = prefs.ai.provider;
@@ -2420,7 +2425,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                         newOption.dataset.external = true;
                         const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
                         newOption.textContent = `${displayName} (Preferencias)`;
-                        brainSelectorMenu.appendChild(newOption);
+                        brainOptionsList.appendChild(newOption);
 
                         // Auto-select if nothing selected
                         if (!selectedProvider) {
@@ -2456,16 +2461,20 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 }
             });
 
-            brainSelectorMenu.parentElement.addEventListener('click', (e) => {
-                if (e.target.matches('a')) {
+            brainOptionsList.addEventListener('click', (e) => {
+                const link = e.target.closest('a');
+                if (link && link.dataset.model) {
                     e.preventDefault();
-                    const modelType = e.target.dataset.model;
-                    const modelName = e.target.textContent;
+                    const modelType = link.dataset.model;
+                    const modelName = link.textContent;
                     selectedProvider = { type: modelType, name: modelName };
                     brainButton.textContent = `Cerebro: ${modelName}`;
                     messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu compañero creativo. ¿Qué mundo increíble vamos a construir hoy?</div>`;
-                    brainSelectorMenu.style.display = 'none';
-                    setTimeout(() => brainSelectorMenu.style.display = '', 200);
+
+                    // Close menu
+                    const menuContent = brainOptionsList;
+                    menuContent.style.display = 'none';
+                    setTimeout(() => menuContent.style.display = '', 100);
                 }
             });
 
@@ -2739,8 +2748,8 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
-            'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log',
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log', 'carl-ia-brain-options',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
