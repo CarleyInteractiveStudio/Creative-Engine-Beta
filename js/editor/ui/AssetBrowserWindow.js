@@ -99,7 +99,7 @@ export async function handleContextMenuAction(action) {
                 async (scriptName) => {
                     if (scriptName) {
                         const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
-                        const defaultContent = `// Nuevo script de Creative Engine\n\npublic star() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
+                        const defaultContent = `// Nuevo script de Creative Engine\n\npublic start() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
                         try {
                             const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();

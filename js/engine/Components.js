@@ -74,7 +74,7 @@ export class CreativeScriptBehavior {
             }
         }
     }
-    star() { /* To be overridden by user scripts */ }
+    start() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
 
     /**
@@ -384,9 +384,6 @@ export class CreativeScript extends Leyes {
         this._safeInvoke('start');
     }
 
-    // Keep the old name as alias
-    star() { this.start(); }
-
     update(deltaTime) {
         this._safeInvoke('update', deltaTime);
     }
@@ -442,7 +439,7 @@ export class CreativeScript extends Leyes {
 
                 // Ensure common aliases exist on the instance so script authors can write in either language
                 const aliasMap = {
-                    start: ['star', 'iniciar', 'alEmpezar'],
+                    start: ['iniciar', 'alEmpezar'],
                     update: ['actualizar', 'alActualizar'],
                     onEnable: ['alHabilitar', 'activar'],
                     onDisable: ['alDeshabilitar', 'desactivar'],
@@ -471,9 +468,6 @@ export class CreativeScript extends Leyes {
                     }
                 }
 
-                // Also keep star/start interop
-                if (typeof this.instance.star === 'function' && typeof this.instance.start !== 'function') this.instance.start = this.instance.star;
-                if (typeof this.instance.start === 'function' && typeof this.instance.star !== 'function') this.instance.star = this.instance.start;
 
                 // Attach convenience properties if not present
                 if (!this.instance.hasOwnProperty('materia')) this.instance.materia = this.materia;

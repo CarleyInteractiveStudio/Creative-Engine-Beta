@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         console.log("Verificando todos los scripts del proyecto...");
-        dom.consoleContent.innerHTML = ''; // Limpiar consola de la UI
+        clearUIConsole(); // Limpiar consola de la UI
         const allErrors = [];
         let mainGameJsCode = null;
 
@@ -2481,14 +2481,53 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
         // --- 7c. Override console.log to also log to UI ---
         const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
+        let lastLogMessage = '';
+        let lastLogType = '';
+        let lastLogElement = null;
+        let lastLogCount = 1;
+
         function logToUIConsole(message, type = 'log') {
             if (!dom.consoleContent) return;
+
+            // Group identical messages
+            if (message === lastLogMessage && type === lastLogType && lastLogElement) {
+                lastLogCount++;
+                let badge = lastLogElement.querySelector('.log-count-badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'log-count-badge';
+                    lastLogElement.appendChild(badge);
+                }
+                badge.textContent = lastLogCount;
+                // Keep scroll at bottom
+                dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
+                return;
+            }
+
+            lastLogMessage = message;
+            lastLogType = type;
+            lastLogCount = 1;
+
             const msgEl = document.createElement('p');
             msgEl.className = `console-msg log-${type}`;
-            msgEl.textContent = `> ${message}`;
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = `> ${message}`;
+            msgEl.appendChild(textSpan);
+
             dom.consoleContent.appendChild(msgEl);
             dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
+            lastLogElement = msgEl;
         }
+
+        function clearUIConsole() {
+            if (dom.consoleContent) dom.consoleContent.innerHTML = '';
+            lastLogMessage = '';
+            lastLogType = '';
+            lastLogElement = null;
+            lastLogCount = 1;
+        }
+
         console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); };
         console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); };
         console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
@@ -2599,7 +2638,7 @@ Luego, en tu script \`.ces\`, puedes usar estas funciones con \`go\`.
 // mi-script.ces
 go "MiLibreria"
 
-public star() {
+public start() {
     variable resultado = sumar(10, 5);
     consola.imprimir("El resultado es: " + resultado); // Imprime 15
 }

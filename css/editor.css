@@ -3051,6 +3051,21 @@ body {
 .console-msg {
     padding: 2px 4px;
     border-bottom: 1px solid var(--bg-tertiary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.log-count-badge {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.75em;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 10px;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 .console-msg.log-warn {
     color: #f3ca58;

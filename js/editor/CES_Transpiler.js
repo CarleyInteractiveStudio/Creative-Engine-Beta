@@ -142,8 +142,8 @@ export function transpile(code, scriptName) {
 
     let publicVars = [];
     let privateVars = [];
-    let starMethod = '';
-    let starArgs = '';
+    let startMethod = '';
+    let startArgs = '';
     let updateMethod = '';
     let updateArgs = '';
     let publicFunctions = [];
@@ -347,12 +347,12 @@ export function transpile(code, scriptName) {
         });
 
         // 2.g: Map Spanish lifecycle methods to their English counterparts
-        if (name === 'iniciar' || name === 'alEmpezar') name = 'star';
+        if (name === 'iniciar' || name === 'alEmpezar') name = 'start';
         if (name === 'actualizar' || name === 'alActualizar') name = 'update';
 
-        if (name === 'star') {
-            starMethod = body;
-            starArgs = args;
+        if (name === 'start') {
+            startMethod = body;
+            startArgs = args;
         } else if (name === 'update') {
             updateMethod = body;
             updateArgs = args;
@@ -394,12 +394,12 @@ export function transpile(code, scriptName) {
 
     const indentBody = (body) => body ? body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n') : '';
 
-    jsCode += `        async star(${starArgs}) {\n${indentBody(starMethod)}\n        }\n\n`;
+    jsCode += `        async start(${startArgs}) {\n${indentBody(startMethod)}\n        }\n\n`;
     jsCode += `        async update(${updateArgs || 'deltaTime'}) {\n${indentBody(updateMethod)}\n        }\n\n`;
 
     // Process custom methods to be async too
     const processedCustomMethods = methodMatches
-        .filter(m => m.name !== 'star' && m.name !== 'update')
+        .filter(m => m.name !== 'start' && m.name !== 'update')
         .map(m => `        async ${m.name}(${m.args}) {\n${indentBody(m.body)}\n        }\n`)
         .join('\n');
 
