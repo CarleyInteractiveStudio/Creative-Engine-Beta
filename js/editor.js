@@ -2580,8 +2580,59 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         return { success: false, message: `Error al modificar propiedad: ${e.message}` };
                     }
+                },
+                'descargarArchivo': async (params) => {
+                    try {
+                        const url = params.url;
+                        const targetPath = params.path || 'Assets/downloaded_file';
+
+                        if (!url) return { success: false, message: "Falta la URL de descarga." };
+
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`Fallo en la descarga: ${response.statusText}`);
+
+                        const blob = await response.blob();
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+                        const pathParts = targetPath.split('/').filter(p => p);
+                        const fileName = pathParts.pop();
+
+                        let currentHandle = projectHandle;
+                        for (const part of pathParts) {
+                            currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+                        }
+
+                        const fileHandle = await currentHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+
+                        if (typeof updateAssetBrowser === 'function') updateAssetBrowser();
+                        return { success: true, message: `Archivo descargado y guardado en '${targetPath}'.` };
+                    } catch (e) {
+                        return { success: false, message: `Error al descargar: ${e.message}` };
+                    }
+                },
+                'ejecutarTerminal': async (params) => {
+                    try {
+                        const command = params.command;
+                        if (!command) return { success: false, message: "Falta el comando a ejecutar." };
+
+                        if (window.ceTerminal && typeof window.ceTerminal.execute === 'function') {
+                            const output = await window.ceTerminal.execute(command, true); // true for silent/internal
+                            return { success: true, message: `Ejecutado en terminal: ${command}`, content: output };
+                        } else {
+                            return { success: false, message: "El subsistema de terminal no está disponible." };
+                        }
+                    } catch (e) {
+                        return { success: false, message: `Error en terminal: ${e.message}` };
+                    }
                 }
             };
+
+            // Expose for Terminal and other modules
+            window.carlCommandHandlers = carlCommandHandlers;
 
             const processCarlCommands = async (text) => {
                 const commandRegex = /COMMAND:\s*({.*})/g;
@@ -2601,6 +2652,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 hasPerm = perms.canManageFiles;
                             } else if (action === 'listarObjetos' || action === 'obtenerDetallesObjeto' || action === 'crearObjeto' || action === 'borrarObjeto' || action === 'agregarComponente' || action === 'removerComponente' || action === 'modificarPropiedad') {
                                 hasPerm = perms.canManipulateScenes;
+                            } else if (action === 'descargarArchivo') {
+                                hasPerm = perms.canDownloadFiles;
+                            } else if (action === 'ejecutarTerminal') {
+                                hasPerm = perms.canUseConsole;
                             }
 
                             if (!hasPerm) {
@@ -2654,8 +2709,9 @@ Tienes un archivo especial en 'Assets/carl_context.json'.
 
 COMANDOS TÉCNICOS:
 Debes incluir bloques COMMAND: {"action": "...", "params": {...}} en tus respuestas. Son invisibles para el usuario.
-- Archivos: listarArchivos, leerArchivo, crearArchivo (para crear/modificar), borrarArchivo, renombrarArchivo, moverArchivo.
+- Archivos: listarArchivos, leerArchivo, crearArchivo (para crear/modificar), borrarArchivo, renombrarArchivo, moverArchivo, descargarArchivo (url, path).
 - Escena: listarObjetos, obtenerDetallesObjeto, crearObjeto, borrarObjeto, agregarComponente, removerComponente, modificarPropiedad.
+- Sistema: ejecutarTerminal (command). Usa esto para descargar assets externos o si los comandos directos fallan.
 
 REGLAS DE ORO:
 1. Siempre usa el ID que te devuelve el motor al crear un objeto para los siguientes comandos.
