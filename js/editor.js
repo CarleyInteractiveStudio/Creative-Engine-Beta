@@ -2159,6 +2159,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const brainOptionsList = dom.carlIaBrainOptions;
             const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
+            const carlMarkdownConverter = new showdown.Converter({
+                tables: true,
+                strikethrough: true,
+                tasklists: true,
+                simpleLineBreaks: true,
+                openLinksInNewWindow: true
+            });
             const input = dom.carlIaInput;
             const sendBtn = dom.carlIaSendBtn;
 
@@ -2725,7 +2732,21 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
                 const msgDiv = document.createElement('div');
                 msgDiv.className = `carl-message-bubble carl-message-${sender} ${isError ? 'error' : ''}`;
-                msgDiv.textContent = text;
+
+                // Use Markdown converter
+                const html = carlMarkdownConverter.makeHtml(text);
+                msgDiv.innerHTML = html;
+
+                // Post-process for copy buttons
+                msgDiv.querySelectorAll('pre code').forEach(block => {
+                    const pre = block.parentNode;
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'carl-copy-code-btn';
+                    copyBtn.textContent = 'Copiar';
+                    pre.style.position = 'relative';
+                    pre.appendChild(copyBtn);
+                });
+
                 msgDiv.style.padding = '10px 14px';
                 msgDiv.style.borderRadius = '18px';
                 msgDiv.style.lineHeight = '1.4';
