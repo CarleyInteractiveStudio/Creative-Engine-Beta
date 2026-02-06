@@ -2185,7 +2185,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 }
             };
 
-            dom.menubarCarlIaBtn.addEventListener('click', () => {
+            dom.menubarCarlIaBtn.addEventListener('click', async () => {
                 updateCarlIaBrainMenu();
                 dom.carlIaPanel.classList.toggle('hidden');
 
@@ -2193,7 +2193,19 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
                     const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
                     if (!hasWelcome && selectedProvider) {
-                         addMessage("¡Hola! Soy Carl, el alma creativa de este motor. ¡Estoy tan emocionado de tenerte aquí! ¿Qué tipo de juego increíble tienes en mente hoy? ¡Dímelo y te ayudaré a construirlo paso a paso!", 'ia');
+                        let greeting = "¡Hola! Soy Carl, su asistente de Creative Engine. Es un placer saludarle. ¿En qué puedo asistirle hoy en su noble labor de creación?";
+                        try {
+                            if (window.auth && typeof window.auth.getUser === 'function') {
+                                const user = await window.auth.getUser();
+                                if (user) {
+                                    const name = user.user_metadata?.full_name || user.email;
+                                    greeting = `¡Hola, ${name}! Soy Carl, su asistente de Creative Engine. Es un honor verle de nuevo. ¿Qué maravillas vamos a construir juntos en esta jornada?`;
+                                }
+                            }
+                        } catch(e) {
+                            console.error("[Carl] Error during personalized greeting:", e);
+                        }
+                        addMessage(greeting, 'ia');
                     }
                 }
             });
@@ -2264,26 +2276,26 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 const prefs = getPreferences();
 
                 // --- User Personalization & Permissions ---
-                let personalizationInfo = "\n\n";
+                let personalizationHeader = "";
                 try {
                     if (window.auth && typeof window.auth.getUser === 'function') {
                         const user = await window.auth.getUser();
                         if (user) {
                             const name = user.user_metadata?.full_name || user.email;
-                            personalizationInfo += `INFORMACIÓN DEL USUARIO: El nombre del usuario es ${name}. Dirígete a él con elegancia y cortesía. `;
+                            personalizationHeader += `SISTEMA: El usuario actual es ${name}. Dirígete a él por su nombre con elegancia y cortesía académica. ES CRÍTICO QUE RECONOZCAS QUE YA SABES SU NOMBRE. No digas que no lo conoces.\n\n`;
                         }
                     }
                 } catch (e) { console.warn("Error retrieving user info for Carl:", e); }
 
                 const perms = prefs.carlPermissions || {};
-                personalizationInfo += "TUS PERMISOS ACTUALES: ";
-                personalizationInfo += `Uso de Consola: ${perms.canUseConsole ? 'CONCEDIDO' : 'DENEGADO'}, `;
-                personalizationInfo += `Gestión de Archivos (Crear/Modificar): ${perms.canManageFiles ? 'CONCEDIDO' : 'DENEGADO'}, `;
-                personalizationInfo += `Manipulación de Escenas: ${perms.canManipulateScenes ? 'CONCEDIDO' : 'DENEGADO'}, `;
-                personalizationInfo += `Descargas: ${perms.canDownloadFiles ? 'CONCEDIDO' : 'DENEGADO'}. `;
-                personalizationInfo += "Por favor, respeta estrictamente estos permisos en tus respuestas y acciones sugeridas.";
+                let permsStr = "SISTEMA: TUS PERMISOS ACTUALES CONCEDIDOS POR EL USUARIO:\n";
+                permsStr += `- Uso de Consola: ${perms.canUseConsole ? 'CONCEDIDO' : 'DENEGADO'}\n`;
+                permsStr += `- Gestión de Archivos (Crear/Modificar): ${perms.canManageFiles ? 'CONCEDIDO' : 'DENEGADO'}\n`;
+                permsStr += `- Manipulación de Escenas: ${perms.canManipulateScenes ? 'CONCEDIDO' : 'DENEGADO'}\n`;
+                permsStr += `- Descargas: ${perms.canDownloadFiles ? 'CONCEDIDO' : 'DENEGADO'}\n`;
+                permsStr += "Respeta estas limitaciones en todo momento.\n\n";
 
-                const finalSystemPrompt = CARL_SYSTEM_PROMPT + personalizationInfo;
+                const finalSystemPrompt = personalizationHeader + permsStr + CARL_SYSTEM_PROMPT;
 
                 // If nothing selected but prefs have AI, auto-sync
                 if (!selectedProvider && prefs.ai?.provider !== 'none') {

@@ -87,7 +87,10 @@
                     <button id="menubar-libraries-btn" class="menu-btn">Librerías</button>
                 </div>
                 <div class="menu-item">
-                    <button id="menubar-carl-ia-btn" class="menu-btn">🤖 Carl IA</button>
+                    <button id="menubar-carl-ia-btn" class="menu-btn carl-menubar-btn">
+                        <img src="https://raw.githubusercontent.com/CarleyInteractiveStudio/Carley-Interactive-Studio/main/carley_foto_web/Carl_model.jpeg" alt="Carl" class="carl-menubar-icon">
+                        Carl
+                    </button>
                 </div>
                 <div class="menu-item">
                     <button class="menu-btn">Ayuda</button>
@@ -636,7 +639,10 @@ public star() {
             </div>
             <div id="carl-ia-panel" class="editor-panel floating-panel hidden" style="width: 400px; height: 500px;">
                 <div class="panel-header">
-                    <span>🤖 Carl IA</span>
+                    <div class="carl-header-title">
+                        <img src="https://raw.githubusercontent.com/CarleyInteractiveStudio/Carley-Interactive-Studio/main/carley_foto_web/Carl_model.jpeg" alt="Carl" class="carl-menubar-icon">
+                        <span>Carl</span>
+                    </div>
                     <div class="panel-header-controls">
                         <div class="menu-item">
                             <button id="carl-ia-brain-selector-btn" class="panel-tool-btn">Elegir Cerebro</button>
@@ -1369,6 +1375,8 @@ public star() {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/auth.js"></script>
     <script type="module" src="js/editor.js?v=1.9"></script>
 
     <!-- Markdown Viewer/Editor Panel -->

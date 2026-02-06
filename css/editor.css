@@ -80,6 +80,26 @@ body.is-dragging-panel {
     background-color: var(--accent-color);
 }
 
+.carl-menubar-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.carl-menubar-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    object-fit: cover;
+}
+
+.carl-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .menu-content {
     display: none;
     position: absolute;
