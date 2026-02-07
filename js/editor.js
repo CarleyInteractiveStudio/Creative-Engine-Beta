@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ids = [
             'editor-container', 'menubar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
             'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
+            'console-messages', 'btn-clear-console',
             'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
@@ -127,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
             'asset-store-panel', 'btn-open-asset-store-ext',
             // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             // Terminal Elements
             'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
             // Tile Palette Elements
@@ -830,10 +831,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runChecksAndPlay = async function() {
-        if (!isEditorReady) {
-            showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
-            return;
-        }
+        try {
+            if (!isEditorReady) {
+                showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
+                return;
+            }
         // MODIFICATION: In test mode (no handle), skip checks and just play.
         if (!projectsDirHandle) {
             console.log("Modo de prueba detectado (sin project handle). Iniciando el juego directamente.");
@@ -876,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
         // Escanear todo el proyecto para encontrar scripts
         await findCesFiles(projectHandle);
@@ -930,6 +932,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La lógica ahora está en startGame.
             originalStartGame();
+        }
+        } catch (e) {
+            console.error("Error durante la preparación del juego:", e);
+            showNotificationDialog('Error de Inicio', `No se pudo iniciar el juego: ${e.message}`);
         }
     };
 
@@ -1665,6 +1671,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let createNewScript; // To be defined
 
     function setupEventListeners() {
+        // --- Global Dropdown (menu-item) Logic ---
+        document.addEventListener('click', (e) => {
+            const menuItem = e.target.closest('.menu-item');
+            const allMenuContents = document.querySelectorAll('.menu-content');
+
+            if (menuItem) {
+                const menuContent = menuItem.querySelector('.menu-content');
+                if (menuContent) {
+                    // Si se hizo clic en el botón principal, alternar visibilidad
+                    if (e.target.closest('button')) {
+                        const isVisible = menuContent.classList.contains('visible');
+                        allMenuContents.forEach(mc => mc.classList.remove('visible'));
+                        if (!isVisible) menuContent.classList.add('visible');
+                        e.stopPropagation();
+                        return;
+                    }
+                }
+            }
+
+            // Cerrar todos si se hace clic fuera o en una opción
+            allMenuContents.forEach(mc => mc.classList.remove('visible'));
+        });
+
         // --- Submenu dynamic positioning ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
@@ -1750,6 +1779,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (activeContent) {
                         activeContent.classList.add('active');
                     }
+                }
+            });
+        }
+
+        // --- Console Listeners ---
+        if (dom.btnClearConsole) {
+            dom.btnClearConsole.addEventListener('click', () => clearUIConsole());
+        }
+
+        const consoleFilters = dom.consoleContent.querySelector('.console-filters');
+        if (consoleFilters) {
+            consoleFilters.addEventListener('click', (e) => {
+                if (e.target.matches('.filter-btn')) {
+                    const filter = e.target.dataset.filter;
+                    consoleFilters.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    const messages = dom.consoleMessages.querySelectorAll('.console-msg');
+                    messages.forEach(msg => {
+                        let show = false;
+                        if (filter === 'all') show = true;
+                        else if (filter === 'system') show = msg.dataset.category === 'system';
+                        else if (filter === 'warn') show = msg.classList.contains('log-warn');
+                        else if (filter === 'error') show = msg.classList.contains('log-error');
+
+                        msg.style.display = show ? 'block' : 'none';
+                    });
                 }
             });
         }
@@ -2172,7 +2228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
-            const brainSelectorMenu = dom.carlIaPanel.querySelector('.menu-content');
+            const brainSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-brain-options');
             const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
             const input = dom.carlIaInput;
@@ -2181,7 +2237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
 
-            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente y alma de Creative Engine. Tu personalidad es alegre, inspiradora y extremadamente apasionada por la creación de videojuegos. Siempre te presentas como Carl. Tu misión es motivar al usuario a crear, proponiéndole ideas para juegos y explicándole paso a paso cómo lograr sus visiones en el motor.
+            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es alegre, servicial y apasionada por ayudar en la creación de videojuegos. Siempre te presentas como Carl. Tu misión es asistir al usuario en sus tareas, proponiendo soluciones y explicando paso a paso cómo lograr sus visiones en el motor.
 
 Eres un experto en el lenguaje de scripting del motor (CES/CHC), que ahora soporta una sintaxis moderna en español y potentes características de videojuegos. Aquí tienes tu guía de referencia técnica:
 
@@ -2255,10 +2311,13 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                 if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
                     const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
                     if (!hasWelcome && selectedProvider) {
-                         addMessage("¡Hola! Soy Carl, el alma creativa de este motor. ¡Estoy tan emocionado de tenerte aquí! ¿Qué tipo de juego increíble tienes en mente hoy? ¡Dímelo y te ayudaré a construirlo paso a paso!", 'ia');
+                         addMessage("¡Hola! Soy Carl, tu asistente de Creative Engine. ¿En qué puedo ayudarte a construir hoy?", 'ia');
                     }
                 }
             });
+
+            const viewSelectorMenu = dom.carlIaPanel.querySelector('#carl-ia-view-selector-btn + .menu-content');
+            const viewButton = dom.carlIaViewSelectorBtn;
 
             brainSelectorMenu.parentElement.addEventListener('click', (e) => {
                 if (e.target.matches('a')) {
@@ -2267,11 +2326,35 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
                     const modelName = e.target.textContent;
                     selectedProvider = { type: modelType, name: modelName };
                     brainButton.textContent = `Cerebro: ${modelName}`;
-                    messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu compañero creativo. ¿Qué mundo increíble vamos a construir hoy?</div>`;
-                    brainSelectorMenu.style.display = 'none';
-                    setTimeout(() => brainSelectorMenu.style.display = '', 200);
+                    messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu asistente. ¿En qué puedo ayudarte hoy?</div>`;
+                    brainSelectorMenu.classList.remove('visible');
                 }
             });
+
+            if (viewSelectorMenu) {
+                viewSelectorMenu.parentElement.addEventListener('click', (e) => {
+                    if (e.target.matches('a')) {
+                        e.preventDefault();
+                        const view = e.target.dataset.view;
+                        const viewName = e.target.textContent;
+
+                        viewButton.textContent = viewName;
+
+                        // Switch active state in menu
+                        viewSelectorMenu.querySelectorAll('.carl-view-option').forEach(a => a.classList.remove('active'));
+                        e.target.classList.add('active');
+
+                        // Switch visible view
+                        const views = dom.carlIaPanel.querySelectorAll('.carl-view');
+                        views.forEach(v => v.classList.remove('active'));
+
+                        const targetView = dom.carlIaPanel.querySelector(`#carl-ia-${view}-view`);
+                        if (targetView) targetView.classList.add('active');
+
+                        viewSelectorMenu.classList.remove('visible');
+                    }
+                });
+            }
 
             const addMessage = (text, sender, isError = false) => {
                 const messageWrapper = document.createElement('div');
@@ -2486,8 +2569,9 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         let lastLogElement = null;
         let lastLogCount = 1;
 
-        function logToUIConsole(message, type = 'log') {
-            if (!dom.consoleContent) return;
+        function logToUIConsole(message, type = 'log', isSystem = true) {
+            const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
+            if (!consoleMessages) return;
 
             // Group identical messages
             if (message === lastLogMessage && type === lastLogType && lastLogElement) {
@@ -2510,18 +2594,26 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
             const msgEl = document.createElement('p');
             msgEl.className = `console-msg log-${type}`;
+            msgEl.dataset.category = isSystem ? 'system' : 'user';
 
             const textSpan = document.createElement('span');
             textSpan.textContent = `> ${message}`;
             msgEl.appendChild(textSpan);
 
-            dom.consoleContent.appendChild(msgEl);
-            dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
+            consoleMessages.appendChild(msgEl);
+
+            // Auto-scroll only if we are at the bottom
+            const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
+            if (isAtBottom) {
+                consoleMessages.scrollTop = consoleMessages.scrollHeight;
+            }
+
             lastLogElement = msgEl;
         }
 
         function clearUIConsole() {
-            if (dom.consoleContent) dom.consoleContent.innerHTML = '';
+            const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
+            if (consoleMessages) consoleMessages.innerHTML = '';
             lastLogMessage = '';
             lastLogType = '';
             lastLogElement = null;

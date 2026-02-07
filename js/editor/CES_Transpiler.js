@@ -138,7 +138,11 @@ export function getScriptMetadata(scriptName) {
  */
 export function transpile(code, scriptName) {
     const errors = [];
-    const className = scriptName.replace(/\.(ces|chc)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
+    let className = scriptName.replace(/\.(ces|chc)$/, '').replace(/[^a-zA-Z0-9]/g, '_');
+    // Asegurar que el nombre de la clase no empiece por un número
+    if (/^[0-9]/.test(className)) {
+        className = 'Script_' + className;
+    }
 
     let publicVars = [];
     let privateVars = [];
@@ -173,8 +177,37 @@ export function transpile(code, scriptName) {
         let braceCount = 1;
         let bodyEndIndex = -1;
         for (let i = bodyStartIndex; i < tempCode.length; i++) {
-            if (tempCode[i] === '{') braceCount++;
-            else if (tempCode[i] === '}') {
+            const char = tempCode[i];
+            const nextChar = tempCode[i + 1];
+
+            // Ignorar cadenas de texto
+            if (char === '"' || char === "'") {
+                const quote = char;
+                i++;
+                while (i < tempCode.length && tempCode[i] !== quote) {
+                    if (tempCode[i] === '\\') i++; // saltar carácter escapado
+                    i++;
+                }
+                continue;
+            }
+
+            // Ignorar comentarios de una línea
+            if (char === '/' && nextChar === '/') {
+                i += 2;
+                while (i < tempCode.length && tempCode[i] !== '\n') i++;
+                continue;
+            }
+
+            // Ignorar comentarios multilínea
+            if (char === '/' && nextChar === '*') {
+                i += 2;
+                while (i < tempCode.length && !(tempCode[i] === '*' && tempCode[i + 1] === '/')) i++;
+                i++; // saltar el asterisco
+                continue;
+            }
+
+            if (char === '{') braceCount++;
+            else if (char === '}') {
                 braceCount--;
                 if (braceCount === 0) {
                     bodyEndIndex = i;
@@ -265,8 +298,32 @@ export function transpile(code, scriptName) {
             let endIdx = -1;
 
             for (let i = contentStartIdx; i < body.length; i++) {
-                if (body[i] === '{') braceCount++;
-                else if (body[i] === '}') {
+                const char = body[i];
+                const nextChar = body[i + 1];
+
+                if (char === '"' || char === "'") {
+                    const quote = char;
+                    i++;
+                    while (i < body.length && body[i] !== quote) {
+                        if (body[i] === '\\') i++;
+                        i++;
+                    }
+                    continue;
+                }
+                if (char === '/' && nextChar === '/') {
+                    i += 2;
+                    while (i < body.length && body[i] !== '\n') i++;
+                    continue;
+                }
+                if (char === '/' && nextChar === '*') {
+                    i += 2;
+                    while (i < body.length && !(body[i] === '*' && body[i + 1] === '/')) i++;
+                    i++;
+                    continue;
+                }
+
+                if (char === '{') braceCount++;
+                else if (char === '}') {
                     braceCount--;
                     if (braceCount === 0) {
                         endIdx = i;

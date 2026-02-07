@@ -3095,7 +3095,7 @@ body {
     color: white;
 }
 
-#console-content.active {
+#assets-panel #console-content.active {
     display: flex;
     flex-direction: column;
 }
