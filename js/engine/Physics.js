@@ -31,6 +31,22 @@ class Collision {
         this.transformacion = this.transform;
         this.colisionador = colliderB;
     }
+
+    /**
+     * Comprueba si la materia involucrada en la colisión tiene un tag específico.
+     * @param {string} tag
+     */
+    tieneTag(tag) {
+        return this.materia && this.materia.tieneTag(tag);
+    }
+
+    /**
+     * Alias en inglés para tieneTag.
+     * @param {string} tag
+     */
+    hasTag(tag) {
+        return this.tieneTag(tag);
+    }
 }
 
 export class PhysicsSystem {
