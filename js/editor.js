@@ -1445,6 +1445,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Calculate deltaTime
         if (lastFrameTime > 0) {
             deltaTime = (timestamp - lastFrameTime) / 1000;
+            // Clamp deltaTime to 0.1s to avoid the "spiral of death" and massive physics jumps
+            deltaTime = Math.min(deltaTime, 0.1);
         }
         lastFrameTime = timestamp;
 

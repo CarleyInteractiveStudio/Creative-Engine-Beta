@@ -1001,8 +1001,8 @@ export function initialize(dependencies) {
             renderer.camera.zoom /= zoomFactor;
         }
 
-        // Clamp zoom to avoid issues
-        renderer.camera.zoom = Math.max(0.1, Math.min(renderer.camera.zoom, 20.0));
+        // Clamp zoom to avoid issues - expanded limits for more flexibility
+        renderer.camera.zoom = Math.max(0.001, Math.min(renderer.camera.zoom, 1000.0));
     }, { passive: false });
 
     dom.sceneCanvas.addEventListener('mousedown', (e) => {

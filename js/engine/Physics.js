@@ -56,6 +56,7 @@ export class PhysicsSystem {
     constructor(scene) {
         this.scene = scene;
         this.gravity = { x: 0, y: 9.8 }; // Reduced gravity to a more game-like value
+        this.MAX_VELOCITY = 100; // Unidades por segundo (luego se multiplica por PHYSICS_SCALE)
 
         /**
          * Stores active collisions from the current frame.
@@ -91,6 +92,11 @@ export class PhysicsSystem {
 
             if (rigidbody && transform && rigidbody.bodyType.toLowerCase() === 'dynamic' && rigidbody.simulated) {
                 const PHYSICS_SCALE = 100; // Factor de escala para que las unidades sean más manejables
+
+                // Clamping velocity to prevent physics breaking with large forces
+                rigidbody.velocity.x = this._clamp(rigidbody.velocity.x, -this.MAX_VELOCITY, this.MAX_VELOCITY);
+                rigidbody.velocity.y = this._clamp(rigidbody.velocity.y, -this.MAX_VELOCITY, this.MAX_VELOCITY);
+
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
                 transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
                 transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
@@ -300,7 +306,12 @@ export class PhysicsSystem {
         let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
 
         let j = -(1 + e) * velAlongNormal;
-        j /= (invMassA + invMassB);
+        const totalInvMass = invMassA + invMassB;
+        if (totalInvMass > 0) {
+            j /= totalInvMass;
+        } else {
+            return;
+        }
 
         // Apply impulse
         const impulse = { x: j * normal.x, y: j * normal.y };

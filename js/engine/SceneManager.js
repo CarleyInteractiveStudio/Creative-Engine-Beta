@@ -120,6 +120,9 @@ export class Scene {
                 this.materias.splice(index, 1);
             }
         }
+
+        // --- BUG FIX: Call destroy() to prevent memory leaks (subscriptions, timers, etc) ---
+        materiaToRemove.destroy();
     }
 
     clone() {

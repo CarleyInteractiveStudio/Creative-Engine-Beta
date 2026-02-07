@@ -196,9 +196,15 @@ export class Renderer {
 
     beginLights() {
         this.lightMapCtx.save();
-        this.lightMapCtx.setTransform(this.ctx.getTransform());
+        // Fill entire canvas with ambient light in screen space to remove world-space limits
+        this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
         this.lightMapCtx.fillStyle = this.ambientLight;
-        this.lightMapCtx.fillRect(-99999, -99999, 199998, 199998);
+        this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
+        this.lightMapCtx.restore();
+
+        // Prepare for world-space light drawing
+        this.lightMapCtx.save();
+        this.lightMapCtx.setTransform(this.ctx.getTransform());
     }
 
     drawPointLight(light, transform) {

@@ -167,6 +167,36 @@ export class Materia {
         }
     }
 
+    /**
+     * Destruye recursivamente esta materia, todos sus componentes y todos sus hijos.
+     * Esencial para evitar fugas de memoria (limpieza de suscripciones, timers, etc).
+     */
+    destroy() {
+        // Notificar destrucción a los componentes de esta materia
+        for (const ley of this.leyes) {
+            if (typeof ley.onDestroy === 'function') {
+                try {
+                    ley.onDestroy();
+                } catch (e) {
+                    console.error(`Error destroying component ${ley.constructor.name} on Materia '${this.name}':`, e);
+                }
+            }
+            // Limpiar referencia circular
+            ley.materia = null;
+        }
+        this.leyes = [];
+
+        // Destruir hijos recursivamente
+        for (const child of this.children) {
+            child.destroy();
+        }
+        this.children = [];
+
+        // Limpiar referencias
+        this.parent = null;
+        this.scene = null;
+    }
+
     update(deltaTime = 0) {
         for (const ley of this.leyes) {
             if (typeof ley.update === 'function') {
