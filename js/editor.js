@@ -1452,6 +1452,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
+        EngineAPI.CEEngine.update(deltaTime);
         if (uiSystem) {
             uiSystem.update(deltaTime);
         }
@@ -2668,6 +2669,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
+            window.projectsDirHandle = projectsDirHandle;
             if (!projectsDirHandle) {
                 console.warn("No directory handle found. Entering test/limited mode.");
                 // This allows the editor to initialize for Playwright tests

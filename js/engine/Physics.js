@@ -30,6 +30,11 @@ class Collision {
         this.objeto = materiaB;
         this.transformacion = this.transform;
         this.colisionador = colliderB;
+
+        /** @type {Vector2} Normal direction of the collision. */
+        this.normal = { x: 0, y: 0 };
+        /** @type {Vector2} Relative velocity of the collision. */
+        this.relativeVelocity = { x: 0, y: 0 };
     }
 
     /**
@@ -37,7 +42,7 @@ class Collision {
      * @param {string} tag
      */
     tieneTag(tag) {
-        return this.materia && this.materia.tieneTag(tag);
+        return this.objeto && this.objeto.tieneTag(tag);
     }
 
     /**
@@ -184,17 +189,26 @@ export class PhysicsSystem {
 
             if (!materiaA || !materiaB) continue;
 
-            this._triggerScriptEvents(materiaA, materiaB, info.state, info.type);
-            this._triggerScriptEvents(materiaB, materiaA, info.state, info.type);
+            const collisionInfo = this.checkCollision(materiaA, materiaB); // Re-calculate or cache from resolution
+            this._triggerScriptEvents(materiaA, materiaB, info.state, info.type, collisionInfo);
+            this._triggerScriptEvents(materiaB, materiaA, info.state, info.type, collisionInfo);
         }
     }
 
-    _triggerScriptEvents(materia, other, state, type) {
+    _triggerScriptEvents(materia, other, state, type, mtv) {
         const scripts = materia.getComponents(Components.CreativeScript);
         if (scripts.length === 0) return;
 
         const otherCollider = this.getCollider(other);
         const collision = new Collision(materia, other, otherCollider);
+        if (mtv) {
+            collision.normal = this._normalize({ x: mtv.x, y: mtv.y });
+            const rbA = materia.getComponent(Components.Rigidbody2D);
+            const rbB = other.getComponent(Components.Rigidbody2D);
+            const velA = rbA ? rbA.velocity : { x: 0, y: 0 };
+            const velB = rbB ? rbB.velocity : { x: 0, y: 0 };
+            collision.relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
+        }
 
         let methodName = '';
         let englishMethodName = '';

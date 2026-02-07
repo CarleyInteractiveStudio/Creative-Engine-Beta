@@ -26,16 +26,20 @@ const componentAliases = {
     'Animator': 'animador',
     'PointLight2D': 'luzPuntual2D',
     'SpotLight2D': 'luzFocal2D',
+    'FreeformLight2D': 'luzFormaLibre2D',
+    'SpriteLight2D': 'luzDeSprite2D',
     'Tilemap': 'mapaDeAzulejos',
     'TilemapRenderer': 'renderizadorMapaDeAzulejos',
     'TilemapCollider2D': 'colisionadorMapaDeAzulejos2D',
+    'CompositeCollider2D': 'colisionadorCompuesto2D',
     'Grid': 'rejilla',
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
-    'Button': 'boton'
+    'Button': 'boton',
+    'CustomComponent': 'componentePersonalizado'
 };
 
 
@@ -114,7 +118,30 @@ export class CreativeScriptBehavior {
      * @param {string} nombre - Nombre del script.
      */
     obtenerScript(nombre) {
-        return this.materia.obtenerScript(nombre);
+        return this.materia ? this.materia.obtenerScript(nombre) : null;
+    }
+
+    /**
+     * Obtiene un componente de esta materia por su clase o nombre.
+     */
+    obtenerComponente(tipo) {
+        if (!this.materia) return null;
+        if (typeof tipo === 'string') return this.materia.getComponentByName(tipo);
+        return this.materia.getComponent(tipo);
+    }
+
+    /**
+     * Obtiene un componente en los padres de esta materia.
+     */
+    obtenerComponenteEnPadre(tipo) {
+        return this.materia ? this.materia.getComponentInParent(tipo) : null;
+    }
+
+    /**
+     * Obtiene un componente en los hijos de esta materia.
+     */
+    obtenerComponenteEnHijos(tipo) {
+        return this.materia ? this.materia.getComponentInChildren(tipo) : null;
     }
 
     /**
@@ -124,6 +151,22 @@ export class CreativeScriptBehavior {
         return this.materia && this.materia.tag === tag;
     }
     hasTag(tag) { return this.tieneTag(tag); }
+
+    // English Aliases
+    getComponent(type) { return this.obtenerComponente(type); }
+    getComponentInParent(type) { return this.obtenerComponenteEnPadre(type); }
+    getComponentInChildren(type) { return this.obtenerComponenteEnHijos(type); }
+
+    /**
+     * Devuelve el tiempo transcurrido desde el último frame.
+     */
+    get deltaTime() {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        return engine ? engine.getDeltaTime() : 0;
+    }
+
+    /** Alias en español */
+    get tiempoDelta() { return this.deltaTime; }
 
     /**
      * Destruye una Materia (objeto) del juego.
@@ -333,6 +376,28 @@ export class Transform extends Leyes {
     set x(value) { this.position = { x: value, y: this.position.y }; }
     get y() { return this.position.y; }
     set y(value) { this.position = { x: this.position.x, y: value }; }
+
+    /**
+     * Hace que el objeto mire hacia una posición específica.
+     * @param {number|{x:number, y:number}} xOrObj - Posición X o vector.
+     * @param {number} [y] - Posición Y.
+     */
+    lookAt(xOrObj, y) {
+        let tx = 0, ty = 0;
+        if (typeof xOrObj === 'object') {
+            tx = xOrObj.x;
+            ty = xOrObj.y;
+        } else {
+            tx = xOrObj;
+            ty = y;
+        }
+        const dx = tx - this.x;
+        const dy = ty - this.y;
+        this.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
+    }
+
+    /** Alias en español */
+    mirarA(x, y) { this.lookAt(x, y); }
 
     clone() {
         const newTransform = new Transform(null);
@@ -884,6 +949,10 @@ export class Animator extends Leyes {
         this.isPlaying = false;
     }
 
+    /** Alias en español */
+    reproducir() { this.play(); }
+    detener() { this.stop(); }
+
     update(deltaTime) {
         if (!this.isPlaying || !this.animationClip || !this.spriteRenderer) {
             return;
@@ -1077,7 +1146,58 @@ export class AudioSource extends Leyes {
         this.volume = 1.0;
         this.loop = false;
         this.playOnAwake = true;
+        this._audio = null;
+        this._isLoaded = false;
     }
+
+    async start() {
+        if (this.playOnAwake) {
+            this.play();
+        }
+    }
+
+    async play() {
+        if (!this.source) return;
+
+        try {
+            if (!this._audio) {
+                const url = await getURLForAssetPath(this.source, window.projectsDirHandle);
+                if (!url) return;
+                this._audio = new Audio(url);
+                this._audio.oncanplaythrough = () => this._isLoaded = true;
+            }
+
+            this._audio.volume = this.volume;
+            this._audio.loop = this.loop;
+            await this._audio.play();
+        } catch (e) {
+            console.warn(`[AudioSource] No se pudo reproducir audio: ${this.source}.`, e);
+        }
+    }
+
+    stop() {
+        if (this._audio) {
+            this._audio.pause();
+            this._audio.currentTime = 0;
+        }
+    }
+
+    pause() {
+        if (this._audio) {
+            this._audio.pause();
+        }
+    }
+
+    // --- Spanish Aliases ---
+    reproducir() { this.play(); }
+    detener() { this.stop(); }
+    pausar() { this.pause(); }
+
+    onDestroy() {
+        this.stop();
+        this._audio = null;
+    }
+
     clone() {
         const newAudio = new AudioSource(null);
         newAudio.source = this.source;
@@ -1215,6 +1335,9 @@ export class AnimatorController extends Leyes {
             this.animator.play();
         }
     }
+
+    /** Alias en español */
+    reproducir(nombreEstado) { this.play(nombreEstado); }
 
     clone() {
         const newController = new AnimatorController(null);

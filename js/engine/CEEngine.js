@@ -3,9 +3,18 @@
 import * as SceneManager from './SceneManager.js';
 
 let physicsSystem = null;
+let currentDeltaTime = 0;
 
 export function initialize(dependencies) {
     physicsSystem = dependencies.physicsSystem;
+}
+
+export function update(dt) {
+    currentDeltaTime = dt;
+}
+
+function getDeltaTime() {
+    return currentDeltaTime;
 }
 
 /**
@@ -57,6 +66,8 @@ const engineAPIs = {
     alPermanecerEnColision: getCollisionStay,
     alSalirDeColision: getCollisionExit,
     lanzarRayo: raycast,
+    getDeltaTime: getDeltaTime,
+    obtenerDeltaTime: getDeltaTime,
 };
 
 export function getAPIs() {

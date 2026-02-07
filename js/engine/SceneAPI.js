@@ -32,10 +32,12 @@ function setTime(time) {
 const sceneAPI = {
     setAmbientLight: setAmbientLight,
     setTime: setTime,
+    instantiatePrefab: SceneManager.instanciarPrefab,
 
     // Spanish aliases
     establecerLuzAmbiental: setAmbientLight,
     establecerHora: setTime,
+    instanciarPrefab: SceneManager.instanciarPrefab,
 };
 
 export function getAPIs() {

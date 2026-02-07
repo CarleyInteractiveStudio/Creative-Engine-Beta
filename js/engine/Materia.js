@@ -45,6 +45,40 @@ export class Materia {
     }
 
     /**
+     * Busca un componente en los padres de esta materia.
+     */
+    getComponentInParent(componentClass) {
+        let current = this.parent;
+        // Resolve ID to object if necessary
+        if (typeof current === 'number') {
+            try { current = (this.scene || currentScene).findMateriaById(current); } catch (e) { return null; }
+        }
+
+        while (current) {
+            const comp = typeof componentClass === 'string' ? current.getComponentByName(componentClass) : current.getComponent(componentClass);
+            if (comp) return comp;
+            current = current.parent;
+            if (typeof current === 'number') {
+                try { current = currentScene.findMateriaById(current); } catch (e) { return null; }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Busca un componente en los hijos de esta materia (recursivo).
+     */
+    getComponentInChildren(componentClass) {
+        for (const child of this.children) {
+            const comp = typeof componentClass === 'string' ? child.getComponentByName(componentClass) : child.getComponent(componentClass);
+            if (comp) return comp;
+            const nested = child.getComponentInChildren(componentClass);
+            if (nested) return nested;
+        }
+        return null;
+    }
+
+    /**
      * Busca un script específico en esta Materia por su nombre.
      * @param {string} name - El nombre del script (ej: 'ControladorJugador').
      * @returns {object|null} La instancia del script o null si no se encuentra.
@@ -152,10 +186,18 @@ export class Materia {
         child.parent = this;
         this.children.push(child);
 
+        // Inherit scene from parent
+        if (this.scene) {
+            child.scene = this.scene;
+        }
+
         // A child should not be in the root list. Remove it.
-        const index = currentScene.materias.indexOf(child);
-        if (index > -1) {
-            currentScene.materias.splice(index, 1);
+        const scene = this.scene || currentScene;
+        if (scene && scene.materias) {
+            const index = scene.materias.indexOf(child);
+            if (index > -1) {
+                scene.materias.splice(index, 1);
+            }
         }
     }
 

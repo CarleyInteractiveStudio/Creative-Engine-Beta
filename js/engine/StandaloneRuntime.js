@@ -92,6 +92,7 @@ export class StandaloneRuntime {
         this.lastTime = timestamp;
 
         if (this.physicsSystem) this.physicsSystem.update(this.deltaTime);
+        EngineAPI.CEEngine.update(this.deltaTime);
 
         if (SceneManager.currentScene) {
             SceneManager.currentScene.getAllMaterias().forEach(m => {

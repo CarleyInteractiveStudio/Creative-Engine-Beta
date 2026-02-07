@@ -29,17 +29,45 @@ function isKeyReleased(key) {
     return InputManager.getKeyUp(key.toLowerCase());
 }
 
+/**
+ * Checks if a mouse button is currently being held down.
+ * @param {number} button - 0: Left, 1: Middle, 2: Right.
+ */
+function isMouseButtonPressed(button) {
+    return InputManager.getMouseButton(button);
+}
+
+function isMouseButtonJustPressed(button) {
+    return InputManager.getMouseButtonDown(button);
+}
+
+function isMouseButtonReleased(button) {
+    return InputManager.getMouseButtonUp(button);
+}
+
+function getMousePosition() {
+    return InputManager.getMousePositionInCanvas();
+}
+
 // --- The Public API Object ---
 const inputAPI = {
     isKeyPressed: isKeyPressed,
     isKeyJustPressed: isKeyJustPressed,
     isKeyReleased: isKeyReleased,
+    isMouseButtonPressed: isMouseButtonPressed,
+    isMouseButtonJustPressed: isMouseButtonJustPressed,
+    isMouseButtonReleased: isMouseButtonReleased,
+    getMousePosition: getMousePosition,
 
     // Spanish aliases
     tecla: isKeyPressed, // Alias for ease of use in CHC
     teclaPresionada: isKeyPressed,
     teclaRecienPresionada: isKeyJustPressed,
     teclaLiberada: isKeyReleased,
+    botonMousePresionado: isMouseButtonPressed,
+    botonMouseRecienPresionado: isMouseButtonJustPressed,
+    botonMouseLiberado: isMouseButtonReleased,
+    obtenerPosicionMouse: getMousePosition,
 };
 
 export function getAPIs() {
