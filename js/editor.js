@@ -68,6 +68,81 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+
+    // --- Console State & Utilities ---
+    const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
+    let lastLogMessage = '';
+    let lastLogType = '';
+    let lastLogElement = null;
+    let lastLogCount = 1;
+
+    function logToUIConsole(message, type = 'log', isSystem = true) {
+        const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
+        if (!consoleMessages) return;
+
+        // Group identical messages
+        if (message === lastLogMessage && type === lastLogType && lastLogElement) {
+            lastLogCount++;
+            let badge = lastLogElement.querySelector('.log-count-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'log-count-badge';
+                lastLogElement.appendChild(badge);
+            }
+            badge.textContent = lastLogCount;
+            // Keep scroll at bottom if it was already there
+            const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
+            if (isAtBottom) {
+                consoleMessages.scrollTop = consoleMessages.scrollHeight;
+            }
+            return;
+        }
+
+        lastLogMessage = message;
+        lastLogType = type;
+        lastLogCount = 1;
+
+        const msgEl = document.createElement('p');
+        msgEl.className = `console-msg log-${type}`;
+        msgEl.dataset.category = isSystem ? 'system' : 'user';
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = `> ${message}`;
+        msgEl.appendChild(textSpan);
+
+        consoleMessages.appendChild(msgEl);
+
+        // Auto-scroll only if we are at the bottom
+        const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
+        if (isAtBottom) {
+            consoleMessages.scrollTop = consoleMessages.scrollHeight;
+        }
+
+        lastLogElement = msgEl;
+    }
+
+    function clearUIConsole() {
+        const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
+        if (consoleMessages) consoleMessages.innerHTML = '';
+        lastLogMessage = '';
+        lastLogType = '';
+        lastLogElement = null;
+        lastLogCount = 1;
+    }
+
+    // Override console methods immediately
+    console.log = function(message, ...args) {
+        logToUIConsole(message, 'log');
+        originalLog.apply(console, [message, ...args]);
+    };
+    console.warn = function(message, ...args) {
+        logToUIConsole(message, 'warn');
+        originalWarn.apply(console, [message, ...args]);
+    };
+    console.error = function(message, ...args) {
+        logToUIConsole(message, 'error');
+        originalError.apply(console, [message, ...args]);
+    };
     let editorLoopId = null;
     let deltaTime = 0;
     // Fixed-timestep accumulator for scripts
@@ -2562,67 +2637,6 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             console.log(`Loading: ${percentage}% - ${message}`);
         };
 
-        // --- 7c. Override console.log to also log to UI ---
-        const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
-        let lastLogMessage = '';
-        let lastLogType = '';
-        let lastLogElement = null;
-        let lastLogCount = 1;
-
-        function logToUIConsole(message, type = 'log', isSystem = true) {
-            const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
-            if (!consoleMessages) return;
-
-            // Group identical messages
-            if (message === lastLogMessage && type === lastLogType && lastLogElement) {
-                lastLogCount++;
-                let badge = lastLogElement.querySelector('.log-count-badge');
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'log-count-badge';
-                    lastLogElement.appendChild(badge);
-                }
-                badge.textContent = lastLogCount;
-                // Keep scroll at bottom
-                dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
-                return;
-            }
-
-            lastLogMessage = message;
-            lastLogType = type;
-            lastLogCount = 1;
-
-            const msgEl = document.createElement('p');
-            msgEl.className = `console-msg log-${type}`;
-            msgEl.dataset.category = isSystem ? 'system' : 'user';
-
-            const textSpan = document.createElement('span');
-            textSpan.textContent = `> ${message}`;
-            msgEl.appendChild(textSpan);
-
-            consoleMessages.appendChild(msgEl);
-
-            // Auto-scroll only if we are at the bottom
-            const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
-            if (isAtBottom) {
-                consoleMessages.scrollTop = consoleMessages.scrollHeight;
-            }
-
-            lastLogElement = msgEl;
-        }
-
-        function clearUIConsole() {
-            const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
-            if (consoleMessages) consoleMessages.innerHTML = '';
-            lastLogMessage = '';
-            lastLogType = '';
-            lastLogElement = null;
-            lastLogCount = 1;
-        }
-
-        console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); };
-        console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); };
-        console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {
