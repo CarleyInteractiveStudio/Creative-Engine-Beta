@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
 
 let customComponentProvider = null;
@@ -27,7 +27,14 @@ export class Scene {
     addMateria(materia) {
         if (materia instanceof Materia) {
             this.materias.push(materia);
-            materia.scene = this;
+            this._setMateriaSceneRecursive(materia);
+        }
+    }
+
+    _setMateriaSceneRecursive(materia) {
+        materia.scene = this;
+        for (const child of materia.children) {
+            this._setMateriaSceneRecursive(child);
         }
     }
 
@@ -410,6 +417,8 @@ export async function instanciarPrefab(prefabData, x, y) {
     currentScene.addMateria(newMateria);
     return newMateria;
 }
+
+function createDefaultScene() {
     const scene = new Scene();
 
     // Create the root node

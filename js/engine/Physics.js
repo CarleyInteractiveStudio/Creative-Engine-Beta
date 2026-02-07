@@ -37,6 +37,8 @@ class Collision {
         this.relativeVelocity = { x: 0, y: 0 };
     }
 
+    get velocidadRelativa() { return this.relativeVelocity; }
+
     /**
      * Comprueba si la materia involucrada en la colisión tiene un tag específico.
      * @param {string} tag
@@ -190,24 +192,31 @@ export class PhysicsSystem {
             if (!materiaA || !materiaB) continue;
 
             const collisionInfo = this.checkCollision(materiaA, materiaB); // Re-calculate or cache from resolution
-            this._triggerScriptEvents(materiaA, materiaB, info.state, info.type, collisionInfo);
-            this._triggerScriptEvents(materiaB, materiaA, info.state, info.type, collisionInfo);
+            this._triggerScriptEvents(materiaA, materiaB, info.state, info.type, collisionInfo, false);
+            this._triggerScriptEvents(materiaB, materiaA, info.state, info.type, collisionInfo, true);
         }
     }
 
-    _triggerScriptEvents(materia, other, state, type, mtv) {
+    _triggerScriptEvents(materia, other, state, type, mtv, isInverted) {
         const scripts = materia.getComponents(Components.CreativeScript);
         if (scripts.length === 0) return;
 
         const otherCollider = this.getCollider(other);
         const collision = new Collision(materia, other, otherCollider);
         if (mtv) {
-            collision.normal = this._normalize({ x: mtv.x, y: mtv.y });
-            const rbA = materia.getComponent(Components.Rigidbody2D);
-            const rbB = other.getComponent(Components.Rigidbody2D);
-            const velA = rbA ? rbA.velocity : { x: 0, y: 0 };
-            const velB = rbB ? rbB.velocity : { x: 0, y: 0 };
-            collision.relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
+            let nx = mtv.x;
+            let ny = mtv.y;
+            if (isInverted) {
+                nx = -nx;
+                ny = -ny;
+            }
+            collision.normal = this._normalize({ x: nx, y: ny });
+
+            const rbSelf = materia.getComponent(Components.Rigidbody2D);
+            const rbOther = other.getComponent(Components.Rigidbody2D);
+            const velSelf = rbSelf ? rbSelf.velocity : { x: 0, y: 0 };
+            const velOther = rbOther ? rbOther.velocity : { x: 0, y: 0 };
+            collision.relativeVelocity = { x: velSelf.x - velOther.x, y: velSelf.y - velOther.y };
         }
 
         let methodName = '';

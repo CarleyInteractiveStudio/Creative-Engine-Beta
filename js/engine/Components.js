@@ -1193,6 +1193,11 @@ export class AudioSource extends Leyes {
     detener() { this.stop(); }
     pausar() { this.pause(); }
 
+    get volumen() { return this.volume; }
+    set volumen(v) { this.volume = v; if (this._audio) this._audio.volume = v; }
+    get bucle() { return this.loop; }
+    set bucle(l) { this.loop = l; if (this._audio) this._audio.loop = l; }
+
     onDestroy() {
         this.stop();
         this._audio = null;

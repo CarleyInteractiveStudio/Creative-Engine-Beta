@@ -64,16 +64,25 @@ export class StandaloneRuntime {
             // Load external libraries
             await this.loadStandaloneLibraries();
 
-            // Load and instantiate scripts
+            // Load and instantiate scripts and components
             for (const materia of scene.getAllMaterias()) {
-                const scripts = materia.getComponents(Components.CreativeScript);
-                for (const script of scripts) {
-                    // In standalone, scripts need to be pre-loaded or loaded dynamically
-                    // For now, let's assume we have a mechanism for this.
-                    await script.initializeInstance();
-                    if (script.isInitialized) {
-                        script.start();
-                        script.onEnable();
+                for (const ley of materia.leyes) {
+                    if (ley instanceof Components.CreativeScript) {
+                        await ley.initializeInstance();
+                        if (ley.isInitialized) {
+                            try { ley.start(); } catch(e) {}
+                            try { ley.onEnable(); } catch(e) {}
+                        }
+                    } else if (ley instanceof Components.AnimatorController) {
+                        await ley.initialize(null); // null handle for standalone
+                    } else if (ley instanceof Components.Animator) {
+                        if (!materia.getComponent(Components.AnimatorController)) {
+                            await ley.loadAnimationClip(null);
+                        }
+                    } else {
+                        if (typeof ley.start === 'function') {
+                            try { await ley.start(); } catch(e) {}
+                        }
                     }
                 }
             }

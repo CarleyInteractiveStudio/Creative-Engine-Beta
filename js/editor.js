@@ -1539,35 +1539,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (SceneManager.currentScene) {
                 for (const materia of SceneManager.currentScene.getAllMaterias()) {
                     if (materia.isActive) {
-                        const scripts = materia.getComponents(Components.CreativeScript);
-                        for (const script of scripts) {
-                            await script.initializeInstance(); // Await initialization
-                            if (script.isInitialized) {
-                                try {
-                                    script.start(); // Prefer the new start() API
-                                } catch (e) {
-                                    console.error(`Error en el método start() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                        for (const ley of materia.leyes) {
+                            if (ley instanceof Components.CreativeScript) {
+                                await ley.initializeInstance();
+                                if (ley.isInitialized) {
+                                    try {
+                                        ley.start();
+                                    } catch (e) {
+                                        console.error(`Error en start() del script '${ley.scriptName}' en '${materia.name}':`, e);
+                                    }
+                                    try {
+                                        ley.onEnable();
+                                    } catch (e) {
+                                        console.error(`Error en onEnable() del script '${ley.scriptName}' en '${materia.name}':`, e);
+                                    }
                                 }
-                                try {
-                                    script.onEnable(); // Notify script that it has been enabled
-                                } catch (e) {
-                                    console.error(`Error en el método onEnable() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                            } else if (ley instanceof Components.AnimatorController) {
+                                // AnimatorController needs explicit initialization
+                                await ley.initialize(projectsDirHandle);
+                            } else if (ley instanceof Components.Animator) {
+                                // If there's no controller, the animator runs standalone.
+                                if (!materia.getComponent(Components.AnimatorController)) {
+                                    await ley.loadAnimationClip(projectsDirHandle);
+                                }
+                            } else {
+                                // Generic start for other components (like AudioSource)
+                                if (typeof ley.start === 'function') {
+                                    try {
+                                        await ley.start();
+                                    } catch (e) {
+                                        console.error(`Error en start() del componente ${ley.constructor.name} en '${materia.name}':`, e);
+                                    }
                                 }
                             }
-                        }
-
-                        // Handle Animator and AnimatorController initialization
-                        const animatorController = materia.getComponent(Components.AnimatorController);
-                        const animator = materia.getComponent(Components.Animator);
-
-                        if (animatorController) {
-                            // The controller will manage the animator, so we initialize it.
-                            // This is an async operation but we don't need to block the game start for it.
-                            animatorController.initialize(projectsDirHandle);
-                        } else if (animator) {
-                            // If there's no controller, the animator runs standalone.
-                            // This is also async and won't block.
-                            animator.loadAnimationClip(projectsDirHandle);
                         }
                     }
                 }

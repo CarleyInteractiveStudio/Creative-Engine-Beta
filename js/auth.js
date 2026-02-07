@@ -66,26 +66,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- View Switching Logic ---
   const showView = (viewToShow) => {
-    loginView.style.display         = 'none';
-    signupView.style.display        = 'none';
-    resetPasswordView.style.display = 'none';
-    viewToShow.style.display        = 'block';
+    if (loginView) loginView.style.display = 'none';
+    if (signupView) signupView.style.display = 'none';
+    if (resetPasswordView) resetPasswordView.style.display = 'none';
+    if (viewToShow) viewToShow.style.display = 'block';
   };
 
-  gotoSignup.addEventListener('click', e => { e.preventDefault(); showView(signupView); });
-  gotoLogin.addEventListener('click',  e => { e.preventDefault(); showView(loginView); });
-  gotoReset.addEventListener('click',  e => { e.preventDefault(); showView(resetPasswordView); });
-  backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
+  if (gotoSignup) gotoSignup.addEventListener('click', e => { e.preventDefault(); showView(signupView); });
+  if (gotoLogin) gotoLogin.addEventListener('click',  e => { e.preventDefault(); showView(loginView); });
+  if (gotoReset) gotoReset.addEventListener('click',  e => { e.preventDefault(); showView(resetPasswordView); });
+  if (backToLogin) backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
 
   // --- Modal Closing Logic ---
-  const closeAuthModal = () => authModal.style.display = 'none';
-  closeAuthBtn.addEventListener('click', closeAuthModal);
+  const closeAuthModal = () => { if (authModal) authModal.style.display = 'none'; };
+  if (closeAuthBtn) closeAuthBtn.addEventListener('click', closeAuthModal);
   window.addEventListener('click', event => {
     if (event.target === authModal) closeAuthModal();
   });
 
   // --- Authentication Logic ---
-  signupForm.addEventListener('submit', async (e) => {
+  if (signupForm) signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name     = signupForm['signup-name'].value;
     const email    = signupForm['signup-email'].value;
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     button.textContent = 'Registrarse';
   });
 
-  loginForm.addEventListener('submit', async (e) => {
+  if (loginForm) loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email    = loginForm['login-email'].value;
     const password = loginForm['login-password'].value;
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     button.textContent = 'Iniciar Sesión';
   });
 
-  resetPasswordForm.addEventListener('submit', async (e) => {
+  if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email  = resetPasswordForm['reset-email'].value;
     const button = resetPasswordForm.querySelector('button');
@@ -183,7 +183,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    document.getElementById('btn-auth-action').addEventListener('click', handleAuthButtonClick);
+    const btnAuthAction = document.getElementById('btn-auth-action');
+    if (btnAuthAction) btnAuthAction.addEventListener('click', handleAuthButtonClick);
   };
 
   const handleAuthButtonClick = async () => {
