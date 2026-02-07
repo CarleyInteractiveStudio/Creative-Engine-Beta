@@ -76,12 +76,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastLogElement = null;
     let lastLogCount = 1;
 
-    function logToUIConsole(message, type = 'log', isSystem = true) {
+    function logToUIConsole(message, type = 'log', isSystem = true, ...args) {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
         if (!consoleMessages) return;
 
+        let fullMessage = message;
+
+        // Handle additional arguments
+        if (args.length > 0) {
+            args.forEach(arg => {
+                if (arg instanceof Error) {
+                    fullMessage += `\n${arg.stack || `${arg.name}: ${arg.message}`}`;
+                } else if (typeof arg === 'object') {
+                    try {
+                        fullMessage += ` ${JSON.stringify(arg, null, 2)}`;
+                    } catch (e) {
+                        fullMessage += ` [Object]`;
+                    }
+                } else {
+                    fullMessage += ` ${arg}`;
+                }
+            });
+        }
+
         // Group identical messages
-        if (message === lastLogMessage && type === lastLogType && lastLogElement) {
+        if (fullMessage === lastLogMessage && type === lastLogType && lastLogElement) {
             lastLogCount++;
             let badge = lastLogElement.querySelector('.log-count-badge');
             if (!badge) {
@@ -98,16 +117,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        lastLogMessage = message;
+        lastLogMessage = fullMessage;
         lastLogType = type;
         lastLogCount = 1;
 
-        const msgEl = document.createElement('p');
+        const msgEl = document.createElement('div'); // Changed to div for potential multi-line content
         msgEl.className = `console-msg log-${type}`;
         msgEl.dataset.category = isSystem ? 'system' : 'user';
+        msgEl.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
 
         const textSpan = document.createElement('span');
-        textSpan.textContent = `> ${message}`;
+        textSpan.textContent = `> ${fullMessage}`;
         msgEl.appendChild(textSpan);
 
         consoleMessages.appendChild(msgEl);
@@ -132,15 +152,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Override console methods immediately
     console.log = function(message, ...args) {
-        logToUIConsole(message, 'log');
+        logToUIConsole(message, 'log', true, ...args);
         originalLog.apply(console, [message, ...args]);
     };
     console.warn = function(message, ...args) {
-        logToUIConsole(message, 'warn');
+        logToUIConsole(message, 'warn', true, ...args);
         originalWarn.apply(console, [message, ...args]);
     };
     console.error = function(message, ...args) {
-        logToUIConsole(message, 'error');
+        logToUIConsole(message, 'error', true, ...args);
         originalError.apply(console, [message, ...args]);
     };
     let editorLoopId = null;

@@ -180,8 +180,8 @@ export function transpile(code, scriptName) {
             const char = tempCode[i];
             const nextChar = tempCode[i + 1];
 
-            // Ignorar cadenas de texto
-            if (char === '"' || char === "'") {
+            // Ignorar cadenas de texto (comillas simples, dobles o backticks)
+            if (char === '"' || char === "'" || char === '`') {
                 const quote = char;
                 i++;
                 while (i < tempCode.length && tempCode[i] !== quote) {
@@ -301,7 +301,7 @@ export function transpile(code, scriptName) {
                 const char = body[i];
                 const nextChar = body[i + 1];
 
-                if (char === '"' || char === "'") {
+                if (char === '"' || char === "'" || char === '`') {
                     const quote = char;
                     i++;
                     while (i < body.length && body[i] !== quote) {

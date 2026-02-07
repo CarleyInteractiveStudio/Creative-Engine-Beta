@@ -193,11 +193,11 @@ export class CreativeScriptBehavior {
      * Internal method used to log messages from user scripts, marking them as non-system.
      * @private
      */
-    _userLog(message, type = 'log') {
+    _userLog(message, type = 'log', ...args) {
         if (typeof window !== 'undefined' && window.logToUIConsole) {
-            window.logToUIConsole(message, type, false);
+            window.logToUIConsole(message, type, false, ...args);
         } else {
-            console[type](message);
+            console[type](message, ...args);
         }
     }
 
