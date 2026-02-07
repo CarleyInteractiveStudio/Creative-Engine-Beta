@@ -25,21 +25,26 @@ async function initialize(editorDom, initialProjectsDirHandle) {
     };
     projectsDirHandle = initialProjectsDirHandle;
 
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        if (!projectName) throw new Error("Nombre del proyecto no encontrado en la URL.");
-        projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        currentDirHandle = projectHandle; // Start at the project root
-        log(`Proyecto cargado: ${projectName}. Bienvenido a la terminal.`);
-        updatePrompt();
-    } catch (error) {
-        logError(`Error al cargar el directorio del proyecto: ${error.message}`);
-        if (dom.input) dom.input.readOnly = true;
-    }
-
     console.log("Terminal Module Initialized.");
     setupEventListeners();
     registerCoreCommands();
+
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (!projectName) {
+            console.warn("Terminal: Nombre del proyecto no encontrado en la URL.");
+            return;
+        }
+        if (!projectsDirHandle) {
+             // We don't logError here yet because the user might not have picked a folder yet
+             // Just a console log for debugging
+             console.log("Terminal: Esperando projectsDirHandle...");
+             return;
+        }
+        await loadProject(projectName);
+    } catch (error) {
+        logError(`Error al cargar el directorio del proyecto: ${error.message}`);
+    }
 
     // Focus input when the terminal becomes visible
     const observer = new MutationObserver(mutations => {
@@ -187,7 +192,11 @@ async function processCommand(fullCommand) {
 }
 
 function echoCommand(command) {
-    const promptText = dom.inputLine.querySelector('.terminal-prompt').textContent;
+    let promptText = ">";
+    if (dom.inputLine) {
+        const promptEl = dom.inputLine.querySelector('.terminal-prompt');
+        if (promptEl) promptText = promptEl.textContent;
+    }
     const escapedCommand = command.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     log(`<span class="terminal-prompt">${promptText}</span> ${escapedCommand}`);
 }
@@ -213,6 +222,30 @@ function scrollToBottom() {
     if (!dom.output) return;
     dom.output.scrollTop = dom.output.scrollHeight;
 }
+
+async function loadProject(projectName) {
+    try {
+        if (!projectsDirHandle) return;
+        projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        currentDirHandle = projectHandle;
+        currentPath = '/';
+        log(`Proyecto '${projectName}' cargado en la terminal.`);
+        updatePrompt();
+        if (dom.input) dom.input.readOnly = false;
+    } catch (e) {
+        logError(`No se pudo cargar el proyecto en la terminal: ${e.message}`);
+    }
+}
+
+// Expose for external updates
+window.ceTerminal = {
+    execute: execute,
+    updateHandle: (newHandle) => {
+        projectsDirHandle = newHandle;
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (projectName) loadProject(projectName);
+    }
+};
 
 function updatePrompt() {
     if (!dom.inputLine) return;
@@ -354,10 +387,5 @@ function registerCoreCommands() {
     registerCommand('cat', catCommand, 'Muestra el contenido de un archivo.');
     registerCommand('cd', cdCommand, 'Cambia el directorio de trabajo actual.');
 }
-
-// Expose for Carl IA
-window.ceTerminal = {
-    execute: execute
-};
 
 export { initialize };

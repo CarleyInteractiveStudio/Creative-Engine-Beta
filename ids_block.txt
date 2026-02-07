@@ -1,0 +1,75 @@
+            'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
+            // Library Window Elements
+            'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
+            'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
+            'lib-create-name', 'lib-create-author', 'lib-create-version', 'lib-create-signature', 'lib-create-description',
+            'lib-create-req-windows', 'lib-create-runtime-access', 'lib-create-is-tool', 'lib-create-custom-components', 'lib-create-modify-assets',
+            'lib-create-icon-preview', 'lib-create-icon-picker-btn', 'lib-create-icon-input',
+            'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
+            'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
+            'prefs-show-terminal',
+            'toolbar-music-btn', 'music-player-panel',
+            'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
+            'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
+            'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
+            'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
+            'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
+            'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
+            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
+            'asset-store-panel', 'btn-open-asset-store-ext',
+            // Carl IA Panel Elements
+            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log', 'carl-ia-brain-options',
+            // Terminal Elements
+            'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input', 'terminal-input-line',
+            // Tile Palette Elements
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
+            'palette-file-name', 'palette-selected-tile-id',
+            'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
+            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
+            // Sprite Slicer Panel Elements
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
+            'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
+            'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
+            'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
+            'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-delete-sprite-btn',
+            // Animation from Sprites Modal
+            'animation-from-sprite-modal', 'anim-sprite-selection-gallery', 'anim-sprite-timeline',
+            'anim-sprite-clear-btn', 'anim-sprite-create-btn',
+            // New Loading Panel Elements
+            'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
+            'btn-retry-loading', 'btn-back-to-launcher',
+            'btn-play', 'btn-pause', 'btn-stop',
+            // Menubar scene options
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
+            // Console Elements
+            'console-messages', 'btn-clear-console',
+            // Asset Selector Bubble Elements
+            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
+            // Disassociate Sprite Modal
+            'disassociate-sprite-modal', 'disassociate-sprite-list',
+            // Verification System Panel
+            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
+            // Ambiente Control Panel
+            'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
+            // Markdown Viewer Panel
+            'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
+            'md-preview-content', 'md-edit-content',
+            // CHC Editor Elements
+            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
+        ];
+        ids.forEach(id => {
+            const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+            dom[camelCaseId] = document.getElementById(id);
+        });
+        dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
+        dom.sceneCanvas = document.getElementById('scene-canvas');
+        dom.gameCanvas = document.getElementById('game-canvas');
+
+        // --- 7b. Loading Progress Helper ---
+        const updateLoadingProgress = (percentage, message) => {
+            if (dom.progressBar) dom.progressBar.style.width = `${percentage}%`;
+            if (dom.loadingStatusMessage) dom.loadingStatusMessage.textContent = message;

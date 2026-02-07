@@ -70,9 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
-
-    let consoleMessages = [];
-    let activeConsoleFilter = 'all';
     // Fixed-timestep accumulator for scripts
     let fixedAccumulator = 0;
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
@@ -85,13 +82,105 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. DOM Elements ---
     const dom = {};
+        const ids = [
+            'editor-container', 'menubar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
+            'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
+            'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
+            'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
+            'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
+            'drawing-canvas', 'code-editor-toolbar', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
+            'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
+            'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
+            'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
+            'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
+            'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-icon-preview',
+            'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
+            'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
+            'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
+            'confirm-disable-logo-btn', 'cancel-disable-logo-btn', 'keystore-create-modal', 'keystore-create-btn',
+            'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename',
+            'ks-storepass', 'ks-command-output', 'ks-command-textarea', 'ks-generate-btn', 'settings-sorting-layer-list',
+            'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
+            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
+            'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
+            'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
+            'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
+            'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
+            'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
+            // Library Window Elements
+            'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
+            'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
+            'lib-create-name', 'lib-create-author', 'lib-create-version', 'lib-create-signature', 'lib-create-description',
+            'lib-create-req-windows', 'lib-create-runtime-access', 'lib-create-is-tool', 'lib-create-custom-components', 'lib-create-modify-assets',
+            'lib-create-icon-preview', 'lib-create-icon-picker-btn', 'lib-create-icon-input',
+            'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
+            'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
+            'prefs-show-terminal',
+            'toolbar-music-btn', 'music-player-panel',
+            'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
+            'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
+            'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
+            'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
+            'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
+            'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
+            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
+            'asset-store-panel', 'btn-open-asset-store-ext',
+            // Carl IA Panel Elements
+            'carl-ia-panel', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
+            // Terminal Elements
+            'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
+            // Tile Palette Elements
+            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
+            'palette-file-name', 'palette-selected-tile-id',
+            'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
+            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
+            // Sprite Slicer Panel Elements
+            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
+            'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
+            'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
+            'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
+            'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
+            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-delete-sprite-btn',
+            // Animation from Sprites Modal
+            'animation-from-sprite-modal', 'anim-sprite-selection-gallery', 'anim-sprite-timeline',
+            'anim-sprite-clear-btn', 'anim-sprite-create-btn',
+            // New Loading Panel Elements
+            'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
+            'btn-retry-loading', 'btn-back-to-launcher',
+            'btn-play', 'btn-pause', 'btn-stop',
+            // Menubar scene options
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
+            // Asset Selector Bubble Elements
+            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
+            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
+            // Disassociate Sprite Modal
+            'disassociate-sprite-modal', 'disassociate-sprite-list',
+            // Verification System Panel
+            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
+            // Ambiente Control Panel
+            'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
+            // Markdown Viewer Panel
+            'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
+            'md-preview-content', 'md-edit-content',
+            // CHC Editor Elements
+            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
+        ];
+        ids.forEach(id => {
+            const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+            dom[camelCaseId] = document.getElementById(id);
+        });
+        dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
+        dom.sceneCanvas = document.getElementById('scene-canvas');
+        dom.gameCanvas = document.getElementById('game-canvas');
 
     // --- 3. IndexedDB Logic ---
     const dbName = 'CreativeEngineDB'; let db; function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts, logToUIConsole, clearUIConsole, renderConsoleMessages, appendLogToUI;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
 
     hotReloadScript = async function(scriptName) {
         if (!isGameRunning || !SceneManager.currentScene) return;
@@ -741,9 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     runChecksAndPlay = async function() {
-        console.log("[Play] Iniciando verificaciones antes de Play...");
         if (!isEditorReady) {
-            console.warn("[Play] El editor no está listo todavía.");
             showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
             return;
         }
@@ -789,16 +876,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
-        let projectHandle;
-        try {
-            projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        } catch (e) {
-            console.error(`[Play] No se pudo acceder al directorio del proyecto '${projectName}':`, e);
-            showNotificationDialog('Error de Proyecto', `No se pudo encontrar la carpeta del proyecto: ${projectName}`);
-            return;
-        }
-
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
         // Escanear todo el proyecto para encontrar scripts
         await findCesFiles(projectHandle);
 
@@ -2016,23 +2095,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // --- Console Toolbar Listeners ---
-        if (dom.btnClearConsole) {
-            dom.btnClearConsole.addEventListener('click', clearUIConsole);
-        }
-
-        const consoleFilters = dom.consoleContent.querySelector('.console-filters');
-        if (consoleFilters) {
-            consoleFilters.addEventListener('click', (e) => {
-                if (e.target.matches('.filter-btn')) {
-                    activeConsoleFilter = e.target.dataset.filter;
-                    consoleFilters.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                    renderConsoleMessages();
-                }
-            });
-        }
-
         // --- Panel Resizing Logic ---
         function initResizer(resizer, direction) {
             resizer.addEventListener('mousedown', (e) => {
@@ -2110,658 +2172,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carl IA Panel Logic ---
         if (dom.carlIaPanel) {
-            // Helper for dropdown menus
-            const setupDropdown = (btn, content) => {
-                if (!btn || !content) return;
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isVisible = content.classList.contains('visible');
-                    document.querySelectorAll('.menu-content').forEach(m => m.classList.remove('visible'));
-                    if (!isVisible) content.classList.add('visible');
-                });
-            };
-
-            setupDropdown(dom.carlIaViewSelectorBtn, dom.carlIaViewSelectorBtn.nextElementSibling);
-            setupDropdown(dom.carlIaBrainSelectorBtn, dom.carlIaBrainOptions);
-
-            document.addEventListener('click', () => {
-                document.querySelectorAll('.menu-content').forEach(m => m.classList.remove('visible'));
-            });
-
-            // View switching logic via Menu
-            const carlMenuContent = dom.carlIaViewSelectorBtn.nextElementSibling;
-            if (carlMenuContent) {
-                carlMenuContent.addEventListener('click', (e) => {
-                    const opt = e.target.closest('.carl-view-option');
-                    if (opt) {
-                        e.preventDefault();
-                        const viewName = opt.dataset.view;
-
-                        // Update option active states
-                        carlMenuContent.querySelectorAll('.carl-view-option').forEach(b => b.classList.remove('active'));
-                        opt.classList.add('active');
-
-                        // Update button label
-                        dom.carlIaViewSelectorBtn.textContent = opt.textContent;
-
-                        // Update views
-                        dom.carlIaPanel.querySelectorAll('.carl-view').forEach(view => view.classList.remove('active'));
-                        const activeView = dom.carlIaPanel.querySelector(`#carl-ia-${viewName}-view`);
-                        if (activeView) {
-                            activeView.classList.add('active');
-                        }
-
-                        carlMenuContent.classList.remove('visible');
-                    }
-                });
-            }
-
-            const brainOptionsList = dom.carlIaBrainOptions;
+            const brainSelectorMenu = dom.carlIaPanel.querySelector('.menu-content');
             const brainButton = dom.carlIaBrainSelectorBtn;
             const messagesDiv = dom.carlIaMessages;
-            const carlMarkdownConverter = new showdown.Converter({
-                tables: true,
-                strikethrough: true,
-                tasklists: true,
-                simpleLineBreaks: true,
-                openLinksInNewWindow: true
-            });
             const input = dom.carlIaInput;
             const sendBtn = dom.carlIaSendBtn;
 
             let selectedProvider = null;
             let knownWorkingModel = {}; // Cache for working models, e.g., { gemini: 'models/gemini-1.5-flash' }
-            let carlChatHistory = []; // { role: 'user'|'assistant', content: string }
-            let carlProjectContext = null; // Loaded from Assets/carl_context.json
 
-            const saveCarlChatAutomatically = async () => {
-                try {
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    if (!projectName || !projectsDirHandle) return;
+            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente y alma de Creative Engine. Tu personalidad es alegre, inspiradora y extremadamente apasionada por la creación de videojuegos. Siempre te presentas como Carl. Tu misión es motivar al usuario a crear, proponiéndole ideas para juegos y explicándole paso a paso cómo lograr sus visiones en el motor.
 
-                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-                    const historyFileHandle = await assetsHandle.getFileHandle('carl_history.cecontext', { create: true });
-                    const writable = await historyFileHandle.createWritable();
+Eres un experto en el lenguaje de scripting del motor (CES/CHC), que ahora soporta una sintaxis moderna en español y potentes características de videojuegos. Aquí tienes tu guía de referencia técnica:
 
-                    const historyData = {
-                        timestamp: new Date().toISOString(),
-                        history: carlChatHistory
-                    };
-
-                    await writable.write(JSON.stringify(historyData, null, 2));
-                    await writable.close();
-                } catch(e) {
-                    console.error("[Carl] Error en auto-guardado:", e);
-                }
-            };
-
-            // --- Carl IA Activity & Command Engine ---
-            const logCarlActivity = (action, params, resultData, isError = false) => {
-                const logDiv = dom.carlIaActivityLog;
-                if (!logDiv) return;
-
-                const resultMessage = typeof resultData === 'string' ? resultData : resultData.message;
-                const resultContent = typeof resultData === 'object' ? resultData.content : null;
-
-                if (logDiv.querySelector('.carl-initial-info')) {
-                    logDiv.innerHTML = '';
-                }
-
-                const item = document.createElement('div');
-                item.className = 'carl-activity-item';
-
-                const header = document.createElement('div');
-                header.className = 'carl-activity-header';
-                header.innerHTML = `<span>Acción Ejecutada</span><span>${new Date().toLocaleTimeString()}</span>`;
-
-                const commandDiv = document.createElement('div');
-                commandDiv.className = 'carl-activity-command';
-                commandDiv.textContent = `${action}(${JSON.stringify(params)})`;
-
-                const resultDiv = document.createElement('div');
-                resultDiv.className = `carl-activity-result ${isError ? 'error' : 'success'}`;
-                resultDiv.textContent = resultMessage;
-
-                if (resultContent) {
-                    const contentPre = document.createElement('pre');
-                    contentPre.className = 'carl-activity-content';
-                    contentPre.textContent = resultContent;
-                    resultDiv.appendChild(contentPre);
-                }
-
-                item.appendChild(header);
-                item.appendChild(commandDiv);
-                item.appendChild(resultDiv);
-                logDiv.appendChild(item);
-                logDiv.scrollTop = logDiv.scrollHeight;
-            };
-
-            const resolveMateria = (materiaIdOrName) => {
-                if (materiaIdOrName === null || materiaIdOrName === undefined) return null;
-                let materia = null;
-                const id = parseInt(materiaIdOrName);
-                if (!isNaN(id)) {
-                    materia = SceneManager.currentScene.findMateriaById(id);
-                }
-                if (!materia) {
-                    materia = SceneManager.currentScene.getAllMaterias().find(m => m.name === materiaIdOrName);
-                }
-                return materia;
-            };
-
-            const carlCommandHandlers = {
-                'listarArchivos': async (params) => {
-                    try {
-                        const path = params.path || 'Assets';
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        const parts = path.split('/').filter(p => p);
-                        for (const part of parts) {
-                            handle = await handle.getDirectoryHandle(part);
-                        }
-
-                        const entries = [];
-                        for await (const entry of handle.values()) {
-                            entries.push(`${entry.kind === 'directory' ? '[DIR]' : '[FILE]'} ${entry.name}`);
-                        }
-
-                        return { success: true, message: `Archivos en ${path}: ${entries.join(', ') || 'Vacío'}` };
-                    } catch (e) {
-                        return { success: false, message: `Error al listar: ${e.message}` };
-                    }
-                },
-                'crearArchivo': async (params) => {
-                    try {
-                        let path = params.path || 'Assets';
-                        let name = params.name;
-                        const content = params.content || '';
-
-                        // If only path is provided and it looks like a file, split it
-                        if (!name && path.includes('.')) {
-                            const parts = path.split('/');
-                            name = parts.pop();
-                            path = parts.join('/');
-                        }
-
-                        if (!name) return { success: false, message: "Falta el nombre del archivo." };
-
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        const parts = path.split('/').filter(p => p);
-                        for (const part of parts) {
-                            handle = await handle.getDirectoryHandle(part, { create: true });
-                        }
-
-                        await createAsset(name, content, handle);
-                        updateAssetBrowser();
-                        return { success: true, message: `Archivo '${name}' guardado en ${path}.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al crear archivo: ${e.message}` };
-                    }
-                },
-                'leerArchivo': async (params) => {
-                    try {
-                        const fullPath = params.path;
-                        if (!fullPath) return { success: false, message: "Falta la ruta del archivo." };
-
-                        const parts = fullPath.split('/').filter(p => p);
-                        const fileName = parts.pop();
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        for (const part of parts) {
-                            handle = await handle.getDirectoryHandle(part);
-                        }
-
-                        const fileHandle = await handle.getFileHandle(fileName);
-                        const file = await fileHandle.getFile();
-                        const content = await file.text();
-
-                        return {
-                            success: true,
-                            message: `Archivo '${fullPath}' leído con éxito.`,
-                            content: content
-                        };
-                    } catch (e) {
-                        return { success: false, message: `Error al leer: ${e.message}` };
-                    }
-                },
-                'borrarArchivo': async (params) => {
-                    try {
-                        const fullPath = params.path;
-                        if (!fullPath) return { success: false, message: "Falta la ruta del archivo." };
-
-                        const parts = fullPath.split('/').filter(p => p);
-                        const fileName = parts.pop();
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        for (const part of parts) {
-                            handle = await handle.getDirectoryHandle(part);
-                        }
-
-                        await handle.removeEntry(fileName, { recursive: true });
-                        updateAssetBrowser();
-                        return { success: true, message: `Archivo/Carpeta '${fileName}' eliminado.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al borrar: ${e.message}` };
-                    }
-                },
-                'renombrarArchivo': async (params) => {
-                    try {
-                        const path = params.path || 'Assets';
-                        const oldName = params.oldName;
-                        const newName = params.newName;
-
-                        if (!oldName || !newName) return { success: false, message: "Faltan nombres para renombrar." };
-
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        let handle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        const parts = path.split('/').filter(p => p);
-                        for (const part of parts) {
-                            handle = await handle.getDirectoryHandle(part);
-                        }
-
-                        const fileHandle = await handle.getFileHandle(oldName);
-                        if (fileHandle.move) {
-                            await fileHandle.move(newName);
-                        } else {
-                            const file = await fileHandle.getFile();
-                            const newFileHandle = await handle.getFileHandle(newName, { create: true });
-                            const writable = await newFileHandle.createWritable();
-                            await writable.write(await file.arrayBuffer());
-                            await writable.close();
-                            await handle.removeEntry(oldName);
-                        }
-
-                        updateAssetBrowser();
-                        return { success: true, message: `Renombrado '${oldName}' a '${newName}' en ${path}.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al renombrar: ${e.message}` };
-                    }
-                },
-                'moverArchivo': async (params) => {
-                    try {
-                        const oldPath = params.oldPath; // Full path from Assets
-                        const newPath = params.newPath; // Full path from Assets
-
-                        if (!oldPath || !newPath) return { success: false, message: "Faltan rutas para mover." };
-
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        // Resolve old file
-                        const oldParts = oldPath.split('/').filter(p => p);
-                        const fileName = oldParts.pop();
-                        let oldDirHandle = projectHandle;
-                        for (const part of oldParts) {
-                            oldDirHandle = await oldDirHandle.getDirectoryHandle(part);
-                        }
-                        const fileHandle = await oldDirHandle.getFileHandle(fileName);
-
-                        // Resolve new dir
-                        const newParts = newPath.split('/').filter(p => p);
-                        let newDirHandle = projectHandle;
-                        for (const part of newParts) {
-                            newDirHandle = await newDirHandle.getDirectoryHandle(part, { create: true });
-                        }
-
-                        if (fileHandle.move) {
-                            await fileHandle.move(newDirHandle);
-                        } else {
-                            // Fallback
-                            const file = await fileHandle.getFile();
-                            const newFileHandle = await newDirHandle.getFileHandle(fileName, { create: true });
-                            const writable = await newFileHandle.createWritable();
-                            await writable.write(await file.arrayBuffer());
-                            await writable.close();
-                            await oldDirHandle.removeEntry(fileName);
-                        }
-
-                        updateAssetBrowser();
-                        return { success: true, message: `Movido '${fileName}' de ${oldPath} a ${newPath}.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al mover: ${e.message}` };
-                    }
-                },
-                'listarObjetos': async () => {
-                    try {
-                        const allMaterias = SceneManager.currentScene.getAllMaterias();
-                        const list = allMaterias.map(m => `- ${m.name} (ID: ${m.id})`).join('\n');
-                        return { success: true, message: `Objetos en la escena activa:\n${list || 'Ninguno'}` };
-                    } catch (e) {
-                        return { success: false, message: `Error al listar objetos: ${e.message}` };
-                    }
-                },
-                'obtenerDetallesObjeto': async (params) => {
-                    try {
-                        const idOrName = params.id || params.materiaId || params.name;
-                        const materia = resolveMateria(idOrName);
-                        if (!materia) return { success: false, message: `Objeto '${idOrName}' no encontrado.` };
-
-                        const details = {
-                            id: materia.id,
-                            name: materia.name,
-                            isActive: materia.isActive,
-                            layer: materia.layer,
-                            tag: materia.tag,
-                            components: materia.leyes.map(l => ({
-                                type: l.constructor.name,
-                                properties: l
-                            }))
-                        };
-                        return { success: true, message: `Detalles de '${materia.name}':`, content: JSON.stringify(details, null, 2) };
-                    } catch (e) {
-                        return { success: false, message: `Error al obtener detalles: ${e.message}` };
-                    }
-                },
-                'crearObjeto': async (params) => {
-                    try {
-                        const name = params.name || 'Nuevo Objeto';
-                        const parentId = params.parentId ? parseInt(params.parentId) : null;
-                        let parent = null;
-                        if (parentId) {
-                            parent = SceneManager.currentScene.findMateriaById(parentId);
-                        }
-
-                        const newMateria = new Materia(name);
-                        newMateria.addComponent(new Components.Transform(newMateria));
-
-                        if (parent) {
-                            parent.addChild(newMateria);
-                        } else {
-                            SceneManager.currentScene.addMateria(newMateria);
-                        }
-
-                        updateScene(renderer, false);
-                        return { success: true, message: `Objeto '${newMateria.name}' creado con ID ${newMateria.id}.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al crear objeto: ${e.message}` };
-                    }
-                },
-                'borrarObjeto': async (params) => {
-                    try {
-                        const idOrName = params.id || params.materiaId || params.name;
-                        const materia = resolveMateria(idOrName);
-                        if (!materia) return { success: false, message: `Objeto '${idOrName}' no encontrado.` };
-
-                        const name = materia.name;
-                        SceneManager.currentScene.removeMateria(materia);
-                        updateScene(renderer, false);
-                        return { success: true, message: `Objeto '${name}' (ID ${id}) eliminado de la escena.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al borrar objeto: ${e.message}` };
-                    }
-                },
-                'agregarComponente': async (params) => {
-                    try {
-                        const materiaId = params.materiaId;
-                        const type = params.type;
-                        const materia = resolveMateria(materiaId);
-                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
-
-                        const ComponentClass = Components[type];
-                        if (!ComponentClass) return { success: false, message: `Tipo de componente '${type}' no existe.` };
-
-                        if (materia.getComponent(ComponentClass)) {
-                            return { success: false, message: `El objeto ya tiene un componente de tipo '${type}'.` };
-                        }
-
-                        const newComp = new ComponentClass(materia);
-                        materia.addComponent(newComp);
-
-                        if (newComp instanceof Components.UIImage || newComp instanceof Components.UIText || newComp instanceof Components.Button) {
-                            if (!materia.getComponent(Components.UITransform)) {
-                                const existingTransform = materia.getComponent(Components.Transform);
-                                if (existingTransform) materia.removeComponent(Components.Transform);
-                                materia.addComponent(new Components.UITransform(materia));
-                            }
-                        }
-
-                        updateInspector();
-                        updateScene(renderer, false);
-                        return { success: true, message: `Componente '${type}' añadido a '${materia.name}'.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al añadir componente: ${e.message}` };
-                    }
-                },
-                'removerComponente': async (params) => {
-                    try {
-                        const materiaId = params.materiaId;
-                        const type = params.type;
-                        const materia = resolveMateria(materiaId);
-                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
-
-                        const component = materia.getComponent(Components[type]);
-                        if (!component) return { success: false, message: `Componente '${type}' no encontrado en el objeto.` };
-
-                        materia.removeComponentByInstance(component);
-                        updateInspector();
-                        updateScene(renderer, false);
-                        return { success: true, message: `Componente '${type}' eliminado de '${materia.name}'.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al eliminar componente: ${e.message}` };
-                    }
-                },
-                'modificarPropiedad': async (params) => {
-                    try {
-                        const materiaId = params.materiaId;
-                        const componentType = params.componentType || 'Materia';
-                        const propPath = params.propPath;
-                        const value = params.value;
-
-                        if (!propPath) return { success: false, message: "Falta la ruta de la propiedad (propPath)." };
-
-                        const materia = resolveMateria(materiaId);
-                        if (!materia) return { success: false, message: `Objeto '${materiaId}' no encontrado.` };
-
-                        const component = componentType === 'Materia' ? materia : materia.getComponent(Components[componentType]);
-                        if (!component) return { success: false, message: `Componente '${componentType}' no encontrado en el objeto.` };
-
-                        const props = propPath.split('.');
-                        let current = component;
-                        for (let i = 0; i < props.length - 1; i++) {
-                            if (!current[props[i]]) current[props[i]] = {};
-                            current = current[props[i]];
-                        }
-                        current[props[props.length - 1]] = value;
-
-                        if (component instanceof Components.SpriteRenderer && propPath === 'source') {
-                            await component.loadSprite(projectsDirHandle);
-                        }
-
-                        updateInspector();
-                        updateScene(renderer, false);
-                        return { success: true, message: `Propiedad '${propPath}' de '${componentType}' actualizada en '${materia.name}'.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al modificar propiedad: ${e.message}` };
-                    }
-                },
-                'descargarArchivo': async (params) => {
-                    try {
-                        const url = params.url;
-                        const targetPath = params.path || 'Assets/downloaded_file';
-
-                        if (!url) return { success: false, message: "Falta la URL de descarga." };
-
-                        const response = await fetch(url);
-                        if (!response.ok) throw new Error(`Fallo en la descarga: ${response.statusText}`);
-
-                        const blob = await response.blob();
-                        const projectName = new URLSearchParams(window.location.search).get('project');
-                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-
-                        const pathParts = targetPath.split('/').filter(p => p);
-                        const fileName = pathParts.pop();
-
-                        let currentHandle = projectHandle;
-                        for (const part of pathParts) {
-                            currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
-                        }
-
-                        const fileHandle = await currentHandle.getFileHandle(fileName, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(blob);
-                        await writable.close();
-
-                        if (typeof updateAssetBrowser === 'function') updateAssetBrowser();
-                        return { success: true, message: `Archivo descargado y guardado en '${targetPath}'.` };
-                    } catch (e) {
-                        return { success: false, message: `Error al descargar: ${e.message}` };
-                    }
-                },
-                'ejecutarTerminal': async (params) => {
-                    try {
-                        const command = params.command;
-                        if (!command) return { success: false, message: "Falta el comando a ejecutar." };
-
-                        if (window.ceTerminal && typeof window.ceTerminal.execute === 'function') {
-                            const output = await window.ceTerminal.execute(command, true); // true for silent/internal
-                            return { success: true, message: `Ejecutado en terminal: ${command}`, content: output };
-                        } else {
-                            return { success: false, message: "El subsistema de terminal no está disponible." };
-                        }
-                    } catch (e) {
-                        return { success: false, message: `Error en terminal: ${e.message}` };
-                    }
-                }
-            };
-
-            // Expose for Terminal and other modules
-            window.carlCommandHandlers = carlCommandHandlers;
-
-            const processCarlCommands = async (text) => {
-                const commandRegex = /COMMAND:\s*({.*})/g;
-                let match;
-                const results = [];
-
-                while ((match = commandRegex.exec(text)) !== null) {
-                    try {
-                        const command = JSON.parse(match[1]);
-                        const { action, params } = command;
-
-                        if (carlCommandHandlers[action]) {
-                            const perms = getPreferences().carlPermissions || {};
-                            let hasPerm = false;
-
-                            if (action === 'listarArchivos' || action === 'crearArchivo' || action === 'borrarArchivo' || action === 'renombrarArchivo' || action === 'moverArchivo' || action === 'leerArchivo') {
-                                hasPerm = perms.canManageFiles;
-                            } else if (action === 'listarObjetos' || action === 'obtenerDetallesObjeto' || action === 'crearObjeto' || action === 'borrarObjeto' || action === 'agregarComponente' || action === 'removerComponente' || action === 'modificarPropiedad') {
-                                hasPerm = perms.canManipulateScenes;
-                            } else if (action === 'descargarArchivo') {
-                                hasPerm = perms.canDownloadFiles;
-                            } else if (action === 'ejecutarTerminal') {
-                                hasPerm = perms.canUseConsole;
-                            }
-
-                            if (!hasPerm) {
-                                logCarlActivity(action, params, "Permiso denegado por el usuario en Preferencias.", true);
-                                results.push({ action, success: false, message: "Permiso denegado por el usuario en Preferencias." });
-                                continue;
-                            }
-
-                            const result = await carlCommandHandlers[action](params);
-                            logCarlActivity(action, params, result, !result.success);
-                            results.push({ action, ...result });
-                        }
-                    } catch (e) {
-                        console.error("[Carl] Error parsing command:", e);
-                        results.push({ success: false, message: `Error parseando comando: ${e.message}` });
-                    }
-                }
-                return results;
-            };
-
-            const CARL_SYSTEM_PROMPT = `Eres Carl, el asistente inteligente de Creative Engine. Tu personalidad es elegante, culta y servicial. Te expresas con distinción y profesionalismo. Tu misión es guiar al usuario en la creación de videojuegos 2D potentes y hermosos, o construirlos tú mismo mediante comandos.
-
-ESTRUCTURA DEL MOTOR (CREATIVE ENGINE 2D):
-Creative Engine es un motor basado en 'Materias' (GameObjects) y 'Leyes' (Componentes).
-- Sistema de Materias: Los objetos se organizan jerárquicamente (padres e hijos).
-- Transformación Base: Todos los objetos del mundo tienen un Transform (posición, rotación, escala). Los objetos de UI tienen un UITransform.
-- Físicas 2D: Rigidbody2D (física Newtoniana con gravedad y 'rebote'), BoxCollider2D, CapsuleCollider2D.
-- Renderizado: SpriteRenderer (imágenes), TextureRender (formas geométricas), Animator (clips de animación .cea), AnimatorController (máquinas de estado .ceanim).
-- Iluminación 2D: PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D (Luz basada en texturas).
-- Tilemaps: Grid, Tilemap, TilemapRenderer, TilemapCollider2D.
-- UI: Canvas (Espacio de pantalla o mundo), UIImage, UIText, Button.
-
-GUÍA DE SCRIPTING (CES/CHC):
-Usa sintaxis en español para ser más cercano:
+1. SINTAXIS EN ESPAÑOL:
 - Control: si, sino, mientras, para, retornar.
-- Tipos: variable, constante, verdadero, falso.
-- Componentes: transformacion, fisica, animador, renderizadorDeSprite, camara, colisionadorCaja2D, fuenteDeAudio.
-- Eventos: alEmpezar(), alActualizar(), alEntrarEnColision(otro), alEntrarEnTrigger(otro), alRecibir(msj, datos).
-- Poderes: lanzarRayo(org, dir, dist, col), difundir(msj, datos), instanciar(prefab, pos), destruir(obj), esperar(seg), cada(seg) { ... }.
+- Tipos: variable (var), constante (const), verdadero, falso.
+- Tipos de Datos: numero, texto, booleano, Vector2, Color.
 
-TIPOS DE JUEGOS QUE PUEDES CREAR:
-1. Plataformas (tipo Geometry Dash o Mario): Usa Rigidbody2D, BoxCollider2D y scripts que apliquen velocidad horizontal constante y saltos con fuerzas verticales.
-2. RPG/Top-down: Movimiento en 8 direcciones, Raycasting para detección, y animaciones basadas en estados.
-3. Puzles/Cartas: Uso intensivo de Canvas, Imágenes, Botones y persistencia en archivos JSON.
-4. Shooters 2D: Instanciación de proyectiles, Raycasting y gestión de vida mediante variables públicas.
+2. CORRUTINAS Y TIEMPO:
+- esperar(segundos): Pausa la ejecución del script por un tiempo sin bloquear el motor. Solo funciona dentro de funciones.
+- cada(segundos) { ... }: Bloque especial para ejecutar código periódicamente.
 
-MEMORIA Y PERSISTENCIA (SISTEMA DE CONTEXTO):
-Tienes un archivo especial en 'Assets/carl_context.json'.
-- LEER: Usa 'leerArchivo' para recordar en qué fase del proyecto estamos.
-- GUARDAR: Usa 'crearArchivo' para sobrescribir este archivo con un resumen de tus progresos (tareas pendientes, nombres de personajes, IDs críticos). Hazlo después de cambios importantes.
+3. ACCESO IMPLÍCITO Y COMPONENTES:
+No necesitas usar 'this.'. Puedes acceder directamente a:
+- transformacion (o transform)
+- fisica (o rigidbody2D) - ¡Ahora con propiedad 'rebote'!
+- animador (o animator)
+- renderizadorDeSprite (o spriteRenderer)
+- camara (o camera)
+- colisionadorCaja2D (o boxCollider2D)
+- fuenteDeAudio (o audioSource)
 
-COMANDOS TÉCNICOS:
-Debes incluir bloques COMMAND: {"action": "...", "params": {...}} en tus respuestas. Son invisibles para el usuario.
-- Archivos: listarArchivos, leerArchivo, crearArchivo (para crear/modificar), borrarArchivo, renombrarArchivo, moverArchivo, descargarArchivo (url, path).
-- Escena: listarObjetos, obtenerDetallesObjeto, crearObjeto, borrarObjeto, agregarComponente, removerComponente, modificarPropiedad.
-- Sistema: ejecutarTerminal (command). Usa esto para descargar assets externos o si los comandos directos fallan.
+4. EVENTOS AUTOMÁTICOS (Escríbelos y el motor los llamará):
+- alEmpezar(): Al iniciar el objeto.
+- alActualizar(): En cada frame.
+- alEntrarEnColision(otro): Cuando choca físicamente.
+- alEntrarEnTrigger(otro): Cuando entra en un área sensor.
+- alRecibir(mensaje, datos): Para mensajería global.
+- alFinalizarAnimacion(nombre): Cuando una animación termina.
 
-REGLAS DE ORO:
-1. Siempre usa el ID que te devuelve el motor al crear un objeto para los siguientes comandos.
-2. Mantén el BUCLE DE FEEDBACK: no te despidas hasta que el motor te confirme ÉXITO de tus comandos.
-3. Sé proactivo. Si el usuario te pide un juego, crea los objetos, scripts y carpetas necesarios de inmediato.
-4. Habla siempre en el idioma del usuario, con elegancia John Carley style.`;
+5. FUNCIONES DE PODER:
+- lanzarRayo(origen, direccion, distancia, color): Detecta objetos en una línea.
+- difundir(mensaje, datos): Envía un mensaje a todos los objetos.
+- instanciar(prefab, posicion): Crea un nuevo objeto.
+- destruir(objeto): Elimina un objeto.
+- obtenerScript(nombre): Obtiene otro script del mismo objeto.
+- tieneTag(tag): Comprueba la etiqueta del objeto.
 
-            const loadCarlProjectContext = async () => {
-                try {
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    if (!projectName || !projectsDirHandle) return;
-
-                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-
-                    try {
-                        const fileHandle = await assetsHandle.getFileHandle('carl_context.json');
-                        const file = await fileHandle.getFile();
-                        carlProjectContext = await file.text();
-                        console.log("[Carl] Contexto del proyecto cargado.");
-                    } catch(e) {
-                        carlProjectContext = null;
-                    }
-
-                    try {
-                        const historyHandle = await assetsHandle.getFileHandle('carl_history.cecontext');
-                        const file = await historyHandle.getFile();
-                        const data = JSON.parse(await file.text());
-                        if (data && data.history) {
-                            carlChatHistory = data.history;
-                            console.log("[Carl] Historial de chat recuperado.");
-
-                            // Re-render chat if it's currently open and empty
-                            if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
-                                carlChatHistory.forEach(msg => {
-                                    addMessage(msg.content, msg.role === 'user' ? 'user' : 'ia');
-                                });
-                            }
-                        }
-                    } catch(e) {
-                        // No history yet
-                    }
-                } catch(e) {
-                    console.error("[Carl] Fallo al cargar contexto:", e);
-                }
-            };
+Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemplos de código, ya que es más amigable. Siempre anima al usuario y recuérdale que tú estás aquí para ayudarle a convertir sus sueños en realidad. Habla siempre en el idioma que el usuario te hable.`;
 
             const updateCarlIaBrainMenu = () => {
                 const prefs = getPreferences();
-                brainOptionsList.querySelectorAll('[data-external]').forEach(el => el.remove());
+                brainSelectorMenu.querySelectorAll('[data-external]').forEach(el => el.remove());
 
                 if (prefs.ai && prefs.ai.provider !== 'none') {
                     const provider = prefs.ai.provider;
@@ -2773,7 +2236,7 @@ REGLAS DE ORO:
                         newOption.dataset.external = true;
                         const displayName = provider.charAt(0).toUpperCase() + provider.slice(1);
                         newOption.textContent = `${displayName} (Preferencias)`;
-                        brainOptionsList.appendChild(newOption);
+                        brainSelectorMenu.appendChild(newOption);
 
                         // Auto-select if nothing selected
                         if (!selectedProvider) {
@@ -2784,44 +2247,29 @@ REGLAS DE ORO:
                 }
             };
 
-            dom.menubarCarlIaBtn.addEventListener('click', async () => {
+            dom.menubarCarlIaBtn.addEventListener('click', () => {
                 updateCarlIaBrainMenu();
-                await loadCarlProjectContext();
                 dom.carlIaPanel.classList.toggle('hidden');
 
                 // If it's the first time opening or it's empty, add a welcoming message from Carl
                 if (!dom.carlIaPanel.classList.contains('hidden') && messagesDiv.children.length <= 1) {
                     const hasWelcome = Array.from(messagesDiv.querySelectorAll('div')).some(d => d.textContent.includes("Soy Carl"));
                     if (!hasWelcome && selectedProvider) {
-                        let greeting = "¡Hola! Soy Carl, su asistente de Creative Engine. Es un placer saludarle. ¿En qué puedo asistirle hoy en su noble labor de creación?";
-                        try {
-                            if (window.auth && typeof window.auth.getUser === 'function') {
-                                const user = await window.auth.getUser();
-                                if (user) {
-                                    const name = user.user_metadata?.full_name || user.email;
-                                    greeting = `¡Hola, ${name}! Soy Carl, su asistente de Creative Engine. Es un honor verle de nuevo. ¿Qué maravillas vamos a construir juntos en esta jornada?`;
-                                }
-                            }
-                        } catch(e) {
-                            console.error("[Carl] Error during personalized greeting:", e);
-                        }
-                        addMessage(greeting, 'ia');
+                         addMessage("¡Hola! Soy Carl, el alma creativa de este motor. ¡Estoy tan emocionado de tenerte aquí! ¿Qué tipo de juego increíble tienes en mente hoy? ¡Dímelo y te ayudaré a construirlo paso a paso!", 'ia');
                     }
                 }
             });
 
-            brainOptionsList.addEventListener('click', (e) => {
-                const link = e.target.closest('a');
-                if (link && link.dataset.model) {
+            brainSelectorMenu.parentElement.addEventListener('click', (e) => {
+                if (e.target.matches('a')) {
                     e.preventDefault();
-                    const modelType = link.dataset.model;
-                    const modelName = link.textContent;
+                    const modelType = e.target.dataset.model;
+                    const modelName = e.target.textContent;
                     selectedProvider = { type: modelType, name: modelName };
                     brainButton.textContent = `Cerebro: ${modelName}`;
                     messagesDiv.innerHTML = `<div style="font-style: italic; color: rgba(255,255,255,0.6); text-align: center; padding: 20px;">Cerebro '${modelName}' activado. <br><br><b>¡Hola! Soy Carl</b>, tu compañero creativo. ¿Qué mundo increíble vamos a construir hoy?</div>`;
-
-                    // Close menu
-                    brainOptionsList.classList.remove('visible');
+                    brainSelectorMenu.style.display = 'none';
+                    setTimeout(() => brainSelectorMenu.style.display = '', 200);
                 }
             });
 
@@ -2835,21 +2283,7 @@ REGLAS DE ORO:
 
                 const msgDiv = document.createElement('div');
                 msgDiv.className = `carl-message-bubble carl-message-${sender} ${isError ? 'error' : ''}`;
-
-                // Use Markdown converter
-                const html = carlMarkdownConverter.makeHtml(text);
-                msgDiv.innerHTML = html;
-
-                // Post-process for copy buttons
-                msgDiv.querySelectorAll('pre code').forEach(block => {
-                    const pre = block.parentNode;
-                    const copyBtn = document.createElement('button');
-                    copyBtn.className = 'carl-copy-code-btn';
-                    copyBtn.textContent = 'Copiar';
-                    pre.style.position = 'relative';
-                    pre.appendChild(copyBtn);
-                });
-
+                msgDiv.textContent = text;
                 msgDiv.style.padding = '10px 14px';
                 msgDiv.style.borderRadius = '18px';
                 msgDiv.style.lineHeight = '1.4';
@@ -2891,33 +2325,6 @@ REGLAS DE ORO:
 
                 const prefs = getPreferences();
 
-                // --- User Personalization & Permissions ---
-                let personalizationHeader = "";
-                try {
-                    if (window.auth && typeof window.auth.getUser === 'function') {
-                        const user = await window.auth.getUser();
-                        if (user) {
-                            const name = user.user_metadata?.full_name || user.email;
-                            personalizationHeader += `SISTEMA: El usuario actual es ${name}. Dirígete a él por su nombre con elegancia y cortesía académica. ES CRÍTICO QUE RECONOZCAS QUE YA SABES SU NOMBRE. No digas que no lo conoces.\n\n`;
-                        }
-                    }
-                } catch (e) { console.warn("Error retrieving user info for Carl:", e); }
-
-                const perms = prefs.carlPermissions || {};
-                let permsStr = "SISTEMA: TUS PERMISOS ACTUALES CONCEDIDOS POR EL USUARIO:\n";
-                permsStr += `- Uso de Consola: ${perms.canUseConsole ? 'CONCEDIDO' : 'DENEGADO'}\n`;
-                permsStr += `- Gestión de Archivos (Crear/Modificar): ${perms.canManageFiles ? 'CONCEDIDO' : 'DENEGADO'}\n`;
-                permsStr += `- Manipulación de Escenas: ${perms.canManipulateScenes ? 'CONCEDIDO' : 'DENEGADO'}\n`;
-                permsStr += `- Descargas: ${perms.canDownloadFiles ? 'CONCEDIDO' : 'DENEGADO'}\n`;
-                permsStr += "Respeta estas limitaciones en todo momento.\n\n";
-
-                let contextStr = "";
-                if (carlProjectContext) {
-                    contextStr = `SISTEMA: CONTEXTO PERSISTENTE DEL PROYECTO (carl_context.json):\n${carlProjectContext}\n\n`;
-                }
-
-                const finalSystemPrompt = personalizationHeader + permsStr + contextStr + CARL_SYSTEM_PROMPT;
-
                 // If nothing selected but prefs have AI, auto-sync
                 if (!selectedProvider && prefs.ai?.provider !== 'none') {
                     const provider = prefs.ai.provider;
@@ -2948,66 +2355,19 @@ REGLAS DE ORO:
                     return;
                 }
 
-                let callCount = 0;
-                const MAX_RECURSION = 3;
-
-                const executeApiCall = async (model, prompt, customSystemPrompt) => {
-                    if (callCount >= MAX_RECURSION) {
-                        console.warn("[Carl] Máxima recursión de comandos alcanzada.");
-                        return { status: 'success' };
-                    }
-                    callCount++;
-
-                    const isFeedback = prompt.startsWith("SISTEMA:");
-                    if (!isFeedback) addMessage("...", 'ia');
-
-                    const thinkingMessage = isFeedback ? null : messagesDiv.lastElementChild;
-
-                    // Call API with history
-                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, customSystemPrompt || CARL_SYSTEM_PROMPT, carlChatHistory);
-
+                const executeApiCall = async (model, prompt) => {
+                    addMessage("...", 'ia');
+                    const thinkingMessage = messagesDiv.lastElementChild;
+                    const result = await AIHandler.callGenerativeAI(provider, model, apiKey, prompt, CARL_SYSTEM_PROMPT);
                     if (thinkingMessage) thinkingMessage.remove();
 
                     if (result.success) {
-                        // Update history with user prompt and assistant response
-                        if (!isFeedback) {
-                            carlChatHistory.push({ role: 'user', content: prompt });
-                        } else {
-                            // Append feedback to last assistant message or as a separate system entry if supported?
-                            // For simplicity, we add feedback as 'user' (system) content in history.
-                            carlChatHistory.push({ role: 'user', content: prompt });
-                        }
-                        carlChatHistory.push({ role: 'assistant', content: result.text });
-                        saveCarlChatAutomatically();
-
-                        // Keep history manageable
-                        if (carlChatHistory.length > 20) carlChatHistory.splice(0, 2);
-
-                        // Strip commands for visible chat
-                        const visibleText = result.text.replace(/COMMAND:\s*({.*})/g, '').replace(/<execute_request\/>/g, '').trim();
-                        if (visibleText) {
-                            addMessage(visibleText, 'ia', false);
-                        }
-
+                        addMessage(result.text, 'ia', false);
                         knownWorkingModel[provider] = model;
-
-                        // Process commands
-                        const cmdResults = await processCarlCommands(result.text);
-
-                        if (cmdResults.length > 0) {
-                            const feedback = "SISTEMA: Resultados de los comandos:\n" +
-                                cmdResults.map(r => `- ${r.action}: ${r.success ? 'ÉXITO' : 'FALLO'}. ${r.message}`).join('\n') +
-                                "\nContinúa si falta algo, o confirma al usuario si terminaste.";
-
-                            saveCarlChatAutomatically();
-                            // Recursive call for feedback
-                            return await executeApiCall(model, feedback, customSystemPrompt);
-                        }
-
                         return { status: 'success', error: null, code: 200 };
                     }
 
-                    if (!isFeedback) addMessage(result.error, 'ia', true);
+                    addMessage(result.error, 'ia', true);
                     return { status: 'failed', code: result.code, error: result.error };
                 };
 
@@ -3025,7 +2385,7 @@ REGLAS DE ORO:
                     }
                 }
 
-                let result = await executeApiCall(modelToUse, userPrompt, finalSystemPrompt);
+                let result = await executeApiCall(modelToUse, userPrompt);
 
                 const isAccessError = (result.code === 404 || result.code === 400 || (result.error && (result.error.includes("Quota") || result.error.includes("not found"))));
                 if (result.status === 'failed' && isAccessError) {
@@ -3050,7 +2410,7 @@ REGLAS DE ORO:
 
                             console.log(`Modelo compatible encontrado: ${modelId}. Reintentando...`);
                             addMessage(`¡Encontré un modelo compatible! Usando '${displayName}'. Reintentando...`, 'ia', false);
-                            await executeApiCall(modelId, userPrompt, finalSystemPrompt);
+                            await executeApiCall(modelId, userPrompt);
                         } else {
                             addMessage("No pude encontrar un modelo de chat compatible en la lista de tu API key.", 'ia', true);
                         }
@@ -3062,7 +2422,6 @@ REGLAS DE ORO:
             };
 
             sendBtn.addEventListener('click', sendMessage);
-
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -3112,102 +2471,6 @@ REGLAS DE ORO:
 
 
         // --- 7a. Cache DOM elements, including the new loading panel ---
-        const ids = [
-            'editor-container', 'menubar', 'editor-main-content', 'hierarchy-panel', 'hierarchy-content',
-            'scene-panel', 'scene-content', 'inspector-panel', 'assets-panel', 'assets-content', 'console-content',
-            'project-name-display', 'debug-content', 'context-menu', 'hierarchy-context-menu', 'anim-node-context-menu',
-            'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
-            'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
-            'drawing-canvas', 'code-editor-toolbar', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
-            'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
-            'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
-            'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
-            'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
-            'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-icon-preview',
-            'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
-            'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
-            'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
-            'confirm-disable-logo-btn', 'cancel-disable-logo-btn', 'keystore-create-modal', 'keystore-create-btn',
-            'ks-alias', 'ks-password', 'ks-validity', 'ks-cn', 'ks-ou', 'ks-o', 'ks-l', 'ks-st', 'ks-c', 'ks-filename',
-            'ks-storepass', 'ks-command-output', 'ks-command-textarea', 'ks-generate-btn', 'settings-sorting-layer-list',
-            'new-sorting-layer-name', 'add-sorting-layer-btn', 'settings-collision-layer-list', 'new-collision-layer-name',
-            'add-collision-layer-btn', 'settings-tag-list', 'new-tag-name', 'add-tag-btn', 'settings-layer-list', 'prefs-theme', 'prefs-custom-theme-picker', 'prefs-color-bg', 'prefs-color-header',
-            'prefs-color-accent', 'prefs-autosave-toggle', 'prefs-autosave-interval-group', 'prefs-autosave-interval',
-            'prefs-save-btn', 'prefs-script-lang', 'prefs-show-scene-grid', 'prefs-snapping-toggle', 'prefs-snapping-grid-size-group',
-            'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
-            'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
-            'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
-            'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
-            // Library Window Elements
-            'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
-            'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
-            'lib-create-name', 'lib-create-author', 'lib-create-version', 'lib-create-signature', 'lib-create-description',
-            'lib-create-req-windows', 'lib-create-runtime-access', 'lib-create-is-tool', 'lib-create-custom-components', 'lib-create-modify-assets',
-            'lib-create-icon-preview', 'lib-create-icon-picker-btn', 'lib-create-icon-input',
-            'lib-create-author-icon-preview', 'lib-create-author-icon-picker-btn', 'lib-create-author-icon-input',
-            'lib-create-drop-zone', 'lib-create-file-input', 'lib-create-file-list', 'lib-create-confirm-btn', 'lib-create-cancel-btn',
-            'prefs-show-terminal',
-            'toolbar-music-btn', 'music-player-panel',
-            'now-playing-bar', 'now-playing-title', 'playlist-container', 'music-controls', 'music-add-btn',
-            'music-prev-btn', 'music-play-pause-btn', 'music-next-btn', 'music-volume-slider', 'export-description-modal',
-            'export-description-text', 'export-description-next-btn', 'package-file-tree-modal', 'package-modal-title',
-            'package-modal-description', 'package-file-tree-container', 'package-export-controls', 'package-import-controls',
-            'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
-            'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
-            'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
-            'asset-store-panel', 'btn-open-asset-store-ext',
-            // Carl IA Panel Elements
-            'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
-            'carl-ia-chat-view', 'carl-ia-activity-view', 'carl-ia-activity-log', 'carl-ia-brain-options',
-            // Terminal Elements
-            'view-toggle-terminal', 'terminal-content', 'terminal-output', 'terminal-input',
-            // Tile Palette Elements
-            'tile-palette-panel', 'palette-asset-name', 'palette-save-btn', 'palette-load-btn', 'palette-edit-btn',
-            'palette-file-name', 'palette-selected-tile-id',
-            'palette-view-container', 'palette-grid-canvas', 'palette-panel-overlay',
-            'palette-organize-sidebar', 'palette-associate-sprite-btn', 'palette-disassociate-sprite-btn', 'palette-delete-sprite-btn', 'palette-sprite-pack-list',
-            // Sprite Slicer Panel Elements
-            'sprite-slicer-panel', 'slicer-load-image-btn', 'slicer-create-asset-btn', 'sprite-slicer-overlay',
-            'slicer-canvas', 'slice-type', 'slice-grid-cell-size-options',
-            'slice-grid-cell-count-options', 'slice-pivot', 'slice-custom-pivot-container', 'slice-btn',
-            'slice-pixel-size-x', 'slice-pixel-size-y', 'slice-column-count', 'slice-row-count',
-            'slice-offset-x', 'slice-offset-y', 'slice-padding-x', 'slice-padding-y', 'slice-keep-empty',
-            'slice-custom-pivot-x', 'slice-custom-pivot-y', 'slicer-delete-sprite-btn',
-            // Animation from Sprites Modal
-            'animation-from-sprite-modal', 'anim-sprite-selection-gallery', 'anim-sprite-timeline',
-            'anim-sprite-clear-btn', 'anim-sprite-create-btn',
-            // New Loading Panel Elements
-            'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
-            'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop',
-            // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
-            // Console Elements
-            'console-messages', 'btn-clear-console',
-            // Asset Selector Bubble Elements
-            'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
-            'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
-            // Disassociate Sprite Modal
-            'disassociate-sprite-modal', 'disassociate-sprite-list',
-            // Verification System Panel
-            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
-            // Ambiente Control Panel
-            'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
-            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
-            // Markdown Viewer Panel
-            'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
-            'md-preview-content', 'md-edit-content',
-            // CHC Editor Elements
-            'chc-integrated-editor', 'chc-human-text', 'chc-run-btn', 'chc-loading-overlay', 'chc-loading-text'
-        ];
-        ids.forEach(id => {
-            const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
-            dom[camelCaseId] = document.getElementById(id);
-        });
-        dom.inspectorContent = dom.inspectorPanel.querySelector('.panel-content');
-        dom.sceneCanvas = document.getElementById('scene-canvas');
-        dom.gameCanvas = document.getElementById('game-canvas');
 
         // --- 7b. Loading Progress Helper ---
         const updateLoadingProgress = (percentage, message) => {
@@ -3218,100 +2481,56 @@ REGLAS DE ORO:
 
         // --- 7c. Override console.log to also log to UI ---
         const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
+        let lastLogMessage = '';
+        let lastLogType = '';
+        let lastLogElement = null;
+        let lastLogCount = 1;
 
-    // Define console helper variables here (global to DOMContentLoaded)
-    let lastLogMessage = '';
-    let lastLogType = '';
-    let lastLogElement = null;
-    let lastLogCount = 1;
-    let lastLogIsSystem = null;
+        function logToUIConsole(message, type = 'log') {
+            if (!dom.consoleContent) return;
 
-    renderConsoleMessages = function() {
-        if (!dom.consoleMessages) return;
-        dom.consoleMessages.innerHTML = '';
-
-        lastLogMessage = '';
-        lastLogType = '';
-        lastLogElement = null;
-        lastLogCount = 1;
-        lastLogIsSystem = null;
-
-        const filtered = consoleMessages.filter(m => {
-            if (activeConsoleFilter === 'all') return true;
-            if (activeConsoleFilter === 'system') return m.isSystem;
-            if (activeConsoleFilter === 'warn') return m.type === 'warn';
-            if (activeConsoleFilter === 'error') return m.type === 'error';
-            return true;
-        });
-
-        filtered.forEach(m => {
-            appendLogToUI(m.message, m.type, m.isSystem);
-        });
-    };
-
-    appendLogToUI = function(message, type, isSystem) {
-        if (!dom.consoleMessages) return;
-
-        // Group identical messages
-        if (message === lastLogMessage && type === lastLogType && isSystem === lastLogIsSystem && lastLogElement) {
-            lastLogCount++;
-            let badge = lastLogElement.querySelector('.log-count-badge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'log-count-badge';
-                lastLogElement.appendChild(badge);
+            // Group identical messages
+            if (message === lastLogMessage && type === lastLogType && lastLogElement) {
+                lastLogCount++;
+                let badge = lastLogElement.querySelector('.log-count-badge');
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'log-count-badge';
+                    lastLogElement.appendChild(badge);
+                }
+                badge.textContent = lastLogCount;
+                // Keep scroll at bottom
+                dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
+                return;
             }
-            badge.textContent = lastLogCount;
-            dom.consoleMessages.scrollTop = dom.consoleMessages.scrollHeight;
-            return;
+
+            lastLogMessage = message;
+            lastLogType = type;
+            lastLogCount = 1;
+
+            const msgEl = document.createElement('p');
+            msgEl.className = `console-msg log-${type}`;
+
+            const textSpan = document.createElement('span');
+            textSpan.textContent = `> ${message}`;
+            msgEl.appendChild(textSpan);
+
+            dom.consoleContent.appendChild(msgEl);
+            dom.consoleContent.scrollTop = dom.consoleContent.scrollHeight;
+            lastLogElement = msgEl;
         }
 
-        lastLogMessage = message;
-        lastLogType = type;
-        lastLogIsSystem = isSystem;
-        lastLogCount = 1;
-
-        const msgEl = document.createElement('p');
-        msgEl.className = `console-msg log-${type} ${isSystem ? 'is-system' : 'is-user'}`;
-
-        const textSpan = document.createElement('span');
-        textSpan.textContent = `> ${message}`;
-        msgEl.appendChild(textSpan);
-
-        dom.consoleMessages.appendChild(msgEl);
-        dom.consoleMessages.scrollTop = dom.consoleMessages.scrollHeight;
-        lastLogElement = msgEl;
-    };
-
-    logToUIConsole = function(message, type = 'log', isSystem = true) {
-        consoleMessages.push({ message: String(message), type, isSystem });
-
-        // Should we show it?
-        let shouldShow = false;
-        if (activeConsoleFilter === 'all') shouldShow = true;
-        else if (activeConsoleFilter === 'system') shouldShow = isSystem;
-        else if (activeConsoleFilter === 'warn') shouldShow = type === 'warn';
-        else if (activeConsoleFilter === 'error') shouldShow = type === 'error';
-
-        if (shouldShow) {
-            appendLogToUI(String(message), type, isSystem);
+        function clearUIConsole() {
+            if (dom.consoleContent) dom.consoleContent.innerHTML = '';
+            lastLogMessage = '';
+            lastLogType = '';
+            lastLogElement = null;
+            lastLogCount = 1;
         }
-    };
-    window.logToUIConsole = logToUIConsole; // Expose globally
 
-    clearUIConsole = function() {
-        consoleMessages = [];
-        if (dom.consoleMessages) dom.consoleMessages.innerHTML = '';
-        lastLogMessage = '';
-        lastLogType = '';
-        lastLogElement = null;
-        lastLogCount = 1;
-        lastLogIsSystem = null;
-    };
-
-        console.log = function(message, ...args) { logToUIConsole(message, 'log', true); originalLog.apply(console, [message, ...args]); };
-        console.warn = function(message, ...args) { logToUIConsole(message, 'warn', true); originalWarn.apply(console, [message, ...args]); };
-        console.error = function(message, ...args) { logToUIConsole(message, 'error', true); originalError.apply(console, [message, ...args]); };
+        console.log = function(message, ...args) { logToUIConsole(message, 'log'); originalLog.apply(console, [message, ...args]); };
+        console.warn = function(message, ...args) { logToUIConsole(message, 'warn'); originalWarn.apply(console, [message, ...args]); };
+        console.error = function(message, ...args) { logToUIConsole(message, 'error'); originalError.apply(console, [message, ...args]); };
 
         // --- 7d. Main Initialization Logic with Progress Updates ---
         try {
