@@ -12,7 +12,7 @@ import { initialize as initializePreferences, getPreferences } from './editor/ui
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
-import { initialize as initializeInspector, updateInspector } from './editor/ui/InspectorWindow.js';
+import { initialize as initializeInspector, updateInspector, refreshInspectorValues } from './editor/ui/InspectorWindow.js';
 import { initialize as initializeAssetBrowser, updateAssetBrowser, getCurrentDirectoryHandle, handleContextMenuAction as handleAssetContextMenuAction } from './editor/ui/AssetBrowserWindow.js';
 import { initialize as initializeUIEditor, openUiAsset, openUiEditor as openUiEditorFromModule, createUiSystemFile } from './editor/ui/UIEditorWindow.js';
 import { initialize as initializeMusicPlayer } from './editor/ui/MusicPlayerWindow.js';
@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let editorLoopId = null;
     let deltaTime = 0;
+    let frameCount = 0;
     // Fixed-timestep accumulator for scripts
     let fixedAccumulator = 0;
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
@@ -1442,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const editorLoop = (timestamp) => {
+        frameCount++;
         // Calculate deltaTime
         if (lastFrameTime > 0) {
             deltaTime = (timestamp - lastFrameTime) / 1000;
@@ -1458,6 +1460,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isGameRunning) {
+            // Update inspector values every 10 frames while playing
+            if (frameCount % 10 === 0) {
+                refreshInspectorValues();
+            }
         }
         DebugPanel.update();
 
@@ -2643,6 +2649,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
         window.SceneManager = { ...SceneManager };
+        window.Materia = Materia;
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;

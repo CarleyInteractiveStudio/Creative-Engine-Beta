@@ -742,6 +742,80 @@ function showCullingMaskDropdown(camera, button) {
 
 
 // --- Core Functions ---
+
+/**
+ * Periodically refreshes the values of visible inspector fields without re-rendering the entire UI.
+ * This is used to provide live feedback while the game is running.
+ */
+export function refreshInspectorValues() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    // Update Materia general properties
+    const activeToggle = document.getElementById('materia-active-toggle');
+    if (activeToggle && document.activeElement !== activeToggle) {
+        activeToggle.checked = selectedMateria.isActive;
+    }
+    const nameInput = document.getElementById('materia-name-input');
+    if (nameInput && document.activeElement !== nameInput) {
+        nameInput.value = selectedMateria.name;
+    }
+
+    // Update all property inputs
+    const inputs = dom.inspectorContent.querySelectorAll('.prop-input');
+    inputs.forEach(input => {
+        // Skip if the user is currently interacting with this input
+        if (document.activeElement === input) return;
+
+        const componentName = input.dataset.component;
+        const propPath = input.dataset.prop;
+        const scriptName = input.dataset.scriptName;
+        const componentId = input.dataset.componentId;
+
+        let targetComponent;
+        if (componentName === 'CreativeScript') {
+             targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+        } else if (componentName === 'CustomComponent') {
+             targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+        } else if (componentName) {
+             targetComponent = selectedMateria.getComponent(Components[componentName]);
+        }
+
+        if (targetComponent) {
+            let value;
+            if (componentName === 'CreativeScript' || componentName === 'CustomComponent') {
+                value = targetComponent.publicVars[propPath];
+            } else {
+                const props = propPath.split('.');
+                let current = targetComponent;
+                for (let i = 0; i < props.length; i++) {
+                    if (current === undefined || current === null) break;
+                    current = current[props[i]];
+                }
+                value = current;
+            }
+
+            if (value !== undefined) {
+                if (input.type === 'checkbox') {
+                    if (input.checked !== !!value) input.checked = !!value;
+                } else if (input.type === 'color') {
+                    if (input.value !== value) input.value = value;
+                } else if (input.type === 'number' || input.type === 'range') {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        // Avoid updating if the difference is negligible to prevent cursor jumps
+                        if (Math.abs(parseFloat(input.value) - numValue) > 0.0001) {
+                            input.value = numValue.toFixed(3).replace(/\.?0+$/, '');
+                        }
+                    }
+                } else {
+                    if (input.value !== String(value)) input.value = String(value);
+                }
+            }
+        }
+    });
+}
+
 export async function updateInspector() {
     if (!dom.inspectorContent) return;
     dom.inspectorContent.innerHTML = '';
@@ -1006,7 +1080,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader("Transform", icon, index)}
+                ${renderComponentHeader("Posición (Transform)", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Position</label>

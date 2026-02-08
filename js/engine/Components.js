@@ -15,7 +15,7 @@ export function setEditorLogic(logic) {
 
 // --- Bilingual Component Aliases ---
 const componentAliases = {
-    'Transform': 'transformacion',
+    'Transform': 'posicion',
     'Rigidbody2D': 'fisica',
     'AnimatorController': 'controladorAnimacion',
     'SpriteRenderer': 'renderizadorDeSprite',
@@ -75,6 +75,13 @@ export class CreativeScriptBehavior {
             const alias = componentAliases[componentName];
             if (alias && !this.hasOwnProperty(alias)) {
                 this[alias] = component;
+            }
+
+            // Special case for Transform: allow both 'transformacion' and 'posicion'
+            if (componentName === 'Transform') {
+                if (!this.hasOwnProperty('transformacion')) {
+                    this['transformacion'] = component;
+                }
             }
         }
     }
