@@ -39,7 +39,10 @@ const componentAliases = {
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
     'Button': 'boton',
-    'CustomComponent': 'componentePersonalizado'
+    'CustomComponent': 'componentePersonalizado',
+    'Parallax': 'paralaje',
+    'Movement': 'movimiento',
+    'CameraFollow': 'seguimientoDeCamara'
 };
 
 
@@ -1498,6 +1501,136 @@ registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
+
+export class Parallax extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.speedX = 0.5;
+        this.speedY = 0.5;
+        this.basePosition = { x: 0, y: 0 };
+        this.initialCameraPos = { x: 0, y: 0 };
+    }
+    start() {
+        const transform = this.materia.getComponent(Transform);
+        if (transform) {
+            this.basePosition = { x: transform.localPosition.x, y: transform.localPosition.y };
+        }
+        const camera = this.materia.scene.mainCamera;
+        if (camera) {
+            const camTransform = camera.materia.getComponent(Transform);
+            if (camTransform) {
+                this.initialCameraPos = { x: camTransform.position.x, y: camTransform.position.y };
+            }
+        }
+    }
+    update(deltaTime) {
+        const camera = this.materia.scene.mainCamera;
+        if (!camera) return;
+        const camTransform = camera.materia.getComponent(Transform);
+        if (!camTransform) return;
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const deltaX = camTransform.position.x - this.initialCameraPos.x;
+        const deltaY = camTransform.position.y - this.initialCameraPos.y;
+
+        transform.localPosition.x = this.basePosition.x + deltaX * (1 - this.speedX);
+        transform.localPosition.y = this.basePosition.y + deltaY * (1 - this.speedY);
+    }
+    clone() {
+        const newParallax = new Parallax(null);
+        newParallax.speedX = this.speedX;
+        newParallax.speedY = this.speedY;
+        return newParallax;
+    }
+}
+registerComponent('Parallax', Parallax);
+
+export class Movement extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.upKey = 'w';
+        this.downKey = 's';
+        this.leftKey = 'a';
+        this.rightKey = 'd';
+        this.jumpKey = 'space';
+        this.speed = 200;
+        this.jumpForce = 400;
+        this.useRigidbody = true;
+    }
+    update(deltaTime) {
+        const input = RuntimeAPIManager.getAPI('input');
+        if (!input) return;
+
+        let moveX = 0;
+        let moveY = 0;
+
+        if (input.isKeyPressed(this.rightKey)) moveX += 1;
+        if (input.isKeyPressed(this.leftKey)) moveX -= 1;
+        if (input.isKeyPressed(this.upKey)) moveY -= 1;
+        if (input.isKeyPressed(this.downKey)) moveY += 1;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+
+        if (this.useRigidbody && rb) {
+            rb.velocity.x = moveX * (this.speed / 10);
+
+            if (input.isKeyJustPressed(this.jumpKey)) {
+                 rb.addImpulse(0, -this.jumpForce / 10);
+            }
+        } else if (transform) {
+            transform.x += moveX * this.speed * deltaTime;
+            transform.y += moveY * this.speed * deltaTime;
+        }
+    }
+    clone() {
+        const newMovement = new Movement(null);
+        newMovement.upKey = this.upKey;
+        newMovement.downKey = this.downKey;
+        newMovement.leftKey = this.leftKey;
+        newMovement.rightKey = this.rightKey;
+        newMovement.jumpKey = this.jumpKey;
+        newMovement.speed = this.speed;
+        newMovement.jumpForce = this.jumpForce;
+        newMovement.useRigidbody = this.useRigidbody;
+        return newMovement;
+    }
+}
+registerComponent('Movement', Movement);
+
+export class CameraFollow extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.target = null;
+        this.smoothness = 0.1;
+        this.offset = { x: 0, y: 0 };
+        this.followX = true;
+        this.followY = true;
+    }
+    update(deltaTime) {
+        if (!this.target) return;
+        const targetTransform = this.target.getComponent(Transform);
+        const camTransform = this.materia.getComponent(Transform);
+        if (!targetTransform || !camTransform) return;
+
+        const targetX = this.followX ? targetTransform.position.x + this.offset.x : camTransform.position.x;
+        const targetY = this.followY ? targetTransform.position.y + this.offset.y : camTransform.position.y;
+
+        camTransform.position.x += (targetX - camTransform.position.x) * this.smoothness;
+        camTransform.position.y += (targetY - camTransform.position.y) * this.smoothness;
+    }
+    clone() {
+        const newFollow = new CameraFollow(null);
+        newFollow.target = this.target;
+        newFollow.smoothness = this.smoothness;
+        newFollow.offset = { ...this.offset };
+        newFollow.followX = this.followX;
+        newFollow.followY = this.followY;
+        return newFollow;
+    }
+}
+registerComponent('CameraFollow', CameraFollow);
 
 export class Canvas extends Leyes {
     constructor(materia) {

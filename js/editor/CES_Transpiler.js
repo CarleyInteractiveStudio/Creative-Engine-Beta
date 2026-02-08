@@ -45,6 +45,9 @@ const typeMap = {
     'UIText': 'UIText',
     'Canvas': 'Canvas',
     'Button': 'Button',
+    'Parallax': 'Parallax',
+    'Movement': 'Movement',
+    'CameraFollow': 'CameraFollow',
     'variable': 'any',
     'any': 'any'
 };
@@ -75,6 +78,9 @@ const componentShortcuts = [
     'uiText', 'textoUI',
     'button', 'boton',
     'customComponent', 'componentePersonalizado',
+    'parallax', 'paralaje',
+    'movement', 'movimiento',
+    'cameraFollow', 'seguimientoDeCamara',
     'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast',

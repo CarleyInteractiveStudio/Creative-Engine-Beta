@@ -32,6 +32,7 @@ const availableComponents = {
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
+    'Basico': [Components.Movement, Components.CameraFollow, Components.Parallax],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -40,7 +41,8 @@ const componentIcons = {
     Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
-    Button: '🖲️', UIText: '📝', Canvas: '🖼️'
+    Button: '🖲️', UIText: '📝', Canvas: '🖼️',
+    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️'
 };
 
 const fileIcons = {
@@ -1864,6 +1866,86 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             </div>`;
+        } else if (ley instanceof Components.Movement) {
+            componentHTML = `
+                ${renderComponentHeader("Movimiento (Básico)", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Teclas (Arriba/Abajo)</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="Movement" data-prop="upKey" value="${ley.upKey}" title="Arriba">
+                            <input type="text" class="prop-input" data-component="Movement" data-prop="downKey" value="${ley.downKey}" title="Abajo">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Teclas (Izq/Der)</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="Movement" data-prop="leftKey" value="${ley.leftKey}" title="Izquierda">
+                            <input type="text" class="prop-input" data-component="Movement" data-prop="rightKey" value="${ley.rightKey}" title="Derecha">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Salto</label>
+                        <input type="text" class="prop-input" data-component="Movement" data-prop="jumpKey" value="${ley.jumpKey}">
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" data-component="Movement" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Salto</label>
+                        <input type="number" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
+                        <label>Usar Rigidbody</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.CameraFollow) {
+             componentHTML = `
+                ${renderComponentHeader("Seguimiento Cámara", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Objetivo</label>
+                        ${renderPropertyDropper('Materia', ley.target ? ley.target.id : null, 'data-component="CameraFollow" data-prop="target"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Suavidad</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="CameraFollow" data-prop="smoothness" value="${ley.smoothness}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                        </div>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CameraFollow" data-prop="followX" ${ley.followX ? 'checked' : ''}>
+                        <label>Seguir X</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CameraFollow" data-prop="followY" ${ley.followY ? 'checked' : ''}>
+                        <label>Seguir Y</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Parallax) {
+            componentHTML = `
+                ${renderComponentHeader("Paralaje", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Velocidad X/Y</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="speedX" value="${ley.speedX}" title="Velocidad Horizontal (0-1)">
+                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="speedY" value="${ley.speedY}" title="Velocidad Vertical (0-1)">
+                        </div>
+                    </div>
+                    <p class="field-description">0 = No se mueve (se queda pegado a la cámara). 1 = Se mueve normal con el mundo.</p>
+                </div>
+            `;
         }
 
 
