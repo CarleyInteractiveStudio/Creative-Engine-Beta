@@ -25,7 +25,7 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
+    'Renderizado': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
     'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
@@ -42,7 +42,7 @@ const componentIcons = {
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️'
+    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞'
 };
 
 const fileIcons = {
@@ -1874,6 +1874,17 @@ async function updateInspectorForMateria(selectedMateria) {
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
             `;
+        } else if (ley instanceof Components.DrawingOrder) {
+            componentHTML = `
+                ${renderComponentHeader("Orden de Dibujo", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Orden</label>
+                        <input type="number" class="prop-input" step="1" data-component="DrawingOrder" data-prop="order" value="${ley.order || 0}">
+                    </div>
+                    <p class="field-description">Valores altos delante, bajos detrás. Sobrescribe el orden por defecto.</p>
+                </div>
+            `;
         } else if (ley instanceof Components.BoxCollider2D) {
             componentHTML = `
             <div class="component-inspector">
@@ -1935,6 +1946,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
                         <label>Usar Rigidbody</label>
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Tag del Suelo</label>
+                        <input type="text" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.CameraFollow) {
@@ -1968,7 +1983,7 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Parallax) {
             componentHTML = `
-                ${renderComponentHeader("Paralaje (Avanzado)", icon, index)}
+                ${renderComponentHeader("Parallax (Avanzado)", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Scroll Factor X/Y</label>

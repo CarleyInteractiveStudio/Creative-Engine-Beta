@@ -40,9 +40,10 @@ const componentAliases = {
     'UIText': 'textoUI',
     'Button': 'boton',
     'CustomComponent': 'componentePersonalizado',
-    'Parallax': 'paralaje',
+    'Parallax': 'parallax',
     'Movement': 'movimiento',
-    'CameraFollow': 'seguimientoDeCamara'
+    'CameraFollow': 'seguimientoDeCamara',
+    'DrawingOrder': 'ordenDeDibujo'
 };
 
 
@@ -1506,6 +1507,19 @@ registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
 
+export class DrawingOrder extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.order = 0;
+    }
+    clone() {
+        const newOrder = new DrawingOrder(null);
+        newOrder.order = this.order;
+        return newOrder;
+    }
+}
+registerComponent('DrawingOrder', DrawingOrder);
+
 export class Parallax extends Leyes {
     constructor(materia) {
         super(materia);
@@ -1545,10 +1559,21 @@ export class Movement extends Leyes {
         this.speed = 200;
         this.jumpForce = 400;
         this.useRigidbody = true;
+        this.groundTag = 'Ground';
+        this.isGrounded = false;
     }
     update(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
+        const engine = RuntimeAPIManager.getAPI('engine');
         if (!input) return;
+
+        // Ground check
+        if (this.groundTag && engine) {
+            const collisions = engine.alPermanecerEnColision(this.materia, this.groundTag);
+            this.isGrounded = collisions.length > 0;
+        } else {
+            this.isGrounded = true; // No ground tag means always grounded
+        }
 
         let moveX = 0;
         let moveY = 0;
@@ -1564,7 +1589,7 @@ export class Movement extends Leyes {
         if (this.useRigidbody && rb) {
             rb.velocity.x = moveX * (this.speed / 10);
 
-            if (input.isKeyJustPressed(this.jumpKey)) {
+            if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
                  rb.addImpulse(0, -this.jumpForce / 10);
             }
         } else if (transform) {
@@ -1582,6 +1607,7 @@ export class Movement extends Leyes {
         newMovement.speed = this.speed;
         newMovement.jumpForce = this.jumpForce;
         newMovement.useRigidbody = this.useRigidbody;
+        newMovement.groundTag = this.groundTag;
         return newMovement;
     }
 }

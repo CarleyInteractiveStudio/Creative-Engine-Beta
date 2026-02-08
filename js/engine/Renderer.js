@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -392,7 +392,13 @@ export class Renderer {
         }
 
         // Recursion for children
-        for (const child of element.children) {
+        const sortedChildren = [...element.children].sort((a, b) => {
+            const orderA = (a.getComponent(DrawingOrder)?.order || 0);
+            const orderB = (b.getComponent(DrawingOrder)?.order || 0);
+            return orderA - orderB;
+        });
+
+        for (const child of sortedChildren) {
             this._drawUIElementAndChildren(child, rectCache, scaleX, scaleY, scaleChildren);
         }
     }

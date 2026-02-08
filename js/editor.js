@@ -1195,6 +1195,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Consolidate all renderers for correct interleaving by orderInLayer
             const allInLayer = [...objectsToRender, ...tilemapsToDraw].sort((a, b) => {
+                const drawingOrderA = a.getComponent(Components.DrawingOrder);
+                const drawingOrderB = b.getComponent(Components.DrawingOrder);
+                if (drawingOrderA || drawingOrderB) {
+                    const valA = drawingOrderA ? drawingOrderA.order : 0;
+                    const valB = drawingOrderB ? drawingOrderB.order : 0;
+                    if (valA !== valB) return valA - valB;
+                }
+
                 const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer);
                 const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer);
                 const orderA = rendererA.orderInLayer || 0;
