@@ -43,7 +43,9 @@ const componentAliases = {
     'Parallax': 'parallax',
     'Movement': 'movimiento',
     'CameraFollow': 'seguimientoDeCamara',
-    'DrawingOrder': 'ordenDeDibujo'
+    'DrawingOrder': 'ordenDeDibujo',
+    'ProjectileLauncher': 'lanzadorDeProyectiles',
+    'AutoDestroy': 'destruccionAutomatica'
 };
 
 
@@ -774,8 +776,6 @@ export class Rigidbody2D extends Leyes {
         this.velocity.y += fy / mass;
     }
 
-    aplicarFuerza(xOrObj = 0, y = 0) { this.addForce(xOrObj, y); }
-
     addImpulse(xOrObj = 0, y = 0) {
         let ix = 0, iy = 0;
         if (typeof xOrObj === 'object') {
@@ -790,8 +790,6 @@ export class Rigidbody2D extends Leyes {
         this.velocity.x += ix / mass;
         this.velocity.y += iy / mass;
     }
-
-    aplicarImpulso(xOrObj = 0, y = 0) { this.addImpulse(xOrObj, y); }
 
     addTorque(torque) {
         const mass = Math.max(0.1, this.mass);
@@ -811,8 +809,6 @@ export class Rigidbody2D extends Leyes {
             this.velocity.y = y;
         }
     }
-
-    establecerVelocidad(xOrObj = 0, y = 0) { this.setVelocity(xOrObj, y); }
 
     // --- Spanish Aliases ---
     aplicarFuerza(x, y) { this.addForce(x, y); }
@@ -1989,6 +1985,95 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
+
+/**
+ * Componente que lanza proyectiles (prefabs) al presionar una tecla o llamar a fire().
+ */
+export class ProjectileLauncher extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.projectilePrefab = ""; // Ruta al .ceprefab
+        this.fireKey = "Space";
+        this.fireRate = 0.5;
+        this.projectileSpeed = 500;
+        this.offset = { x: 0, y: 0 };
+        this.direction = { x: 1, y: 0 };
+
+        this._lastFireTime = 0;
+    }
+
+    update(deltaTime) {
+        if (this.fireKey && InputManager.isKeyPressed(this.fireKey)) {
+            this.fire();
+        }
+    }
+
+    async fire() {
+        const now = performance.now() / 1000;
+        if (now - this._lastFireTime < this.fireRate) return;
+
+        this._lastFireTime = now;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const spawnPos = {
+            x: transform.x + this.offset.x,
+            y: transform.y + this.offset.y
+        };
+
+        if (!this.projectilePrefab) return;
+
+        // Usar SceneManager global para evitar dependencias circulares
+        if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
+            const projectile = await window.SceneManager.instantiatePrefabFromPath(this.projectilePrefab, spawnPos.x, spawnPos.y);
+            if (projectile) {
+                const rb = projectile.getComponent(Rigidbody2D);
+                if (rb) {
+                    rb.velocity = {
+                        x: (this.direction.x * this.projectileSpeed) / 100,
+                        y: (this.direction.y * this.projectileSpeed) / 100
+                    };
+                }
+            }
+        }
+    }
+
+    get prefabProyectil() { return this.projectilePrefab; }
+    set prefabProyectil(v) { this.projectilePrefab = v; }
+    get teclaDisparo() { return this.fireKey; }
+    set teclaDisparo(v) { this.fireKey = v; }
+    get cadencia() { return this.fireRate; }
+    set cadencia(v) { this.fireRate = v; }
+    get velocidadProyectil() { return this.projectileSpeed; }
+    set velocidadProyectil(v) { this.projectileSpeed = v; }
+}
+
+/**
+ * Componente que destruye el objeto automáticamente después de un tiempo.
+ */
+export class AutoDestroy extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.delay = 3.0;
+        this._timer = 0;
+    }
+
+    update(deltaTime) {
+        this._timer += deltaTime;
+        if (this._timer >= this.delay) {
+            if (this.materia && this.materia.scene) {
+                this.materia.scene.removeMateria(this.materia.id);
+            }
+        }
+    }
+
+    get retraso() { return this.delay; }
+    set retraso(v) { this.delay = v; }
+}
+
+registerComponent('ProjectileLauncher', ProjectileLauncher);
+registerComponent('AutoDestroy', AutoDestroy);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

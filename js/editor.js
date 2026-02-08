@@ -170,6 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let fixedAccumulator = 0;
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
     let sceneSnapshotBeforePlay = null; // Para guardar el estado de la escena antes de "Play"
+    let isPrefabMode = false;
+    let editingPrefabHandle = null;
+    let sceneSnapshotBeforePrefabMode = null;
 
     // Project Settings State
     let currentProjectConfig = {};
@@ -245,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop',
+            'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
             // Asset Selector Bubble Elements
@@ -1777,7 +1780,96 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const savePrefab = async () => {
+        if (!isPrefabMode || !editingPrefabHandle) return;
+
+        const rootMaterias = SceneManager.currentScene.getRootMaterias();
+        if (rootMaterias.length === 0) return;
+
+        // Serializamos el primer objeto raíz como el prefab
+        const prefabData = SceneManager.serializeMateria(rootMaterias[0], true);
+
+        try {
+            const writable = await editingPrefabHandle.createWritable();
+            await writable.write(JSON.stringify(prefabData, null, 2));
+            await writable.close();
+            console.log("Prefab guardado correctamente.");
+            SceneManager.setSceneDirty(false);
+        } catch (error) {
+            console.error("Error al guardar prefab:", error);
+            showNotificationDialog('Error', 'No se pudo guardar el prefab.');
+        }
+    };
+
+    const enterPrefabMode = async (fileHandle) => {
+        const proceed = await confirmSceneChange();
+        if (!proceed) return;
+
+        try {
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const prefabData = JSON.parse(content);
+
+            // Save current scene state
+            sceneSnapshotBeforePrefabMode = {
+                scene: SceneManager.currentScene,
+                handle: SceneManager.currentSceneFileHandle,
+                name: dom.currentSceneName.textContent
+            };
+
+            // Create temporary scene for prefab
+            const tempScene = new SceneManager.Scene();
+            SceneManager.setCurrentScene(tempScene);
+
+            const rootMateria = await SceneManager.instanciarPrefab(prefabData);
+            if (renderer && renderer.camera) {
+                renderer.camera.x = 0;
+                renderer.camera.y = 0;
+            }
+
+            isPrefabMode = true;
+            editingPrefabHandle = fileHandle;
+
+            dom.currentSceneName.textContent = `Prefab: ${fileHandle.name.replace('.ceprefab', '')}`;
+            document.body.classList.add('prefab-mode');
+            dom.btnExitPrefab.classList.remove('hidden');
+
+            updateHierarchy();
+            selectMateria(rootMateria);
+        } catch (e) {
+            console.error("Error al entrar en modo prefab:", e);
+            showNotificationDialog('Error', 'No se pudo abrir el prefab.');
+        }
+    };
+
+    const exitPrefabMode = async () => {
+        const proceed = await confirmSceneChange();
+        if (!proceed) return;
+
+        if (!isPrefabMode || !sceneSnapshotBeforePrefabMode) return;
+
+        // Restore original scene
+        SceneManager.setCurrentScene(sceneSnapshotBeforePrefabMode.scene);
+        SceneManager.setCurrentSceneFileHandle(sceneSnapshotBeforePrefabMode.handle);
+        dom.currentSceneName.textContent = sceneSnapshotBeforePrefabMode.name;
+
+        isPrefabMode = false;
+        editingPrefabHandle = null;
+        sceneSnapshotBeforePrefabMode = null;
+
+        document.body.classList.remove('prefab-mode');
+        dom.btnExitPrefab.classList.add('hidden');
+
+        updateHierarchy();
+        selectMateria(null);
+    };
+
     saveScene = async function() {
+        if (isPrefabMode) {
+            await savePrefab();
+            showNotificationDialog('Éxito', '¡Prefab guardado!');
+            return;
+        }
         if (!SceneManager.currentSceneFileHandle) {
             // If there's no handle, treat it as a "Save As..." operation
             try {
@@ -3068,6 +3160,9 @@ public start() {
                         console.log(`Opening UI asset: ${name}`);
                         openUiAsset(fileHandle);
                         break;
+                    case 'ceprefab':
+                        enterPrefabMode(fileHandle);
+                        break;
                     case 'cescene':
                         (async () => {
                             const proceed = await confirmSceneChange();
@@ -3219,6 +3314,7 @@ public start() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
+            dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
 
 
             originalStartGame = startGame;

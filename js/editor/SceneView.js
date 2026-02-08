@@ -939,13 +939,14 @@ export function initialize(dependencies) {
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
-            if (data.type === 'sprite') {
-                const rect = dom.sceneCanvas.getBoundingClientRect();
-                const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-                const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+            const rect = dom.sceneCanvas.getBoundingClientRect();
+            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
 
+            if (data.type === 'sprite') {
                 // Create a new Materia at the drop position
-                const newMateria = SceneManager.currentScene.createMateria(data.spriteName);
+                const newMateria = new Materia(data.spriteName);
+                newMateria.addComponent(new Components.Transform(newMateria));
                 const transform = newMateria.getComponent(Components.Transform);
                 transform.x = worldPos.x;
                 transform.y = worldPos.y;
@@ -956,10 +957,17 @@ export function initialize(dependencies) {
                 spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
                 newMateria.addComponent(spriteRenderer);
 
+                SceneManager.currentScene.addMateria(newMateria);
 
                 // Refresh UI
                 selectMateria(newMateria);
                 updateInspector();
+            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
+                const newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+                if (newMateria) {
+                    selectMateria(newMateria);
+                    updateInspector();
+                }
             }
         } catch (error) {
             console.error("Error al soltar el sprite:", error);

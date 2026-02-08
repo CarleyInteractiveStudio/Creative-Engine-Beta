@@ -419,9 +419,29 @@ function setupEventListeners() {
 
         // Helper for async asset logic
         const handleAssetDrop = async (data) => {
+            if (data.name.endsWith('.ceprefab')) {
+                const newMateria = await SceneManager.instantiatePrefabFromPath(data.path);
+                if (newMateria) {
+                    if (targetItem) {
+                        const targetId = parseInt(targetItem.dataset.id, 10);
+                        const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
+                        if (targetMateria) targetMateria.addChild(newMateria);
+                    }
+                    updateHierarchy();
+                    selectMateriaCallback(newMateria.id);
+                }
+                return;
+            }
+
             const newMateria = new Materia(data.name.split('.')[0]);
             newMateria.addComponent(new Transform(newMateria));
-            SceneManager.currentScene.addMateria(newMateria);
+            if (targetItem) {
+                const targetId = parseInt(targetItem.dataset.id, 10);
+                const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
+                if (targetMateria) targetMateria.addChild(newMateria);
+            } else {
+                SceneManager.currentScene.addMateria(newMateria);
+            }
             updateHierarchy();
             selectMateriaCallback(newMateria.id);
         };

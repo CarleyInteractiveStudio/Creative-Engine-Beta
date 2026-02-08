@@ -1,6 +1,7 @@
 import { getURLForAssetPath } from '../../engine/AssetUtils.js';
 import { createNewPalette } from './TilePaletteWindow.js';
 import { showNotification, showConfirmation, showPrompt } from './DialogWindow.js';
+import * as SceneManager from '../../engine/SceneManager.js';
 
 // --- Module State ---
 let dom;
@@ -305,6 +306,27 @@ export async function updateAssetBrowser() {
     }
 
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
+        if (droppedData.type === 'Materia') {
+            const materiaId = parseInt(droppedData.id, 10);
+            const materia = SceneManager.currentScene.findMateriaById(materiaId);
+            if (materia) {
+                const prefabName = `${materia.name}.ceprefab`;
+                const prefabData = SceneManager.serializeMateria(materia, true);
+                try {
+                    const fileHandle = await targetFolderHandle.getFileHandle(prefabName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify(prefabData, null, 2));
+                    await writable.close();
+                    console.log(`Prefab creado: ${prefabName} en ${targetPath}`);
+                    await updateAssetBrowserCallback();
+                } catch (err) {
+                    console.error("Error al crear el prefab:", err);
+                    showNotification('Error', 'No se pudo crear el prefab.');
+                }
+            }
+            return;
+        }
+
         console.log(`Soltado ${droppedData.path} en ${targetPath}`);
         try {
             const sourcePath = droppedData.path;
@@ -339,6 +361,21 @@ export async function updateAssetBrowser() {
         gridViewContainer.innerHTML = '';
         gridViewContainer.directoryHandle = dirHandle;
         gridViewContainer.dataset.path = dirPath;
+
+        // Unified drop handler for the grid view background
+        gridViewContainer.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; gridViewContainer.classList.add('drag-over'); };
+        gridViewContainer.ondragleave = () => gridViewContainer.classList.remove('drag-over');
+        gridViewContainer.ondrop = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            gridViewContainer.classList.remove('drag-over');
+            try {
+                const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                await handleDropOnFolder(dirHandle, dirPath, droppedData);
+            } catch (err) {
+                // Not JSON or other error
+            }
+        };
 
         const entries = [];
         for await (const entry of dirHandle.values()) {
@@ -422,6 +459,8 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.ceprefab')) {
+                iconContainer.textContent = '📦';
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {

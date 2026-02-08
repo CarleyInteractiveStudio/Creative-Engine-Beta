@@ -32,7 +32,7 @@ const availableComponents = {
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow],
+    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -42,7 +42,7 @@ const componentIcons = {
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞'
+    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️'
 };
 
 const fileIcons = {
@@ -1953,6 +1953,55 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Tag del Suelo</label>
                         <input type="text" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ProjectileLauncher) {
+            componentHTML = `
+                ${renderComponentHeader("Lanzador de Proyectiles", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Prefab Proyectil</label>
+                        <div class="file-picker">
+                            <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="Arrastra un .ceprefab aquí">
+                            <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tecla Disparo</label>
+                        <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="fireKey" value="${ley.fireKey}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Cadencia (segs)</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ProjectileLauncher" data-prop="fireRate" value="${ley.fireRate}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="projectileSpeed" value="${ley.projectileSpeed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                        </div>
+                    </div>
+                     <div class="prop-row-multi">
+                        <label>Dirección</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
+                            <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.AutoDestroy) {
+            componentHTML = `
+                ${renderComponentHeader("Destrucción Automática", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Retraso (segs)</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="AutoDestroy" data-prop="delay" value="${ley.delay}">
                     </div>
                 </div>
             `;

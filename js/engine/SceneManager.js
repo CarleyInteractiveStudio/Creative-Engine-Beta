@@ -179,62 +179,75 @@ export function clearScene() {
     console.log("Scene cleared.");
 }
 
+/**
+ * Serializa una Materia (objeto) a un objeto JSON, opcionalmente de forma recursiva.
+ */
+export function serializeMateria(materia, recursive = false) {
+    const materiaData = {
+        id: materia.id,
+        name: materia.name,
+        tag: materia.tag,
+        parentId: materia.parent ? (typeof materia.parent === 'number' ? materia.parent : materia.parent.id) : null,
+        leyes: []
+    };
+
+    for (const ley of materia.leyes) {
+        if (ley instanceof CustomComponent) {
+            const customLeyData = {
+                type: 'CustomComponent',
+                definitionName: ley.definition.nombre,
+                publicVars: ley.publicVars
+            };
+            materiaData.leyes.push(customLeyData);
+        } else {
+            const leyData = {
+                type: ley.constructor.name,
+                properties: {}
+            };
+            for (const key in ley) {
+                if (key !== 'materia' && typeof ley[key] !== 'function') {
+                    if (ley.constructor.name === 'Tilemap' && key === 'layers') {
+                        leyData.properties[key] = ley[key].map(layer => ({
+                            ...layer,
+                            tileData: Array.from(layer.tileData.entries())
+                        }));
+                    } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
+                        leyData.properties[key] = Array.from(ley[key].entries());
+                    } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
+                        leyData.properties[key] = [];
+                    } else if (ley[key] instanceof Materia) {
+                        leyData.properties[key] = { __materiaId: ley[key].id };
+                    } else {
+                        leyData.properties[key] = ley[key];
+                    }
+                }
+            }
+            materiaData.leyes.push(leyData);
+        }
+    }
+
+    if (recursive && materia.children && materia.children.length > 0) {
+        materiaData.children = materia.children.map(child => serializeMateria(child, true));
+    }
+
+    return materiaData;
+}
+
 export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {
-            luzAmbiental: dom ? dom.ambienteLuzAmbiental.value : '#1a1a2a',
-            hora: dom ? dom.ambienteTiempo.value : '6',
-            cicloAutomatico: dom ? dom.ambienteCicloAutomatico.checked : false,
-            duracionDia: dom ? dom.ambienteDuracionDia.value : '60',
-            mascaraTipo: dom ? dom.ambienteMascaraTipo.value : 'ninguna'
+            luzAmbiental: dom ? (dom.ambienteLuzAmbiental ? dom.ambienteLuzAmbiental.value : (scene.ambiente.luzAmbiental || '#1a1a2a')) : (scene.ambiente.luzAmbiental || '#1a1a2a'),
+            hora: dom ? (dom.ambienteTiempo ? dom.ambienteTiempo.value : (scene.ambiente.hora || '6')) : (scene.ambiente.hora || '6'),
+            cicloAutomatico: dom ? (dom.ambienteCicloAutomatico ? dom.ambienteCicloAutomatico.checked : (scene.ambiente.cicloAutomatico || false)) : (scene.ambiente.cicloAutomatico || false),
+            duracionDia: dom ? (dom.ambienteDuracionDia ? dom.ambienteDuracionDia.value : (scene.ambiente.duracionDia || '60')) : (scene.ambiente.duracionDia || '60'),
+            mascaraTipo: dom ? (dom.ambienteMascaraTipo ? dom.ambienteMascaraTipo.value : (scene.ambiente.mascaraTipo || 'ninguna')) : (scene.ambiente.mascaraTipo || 'ninguna')
         },
         materias: []
     };
 
     // Usar getAllMaterias para asegurar que todos los nodos, incluidos los hijos, se serializan.
     for (const materia of scene.getAllMaterias()) {
-        const materiaData = {
-            id: materia.id,
-            name: materia.name,
-            tag: materia.tag, // <-- GUARDAR EL TAG
-            parentId: materia.parent ? materia.parent.id : null,
-            leyes: []
-        };
-        for (const ley of materia.leyes) {
-            if (ley instanceof CustomComponent) {
-                const customLeyData = {
-                    type: 'CustomComponent',
-                    definitionName: ley.definition.nombre,
-                    publicVars: ley.publicVars
-                };
-                materiaData.leyes.push(customLeyData);
-            } else {
-                const leyData = {
-                    type: ley.constructor.name,
-                    properties: {}
-                };
-                for (const key in ley) {
-                    if (key !== 'materia' && typeof ley[key] !== 'function') {
-                        if (ley.constructor.name === 'Tilemap' && key === 'layers') {
-                            leyData.properties[key] = ley[key].map(layer => ({
-                                ...layer,
-                                tileData: Array.from(layer.tileData.entries())
-                            }));
-                        } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
-                            leyData.properties[key] = Array.from(ley[key].entries());
-                        } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
-                            leyData.properties[key] = [];
-                        } else if (ley[key] instanceof Materia) {
-                            leyData.properties[key] = { __materiaId: ley[key].id };
-                        } else {
-                            leyData.properties[key] = ley[key];
-                        }
-                    }
-                }
-                materiaData.leyes.push(leyData);
-            }
-        }
-        sceneData.materias.push(materiaData);
+        sceneData.materias.push(serializeMateria(materia, false));
     }
     return sceneData;
 }
@@ -387,6 +400,39 @@ export function createSprite(name, imagePath) {
     currentScene.addMateria(newMateria);
     return newMateria;
 }
+
+/**
+ * Carga un archivo de Prefab (.ceprefab) y lo instancia en la escena.
+ */
+export async function instanciarPrefabDesdeRuta(path, x, y) {
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        let currentHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+        const parts = path.split('/');
+        const fileName = parts.pop();
+
+        for (const part of parts) {
+            if (part && part !== 'Assets') {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
+            } else if (part === 'Assets') {
+                currentHandle = await currentHandle.getDirectoryHandle('Assets');
+            }
+        }
+
+        const fileHandle = await currentHandle.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        const prefabData = JSON.parse(content);
+
+        return await instanciarPrefab(prefabData, x, y);
+    } catch (error) {
+        console.error(`Error al instanciar prefab desde ruta '${path}':`, error);
+        return null;
+    }
+}
+
+// Alias en inglés
+export const instantiatePrefabFromPath = instanciarPrefabDesdeRuta;
 
 /**
  * Crea una copia de una Materia (objeto) existente y la añade a la escena actual.
