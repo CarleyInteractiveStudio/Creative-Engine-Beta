@@ -165,18 +165,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (session) {
       const userName = session.user.user_metadata.full_name || session.user.email;
-      authStatusContainer.innerHTML = `
-        <span class="user-greeting">Hola, ${userName}</span>
-        <button id="btn-auth-action">Cerrar Sesión</button>
-      `;
+      if (authStatusContainer) {
+        authStatusContainer.innerHTML = `
+          <span class="user-greeting">Hola, ${userName}</span>
+          <button id="btn-auth-action">Cerrar Sesión</button>
+        `;
+      }
       if (contactEmailInput) {
         contactEmailInput.value    = session.user.email;
         contactEmailInput.readOnly = true;
       }
     } else {
-      authStatusContainer.innerHTML = `
-        <button id="btn-auth-action">Iniciar Sesión</button>
-      `;
+      if (authStatusContainer) {
+        authStatusContainer.innerHTML = `
+          <button id="btn-auth-action">Iniciar Sesión</button>
+        `;
+      }
       if (contactEmailInput) {
         contactEmailInput.value    = '';
         contactEmailInput.readOnly = false;
