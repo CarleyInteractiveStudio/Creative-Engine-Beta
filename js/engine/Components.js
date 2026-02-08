@@ -745,7 +745,19 @@ export class Rigidbody2D extends Leyes {
         };
         // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
+        this.angularVelocity = 0;
     }
+
+    get velocidad() { return this.velocity; }
+    set velocidad(v) { this.velocity = v; }
+    get velocidadAngular() { return this.angularVelocity; }
+    set velocidadAngular(v) { this.angularVelocity = v; }
+    get masa() { return this.mass; }
+    set masa(m) { this.mass = m; }
+    get escalaGravedad() { return this.gravityScale; }
+    set escalaGravedad(s) { this.gravityScale = s; }
+    get arrastreAngular() { return this.angularDrag; }
+    set arrastreAngular(a) { this.angularDrag = a; }
 
     addForce(xOrObj = 0, y = 0) {
         let fx = 0, fy = 0;
@@ -758,9 +770,11 @@ export class Rigidbody2D extends Leyes {
         }
 
         const mass = Math.max(0.1, this.mass);
-        this.velocity.x += (fx / mass);
-        this.velocity.y += (fy / mass);
+        this.velocity.x += fx / mass;
+        this.velocity.y += fy / mass;
     }
+
+    aplicarFuerza(xOrObj = 0, y = 0) { this.addForce(xOrObj, y); }
 
     addImpulse(xOrObj = 0, y = 0) {
         let ix = 0, iy = 0;
@@ -773,9 +787,20 @@ export class Rigidbody2D extends Leyes {
         }
 
         const mass = Math.max(0.1, this.mass);
-        this.velocity.x += (ix / mass);
-        this.velocity.y += (iy / mass);
+        this.velocity.x += ix / mass;
+        this.velocity.y += iy / mass;
     }
+
+    aplicarImpulso(xOrObj = 0, y = 0) { this.addImpulse(xOrObj, y); }
+
+    addTorque(torque) {
+        const mass = Math.max(0.1, this.mass);
+        // Inertia approximation for a simple object
+        const inertia = mass * 100;
+        this.angularVelocity += torque / inertia;
+    }
+
+    aplicarTorque(torque) { this.addTorque(torque); }
 
     setVelocity(xOrObj = 0, y = 0) {
         if (typeof xOrObj === 'object') {
@@ -786,6 +811,8 @@ export class Rigidbody2D extends Leyes {
             this.velocity.y = y;
         }
     }
+
+    establecerVelocidad(xOrObj = 0, y = 0) { this.setVelocity(xOrObj, y); }
 
     // --- Spanish Aliases ---
     aplicarFuerza(x, y) { this.addForce(x, y); }

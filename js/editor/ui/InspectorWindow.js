@@ -1845,6 +1845,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <label>Rebote (Bounciness)</label>
                             <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="Rigidbody2D" data-prop="rebote" value="${rigidbody.rebote || 0}">
                         </div>
+                        <div class="prop-row-multi">
+                            <label>Angular Drag</label>
+                            <input type="number" class="prop-input" step="0.01" min="0" data-component="Rigidbody2D" data-prop="angularDrag" value="${rigidbody.angularDrag || 0}">
+                        </div>
                     </div>
                     <div class="inspector-field-group">
                         <label>Constraints</label>

@@ -104,9 +104,19 @@ export class PhysicsSystem {
                 rigidbody.velocity.x = this._clamp(rigidbody.velocity.x, -this.MAX_VELOCITY, this.MAX_VELOCITY);
                 rigidbody.velocity.y = this._clamp(rigidbody.velocity.y, -this.MAX_VELOCITY, this.MAX_VELOCITY);
 
+                // Apply gravity
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
+
+                // Update position
                 transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
                 transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
+
+                // Apply angular velocity
+                if (!rigidbody.constraints.freezeRotation) {
+                    transform.rotation += rigidbody.angularVelocity * PHYSICS_SCALE * deltaTime;
+                    // Apply angular drag
+                    rigidbody.angularVelocity *= (1.0 - rigidbody.angularDrag);
+                }
             }
         }
 
@@ -285,7 +295,13 @@ export class PhysicsSystem {
         return collisionInfo;
     }
 
-    resolveCollision(materiaA, materiaB, mtv) {
+    _cross(v1, v2) {
+        return v1.x * v2.y - v1.y * v2.x;
+    }
+
+    resolveCollision(materiaA, materiaB, collisionInfo) {
+        const mtv = { x: collisionInfo.x, y: collisionInfo.y };
+        const contactPoint = collisionInfo.contactPoint || { x: (materiaA.x + materiaB.x) / 2, y: (materiaA.y + materiaB.y) / 2 };
         const rbA = materiaA.getComponent(Components.Rigidbody2D);
         const rbB = materiaB.getComponent(Components.Rigidbody2D);
         const transformA = materiaA.getComponent(Components.Transform);
@@ -311,8 +327,22 @@ export class PhysicsSystem {
         // --- 2. Velocity Correction (Impulse Resolution) ---
         const normal = this._normalize({ x: mtv.x, y: mtv.y });
 
-        const velA = rbA ? rbA.velocity : { x: 0, y: 0 };
-        const velB = rbB ? rbB.velocity : { x: 0, y: 0 };
+        const ra = { x: contactPoint.x - transformA.x, y: contactPoint.y - transformA.y };
+        const rb = { x: contactPoint.x - transformB.x, y: contactPoint.y - transformB.y };
+
+        const angVelA = rbA ? (rbA.angularVelocity || 0) : 0;
+        const angVelB = rbB ? (rbB.angularVelocity || 0) : 0;
+
+        const velA = rbA ? {
+            x: rbA.velocity.x - angVelA * ra.y,
+            y: rbA.velocity.y + angVelA * ra.x
+        } : { x: 0, y: 0 };
+
+        const velB = rbB ? {
+            x: rbB.velocity.x - angVelB * rb.y,
+            y: rbB.velocity.y + angVelB * rb.x
+        } : { x: 0, y: 0 };
+
         const relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
         const velAlongNormal = this._dot(relativeVelocity, normal);
 
@@ -328,10 +358,18 @@ export class PhysicsSystem {
         let invMassA = isADynamic ? 1 / (rbA.mass || 1) : 0;
         let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
 
+        // Inertia approximation (simplified for boxes)
+        let invInertiaA = isADynamic && !rbA.constraints.freezeRotation ? 1 / (rbA.mass * 1000) : 0;
+        let invInertiaB = isBDynamic && !rbB.constraints.freezeRotation ? 1 / (rbB.mass * 1000) : 0;
+
+        const raCrossN = this._cross(ra, normal);
+        const rbCrossN = this._cross(rb, normal);
+
+        let denominator = invMassA + invMassB + (raCrossN * raCrossN * invInertiaA) + (rbCrossN * rbCrossN * invInertiaB);
+
         let j = -(1 + e) * velAlongNormal;
-        const totalInvMass = invMassA + invMassB;
-        if (totalInvMass > 0) {
-            j /= totalInvMass;
+        if (denominator > 0) {
+            j /= denominator;
         } else {
             return;
         }
@@ -342,11 +380,17 @@ export class PhysicsSystem {
         if (isADynamic) {
             rbA.velocity.x += impulse.x * invMassA;
             rbA.velocity.y += impulse.y * invMassA;
+            if (!rbA.constraints.freezeRotation) {
+                rbA.angularVelocity += this._cross(ra, impulse) * invInertiaA;
+            }
         }
 
         if (isBDynamic) {
             rbB.velocity.x -= impulse.x * invMassB;
             rbB.velocity.y -= impulse.y * invMassB;
+            if (!rbB.constraints.freezeRotation) {
+                rbB.angularVelocity -= this._cross(rb, impulse) * invInertiaB;
+            }
         }
     }
 
@@ -619,10 +663,38 @@ export class PhysicsSystem {
             mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
         }
 
+        // Find a contact point (the vertex that is deepest in the other object)
+        let contactPoint = { x: 0, y: 0 };
+        let deepestOverlap = -Infinity;
+
+        // Check vertices of A against B
+        for (const vertex of verticesA) {
+            const projected = this._dot(vertex, mtvAxis);
+            const projectionB = this._project(verticesB, mtvAxis);
+            const overlap = projectionB.max - projected;
+            if (overlap > deepestOverlap) {
+                deepestOverlap = overlap;
+                contactPoint = { x: vertex.x, y: vertex.y };
+            }
+        }
+
+        // Also check vertices of B against A (using inverted axis for B)
+        const invAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
+        for (const vertex of verticesB) {
+            const projected = this._dot(vertex, invAxis);
+            const projectionA = this._project(verticesA, invAxis);
+            const overlap = projectionA.max - projected;
+            if (overlap > deepestOverlap) {
+                deepestOverlap = overlap;
+                contactPoint = { x: vertex.x, y: vertex.y };
+            }
+        }
+
         return {
             x: mtvAxis.x * minOverlap,
             y: mtvAxis.y * minOverlap,
-            magnitude: minOverlap
+            magnitude: minOverlap,
+            contactPoint: contactPoint
         };
     }
 
