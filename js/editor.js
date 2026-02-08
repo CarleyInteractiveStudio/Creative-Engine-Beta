@@ -1195,19 +1195,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Consolidate all renderers for correct interleaving by orderInLayer
             const allInLayer = [...objectsToRender, ...tilemapsToDraw].sort((a, b) => {
+                // 1. Manual DrawingOrder override
                 const drawingOrderA = a.getComponent(Components.DrawingOrder);
                 const drawingOrderB = b.getComponent(Components.DrawingOrder);
-                if (drawingOrderA || drawingOrderB) {
-                    const valA = drawingOrderA ? drawingOrderA.order : 0;
-                    const valB = drawingOrderB ? drawingOrderB.order : 0;
-                    if (valA !== valB) return valA - valB;
-                }
+                const valA = drawingOrderA ? drawingOrderA.order : 0;
+                const valB = drawingOrderB ? drawingOrderB.order : 0;
+                if (valA !== valB) return valA - valB;
 
+                // 2. Hierarchy relationship (Default: children on top of parents)
+                if (a.isAncestorOf(b)) return -1; // a is parent, draw first (behind)
+                if (b.isAncestorOf(a)) return 1;  // b is parent, draw first (behind)
+
+                // 3. Renderer orderInLayer
                 const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer);
                 const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer);
-                const orderA = rendererA.orderInLayer || 0;
-                const orderB = rendererB.orderInLayer || 0;
+                const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
+                const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
+
+                // 4. Y position (Isometric/Depth)
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);

@@ -192,6 +192,7 @@ export function handleContextMenuAction(action) {
         case 'create-parallax':
             newMateria = createBaseMateria(generateUniqueName('Parallax'), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));
+            newMateria.addComponent(new Components.DrawingOrder(newMateria));
             const p = new Components.Parallax(newMateria);
             p.scrollFactor = { x: 0.5, y: 0.5 };
             newMateria.addComponent(p);
