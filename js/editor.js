@@ -65,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastFrameTime = 0;
     let editorLoopId = null;
     let deltaTime = 0;
+
+    let isPrefabMode = false;
+    let currentPrefabFileHandle = null;
+    let sceneBeforePrefabMode = null;
+    let sceneHandleBeforePrefabMode = null;
+
     // Fixed-timestep accumulator for scripts
     let fixedAccumulator = 0;
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
@@ -1367,6 +1373,90 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const openPrefabMode = async function(fileHandle) {
+        if (isPrefabMode) {
+            await exitPrefabMode();
+        }
+
+        try {
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const prefabData = JSON.parse(content);
+
+            // Save current scene state
+            sceneBeforePrefabMode = SceneManager.currentScene;
+            sceneHandleBeforePrefabMode = SceneManager.currentSceneFileHandle;
+
+            // Initialize a temporary scene for prefab editing
+            const prefabScene = new SceneManager.Scene();
+            const rootMateria = await SceneManager.deserializeMateria(prefabData, projectsDirHandle);
+            if (rootMateria) {
+                prefabScene.addMateria(rootMateria);
+                SceneManager.setCurrentScene(prefabScene);
+                SceneManager.setCurrentSceneFileHandle(null); // No file handle for the temporary scene
+
+                isPrefabMode = true;
+                currentPrefabFileHandle = fileHandle;
+
+                // Update UI
+                dom.prefabModeIndicator.style.display = 'flex';
+                dom.prefabNameDisplay.textContent = fileHandle.name;
+                dom.currentSceneName.style.display = 'none';
+                dom.viewToggleTerminal.parentElement.style.display = 'none'; // Hide terminal toggle in prefab mode if needed
+
+                updateHierarchy();
+                selectMateria(rootMateria);
+                updateInspector();
+                updateScene(renderer, false);
+            }
+        } catch (error) {
+            console.error("Error al entrar en modo prefab:", error);
+            showNotificationDialog('Error', 'No se pudo abrir el prefab.');
+        }
+    };
+
+    const exitPrefabMode = async function() {
+        if (!isPrefabMode) return;
+
+        // Restore original scene
+        SceneManager.setCurrentScene(sceneBeforePrefabMode);
+        SceneManager.setCurrentSceneFileHandle(sceneHandleBeforePrefabMode);
+
+        isPrefabMode = false;
+        currentPrefabFileHandle = null;
+        sceneBeforePrefabMode = null;
+        sceneHandleBeforePrefabMode = null;
+
+        // Update UI
+        dom.prefabModeIndicator.style.display = 'none';
+        dom.currentSceneName.style.display = 'block';
+        dom.viewToggleTerminal.parentElement.style.display = 'flex';
+
+        updateHierarchy();
+        selectMateria(null);
+        updateInspector();
+        updateScene(renderer, false);
+    };
+
+    const savePrefab = async function() {
+        if (!isPrefabMode || !currentPrefabFileHandle) return;
+
+        const rootMaterias = SceneManager.currentScene.getRootMaterias();
+        if (rootMaterias.length === 0) return;
+
+        // In prefab mode, we assume the first root is the prefab root
+        const prefabData = SceneManager.serializeMateria(rootMaterias[0]);
+        try {
+            const writable = await currentPrefabFileHandle.createWritable();
+            await writable.write(JSON.stringify(prefabData, null, 2));
+            await writable.close();
+            showNotificationDialog('Éxito', '¡Prefab guardado!');
+        } catch (error) {
+            console.error("Error al guardar el prefab:", error);
+            showNotificationDialog('Error', 'No se pudo guardar el prefab.');
+        }
+    };
+
     saveScene = async function() {
         if (!SceneManager.currentSceneFileHandle) {
             // If there's no handle, treat it as a "Save As..." operation
@@ -2575,6 +2665,11 @@ public star() {
                             }
                         })();
                         break;
+            case 'ceprefab':
+                (async () => {
+                    await openPrefabMode(fileHandle);
+                })();
+                break;
                     case 'png':
                     case 'jpg':
                     case 'jpeg':
@@ -2714,6 +2809,9 @@ public star() {
                     GameFloatingWindow.closeFloatingGameWindow();
                 }
             });
+
+            dom.btnSavePrefab.addEventListener('click', savePrefab);
+            dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
 
 
             originalStartGame = startGame;

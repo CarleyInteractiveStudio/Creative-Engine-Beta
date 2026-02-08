@@ -43,7 +43,48 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
-    // The event listener is now centralized in editor.js
+    // Add drop listener for Hierarchy -> Asset Browser (Prefab Creation)
+    dom.assetGridView.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+    dom.assetGridView.addEventListener('drop', handleHierarchyDrop);
+}
+
+async function handleHierarchyDrop(e) {
+    // Only handle if it's NOT an internal move within the asset browser
+    if (e.dataTransfer.types.includes('application/json')) return;
+
+    const dataText = e.dataTransfer.getData('text/plain');
+    let data;
+    try {
+        data = JSON.parse(dataText);
+    } catch (err) {
+        return;
+    }
+
+    if (data.type === 'Materia') {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const materiaId = parseInt(data.id, 10);
+        const materia = window.SceneManager.currentScene.findMateriaById(materiaId);
+        if (materia) {
+            const prefabData = window.SceneManager.serializeMateria(materia);
+            const fileName = `${materia.name}.ceprefab`;
+            try {
+                const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(prefabData, null, 2));
+                await writable.close();
+                showNotification('Prefab Creado', `Se ha creado el prefab '${fileName}'`);
+                await updateAssetBrowserCallback();
+            } catch (err) {
+                console.error("Error al crear prefab desde jerarquía:", err);
+                showNotification('Error', 'No se pudo crear el prefab.');
+            }
+        }
+    }
 }
 
 export async function handleContextMenuAction(action) {
@@ -63,6 +104,31 @@ export async function handleContextMenuAction(action) {
                         } catch (err) {
                             console.error("Error al crear la carpeta:", err);
                             showNotification('Error', 'No se pudo crear la carpeta.');
+                        }
+                    }
+                }
+            );
+            break;
+        }
+        case 'create-prefab': {
+            showPrompt(
+                'Crear Prefab',
+                'Introduce el nombre del nuevo prefab (.ceprefab):',
+                async (prefabName) => {
+                    if (prefabName) {
+                        const fileName = prefabName.endsWith('.ceprefab') ? prefabName : `${prefabName}.ceprefab`;
+                        const defaultMateria = new window.Materia(prefabName.replace('.ceprefab', ''));
+                        defaultMateria.addComponent(new window.Components.Transform(defaultMateria));
+                        const prefabData = window.SceneManager.serializeMateria(defaultMateria);
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(JSON.stringify(prefabData, null, 2));
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el prefab:", err);
+                            showNotification('Error', 'No se pudo crear el prefab.');
                         }
                     }
                 }
@@ -397,6 +463,8 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.ceprefab')) {
+                iconContainer.textContent = '🧊';
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {

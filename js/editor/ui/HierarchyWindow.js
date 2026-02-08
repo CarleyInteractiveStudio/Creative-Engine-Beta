@@ -411,11 +411,49 @@ function setupEventListeners() {
 
         // Helper for async asset logic
         const handleAssetDrop = async (data) => {
-            const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Transform(newMateria));
-            SceneManager.currentScene.addMateria(newMateria);
-            updateHierarchy();
-            selectMateriaCallback(newMateria.id);
+            if (data.name.endsWith('.ceprefab')) {
+                const projectName = new URLSearchParams(window.location.search).get('project');
+                const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+
+                // Construct the path relative to the project root for getURLForAssetPath
+                const url = await window.AssetUtils.getURLForAssetPath(data.path, window.projectsDirHandle);
+                if (url) {
+                    const response = await fetch(url);
+                    const prefabData = await response.json();
+                    const newMateria = await SceneManager.deserializeMateria(prefabData, window.projectsDirHandle);
+                    if (newMateria) {
+                        if (targetItem) {
+                            const targetId = parseInt(targetItem.dataset.id, 10);
+                            const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
+                            if (targetMateria) {
+                                targetMateria.addChild(newMateria);
+                            } else {
+                                SceneManager.currentScene.addMateria(newMateria);
+                            }
+                        } else {
+                            SceneManager.currentScene.addMateria(newMateria);
+                        }
+                        updateHierarchy();
+                        selectMateriaCallback(newMateria.id);
+                    }
+                }
+            } else {
+                const newMateria = new Materia(data.name.split('.')[0]);
+                newMateria.addComponent(new Components.Transform(newMateria));
+                if (targetItem) {
+                    const targetId = parseInt(targetItem.dataset.id, 10);
+                    const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
+                    if (targetMateria) {
+                        targetMateria.addChild(newMateria);
+                    } else {
+                        SceneManager.currentScene.addMateria(newMateria);
+                    }
+                } else {
+                    SceneManager.currentScene.addMateria(newMateria);
+                }
+                updateHierarchy();
+                selectMateriaCallback(newMateria.id);
+            }
         };
 
         let data;

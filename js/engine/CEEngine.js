@@ -17,6 +17,31 @@ function find(name) {
     return SceneManager.currentScene ? SceneManager.currentScene.findMateriaByName(name) : null;
 }
 
+/**
+ * Instantiates a prefab from a given path.
+ * @param {string} prefabPath The project-relative path to the .ceprefab file.
+ * @returns {Promise<import('./Materia.js').Materia | null>} The instantiated Materia or null.
+ */
+async function instantiatePrefab(prefabPath) {
+    if (!SceneManager.currentScene) return null;
+
+    try {
+        const url = await window.AssetUtils.getURLForAssetPath(prefabPath, window.projectsDirHandle);
+        if (!url) throw new Error("Could not resolve prefab URL");
+
+        const response = await fetch(url);
+        const prefabData = await response.json();
+        const newMateria = await SceneManager.deserializeMateria(prefabData, window.projectsDirHandle);
+
+        if (newMateria) {
+            SceneManager.currentScene.addMateria(newMateria);
+            return newMateria;
+        }
+    } catch (error) {
+        console.error(`Error instantiating prefab at '${prefabPath}':`, error);
+    }
+    return null;
+}
 
 function getCollisionEnter(materia, tag = null) {
     if (!physicsSystem) return [];
@@ -41,12 +66,14 @@ function getCollisionExit(materia, tag = null) {
 // We can add more global functions here in the future.
 const engineAPIs = {
     find: find,
+    instantiatePrefab: instantiatePrefab,
     getCollisionEnter: getCollisionEnter,
     getCollisionStay: getCollisionStay,
     getCollisionExit: getCollisionExit,
 
     // Spanish aliases
     buscar: find,
+    instanciarPrefab: instantiatePrefab,
     alEntrarEnColision: getCollisionEnter,
     alPermanecerEnColision: getCollisionStay,
     alSalirDeColision: getCollisionExit,

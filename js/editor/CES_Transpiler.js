@@ -16,7 +16,8 @@ const typeMap = {
     'texto': 'string',
     'boolean': 'boolean',
     'booleano': 'boolean',
-    'Materia': 'Materia'
+    'Materia': 'Materia',
+    'prefab': 'prefab'
 };
 
 function getDefaultValueForType(canonicalType) {
@@ -26,6 +27,7 @@ function getDefaultValueForType(canonicalType) {
         case 'string': return "";
         case 'boolean': return false;
         case 'Materia': return null;
+        case 'prefab': return "";
         default: return null;
     }
 }
@@ -44,6 +46,11 @@ function parseInitialValue(value, canonicalType) {
             return value.toLowerCase() === 'verdadero' || value.toLowerCase() === 'true';
         case 'Materia':
             return null; // Las referencias a objetos no se pueden establecer por defecto
+        case 'prefab':
+             if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                return value.slice(1, -1);
+            }
+            return value;
         default:
             // This case should not be hit with the new mandatory types, but kept as a fallback.
             if (!isNaN(parseFloat(value)) && isFinite(value)) return parseFloat(value);
@@ -194,6 +201,12 @@ export function transpile(code, scriptName) {
         body = body.replace(/(?<![.\w])(engine|motor)\./g, 'this.$1.');
         body = body.replace(/(?<![.\w])(scene|escena)\./g, 'this.$1.');
 
+        // 2.b.1: Auto-prefix 'crear' and 'instantiate' with 'this.'
+        body = body.replace(/(?<![.\w])(crear|instantiate)\s*\(/g, 'await this.$1(');
+
+        // 2.b.2: Handle "crear miprefab" syntax (without parenthesis)
+        body = body.replace(/(?<![.\w])crear\s+([a-zA-Z_]\w*)/g, 'await this.crear(this.$1)');
+
         // 2.c: Replace custom library function calls (explicitly 'go' imported)
         for (const libName of importedLibs) {
             const api = RuntimeAPIManager.getAPI(libName);
@@ -247,8 +260,8 @@ export function transpile(code, scriptName) {
 
     const indentBody = (body) => body.trim().split('\n').map(line => `            ${line.trim()}`).join('\n');
 
-    jsCode += `        star() {\n${indentBody(starMethod)}\n        }\n\n`;
-    jsCode += `        update(deltaTime) {\n${indentBody(updateMethod)}\n        }\n\n`;
+    jsCode += `        async star() {\n${indentBody(starMethod)}\n        }\n\n`;
+    jsCode += `        async update(deltaTime) {\n${indentBody(updateMethod)}\n        }\n\n`;
 
     const indentCustomMethods = (methods) => methods.trim().split('\n').map(line => `        ${line.trim()}`).join('\n');
     jsCode += `${indentCustomMethods(customMethods)}\n`;

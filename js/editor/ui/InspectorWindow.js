@@ -361,15 +361,25 @@ function handleInspectorClick(e) {
             if (expectedTypes.includes(fileExtension)) {
                 if (selectedMateria) {
                     const componentName = dropper.dataset.component;
-                    const component = selectedMateria.getComponent(Components[componentName]);
-                    if (component) {
-                        // Special handling for SpriteRenderer
-                        if (component instanceof Components.SpriteRenderer) {
-                            await component.setSourcePath(data.path, projectsDirHandle);
-                        } else {
-                            const propName = dropper.dataset.prop;
-                            component[propName] = data.path;
+                    const propName = dropper.dataset.prop;
+
+                    if (componentName === 'CreativeScript') {
+                        const scriptName = dropper.dataset.scriptName;
+                        const script = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+                        if (script) {
+                            script.publicVars[propName] = data.path;
                         }
+                    } else {
+                        const component = selectedMateria.getComponent(Components[componentName]);
+                        if (component) {
+                            // Special handling for SpriteRenderer
+                            if (component instanceof Components.SpriteRenderer) {
+                                await component.setSourcePath(data.path, projectsDirHandle);
+                            } else {
+                                component[propName] = data.path;
+                            }
+                        }
+                    }
 
                         // If it's a tilemap, trigger the palette reload
                         if (component instanceof Components.Tilemap) {
@@ -658,6 +668,11 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                     }
                 }
                 return `<div class="materia-dropper" ${commonAttrs} data-asset-type="Materia">${displayName}</div>`;
+            }
+        case 'prefab':
+            {
+                const displayName = currentValue ? currentValue.split('/').pop() : 'None (Prefab)';
+                return `<div class="asset-dropper" ${commonAttrs} data-asset-type=".ceprefab">${displayName}</div>`;
             }
         default:
             // Para 'any' o tipos desconocidos, usar un campo de texto

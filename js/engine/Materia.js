@@ -11,6 +11,20 @@ export class Materia {
         this.name = `${name}`;
         this.isActive = true;
         this.isCollapsed = false; // For hierarchy view
+    }
+
+    // --- Spanish Aliases ---
+    get nombre() { return this.name; }
+    set nombre(value) { this.name = value; }
+
+    get estaActivo() { return this.isActive; }
+    set estaActivo(value) { this.isActive = value; }
+
+    get estaActivado() { return this.isActive; }
+    set estaActivado(value) { this.isActive = value; }
+
+    get activo() { return this.isActive; }
+    set activo(value) { this.isActive = value; }
         this.layer = 0; // Layer index, 0 is 'Default'
         this.tag = 'Untagged';
         this.flags = {};

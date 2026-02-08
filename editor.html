@@ -388,6 +388,11 @@ public star() {
                             <button id="view-toggle-terminal" class="view-toggle-btn" data-view="terminal-content" style="display: none;">Terminal</button>
                         </div>
                     </div>
+                    <div id="prefab-mode-indicator" class="prefab-mode-indicator" style="display: none;">
+                        <span>Modo Prefab: <strong id="prefab-name-display">Ninguno</strong></span>
+                        <button id="btn-save-prefab" title="Guardar Prefab">💾</button>
+                        <button id="btn-exit-prefab" title="Salir del Modo Prefab">❌</button>
+                    </div>
                     <div id="game-controls" class="game-controls">
                         <button id="btn-play" title="Play" disabled>▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
@@ -706,6 +711,7 @@ public star() {
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
                     <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
+                    <li data-action="create-prefab">Prefab (.ceprefab)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                 </ul>
             </li>

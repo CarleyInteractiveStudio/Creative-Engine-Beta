@@ -741,18 +741,18 @@ export function initialize(dependencies) {
         dom.sceneCanvas.classList.remove('drag-over-scene');
     });
 
-    dom.sceneCanvas.addEventListener('drop', (e) => {
+    dom.sceneCanvas.addEventListener('drop', async (e) => {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
 
-            if (data.type === 'sprite') {
-                const rect = dom.sceneCanvas.getBoundingClientRect();
-                const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-                const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+            const rect = dom.sceneCanvas.getBoundingClientRect();
+            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
 
+            if (data.type === 'sprite') {
                 // Create a new Materia at the drop position
                 const newMateria = SceneManager.currentScene.createMateria(data.spriteName);
                 const transform = newMateria.getComponent(Components.Transform);
@@ -765,13 +765,30 @@ export function initialize(dependencies) {
                 spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
                 newMateria.addComponent(spriteRenderer);
 
-
                 // Refresh UI
                 selectMateria(newMateria);
                 updateInspector();
+            } else if (data.path && data.path.endsWith('.ceprefab')) {
+                const url = await window.AssetUtils.getURLForAssetPath(data.path, window.projectsDirHandle);
+                if (url) {
+                    const response = await fetch(url);
+                    const prefabData = await response.json();
+                    const newMateria = await SceneManager.deserializeMateria(prefabData, window.projectsDirHandle);
+                    if (newMateria) {
+                        const transform = newMateria.getComponent(Components.Transform);
+                        if (transform) {
+                            transform.x = worldPos.x;
+                            transform.y = worldPos.y;
+                        }
+                        SceneManager.currentScene.addMateria(newMateria);
+                        updateScene(renderer, false);
+                        selectMateria(newMateria);
+                        updateInspector();
+                    }
+                }
             }
         } catch (error) {
-            console.error("Error al soltar el sprite:", error);
+            console.error("Error al soltar en la escena:", error);
         }
     });
 

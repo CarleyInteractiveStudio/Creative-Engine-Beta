@@ -67,6 +67,22 @@ export class CreativeScriptBehavior {
             }
         }
     }
+
+    /**
+     * Instantiates a prefab and adds it to the scene.
+     * @param {string} prefabPath Path to the .ceprefab file.
+     * @returns {Promise<Materia>} The new instance.
+     */
+    async crear(prefabPath) {
+        if (!prefabPath) return null;
+        const motor = RuntimeAPIManager.getAPI('engine');
+        return await motor.instantiatePrefab(prefabPath);
+    }
+
+    async instantiate(prefabPath) {
+        return await this.crear(prefabPath);
+    }
+
     star() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
 }
