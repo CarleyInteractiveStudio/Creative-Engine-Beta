@@ -102,6 +102,14 @@ export class Materia {
     // Alias en inglés
     hasTag(tag) { return this.tieneTag(tag); }
 
+    // --- Spanish Property Aliases ---
+    get nombre() { return this.name; }
+    set nombre(v) { this.name = v; }
+    get etiqueta() { return this.tag; }
+    set etiqueta(v) { this.tag = v; }
+    get activo() { return this.isActive; }
+    set activo(v) { this.isActive = v; }
+
     findAncestorWithComponent(componentClass) {
         let current = this.parent;
         // If the parent is a number (ID), we need to resolve it to a Materia object first.

@@ -81,7 +81,10 @@ const componentShortcuts = [
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
-    'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color'
+    'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
+    'tecla', 'teclaPresionada', 'teclaRecienPresionada', 'teclaLiberada',
+    'botonMouse', 'botonMouseRecienPresionado', 'posicionMouse',
+    'numero', 'texto', 'repetir'
 ];
 
 function getDefaultValueForType(canonicalType) {

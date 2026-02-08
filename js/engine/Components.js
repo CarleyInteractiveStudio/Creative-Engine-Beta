@@ -291,6 +291,24 @@ export class CreativeScriptBehavior {
         return `rgba(${r},${g},${b},${a})`;
     }
 
+    // --- Input Shortcuts ---
+    tecla(k) { return this.entrada.isKeyPressed(k); }
+    teclaPresionada(k) { return this.entrada.isKeyPressed(k); }
+    teclaRecienPresionada(k) { return this.entrada.isKeyJustPressed(k); }
+    teclaLiberada(k) { return this.entrada.isKeyReleased(k); }
+    botonMouse(b) { return this.entrada.isMouseButtonPressed(b); }
+    botonMouseRecienPresionado(b) { return this.entrada.isMouseButtonJustPressed(b); }
+    posicionMouse() { return this.entrada.getMousePosition(); }
+
+    // --- Conversion & Utilities ---
+    numero(v) { return Number(v); }
+    texto(v) { return String(v); }
+    async repetir(veces, funcion) {
+        for (let i = 0; i < veces; i++) {
+            await funcion(i);
+        }
+    }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
@@ -445,6 +463,19 @@ export class Transform extends Leyes {
 
     /** Alias en español */
     mirarA(x, y) { this.lookAt(x, y); }
+
+    get posicionLocal() { return this.localPosition; }
+    set posicionLocal(v) { this.localPosition = v; }
+    get rotacionLocal() { return this.localRotation; }
+    set rotacionLocal(v) { this.localRotation = v; }
+    get escalaLocal() { return this.localScale; }
+    set escalaLocal(v) { this.localScale = v; }
+    get posicion() { return this.position; }
+    set posicion(v) { this.position = v; }
+    get rotacion() { return this.rotation; }
+    set rotacion(v) { this.rotation = v; }
+    get escala() { return this.scale; }
+    set escala(v) { this.scale = v; }
 
     clone() {
         const newTransform = new Transform(null);
@@ -787,6 +818,13 @@ export class Rigidbody2D extends Leyes {
     aplicarFuerza(x, y) { this.addForce(x, y); }
     aplicarImpulso(x, y) { this.addImpulse(x, y); }
     establecerVelocidad(x, y) { this.setVelocity(x, y); }
+
+    get velocidad() { return this.velocity; }
+    set velocidad(v) { this.setVelocity(v); }
+    get masa() { return this.mass; }
+    set masa(m) { this.mass = m; }
+    get escalaGravedad() { return this.gravityScale; }
+    set escalaGravedad(s) { this.gravityScale = s; }
 
     clone() {
         const newRb = new Rigidbody2D(null);
