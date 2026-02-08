@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return; // Stop execution of this script
   }
-
   // --- Initialize Supabase Client ---
   const { createClient } = window.supabase;
   const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -29,17 +28,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Create Global Auth Object ---
   // This is now safely created after _supabase is guaranteed to be initialized.
   window.auth = {
-    _supabase,
-    getUser: async () => {
-      const { data: { user } } = await _supabase.auth.getUser();
-      return user;
+    _supabase: _supabase,
+    getUser: async function() {
+      const result = await _supabase.auth.getUser();
+      return result.data ? result.data.user : null;
     },
-    openAuthModal: () => {
+    openAuthModal: function() {
       const authModal = document.getElementById('auth-modal');
       if (authModal) {
-        document.getElementById('login-view').style.display   = 'block';
-        document.getElementById('signup-view').style.display  = 'none';
-        document.getElementById('reset-password-view').style.display = 'none';
+        const loginView = document.getElementById('login-view');
+        const signupView = document.getElementById('signup-view');
+        const resetView = document.getElementById('reset-password-view');
+        if (loginView) loginView.style.display = 'block';
+        if (signupView) signupView.style.display = 'none';
+        if (resetView) resetView.style.display = 'none';
         authModal.style.display = 'block';
       }
     }
@@ -200,11 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  _supabase.auth.onAuthStateChange((event, session) => {
+  _supabase.auth.onAuthStateChange(function(event, session) {
     updateUiForSession(session);
   });
 
-  _supabase.auth.getSession().then(({ data: { session } }) => {
+  _supabase.auth.getSession().then(function(result) {
+    const session = result.data ? result.data.session : null;
     updateUiForSession(session);
   });
 });

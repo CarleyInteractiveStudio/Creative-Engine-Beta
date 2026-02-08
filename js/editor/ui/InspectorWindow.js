@@ -32,7 +32,7 @@ const availableComponents = {
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy],
+    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -42,7 +42,7 @@ const componentIcons = {
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️'
+    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️'
 };
 
 const fileIcons = {
@@ -1098,6 +1098,46 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Order in Layer</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Health) {
+            componentHTML = `
+                ${renderComponentHeader("Vida (Health)", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Vida Máxima</label>
+                        <input type="number" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Vida Actual</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Health" data-prop="destroyOnDeath" ${ley.destroyOnDeath ? 'checked' : ''}>
+                        <label>Destruir al morir</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Patrol) {
+            componentHTML = `
+                ${renderComponentHeader("Patrulla (Patrol)", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Distancia</label>
+                        <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="distance" value="${ley.distance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tiempo Pausa (s)</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="Patrol" data-prop="pauseTime" value="${ley.pauseTime}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Patrol" data-prop="horizontal" ${ley.horizontal ? 'checked' : ''}>
+                        <label>Horizontal</label>
                     </div>
                 </div>
             `;

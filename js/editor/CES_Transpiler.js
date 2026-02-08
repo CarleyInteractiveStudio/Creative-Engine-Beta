@@ -85,7 +85,7 @@ const componentShortcuts = [
     'drawingOrder', 'ordenDeDibujo',
     'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
-    'tieneTag', 'hasTag', 'lanzarRayo', 'raycast',
+    'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',

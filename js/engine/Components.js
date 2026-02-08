@@ -45,7 +45,9 @@ const componentAliases = {
     'CameraFollow': 'seguimientoDeCamara',
     'DrawingOrder': 'ordenDeDibujo',
     'ProjectileLauncher': 'lanzadorDeProyectiles',
-    'AutoDestroy': 'destruccionAutomatica'
+    'AutoDestroy': 'destruccionAutomatica',
+    'Health': 'vida',
+    'Patrol': 'patrulla'
 };
 
 
@@ -164,6 +166,20 @@ export class CreativeScriptBehavior {
         return this.materia && this.materia.tag === tag;
     }
     hasTag(tag) { return this.tieneTag(tag); }
+
+    danar(materia, cantidad) {
+        if (!materia) return;
+        const health = materia.getComponent(Health);
+        if (health) health.damage(cantidad);
+    }
+    damage(materia, cantidad) { this.danar(materia, cantidad); }
+
+    curar(materia, cantidad) {
+        if (!materia) return;
+        const health = materia.getComponent(Health);
+        if (health) health.heal(cantidad);
+    }
+    heal(materia, cantidad) { this.curar(materia, cantidad); }
 
     // English Aliases
     getComponent(type) { return this.obtenerComponente(type); }
@@ -2072,8 +2088,118 @@ export class AutoDestroy extends Leyes {
     set retraso(v) { this.delay = v; }
 }
 
+/**
+ * Componente que gestiona la vida de un objeto.
+ */
+export class Health extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.maxHealth = 100;
+        this.currentHealth = 100;
+        this.destroyOnDeath = true;
+    }
+
+    damage(amount) {
+        this.currentHealth -= amount;
+        if (this.currentHealth <= 0) {
+            this.currentHealth = 0;
+            this.onDeath();
+        }
+    }
+
+    danar(cantidad) { this.damage(cantidad); }
+
+    heal(amount) {
+        this.currentHealth += amount;
+        if (this.currentHealth > this.maxHealth) {
+            this.currentHealth = this.maxHealth;
+        }
+    }
+
+    curar(cantidad) { this.heal(cantidad); }
+
+    onDeath() {
+        // Enviar mensaje de muerte
+        this.materia.leyes.forEach(ley => {
+            if (ley instanceof CreativeScript) {
+                ley._safeInvoke('alMorir');
+            }
+        });
+
+        if (this.destroyOnDeath && this.materia.scene) {
+            this.materia.scene.removeMateria(this.materia.id);
+        }
+    }
+
+    get vidaMaxima() { return this.maxHealth; }
+    set vidaMaxima(v) { this.maxHealth = v; }
+    get vidaActual() { return this.currentHealth; }
+    set vidaActual(v) { this.currentHealth = v; }
+}
+
+/**
+ * Componente que hace que el objeto patrulle entre dos puntos o direcciones.
+ */
+export class Patrol extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.speed = 200;
+        this.distance = 300;
+        this.horizontal = true;
+        this.pauseTime = 1.0;
+
+        this._startPos = null;
+        this._direction = 1;
+        this._timer = 0;
+        this._isPaused = false;
+        this._movedDistance = 0;
+    }
+
+    update(deltaTime) {
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        if (this._startPos === null) {
+            this._startPos = { x: transform.x, y: transform.y };
+        }
+
+        if (this._isPaused) {
+            this._timer += deltaTime;
+            if (this._timer >= this.pauseTime) {
+                this._isPaused = false;
+                this._timer = 0;
+                this._direction *= -1;
+            }
+            return;
+        }
+
+        const moveStep = this.speed * deltaTime;
+        if (this.horizontal) {
+            transform.x += moveStep * this._direction;
+        } else {
+            transform.y += moveStep * this._direction;
+        }
+
+        this._movedDistance += moveStep;
+
+        if (this._movedDistance >= this.distance) {
+            this._movedDistance = 0;
+            this._isPaused = true;
+        }
+    }
+
+    get velocidad() { return this.speed; }
+    set velocidad(v) { this.speed = v; }
+    get distancia() { return this.distance; }
+    set distancia(v) { this.distance = v; }
+    get tiempoPausa() { return this.pauseTime; }
+    set tiempoPausa(v) { this.pauseTime = v; }
+}
+
 registerComponent('ProjectileLauncher', ProjectileLauncher);
 registerComponent('AutoDestroy', AutoDestroy);
+registerComponent('Health', Health);
+registerComponent('Patrol', Patrol);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
