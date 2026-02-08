@@ -50,7 +50,7 @@ const typeMap = {
 };
 
 const componentShortcuts = [
-    'transform', 'transformacion',
+    'transform', 'transformacion', 'posicion',
     'rigidbody2D', 'fisica',
     'animatorController', 'controladorAnimacion',
     'spriteRenderer', 'renderizadorDeSprite',
@@ -78,7 +78,10 @@ const componentShortcuts = [
     'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast',
-    'difundir', 'broadcast', 'alRecibir', 'onReceive'
+    'difundir', 'broadcast', 'alRecibir', 'onReceive',
+    'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
+    'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
+    'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color'
 ];
 
 function getDefaultValueForType(canonicalType) {
@@ -135,8 +138,127 @@ export function getScriptMetadata(scriptName) {
 }
 
 /**
+ * Internal helper to transpile a block of code (expression or method body).
+ */
+function transpileBlock(block, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) {
+    let body = block;
+
+    // 2.0: Handle 'cada' blocks (Simplified Timers)
+    let cadaMatch;
+    const cadaRegex = /\bcada\s*\(([^)]+)\)\s*{/g;
+    while ((cadaMatch = cadaRegex.exec(body)) !== null) {
+        const startIdx = cadaMatch.index;
+        const contentStartIdx = cadaMatch.index + cadaMatch[0].length;
+        let braceCount = 1;
+        let endIdx = -1;
+
+        for (let i = contentStartIdx; i < body.length; i++) {
+            const char = body[i];
+            const nextChar = body[i + 1];
+
+            if (char === '"' || char === "'" || char === '`') {
+                const quote = char;
+                i++;
+                while (i < body.length && body[i] !== quote) {
+                    if (body[i] === '\\') i++;
+                    i++;
+                }
+                continue;
+            }
+            if (char === '/' && nextChar === '/') {
+                i += 2;
+                while (i < body.length && body[i] !== '\n') i++;
+                continue;
+            }
+            if (char === '/' && nextChar === '*') {
+                i += 2;
+                while (i < body.length && !(body[i] === '*' && body[i + 1] === '/')) i++;
+                i++;
+                continue;
+            }
+
+            if (char === '{') braceCount++;
+            else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                    endIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (endIdx !== -1) {
+            const interval = cadaMatch[1];
+            const cadaBody = body.substring(contentStartIdx, endIdx);
+            const replacement = `this._runInterval(${interval}, async () => {${cadaBody}});`;
+            body = body.substring(0, startIdx) + replacement + body.substring(endIdx + 1);
+            cadaRegex.lastIndex = startIdx + replacement.length;
+        }
+    }
+
+    // --- Protected String and Comment Extraction ---
+    const protectedBlocks = [];
+    body = body.replace(/(["'])(?:(?=(\\?))\2.)*?\1|\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
+        protectedBlocks.push(match);
+        return `__CES_PROT_${protectedBlocks.length - 1}__`;
+    });
+
+    // 2.a: Replace console shortcuts
+    body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'this._userLog(');
+
+    // 2.b: Replace Spanish keywords
+    body = body.replace(/(?<![.\w])si\s*\(/g, 'if (');
+    body = body.replace(/(?<![.\w])sino\b/g, 'else');
+    body = body.replace(/(?<![.\w])mientras\s*\(/g, 'while (');
+    body = body.replace(/(?<![.\w])para\s*\(/g, 'for (');
+    body = body.replace(/(?<![.\w])retornar\b/g, 'return');
+    body = body.replace(/(?<![.\w])nuevo\b/g, 'new');
+    body = body.replace(/(?<![.\w])funcion\b/g, 'function');
+    body = body.replace(/(?<![.\w])verdadero\b/g, 'true');
+    body = body.replace(/(?<![.\w])falso\b/g, 'false');
+    body = body.replace(/(?<![.\w])variable\b/g, 'let');
+    body = body.replace(/(?<![.\w])constante\b/g, 'const');
+
+    // 2.c: Coroutines support
+    body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
+
+    // 2.e: Auto-prefix component shortcuts
+    componentShortcuts.forEach(shortcut => {
+        const regex = new RegExp(`(?<![.\\w])\\b${shortcut}\\b`, 'g');
+        body = body.replace(regex, `this.${shortcut}`);
+    });
+
+    // 2.e: Replace custom library function calls
+    for (const libName of importedLibs) {
+        const api = RuntimeAPIManager.getAPI(libName);
+        if (!api) continue;
+        for (const functionName in api) {
+            const regex = new RegExp(`(?<![.\\w])\\b${functionName}\\b(?=\\s*\\()`, 'g');
+            const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"]`;
+            body = body.replace(regex, replacement);
+        }
+    }
+
+    // 2.f: Auto-prefix public and private variables
+    publicVars.forEach(pv => {
+        const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
+        body = body.replace(regex, `this.${pv.name}`);
+    });
+    privateVars.forEach(pv => {
+        const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
+        body = body.replace(regex, `this.${pv.name}`);
+    });
+
+    // --- Protected Block Restoration ---
+    body = body.replace(/__CES_PROT_(\d+)__/g, (match, index) => {
+        return protectedBlocks[parseInt(index)];
+    });
+
+    return body;
+}
+
+/**
  * Transpiles a .ces script into an ES6 class.
- * @param {string} code The raw .ces code.
  * @param {string} scriptName The name of the script file (e.g., 'PlayerController.ces').
  * @returns {{errors: string[] | null, jsCode: string | null}} An object with an errors array, or the generated JS code.
  */
@@ -291,121 +413,7 @@ export function transpile(code, scriptName) {
     for (const match of methodMatches) {
         let { name, args, body } = match;
 
-        // 2.0: Handle 'cada' blocks (Simplified Timers)
-        // We do this before protecting strings/comments because 'cada' is a keyword
-        let cadaMatch;
-        const cadaRegex = /\bcada\s*\(([^)]+)\)\s*{/g;
-        while ((cadaMatch = cadaRegex.exec(body)) !== null) {
-            const startIdx = cadaMatch.index;
-            const contentStartIdx = cadaMatch.index + cadaMatch[0].length;
-            let braceCount = 1;
-            let endIdx = -1;
-
-            for (let i = contentStartIdx; i < body.length; i++) {
-                const char = body[i];
-                const nextChar = body[i + 1];
-
-                if (char === '"' || char === "'" || char === '`') {
-                    const quote = char;
-                    i++;
-                    while (i < body.length && body[i] !== quote) {
-                        if (body[i] === '\\') i++;
-                        i++;
-                    }
-                    continue;
-                }
-                if (char === '/' && nextChar === '/') {
-                    i += 2;
-                    while (i < body.length && body[i] !== '\n') i++;
-                    continue;
-                }
-                if (char === '/' && nextChar === '*') {
-                    i += 2;
-                    while (i < body.length && !(body[i] === '*' && body[i + 1] === '/')) i++;
-                    i++;
-                    continue;
-                }
-
-                if (char === '{') braceCount++;
-                else if (char === '}') {
-                    braceCount--;
-                    if (braceCount === 0) {
-                        endIdx = i;
-                        break;
-                    }
-                }
-            }
-
-            if (endIdx !== -1) {
-                const interval = cadaMatch[1];
-                const cadaBody = body.substring(contentStartIdx, endIdx);
-                const replacement = `this._runInterval(${interval}, async () => {${cadaBody}});`;
-                body = body.substring(0, startIdx) + replacement + body.substring(endIdx + 1);
-                // Reset regex since we modified the string
-                cadaRegex.lastIndex = startIdx + replacement.length;
-            }
-        }
-
-        // --- Protected String and Comment Extraction ---
-        const protectedBlocks = [];
-        // Matches strings, single-line comments, and multi-line comments
-        body = body.replace(/(["'])(?:(?=(\\?))\2.)*?\1|\/\/.*|\/\*[\s\S]*?\*\//g, (match) => {
-            protectedBlocks.push(match);
-            return `__CES_PROT_${protectedBlocks.length - 1}__`;
-        });
-
-        // 2.a: Replace console shortcuts
-        body = body.replace(/(?<![.\w])(imprimir|log)\s*\(/g, 'this._userLog(');
-
-        // 2.b: Replace Spanish keywords
-        body = body.replace(/(?<![.\w])si\s*\(/g, 'if (');
-        body = body.replace(/(?<![.\w])sino\b/g, 'else');
-        body = body.replace(/(?<![.\w])mientras\s*\(/g, 'while (');
-        body = body.replace(/(?<![.\w])para\s*\(/g, 'for (');
-        body = body.replace(/(?<![.\w])retornar\b/g, 'return');
-        body = body.replace(/(?<![.\w])nuevo\b/g, 'new');
-        body = body.replace(/(?<![.\w])funcion\b/g, 'function');
-        body = body.replace(/(?<![.\w])verdadero\b/g, 'true');
-        body = body.replace(/(?<![.\w])falso\b/g, 'false');
-        body = body.replace(/(?<![.\w])variable\b/g, 'let');
-        body = body.replace(/(?<![.\w])constante\b/g, 'const');
-
-        // 2.c: Coroutines support (esperar -> await this.esperar)
-        body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
-
-        // 2.e: Auto-prefix component shortcuts with 'this.'
-        componentShortcuts.forEach(shortcut => {
-            const regex = new RegExp(`(?<![.\\w])\\b${shortcut}\\b`, 'g');
-            body = body.replace(regex, `this.${shortcut}`);
-        });
-
-        // 2.e: Replace custom library function calls (explicitly 'go' imported)
-        for (const libName of importedLibs) {
-            const api = RuntimeAPIManager.getAPI(libName);
-            if (!api) continue; // Should have been caught by an error earlier, but safe guard
-            for (const functionName in api) {
-                // Use a negative lookbehind assertion to ensure we only replace global calls, not member accesses.
-                const regex = new RegExp(`(?<![.\\w])\\b${functionName}\\b(?=\\s*\\()`, 'g');
-                // For custom libs, use RuntimeAPIManager.getAPI directly
-                const replacement = `RuntimeAPIManager.getAPI("${libName}")["${functionName}"]`;
-                body = body.replace(regex, replacement);
-            }
-        }
-
-        // 2.f: Auto-prefix public and private variables defined in this script
-        publicVars.forEach(pv => {
-            const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
-            body = body.replace(regex, `this.${pv.name}`);
-        });
-        privateVars.forEach(pv => {
-            const regex = new RegExp(`(?<![.\\w])\\b${pv.name}\\b`, 'g');
-            body = body.replace(regex, `this.${pv.name}`);
-        });
-
-        // --- Protected Block Restoration ---
-        body = body.replace(/__CES_PROT_(\d+)__/g, (match, index) => {
-            return protectedBlocks[parseInt(index)];
-        });
+        body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager);
 
         // 2.g: Map Spanish lifecycle methods to their English counterparts
         if (name === 'iniciar' || name === 'alEmpezar') name = 'start';
@@ -441,13 +449,13 @@ export function transpile(code, scriptName) {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        let val = pv.value || JSON.stringify(pv.defaultValue);
-        // Replace Spanish booleans in default values
+        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) : JSON.stringify(pv.defaultValue);
+        // Replace Spanish booleans in default values (fallback for non-transpiled parts)
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
     });
     privateVars.forEach(pv => {
-        let val = pv.value || 'null';
+        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) : 'null';
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val};\n`;
     });

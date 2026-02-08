@@ -2656,6 +2656,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.setActiveTool = SceneView.setActiveTool;
+        window.CES_Transpiler = CES_Transpiler;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests

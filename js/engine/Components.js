@@ -251,6 +251,46 @@ export class CreativeScriptBehavior {
         }
     }
 
+    // --- Utility & Math Functions ---
+    random(min = 0, max = 1) { return Math.random() * (max - min) + min; }
+    azar(min, max) { return this.random(min, max); }
+
+    sin(v) { return Math.sin(v); }
+    seno(v) { return Math.sin(v); }
+    cos(v) { return Math.cos(v); }
+    coseno(v) { return Math.cos(v); }
+    tan(v) { return Math.tan(v); }
+    tangente(v) { return Math.tan(v); }
+    sqrt(v) { return Math.sqrt(v); }
+    raizCuadrada(v) { return Math.sqrt(v); }
+    abs(v) { return Math.abs(v); }
+    absoluto(v) { return Math.abs(v); }
+
+    round(v) { return Math.round(v); }
+    redondear(v) { return Math.round(v); }
+    floor(v) { return Math.floor(v); }
+    piso(v) { return Math.floor(v); }
+    ceil(v) { return Math.ceil(v); }
+    techo(v) { return Math.ceil(v); }
+
+    clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    limitar(v, min, max) { return this.clamp(v, min, max); }
+
+    distance(x1, y1, x2, y2) {
+        if (typeof x1 === 'object' && typeof y1 === 'object') {
+            return Math.hypot(x1.x - y1.x, x1.y - y1.y);
+        }
+        return Math.hypot(x1 - x2, y1 - y2);
+    }
+    distancia(x1, y1, x2, y2) { return this.distance(x1, y1, x2, y2); }
+
+    Vector2(x = 0, y = 0) { return { x, y }; }
+    Color(r = 255, g = 255, b = 255, a = 1) {
+        // Support for hex string constructor
+        if (typeof r === 'string' && r.startsWith('#')) return r;
+        return `rgba(${r},${g},${b},${a})`;
+    }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
