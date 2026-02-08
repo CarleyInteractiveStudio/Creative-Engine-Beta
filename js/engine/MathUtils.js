@@ -10,9 +10,10 @@ import { Transform, SpriteRenderer, Camera } from './Components.js';
 /**
  * Calculates the world-space vertices of an object's Oriented Bounding Box (OOB).
  * @param {Materia} materia The game object.
+ * @param {{x:number, y:number}} [explicitPosition] Optional explicit world position.
  * @returns {Array<{x: number, y: number}>|null} An array of 4 vertex points or null if not applicable.
  */
-export function getOOB(materia) {
+export function getOOB(materia, explicitPosition = null) {
     const transform = materia.getComponent(Transform);
     const spriteRenderer = materia.getComponent(SpriteRenderer);
 
@@ -39,6 +40,8 @@ export function getOOB(materia) {
     const cosA = Math.cos(angleRad);
     const sinA = Math.sin(angleRad);
 
+    const pos = explicitPosition || transform.position;
+
     const worldCorners = localCorners.map(corner => {
         // Apply rotation
         const rotatedX = corner.x * cosA - corner.y * sinA;
@@ -46,8 +49,8 @@ export function getOOB(materia) {
 
         // Apply translation
         return {
-            x: rotatedX + transform.x,
-            y: rotatedY + transform.y
+            x: rotatedX + pos.x,
+            y: rotatedY + pos.y
         };
     });
 
@@ -175,4 +178,20 @@ export function checkIntersection(polyA, polyB) {
 
     // If no separating axis was found, the polygons are colliding.
     return true;
+}
+
+/**
+ * Gets the bounding box from a set of corner points.
+ * @param {Array<{x: number, y: number}>} corners
+ */
+export function getBoundsFromCorners(corners) {
+    if (!corners || corners.length === 0) return null;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of corners) {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+    }
+    return { left: minX, right: maxX, top: minY, bottom: maxY };
 }

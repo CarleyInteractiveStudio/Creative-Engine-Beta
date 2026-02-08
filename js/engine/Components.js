@@ -858,6 +858,7 @@ export class SpriteRenderer extends Leyes {
         this.spriteName = ''; // Name of the specific sprite from the .ceSprite asset
         this.color = '#ffffff';
         this.opacity = 1.0;
+        this.orderInLayer = 0;
         this.spriteSheet = null; // Holds the loaded .ceSprite data
     }
 
@@ -923,6 +924,7 @@ export class SpriteRenderer extends Leyes {
         newRenderer.spriteName = this.spriteName;
         newRenderer.color = this.color;
         newRenderer.opacity = this.opacity;
+        newRenderer.orderInLayer = this.orderInLayer;
         // The sprite and spritesheet will be loaded automatically
         return newRenderer;
     }
@@ -1274,6 +1276,7 @@ export class TextureRender extends Leyes {
         this.radius = 50;
         this.color = '#ffffff';
         this.texturePath = '';
+        this.orderInLayer = 0;
         this.texture = null; // Will hold the Image object
     }
 
@@ -1302,6 +1305,7 @@ export class TextureRender extends Leyes {
         newRender.radius = this.radius;
         newRender.color = this.color;
         newRender.texturePath = this.texturePath;
+        newRender.orderInLayer = this.orderInLayer;
         // The texture itself will be loaded on demand.
         return newRender;
     }
@@ -1505,46 +1509,26 @@ registerComponent('AudioSource', AudioSource);
 export class Parallax extends Leyes {
     constructor(materia) {
         super(materia);
-        this.speedX = 0.5;
-        this.speedY = 0.5;
-        this.repeatX = false;
-        this.repeatY = false;
-        this.basePosition = { x: 0, y: 0 };
-        this.initialCameraPos = { x: 0, y: 0 };
-    }
-    start() {
-        const transform = this.materia.getComponent(Transform);
-        if (transform) {
-            this.basePosition = { x: transform.localPosition.x, y: transform.localPosition.y };
-        }
-        const camera = this.materia.scene.mainCamera;
-        if (camera) {
-            const camTransform = camera.materia.getComponent(Transform);
-            if (camTransform) {
-                this.initialCameraPos = { x: camTransform.position.x, y: camTransform.position.y };
-            }
-        }
+        this.scrollFactor = { x: 0.5, y: 0.5 };
+        this.mirroring = { x: 0, y: 0 }; // 0 means no repeat
+        this.offset = { x: 0, y: 0 };
+        this.autoscroll = { x: 0, y: 0 };
+
+        // Internal state
+        this._autoOffset = { x: 0, y: 0 };
     }
     update(deltaTime) {
-        const camera = this.materia.scene.mainCamera;
-        if (!camera) return;
-        const camTransform = camera.materia.getComponent(Transform);
-        if (!camTransform) return;
-        const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        const deltaX = camTransform.position.x - this.initialCameraPos.x;
-        const deltaY = camTransform.position.y - this.initialCameraPos.y;
-
-        transform.localPosition.x = this.basePosition.x + deltaX * (1 - this.speedX);
-        transform.localPosition.y = this.basePosition.y + deltaY * (1 - this.speedY);
+        if (this.autoscroll.x !== 0 || this.autoscroll.y !== 0) {
+            this._autoOffset.x += this.autoscroll.x * deltaTime;
+            this._autoOffset.y += this.autoscroll.y * deltaTime;
+        }
     }
     clone() {
         const newParallax = new Parallax(null);
-        newParallax.speedX = this.speedX;
-        newParallax.speedY = this.speedY;
-        newParallax.repeatX = this.repeatX;
-        newParallax.repeatY = this.repeatY;
+        newParallax.scrollFactor = { ...this.scrollFactor };
+        newParallax.mirroring = { ...this.mirroring };
+        newParallax.offset = { ...this.offset };
+        newParallax.autoscroll = { ...this.autoscroll };
         return newParallax;
     }
 }

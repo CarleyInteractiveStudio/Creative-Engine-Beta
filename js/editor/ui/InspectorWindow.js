@@ -659,6 +659,22 @@ function handleInspectorClick(e) {
             updateInspector();
         }
     }
+
+    if (e.target.matches('[data-action="parallax-match-sprite"]')) {
+        const index = parseInt(e.target.dataset.leyIndex, 10);
+        const parallax = selectedMateria.leyes[index];
+        const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
+        const transform = selectedMateria.getComponent(Components.Transform);
+
+        if (parallax && spriteRenderer && spriteRenderer.sprite && spriteRenderer.sprite.naturalWidth > 0) {
+            parallax.mirroring.x = spriteRenderer.sprite.naturalWidth * transform.scale.x;
+            parallax.mirroring.y = spriteRenderer.sprite.naturalHeight * transform.scale.y;
+            updateInspector();
+            updateSceneCallback();
+        } else {
+            window.Dialogs.showNotification('Aviso', 'Se necesita un SpriteRenderer con una imagen cargada.');
+        }
+    }
 }
 
 function getCullingMaskText(mask) {
@@ -1079,6 +1095,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Texture</label>
                         ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="TextureRender" data-prop="texturePath"')}
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.Transform) {
@@ -1397,6 +1417,10 @@ async function updateInspectorForMateria(selectedMateria) {
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.opacity ?? 1) * 100)}%</span>
                         </div>
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
                 </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {
@@ -1656,7 +1680,10 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader('Tilemap Renderer', '🖌️', index)}
                 <div class="component-content">
-                    <p class="field-description">Este componente renderiza un Tilemap en la escena. No tiene propiedades editables.</p>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="TilemapRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
                 </div>
             `;
         } else if (ley instanceof Components.TilemapCollider2D) {
@@ -1941,24 +1968,38 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.Parallax) {
             componentHTML = `
-                ${renderComponentHeader("Paralaje", icon, index)}
+                ${renderComponentHeader("Paralaje (Avanzado)", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Velocidad X/Y</label>
+                        <label>Scroll Factor X/Y</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="speedX" value="${ley.speedX}" title="Velocidad Horizontal (0-1)">
-                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="speedY" value="${ley.speedY}" title="Velocidad Vertical (0-1)">
+                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.x" value="${ley.scrollFactor.x}" title="X">
+                            <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.y" value="${ley.scrollFactor.y}" title="Y">
                         </div>
                     </div>
-                    <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatX" ${ley.repeatX ? 'checked' : ''}>
-                        <label>Repetir Horizontal</label>
+                    <div class="prop-row-multi">
+                        <label>Mirroring X/Y</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.y" value="${ley.mirroring.y}" title="Y">
+                        </div>
                     </div>
-                    <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatY" ${ley.repeatY ? 'checked' : ''}>
-                        <label>Repetir Vertical</label>
+                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" data-action="parallax-match-sprite" data-ley-index="${index}">Ajustar Mirroring al Sprite</button>
+                    <div class="prop-row-multi">
+                        <label>Offset X/Y</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.x" value="${ley.offset.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.y" value="${ley.offset.y}" title="Y">
+                        </div>
                     </div>
-                    <p class="field-description">0 = Fondo infinito pegado a la cámara. 1 = Objeto normal que se mueve con el mundo.</p>
+                    <div class="prop-row-multi">
+                        <label>Autoscroll X/Y</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.x" value="${ley.autoscroll.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
+                        </div>
+                    </div>
+                    <p class="field-description">Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).</p>
                 </div>
             `;
         }
