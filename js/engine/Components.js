@@ -1507,6 +1507,8 @@ export class Parallax extends Leyes {
         super(materia);
         this.speedX = 0.5;
         this.speedY = 0.5;
+        this.repeatX = false;
+        this.repeatY = false;
         this.basePosition = { x: 0, y: 0 };
         this.initialCameraPos = { x: 0, y: 0 };
     }
@@ -1541,6 +1543,8 @@ export class Parallax extends Leyes {
         const newParallax = new Parallax(null);
         newParallax.speedX = this.speedX;
         newParallax.speedY = this.speedY;
+        newParallax.repeatX = this.repeatX;
+        newParallax.repeatY = this.repeatY;
         return newParallax;
     }
 }
@@ -1609,8 +1613,13 @@ export class CameraFollow extends Leyes {
         this.followY = true;
     }
     update(deltaTime) {
-        if (!this.target) return;
-        const targetTransform = this.target.getComponent(Transform);
+        let targetObj = this.target;
+        if (typeof targetObj === 'number') {
+            targetObj = this.materia.scene.findMateriaById(targetObj);
+        }
+        if (!targetObj) return;
+
+        const targetTransform = targetObj.getComponent(Transform);
         const camTransform = this.materia.getComponent(Transform);
         if (!targetTransform || !camTransform) return;
 

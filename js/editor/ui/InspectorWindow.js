@@ -26,13 +26,13 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender],
-    'Tilemap': [Components.Grid, Components.Tilemap, Components.TilemapRenderer],
+    'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow, Components.Parallax],
+    'Basico': [Components.Movement, Components.CameraFollow],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -851,16 +851,23 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
 function renderPropertyDropper(type, currentValue, commonAttrs) {
     let displayName = 'None';
     let icon = '❓';
-    const isEmpty = currentValue === null || currentValue === undefined || currentValue === '';
+
+    // Handle Materia object or ID
+    let value = currentValue;
+    if (value && typeof value === 'object' && value.id !== undefined) {
+        value = value.id;
+    }
+
+    const isEmpty = value === null || value === undefined || value === '';
 
     if (!isEmpty) {
-        if (typeof currentValue === 'number') {
+        if (typeof value === 'number') {
             // Assume Scene Object ID
-            const materia = window.SceneManager.currentScene.findMateriaById(currentValue);
-            displayName = materia ? materia.name : `Objeto #${currentValue}`;
+            const materia = window.SceneManager.currentScene.findMateriaById(value);
+            displayName = materia ? materia.name : `Objeto #${value}`;
             // If type is a specific component, use its icon, otherwise use generic Materia icon
             icon = componentIcons[type] || '✥';
-        } else if (typeof currentValue === 'string') {
+        } else if (typeof value === 'string') {
             // Assume Asset Path
             displayName = currentValue.split('/').pop();
             const ext = currentValue.split('.').pop().toLowerCase();
@@ -1943,7 +1950,15 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="speedY" value="${ley.speedY}" title="Velocidad Vertical (0-1)">
                         </div>
                     </div>
-                    <p class="field-description">0 = No se mueve (se queda pegado a la cámara). 1 = Se mueve normal con el mundo.</p>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatX" ${ley.repeatX ? 'checked' : ''}>
+                        <label>Repetir Horizontal</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatY" ${ley.repeatY ? 'checked' : ''}>
+                        <label>Repetir Vertical</label>
+                    </div>
+                    <p class="field-description">0 = Fondo infinito pegado a la cámara. 1 = Objeto normal que se mueve con el mundo.</p>
                 </div>
             `;
         }

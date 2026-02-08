@@ -189,6 +189,11 @@ export function handleContextMenuAction(action) {
         case 'create-tilemap':
             newMateria = createTilemapObject(selectedMateria);
             break;
+        case 'create-parallax':
+            newMateria = createBaseMateria(generateUniqueName('Parallax'), selectedMateria);
+            newMateria.addComponent(new Components.SpriteRenderer(newMateria));
+            newMateria.addComponent(new Components.Parallax(newMateria));
+            break;
         case 'create-point-light':
             newMateria = createLightObject('Point Light', Components.PointLight2D, selectedMateria);
             break;

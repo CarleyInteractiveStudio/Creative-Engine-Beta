@@ -224,6 +224,8 @@ export function serializeScene(scene, dom) {
                             leyData.properties[key] = Array.from(ley[key].entries());
                         } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
                             leyData.properties[key] = [];
+                        } else if (ley[key] instanceof Materia) {
+                            leyData.properties[key] = { __materiaId: ley[key].id };
                         } else {
                             leyData.properties[key] = ley[key];
                         }
@@ -331,7 +333,19 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
         }
     }
 
-    // Pass 3: Final setup after all objects and relationships are established
+    // Pass 3: Resolve Materia references in component properties
+    for (const materia of materiaMap.values()) {
+        for (const ley of materia.leyes) {
+            for (const key in ley) {
+                if (ley[key] && typeof ley[key] === 'object' && ley[key].__materiaId !== undefined) {
+                    const targetId = ley[key].__materiaId;
+                    ley[key] = materiaMap.get(targetId) || null;
+                }
+            }
+        }
+    }
+
+    // Pass 4: Final setup after all objects and relationships are established
     for (const materia of materiaMap.values()) {
         // If a materia has a Tilemap, its renderer needs to be marked as dirty
         // to ensure it re-draws the loaded tiles on the next frame.

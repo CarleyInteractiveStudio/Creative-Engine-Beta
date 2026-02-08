@@ -1195,6 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const transform = materia.getComponent(Components.Transform);
+                const parallax = materia.getComponent(Components.Parallax);
 
                 if (spriteRenderer) {
                     if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
@@ -1224,29 +1225,48 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dy = -dHeight * pivotY;
 
                         ctx.save();
-                        ctx.translate(worldPosition.x, worldPosition.y);
-                        ctx.rotate(worldRotation * Math.PI / 180);
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
                         ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
 
                         const color = spriteRenderer.color || '#ffffff';
                         const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
 
+                        let sourceImg = img;
+                        let sourceSX = sx, sourceSY = sy, sourceSW = sWidth, sourceSH = sHeight;
+
                         if (!isWhite) {
-                            // Tinting logic using scratch canvas
                             scratchCanvas.width = Math.ceil(sWidth);
                             scratchCanvas.height = Math.ceil(sHeight);
                             scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
                             scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
                             scratchCtx.globalCompositeOperation = 'source-atop';
                             scratchCtx.fillStyle = color;
                             scratchCtx.fillRect(0, 0, scratchCanvas.width, scratchCanvas.height);
                             scratchCtx.globalCompositeOperation = 'source-over';
+                            sourceImg = scratchCanvas;
+                            sourceSX = 0; sourceSY = 0;
+                        }
 
-                            ctx.drawImage(scratchCanvas, 0, 0, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                        if (parallax && (parallax.repeatX || parallax.repeatY) && cameraViewBox) {
+                            // Tiling Rendering
+                            const startX = parallax.repeatX ? Math.floor((cameraViewBox.left - worldPosition.x - dx) / dWidth) * dWidth : 0;
+                            const endX = parallax.repeatX ? Math.ceil((cameraViewBox.right - worldPosition.x - dx) / dWidth) * dWidth : dWidth;
+                            const startY = parallax.repeatY ? Math.floor((cameraViewBox.top - worldPosition.y - dy) / dHeight) * dHeight : 0;
+                            const endY = parallax.repeatY ? Math.ceil((cameraViewBox.bottom - worldPosition.y - dy) / dHeight) * dHeight : dHeight;
+
+                            for (let tx = startX; tx < endX; tx += dWidth) {
+                                for (let ty = startY; ty < endY; ty += dHeight) {
+                                    ctx.save();
+                                    ctx.translate(worldPosition.x + tx + dWidth / 2 + dx, worldPosition.y + ty + dHeight / 2 + dy);
+                                    ctx.rotate(worldRotation * Math.PI / 180);
+                                    ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                                    ctx.restore();
+                                }
+                            }
                         } else {
-                            ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+                            ctx.translate(worldPosition.x, worldPosition.y);
+                            ctx.rotate(worldRotation * Math.PI / 180);
+                            ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, dx, dy, dWidth, dHeight);
                         }
                         ctx.restore();
                     } else {
