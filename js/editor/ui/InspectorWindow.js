@@ -18,6 +18,7 @@ let extractFramesFromSheetCallback;
 let updateSceneCallback;
 let updateAssetBrowserCallback;
 let createAssetCallback;
+let onAssetOpened;
 let isScanningForComponents = false;
 let getCurrentProjectConfig = () => ({}); // To access layers
 let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
@@ -79,6 +80,7 @@ export function initialize(dependencies) {
     updateSceneCallback = dependencies.updateSceneCallback;
     updateAssetBrowserCallback = dependencies.updateAssetBrowserCallback;
     createAssetCallback = dependencies.createAssetCallback;
+    onAssetOpened = dependencies.onAssetOpened;
     getCurrentProjectConfig = dependencies.getCurrentProjectConfig;
     enterAddTilemapLayerMode = dependencies.enterAddTilemapLayerMode;
 
@@ -2162,7 +2164,97 @@ async function updateInspectorForAsset(assetName, assetPath) {
         const file = await fileHandle.getFile();
         const content = await file.text();
 
-        if (assetName.endsWith('.ces')) {
+        if (assetName.endsWith('.ceprefab')) {
+            let prefabData;
+            try {
+                prefabData = JSON.parse(content);
+            } catch (e) {
+                dom.inspectorContent.innerHTML += `<p class="error-message">Error al leer el prefab: JSON inválido.</p>`;
+                return;
+            }
+
+            const container = document.createElement('div');
+            container.className = 'prefab-inspector-view';
+
+            const title = document.createElement('h5');
+            title.textContent = `Prefab: ${prefabData.name}`;
+            title.style.margin = "10px 0";
+            title.style.borderBottom = "1px solid #444";
+            title.style.paddingBottom = "5px";
+            container.appendChild(title);
+
+            const sectionHierarchy = document.createElement('div');
+            sectionHierarchy.className = 'inspector-section';
+            sectionHierarchy.innerHTML = '<label>Estructura</label>';
+            const hierarchyList = document.createElement('div');
+            hierarchyList.className = 'prefab-hierarchy-list';
+            hierarchyList.style.background = '#1a1a1a';
+            hierarchyList.style.padding = '5px';
+            hierarchyList.style.borderRadius = '4px';
+            hierarchyList.style.maxHeight = '150px';
+            hierarchyList.style.overflowY = 'auto';
+
+            function renderPrefabNode(data, depth) {
+                const item = document.createElement('div');
+                item.className = 'hierarchy-item-static';
+                item.style.paddingLeft = `${depth * 15}px`;
+                item.style.fontSize = '0.9em';
+                item.style.color = '#ccc';
+                item.style.padding = '2px 0';
+                item.innerHTML = `<span>${data.name}</span>`;
+                hierarchyList.appendChild(item);
+
+                if (data.children && Array.isArray(data.children)) {
+                    data.children.forEach(child => renderPrefabNode(child, depth + 1));
+                }
+            }
+
+            renderPrefabNode(prefabData, 0);
+            sectionHierarchy.appendChild(hierarchyList);
+            container.appendChild(sectionHierarchy);
+
+            const sectionComponents = document.createElement('div');
+            sectionComponents.className = 'inspector-section';
+            sectionComponents.innerHTML = '<label>Componentes (Objeto Raíz)</label>';
+            const compList = document.createElement('div');
+            compList.style.background = '#1a1a1a';
+            compList.style.padding = '5px';
+            compList.style.borderRadius = '4px';
+
+            if (prefabData.leyes && Array.isArray(prefabData.leyes)) {
+                prefabData.leyes.forEach(ley => {
+                    const leyEl = document.createElement('div');
+                    leyEl.style.fontSize = '0.85em';
+                    leyEl.style.padding = '4px 8px';
+                    leyEl.style.marginBottom = '2px';
+                    leyEl.style.background = '#252525';
+                    leyEl.style.borderRadius = '2px';
+                    leyEl.style.display = 'flex';
+                    leyEl.style.justifyContent = 'space-between';
+
+                    const typeName = ley.type === 'CustomComponent' ? ley.definitionName : ley.type;
+                    leyEl.innerHTML = `<span>${typeName}</span> <span style="opacity: 0.5; font-size: 0.8em;">${ley.type === 'CustomComponent' ? 'CHC' : 'Motor'}</span>`;
+                    compList.appendChild(leyEl);
+                });
+            }
+            sectionComponents.appendChild(compList);
+            container.appendChild(sectionComponents);
+
+            const openBtn = document.createElement('button');
+            openBtn.className = 'primary-btn';
+            openBtn.style.width = '100%';
+            openBtn.style.marginTop = '10px';
+            openBtn.textContent = 'Editar Prefab';
+            openBtn.onclick = () => {
+                if (typeof onAssetOpened === 'function') {
+                    onAssetOpened(assetName, fileHandle, dirHandle);
+                }
+            };
+            container.appendChild(openBtn);
+
+            dom.inspectorContent.appendChild(container);
+
+        } else if (assetName.endsWith('.ces')) {
             const pre = document.createElement('pre');
             const code = document.createElement('code');
             code.className = 'language-javascript';

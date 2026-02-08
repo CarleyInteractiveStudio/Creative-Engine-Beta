@@ -196,7 +196,7 @@ export function serializeMateria(materia, recursive = false) {
             const customLeyData = {
                 type: 'CustomComponent',
                 definitionName: ley.definition.nombre,
-                publicVars: ley.publicVars
+                publicVars: JSON.parse(JSON.stringify(ley.publicVars || {}))
             };
             materiaData.leyes.push(customLeyData);
         } else {
@@ -205,7 +205,8 @@ export function serializeMateria(materia, recursive = false) {
                 properties: {}
             };
             for (const key in ley) {
-                if (key !== 'materia' && typeof ley[key] !== 'function') {
+                // Exclude circular references and non-serializable properties
+                if (key !== 'materia' && key !== 'scriptInstance' && typeof ley[key] !== 'function') {
                     if (ley.constructor.name === 'Tilemap' && key === 'layers') {
                         leyData.properties[key] = ley[key].map(layer => ({
                             ...layer,

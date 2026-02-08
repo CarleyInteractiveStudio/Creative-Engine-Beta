@@ -309,20 +309,27 @@ export async function updateAssetBrowser() {
         if (droppedData.type === 'Materia') {
             const materiaId = parseInt(droppedData.id, 10);
             const materia = SceneManager.currentScene.findMateriaById(materiaId);
+
             if (materia) {
-                const prefabName = `${materia.name}.ceprefab`;
-                const prefabData = SceneManager.serializeMateria(materia, true);
                 try {
+                    const prefabName = `${materia.name}.ceprefab`;
+                    const prefabData = SceneManager.serializeMateria(materia, true);
                     const fileHandle = await targetFolderHandle.getFileHandle(prefabName, { create: true });
                     const writable = await fileHandle.createWritable();
                     await writable.write(JSON.stringify(prefabData, null, 2));
                     await writable.close();
-                    console.log(`Prefab creado: ${prefabName} en ${targetPath}`);
-                    await updateAssetBrowserCallback();
+                    console.log(`[AssetBrowser] Prefab creado con éxito: ${prefabName} en ${targetPath}`);
+
+                    if (updateAssetBrowserCallback) {
+                        await updateAssetBrowserCallback();
+                    }
+                    showNotification('Éxito', `Prefab '${materia.name}' creado correctamente.`);
                 } catch (err) {
-                    console.error("Error al crear el prefab:", err);
-                    showNotification('Error', 'No se pudo crear el prefab.');
+                    console.error("[AssetBrowser] Error crítico al crear el prefab:", err);
+                    showNotification('Error', `No se pudo crear el prefab: ${err.message}`);
                 }
+            } else {
+                console.warn(`[AssetBrowser] No se encontró la materia con ID ${materiaId} en la escena.`);
             }
             return;
         }
@@ -460,7 +467,7 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
             } else if (entry.name.endsWith('.ceprefab')) {
-                iconContainer.textContent = '📦';
+                iconContainer.textContent = '🧊';
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {

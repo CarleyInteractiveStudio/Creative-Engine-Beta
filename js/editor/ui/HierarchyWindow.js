@@ -458,7 +458,7 @@ function setupEventListeners() {
             handleAssetDrop(data);
         } else {
             // It's a hierarchy re-parenting drop
-            const draggedId = parseInt(data, 10);
+            const draggedId = (typeof data === 'object' && data !== null) ? parseInt(data.id, 10) : parseInt(data, 10);
             if (isNaN(draggedId)) return;
 
             const draggedMateria = SceneManager.currentScene.findMateriaById(draggedId);

@@ -4,6 +4,7 @@
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
 import { getURLForAssetPath } from './AssetUtils.js';
+import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import { bus as MessageBus } from './Messaging.js';
 
