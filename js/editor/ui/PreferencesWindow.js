@@ -133,7 +133,7 @@ function applyPreferences() {
     }
 }
 
-function savePreferences() {
+async function savePreferences() {
     // Gather data from UI
     currentPreferences.theme = _dom.prefsTheme.value;
     if (currentPreferences.theme === 'custom') {
@@ -164,7 +164,14 @@ function savePreferences() {
     currentPreferences.executionMode = _dom.prefsExecutionMode.value;
     currentPreferences.autoCloseGameWindow = _dom.prefsAutoCloseGameWindow.checked;
 
+    // Save to LocalStorage for Editor-wide defaults
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
+
+    // Also trigger save to project file via the provided callback
+    if (typeof _dom.saveProjectConfig === 'function') {
+        await _dom.saveProjectConfig(false);
+    }
+
     applyPreferences();
     showNotification('Éxito', 'Preferencias guardadas.');
     _dom.preferencesModal.classList.remove('is-open');
@@ -307,4 +314,24 @@ export function initialize(dom, saveCurrentScriptFunc) {
 
     loadPreferences();
     setupEventListeners();
+}
+
+/**
+ * Merges and applies external preferences (e.g., from project config).
+ * @param {object} prefs
+ */
+export function loadExternalPreferences(prefs) {
+    if (!prefs || typeof prefs !== 'object') return;
+    console.log("Applying external preferences to editor...");
+
+    // Merge provided prefs into current ones
+    currentPreferences = { ...currentPreferences, ...prefs };
+
+    // Re-load UI elements with new values
+    if (_dom.prefsTheme) _dom.prefsTheme.value = currentPreferences.theme;
+    if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';
+    if (_dom.prefsAutoCloseGameWindow) _dom.prefsAutoCloseGameWindow.checked = currentPreferences.autoCloseGameWindow !== false;
+
+    // Apply them to the editor state/DOM
+    applyPreferences();
 }

@@ -16,7 +16,7 @@ export function initialize(editorDom, editorProjectsDirHandle, config) {
     setupEventListeners();
 }
 
-async function saveProjectConfig(showAlert = true) {
+export async function saveProjectConfig(showAlert = true) {
     if (!projectsDirHandle) {
         if(showAlert) showNotification('Error', 'El directorio del proyecto no está disponible.');
         return;
@@ -53,6 +53,14 @@ async function saveProjectConfig(showAlert = true) {
         const newLayers = Array.from(layerInputs).map(input => input.value);
         // We only update sorting layers for now as it's the main one used for rendering logic
         currentProjectConfig.layers.sortingLayers = newLayers;
+
+        // NEW: Save Editor Preferences into Project Config to persist them per project
+        try {
+            const { getPreferences } = await import('./PreferencesWindow.js');
+            currentProjectConfig.preferences = getPreferences();
+        } catch (e) {
+            console.warn("Could not include preferences in project config save:", e);
+        }
     }
 
     try {

@@ -34,25 +34,6 @@ class InputManager {
         this._mainEventListenerTarget = window;
         this.attachWindow(window);
 
-        const setupCanvasListeners = (canvas) => {
-            if (!canvas) return;
-            // Make sure the canvas can be focused and will receive keyboard when clicked
-            // Mouse
-            canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
-            canvas.addEventListener('mousedown', (e) => { this._activeCanvas = e.currentTarget; e.currentTarget.focus(); this._onMouseDown(e); });
-            canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
-
-            // Track pointer enter/leave so we know which canvas the pointer is over
-            canvas.addEventListener('mouseenter', (e) => { this._activeCanvas = e.currentTarget; });
-            canvas.addEventListener('mouseleave', (e) => { if (this._activeCanvas === e.currentTarget) this._activeCanvas = this._sceneCanvas || null; });
-
-            // Touch
-            canvas.addEventListener('touchstart', (e) => { this._activeCanvas = e.currentTarget; this._onTouchStart(e); }, { passive: false });
-            canvas.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
-            canvas.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
-            canvas.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
-        };
-
         // Save references to both canvases so we can switch the active one when in play mode
         this._sceneCanvas = sceneCanvas;
         this._gameCanvas = gameCanvas;
@@ -60,13 +41,10 @@ class InputManager {
         this._activeCanvas = sceneCanvas || gameCanvas || null;
 
         if (sceneCanvas) {
-            // Make canvas focusable so keyboard input can be routed when clicked
-            if (typeof sceneCanvas.tabIndex !== 'number' || sceneCanvas.tabIndex < 0) sceneCanvas.tabIndex = 0;
-            setupCanvasListeners(sceneCanvas);
+            this.attachCanvas(sceneCanvas);
         }
         if (gameCanvas) {
-            if (typeof gameCanvas.tabIndex !== 'number' || gameCanvas.tabIndex < 0) gameCanvas.tabIndex = 0;
-            setupCanvasListeners(gameCanvas);
+            this.attachCanvas(gameCanvas);
         }
 
 
@@ -95,10 +73,51 @@ class InputManager {
     // Expose programmatic control for which canvas should be considered active
     static setActiveCanvas(canvas) {
         this._activeCanvas = canvas;
+        // If this is a new canvas, ensure it has the necessary listeners
+        this.attachCanvas(canvas);
+
         try {
             const id = canvas && canvas.id ? canvas.id : (canvas && canvas.tagName ? canvas.tagName : 'unknown');
             console.log(`[InputManager] Active canvas set to: ${id}`);
         } catch (e) {}
+    }
+
+    /**
+     * Attaches mouse and touch listeners to a specific canvas.
+     * @param {HTMLCanvasElement} canvas
+     */
+    static attachCanvas(canvas) {
+        if (!canvas || canvas._ceInputAttached) return;
+
+        // Mouse
+        canvas.addEventListener('mousemove', this._onMouseMove.bind(this));
+        canvas.addEventListener('mousedown', (e) => {
+            this._activeCanvas = e.currentTarget;
+            e.currentTarget.focus();
+            this._onMouseDown(e);
+        });
+        canvas.addEventListener('mouseup', this._onMouseUp.bind(this));
+
+        // Track pointer enter/leave
+        canvas.addEventListener('mouseenter', (e) => { this._activeCanvas = e.currentTarget; });
+        canvas.addEventListener('mouseleave', (e) => {
+            if (this._activeCanvas === e.currentTarget) {
+                this._activeCanvas = this._sceneCanvas || null;
+            }
+        });
+
+        // Touch
+        canvas.addEventListener('touchstart', (e) => {
+            this._activeCanvas = e.currentTarget;
+            this._onTouchStart(e);
+        }, { passive: false });
+        canvas.addEventListener('touchmove', this._onTouchMove.bind(this), { passive: false });
+        canvas.addEventListener('touchend', this._onTouchEnd.bind(this), { passive: false });
+        canvas.addEventListener('touchcancel', this._onTouchEnd.bind(this), { passive: false });
+
+        if (typeof canvas.tabIndex !== 'number' || canvas.tabIndex < 0) canvas.tabIndex = 0;
+
+        canvas._ceInputAttached = true;
     }
 
     // Call this when entering/exiting play mode so InputManager can default to the game canvas

@@ -8,8 +8,8 @@ import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
 import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFromModule } from './editor/ui/AnimationEditorWindow.js';
-import { initialize as initializePreferences, getPreferences } from './editor/ui/PreferencesWindow.js';
-import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI } from './editor/ui/ProjectSettingsWindow.js';
+import { initialize as initializePreferences, getPreferences, loadExternalPreferences } from './editor/ui/PreferencesWindow.js';
+import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI, saveProjectConfig as saveProjectConfigFromModule } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
 import { initialize as initializeHierarchy, updateHierarchy, duplicateSelectedMateria, handleContextMenuAction as handleHierarchyContextMenuAction } from './editor/ui/HierarchyWindow.js';
 import { initialize as initializeInspector, updateInspector, refreshInspectorValues } from './editor/ui/InspectorWindow.js';
@@ -870,6 +870,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!currentProjectConfig.ramLimit) {
             currentProjectConfig.ramLimit = 2048;
+        }
+
+        // Apply editor preferences from project config if they exist
+        if (currentProjectConfig.preferences) {
+            loadExternalPreferences(currentProjectConfig.preferences);
         }
 
         // The UI population is now handled by the module
@@ -3326,6 +3331,9 @@ public start() {
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
+
+            // Provide saveProjectConfig to the DOM for modular access
+            dom.saveProjectConfig = saveProjectConfigFromModule;
 
             updateLoadingProgress(70, "Construyendo interfaz...");
             initializeHierarchy({ dom, SceneManager, projectsDirHandle, selectMateriaCallback: selectMateria, showContextMenuCallback: showContextMenu, getSelectedMateria: () => selectedMateria, updateInspector });
