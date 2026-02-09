@@ -949,6 +949,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotificationDialog('Editor Ocupado', 'El editor todavía está procesando archivos en segundo plano. Por favor, espera un momento.');
                 return;
             }
+
+            const prefs = getPreferences();
+            const executionMode = prefs.executionMode || 'integrated';
+
+            // IMPORTANT: Open the window IMMEDIATELY to avoid browser popup blockers
+            // Browsers only allow window.open in the same tick as a user click.
+            if (executionMode === 'window' && !gameWindow) {
+                console.log("[Editor] Pre-opening game window to avoid popup blocker...");
+                const projectName = new URLSearchParams(window.location.search).get('project') || 'Juego';
+                gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
+                if (!gameWindow) {
+                    showNotificationDialog('Popup Bloqueado', 'No se pudo abrir la ventana del juego. Por favor, permite las ventanas emergentes para este sitio en tu navegador.');
+                    return;
+                }
+
+                // Set initial title
+                try { gameWindow.document.title = `Juego: ${projectName} | Creative Engine`; } catch(e) {}
+            }
+
         // MODIFICATION: In test mode (no handle), skip checks and just play.
         if (!projectsDirHandle) {
             console.log("Modo de prueba detectado (sin project handle). Iniciando el juego directamente.");
@@ -1032,6 +1051,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Actuar según el resultado
         if (allErrors.length > 0) {
+            if (gameWindow) {
+                gameWindow.close();
+                gameWindow = null;
+            }
             console.error(`Build fallido. Se encontraron errores en ${allErrors.length} archivo(s):`);
             for (const fileErrors of allErrors) {
                 console.error(`\n--- Errores en ${fileErrors.fileName} ---`);
@@ -1602,8 +1625,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const executionMode = prefs.executionMode || 'integrated';
 
         if (executionMode === 'window') {
-            console.log("[Editor] Starting game in external window...");
-            gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
+            console.log("[Editor] Initializing game in already opened external window...");
+
+            if (!gameWindow) {
+                // Fallback in case pre-opening failed or was skipped
+                gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
+            }
 
             if (!gameWindow) {
                 showNotificationDialog('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
@@ -1631,6 +1658,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 InputManager.attachWindow(gameWindow);
                 InputManager.setActiveCanvas(externalCanvas);
             }
+
+            // Sync Stop if window is closed manually
+            const checkWindowClosed = setInterval(() => {
+                if (!gameWindow || gameWindow.closed) {
+                    clearInterval(checkWindowClosed);
+                    if (isGameRunning) {
+                        console.log("[Editor] Game window closed manually. Stopping game...");
+                        stopGame();
+                    }
+                }
+            }, 500);
         }
 
         // --- ARCHITECTURE FIX: Instantiate a new PhysicsSystem for each play session ---
