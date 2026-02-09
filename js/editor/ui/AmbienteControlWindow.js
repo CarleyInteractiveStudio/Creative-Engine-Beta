@@ -31,17 +31,6 @@ const AmbienteControlWindow = (() => {
     }
 
     function setupEventListeners() {
-        if (dom.ambienteLuzAmbiental) {
-            dom.ambienteLuzAmbiental.addEventListener('input', (e) => {
-                const newColor = e.target.value;
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.luzAmbiental = newColor;
-                }
-                if (editorRenderer) editorRenderer.setAmbientLight(newColor);
-                if (gameRenderer) gameRenderer.setAmbientLight(newColor);
-            });
-        }
-
         if (dom.ambienteFiltroColor) {
             dom.ambienteFiltroColor.addEventListener('input', (e) => {
                 const newColor = e.target.value;
@@ -51,53 +40,45 @@ const AmbienteControlWindow = (() => {
             });
         }
 
-        if (dom.ambienteFiltroOpacidad) {
-            dom.ambienteFiltroOpacidad.addEventListener('input', (e) => {
-                const opacity = parseFloat(e.target.value);
-                dom.ambienteFiltroOpacidadValor.textContent = `${Math.round(opacity * 100)}%`;
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.nocheDiaOpacidad = opacity;
-                }
-            });
-        }
-
         if (dom.ambienteFiltroSwatches) {
             dom.ambienteFiltroSwatches.addEventListener('click', (e) => {
                 const swatch = e.target.closest('.color-swatch');
                 if (swatch) {
                     const color = swatch.dataset.color;
-                    dom.ambienteFiltroColor.value = color;
+                    if (dom.ambienteFiltroColor) dom.ambienteFiltroColor.value = color;
 
                     // Actualizar estado visual de los swatches
                     dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
                     swatch.classList.add('active');
 
-                    dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
+                    if (dom.ambienteFiltroColor) dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
                 }
             });
         }
 
         if (dom.ambienteTiempo) {
             dom.ambienteTiempo.addEventListener('input', (e) => {
-                const hour = e.target.value;
-                const displayHour = hour.padStart(2, '0');
-                dom.ambienteTiempoValor.textContent = `${displayHour}:00`;
+                const val = parseFloat(e.target.value);
+                const hour = Math.floor(val);
+                const minutes = Math.floor((val % 1) * 60);
+
+                const displayTime = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                if (dom.ambienteTiempoValor) dom.ambienteTiempoValor.textContent = displayTime;
 
                 if (window.SceneManager && window.SceneManager.currentScene) {
                     const ambiente = window.SceneManager.currentScene.ambiente;
-                    ambiente.hora = hour;
+                    ambiente.hora = val.toString();
 
-                    // En modo realista, variar la opacidad
-                    if (window.currentProjectConfig && window.currentProjectConfig.rendererMode === 'realista') {
-                        const newOpacity = getOpacityForHour(hour);
-                        dom.ambienteFiltroOpacidad.value = newOpacity;
-                        // Manual update to avoid event loop if needed, but dispatching is fine
-                        dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
-                    } else {
-                        // En modo normal, variar el color ambiental
+                    // Sincronizar opacidad automáticamente según la hora (0=Noche, 12=Día, 24=Noche)
+                    const newOpacity = Math.abs(val - 12) / 12;
+                    ambiente.nocheDiaOpacidad = newOpacity;
+
+                    // En modo normal (simple), seguimos variando el color ambiental para retrocompatibilidad visual básica
+                    if (window.currentProjectConfig && window.currentProjectConfig.rendererMode !== 'realista') {
                         const newColor = getColorForHour(hour);
-                        dom.ambienteLuzAmbiental.value = newColor;
-                        dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
+                        ambiente.luzAmbiental = newColor; // Actualizar dato en escena aunque no haya input
+                        if (editorRenderer) editorRenderer.setAmbientLight(newColor);
+                        if (gameRenderer) gameRenderer.setAmbientLight(newColor);
                     }
                 }
             });
@@ -121,10 +102,9 @@ const AmbienteControlWindow = (() => {
             currentTime = 0;
         }
 
-        const currentHour = Math.floor(currentTime);
-        dom.ambienteTiempo.value = currentHour;
+        dom.ambienteTiempo.value = currentTime;
 
-        // Dispatch an input event to trigger the color change logic
+        // Dispatch an input event to trigger the opacity/color change logic
         dom.ambienteTiempo.dispatchEvent(new Event('input'));
     }
 

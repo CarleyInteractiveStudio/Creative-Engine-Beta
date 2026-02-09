@@ -271,10 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Verification System Panel
             'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
-            'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
+            'ambiente-control-panel', 'ambiente-tiempo', 'ambiente-tiempo-valor',
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-filtro-color',
-            'ambiente-filtro-opacidad', 'ambiente-filtro-opacidad-valor', 'ambiente-filtro-swatches',
-            'ambiente-capas-excluidas', 'ambiente-filtro-presets',
+            'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
@@ -850,8 +849,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showEngineLogo: true,
                 keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                 layers: {
-                    sortingLayers: ['Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX', 'UI'],
-                    collisionLayers: ['Default', 'Player', 'Enemy', 'Ground', 'Trigger', 'Water', 'UI']
+                    sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
+                    collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
                 }
             };
             // Automatically save the default config file if it doesn't exist
@@ -2897,19 +2896,9 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         const ambiente = SceneManager.currentScene.ambiente;
 
         // Defensive checks to prevent "Cannot set properties of undefined (setting 'value')"
-        if (dom.ambienteLuzAmbiental) {
-            dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental || '#1a1a2a';
-            dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
-        }
-
         if (dom.ambienteFiltroColor) {
             dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
             dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
-        }
-
-        if (dom.ambienteFiltroOpacidad) {
-            dom.ambienteFiltroOpacidad.value = ambiente.nocheDiaOpacidad !== undefined ? ambiente.nocheDiaOpacidad : 1.0;
-            dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
         }
 
         if (dom.ambienteTiempo) {

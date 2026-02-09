@@ -4179,3 +4179,30 @@ body.game-mode #loading-overlay {
 #btn-exit-prefab.hidden {
     display: none;
 }
+
+/* Color Swatches for Ambiente Panel */
+.color-swatch-container {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 5px 0;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.1);
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+.color-swatch:hover {
+    transform: scale(1.1);
+    border-color: rgba(255,255,255,0.5);
+}
+
+.color-swatch.active {
+    border-color: var(--accent-color, #007acc);
+    box-shadow: 0 0 8px var(--accent-color, #007acc);
+}
