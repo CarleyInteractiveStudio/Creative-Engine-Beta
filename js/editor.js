@@ -68,6 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGameRunning = false;
     let isGamePaused = false;
     let lastFrameTime = 0;
+    let gameWindow = null;
+
+    // --- External Game Window Listener ---
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'CE_RUNNER_READY') {
+            console.log("[Editor] External Game Runner Ready!");
+            window.dispatchEvent(new CustomEvent('CE_EXTERNAL_RUNNER_READY'));
+        }
+    });
 
     // --- Console State & Utilities ---
     const originalLog = console.log, originalWarn = console.warn, originalError = console.error;
@@ -1589,6 +1598,41 @@ document.addEventListener('DOMContentLoaded', () => {
     startGame = async function() {
         if (isGameRunning) return;
 
+        const prefs = getPreferences();
+        const executionMode = prefs.executionMode || 'integrated';
+
+        if (executionMode === 'window') {
+            console.log("[Editor] Starting game in external window...");
+            gameWindow = window.open('runner.html', 'CreativeEngineGame', 'width=800,height=600');
+
+            if (!gameWindow) {
+                showNotificationDialog('Error', 'No se pudo abrir la ventana del juego. Por favor, desactiva el bloqueador de ventanas emergentes.');
+                return;
+            }
+
+            // Wait for the runner to be ready
+            await new Promise(resolve => {
+                const onReady = () => {
+                    window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+                    resolve();
+                };
+                window.addEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+
+                // Safety timeout
+                setTimeout(() => {
+                    window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+                    resolve();
+                }, 5000);
+            });
+
+            const externalCanvas = gameWindow.document.getElementById('game-canvas');
+            if (externalCanvas) {
+                gameRenderer.setCanvas(externalCanvas);
+                InputManager.attachWindow(gameWindow);
+                InputManager.setActiveCanvas(externalCanvas);
+            }
+        }
+
         // --- ARCHITECTURE FIX: Instantiate a new PhysicsSystem for each play session ---
         // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
@@ -1666,6 +1710,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     stopGame = async function() {
         if (!isGameRunning) return;
+
+        const prefs = getPreferences();
+        if (gameWindow) {
+            InputManager.detachWindow(gameWindow);
+            if (prefs.autoCloseGameWindow !== false) {
+                gameWindow.close();
+            }
+            gameWindow = null;
+            // Restore original game canvas
+            gameRenderer.setCanvas(dom.gameCanvas);
+        }
+
         isGameRunning = false;
         document.body.classList.remove('game-mode');
         // Restore InputManager out of game mode

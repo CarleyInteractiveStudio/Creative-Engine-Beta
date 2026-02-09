@@ -51,6 +51,12 @@ export class Renderer {
         this.ambientLight = color;
     }
 
+    setCanvas(newCanvas) {
+        this.canvas = newCanvas;
+        this.ctx = newCanvas.getContext('2d');
+        this.resize();
+    }
+
     resize() {
         const oldWidth = this.canvas.width;
         const oldHeight = this.canvas.height;

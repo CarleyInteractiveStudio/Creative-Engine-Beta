@@ -33,7 +33,9 @@ const defaultPrefs = {
         canManipulateScenes: false,
         canDownloadFiles: false
     },
-    showTerminal: false
+    showTerminal: false,
+    executionMode: 'integrated',
+    autoCloseGameWindow: true
 };
 
 export function getPreferences() {
@@ -159,6 +161,8 @@ function savePreferences() {
     };
 
     currentPreferences.showTerminal = _dom.prefsShowTerminal.checked;
+    currentPreferences.executionMode = _dom.prefsExecutionMode.value;
+    currentPreferences.autoCloseGameWindow = _dom.prefsAutoCloseGameWindow.checked;
 
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
     applyPreferences();
@@ -202,6 +206,8 @@ function loadPreferences() {
     if (_dom.prefsCarlCanDownloadFiles) _dom.prefsCarlCanDownloadFiles.checked = currentPreferences.carlPermissions.canDownloadFiles;
 
     if (_dom.prefsShowTerminal) _dom.prefsShowTerminal.checked = currentPreferences.showTerminal;
+    if (_dom.prefsExecutionMode) _dom.prefsExecutionMode.value = currentPreferences.executionMode || 'integrated';
+    if (_dom.prefsAutoCloseGameWindow) _dom.prefsAutoCloseGameWindow.checked = currentPreferences.autoCloseGameWindow !== false;
 
 
     if (_dom.prefsTheme) {

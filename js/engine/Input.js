@@ -31,9 +31,8 @@ class InputManager {
         if (this.initialized) return;
 
         // Keyboard listeners are global
-        window.addEventListener('keydown', this._onKeyDown.bind(this));
-        window.addEventListener('keyup', this._onKeyUp.bind(this));
-        window.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+        this._mainEventListenerTarget = window;
+        this.attachWindow(window);
 
         const setupCanvasListeners = (canvas) => {
             if (!canvas) return;
@@ -114,6 +113,36 @@ class InputManager {
             this._activeCanvas = this._sceneCanvas || this._activeCanvas;
             console.log('[InputManager] Game stopped: routing input back to scene canvas.');
         }
+    }
+
+    /**
+     * Attaches input listeners to a specific window.
+     * Useful for multi-window setups.
+     * @param {Window} targetWindow
+     */
+    static attachWindow(targetWindow) {
+        if (!targetWindow) return;
+
+        targetWindow.addEventListener('keydown', this._onKeyDown.bind(this));
+        targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
+        targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+
+        // Also listen for mouse move on the window to track position even when not over canvas
+        targetWindow.addEventListener('mousemove', (e) => {
+            this._mousePosition.x = e.clientX;
+            this._mousePosition.y = e.clientY;
+        });
+    }
+
+    /**
+     * Removes input listeners from a specific window.
+     * @param {Window} targetWindow
+     */
+    static detachWindow(targetWindow) {
+        if (!targetWindow) return;
+        targetWindow.removeEventListener('keydown', this._onKeyDown.bind(this));
+        targetWindow.removeEventListener('keyup', this._onKeyUp.bind(this));
+        targetWindow.removeEventListener('wheel', this._onWheel.bind(this));
     }
 
     // Keyboard Methods

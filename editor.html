@@ -1211,6 +1211,39 @@ public star() {
                     </div>
                 </fieldset>
                 <fieldset class="settings-section">
+                    <legend>Ejecución del Juego</legend>
+                    <label for="prefs-execution-mode">Modo de Ejecución</label>
+                    <select id="prefs-execution-mode">
+                        <option value="integrated">Pestaña Integrada (Juego)</option>
+                        <option value="window">Ventana del Navegador</option>
+                    </select>
+                    <p class="field-description">Selecciona dónde quieres que corra el juego al pulsar Play. El modo ventana es ideal para usar múltiples monitores.</p>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="prefs-auto-close-game-window" checked>
+                        <label for="prefs-auto-close-game-window">Cerrar ventana automáticamente al detener (Stop)</label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
+                    <legend>Multidispositivo <span class="badge development">EN DESARROLLO</span></legend>
+                    <div class="development-feature disabled">
+                         <div class="checkbox-field">
+                            <input type="checkbox" id="prefs-dev-remote-test" disabled>
+                            <label for="prefs-dev-remote-test">Probar juego en otro dispositivo (Remote Test)</label>
+                        </div>
+                        <p class="field-description">Permitirá ver y probar el juego en tiempo real en un móvil o tablet mediante un código QR.</p>
+                    </div>
+                    <hr>
+                    <div class="development-feature disabled">
+                         <div class="checkbox-field">
+                            <input type="checkbox" id="prefs-dev-team-mode" disabled>
+                            <label for="prefs-dev-team-mode">Modo Equipo (Colaboración en Tiempo Real)</label>
+                        </div>
+                        <p class="field-description">Permite que varios desarrolladores trabajen en la misma escena al mismo tiempo. Ideal para pequeños estudios.</p>
+                    </div>
+                </fieldset>
+
+                <fieldset class="settings-section">
                     <legend>Ventanas</legend>
                     <div class="checkbox-field">
                         <input type="checkbox" id="prefs-show-terminal">
