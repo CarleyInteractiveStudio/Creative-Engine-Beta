@@ -719,31 +719,32 @@ public star() {
                     </fieldset>
 
                     <fieldset class="inspector-section">
-                        <legend>Filtro de Escena (Realista)</legend>
+                        <legend>Noche / Día (Filtro)</legend>
                         <div class="inspector-row">
-                            <label for="ambiente-filtro-presets">Presets</label>
-                            <select id="ambiente-filtro-presets">
-                                <option value="">Personalizado...</option>
-                                <option value="#0a0a28" selected>Noche Profunda (Defecto)</option>
-                                <option value="#1a1a2a">Noche Urbana</option>
-                                <option value="#2a1a0a">Atardecer Cálido</option>
-                                <option value="#000000">Vacío Absoluto</option>
-                            </select>
+                            <label>Presets Rápidos</label>
+                            <div id="ambiente-filtro-swatches" class="color-swatch-container">
+                                <div class="color-swatch active" style="background: #0a0a28;" data-color="#0a0a28" title="Noche Profunda"></div>
+                                <div class="color-swatch" style="background: #1a1a2a;" data-color="#1a1a2a" title="Noche Urbana"></div>
+                                <div class="color-swatch" style="background: #2a1a0a;" data-color="#2a1a0a" title="Atardecer Cálido"></div>
+                                <div class="color-swatch" style="background: #000000;" data-color="#000000" title="Vacío Absoluto"></div>
+                                <div class="color-swatch" style="background: #0a280a;" data-color="#0a280a" title="Bosque Oscuro"></div>
+                                <div class="color-swatch" style="background: #280a0a;" data-color="#280a0a" title="Infierno"></div>
+                            </div>
                         </div>
                         <div class="inspector-row">
-                            <label for="ambiente-filtro-color">Color Filtro</label>
+                            <label for="ambiente-filtro-color">Color Personalizado</label>
                             <input type="color" id="ambiente-filtro-color" value="#0a0a28">
                         </div>
                         <div class="inspector-row">
-                            <label for="ambiente-filtro-opacidad">Opacidad</label>
+                            <label for="ambiente-filtro-opacidad">Nivel de Oscuridad</label>
                             <input type="range" id="ambiente-filtro-opacidad" min="0" max="1" step="0.01" value="1.0" style="flex-grow: 1;">
                             <span id="ambiente-filtro-opacidad-valor" style="margin-left: 10px; min-width: 40px;">100%</span>
                         </div>
-                        <p class="field-description">En modo realista, la opacidad se ajusta automáticamente con la hora si el ciclo está activo.</p>
+                        <p class="field-description">Este filtro simula la noche. En modo realista, se aclara automáticamente durante el día.</p>
                     </fieldset>
 
                     <fieldset class="inspector-section">
-                        <legend>Modo Normal (Luz Ambiental)</legend>
+                        <legend>Luz Ambiental (Modo Simple)</legend>
                         <div class="inspector-row">
                             <label for="ambiente-luz-ambiental">Color Base</label>
                             <input type="color" id="ambiente-luz-ambiental" value="#1a1a2a">
@@ -751,23 +752,10 @@ public star() {
                     </fieldset>
 
                     <fieldset class="inspector-section">
-                        <legend>Excluir Layers del Filtro</legend>
-                        <p class="field-description">Selecciona los layers que NO se verán afectados por la oscuridad.</p>
+                        <legend>Excluir Layers de Noche/Día</legend>
+                        <p class="field-description">Los objetos en estos layers ignorarán el filtro de oscuridad.</p>
                         <div id="ambiente-capas-excluidas" class="layer-exclusion-list" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
                             <!-- List of layers will be populated by JS -->
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="inspector-section">
-                        <legend>Máscaras de Iluminación</legend>
-                        <p class="field-description">Control de iluminación clásica por layers.</p>
-                        <div class="inspector-row">
-                            <label for="ambiente-mascara-tipo">Tipo de Máscara</label>
-                            <select id="ambiente-mascara-tipo">
-                                <option value="ninguna">Ninguna</option>
-                                <option value="layers">Basado en Layers</option>
-                                <option value="tags" disabled>Basado en Tags (Próximamente)</option>
-                            </select>
                         </div>
                     </fieldset>
                 </div>
@@ -972,13 +960,13 @@ public star() {
                 <fieldset class="settings-section">
                     <legend>Visual</legend>
                     <div class="inspector-row">
-                        <label for="settings-renderer-mode">Modo de Renderizado</label>
+                        <label for="settings-renderer-mode">Modo de Gráficos</label>
                         <select id="settings-renderer-mode">
-                            <option value="canvas2d">Simple (Canvas2D)</option>
-                            <option value="realista">Realista (PixiRenderer)</option>
+                            <option value="canvas2d">Simple (2D Estándar)</option>
+                            <option value="realista">Avanzado (Iluminación y Noche/Día)</option>
                         </select>
                     </div>
-                    <p class="field-description">Elige el motor gráfico para tu proyecto. 'Simple' para 2D puro, 'Realista' para efectos de iluminación.</p>
+                    <p class="field-description">El modo 'Avanzado' permite usar el sistema de Noche/Día y luces dinámicas.</p>
                     <hr>
                     <label>Icono del Ejecutable</label>
                     <div class="image-picker">

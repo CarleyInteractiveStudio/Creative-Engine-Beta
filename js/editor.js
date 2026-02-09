@@ -848,8 +848,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showEngineLogo: true,
                 keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                 layers: {
-                    sortingLayers: ['Default', 'UI'],
-                    collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
+                    sortingLayers: ['Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX', 'UI'],
+                    collisionLayers: ['Default', 'Player', 'Enemy', 'Ground', 'Trigger', 'Water', 'UI']
                 }
             };
             // Automatically save the default config file if it doesn't exist
@@ -1470,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const ambiente = SceneManager.currentScene.ambiente;
-            rendererInstance.beginLights(ambiente.filtroColor, ambiente.filtroOpacidad);
+            rendererInstance.beginLights(ambiente.nocheDiaColor, ambiente.nocheDiaOpacidad);
             for (const lightMateria of lights.point) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.PointLight2D);
@@ -2893,15 +2893,25 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
 
         const ambiente = SceneManager.currentScene.ambiente;
-        dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental;
-        dom.ambienteTiempo.value = ambiente.hora;
-        dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico;
-        dom.ambienteDuracionDia.value = ambiente.duracionDia;
-        dom.ambienteMascaraTipo.value = ambiente.mascaraTipo;
+        dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental || '#1a1a2a';
+        dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
+        dom.ambienteFiltroOpacidad.value = ambiente.nocheDiaOpacidad !== undefined ? ambiente.nocheDiaOpacidad : 1.0;
+        dom.ambienteTiempo.value = ambiente.hora || '6';
+        dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico || false;
+        dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
 
-        // Trigger input events to update UI text and renderer color
+        // Trigger input events to update UI text and renderer state
         dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
+        dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
+        dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
         dom.ambienteTiempo.dispatchEvent(new Event('input'));
+
+        // Update swatch active state
+        if (dom.ambienteFiltroSwatches) {
+            dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => {
+                s.classList.toggle('active', s.dataset.color === dom.ambienteFiltroColor.value);
+            });
+        }
     }
 
     // --- 7. Initial Setup ---

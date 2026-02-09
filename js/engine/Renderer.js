@@ -10,6 +10,8 @@ export class Renderer {
 
         this.lightMapCanvas = document.createElement('canvas');
         this.lightMapCtx = this.lightMapCanvas.getContext('2d');
+        this.lightBufferCanvas = document.createElement('canvas');
+        this.lightBufferCtx = this.lightBufferCanvas.getContext('2d');
         this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
 
         if (this.isEditor) {
@@ -204,6 +206,7 @@ export class Renderer {
         this.lightMapCtx.save();
         // Fill entire canvas with ambient light in screen space to remove world-space limits
         this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.lightMapCtx.globalCompositeOperation = 'source-over';
 
         // Determine the base "ambient" color for the lightmap
         // If no filter color is provided, use the old ambientLight property
@@ -214,7 +217,7 @@ export class Renderer {
         this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
 
         // Overlay the filter color with the specified opacity
-        // Using multiply or just source-over with alpha works here
+        // Using source-over with alpha correctly blends the filter with white
         this.lightMapCtx.globalAlpha = filtroOpacidad;
         this.lightMapCtx.fillStyle = baseColor;
         this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
@@ -295,17 +298,24 @@ export class Renderer {
         const { sprite, color, intensity } = light;
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
 
-        const width = sprite.naturalWidth * scale.x;
-        const height = sprite.naturalHeight * scale.y;
+        const width = Math.ceil(sprite.naturalWidth * scale.x);
+        const height = Math.ceil(sprite.naturalHeight * scale.y);
+
+        // Use buffer to colorize the sprite light properly
+        this.lightBufferCanvas.width = width;
+        this.lightBufferCanvas.height = height;
+        this.lightBufferCtx.clearRect(0, 0, width, height);
+        this.lightBufferCtx.drawImage(sprite, 0, 0, width, height);
+        this.lightBufferCtx.globalCompositeOperation = 'source-in';
+        this.lightBufferCtx.fillStyle = color;
+        this.lightBufferCtx.fillRect(0, 0, width, height);
+
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(rotation * Math.PI / 180);
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = intensity;
-        ctx.drawImage(sprite, -width / 2, -height / 2, width, height);
-        ctx.fillStyle = color;
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.fillRect(-width / 2, -height / 2, width, height);
+        ctx.drawImage(this.lightBufferCanvas, -width / 2, -height / 2, width, height);
         ctx.restore();
         ctx.globalAlpha = 1.0;
     }

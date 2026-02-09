@@ -113,6 +113,18 @@ function populateTagsAndLayers() {
     layerList.innerHTML = '';
     const totalLayers = 32;
     const builtInLayers = ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI'];
+    // standard 2D layers to suggest if empty
+    const default2DLayers = {
+        6: 'Background',
+        7: 'Midground',
+        8: 'Foreground',
+        9: 'Player',
+        10: 'Enemy',
+        11: 'NPC',
+        12: 'Items',
+        13: 'VFX',
+        14: 'TopLayer'
+    };
 
     for (let i = 0; i < totalLayers; i++) {
         const item = document.createElement('div');

@@ -16,7 +16,7 @@ const AmbienteControlWindow = (() => {
             ambienteFiltroColor: document.getElementById('ambiente-filtro-color'),
             ambienteFiltroOpacidad: document.getElementById('ambiente-filtro-opacidad'),
             ambienteFiltroOpacidadValor: document.getElementById('ambiente-filtro-opacidad-valor'),
-            ambienteFiltroPresets: document.getElementById('ambiente-filtro-presets'),
+            ambienteFiltroSwatches: document.getElementById('ambiente-filtro-swatches'),
             ambienteCapasExcluidas: document.getElementById('ambiente-capas-excluidas'),
             ambienteTiempo: document.getElementById('ambiente-tiempo'),
             ambienteTiempoValor: document.getElementById('ambiente-tiempo-valor'),
@@ -47,7 +47,7 @@ const AmbienteControlWindow = (() => {
             dom.ambienteFiltroColor.addEventListener('input', (e) => {
                 const newColor = e.target.value;
                 if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.filtroColor = newColor;
+                    window.SceneManager.currentScene.ambiente.nocheDiaColor = newColor;
                 }
             });
         }
@@ -57,16 +57,22 @@ const AmbienteControlWindow = (() => {
                 const opacity = parseFloat(e.target.value);
                 dom.ambienteFiltroOpacidadValor.textContent = `${Math.round(opacity * 100)}%`;
                 if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.filtroOpacidad = opacity;
+                    window.SceneManager.currentScene.ambiente.nocheDiaOpacidad = opacity;
                 }
             });
         }
 
-        if (dom.ambienteFiltroPresets) {
-            dom.ambienteFiltroPresets.addEventListener('change', (e) => {
-                const color = e.target.value;
-                if (color) {
+        if (dom.ambienteFiltroSwatches) {
+            dom.ambienteFiltroSwatches.addEventListener('click', (e) => {
+                const swatch = e.target.closest('.color-swatch');
+                if (swatch) {
+                    const color = swatch.dataset.color;
                     dom.ambienteFiltroColor.value = color;
+
+                    // Actualizar estado visual de los swatches
+                    dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    swatch.classList.add('active');
+
                     dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
                 }
             });
@@ -86,6 +92,7 @@ const AmbienteControlWindow = (() => {
                     if (window.currentProjectConfig && window.currentProjectConfig.rendererMode === 'realista') {
                         const newOpacity = getOpacityForHour(hour);
                         dom.ambienteFiltroOpacidad.value = newOpacity;
+                        // Manual update to avoid event loop if needed, but dispatching is fine
                         dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
                     } else {
                         // En modo normal, variar el color ambiental
