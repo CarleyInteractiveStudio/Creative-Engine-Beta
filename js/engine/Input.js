@@ -4,6 +4,7 @@
  */
 
 class InputManager {
+    static _gameWindows = new Set();
     static _keys = new Map();
     static _keysDown = new Set();
     static _keysUp = new Set();
@@ -83,6 +84,15 @@ class InputManager {
     }
 
     /**
+     * Updates the reference to the primary game canvas.
+     * @param {HTMLCanvasElement} canvas
+     */
+    static setGameCanvas(canvas) {
+        this._gameCanvas = canvas;
+        if (canvas) this.attachCanvas(canvas);
+    }
+
+    /**
      * Attaches mouse and touch listeners to a specific canvas.
      * @param {HTMLCanvasElement} canvas
      */
@@ -142,6 +152,11 @@ class InputManager {
     static attachWindow(targetWindow) {
         if (!targetWindow) return;
 
+        // Track external windows that are dedicated to the game
+        if (targetWindow !== window) {
+            this._gameWindows.add(targetWindow);
+        }
+
         targetWindow.addEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.addEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
@@ -159,6 +174,9 @@ class InputManager {
      */
     static detachWindow(targetWindow) {
         if (!targetWindow) return;
+
+        this._gameWindows.delete(targetWindow);
+
         targetWindow.removeEventListener('keydown', this._onKeyDown.bind(this));
         targetWindow.removeEventListener('keyup', this._onKeyUp.bind(this));
         targetWindow.removeEventListener('wheel', this._onWheel.bind(this));
@@ -166,8 +184,12 @@ class InputManager {
 
     // Keyboard Methods
     static _onKeyDown(event) {
-        // If the engine is playing, ignore keyboard input unless the active canvas is the game canvas
-        if (this._isGameRunning && this._activeCanvas !== this._gameCanvas) return;
+        // If the engine is playing, ignore keyboard input unless:
+        // 1. It comes from an external game window
+        // 2. The active canvas is the game canvas (integrated mode)
+        const isFromGameWindow = this._gameWindows.has(event.view);
+        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+
         const key = event.key;
         if (!this._keys.get(key)) {
             this._keysDown.add(key);
@@ -176,7 +198,9 @@ class InputManager {
     }
 
     static _onKeyUp(event) {
-        if (this._isGameRunning && this._activeCanvas !== this._gameCanvas) return;
+        const isFromGameWindow = this._gameWindows.has(event.view);
+        if (this._isGameRunning && !isFromGameWindow && this._activeCanvas !== this._gameCanvas) return;
+
         const key = event.key;
         this._keys.set(key, false);
         this._keysUp.add(key);

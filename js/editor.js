@@ -1663,6 +1663,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (externalCanvas) {
                 gameRenderer.setCanvas(externalCanvas);
                 InputManager.attachWindow(gameWindow);
+                InputManager.setGameCanvas(externalCanvas);
                 InputManager.setActiveCanvas(externalCanvas);
             }
 
@@ -1765,6 +1766,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameWindow = null;
             // Restore original game canvas
             gameRenderer.setCanvas(dom.gameCanvas);
+            InputManager.setGameCanvas(dom.gameCanvas);
         }
 
         isGameRunning = false;
