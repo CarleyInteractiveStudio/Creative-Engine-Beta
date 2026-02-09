@@ -38,7 +38,6 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -2305,7 +2304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-floating-game',
+            'btn-play', 'btn-pause', 'btn-stop',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene',
             // Asset Selector Bubble Elements
@@ -2802,26 +2801,20 @@ public star() {
             editorLoopId = requestAnimationFrame(editorLoop);
 
             const oldPlayButton = document.getElementById('btn-play');
-            const newPlayButton = oldPlayButton.cloneNode(true);
-            oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
-            dom.btnPlay = newPlayButton;
-
-            dom.btnPlay.addEventListener('click', runChecksAndPlay);
-            dom.btnPause.addEventListener('click', () => {
+            if (oldPlayButton) {
+                const newPlayButton = oldPlayButton.cloneNode(true);
+                oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
+                dom.btnPlay = newPlayButton;
+                dom.btnPlay.addEventListener('click', runChecksAndPlay);
+            }
+            if (dom.btnPause) dom.btnPause.addEventListener('click', () => {
                 isGamePaused = !isGamePaused;
                 console.log(isGamePaused ? "Game Paused" : "Game Resumed");
                 updateGameControlsUI();
             });
-            dom.btnStop.addEventListener('click', stopGame);
-            dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
-            dom.btnSavePrefab.addEventListener('click', saveCurrentPrefab);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
+            if (dom.btnStop) dom.btnStop.addEventListener('click', stopGame);
+            if (dom.btnExitPrefab) dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
+            if (dom.btnSavePrefab) dom.btnSavePrefab.addEventListener('click', saveCurrentPrefab);
 
 
             originalStartGame = startGame;
