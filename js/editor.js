@@ -1469,7 +1469,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            rendererInstance.beginLights();
+            const ambiente = SceneManager.currentScene.ambiente;
+            rendererInstance.beginLights(ambiente.filtroColor, ambiente.filtroOpacidad);
             for (const lightMateria of lights.point) {
                 if (!lightMateria.isActive) continue;
                 const light = lightMateria.getComponent(Components.PointLight2D);
@@ -1507,30 +1508,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const handleRender = (camera) => {
             rendererInstance.beginWorld(camera);
 
-            const useLayerMasks = SceneManager.currentScene.ambiente.mascaraTipo === 'layers' && currentProjectConfig.rendererMode === 'realista';
+            const isRealista = currentProjectConfig.rendererMode === 'realista';
+            const ambiente = SceneManager.currentScene.ambiente;
+            const capasExcluidas = ambiente.capasExcluidas || [];
 
-            if (useLayerMasks) {
-                const allObjects = [...materiasToRender, ...tilemapsToRender, ...canvasesToRender, ...pointLights, ...spotLights, ...freeformLights, ...spriteLights];
-                const uniqueLayers = [...new Set(allObjects.map(m => m.layer))].sort((a, b) => a - b);
+            if (isRealista) {
+                // Separar objetos en filtrados y excluidos
+                const filteredMaterias = materiasToRender.filter(m => !capasExcluidas.includes(m.layer));
+                const excludedMaterias = materiasToRender.filter(m => capasExcluidas.includes(m.layer));
 
-                uniqueLayers.forEach(layer => {
-                    const objectsInLayer = materiasToRender.filter(m => m.layer === layer);
-                    const tilemapsInLayer = tilemapsToRender.filter(m => m.layer === layer);
-                    const canvasesInLayer = canvasesToRender.filter(m => m.layer === layer);
-                    const lightsInLayer = {
-                        point: pointLights.filter(l => l.layer === layer),
-                        spot: spotLights.filter(l => l.layer === layer),
-                        freeform: freeformLights.filter(l => l.layer === layer),
-                        sprite: spriteLights.filter(l => l.layer === layer)
-                    };
+                const filteredTilemaps = tilemapsToRender.filter(m => !capasExcluidas.includes(m.layer));
+                const excludedTilemaps = tilemapsToRender.filter(m => capasExcluidas.includes(m.layer));
 
-                    drawObjects(rendererInstance.ctx, camera, objectsInLayer, tilemapsInLayer, canvasesInLayer);
-                    drawLights(lightsInLayer);
-                });
+                const filteredCanvases = canvasesToRender.filter(m => !capasExcluidas.includes(m.layer));
+                const excludedCanvases = canvasesToRender.filter(m => capasExcluidas.includes(m.layer));
+
+                // 1. Dibujar objetos que SÍ reciben el filtro/luces
+                drawObjects(rendererInstance.ctx, camera, filteredMaterias, filteredTilemaps, filteredCanvases);
+
+                // 2. Aplicar capa de luces (multiplicar)
+                // Nota: Las luces se dibujan siempre basándose en su propia capa si mascaraTipo es 'layers',
+                // pero aquí estamos en el modo global o por defecto.
+                drawLights(allLights);
+
+                // 3. Dibujar objetos excluidos (encima de la oscuridad)
+                drawObjects(rendererInstance.ctx, camera, excludedMaterias, excludedTilemaps, excludedCanvases);
 
             } else {
                 drawObjects(rendererInstance.ctx, camera, materiasToRender, tilemapsToRender, canvasesToRender);
-                drawLights(allLights);
             }
 
 

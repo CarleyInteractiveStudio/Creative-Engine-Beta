@@ -695,7 +695,7 @@ public star() {
                 <div class="resize-handle" data-direction="nw"></div>
             </div>
 
-            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 450px;">
+            <div id="ambiente-control-panel" class="editor-panel floating-panel hidden" style="width: 350px; height: 600px;">
                 <div class="panel-header">
                     <span>Control de Ambiente</span>
                     <button class="close-panel-btn" data-panel="ambiente-control-panel">&times;</button>
@@ -703,10 +703,6 @@ public star() {
                 <div class="panel-content">
                     <fieldset class="inspector-section">
                         <legend>Ciclo Día/Noche</legend>
-                        <div class="inspector-row">
-                            <label for="ambiente-luz-ambiental">Luz Ambiental</label>
-                            <input type="color" id="ambiente-luz-ambiental" value="#1a1a2a">
-                        </div>
                         <div class="inspector-row">
                             <label for="ambiente-tiempo">Hora del Día</label>
                             <input type="range" id="ambiente-tiempo" min="0" max="23" value="6" style="flex-grow: 1;">
@@ -721,9 +717,50 @@ public star() {
                             <input type="number" id="ambiente-duracion-dia" min="1" value="60">
                         </div>
                     </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend>Filtro de Escena (Realista)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-filtro-presets">Presets</label>
+                            <select id="ambiente-filtro-presets">
+                                <option value="">Personalizado...</option>
+                                <option value="#0a0a28" selected>Noche Profunda (Defecto)</option>
+                                <option value="#1a1a2a">Noche Urbana</option>
+                                <option value="#2a1a0a">Atardecer Cálido</option>
+                                <option value="#000000">Vacío Absoluto</option>
+                            </select>
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-filtro-color">Color Filtro</label>
+                            <input type="color" id="ambiente-filtro-color" value="#0a0a28">
+                        </div>
+                        <div class="inspector-row">
+                            <label for="ambiente-filtro-opacidad">Opacidad</label>
+                            <input type="range" id="ambiente-filtro-opacidad" min="0" max="1" step="0.01" value="1.0" style="flex-grow: 1;">
+                            <span id="ambiente-filtro-opacidad-valor" style="margin-left: 10px; min-width: 40px;">100%</span>
+                        </div>
+                        <p class="field-description">En modo realista, la opacidad se ajusta automáticamente con la hora si el ciclo está activo.</p>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend>Modo Normal (Luz Ambiental)</legend>
+                        <div class="inspector-row">
+                            <label for="ambiente-luz-ambiental">Color Base</label>
+                            <input type="color" id="ambiente-luz-ambiental" value="#1a1a2a">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="inspector-section">
+                        <legend>Excluir Layers del Filtro</legend>
+                        <p class="field-description">Selecciona los layers que NO se verán afectados por la oscuridad.</p>
+                        <div id="ambiente-capas-excluidas" class="layer-exclusion-list" style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px;">
+                            <!-- List of layers will be populated by JS -->
+                        </div>
+                    </fieldset>
+
                     <fieldset class="inspector-section">
                         <legend>Máscaras de Iluminación</legend>
-                        <p class="field-description">Usa Layers o Tags para controlar qué luces afectan a qué objetos.</p>
+                        <p class="field-description">Control de iluminación clásica por layers.</p>
                         <div class="inspector-row">
                             <label for="ambiente-mascara-tipo">Tipo de Máscara</label>
                             <select id="ambiente-mascara-tipo">

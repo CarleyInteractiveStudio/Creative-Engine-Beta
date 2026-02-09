@@ -17,6 +17,9 @@ export class Scene {
         this.materias = [];
         this.ambiente = {
             luzAmbiental: '#1a1a2a',
+            filtroColor: '#0a0a28',
+            filtroOpacidad: 1.0,
+            capasExcluidas: [],
             hora: '6',
             cicloAutomatico: false,
             duracionDia: '60',
@@ -238,6 +241,9 @@ export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {
             luzAmbiental: dom ? (dom.ambienteLuzAmbiental ? dom.ambienteLuzAmbiental.value : (scene.ambiente.luzAmbiental || '#1a1a2a')) : (scene.ambiente.luzAmbiental || '#1a1a2a'),
+            filtroColor: scene.ambiente.filtroColor || '#0a0a28',
+            filtroOpacidad: scene.ambiente.filtroOpacidad !== undefined ? scene.ambiente.filtroOpacidad : 1.0,
+            capasExcluidas: scene.ambiente.capasExcluidas || [],
             hora: dom ? (dom.ambienteTiempo ? dom.ambienteTiempo.value : (scene.ambiente.hora || '6')) : (scene.ambiente.hora || '6'),
             cicloAutomatico: dom ? (dom.ambienteCicloAutomatico ? dom.ambienteCicloAutomatico.checked : (scene.ambiente.cicloAutomatico || false)) : (scene.ambiente.cicloAutomatico || false),
             duracionDia: dom ? (dom.ambienteDuracionDia ? dom.ambienteDuracionDia.value : (scene.ambiente.duracionDia || '60')) : (scene.ambiente.duracionDia || '60'),

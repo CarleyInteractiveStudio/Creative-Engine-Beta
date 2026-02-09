@@ -200,12 +200,26 @@ export class Renderer {
         this.ctx.restore();
     }
 
-    beginLights() {
+    beginLights(filtroColor = null, filtroOpacidad = 1.0) {
         this.lightMapCtx.save();
         // Fill entire canvas with ambient light in screen space to remove world-space limits
         this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
-        this.lightMapCtx.fillStyle = this.ambientLight;
+
+        // Determine the base "ambient" color for the lightmap
+        // If no filter color is provided, use the old ambientLight property
+        const baseColor = filtroColor || this.ambientLight;
+
+        // Start with a white background (no filtering)
+        this.lightMapCtx.fillStyle = '#ffffff';
         this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
+
+        // Overlay the filter color with the specified opacity
+        // Using multiply or just source-over with alpha works here
+        this.lightMapCtx.globalAlpha = filtroOpacidad;
+        this.lightMapCtx.fillStyle = baseColor;
+        this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
+        this.lightMapCtx.globalAlpha = 1.0;
+
         this.lightMapCtx.restore();
 
         // Prepare for world-space light drawing
