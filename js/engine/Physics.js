@@ -124,8 +124,8 @@ export class PhysicsSystem {
                 // Apply angular velocity
                 if (!rigidbody.constraints.freezeRotation) {
                     transform.rotation += rigidbody.angularVelocity * PHYSICS_SCALE * deltaTime;
-                    // Apply angular drag
-                    rigidbody.angularVelocity *= (1.0 - rigidbody.angularDrag);
+                    // Apply angular drag (scaled by deltaTime for consistent behavior across frame rates)
+                    rigidbody.angularVelocity *= Math.pow(1.0 - rigidbody.angularDrag, deltaTime);
                 }
             }
         }
@@ -368,9 +368,24 @@ export class PhysicsSystem {
         let invMassA = isADynamic ? 1 / (rbA.mass || 1) : 0;
         let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
 
-        // Inertia approximation (simplified for boxes)
-        let invInertiaA = isADynamic && !rbA.constraints.freezeRotation ? 1 / (rbA.mass * 1000) : 0;
-        let invInertiaB = isBDynamic && !rbB.constraints.freezeRotation ? 1 / (rbB.mass * 1000) : 0;
+        // Better Inertia Calculation based on collider size
+        const getInertia = (materia, rb) => {
+            if (!rb || rb.constraints.freezeRotation) return 0;
+            const collider = this.getCollider(materia);
+            const transform = materia.getComponent(Components.Transform);
+            let w = 100, h = 100;
+            if (collider && collider.size) {
+                w = collider.size.x * (transform ? transform.scale.x : 1);
+                h = collider.size.y * (transform ? transform.scale.y : 1);
+            }
+            // I = 1/12 * m * (w^2 + h^2)
+            return (1/12) * rb.mass * (w * w + h * h);
+        };
+
+        const inertiaA = getInertia(materiaA, rbA);
+        const inertiaB = getInertia(materiaB, rbB);
+        const invInertiaA = inertiaA > 0 ? 1 / inertiaA : 0;
+        const invInertiaB = inertiaB > 0 ? 1 / inertiaB : 0;
 
         const raCrossN = this._cross(ra, normal);
         const rbCrossN = this._cross(rb, normal);
@@ -483,7 +498,8 @@ export class PhysicsSystem {
             return {
                 x: normal.x * overlap,
                 y: normal.y * overlap,
-                magnitude: overlap
+                magnitude: overlap,
+                contactPoint: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
             };
         }
 
@@ -604,7 +620,8 @@ export class PhysicsSystem {
             return {
                 x: normalizedNormal.x * overlap,
                 y: normalizedNormal.y * overlap,
-                magnitude: overlap
+                magnitude: overlap,
+                contactPoint: { x: (circle.x + closestPointInBox.x) / 2, y: (circle.y + closestPointInBox.y) / 2 }
             };
         }
 
@@ -673,31 +690,50 @@ export class PhysicsSystem {
             mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
         }
 
-        // Find a contact point (the vertex that is deepest in the other object)
-        let contactPoint = { x: 0, y: 0 };
-        let deepestOverlap = -Infinity;
-
-        // Check vertices of A against B
-        for (const vertex of verticesA) {
-            const projected = this._dot(vertex, mtvAxis);
-            const projectionB = this._project(verticesB, mtvAxis);
-            const overlap = projectionB.max - projected;
-            if (overlap > deepestOverlap) {
-                deepestOverlap = overlap;
-                contactPoint = { x: vertex.x, y: vertex.y };
-            }
+        // --- MANIFOLD CONTACT POINT LOGIC ---
+        // Find all vertices of A that are inside B, and all vertices of B that are inside A.
+        // This provides much better stability and symmetric rotation.
+        const contactPoints = [];
+        for (const v of verticesA) {
+            if (this._isPointInBox(v, verticesB)) contactPoints.push(v);
+        }
+        for (const v of verticesB) {
+            if (this._isPointInBox(v, verticesA)) contactPoints.push(v);
         }
 
-        // Also check vertices of B against A (using inverted axis for B)
-        const invAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
-        for (const vertex of verticesB) {
-            const projected = this._dot(vertex, invAxis);
-            const projectionA = this._project(verticesA, invAxis);
-            const overlap = projectionA.max - projected;
-            if (overlap > deepestOverlap) {
-                deepestOverlap = overlap;
-                contactPoint = { x: vertex.x, y: vertex.y };
+        let contactPoint;
+        if (contactPoints.length > 0) {
+            // Average all points to find the center of the contact manifold
+            contactPoint = {
+                x: contactPoints.reduce((sum, p) => sum + p.x, 0) / contactPoints.length,
+                y: contactPoints.reduce((sum, p) => sum + p.y, 0) / contactPoints.length
+            };
+        } else {
+            // Fallback for edge-edge collisions or when no vertex is clearly inside:
+            // find the "deepest" vertex as a single point of contact.
+            let deepestOverlap = -Infinity;
+            let bestPoint = { x: (centerA.x + centerB.x) / 2, y: (centerA.y + centerB.y) / 2 };
+
+            for (const vertex of verticesA) {
+                const projected = this._dot(vertex, mtvAxis);
+                const projectionB = this._project(verticesB, mtvAxis);
+                const overlap = projectionB.max - projected;
+                if (overlap > deepestOverlap) {
+                    deepestOverlap = overlap;
+                    bestPoint = { x: vertex.x, y: vertex.y };
+                }
             }
+            const invAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
+            for (const vertex of verticesB) {
+                const projected = this._dot(vertex, invAxis);
+                const projectionA = this._project(verticesA, invAxis);
+                const overlap = projectionA.max - projected;
+                if (overlap > deepestOverlap) {
+                    deepestOverlap = overlap;
+                    bestPoint = { x: vertex.x, y: vertex.y };
+                }
+            }
+            contactPoint = bestPoint;
         }
 
         return {
@@ -706,6 +742,22 @@ export class PhysicsSystem {
             magnitude: minOverlap,
             contactPoint: contactPoint
         };
+    }
+
+    /**
+     * Comprueba si un punto está dentro de un cuadrilátero definido por 4 vértices (en orden horario).
+     */
+    _isPointInBox(point, vertices) {
+        for (let i = 0; i < 4; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[(i + 1) % 4];
+            const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+            const toPoint = { x: point.x - p1.x, y: point.y - p1.y };
+            // El producto cruzado indica de qué lado del borde está el punto.
+            // Para vértices en sentido horario, un punto interno debe estar siempre a la derecha (cross > -epsilon).
+            if (this._cross(edge, toPoint) < -1e-6) return false;
+        }
+        return true;
     }
 
     _getVertices(transform, collider) {
