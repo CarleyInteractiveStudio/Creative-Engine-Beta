@@ -14,12 +14,12 @@ const AmbienteControlWindow = (() => {
             ambienteControlPanel: document.getElementById('ambiente-control-panel'),
             ambienteLuzAmbiental: document.getElementById('ambiente-luz-ambiental'),
             ambienteFiltroColor: document.getElementById('ambiente-filtro-color'),
-            ambienteFiltroOpacidad: document.getElementById('ambiente-filtro-opacidad'),
-            ambienteFiltroOpacidadValor: document.getElementById('ambiente-filtro-opacidad-valor'),
             ambienteFiltroSwatches: document.getElementById('ambiente-filtro-swatches'),
             ambienteCapasExcluidas: document.getElementById('ambiente-capas-excluidas'),
             ambienteTiempo: document.getElementById('ambiente-tiempo'),
             ambienteTiempoValor: document.getElementById('ambiente-tiempo-valor'),
+            ambienteNocheDiaIntensidad: document.getElementById('ambiente-noche-dia-intensidad'),
+            ambienteNocheDiaIntensidadValor: document.getElementById('ambiente-noche-dia-intensidad-valor'),
             ambienteCicloAutomatico: document.getElementById('ambiente-ciclo-automatico'),
             ambienteDuracionDia: document.getElementById('ambiente-duracion-dia')
         };
@@ -70,16 +70,34 @@ const AmbienteControlWindow = (() => {
                     ambiente.hora = val.toString();
 
                     // Sincronizar opacidad automáticamente según la hora (0=Noche, 12=Día, 24=Noche)
-                    const newOpacity = Math.abs(val - 12) / 12;
-                    ambiente.nocheDiaOpacidad = newOpacity;
+                    const baseOpacity = Math.abs(val - 12) / 12;
+                    const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
+                    ambiente.nocheDiaOpacidad = baseOpacity * intensidad;
 
-                    // En modo normal (simple), seguimos variando el color ambiental para retrocompatibilidad visual básica
                     if (window.currentProjectConfig && window.currentProjectConfig.rendererMode !== 'realista') {
                         const newColor = getColorForHour(hour);
-                        ambiente.luzAmbiental = newColor; // Actualizar dato en escena aunque no haya input
+                        ambiente.luzAmbiental = newColor;
                         if (editorRenderer) editorRenderer.setAmbientLight(newColor);
                         if (gameRenderer) gameRenderer.setAmbientLight(newColor);
                     }
+                }
+            });
+        }
+
+        if (dom.ambienteNocheDiaIntensidad) {
+            dom.ambienteNocheDiaIntensidad.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (dom.ambienteNocheDiaIntensidadValor) {
+                    dom.ambienteNocheDiaIntensidadValor.textContent = `${Math.round(val * 100)}%`;
+                }
+
+                if (window.SceneManager && window.SceneManager.currentScene) {
+                    const ambiente = window.SceneManager.currentScene.ambiente;
+                    ambiente.nocheDiaIntensidad = val;
+
+                    const currentHour = parseFloat(ambiente.hora || '6');
+                    const baseOpacity = Math.abs(currentHour - 12) / 12;
+                    ambiente.nocheDiaOpacidad = baseOpacity * val;
                 }
             });
         }

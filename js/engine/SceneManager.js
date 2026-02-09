@@ -17,8 +17,9 @@ export class Scene {
         this.materias = [];
         this.ambiente = {
             luzAmbiental: '#1a1a2a',
-            nocheDiaColor: '#0a0a28', // Branding rename
-            nocheDiaOpacidad: 1.0,     // Branding rename
+            nocheDiaColor: '#0a0a28',
+            nocheDiaOpacidad: 1.0,
+            nocheDiaIntensidad: 1.0,   // New: limit for darkness
             capasExcluidas: [],
             hora: '6',
             cicloAutomatico: false,
@@ -239,13 +240,14 @@ export function serializeMateria(materia, recursive = false) {
 export function serializeScene(scene, dom) {
     const sceneData = {
         ambiente: {
-            luzAmbiental: dom ? (dom.ambienteLuzAmbiental ? dom.ambienteLuzAmbiental.value : (scene.ambiente.luzAmbiental || '#1a1a2a')) : (scene.ambiente.luzAmbiental || '#1a1a2a'),
-            nocheDiaColor: scene.ambiente.nocheDiaColor || scene.ambiente.filtroColor || '#0a0a28',
-            nocheDiaOpacidad: scene.ambiente.nocheDiaOpacidad !== undefined ? scene.ambiente.nocheDiaOpacidad : (scene.ambiente.filtroOpacidad !== undefined ? scene.ambiente.filtroOpacidad : 1.0),
+            luzAmbiental: scene.ambiente.luzAmbiental || '#1a1a2a',
+            nocheDiaColor: scene.ambiente.nocheDiaColor || '#0a0a28',
+            nocheDiaOpacidad: scene.ambiente.nocheDiaOpacidad !== undefined ? scene.ambiente.nocheDiaOpacidad : 1.0,
+            nocheDiaIntensidad: scene.ambiente.nocheDiaIntensidad !== undefined ? scene.ambiente.nocheDiaIntensidad : 1.0,
             capasExcluidas: scene.ambiente.capasExcluidas || [],
-            hora: dom ? (dom.ambienteTiempo ? dom.ambienteTiempo.value : (scene.ambiente.hora || '6')) : (scene.ambiente.hora || '6'),
-            cicloAutomatico: dom ? (dom.ambienteCicloAutomatico ? dom.ambienteCicloAutomatico.checked : (scene.ambiente.cicloAutomatico || false)) : (scene.ambiente.cicloAutomatico || false),
-            duracionDia: dom ? (dom.ambienteDuracionDia ? dom.ambienteDuracionDia.value : (scene.ambiente.duracionDia || '60')) : (scene.ambiente.duracionDia || '60')
+            hora: scene.ambiente.hora || '6',
+            cicloAutomatico: scene.ambiente.cicloAutomatico || false,
+            duracionDia: scene.ambiente.duracionDia || '60'
         },
         materias: []
     };

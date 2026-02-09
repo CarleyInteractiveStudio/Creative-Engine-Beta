@@ -722,11 +722,17 @@ public star() {
                         </div>
 
                         <div class="inspector-row">
-                            <label for="ambiente-tiempo">Hora / Oscuridad</label>
+                            <label for="ambiente-tiempo">Hora del Día</label>
                             <input type="range" id="ambiente-tiempo" min="0" max="24" value="6" step="0.1" style="flex-grow: 1;">
                             <span id="ambiente-tiempo-valor" style="margin-left: 10px; min-width: 40px;">06:00</span>
                         </div>
                         <p class="field-description">00:00 y 24:00 es noche total, 12:00 es día claro.</p>
+
+                        <div class="inspector-row">
+                            <label for="ambiente-noche-dia-intensidad">Nivel de oscuridad</label>
+                            <input type="range" id="ambiente-noche-dia-intensidad" min="0" max="1" value="1" step="0.05" style="flex-grow: 1;">
+                            <span id="ambiente-noche-dia-intensidad-valor" style="margin-left: 10px; min-width: 40px;">100%</span>
+                        </div>
 
                         <hr>
 

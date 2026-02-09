@@ -272,8 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
             'ambiente-control-panel', 'ambiente-tiempo', 'ambiente-tiempo-valor',
-            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-filtro-color',
-            'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
+            'ambiente-noche-dia-intensidad', 'ambiente-noche-dia-intensidad-valor',
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia',
+            'ambiente-filtro-color', 'ambiente-filtro-swatches', 'ambiente-capas-excluidas',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
@@ -1464,38 +1465,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const drawLights = (lights) => {
-            // NEW: Only run the lighting pass if the renderer mode is 'realista'
-            if (currentProjectConfig.rendererMode !== 'realista' || !lights) {
+        const drawAtmosphereAndLights = (lights) => {
+            if (currentProjectConfig.rendererMode !== 'realista') {
                 return;
             }
 
             const ambiente = SceneManager.currentScene.ambiente;
             rendererInstance.beginLights(ambiente.nocheDiaColor, ambiente.nocheDiaOpacidad);
-            for (const lightMateria of lights.point) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.PointLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawPointLight(light, transform);
+
+            if (lights) {
+                for (const lightMateria of lights.point) {
+                    if (!lightMateria.isActive) continue;
+                    const light = lightMateria.getComponent(Components.PointLight2D);
+                    const transform = lightMateria.getComponent(Components.Transform);
+                    rendererInstance.drawPointLight(light, transform);
+                }
+                for (const lightMateria of lights.spot) {
+                    if (!lightMateria.isActive) continue;
+                    const light = lightMateria.getComponent(Components.SpotLight2D);
+                    const transform = lightMateria.getComponent(Components.Transform);
+                    rendererInstance.drawSpotLight(light, transform);
+                }
+                for (const lightMateria of lights.freeform) {
+                    if (!lightMateria.isActive) continue;
+                    const light = lightMateria.getComponent(Components.FreeformLight2D);
+                    const transform = lightMateria.getComponent(Components.Transform);
+                    rendererInstance.drawFreeformLight(light, transform);
+                }
+                for (const lightMateria of lights.sprite) {
+                    if (!lightMateria.isActive) continue;
+                    const light = lightMateria.getComponent(Components.SpriteLight2D);
+                    const transform = lightMateria.getComponent(Components.Transform);
+                    rendererInstance.drawSpriteLight(light, transform);
+                }
             }
-            for (const lightMateria of lights.spot) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpotLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpotLight(light, transform);
-            }
-            for (const lightMateria of lights.freeform) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.FreeformLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawFreeformLight(light, transform);
-            }
-            for (const lightMateria of lights.sprite) {
-                if (!lightMateria.isActive) continue;
-                const light = lightMateria.getComponent(Components.SpriteLight2D);
-                const transform = lightMateria.getComponent(Components.Transform);
-                rendererInstance.drawSpriteLight(light, transform);
-            }
+
             rendererInstance.endLights();
         };
 
@@ -1527,10 +1531,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 1. Dibujar objetos que SÍ reciben el filtro/luces
                 drawObjects(rendererInstance.ctx, camera, filteredMaterias, filteredTilemaps, filteredCanvases);
 
-                // 2. Aplicar capa de luces (multiplicar)
-                // Nota: Las luces se dibujan siempre basándose en su propia capa si mascaraTipo es 'layers',
-                // pero aquí estamos en el modo global o por defecto.
-                drawLights(allLights);
+                // 2. Aplicar atmósfera y luces (multiplicar)
+                drawAtmosphereAndLights(allLights);
 
                 // 3. Dibujar objetos excluidos (encima de la oscuridad)
                 drawObjects(rendererInstance.ctx, camera, excludedMaterias, excludedTilemaps, excludedCanvases);
@@ -2895,15 +2897,22 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
         const ambiente = SceneManager.currentScene.ambiente;
 
-        // Defensive checks to prevent "Cannot set properties of undefined (setting 'value')"
         if (dom.ambienteFiltroColor) {
             dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
-            dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
         }
 
         if (dom.ambienteTiempo) {
             dom.ambienteTiempo.value = ambiente.hora || '6';
-            dom.ambienteTiempo.dispatchEvent(new Event('input'));
+            const val = parseFloat(dom.ambienteTiempo.value);
+            const hour = Math.floor(val);
+            const minutes = Math.floor((val % 1) * 60);
+            if (dom.ambienteTiempoValor) dom.ambienteTiempoValor.textContent = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        if (dom.ambienteNocheDiaIntensidad) {
+            const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
+            dom.ambienteNocheDiaIntensidad.value = intensidad;
+            if (dom.ambienteNocheDiaIntensidadValor) dom.ambienteNocheDiaIntensidadValor.textContent = `${Math.round(intensidad * 100)}%`;
         }
 
         if (dom.ambienteCicloAutomatico) {
@@ -2914,7 +2923,6 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
         }
 
-        // Update swatch active state
         if (dom.ambienteFiltroSwatches && dom.ambienteFiltroColor) {
             dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => {
                 s.classList.toggle('active', s.dataset.color === dom.ambienteFiltroColor.value);
