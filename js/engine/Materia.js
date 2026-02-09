@@ -27,6 +27,12 @@ export class Materia {
         return this.flags[key];
     }
 
+    // --- Spanish Aliases for Scripting ---
+    get estaActivado() { return this.isActive; }
+    set estaActivado(v) { this.isActive = v; }
+    get activo() { return this.isActive; }
+    set activo(v) { this.isActive = v; }
+
     addComponent(component) {
         this.leyes.push(component);
         component.materia = this;

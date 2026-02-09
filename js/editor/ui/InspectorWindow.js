@@ -49,7 +49,7 @@ const componentIcons = {
 const fileIcons = {
     png: '🖼️', jpg: '🖼️', jpeg: '🖼️',
     mp3: '🔊', wav: '🔊',
-    cePrefab: '📦',
+    ceprefab: '🧊',
     ceScene: '🎬',
     ces: '📜',
     chc: '🤖'
@@ -58,7 +58,7 @@ const fileIcons = {
 const typeExtensionMap = {
     'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
     'Audio': ['.mp3', '.wav'],
-    'Prefab': ['.cePrefab'],
+    'Prefab': ['.ceprefab'],
     'Scene': ['.ceScene'],
     'Font': ['.ttf', '.otf', '.woff', '.woff2'],
     'Animation': ['.ceanimclip', '.cea'],

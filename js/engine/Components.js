@@ -198,6 +198,11 @@ export class CreativeScriptBehavior {
     /** Alias en español */
     get tiempoDelta() { return this.deltaTime; }
 
+    get estaActivado() { return this.materia ? this.materia.isActive : false; }
+    set estaActivado(v) { if (this.materia) this.materia.isActive = v; }
+    get activo() { return this.estaActivado; }
+    set activo(v) { this.estaActivado = v; }
+
     /**
      * Destruye una Materia (objeto) del juego.
      * @param {Materia} materia - El objeto a destruir.
@@ -228,6 +233,22 @@ export class CreativeScriptBehavior {
     getScript(name) { return this.obtenerScript(name); }
     destroy(materia) { this.destruir(materia); }
     instantiate(original, x, y) { return this.instanciar(original, x, y); }
+
+    /**
+     * Crea una instancia de un prefab a partir de su ruta.
+     * @param {string} ruta - Ruta al archivo .ceprefab.
+     * @param {number} [x]
+     * @param {number} [y]
+     */
+    async crear(ruta, x, y) {
+        if (!ruta) return null;
+        if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
+            return await window.SceneManager.instantiatePrefabFromPath(ruta, x, y);
+        }
+        return null;
+    }
+
+    async create(ruta, x, y) { return await this.crear(ruta, x, y); }
 
     /**
      * Difunde un mensaje global a todos los scripts interesados.

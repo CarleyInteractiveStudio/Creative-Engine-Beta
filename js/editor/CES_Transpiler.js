@@ -20,6 +20,7 @@ const typeMap = {
     'Sprite': 'Sprite',
     'Audio': 'Audio',
     'Prefab': 'Prefab',
+    'prefab': 'Prefab',
     'Scene': 'Scene',
     'Vector2': 'Vector2',
     'Color': 'Color',
@@ -85,6 +86,7 @@ const componentShortcuts = [
     'drawingOrder', 'ordenDeDibujo',
     'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
+    'crear', 'create', 'estaActivado', 'activo',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
@@ -229,6 +231,12 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
 
     // 2.c: Coroutines support
     body = body.replace(/(?<![.\w])esperar\s*\(/g, 'await this.esperar(');
+
+    // 2.d: Simplified Prefab Syntax (crear miprefab -> await this.crear(this.miprefab))
+    // We handle this before auto-prefixing shortcuts to catch the name correctly
+    body = body.replace(/(?<!\w)(this\.)?(crear|create)\s+([a-zA-Z_]\w*)(?!\s*\()/g, (match, p1, p2, p3) => {
+        return `await this.${p2}(this.${p3})`;
+    });
 
     // 2.e: Auto-prefix component shortcuts
     componentShortcuts.forEach(shortcut => {

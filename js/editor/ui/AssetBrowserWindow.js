@@ -70,6 +70,44 @@ export async function handleContextMenuAction(action) {
             );
             break;
         }
+        case 'create-prefab': {
+            showPrompt(
+                'Crear Prefab',
+                'Introduce el nombre del nuevo prefab (.ceprefab):',
+                async (prefabName) => {
+                    if (prefabName) {
+                        const fileName = prefabName.endsWith('.ceprefab') ? prefabName : `${prefabName}.ceprefab`;
+                        // Default empty prefab content (one Materia named after the prefab)
+                        const defaultContent = JSON.stringify({
+                            "name": prefabName.replace('.ceprefab', ''),
+                            "tag": "Untagged",
+                            "leyes": [
+                                {
+                                    "type": "Transform",
+                                    "properties": {
+                                        "localPosition": { "x": 0, "y": 0 },
+                                        "localRotation": 0,
+                                        "localScale": { "x": 1, "y": 1 }
+                                    }
+                                }
+                            ],
+                            "children": []
+                        }, null, 2);
+                        try {
+                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(defaultContent);
+                            await writable.close();
+                            await updateAssetBrowserCallback();
+                        } catch (err) {
+                            console.error("Error al crear el prefab:", err);
+                            showNotification('Error', 'No se pudo crear el prefab.');
+                        }
+                    }
+                }
+            );
+            break;
+        }
         case 'create-chc-script': {
             showPrompt(
                 'Crear Script H-Code',

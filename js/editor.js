@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New Loading Panel Elements
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
-            'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab',
+            'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
             // Asset Selector Bubble Elements
@@ -1833,6 +1833,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.currentSceneName.textContent = `Prefab: ${fileHandle.name.replace('.ceprefab', '')}`;
             document.body.classList.add('prefab-mode');
             dom.btnExitPrefab.classList.remove('hidden');
+            if (dom.btnSavePrefab) dom.btnSavePrefab.classList.remove('hidden');
 
             updateHierarchy();
             selectMateria(rootMateria);
@@ -1859,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.body.classList.remove('prefab-mode');
         dom.btnExitPrefab.classList.add('hidden');
+        if (dom.btnSavePrefab) dom.btnSavePrefab.classList.add('hidden');
 
         updateHierarchy();
         selectMateria(null);
@@ -3315,6 +3317,12 @@ public start() {
             });
             dom.btnStop.addEventListener('click', stopGame);
             dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
+            if (dom.btnSavePrefab) {
+                dom.btnSavePrefab.addEventListener('click', async () => {
+                    await savePrefab();
+                    showNotificationDialog('Éxito', '¡Prefab guardado!');
+                });
+            }
 
 
             originalStartGame = startGame;
