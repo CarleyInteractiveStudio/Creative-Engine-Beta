@@ -56,17 +56,18 @@ export function update() {
     // RAM Monitoring
     let ramInfo = "No soportado";
     let ramStyle = "";
+    let usagePercent = 0;
     if (window.performance && window.performance.memory) {
         const memory = window.performance.memory;
         const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
         const totalMB = Math.round(memory.jsHeapSizeLimit / 1048576);
-        const usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+        usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
 
         ramInfo = `${usedMB} MB / ${totalMB} MB (${usagePercent.toFixed(1)}%)`;
 
-        if (usagePercent > 80) ramStyle = "color: #ff4444; font-weight: bold;";
-        else if (usagePercent > 60) ramStyle = "color: #ffbb33;";
-        else ramStyle = "color: #00C851;";
+        if (usagePercent > 80) ramStyle = "background-color: #ff4444;";
+        else if (usagePercent > 60) ramStyle = "background-color: #ffbb33;";
+        else ramStyle = "background-color: #00C851;";
     }
 
     // Scene Stats
@@ -80,7 +81,7 @@ export function update() {
         </div>
         <div class="debug-section">
             <h4>Rendimiento</h4>
-            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM: <span style="${ramStyle}">${ramInfo}</span></pre>
+            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM: <span>${ramInfo}</span>\n<div class="ram-bar-container"><div class="ram-bar-fill" style="width: ${usagePercent}%; ${ramStyle}"></div></div></pre>
         </div>
         <div class="debug-section">
             <h4>Estadísticas de Escena</h4>
