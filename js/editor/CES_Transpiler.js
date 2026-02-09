@@ -63,6 +63,7 @@ const componentShortcuts = [
     'audioSource', 'fuenteDeAudio',
     'boxCollider2D', 'colisionadorCaja2D',
     'capsuleCollider2D', 'colisionadorCapsula2D',
+    'colisionador2d',
     'camera', 'camara',
     'animator', 'animador',
     'pointLight2D', 'luzPuntual2D',
@@ -83,10 +84,11 @@ const componentShortcuts = [
     'customComponent', 'componentePersonalizado',
     'parallax',
     'movement', 'movimiento',
-    'particleSystem', 'sistemaDeParticulas',
+    'particleSystem', 'sistemaDeParticulas', 'particula', 'particulas',
     'cameraFollow', 'seguimientoDeCamara',
     'drawingOrder', 'ordenDeDibujo',
-    'materia', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
+    'materia', 'mtr', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
+    'ui', 'texto', 'boton', 'imagen', 'lienzo',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'crear', 'create', 'estaActivado', 'activo',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
@@ -307,7 +309,7 @@ export function transpile(code, scriptName) {
 
     // 1.a: Parse and extract methods (bilingual)
     // Scope (public/private) is now optional, defaults to public
-    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:(function|funcion)\s+)?(\w+)\s*\(([^)]*)\)\s*{/gm;
+    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:(function|funcion)\s+)?(?!(?:si|sino|mientras|para|cada|go|ve)\b)(\w+)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
@@ -378,7 +380,21 @@ export function transpile(code, scriptName) {
     }
 
 
-    // 1.b: Parse and remove public and private variables (fully bilingual with new syntax)
+    // 1.b: Parse and validate library imports. (Handled before variables to avoid conflicts)
+    const goRegex = /^\s*(?:go|ve)\s+(?:"([^"]+)"|((?:ce\.)?[\w.]+))\s*;?/gm;
+    let goMatch;
+    while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
+        const libName = goMatch[1] || goMatch[2];
+        if (libName.startsWith('engine') || libName.startsWith('motor') || RuntimeAPIManager.getAPI(libName)) {
+            importedLibs.add(libName);
+        } else {
+            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
+        }
+    }
+    unprocessedCode = unprocessedCode.replace(goRegex, '');
+
+
+    // 1.c: Parse and remove public and private variables (fully bilingual with new syntax)
     // Scope is optional, defaults to public
     const varRegex = /^\s*(?:(public|private|publico|privado)\s+)?([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)\s*(?:=\s*(.+))?;/gm;
     let varMatch;
@@ -404,19 +420,6 @@ export function transpile(code, scriptName) {
         }
     }
     unprocessedCode = unprocessedCode.replace(varRegex, '');
-
-     // 1.c: Parse and validate library imports.
-    const goRegex = /^\s*go\s+(?:"([^"]+)"|((?:ce\.)?\w+))/gm;
-    let goMatch;
-    while ((goMatch = goRegex.exec(unprocessedCode)) !== null) {
-        const libName = goMatch[1] || goMatch[2];
-        if (!RuntimeAPIManager.getAPI(libName)) {
-            errors.push(`Error: La librería '${libName}' no se encontró o no está registrada.`);
-        } else {
-            importedLibs.add(libName);
-        }
-    }
-    unprocessedCode = unprocessedCode.replace(goRegex, '');
 
 
     // Almacenar los metadatos de las variables públicas

@@ -204,6 +204,32 @@ export class CreativeScriptBehavior {
     get activo() { return this.estaActivado; }
     set activo(v) { this.estaActivado = v; }
 
+    get motor() { return this; }
+    get engine() { return this; }
+    get mtr() { return this.materia; }
+    get colisionador2d() {
+        return this.materia.getComponent(BoxCollider2D) ||
+               this.materia.getComponent(CapsuleCollider2D);
+    }
+    get particula() { return this.materia.getComponent(ParticleSystem); }
+    get particulas() { return this.particula; }
+    get sistemaDeParticulas() { return this.particula; }
+
+    get texto() { return this.materia.getComponent(UIText); }
+    get boton() { return this.materia.getComponent(Button); }
+    get imagen() { return this.materia.getComponent(UIImage); }
+    get lienzo() { return this.materia.getComponent(Canvas); }
+
+    get ui() {
+        const self = this;
+        return {
+            get texto() { return self.materia.getComponent(UIText); },
+            get boton() { return self.materia.getComponent(Button); },
+            get imagen() { return self.materia.getComponent(UIImage); },
+            get lienzo() { return self.materia.getComponent(Canvas); }
+        };
+    }
+
     /**
      * Destruye una Materia (objeto) del juego.
      * @param {Materia} materia - El objeto a destruir.
@@ -1484,6 +1510,9 @@ export class UIText extends Leyes {
         this.fontFamily = 'sans-serif'; // The dynamically generated font-family name
     }
 
+    get texto() { return this.text; }
+    set texto(v) { this.text = v; }
+
     async loadFont(projectsDirHandle) {
         if (!this.fontAssetPath) {
             this.fontFamily = 'sans-serif'; // Reset to default if path is cleared
@@ -1548,6 +1577,9 @@ export class Button extends Leyes {
         };
         this.onClick = []; // Array to hold onClick events
     }
+
+    get interactuable() { return this.interactable; }
+    set interactuable(v) { this.interactable = v; }
 
     clone() {
         const newButton = new Button(null);
