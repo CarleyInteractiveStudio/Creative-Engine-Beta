@@ -33,7 +33,7 @@ const availableComponents = {
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol],
+    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
     'Scripting': [Components.CreativeScript]
 };
 
@@ -43,7 +43,8 @@ const componentIcons = {
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️'
+    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️',
+    ParticleSystem: '✨'
 };
 
 const fileIcons = {
@@ -2073,6 +2074,44 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CameraFollow" data-prop="followY" ${ley.followY ? 'checked' : ''}>
                         <label>Seguir Y</label>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ParticleSystem) {
+            componentHTML = `
+                ${renderComponentHeader("Sistema de Partículas", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Prefab Partícula</label>
+                        ${renderPropertyDropper('Prefab', ley.prefabPath, 'data-component="ParticleSystem" data-prop="prefabPath"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Max Partículas</label>
+                        <input type="number" class="prop-input" step="1" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Emisión (part/seg)</label>
+                        <input type="number" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Vida (seg)</label>
+                        <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="lifetime" value="${ley.lifetime}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" step="1" data-component="ParticleSystem" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Dispersión (spread)</label>
+                        <input type="number" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="spread" value="${ley.spread}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label>Loop</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label>Play On Awake</label>
                     </div>
                 </div>
             `;

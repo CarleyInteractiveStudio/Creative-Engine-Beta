@@ -48,7 +48,8 @@ const componentAliases = {
     'ProjectileLauncher': 'lanzadorDeProyectiles',
     'AutoDestroy': 'destruccionAutomatica',
     'Health': 'vida',
-    'Patrol': 'patrulla'
+    'Patrol': 'patrulla',
+    'ParticleSystem': 'sistemaDeParticulas'
 };
 
 
@@ -2222,6 +2223,156 @@ registerComponent('ProjectileLauncher', ProjectileLauncher);
 registerComponent('AutoDestroy', AutoDestroy);
 registerComponent('Health', Health);
 registerComponent('Patrol', Patrol);
+
+/**
+ * Componente que emite prefabs como partículas con optimización de pooling.
+ */
+export class ParticleSystem extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.prefabPath = "";
+        this.maxParticles = 50;
+        this.emissionRate = 5; // partículas por segundo
+        this.lifetime = 2.0;
+        this.speed = 200;
+        this.spread = 45; // grados
+        this.loop = true;
+        this.playOnAwake = true;
+
+        this._pool = [];
+        this._active = false;
+        this._emissionAccumulator = 0;
+    }
+
+    start() {
+        if (this.playOnAwake) {
+            this.play();
+        }
+    }
+
+    play() {
+        this._active = true;
+    }
+
+    stop() {
+        this._active = false;
+    }
+
+    reproducir() { this.play(); }
+    detener() { this.stop(); }
+
+    update(deltaTime) {
+        // Gestionar vida de partículas activas en el pool
+        for (let i = 0; i < this._pool.length; i++) {
+            const p = this._pool[i];
+            if (p.isActive) {
+                p._remainingLifetime -= deltaTime;
+                if (p._remainingLifetime <= 0) {
+                    p.isActive = false;
+                }
+            }
+        }
+
+        if (!this._active) return;
+
+        this._emissionAccumulator += deltaTime;
+        const interval = 1 / Math.max(0.1, this.emissionRate);
+
+        while (this._emissionAccumulator >= interval) {
+            this.emit();
+            this._emissionAccumulator -= interval;
+        }
+    }
+
+    async emit() {
+        if (!this.prefabPath) return;
+
+        // Buscar una partícula inactiva en el pool
+        let p = this._pool.find(item => !item.isActive);
+
+        if (!p) {
+            if (this._pool.length >= this.maxParticles) return;
+
+            // Crear nueva partícula si hay espacio en el pool
+            if (window.SceneManager && window.SceneManager.instantiatePrefabFromPath) {
+                p = await window.SceneManager.instantiatePrefabFromPath(this.prefabPath);
+                if (p) {
+                    this._pool.push(p);
+                }
+            }
+        }
+
+        if (p) {
+            const transform = this.materia.getComponent(Transform);
+            const pTransform = p.getComponent(Transform);
+
+            if (transform && pTransform) {
+                pTransform.position = { x: transform.x, y: transform.y };
+
+                // Calcular dirección aleatoria según spread
+                const baseRotation = transform.rotation;
+                const randomAngle = (Math.random() - 0.5) * this.spread;
+                const finalRotation = (baseRotation + randomAngle) * (Math.PI / 180);
+
+                const vx = Math.cos(finalRotation) * (this.speed / 100);
+                const vy = Math.sin(finalRotation) * (this.speed / 100);
+
+                const rb = p.getComponent(Rigidbody2D);
+                if (rb) {
+                    rb.setVelocity(vx, vy);
+                } else {
+                    // Si no tiene físicas, podríamos añadir lógica de movimiento simple aquí
+                    // o dejar que el prefab se mueva solo.
+                }
+
+                p._remainingLifetime = this.lifetime;
+                p.isActive = true;
+            }
+        }
+    }
+
+    // --- Spanish Aliases ---
+    get prefab() { return this.prefabPath; }
+    set prefab(v) { this.prefabPath = v; }
+    get maxParticulas() { return this.maxParticles; }
+    set maxParticulas(v) { this.maxParticles = v; }
+    get tasaEmision() { return this.emissionRate; }
+    set tasaEmision(v) { this.emissionRate = v; }
+    get vidaParticula() { return this.lifetime; }
+    set vidaParticula(v) { this.lifetime = v; }
+    get velocidad() { return this.speed; }
+    set velocidad(v) { this.speed = v; }
+    get dispersion() { return this.spread; }
+    set dispersion(v) { this.spread = v; }
+    get bucle() { return this.loop; }
+    set bucle(v) { this.loop = v; }
+    get reproducirAlEmpezar() { return this.playOnAwake; }
+    set reproducirAlEmpezar(v) { this.playOnAwake = v; }
+
+    onDestroy() {
+        // Limpiar el pool
+        if (this.materia && this.materia.scene) {
+            for (const p of this._pool) {
+                this.materia.scene.removeMateria(p.id);
+            }
+        }
+        this._pool = [];
+    }
+
+    clone() {
+        const newPs = new ParticleSystem(null);
+        newPs.prefabPath = this.prefabPath;
+        newPs.maxParticles = this.maxParticles;
+        newPs.emissionRate = this.emissionRate;
+        newPs.lifetime = this.lifetime;
+        newPs.speed = this.speed;
+        newPs.spread = this.spread;
+        newPs.loop = this.loop;
+        newPs.playOnAwake = this.playOnAwake;
+        return newPs;
+    }
+}
+registerComponent('ParticleSystem', ParticleSystem);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
