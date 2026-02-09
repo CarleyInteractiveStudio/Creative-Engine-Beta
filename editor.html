@@ -363,7 +363,11 @@ public star() {
              <div id="hierarchy-panel" class="editor-panel">
                 <div class="panel-header">
                     <span>Jerarquía</span>
-                    <button class="close-panel-btn" data-panel="hierarchy-panel">&times;</button>
+                    <div class="panel-header-controls">
+                        <button id="btn-save-prefab" class="panel-tool-btn hidden" title="Guardar Prefab">💾</button>
+                        <button id="btn-exit-prefab" class="panel-tool-btn hidden" title="Cerrar Prefab">✕</button>
+                        <button class="close-panel-btn" data-panel="hierarchy-panel">&times;</button>
+                    </div>
                 </div>
                 <div class="panel-content" id="hierarchy-content"></div>
              </div>
@@ -371,7 +375,6 @@ public star() {
                 <div class="panel-header">
                     <div class="left-header-controls">
                         <span id="current-scene-name">Escena Principal</span>
-                        <button id="btn-exit-prefab" class="toolbar-btn hidden" title="Cerrar Prefab">✕ Salir</button>
                         <div class="viewport-tools">
                             <div class="tool-dropdown">
                                 <button id="tool-active" class="toolbar-btn">🖐️</button>
@@ -396,7 +399,6 @@ public star() {
                         </div>
                     </div>
                     <div id="game-controls" class="game-controls">
-                        <button id="btn-save-prefab" class="toolbar-btn hidden" title="Guardar Prefab">💾 Guardar</button>
                         <button id="btn-play" title="Play" disabled>▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>

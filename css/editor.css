@@ -4162,27 +4162,6 @@ body.game-mode #loading-overlay {
 }
 
 /* Prefab Mode Styles */
-.prefab-mode #scene-panel .panel-header {
-    background: linear-gradient(to right, #0e639c, #1e3c1e) !important;
-    border-bottom: 2px solid #4CAF50;
-}
-
-#btn-exit-prefab {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 2px 8px;
-    margin-left: 10px;
-    font-size: 0.85em;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-#btn-exit-prefab:hover {
-    background: #f44336;
-    border-color: #ffcdd2;
-}
 
 #btn-exit-prefab.hidden {
     display: none;
