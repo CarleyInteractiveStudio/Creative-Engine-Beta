@@ -176,40 +176,42 @@ async function runChc() {
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
 
 REGLAS TÉCNICAS (Sintaxis CES):
-1. ESTRUCTURA: Usa 'public variable nombre = valor;' para variables del Inspector.
-2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante).
-3. ACCESO: Puedes acceder directamente a componentes sin 'this.' (transformacion, fisica, animador, renderizadorDeSprite, camara, colisionadorCaja2D, fuenteDeAudio).
-4. EVENTOS: Usa 'alEmpezar()', 'alActualizar(deltaTime)', 'alEntrarEnColision(otro)', 'alEntrarEnTrigger(otro)', 'alRecibir(mensaje, datos)'.
-5. CORRUTINAS: Usa 'esperar(segundos)' para pausas no bloqueantes.
-6. TIMERS: Usa 'cada(segundos) { ... }' para lógica periódica.
-7. APIs:
-   - lanzarRayo(origen, direccion, distancia, color): Devuelve objeto con .materia, .point, .normal.
-   - difundir(mensaje, datos): Mensajería global.
-   - instanciar(prefab, posicion), destruir(materia), obtenerScript(nombre).
-   - entrada.tecla("nombre"): Control de teclado.
-8. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. No incluyas explicaciones, ni introducciones, ni comentarios adicionales. No uses markdown.
+0. IMPORTACIONES: Pon 've motor;' al inicio para habilitar atajos. Usa 've motor.ui;' para UI.
+1. ESTRUCTURA: Usa 'publico numero velocidad = 5;' o 'publico mtr jugador;'.
+2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr).
+3. ACCESO (Sin 'this.'): nombre, tag, posicion, fisica, animador, camara, colisionador2d (genérico), particulas, ui.texto, ui.boton.
+4. EVENTOS: 'alEmpezar()', 'alActualizar(delta)', 'alEntrarEnColision(otro)', 'alRecibir(mensaje, datos)'.
+5. TIEMPO: 'esperar(segundos)', 'cada(segundos) { ... }'.
+6. APIs:
+   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre).
+   - crear miPrefab; (instanciar prefab).
+   - destruir(materia), difundir(msg, datos).
+   - entrada.tecla("nombre").
+7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones ni markdown.
 
 EJEMPLOS DE TRADUCCIÓN:
 
 ENTRADA: "Si presiono W sube. Si presiono D a la derecha."
 SALIDA:
-public variable velocidad = 5;
-alActualizar(deltaTime) {
+ve motor;
+publico numero velocidad = 5;
+alActualizar(delta) {
     si (entrada.tecla("w")) {
-        transformacion.y -= velocidad;
+        posicion.y -= velocidad;
     }
     si (entrada.tecla("d")) {
-        transformacion.x += velocidad;
+        posicion.x += velocidad;
     }
 }
 
 ENTRADA: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
 SALIDA:
+ve motor;
 alEmpezar() {
     cada(2) {
-        variable hit = lanzarRayo(transformacion.posicion, {x: 0, y: 1}, 100);
-        si (hit && hit.materia.tieneTag("suelo")) {
-            log("suelo");
+        variable hit = lanzarRayo(posicion, {x: 0, y: 1}, 100);
+        si (hit && hit.mtr.tieneTag("suelo")) {
+            imprimir("suelo");
         }
     }
 }
