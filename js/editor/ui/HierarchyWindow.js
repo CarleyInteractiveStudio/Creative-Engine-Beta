@@ -400,7 +400,8 @@ function setupEventListeners() {
                 id: materiaId
             };
             e.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-            e.dataTransfer.effectAllowed = 'move';
+            // Use 'copyMove' to be more explicit and compatible with 'copy' dropEffect
+            e.dataTransfer.effectAllowed = 'copyMove';
             isDraggingFromHierarchy = true;
         }
     });

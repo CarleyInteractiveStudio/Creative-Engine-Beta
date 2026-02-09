@@ -40,6 +40,15 @@ export function initialize(dependencies) {
     dom.assetGridView.addEventListener('contextmenu', handleGridContextMenu);
     dom.assetGridView.addEventListener('dragstart', handleGridDragStart);
 
+    // Global dragover for the whole panel to allow internal drops
+    dom.assetsContent.addEventListener('dragover', (e) => {
+        const dataText = e.dataTransfer.getData('text/plain');
+        if (dataText.includes('"type":"Materia"') || dataText.includes('"type":"Asset"')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    });
+
     dom.assetsContent.addEventListener('dragover', handleExternalFileDragOver);
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
@@ -346,11 +355,17 @@ export async function updateAssetBrowser() {
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
         if (droppedData.type === 'Materia') {
             const materiaId = parseInt(droppedData.id, 10);
-            const materia = SceneManager.currentScene.findMateriaById(materiaId);
+            // Try to find the materia in the module's currentScene, fallback to global window.SceneManager
+            let materia = SceneManager.currentScene.findMateriaById(materiaId);
+            if (!materia && window.SceneManager && window.SceneManager.currentScene) {
+                materia = window.SceneManager.currentScene.findMateriaById(materiaId);
+            }
 
             if (materia) {
                 try {
-                    const prefabName = `${materia.name}.ceprefab`;
+                    // Sanitize filename: remove invalid characters
+                    const sanitizedName = materia.name.replace(/[\\/:*?"<>|]/g, '_');
+                    const prefabName = `${sanitizedName}.ceprefab`;
                     const prefabData = SceneManager.serializeMateria(materia, true);
                     const fileHandle = await targetFolderHandle.getFileHandle(prefabName, { create: true });
                     const writable = await fileHandle.createWritable();
@@ -408,14 +423,19 @@ export async function updateAssetBrowser() {
         gridViewContainer.dataset.path = dirPath;
 
         // Unified drop handler for the grid view background
-        gridViewContainer.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; gridViewContainer.classList.add('drag-over'); };
+        gridViewContainer.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            gridViewContainer.classList.add('drag-over');
+        };
         gridViewContainer.ondragleave = () => gridViewContainer.classList.remove('drag-over');
         gridViewContainer.ondrop = async (e) => {
             e.preventDefault();
             e.stopPropagation();
             gridViewContainer.classList.remove('drag-over');
             try {
-                const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                const dataText = e.dataTransfer.getData('text/plain');
+                const droppedData = JSON.parse(dataText);
                 await handleDropOnFolder(dirHandle, dirPath, droppedData);
             } catch (err) {
                 // Not JSON or other error
@@ -704,11 +724,11 @@ function handleExternalFileDragLeave(e) {
 
 async function handleExternalFileDrop(e) {
     dom.assetsContent.classList.remove('drag-over-fs');
-    e.preventDefault();
-    e.stopPropagation();
 
     // This handles files from the user's OS
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
         console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
         let filesImported = 0;
         let librariesImported = 0;
