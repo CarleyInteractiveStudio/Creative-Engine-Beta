@@ -134,6 +134,7 @@ function applyPreferences() {
 }
 
 async function savePreferences() {
+    try {
     // Gather data from UI
     currentPreferences.theme = _dom.prefsTheme.value;
     if (currentPreferences.theme === 'custom') {
@@ -175,6 +176,10 @@ async function savePreferences() {
     applyPreferences();
     showNotification('Éxito', 'Preferencias guardadas.');
     _dom.preferencesModal.classList.remove('is-open');
+    } catch (e) {
+        console.error("Error in savePreferences:", e);
+        showNotification('Error', 'Error al guardar preferencias: ' + e.message);
+    }
 }
 
 function loadPreferences() {

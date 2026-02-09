@@ -218,6 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'prefs-snapping-grid-size', 'prefs-zoom-speed', 'prefs-reset-layout-btn',
             'prefs-ai-provider', 'prefs-ai-api-key-group', 'prefs-ai-api-key', 'prefs-ai-save-key-btn', 'prefs-ai-delete-key-btn',
             'prefs-ai-model-selection-group', 'prefs-ai-model-selector', 'prefs-ai-error-display',
+            'prefs-carl-can-use-console', 'prefs-carl-can-manage-files', 'prefs-carl-can-manipulate-scenes', 'prefs-carl-can-download-files',
+            'prefs-execution-mode', 'prefs-auto-close-game-window',
             // Library Window Elements
             'menubar-libraries-btn', 'library-panel', 'library-panel-create-btn', 'library-panel-import-btn', 'library-panel-export-btn',
             'create-library-modal', 'library-api-docs-btn', 'library-api-docs-modal', 'library-api-docs-close-btn',
@@ -3328,7 +3330,7 @@ public start() {
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
-            initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
+            initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig, getPreferences);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
 

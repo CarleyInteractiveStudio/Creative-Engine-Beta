@@ -5,12 +5,14 @@ import { showNotification } from './DialogWindow.js';
 let dom = {};
 let projectsDirHandle = null;
 let currentProjectConfig = {};
+let getPreferences = null;
 
 // This function will be called from the main editor.js to initialize the module
-export function initialize(editorDom, editorProjectsDirHandle, config) {
+export function initialize(editorDom, editorProjectsDirHandle, config, getPrefsFunc) {
     dom = editorDom;
     projectsDirHandle = editorProjectsDirHandle;
     currentProjectConfig = config;
+    getPreferences = getPrefsFunc;
 
     console.log("Initializing Project Settings Window...");
     setupEventListeners();
@@ -53,14 +55,11 @@ export async function saveProjectConfig(showAlert = true) {
         const newLayers = Array.from(layerInputs).map(input => input.value);
         // We only update sorting layers for now as it's the main one used for rendering logic
         currentProjectConfig.layers.sortingLayers = newLayers;
+    }
 
-        // NEW: Save Editor Preferences into Project Config to persist them per project
-        try {
-            const { getPreferences } = await import('./PreferencesWindow.js');
-            currentProjectConfig.preferences = getPreferences();
-        } catch (e) {
-            console.warn("Could not include preferences in project config save:", e);
-        }
+    // NEW: Always sync Editor Preferences before saving to persist them per project
+    if (getPreferences) {
+        currentProjectConfig.preferences = getPreferences();
     }
 
     try {
