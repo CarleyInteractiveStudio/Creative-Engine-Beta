@@ -272,7 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
             'ambiente-control-panel', 'ambiente-luz-ambiental', 'ambiente-tiempo', 'ambiente-tiempo-valor',
-            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
+            'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-filtro-color',
+            'ambiente-filtro-opacidad', 'ambiente-filtro-opacidad-valor', 'ambiente-filtro-swatches',
+            'ambiente-capas-excluidas', 'ambiente-filtro-presets',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
             'md-preview-content', 'md-edit-content',
@@ -2893,21 +2895,38 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         if (!SceneManager.currentScene || !SceneManager.currentScene.ambiente) return;
 
         const ambiente = SceneManager.currentScene.ambiente;
-        dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental || '#1a1a2a';
-        dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
-        dom.ambienteFiltroOpacidad.value = ambiente.nocheDiaOpacidad !== undefined ? ambiente.nocheDiaOpacidad : 1.0;
-        dom.ambienteTiempo.value = ambiente.hora || '6';
-        dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico || false;
-        dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
 
-        // Trigger input events to update UI text and renderer state
-        dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
-        dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
-        dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
-        dom.ambienteTiempo.dispatchEvent(new Event('input'));
+        // Defensive checks to prevent "Cannot set properties of undefined (setting 'value')"
+        if (dom.ambienteLuzAmbiental) {
+            dom.ambienteLuzAmbiental.value = ambiente.luzAmbiental || '#1a1a2a';
+            dom.ambienteLuzAmbiental.dispatchEvent(new Event('input'));
+        }
+
+        if (dom.ambienteFiltroColor) {
+            dom.ambienteFiltroColor.value = ambiente.nocheDiaColor || '#0a0a28';
+            dom.ambienteFiltroColor.dispatchEvent(new Event('input'));
+        }
+
+        if (dom.ambienteFiltroOpacidad) {
+            dom.ambienteFiltroOpacidad.value = ambiente.nocheDiaOpacidad !== undefined ? ambiente.nocheDiaOpacidad : 1.0;
+            dom.ambienteFiltroOpacidad.dispatchEvent(new Event('input'));
+        }
+
+        if (dom.ambienteTiempo) {
+            dom.ambienteTiempo.value = ambiente.hora || '6';
+            dom.ambienteTiempo.dispatchEvent(new Event('input'));
+        }
+
+        if (dom.ambienteCicloAutomatico) {
+            dom.ambienteCicloAutomatico.checked = ambiente.cicloAutomatico || false;
+        }
+
+        if (dom.ambienteDuracionDia) {
+            dom.ambienteDuracionDia.value = ambiente.duracionDia || '60';
+        }
 
         // Update swatch active state
-        if (dom.ambienteFiltroSwatches) {
+        if (dom.ambienteFiltroSwatches && dom.ambienteFiltroColor) {
             dom.ambienteFiltroSwatches.querySelectorAll('.color-swatch').forEach(s => {
                 s.classList.toggle('active', s.dataset.color === dom.ambienteFiltroColor.value);
             });

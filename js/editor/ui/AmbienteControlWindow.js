@@ -21,8 +21,7 @@ const AmbienteControlWindow = (() => {
             ambienteTiempo: document.getElementById('ambiente-tiempo'),
             ambienteTiempoValor: document.getElementById('ambiente-tiempo-valor'),
             ambienteCicloAutomatico: document.getElementById('ambiente-ciclo-automatico'),
-            ambienteDuracionDia: document.getElementById('ambiente-duracion-dia'),
-            ambienteMascaraTipo: document.getElementById('ambiente-mascara-tipo')
+            ambienteDuracionDia: document.getElementById('ambiente-duracion-dia')
         };
         editorRenderer = dependencies.editorRenderer;
         gameRenderer = dependencies.gameRenderer;
