@@ -204,6 +204,11 @@ export class CreativeScriptBehavior {
     get activo() { return this.estaActivado; }
     set activo(v) { this.estaActivado = v; }
 
+    get nombre() { return this.materia ? this.materia.name : ''; }
+    set nombre(v) { if (this.materia) this.materia.name = v; }
+    get tag() { return this.materia ? this.materia.tag : ''; }
+    set tag(v) { if (this.materia) this.materia.tag = v; }
+
     get motor() { return this; }
     get engine() { return this; }
     get mtr() { return this.materia; }
