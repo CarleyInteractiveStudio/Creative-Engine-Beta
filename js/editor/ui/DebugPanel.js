@@ -60,11 +60,14 @@ export function update() {
     if (window.performance && window.performance.memory) {
         const memory = window.performance.memory;
         const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
-        const totalMB = Math.round(memory.jsHeapSizeLimit / 1048576);
-        usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
 
-        ramInfo = `${usedMB} MB / ${totalMB} MB (${usagePercent.toFixed(1)}%)`;
+        // Use user-defined limit if available, fallback to 2048MB
+        const targetLimitMB = window.currentProjectConfig?.ramLimit || 2048;
+        usagePercent = Math.min(100, (usedMB / targetLimitMB) * 100);
 
+        ramInfo = `${usedMB} MB / ${targetLimitMB} MB (${((usedMB / targetLimitMB) * 100).toFixed(1)}%)`;
+
+        // Color coding based on the user-defined budget
         if (usagePercent > 80) ramStyle = "background-color: #ff4444;";
         else if (usagePercent > 60) ramStyle = "background-color: #ffbb33;";
         else ramStyle = "background-color: #00C851;";
