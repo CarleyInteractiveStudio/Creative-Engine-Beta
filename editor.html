@@ -367,6 +367,9 @@ public star() {
                 <div class="panel-header">
                     <div class="left-header-controls">
                         <span id="current-scene-name">Escena Principal</span>
+                        <div id="prefab-mode-indicator" class="prefab-mode-indicator hidden">
+                            <button id="btn-exit-prefab" title="Volver a la Escena">⬅️ Volver</button>
+                        </div>
                         <div class="viewport-tools">
                             <div class="tool-dropdown">
                                 <button id="tool-active" class="toolbar-btn">🖐️</button>
@@ -389,6 +392,7 @@ public star() {
                         </div>
                     </div>
                     <div id="game-controls" class="game-controls">
+                        <button id="btn-save-prefab" title="Guardar Prefab" class="hidden">💾</button>
                         <button id="btn-play" title="Play" disabled>▶️</button>
                         <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
                         <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
@@ -768,6 +772,7 @@ public star() {
             <hr>
             <li data-action="rename">Renombrar</li>
             <li data-action="duplicate">Duplicar</li>
+            <li data-action="save-as-prefab">Guardar como Prefab</li>
             <li data-action="delete" class="danger">Eliminar</li>
         </ul>
     </div>

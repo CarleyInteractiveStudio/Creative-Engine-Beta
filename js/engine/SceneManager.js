@@ -146,33 +146,23 @@ export function clearScene() {
     console.log("Scene cleared.");
 }
 
-export function serializeScene(scene, dom) {
-    const sceneData = {
-        ambiente: {
-            luzAmbiental: dom ? dom.ambienteLuzAmbiental.value : '#1a1a2a',
-            hora: dom ? dom.ambienteTiempo.value : '6',
-            cicloAutomatico: dom ? dom.ambienteCicloAutomatico.checked : false,
-            duracionDia: dom ? dom.ambienteDuracionDia.value : '60',
-            mascaraTipo: dom ? dom.ambienteMascaraTipo.value : 'ninguna'
-        },
-        materias: []
-    };
-
-    // Usar getAllMaterias para asegurar que todos los nodos, incluidos los hijos, se serializan.
-    for (const materia of scene.getAllMaterias()) {
+export function serializeMateria(materia) {
+    const materiasData = [];
+    const traverse = (m, parentId = null) => {
         const materiaData = {
-            id: materia.id,
-            name: materia.name,
-            tag: materia.tag, // <-- GUARDAR EL TAG
-            parentId: materia.parent ? materia.parent.id : null,
+            id: m.id,
+            name: m.name,
+            tag: m.tag || 'Untagged',
+            parentId: parentId,
             leyes: []
         };
-        for (const ley of materia.leyes) {
+
+        for (const ley of m.leyes) {
             if (ley instanceof CustomComponent) {
                 const customLeyData = {
                     type: 'CustomComponent',
                     definitionName: ley.definition.nombre,
-                    publicVars: ley.publicVars
+                    publicVars: JSON.parse(JSON.stringify(ley.publicVars || {})) // Deep copy
                 };
                 materiaData.leyes.push(customLeyData);
             } else {
@@ -199,28 +189,50 @@ export function serializeScene(scene, dom) {
                 materiaData.leyes.push(leyData);
             }
         }
-        sceneData.materias.push(materiaData);
+        materiasData.push(materiaData);
+
+        if (m.children) {
+            m.children.forEach(child => traverse(child, m.id));
+        }
+    };
+
+    traverse(materia);
+    return materiasData;
+}
+
+export function serializeScene(scene, dom) {
+    const sceneData = {
+        ambiente: {
+            luzAmbiental: dom ? dom.ambienteLuzAmbiental.value : '#1a1a2a',
+            hora: dom ? dom.ambienteTiempo.value : '6',
+            cicloAutomatico: dom ? dom.ambienteCicloAutomatico.checked : false,
+            duracionDia: dom ? dom.ambienteDuracionDia.value : '60',
+            mascaraTipo: dom ? dom.ambienteMascaraTipo.value : 'ninguna'
+        },
+        materias: []
+    };
+
+    // Use root materias and serialize them recursively to preserve structure
+    for (const root of scene.getRootMaterias()) {
+        const serializedBranch = serializeMateria(root);
+        sceneData.materias.push(...serializedBranch);
     }
+
     return sceneData;
 }
 
 import { getComponent } from './ComponentRegistry.js';
 
-export async function deserializeScene(sceneData, projectsDirHandle) {
-    const newScene = new Scene();
+export async function deserializeMateria(materiaDataArray, projectsDirHandle) {
     const materiaMap = new Map();
+    let rootMateria = null;
 
-    // Load ambiente settings, providing defaults for older scenes
-    if (sceneData.ambiente) {
-        newScene.ambiente = { ...newScene.ambiente, ...sceneData.ambiente };
-    }
-
-    // Pass 1: Create all materias and map them by ID
-    for (const materiaData of sceneData.materias) {
+    // Pass 1: Create all materias
+    for (const materiaData of materiaDataArray) {
         const newMateria = new Materia(materiaData.name);
         newMateria.id = materiaData.id;
-        newMateria.tag = materiaData.tag || 'Untagged'; // <-- CARGAR EL TAG
-        newMateria.leyes = []; // Clear default transform
+        newMateria.tag = materiaData.tag || 'Untagged';
+        newMateria.leyes = [];
 
         for (const leyData of materiaData.leyes) {
             if (leyData.type === 'CustomComponent') {
@@ -229,90 +241,147 @@ export async function deserializeScene(sceneData, projectsDirHandle) {
                     const newLey = new CustomComponent(definition);
                     newLey.publicVars = leyData.publicVars || {};
                     newMateria.addComponent(newLey);
-                } else {
-                    console.warn(`No se encontró la definición para el componente personalizado '${leyData.definitionName}' en la Materia '${materiaData.name}'. El componente no será cargado.`);
                 }
             } else {
                 const ComponentClass = getComponent(leyData.type);
                 if (ComponentClass) {
                     const newLey = new ComponentClass(newMateria);
-
                     if (leyData.type === 'Tilemap') {
                         Object.assign(newLey, leyData.properties);
-                    if (newLey.layers && Array.isArray(newLey.layers)) {
-                        newLey.layers.forEach((layer, index) => {
-                            if (layer.tileData && Array.isArray(layer.tileData)) {
+                        if (newLey.layers) {
+                            newLey.layers.forEach(layer => {
                                 layer.tileData = new Map(layer.tileData);
-                                console.log(`[DeserializeScene] Tilemap Layer ${index} de ${materiaData.name}: ${layer.tileData.size} tiles deserializados.`);
-                            } else {
-                                layer.tileData = new Map();
-                                console.warn(`[DeserializeScene] TileData para la capa ${index} en Materia '${materiaData.name}' no es válida o está en formato antiguo. Inicializada como vacía.`);
-                            }
-                        });
-                    }
-                } else if (leyData.type === 'TilemapCollider2D') {
-                    console.log(`[DeserializeScene] Deserializando TilemapCollider2D _cachedMesh para ${materiaData.name}. LeyData:`, leyData);
-                    Object.assign(newLey, leyData.properties);
-                    // Correctly deserialize the _cachedMesh back into a Map
-                    if (newLey._cachedMesh && Array.isArray(newLey._cachedMesh)) {
-                        newLey._cachedMesh = new Map(newLey._cachedMesh);
-                        console.log(`[DeserializeScene] TilemapCollider2D _cachedMesh para ${materiaData.name}: ${newLey._cachedMesh.size} entradas deserializadas.`);
+                            });
+                        }
+                    } else if (leyData.type === 'TilemapCollider2D') {
+                        Object.assign(newLey, leyData.properties);
+                        if (newLey._cachedMesh) newLey._cachedMesh = new Map(newLey._cachedMesh);
+                    } else if (leyData.type === 'TilemapRenderer') {
+                        Object.assign(newLey, leyData.properties);
+                        newLey.imageCache = new Map();
                     } else {
-                        newLey._cachedMesh = new Map();
-                        console.warn(`[DeserializeScene] _cachedMesh para TilemapCollider2D en Materia '${materiaData.name}' no es válida. Inicializada como vacía.`);
+                        Object.assign(newLey, leyData.properties);
                     }
-                } else if (leyData.type === 'TilemapRenderer') {
-                    console.log(`[DeserializeScene] Deserializando TilemapRenderer para ${materiaData.name}.`);
-                    Object.assign(newLey, leyData.properties);
-                    // Always re-initialize imageCache as an empty Map on load.
-                    // It will be populated as tiles are rendered.
-                    newLey.imageCache = new Map();
-                } else {
-                    Object.assign(newLey, leyData.properties);
-                }
+                    newMateria.addComponent(newLey);
 
-                newMateria.addComponent(newLey);
-
-                // Post-creation loading for specific components
-                if (newLey instanceof SpriteRenderer) {
-                    await newLey.loadSprite(projectsDirHandle);
+                    if (newLey instanceof SpriteRenderer) await newLey.loadSprite(projectsDirHandle);
+                    if (newLey instanceof CreativeScript) await newLey.load(projectsDirHandle);
+                    if (newLey instanceof Animator) await newLey.loadController(projectsDirHandle);
                 }
-                if (newLey instanceof CreativeScript) {
-                    await newLey.load(projectsDirHandle);
-                }
-                if (newLey instanceof Animator) {
-                    await newLey.loadController(projectsDirHandle);
-                }
-            }
             }
         }
         materiaMap.set(newMateria.id, newMateria);
-        // Only add root materias to the scene's top-level array
+        if (materiaData.parentId === null) rootMateria = newMateria;
+    }
+
+    // Pass 2: Re-establish parent-child relationships
+    for (const materiaData of materiaDataArray) {
+        if (materiaData.parentId !== null) {
+            const child = materiaMap.get(materiaData.id);
+            const parent = materiaMap.get(materiaData.parentId);
+            if (child && parent) {
+                // Manual child addition to avoid global currentScene side effects during deserialization
+                child.parent = parent;
+                parent.children.push(child);
+            }
+        }
+    }
+
+    // Pass 3: Final setup
+    for (const materia of materiaMap.values()) {
+        const tilemap = materia.getComponent(Tilemap);
+        if (tilemap) {
+            const renderer = materia.getComponent(TilemapRenderer);
+            if (renderer) renderer.setDirty();
+        }
+    }
+
+    return rootMateria;
+}
+
+export async function deserializeScene(sceneData, projectsDirHandle) {
+    const newScene = new Scene();
+    const materiaMap = new Map();
+
+    if (sceneData.ambiente) {
+        newScene.ambiente = { ...newScene.ambiente, ...sceneData.ambiente };
+    }
+
+    // Identificar raíces (aquellos cuyo parentId no existe en la lista de materias de la escena o es null)
+    // En realidad, deserializeMateria ya hace un buen trabajo, pero aquí necesitamos reconstruir toda la escena.
+
+    // Re-usamos la lógica pero aplicada a todos los objetos de la escena
+    const materiaDataArray = sceneData.materias;
+
+    // Pass 1: Create all materias
+    for (const materiaData of materiaDataArray) {
+        const newMateria = new Materia(materiaData.name);
+        newMateria.id = materiaData.id;
+        newMateria.tag = materiaData.tag || 'Untagged';
+        newMateria.leyes = [];
+
+        for (const leyData of materiaData.leyes) {
+            if (leyData.type === 'CustomComponent') {
+                const definition = getCustomComponentDefinitions().get(leyData.definitionName);
+                if (definition) {
+                    const newLey = new CustomComponent(definition);
+                    newLey.publicVars = leyData.publicVars || {};
+                    newMateria.addComponent(newLey);
+                }
+            } else {
+                const ComponentClass = getComponent(leyData.type);
+                if (ComponentClass) {
+                    const newLey = new ComponentClass(newMateria);
+                    if (leyData.type === 'Tilemap') {
+                        Object.assign(newLey, leyData.properties);
+                        if (newLey.layers) {
+                            newLey.layers.forEach(layer => {
+                                layer.tileData = new Map(layer.tileData);
+                            });
+                        }
+                    } else if (leyData.type === 'TilemapCollider2D') {
+                        Object.assign(newLey, leyData.properties);
+                        if (newLey._cachedMesh) newLey._cachedMesh = new Map(newLey._cachedMesh);
+                    } else if (leyData.type === 'TilemapRenderer') {
+                        Object.assign(newLey, leyData.properties);
+                        newLey.imageCache = new Map();
+                    } else {
+                        Object.assign(newLey, leyData.properties);
+                    }
+                    newMateria.addComponent(newLey);
+
+                    if (newLey instanceof SpriteRenderer) await newLey.loadSprite(projectsDirHandle);
+                    if (newLey instanceof CreativeScript) await newLey.load(projectsDirHandle);
+                    if (newLey instanceof Animator) await newLey.loadController(projectsDirHandle);
+                }
+            }
+        }
+        materiaMap.set(newMateria.id, newMateria);
         if (materiaData.parentId === null) {
             newScene.addMateria(newMateria);
         }
     }
 
     // Pass 2: Re-establish parent-child relationships
-    for (const materiaData of sceneData.materias) {
+    for (const materiaData of materiaDataArray) {
         if (materiaData.parentId !== null) {
             const child = materiaMap.get(materiaData.id);
             const parent = materiaMap.get(materiaData.parentId);
             if (child && parent) {
+                // Here we use addChild because we are populating a scene
+                // But we must be careful because addChild in Materia.js uses global 'currentScene'
+                // Actually, newMateria.scene will be set when added to root or via parent.
                 parent.addChild(child);
             }
         }
     }
 
-    // Pass 3: Final setup after all objects and relationships are established
+    // Pass 3: Final setup
     for (const materia of materiaMap.values()) {
-        // If a materia has a Tilemap, its renderer needs to be marked as dirty
-        // to ensure it re-draws the loaded tiles on the next frame.
-        if (materia.getComponent(Tilemap)) {
+        const tilemap = materia.getComponent(Tilemap);
+        if (tilemap) {
             const renderer = materia.getComponent(TilemapRenderer);
-            if (renderer) {
-                renderer.setDirty();
-            }
+            if (renderer) renderer.setDirty();
         }
     }
 

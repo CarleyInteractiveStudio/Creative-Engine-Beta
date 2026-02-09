@@ -397,6 +397,9 @@ export async function updateAssetBrowser() {
                 iconContainer.textContent = '🎨';
             } else if (entry.name.endsWith('.ceScene')) {
                 iconContainer.textContent = '🎬';
+            } else if (entry.name.endsWith('.ceprefab')) {
+                iconContainer.textContent = '❄️';
+                item.classList.add('prefab-item');
             } else if (entry.name.endsWith('.celib')) {
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
@@ -531,6 +534,9 @@ async function handleGridDblClick(e) {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         // Special case to open .ceSprite files in the Sprite Slicer for editing
         onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { openIn: 'SpriteSlicer' });
+    } else if (name.endsWith('.ceprefab')) {
+        const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
+        onAssetOpened(name, fileHandle, currentDirectoryHandle.handle, { path: path });
     } else {
         const fileHandle = await currentDirectoryHandle.handle.getFileHandle(name);
         // Pass the full path to the callback now

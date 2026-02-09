@@ -70,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const FIXED_DELTA = 1 / 50; // 50 Hz fixed updates
     let sceneSnapshotBeforePlay = null; // Para guardar el estado de la escena antes de "Play"
 
+    let isPrefabMode = false;
+    let currentPrefabFileHandle = null;
+    let sceneSnapshotBeforePrefab = null;
+
     // Project Settings State
     let currentProjectConfig = {};
     // Editor Preferences State
@@ -83,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
 
     // --- 5. Core Editor Functions ---
-    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback;
+    var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, enterPrefabMode, exitPrefabMode, saveCurrentPrefab;
 
     saveAssetContentCallback = async function(filePath, content, onSaveComplete) {
         try {
@@ -1367,6 +1371,101 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    enterPrefabMode = async function(fileHandle) {
+        if (isPrefabMode) return;
+
+        console.log(`[PrefabMode] Entrando en modo prefab para: ${fileHandle.name}`);
+
+        // 1. Guardar snapshot de la escena actual
+        sceneSnapshotBeforePrefab = SceneManager.currentScene.clone();
+
+        try {
+            // 2. Cargar datos del prefab
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            const prefabData = JSON.parse(content);
+
+            // 3. Reconstruir el prefab
+            const prefabMateria = await SceneManager.deserializeMateria(prefabData, projectsDirHandle);
+
+            if (!prefabMateria) {
+                throw new Error("No se pudo deserializar el prefab.");
+            }
+
+            // 4. Crear una escena temporal para el prefab
+            const tempScene = new SceneManager.Scene();
+            tempScene.addMateria(prefabMateria);
+            SceneManager.setCurrentScene(tempScene);
+
+            // 5. Actualizar estado
+            isPrefabMode = true;
+            currentPrefabFileHandle = fileHandle;
+
+            // 6. Actualizar UI
+            dom.currentSceneName.textContent = `Prefab: ${fileHandle.name.replace('.ceprefab', '')}`;
+            dom.prefabModeIndicator.classList.remove('hidden');
+            dom.btnSavePrefab.classList.remove('hidden');
+
+            selectMateria(prefabMateria);
+            updateHierarchy();
+            updateInspector();
+
+        } catch (error) {
+            console.error("Error al entrar en modo prefab:", error);
+            showNotificationDialog('Error', 'No se pudo abrir el prefab.');
+            // Restaurar escena si falló
+            SceneManager.setCurrentScene(sceneSnapshotBeforePrefab);
+            sceneSnapshotBeforePrefab = null;
+        }
+    };
+
+    exitPrefabMode = function() {
+        if (!isPrefabMode) return;
+
+        console.log("[PrefabMode] Saliendo del modo prefab...");
+
+        // 1. Restaurar escena original
+        if (sceneSnapshotBeforePrefab) {
+            SceneManager.setCurrentScene(sceneSnapshotBeforePrefab);
+            sceneSnapshotBeforePrefab = null;
+        }
+
+        // 2. Limpiar estado
+        isPrefabMode = false;
+        currentPrefabFileHandle = null;
+
+        // 3. Actualizar UI
+        const sceneName = SceneManager.currentSceneFileHandle ? SceneManager.currentSceneFileHandle.name.replace('.ceScene', '') : 'Escena Principal';
+        dom.currentSceneName.textContent = sceneName;
+        dom.prefabModeIndicator.classList.add('hidden');
+        dom.btnSavePrefab.classList.add('hidden');
+
+        selectMateria(null);
+        updateHierarchy();
+        updateInspector();
+    };
+
+    saveCurrentPrefab = async function() {
+        if (!isPrefabMode || !currentPrefabFileHandle) return;
+
+        try {
+            // El prefab es la única materia raíz en el modo prefab
+            const rootMateria = SceneManager.currentScene.getRootMaterias()[0];
+            if (!rootMateria) throw new Error("No se encontró la materia raíz del prefab.");
+
+            const prefabData = SceneManager.serializeMateria(rootMateria);
+            const writable = await currentPrefabFileHandle.createWritable();
+            await writable.write(JSON.stringify(prefabData, null, 2));
+            await writable.close();
+
+            showNotificationDialog('Éxito', '¡Prefab guardado!');
+            console.log(`[PrefabMode] Prefab '${currentPrefabFileHandle.name}' guardado con éxito.`);
+        } catch (error) {
+            console.error("Error al guardar el prefab:", error);
+            showNotificationDialog('Error', 'No se pudo guardar el prefab.');
+        }
+    };
+
     saveScene = async function() {
         if (!SceneManager.currentSceneFileHandle) {
             // If there's no handle, treat it as a "Save As..." operation
@@ -2133,6 +2232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.setActiveTool = SceneView.setActiveTool;
+        window.updateAssetBrowser = updateAssetBrowser;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests
@@ -2220,7 +2320,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'ambiente-ciclo-automatico', 'ambiente-duracion-dia', 'ambiente-mascara-tipo',
             // Markdown Viewer Panel
             'markdown-viewer-panel', 'markdown-viewer-title', 'md-preview-btn', 'md-edit-btn', 'md-save-btn',
-            'md-preview-content', 'md-edit-content'
+            'md-preview-content', 'md-edit-content',
+            // Prefab Mode Elements
+            'prefab-mode-indicator', 'btn-exit-prefab', 'btn-save-prefab'
         ];
         ids.forEach(id => {
             const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -2542,6 +2644,10 @@ public star() {
 
                 // Handle other specific asset types
                 switch (extension) {
+                    case 'ceprefab':
+                        console.log(`Opening prefab asset: ${name}`);
+                        await enterPrefabMode(fileHandle);
+                        break;
                     case 'cea':
                         console.log(`Opening animation asset: ${name}`);
                         openAnimationAssetFromModule(fileHandle, dirHandle);
@@ -2707,6 +2813,8 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
+            dom.btnExitPrefab.addEventListener('click', exitPrefabMode);
+            dom.btnSavePrefab.addEventListener('click', saveCurrentPrefab);
             dom.btnFloatingGame.addEventListener('click', async () => {
                 if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
                     await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);

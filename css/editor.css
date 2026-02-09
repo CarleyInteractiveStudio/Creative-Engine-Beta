@@ -331,6 +331,32 @@ body {
     border-radius: 4px;
 }
 
+.prefab-mode-indicator {
+    display: flex;
+    align-items: center;
+    background-color: #1a4d2e; /* Verde oscuro tipo Unity */
+    color: white;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    border: 1px solid #2ecc71;
+}
+
+.prefab-mode-indicator button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0 5px;
+    margin-right: 5px;
+}
+
+.prefab-mode-indicator button:hover {
+    text-decoration: underline;
+}
+
 .viewport-tools {
     display: flex;
     gap: 5px;
@@ -552,6 +578,11 @@ body {
 .view-toggle-btn.active {
     background-color: var(--accent-color);
     color: white;
+}
+
+.grid-item.prefab-item .icon {
+    color: #3498db;
+    text-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
 }
 
 /* --- Library Details Modal Redesign --- */

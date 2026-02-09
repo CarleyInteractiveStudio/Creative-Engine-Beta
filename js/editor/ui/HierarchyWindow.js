@@ -320,6 +320,41 @@ export function handleContextMenuAction(action) {
                 newMateria = newDuplicatedMateria;
             }
             break;
+        case 'save-as-prefab':
+            if (contextMateria) {
+                const suggestedName = `${contextMateria.name}.ceprefab`;
+                const fileName = prompt("Nombre del prefab:", suggestedName);
+                if (fileName) {
+                    const finalName = fileName.endsWith('.ceprefab') ? fileName : `${fileName}.ceprefab`;
+                    const prefabData = SceneManager.serializeMateria(contextMateria);
+
+                    (async () => {
+                        try {
+                            if (!projectsDirHandle) {
+                                console.warn("[Hierarchy] No project handle available. Skipping save.");
+                                return;
+                            }
+                            const projectName = new URLSearchParams(window.location.search).get('project');
+                            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                            const fileHandle = await assetsHandle.getFileHandle(finalName, { create: true });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(JSON.stringify(prefabData, null, 2));
+                            await writable.close();
+                            console.log(`[Hierarchy] Prefab '${finalName}' creado con éxito.`);
+                            // We need to refresh the asset browser.
+                            // Assuming updateAssetBrowser is available globally or via some other way.
+                            if (window.updateAssetBrowser) {
+                                await window.updateAssetBrowser();
+                            }
+                        } catch (err) {
+                            console.error("Error al guardar como prefab:", err);
+                            alert("No se pudo guardar el prefab.");
+                        }
+                    })();
+                }
+            }
+            break;
     }
 
     // Centralized update for creation and rename actions
