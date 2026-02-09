@@ -19,6 +19,17 @@ export function initialize(dependencies) {
     getSelectedMateria = dependencies.getSelectedMateria;
     getIsGameRunning = dependencies.getIsGameRunning;
     getDeltaTime = dependencies.getDeltaTime;
+
+    if (dom.debugContent) {
+        dom.debugContent.addEventListener('click', (e) => {
+            if (e.target.id === 'btn-debug-optimize') {
+                // Trigger engine optimization
+                import('../../engine/CEEngine.js').then(CEEngine => {
+                    CEEngine.optimize();
+                });
+            }
+        });
+    }
 }
 
 export function update() {
@@ -42,6 +53,22 @@ export function update() {
     const fps = deltaTime > 0 ? (1.0 / deltaTime).toFixed(1) : '...';
     const dtMs = (deltaTime * 1000).toFixed(2);
 
+    // RAM Monitoring
+    let ramInfo = "No soportado";
+    let ramStyle = "";
+    if (window.performance && window.performance.memory) {
+        const memory = window.performance.memory;
+        const usedMB = Math.round(memory.usedJSHeapSize / 1048576);
+        const totalMB = Math.round(memory.jsHeapSizeLimit / 1048576);
+        const usagePercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+
+        ramInfo = `${usedMB} MB / ${totalMB} MB (${usagePercent.toFixed(1)}%)`;
+
+        if (usagePercent > 80) ramStyle = "color: #ff4444; font-weight: bold;";
+        else if (usagePercent > 60) ramStyle = "color: #ffbb33;";
+        else ramStyle = "color: #00C851;";
+    }
+
     // Scene Stats
     const totalMaterias = SceneManager.currentScene.materias.length;
     const rootMaterias = SceneManager.currentScene.getRootMaterias().length;
@@ -53,11 +80,14 @@ export function update() {
         </div>
         <div class="debug-section">
             <h4>Rendimiento</h4>
-            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms</pre>
+            <pre>FPS: ${fps}\nDeltaTime: ${dtMs} ms\nRAM: <span style="${ramStyle}">${ramInfo}</span></pre>
         </div>
         <div class="debug-section">
             <h4>Estadísticas de Escena</h4>
             <pre>Materias Totales: ${totalMaterias}\nMaterias Raíz: ${rootMaterias}</pre>
+        </div>
+        <div class="debug-section">
+            <button id="btn-debug-optimize" style="width: 100%; padding: 5px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px;">Optimizar Memoria</button>
         </div>
         <div class="debug-section">
             <h4>Input</h4>

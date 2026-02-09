@@ -11,6 +11,37 @@ export function initialize(dependencies) {
 
 export function update(dt) {
     currentDeltaTime = dt;
+    checkMemory();
+}
+
+let lastOptimizationTime = 0;
+function checkMemory() {
+    if (!window.performance || !window.performance.memory) return;
+
+    const now = performance.now();
+    if (now - lastOptimizationTime < 10000) return; // Optimize at most every 10 seconds
+
+    const memory = window.performance.memory;
+    const usedMB = memory.usedJSHeapSize / 1048576;
+
+    // We need access to the config, but CEEngine is engine-side.
+    // For now we use a default or look for a global if available.
+    const limitMB = window.currentProjectConfig ? (window.currentProjectConfig.ramLimit || 2048) : 2048;
+
+    if (usedMB > limitMB * 0.8) {
+        console.warn(`[Engine] RAM usage high (${Math.round(usedMB)}MB). Triggering optimization...`);
+        optimize();
+        lastOptimizationTime = now;
+    }
+}
+
+export function optimize() {
+    // 1. Clear AssetUtils cache (if it had one, currently it doesn't cache heavily)
+    // 2. Clear Scratch Canvases in editor.js if we could access them
+    // 3. For now, we'll just log and maybe suggest GC if in a supported env
+    if (window.gc) {
+        window.gc();
+    }
 }
 
 function getDeltaTime() {

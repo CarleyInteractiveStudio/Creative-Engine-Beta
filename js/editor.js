@@ -175,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let sceneSnapshotBeforePrefabMode = null;
 
     // Project Settings State
-    let currentProjectConfig = {};
+    window.currentProjectConfig = {};
+    let currentProjectConfig = window.currentProjectConfig;
     // Editor Preferences State
 
 
@@ -194,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
             'anim-onion-toggle-btn', 'timeline-toggle-btn', 'project-settings-modal', 'settings-app-name',
-            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-icon-preview',
+            'settings-author-name', 'settings-app-version', 'settings-engine-version', 'settings-renderer-mode', 'settings-ram-limit', 'settings-icon-preview',
             'settings-icon-picker-btn', 'settings-logo-list', 'settings-add-logo-btn', 'settings-show-engine-logo',
             'settings-keystore-path', 'settings-keystore-picker-btn', 'settings-keystore-pass', 'settings-key-alias',
             'settings-key-pass', 'settings-export-project-btn', 'settings-save-btn', 'engine-logo-confirm-modal',
@@ -856,6 +857,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure tags config exists for older projects
         if (!currentProjectConfig.tags) {
             currentProjectConfig.tags = ['Untagged'];
+        }
+
+        if (!currentProjectConfig.ramLimit) {
+            currentProjectConfig.ramLimit = 2048;
         }
 
         // The UI population is now handled by the module

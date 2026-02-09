@@ -219,6 +219,7 @@ export class Materia {
      * Destruye recursivamente esta materia, todos sus componentes y todos sus hijos.
      * Esencial para evitar fugas de memoria (limpieza de suscripciones, timers, etc).
      */
+    destruir() { this.destroy(); }
     destroy() {
         // Notificar destrucción a los componentes de esta materia
         for (const ley of this.leyes) {

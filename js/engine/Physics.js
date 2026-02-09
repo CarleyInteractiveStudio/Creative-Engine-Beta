@@ -92,6 +92,16 @@ export class PhysicsSystem {
     update(deltaTime) {
         this.currentFrame++;
 
+        // Sub-stepping to prevent tunneling and improve stability
+        const SUB_STEPS = 2;
+        const subDeltaTime = deltaTime / SUB_STEPS;
+
+        for (let s = 0; s < SUB_STEPS; s++) {
+            this._step(subDeltaTime);
+        }
+    }
+
+    _step(deltaTime) {
         // 1. Apply physics forces (gravity, velocity)
         for (const materia of this.scene.getAllMaterias()) {
             const rigidbody = materia.getComponent(Components.Rigidbody2D);

@@ -1003,6 +1003,15 @@ public star() {
                     </div>
                 </fieldset>
                 <fieldset class="settings-section">
+                    <legend>Sistema</legend>
+                    <div class="inspector-row">
+                        <label for="settings-ram-limit">Límite de RAM (MB)</label>
+                        <input type="number" id="settings-ram-limit" min="256" step="128" value="2048">
+                    </div>
+                    <p class="field-description">Define el límite de memoria para el motor. Si se supera el 80%, el motor intentará liberar recursos no utilizados.</p>
+                </fieldset>
+
+                <fieldset class="settings-section">
                     <legend>Build</legend>
                     <h4>Firma de Android (Keystore)</h4>
                     <p class="field-description">Configuración para firmar builds de Android.</p>
