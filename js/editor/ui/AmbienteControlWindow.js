@@ -65,7 +65,9 @@ const AmbienteControlWindow = (() => {
 
         if (dom.ambienteTiempo) {
             dom.ambienteTiempo.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) return;
+
                 const hour = Math.floor(val);
                 const minutes = Math.floor((val % 1) * 60);
 
@@ -87,6 +89,8 @@ const AmbienteControlWindow = (() => {
                         if (editorRenderer) editorRenderer.setAmbientLight(newColor);
                         if (gameRenderer) gameRenderer.setAmbientLight(newColor);
                     }
+
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
                 }
             });
         }
