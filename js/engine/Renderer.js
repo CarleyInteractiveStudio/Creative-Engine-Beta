@@ -342,13 +342,17 @@ export class Renderer {
     endLights() {
         this.allLightsCtx.restore();
 
-        // Composite allLightsCanvas onto lightMapCanvas
-        // This makes lights OVERWRITE the ambient filter instead of mixing with it
-        this.lightMapCtx.save();
-        this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
-        this.lightMapCtx.globalCompositeOperation = 'source-over';
-        this.lightMapCtx.drawImage(this.allLightsCanvas, 0, 0);
-        this.lightMapCtx.restore();
+        if (this.allLightsCanvas.width > 0 && this.allLightsCanvas.height > 0 &&
+            this.lightMapCanvas.width > 0 && this.lightMapCanvas.height > 0) {
+
+            // Composite allLightsCanvas onto lightMapCanvas
+            // This makes lights OVERWRITE the ambient filter instead of mixing with it
+            this.lightMapCtx.save();
+            this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
+            this.lightMapCtx.globalCompositeOperation = 'source-over';
+            this.lightMapCtx.drawImage(this.allLightsCanvas, 0, 0);
+            this.lightMapCtx.restore();
+        }
 
         if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) return;
 
