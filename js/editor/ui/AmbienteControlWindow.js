@@ -26,6 +26,12 @@ const AmbienteControlWindow = (() => {
         editorRenderer = dependencies.editorRenderer;
         gameRenderer = dependencies.gameRenderer;
 
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            const ambiente = window.SceneManager.currentScene.ambiente;
+            isCicloAutomatico = ambiente.cicloAutomatico || false;
+            currentTime = parseFloat(ambiente.hora || '6');
+        }
+
         setupEventListeners();
         refreshLayerExclusionList();
     }
@@ -36,6 +42,7 @@ const AmbienteControlWindow = (() => {
                 const newColor = e.target.value;
                 if (window.SceneManager && window.SceneManager.currentScene) {
                     window.SceneManager.currentScene.ambiente.nocheDiaColor = newColor;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
                 }
             });
         }
@@ -69,13 +76,13 @@ const AmbienteControlWindow = (() => {
                     const ambiente = window.SceneManager.currentScene.ambiente;
                     ambiente.hora = val.toString();
 
-                    // Sincronizar opacidad automáticamente según la hora (0=Noche, 12=Día, 24=Noche)
-                    const baseOpacity = Math.abs(val - 12) / 12;
+                    // Sincronizar opacidad automáticamente según la hora (usando keyframes para realismo)
+                    const baseOpacity = getOpacityForHour(val);
                     const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
                     ambiente.nocheDiaOpacidad = baseOpacity * intensidad;
 
                     if (window.currentProjectConfig && window.currentProjectConfig.rendererMode !== 'realista') {
-                        const newColor = getColorForHour(hour);
+                        const newColor = getColorForHour(val);
                         ambiente.luzAmbiental = newColor;
                         if (editorRenderer) editorRenderer.setAmbientLight(newColor);
                         if (gameRenderer) gameRenderer.setAmbientLight(newColor);
@@ -96,7 +103,7 @@ const AmbienteControlWindow = (() => {
                     ambiente.nocheDiaIntensidad = val;
 
                     const currentHour = parseFloat(ambiente.hora || '6');
-                    const baseOpacity = Math.abs(currentHour - 12) / 12;
+                    const baseOpacity = getOpacityForHour(currentHour);
                     ambiente.nocheDiaOpacidad = baseOpacity * val;
                 }
             });
@@ -105,6 +112,10 @@ const AmbienteControlWindow = (() => {
         if (dom.ambienteCicloAutomatico) {
             dom.ambienteCicloAutomatico.addEventListener('change', (e) => {
                 isCicloAutomatico = e.target.checked;
+                if (window.SceneManager && window.SceneManager.currentScene) {
+                    window.SceneManager.currentScene.ambiente.cicloAutomatico = isCicloAutomatico;
+                    if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+                }
             });
         }
     }
@@ -127,7 +138,10 @@ const AmbienteControlWindow = (() => {
     }
 
     function getColorForHour(hour) {
-        hour = parseInt(hour, 10);
+        hour = parseFloat(hour);
+        if (hour > 24) hour %= 24;
+        if (hour < 0) hour = 0;
+
         // Define keyframes for the day/night cycle colors
         const keyframes = {
             0:  { r: 10, g: 10, b: 40 },   // Midnight
@@ -140,10 +154,10 @@ const AmbienteControlWindow = (() => {
         };
 
         const hours = Object.keys(keyframes).sort((a, b) => a - b).map(Number);
-        let startHour, endHour;
+        let startHour = hours[0], endHour = hours[hours.length - 1];
 
         for (let i = 0; i < hours.length - 1; i++) {
-            if (hour >= hours[i] && hour < hours[i + 1]) {
+            if (hour >= hours[i] && hour <= hours[i + 1]) {
                 startHour = hours[i];
                 endHour = hours[i + 1];
                 break;
@@ -152,17 +166,24 @@ const AmbienteControlWindow = (() => {
 
         const startColor = keyframes[startHour];
         const endColor = keyframes[endHour];
-        const progress = (hour - startHour) / (endHour - startHour);
 
-        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
-        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
-        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        let progress = 0;
+        if (endHour !== startHour) {
+            progress = (hour - startHour) / (endHour - startHour);
+        }
+
+        const r = Math.max(0, Math.min(255, Math.round(startColor.r + (endColor.r - startColor.r) * progress)));
+        const g = Math.max(0, Math.min(255, Math.round(startColor.g + (endColor.g - startColor.g) * progress)));
+        const b = Math.max(0, Math.min(255, Math.round(startColor.b + (endColor.b - startColor.b) * progress)));
 
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
     function getOpacityForHour(hour) {
-        hour = parseInt(hour, 10);
+        hour = parseFloat(hour);
+        if (hour > 24) hour %= 24;
+        if (hour < 0) hour = 0;
+
         // Keyframes para opacidad (Día -> 0.0, Noche -> 1.0)
         const keyframes = {
             0:  1.0,  // Midnight
@@ -175,10 +196,10 @@ const AmbienteControlWindow = (() => {
         };
 
         const hours = Object.keys(keyframes).sort((a, b) => a - b).map(Number);
-        let startHour, endHour;
+        let startHour = hours[0], endHour = hours[hours.length - 1];
 
         for (let i = 0; i < hours.length - 1; i++) {
-            if (hour >= hours[i] && hour < hours[i + 1]) {
+            if (hour >= hours[i] && hour <= hours[i + 1]) {
                 startHour = hours[i];
                 endHour = hours[i + 1];
                 break;
@@ -187,9 +208,13 @@ const AmbienteControlWindow = (() => {
 
         const startVal = keyframes[startHour];
         const endVal = keyframes[endHour];
-        const progress = (hour - startHour) / (endHour - startHour);
 
-        return startVal + (endVal - startVal) * progress;
+        let progress = 0;
+        if (endHour !== startHour) {
+            progress = (hour - startHour) / (endHour - startHour);
+        }
+
+        return Math.max(0, Math.min(1, startVal + (endVal - startVal) * progress));
     }
 
     function refreshLayerExclusionList() {
