@@ -19,7 +19,7 @@ export class Scene {
             luzAmbiental: '#1a1a2a',
             nocheDiaColor: '#0a0a28',
             nocheDiaOpacidad: 1.0,
-            nocheDiaIntensidad: 1.0,   // New: limit for darkness
+            nocheDiaIntensidad: 0.8,   // Default to 80% as requested
             capasExcluidas: [],
             hora: '6',
             cicloAutomatico: false,
@@ -243,7 +243,7 @@ export function serializeScene(scene, dom) {
             luzAmbiental: scene.ambiente.luzAmbiental || '#1a1a2a',
             nocheDiaColor: scene.ambiente.nocheDiaColor || '#0a0a28',
             nocheDiaOpacidad: scene.ambiente.nocheDiaOpacidad !== undefined ? scene.ambiente.nocheDiaOpacidad : 1.0,
-            nocheDiaIntensidad: scene.ambiente.nocheDiaIntensidad !== undefined ? scene.ambiente.nocheDiaIntensidad : 1.0,
+            nocheDiaIntensidad: scene.ambiente.nocheDiaIntensidad !== undefined ? scene.ambiente.nocheDiaIntensidad : 0.8,
             capasExcluidas: scene.ambiente.capasExcluidas || [],
             hora: scene.ambiente.hora || '6',
             cicloAutomatico: scene.ambiente.cicloAutomatico || false,

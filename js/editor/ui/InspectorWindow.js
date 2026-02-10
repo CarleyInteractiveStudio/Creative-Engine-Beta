@@ -520,6 +520,22 @@ function handleInspectorClick(e) {
         }
     }
 
+    if (e.target.closest('.light-color-swatch')) {
+        const swatch = e.target.closest('.light-color-swatch');
+        const color = swatch.dataset.color;
+        const componentName = swatch.dataset.component;
+        if (selectedMateria) {
+            const component = selectedMateria.getComponent(Components[componentName]);
+            if (component) {
+                component.color = color;
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+                if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
+            }
+        }
+        return;
+    }
+
     if (e.target.matches('.sprite-select-btn')) {
         const componentName = e.target.dataset.component;
         if (componentName && openAssetSelectorCallback) {
@@ -862,6 +878,36 @@ function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
             </div>
             <div class="component-header-controls">
                 ${canRemove ? `<button class="remove-component-btn" title="Eliminar Componente" data-ley-index="${leyIndex}">&times;</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderLightColorPresets(componentName) {
+    const presets = [
+        { color: '#ffffff', name: 'Blanco' },
+        { color: '#ffff00', name: 'Amarillo' },
+        { color: '#ffcc00', name: 'Oro' },
+        { color: '#ff6600', name: 'Naranja' },
+        { color: '#ff0000', name: 'Rojo' },
+        { color: '#00ff00', name: 'Verde' },
+        { color: '#00ccff', name: 'Cian' },
+        { color: '#0000ff', name: 'Azul' },
+        { color: '#9900ff', name: 'Violeta' }
+    ];
+
+    return `
+        <div class="prop-row-multi">
+            <label>Presets</label>
+            <div class="light-color-swatches" style="display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px;">
+                ${presets.map(p => `
+                    <div class="light-color-swatch"
+                         data-color="${p.color}"
+                         data-component="${componentName}"
+                         title="${p.name}"
+                         style="width: 20px; height: 20px; background-color: ${p.color}; border: 1px solid #555; cursor: pointer; border-radius: 3px;">
+                    </div>
+                `).join('')}
             </div>
         </div>
     `;
@@ -1589,10 +1635,19 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="text" class="prop-input hex-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
+                    ${renderLightColorPresets("PointLight2D")}
                     <div class="prop-row-multi">
-                        <label>Intensity</label>
+                        <label>Intensidad</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" min="0" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Filtro Luz</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="PointLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
+                            <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -1616,10 +1671,19 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="text" class="prop-input hex-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
+                    ${renderLightColorPresets("SpotLight2D")}
                     <div class="prop-row-multi">
-                        <label>Intensity</label>
+                        <label>Intensidad</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Filtro Luz</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="SpotLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
+                            <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -1648,10 +1712,19 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="color" class="prop-input" data-component="FreeformLight2D" data-prop="color" value="${ley.color}">
                         </div>
                     </div>
+                    ${renderLightColorPresets("FreeformLight2D")}
                     <div class="prop-row-multi">
-                        <label>Intensity</label>
+                        <label>Intensidad</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" min="0" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Filtro Luz</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="FreeformLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
+                            <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <hr>
@@ -1849,10 +1922,19 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="color" class="prop-input" data-component="SpriteLight2D" data-prop="color" value="${ley.color}">
                         </div>
                     </div>
+                    ${renderLightColorPresets("SpriteLight2D")}
                     <div class="prop-row-multi">
-                        <label>Intensity</label>
+                        <label>Intensidad</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" min="0" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
+                            <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Filtro Luz</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="SpriteLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
+                            <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                 </div>

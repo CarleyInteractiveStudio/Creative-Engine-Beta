@@ -1207,12 +1207,14 @@ export class PointLight2D extends Leyes {
         this.color = '#FFFFFF';
         this.intensity = 1.0;
         this.radius = 200; // Default radius in pixels/world units
+        this.filtroOpacidad = 1.0;
     }
     clone() {
         const newLight = new PointLight2D(null);
         newLight.color = this.color;
         newLight.intensity = this.intensity;
         newLight.radius = this.radius;
+        newLight.filtroOpacidad = this.filtroOpacidad;
         return newLight;
     }
 }
@@ -1224,6 +1226,7 @@ export class SpotLight2D extends Leyes {
         this.intensity = 1.0;
         this.radius = 300;
         this.angle = 45; // The angle of the cone in degrees
+        this.filtroOpacidad = 1.0;
     }
     clone() {
         const newLight = new SpotLight2D(null);
@@ -1231,6 +1234,7 @@ export class SpotLight2D extends Leyes {
         newLight.intensity = this.intensity;
         newLight.radius = this.radius;
         newLight.angle = this.angle;
+        newLight.filtroOpacidad = this.filtroOpacidad;
         return newLight;
     }
 }
@@ -1240,6 +1244,7 @@ export class FreeformLight2D extends Leyes {
         super(materia);
         this.color = '#FFFFFF';
         this.intensity = 1.0;
+        this.filtroOpacidad = 1.0;
         // Default to a simple square shape relative to the object's origin
         this.vertices = [
             { x: -50, y: -50 },
@@ -1252,6 +1257,7 @@ export class FreeformLight2D extends Leyes {
         const newLight = new FreeformLight2D(null);
         newLight.color = this.color;
         newLight.intensity = this.intensity;
+        newLight.filtroOpacidad = this.filtroOpacidad;
         newLight.vertices = JSON.parse(JSON.stringify(this.vertices)); // Deep copy
         return newLight;
     }
@@ -1264,6 +1270,7 @@ export class SpriteLight2D extends Leyes {
         this.source = ''; // Path to the sprite texture
         this.color = '#FFFFFF';
         this.intensity = 1.0;
+        this.filtroOpacidad = 1.0;
     }
 
     setSourcePath(path) {

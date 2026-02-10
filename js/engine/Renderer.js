@@ -10,6 +10,8 @@ export class Renderer {
 
         this.lightMapCanvas = document.createElement('canvas');
         this.lightMapCtx = this.lightMapCanvas.getContext('2d');
+        this.allLightsCanvas = document.createElement('canvas');
+        this.allLightsCtx = this.allLightsCanvas.getContext('2d');
         this.lightBufferCanvas = document.createElement('canvas');
         this.lightBufferCtx = this.lightBufferCanvas.getContext('2d');
         this.ambientLight = '#1a1a2a'; // A dark blue/purple for ambient light
@@ -67,6 +69,8 @@ export class Renderer {
         this.canvas.height = this.canvas.clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
+        this.allLightsCanvas.width = this.canvas.width;
+        this.allLightsCanvas.height = this.canvas.height;
         
         const rendererType = this.isEditor ? 'EDITOR' : 'GAME';
         const containerElement = this.canvas.parentElement;
@@ -203,44 +207,51 @@ export class Renderer {
     }
 
     beginLights(filtroColor = null, filtroOpacidad = 1.0) {
-        if (Math.random() < 0.01) {
-            console.log(`[Renderer] beginLights: color=${filtroColor}, opacity=${filtroOpacidad.toFixed(3)}`);
-        }
+        // Prepare main lightmap with ambient filter
         this.lightMapCtx.save();
-        // Fill entire canvas with ambient light in screen space to remove world-space limits
         this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
         this.lightMapCtx.globalCompositeOperation = 'source-over';
 
-        // Determine the base "ambient" color for the lightmap
-        // If no filter color is provided, use the old ambientLight property
         const baseColor = filtroColor || this.ambientLight;
-
-        // Start with a white background (no filtering)
-        this.lightMapCtx.fillStyle = '#ffffff';
+        this.lightMapCtx.fillStyle = '#ffffff'; // White = No filter
         this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
 
-        // Overlay the filter color with the specified opacity
-        // Using source-over with alpha correctly blends the filter with white
         this.lightMapCtx.globalAlpha = filtroOpacidad;
         this.lightMapCtx.fillStyle = baseColor;
         this.lightMapCtx.fillRect(0, 0, this.lightMapCanvas.width, this.lightMapCanvas.height);
         this.lightMapCtx.globalAlpha = 1.0;
-
         this.lightMapCtx.restore();
 
-        // Prepare for world-space light drawing
-        this.lightMapCtx.save();
-        this.lightMapCtx.setTransform(this.ctx.getTransform());
+        // Prepare temporary lights buffer
+        this.allLightsCtx.save();
+        this.allLightsCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.allLightsCtx.clearRect(0, 0, this.allLightsCanvas.width, this.allLightsCanvas.height);
+        this.allLightsCtx.setTransform(this.ctx.getTransform());
+    }
+
+    _getLightMapColor(hexColor, filtroOpacidad) {
+        // Hex to RGB
+        const r2 = parseInt(hexColor.slice(1,3), 16);
+        const g2 = parseInt(hexColor.slice(3,5), 16);
+        const b2 = parseInt(hexColor.slice(5,7), 16);
+
+        // Lerp from White (255,255,255) to Color based on filtroOpacidad
+        const r = Math.round(255 + (r2 - 255) * filtroOpacidad);
+        const g = Math.round(255 + (g2 - 255) * filtroOpacidad);
+        const b = Math.round(255 + (b2 - 255) * filtroOpacidad);
+
+        return `rgb(${r},${g},${b})`;
     }
 
     drawPointLight(light, transform) {
-        const ctx = this.lightMapCtx;
-        const { radius, color, intensity } = light;
+        const ctx = this.allLightsCtx;
+        const { radius, color, intensity, filtroOpacidad = 1 } = light;
+        const drawColor = this._getLightMapColor(color, filtroOpacidad);
+
         const gradient = ctx.createRadialGradient(transform.x, transform.y, 0, transform.x, transform.y, radius);
-        gradient.addColorStop(0, `${color}FF`);
-        gradient.addColorStop(0.3, `${color}CC`);
-        gradient.addColorStop(0.6, `${color}66`);
-        gradient.addColorStop(1, `${color}00`);
+        gradient.addColorStop(0, drawColor);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Fade to transparent black (no effect in lighter)
+
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = gradient;
         ctx.globalAlpha = intensity;
@@ -249,18 +260,20 @@ export class Renderer {
     }
 
     drawSpotLight(light, transform) {
-        const ctx = this.lightMapCtx;
+        const ctx = this.allLightsCtx;
         const { x, y, rotation } = transform;
-        const { radius, color, intensity, angle } = light;
+        const { radius, color, intensity, angle, filtroOpacidad = 1 } = light;
+        const drawColor = this._getLightMapColor(color, filtroOpacidad);
+
         const directionRad = ((rotation - 90) * Math.PI) / 180;
         const coneAngleRad = (angle * Math.PI) / 180;
         const startAngle = directionRad - coneAngleRad / 2;
         const endAngle = directionRad + coneAngleRad / 2;
+
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        gradient.addColorStop(0, `${color}FF`);
-        gradient.addColorStop(0.3, `${color}CC`);
-        gradient.addColorStop(0.6, `${color}66`);
-        gradient.addColorStop(1, `${color}00`);
+        gradient.addColorStop(0, drawColor);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = gradient;
         ctx.globalAlpha = intensity;
@@ -273,10 +286,12 @@ export class Renderer {
     }
 
     drawFreeformLight(light, transform) {
-        const ctx = this.lightMapCtx;
+        const ctx = this.allLightsCtx;
         const { x, y, rotation } = transform;
-        const { vertices, color, intensity } = light;
+        const { vertices, color, intensity, filtroOpacidad = 1 } = light;
         if (!vertices || vertices.length < 3) return;
+
+        const drawColor = this._getLightMapColor(color, filtroOpacidad);
 
         ctx.save();
         ctx.translate(x, y);
@@ -288,7 +303,7 @@ export class Renderer {
         }
         ctx.closePath();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = color;
+        ctx.fillStyle = drawColor;
         ctx.globalAlpha = intensity;
         ctx.fill();
         ctx.restore();
@@ -296,11 +311,12 @@ export class Renderer {
     }
 
     drawSpriteLight(light, transform) {
-        const ctx = this.lightMapCtx;
+        const ctx = this.allLightsCtx;
         const { x, y, rotation, scale } = transform;
-        const { sprite, color, intensity } = light;
+        const { sprite, color, intensity, filtroOpacidad = 1 } = light;
         if (!sprite || !sprite.complete || sprite.naturalWidth === 0) return;
 
+        const drawColor = this._getLightMapColor(color, filtroOpacidad);
         const width = Math.ceil(sprite.naturalWidth * scale.x);
         const height = Math.ceil(sprite.naturalHeight * scale.y);
 
@@ -310,7 +326,7 @@ export class Renderer {
         this.lightBufferCtx.clearRect(0, 0, width, height);
         this.lightBufferCtx.drawImage(sprite, 0, 0, width, height);
         this.lightBufferCtx.globalCompositeOperation = 'source-in';
-        this.lightBufferCtx.fillStyle = color;
+        this.lightBufferCtx.fillStyle = drawColor;
         this.lightBufferCtx.fillRect(0, 0, width, height);
 
         ctx.save();
@@ -324,8 +340,18 @@ export class Renderer {
     }
 
     endLights() {
+        this.allLightsCtx.restore();
+
+        // Composite allLightsCanvas onto lightMapCanvas
+        // This makes lights OVERWRITE the ambient filter instead of mixing with it
+        this.lightMapCtx.save();
+        this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.lightMapCtx.globalCompositeOperation = 'source-over';
+        this.lightMapCtx.drawImage(this.allLightsCanvas, 0, 0);
         this.lightMapCtx.restore();
+
         if (this.lightMapCanvas.width === 0 || this.lightMapCanvas.height === 0) return;
+
         this.ctx.save();
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.globalCompositeOperation = 'multiply';
