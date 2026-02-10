@@ -4,11 +4,13 @@ const AmbienteControlWindow = (() => {
     let dom = {};
     let editorRenderer = null;
     let gameRenderer = null;
+    let SceneManager = null;
+    let currentProjectConfig = null;
     let isCicloAutomatico = false;
     let currentTime = 6; // Start at 6 AM
 
     function initialize(dependencies) {
-        console.log("Inicializando Control de Ambiente...");
+        console.log("Inicializando Control de Ambiente v2.0...");
         dom = {
             ...dependencies.dom,
             ambienteControlPanel: document.getElementById('ambiente-control-panel'),
@@ -25,9 +27,11 @@ const AmbienteControlWindow = (() => {
         };
         editorRenderer = dependencies.editorRenderer;
         gameRenderer = dependencies.gameRenderer;
+        SceneManager = dependencies.SceneManager || window.SceneManager;
+        currentProjectConfig = dependencies.currentProjectConfig || window.currentProjectConfig;
 
-        if (window.SceneManager && window.SceneManager.currentScene) {
-            const ambiente = window.SceneManager.currentScene.ambiente;
+        if (SceneManager && SceneManager.currentScene) {
+            const ambiente = SceneManager.currentScene.ambiente;
             isCicloAutomatico = ambiente.cicloAutomatico || false;
             currentTime = parseFloat(ambiente.hora || '6');
         }
@@ -40,8 +44,9 @@ const AmbienteControlWindow = (() => {
         if (dom.ambienteFiltroColor) {
             dom.ambienteFiltroColor.addEventListener('input', (e) => {
                 const newColor = e.target.value;
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.nocheDiaColor = newColor;
+                console.log(`[Ambiente] Cambio de Color: ${newColor}`);
+                if (SceneManager && SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.nocheDiaColor = newColor;
                     if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
                 }
             });
@@ -74,8 +79,8 @@ const AmbienteControlWindow = (() => {
                 const displayTime = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                 if (dom.ambienteTiempoValor) dom.ambienteTiempoValor.textContent = displayTime;
 
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    const ambiente = window.SceneManager.currentScene.ambiente;
+                if (SceneManager && SceneManager.currentScene) {
+                    const ambiente = SceneManager.currentScene.ambiente;
                     ambiente.hora = val.toString();
 
                     // Sincronizar opacidad automáticamente según la hora (usando keyframes para realismo)
@@ -83,7 +88,9 @@ const AmbienteControlWindow = (() => {
                     const intensidad = ambiente.nocheDiaIntensidad !== undefined ? ambiente.nocheDiaIntensidad : 1.0;
                     ambiente.nocheDiaOpacidad = baseOpacity * intensidad;
 
-                    if (window.currentProjectConfig && window.currentProjectConfig.rendererMode !== 'realista') {
+                    console.log(`[Ambiente] Hora: ${val.toFixed(2)}, Opacidad: ${ambiente.nocheDiaOpacidad.toFixed(3)}, Intensidad: ${intensidad}`);
+
+                    if (currentProjectConfig && currentProjectConfig.rendererMode !== 'realista') {
                         const newColor = getColorForHour(val);
                         ambiente.luzAmbiental = newColor;
                         if (editorRenderer) editorRenderer.setAmbientLight(newColor);
@@ -98,12 +105,13 @@ const AmbienteControlWindow = (() => {
         if (dom.ambienteNocheDiaIntensidad) {
             dom.ambienteNocheDiaIntensidad.addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
+                console.log(`[Ambiente] Cambio de Intensidad: ${val}`);
                 if (dom.ambienteNocheDiaIntensidadValor) {
                     dom.ambienteNocheDiaIntensidadValor.textContent = `${Math.round(val * 100)}%`;
                 }
 
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    const ambiente = window.SceneManager.currentScene.ambiente;
+                if (SceneManager && SceneManager.currentScene) {
+                    const ambiente = SceneManager.currentScene.ambiente;
                     ambiente.nocheDiaIntensidad = val;
 
                     const currentHour = parseFloat(ambiente.hora || '6');
@@ -116,8 +124,9 @@ const AmbienteControlWindow = (() => {
         if (dom.ambienteCicloAutomatico) {
             dom.ambienteCicloAutomatico.addEventListener('change', (e) => {
                 isCicloAutomatico = e.target.checked;
-                if (window.SceneManager && window.SceneManager.currentScene) {
-                    window.SceneManager.currentScene.ambiente.cicloAutomatico = isCicloAutomatico;
+                console.log(`[Ambiente] Ciclo Automático: ${isCicloAutomatico}`);
+                if (SceneManager && SceneManager.currentScene) {
+                    SceneManager.currentScene.ambiente.cicloAutomatico = isCicloAutomatico;
                     if (typeof window.setSceneDirty === 'function') window.setSceneDirty(true);
                 }
             });

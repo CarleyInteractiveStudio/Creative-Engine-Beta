@@ -837,6 +837,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = await configFileHandle.getFile();
             const content = await file.text();
             currentProjectConfig = JSON.parse(content);
+            window.currentProjectConfig = currentProjectConfig;
             console.log("Configuración del proyecto cargada:", currentProjectConfig);
         } catch (error) {
             console.warn("No se encontró 'project.ceconfig'. Creando uno nuevo con valores por defecto.");
@@ -2941,7 +2942,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         SceneManager.setCustomComponentProvider(getCustomComponentDefinitions());
 
         // Expose SceneManager globally for modules that need it (like InspectorWindow)
-        window.SceneManager = { ...SceneManager };
+        window.SceneManager = SceneManager;
         window.Materia = Materia;
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
@@ -3394,7 +3395,13 @@ public start() {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
-            AmbienteControlWindow.initialize({ dom, editorRenderer: renderer, gameRenderer: gameRenderer });
+            AmbienteControlWindow.initialize({
+                dom,
+                editorRenderer: renderer,
+                gameRenderer: gameRenderer,
+                SceneManager,
+                currentProjectConfig
+            });
 
             // Initialize all runtime APIs through the central manager
             // EngineAPI.initialize({
@@ -3424,7 +3431,8 @@ public start() {
                     layers: { sortingLayers: ['Default'], collisionLayers: ['Default'] },
                     tags: ['Untagged']
                 };
-                currentProjectConfig = defaultConfig; // Also set the global config
+                currentProjectConfig = defaultConfig;
+                window.currentProjectConfig = currentProjectConfig;
                 populateProjectSettingsUI(defaultConfig, null);
             }
 

@@ -203,6 +203,9 @@ export class Renderer {
     }
 
     beginLights(filtroColor = null, filtroOpacidad = 1.0) {
+        if (Math.random() < 0.01) {
+            console.log(`[Renderer] beginLights: color=${filtroColor}, opacity=${filtroOpacidad.toFixed(3)}`);
+        }
         this.lightMapCtx.save();
         // Fill entire canvas with ambient light in screen space to remove world-space limits
         this.lightMapCtx.setTransform(1, 0, 0, 1, 0, 0);
