@@ -2093,7 +2093,7 @@ export class Terreno2D extends Leyes {
         }
 
         this.sortingLayer = 'Default';
-        this.orderInLayer = 0;
+        this.orderInLayer = -50;
         this.baseColor = '#4a4a4a';
 
         this.imageCache = new Map();
@@ -2290,11 +2290,25 @@ export class TerrenoCollider2D extends Leyes {
         const grid = new Uint8Array(cols * rows);
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                // Comprobar el centro del bloque
-                const px = Math.min(width - 1, c * res + res / 2);
-                const py = Math.min(height - 1, r * res + res / 2);
-                const idx = (Math.floor(py) * width + Math.floor(px)) * 4;
-                if (imgData[idx + 3] > 128) { // Si el alpha es > 50%
+                // Comprobar si hay algún píxel sólido en este bloque
+                let occupied = false;
+                const startY = r * res;
+                const endY = Math.min(height, (r + 1) * res);
+                const startX = c * res;
+                const endX = Math.min(width, (c + 1) * res);
+
+                for (let py = startY; py < endY; py++) {
+                    for (let px = startX; px < endX; px++) {
+                        const idx = (py * width + px) * 4;
+                        if (imgData[idx + 3] > 128) { // Alpha > 50%
+                            occupied = true;
+                            break;
+                        }
+                    }
+                    if (occupied) break;
+                }
+
+                if (occupied) {
                     grid[r * cols + c] = 1;
                 }
             }
@@ -2375,6 +2389,7 @@ export class Gyzmo extends Leyes {
         super(materia);
         this.layers = []; // [{name, x, y, width, height, color, showInGame}]
         this.showInGame = false;
+        this.orderInLayer = 0;
 
         if (materia) {
             this.addLayer("Área Principal", 0, 0, 200, 200, "#00ff00");
@@ -2408,6 +2423,7 @@ export class Gyzmo extends Leyes {
         const newGyzmo = new Gyzmo(null);
         newGyzmo.layers = JSON.parse(JSON.stringify(this.layers));
         newGyzmo.showInGame = this.showInGame;
+        newGyzmo.orderInLayer = this.orderInLayer;
         return newGyzmo;
     }
 }

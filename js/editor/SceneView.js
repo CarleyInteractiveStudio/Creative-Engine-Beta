@@ -1521,6 +1521,9 @@ export function drawOverlay() {
     // Draw tilemap colliders
     drawTilemapColliders();
 
+    // Draw terrain colliders
+    drawTerrenoColliders();
+
     // Draw physics colliders for selected object
     drawPhysicsGizmos();
 
@@ -1800,6 +1803,32 @@ function drawTilemapOutline() {
         const offsetX = layer.position.x * layerWidth;
         const offsetY = layer.position.y * layerHeight;
         ctx.strokeRect(offsetX - layerWidth / 2, offsetY - layerHeight / 2, layerWidth, layerHeight);
+    }
+
+    ctx.restore();
+}
+
+function drawTerrenoColliders() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const collider = selectedMateria.getComponent(Components.TerrenoCollider2D);
+    const transform = selectedMateria.getComponent(Components.Transform);
+
+    if (!collider || !transform) return;
+
+    const { ctx, camera } = renderer;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.lineWidth = 2 / camera.effectiveZoom;
+    ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
+
+    for (const rect of collider.generatedColliders) {
+        ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
     }
 
     ctx.restore();

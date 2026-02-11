@@ -2379,6 +2379,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="Gyzmo" data-prop="showInGame" ${ley.showInGame ? 'checked' : ''}>
                         <label>Mostrar en Juego (Global)</label>
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="Gyzmo" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
                     <hr>
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">

@@ -133,7 +133,7 @@ export class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.TilemapCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -280,7 +280,7 @@ export class PhysicsSystem {
                 collisionInfo = this.isBoxVsBox(materiaA, materiaB);
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isBoxVsCapsule(materiaA, materiaB);
-            } else if (colliderB instanceof Components.TilemapCollider2D) {
+            } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.CapsuleCollider2D) {
