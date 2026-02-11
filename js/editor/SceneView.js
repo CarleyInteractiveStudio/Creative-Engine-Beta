@@ -1129,7 +1129,7 @@ export function initialize(dependencies) {
 
                 // Dibujar o borrar terreno según el modo o si se pulsa Shift
                 const isErase = (settings.mode === 'erase') || event.shiftKey;
-                terreno.paint(worldMouse.x, worldMouse.y, settings.brushSize, isErase);
+                terreno.paint(worldMouse.x, worldMouse.y, settings.brushSize, isErase, settings.selectedLayer);
 
                 if (updateScene) updateScene(renderer, false);
 

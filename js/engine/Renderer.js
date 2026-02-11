@@ -171,7 +171,7 @@ export class Renderer {
 
     drawTerreno2D(terreno) {
         const transform = terreno.materia.getComponent(Transform);
-        if (!transform || !terreno.maskCanvas) return;
+        if (!transform || !terreno.layers) return;
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
@@ -183,7 +183,6 @@ export class Renderer {
         const x = -w / 2;
         const y = -h / 2;
 
-        // 1. Usar un buffer offscreen para aplicar la máscara a las texturas
         if (!this._terrainBuffer) {
             this._terrainBuffer = document.createElement('canvas');
             this._terrainBufferCtx = this._terrainBuffer.getContext('2d');
@@ -192,33 +191,32 @@ export class Renderer {
         this._terrainBuffer.height = h;
         const bCtx = this._terrainBufferCtx;
 
-        bCtx.clearRect(0, 0, w, h);
-
-        // A. Dibujar el color base en todo el buffer
-        bCtx.fillStyle = terreno.baseColor || '#4a4a4a';
-        bCtx.fillRect(0, 0, w, h);
-
-        // B. Dibujar capas de textura (en modo tiling)
         for (let l = 0; l < terreno.layers.length; l++) {
             const layer = terreno.layers[l];
+            if (!layer.maskCanvas) continue;
+
             const img = terreno.getImageForLayer(l);
+            bCtx.clearRect(0, 0, w, h);
+
             if (img && img.complete && img.naturalWidth > 0) {
-                bCtx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
                 const pattern = bCtx.createPattern(img, 'repeat');
                 bCtx.fillStyle = pattern;
                 bCtx.fillRect(0, 0, w, h);
+            } else if (l === 0) {
+                bCtx.fillStyle = terreno.baseColor || '#4a4a4a';
+                bCtx.fillRect(0, 0, w, h);
             }
+
+            // Clip this layer to its own mask
+            bCtx.globalCompositeOperation = 'destination-in';
+            bCtx.drawImage(layer.maskCanvas, 0, 0);
+            bCtx.globalCompositeOperation = 'source-over';
+
+            this.ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
+            this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
         }
+        this.ctx.globalAlpha = 1.0;
 
-        // C. Aplicar la máscara del terreno (lo que "recorta" la forma)
-        bCtx.globalCompositeOperation = 'destination-in';
-        bCtx.drawImage(terreno.maskCanvas, 0, 0);
-        bCtx.globalCompositeOperation = 'source-over';
-
-        // 2. Dibujar el resultado final en el canvas principal
-        this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
-
-        // 3. Dibujar borde del área de dibujo si estamos en el editor
         if (this.isEditor) {
             this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             this.ctx.lineWidth = 1 / (this.camera?.effectiveZoom || 1);

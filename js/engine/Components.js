@@ -2084,25 +2084,21 @@ export class Terreno2D extends Leyes {
         super(materia);
         this._width = 1024;
         this._height = 1024;
-        this.layers = []; // [{texturePath, opacity}]
+        this.layers = []; // [{texturePath, opacity, serializedMask, maskCanvas, maskCtx}]
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
         this.baseColor = '#4a4a4a';
-
-        // El mapa de bits del terreno (0 = aire, >0 = terreno)
-        this.maskCanvas = document.createElement('canvas');
-        this.maskCanvas.width = this.width;
-        this.maskCanvas.height = this.height;
-        this.maskCtx = this.maskCanvas.getContext('2d');
-
-        // Datos para persistencia (base64)
-        this.serializedMask = null;
 
         this.imageCache = new Map();
     }
 
     async loadTextures(projectsDirHandle) {
         for (const layer of this.layers) {
+            // Inicializar canvas de máscara si no existe
+            if (!layer.maskCanvas) {
+                this._initializeLayerCanvas(layer);
+            }
+
             if (layer.texturePath && !this.imageCache.has(layer.texturePath)) {
                 try {
                     const url = await getURLForAssetPath(layer.texturePath, projectsDirHandle);
@@ -2119,27 +2115,38 @@ export class Terreno2D extends Leyes {
                     console.error(`Error al cargar textura de terreno: ${layer.texturePath}`, e);
                 }
             }
-        }
 
-        // Cargar máscara si existe
-        if (this.serializedMask) {
-            const img = new Image();
-            img.src = this.serializedMask;
-            await new Promise(r => img.onload = r);
-            this.maskCtx.clearRect(0, 0, this.width, this.height);
-            this.maskCtx.drawImage(img, 0, 0);
+            // Cargar máscara serializada si existe
+            if (layer.serializedMask) {
+                const img = new Image();
+                img.src = layer.serializedMask;
+                await new Promise(r => img.onload = r);
+                layer.maskCtx.clearRect(0, 0, this.width, this.height);
+                layer.maskCtx.drawImage(img, 0, 0);
+            }
         }
+    }
+
+    _initializeLayerCanvas(layer) {
+        layer.maskCanvas = document.createElement('canvas');
+        layer.maskCanvas.width = this.width;
+        layer.maskCanvas.height = this.height;
+        layer.maskCtx = layer.maskCanvas.getContext('2d');
     }
 
     get width() { return this._width; }
     set width(v) {
         this._width = v;
-        if (this.maskCanvas) this.maskCanvas.width = v;
+        for (const layer of this.layers) {
+            if (layer.maskCanvas) layer.maskCanvas.width = v;
+        }
     }
     get height() { return this._height; }
     set height(v) {
         this._height = v;
-        if (this.maskCanvas) this.maskCanvas.height = v;
+        for (const layer of this.layers) {
+            if (layer.maskCanvas) layer.maskCanvas.height = v;
+        }
     }
 
     getImageForLayer(index) {
@@ -2148,10 +2155,13 @@ export class Terreno2D extends Leyes {
     }
 
     addLayer(texturePath) {
-        this.layers.push({
+        const newLayer = {
             texturePath: texturePath,
-            opacity: 1.0
-        });
+            opacity: 1.0,
+            serializedMask: null
+        };
+        this._initializeLayerCanvas(newLayer);
+        this.layers.push(newLayer);
     }
 
     removeLayer(index) {
@@ -2161,45 +2171,66 @@ export class Terreno2D extends Leyes {
     }
 
     /**
-     * Pinta en la máscara del terreno.
+     * Pinta en la máscara de una capa específica del terreno.
      * @param {number} worldX
      * @param {number} worldY
      * @param {number} radius
      * @param {boolean} erase
+     * @param {number} layerIndex
      */
-    paint(worldX, worldY, radius, erase = false) {
+    paint(worldX, worldY, radius, erase = false, layerIndex = 0) {
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
-        // Convertir mundo a local (centrado en el canvas del terreno)
+        if (layerIndex < 0 || layerIndex >= this.layers.length) {
+            if (!erase) return; // Si estamos borrando, borramos de todas? No, mejor solo de la activa.
+            layerIndex = 0;
+        }
+
         const localX = (worldX - transform.x) + (this.width / 2);
         const localY = (worldY - transform.y) + (this.height / 2);
 
-        this.maskCtx.save();
-        this.maskCtx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
-        this.maskCtx.beginPath();
-        this.maskCtx.arc(localX, localY, radius, 0, Math.PI * 2);
-        this.maskCtx.fillStyle = 'white';
-        this.maskCtx.fill();
-        this.maskCtx.restore();
+        // Si es borrar, borramos de TODAS las capas para que el hueco sea total
+        if (erase) {
+            for (const layer of this.layers) {
+                this._paintOnLayer(layer, localX, localY, radius, true);
+            }
+        } else {
+            this._paintOnLayer(this.layers[layerIndex], localX, localY, radius, false);
+        }
 
-        // Notificar al colisionador que debe regenerarse
+        // Notificar al colisionador que debe regenerarse automáticamente
         const collider = this.materia.getComponent(TerrenoCollider2D);
-        if (collider) collider.isDirty = true;
+        if (collider) collider.generateColliders();
+    }
 
-        // Actualizar datos serializados para el próximo guardado
-        this.serializedMask = this.maskCanvas.toDataURL();
+    _paintOnLayer(layer, x, y, radius, erase) {
+        if (!layer.maskCtx) this._initializeLayerCanvas(layer);
+
+        const ctx = layer.maskCtx;
+        ctx.save();
+        ctx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.restore();
+
+        layer.serializedMask = layer.maskCanvas.toDataURL();
     }
 
     clone() {
         const newTerreno = new Terreno2D(null);
         newTerreno.width = this.width;
         newTerreno.height = this.height;
-        newTerreno.layers = JSON.parse(JSON.stringify(this.layers));
+        newTerreno.layers = this.layers.map(l => ({
+            texturePath: l.texturePath,
+            opacity: l.opacity,
+            serializedMask: l.serializedMask
+        }));
         newTerreno.sortingLayer = this.sortingLayer;
         newTerreno.orderInLayer = this.orderInLayer;
         newTerreno.baseColor = this.baseColor;
-        newTerreno.serializedMask = this.maskCanvas.toDataURL();
         return newTerreno;
     }
 }
@@ -2220,12 +2251,24 @@ export class TerrenoCollider2D extends Leyes {
 
     generateColliders() {
         const terreno = this.materia.getComponent(Terreno2D);
-        if (!terreno || !terreno.maskCanvas) return;
+        if (!terreno || terreno.layers.length === 0) return;
 
         this.generatedColliders = [];
-        const { width, height, maskCanvas } = terreno;
-        const ctx = maskCanvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, width, height).data;
+        const { width, height } = terreno;
+
+        // Crear un canvas temporal para combinar todas las máscaras
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tCtx = tempCanvas.getContext('2d');
+
+        for (const layer of terreno.layers) {
+            if (layer.maskCanvas) {
+                tCtx.drawImage(layer.maskCanvas, 0, 0);
+            }
+        }
+
+        const imgData = tCtx.getImageData(0, 0, width, height).data;
 
         const res = this.resolution;
         const cols = Math.ceil(width / res);

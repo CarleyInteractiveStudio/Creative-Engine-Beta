@@ -576,6 +576,8 @@ function handleInspectorClick(e) {
         if (tilemap) {
             if (tilemap.layers.length > 1) {
                 tilemap.removeLayer(tilemap.activeLayerIndex);
+                const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+                if (collider) collider.generateMesh();
                 updateInspector();
             } else {
                 window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
@@ -644,6 +646,8 @@ function handleInspectorClick(e) {
         if (tilemap) {
             if (tilemap.layers.length > 1) {
                 tilemap.removeLayer(tilemap.activeLayerIndex);
+                const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+                if (collider) collider.generateMesh();
                 updateInspector();
             } else {
                 window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
@@ -714,6 +718,8 @@ function handleInspectorClick(e) {
         const index = parseInt(e.target.dataset.index, 10);
         if (terreno && !isNaN(index)) {
             terreno.removeLayer(index);
+            const collider = selectedMateria.getComponent(Components.TerrenoCollider2D);
+            if (collider) collider.generateColliders();
             updateInspector();
         }
     }
@@ -2315,7 +2321,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                         <div class="layer-list">
                             ${ley.layers.map((layer, lIdx) => `
-                                <div class="layer-item">
+                            <div class="layer-item ${lIdx === settings.selectedLayer ? 'active' : ''}" onclick="window.TerrenoEditorWindow.setSelectedLayer(${lIdx}); window.updateInspector();">
                                     <div style="flex-grow:1;">
                                         ${renderPropertyDropper('Sprite', layer.texturePath, `data-action="terrain-layer-texture" data-layer-index="${lIdx}"`)}
                                     </div>
