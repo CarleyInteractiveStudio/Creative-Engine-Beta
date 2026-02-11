@@ -2306,8 +2306,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Modo</label>
                         <select class="terrain-tool-input" onchange="window.TerrenoEditorWindow.setMode(this.value)">
-                            <option value="deform" ${settings.mode === 'deform' ? 'selected' : ''}>Deformar (Esculpir)</option>
+                            <option value="sculpt" ${settings.mode === 'sculpt' ? 'selected' : ''}>Esculpir (Vertical)</option>
+                            <option value="push-pull" ${settings.mode === 'push-pull' ? 'selected' : ''}>Push / Pull (Radial)</option>
+                            <option value="grab" ${settings.mode === 'grab' ? 'selected' : ''}>Agarrar (Grab)</option>
                             <option value="paint" ${settings.mode === 'paint' ? 'selected' : ''}>Pintar Textura</option>
+                            <option value="hole" ${settings.mode === 'hole' ? 'selected' : ''}>Hacer Hoyos (Hole)</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">

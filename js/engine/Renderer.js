@@ -180,6 +180,7 @@ export class Renderer {
 
         const res = terreno.resolution;
         const verts = terreno.vertices;
+        const vmask = terreno.visibilityMask || new Float32Array(verts.length).fill(1.0);
 
         // 1. Determinar si mostrar el fondo base/malla
         const isEditorMode = this.isEditor;
@@ -194,44 +195,51 @@ export class Renderer {
             }
         }
 
+        // Dibujar base sólida y malla (respetando visibilidad)
         if (showMesh || !hasVisibleLayer) {
-            // Dibujar el relleno sólido de la base
-            this.ctx.beginPath();
-            this.ctx.moveTo(verts[0].x, verts[0].y);
-            for (let i = 1; i <= res; i++) {
-                this.ctx.lineTo(verts[i * 2].x, verts[i * 2].y);
-            }
-            this.ctx.lineTo(verts[res * 2 + 1].x, verts[res * 2 + 1].y);
-            for (let i = res - 1; i >= 0; i--) {
-                this.ctx.lineTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
-            }
-            this.ctx.closePath();
+            const baseAlpha = hasVisibleLayer ? 0.3 : 1.0;
+            const color = terreno.baseColor || '#4a4a4a';
 
-            this.ctx.fillStyle = terreno.baseColor || '#4a4a4a';
-            this.ctx.globalAlpha = hasVisibleLayer ? 0.3 : 1.0; // Más transparente si hay texturas encima
-            this.ctx.fill();
+            for (let i = 0; i < res; i++) {
+                const idx = i * 2;
+                const v0 = verts[idx], v1 = verts[idx+1], v2 = verts[idx+2], v3 = verts[idx+3];
+                const m0 = vmask[idx], m1 = vmask[idx+1], m2 = vmask[idx+2], m3 = vmask[idx+3];
+
+                const a1 = (m0 + m1 + m2) / 3;
+                if (a1 > 0.01) {
+                    this.ctx.globalAlpha = baseAlpha * a1;
+                    this._drawSolidTriangle(v0, v1, v2, color);
+                }
+                const a2 = (m1 + m3 + m2) / 3;
+                if (a2 > 0.01) {
+                    this.ctx.globalAlpha = baseAlpha * a2;
+                    this._drawSolidTriangle(v1, v3, v2, color);
+                }
+            }
             this.ctx.globalAlpha = 1.0;
 
             if (showMesh) {
                 this.ctx.beginPath();
                 this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
                 this.ctx.lineWidth = 1;
-                // Líneas verticales
-                for (let i = 0; i <= res; i++) {
-                    this.ctx.moveTo(verts[i * 2].x, verts[i * 2].y);
-                    this.ctx.lineTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
-                }
-                // Líneas horizontales (superior e inferior)
                 for (let i = 0; i < res; i++) {
-                    this.ctx.moveTo(verts[i * 2].x, verts[i * 2].y);
-                    this.ctx.lineTo(verts[(i + 1) * 2].x, verts[(i + 1) * 2].y);
-                    this.ctx.moveTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
-                    this.ctx.lineTo(verts[(i + 1) * 2 + 1].x, verts[(i + 1) * 2 + 1].y);
+                    const idx = i * 2;
+                    const v0 = verts[idx], v1 = verts[idx+1], v2 = verts[idx+2], v3 = verts[idx+3];
+                    const m0 = vmask[idx], m1 = vmask[idx+1], m2 = vmask[idx+2], m3 = vmask[idx+3];
+
+                    if (m0 > 0.1 || m1 > 0.1 || m2 > 0.1 || m3 > 0.1) {
+                        this.ctx.moveTo(v0.x, v0.y);
+                        this.ctx.lineTo(v1.x, v1.y);
+                        this.ctx.lineTo(v3.x, v3.y);
+                        this.ctx.lineTo(v2.x, v2.y);
+                        this.ctx.lineTo(v0.x, v0.y);
+                    }
                 }
                 this.ctx.stroke();
             }
         }
 
+        // Dibujar capas de textura
         for (let l = 0; l < terreno.layers.length; l++) {
             const layer = terreno.layers[l];
             const img = terreno.getImageForLayer(l);
@@ -246,14 +254,15 @@ export class Renderer {
 
                 const mask = layer.maskData;
                 const a0 = mask[idx], a1 = mask[idx + 1], a2 = mask[idx + 2], a3 = mask[idx + 3];
+                const m0 = vmask[idx], m1 = vmask[idx + 1], m2 = vmask[idx + 2], m3 = vmask[idx + 3];
 
-                const alpha1 = (a0 + a1 + a2) / 3;
+                const alpha1 = ((a0 + a1 + a2) / 3) * ((m0 + m1 + m2) / 3);
                 if (alpha1 > 0.01) {
                     this.ctx.globalAlpha = alpha1;
                     this._drawTexturedTriangle(img, v0, v1, v2);
                 }
 
-                const alpha2 = (a1 + a3 + a2) / 3;
+                const alpha2 = ((a1 + a3 + a2) / 3) * ((m1 + m3 + m2) / 3);
                 if (alpha2 > 0.01) {
                     this.ctx.globalAlpha = alpha2;
                     this._drawTexturedTriangle(img, v1, v3, v2);
@@ -263,6 +272,17 @@ export class Renderer {
         }
 
         this.ctx.restore();
+    }
+
+    _drawSolidTriangle(v0, v1, v2, color) {
+        const ctx = this.ctx;
+        ctx.beginPath();
+        ctx.moveTo(v0.x, v0.y);
+        ctx.lineTo(v1.x, v1.y);
+        ctx.lineTo(v2.x, v2.y);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
     }
 
     _drawTexturedTriangle(img, v0, v1, v2) {

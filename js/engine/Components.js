@@ -2087,6 +2087,7 @@ export class Terreno2D extends Leyes {
         this.resolution = 40; // Segmentos horizontales
         this.vertices = []; // [{x, y, u, v}]
         this.layers = []; // [{texturePath, maskData}] - maskData es un array de pesos por vértice
+        this.visibilityMask = null; // Array de visibilidad (0-1) por vértice
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
         this.showMesh = true;
@@ -2132,6 +2133,7 @@ export class Terreno2D extends Leyes {
             // Vértice inferior (fijo o base)
             this.vertices.push({ x: x, y: this.height / 2, u: i / this.resolution, v: 1 });
         }
+        this.visibilityMask = new Float32Array(this.vertices.length).fill(1.0);
         this.resetLayers();
     }
 
@@ -2157,7 +2159,56 @@ export class Terreno2D extends Leyes {
         }
     }
 
-    deform(worldX, worldY, radius, delta) {
+    /**
+     * Deforma la malla del terreno.
+     * @param {number} worldX
+     * @param {number} worldY
+     * @param {number} radius
+     * @param {number} strength Fuerza de la deformación
+     * @param {string} mode 'vertical', 'push', 'pull', 'grab'
+     * @param {number} dx_mouse Delta X del ratón (para modo grab)
+     * @param {number} dy_mouse Delta Y del ratón (para modo grab)
+     */
+    deform(worldX, worldY, radius, strength, mode = 'vertical', dx_mouse = 0, dy_mouse = 0) {
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const localX = worldX - transform.x;
+        const localY = worldY - transform.y;
+
+        for (let i = 0; i < this.vertices.length; i++) {
+            const v = this.vertices[i];
+            const dx = v.x - localX;
+            const dy = v.y - localY;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < radius) {
+                const influence = 1.0 - (dist / radius);
+
+                if (mode === 'vertical') {
+                    v.y += strength * influence;
+                } else if (mode === 'push') {
+                    if (dist > 0) {
+                        v.x += (dx / dist) * strength * influence;
+                        v.y += (dy / dist) * strength * influence;
+                    }
+                } else if (mode === 'pull') {
+                    if (dist > 0) {
+                        v.x -= (dx / dist) * strength * influence;
+                        v.y -= (dy / dist) * strength * influence;
+                    }
+                } else if (mode === 'grab') {
+                    v.x += dx_mouse * influence;
+                    v.y += dy_mouse * influence;
+                }
+            }
+        }
+
+        const collider = this.materia.getComponent(TerrenoCollider2D);
+        if (collider) collider.isDirty = true;
+    }
+
+    paintVisibility(worldX, worldY, radius, strength, isHole = true) {
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
@@ -2168,13 +2219,14 @@ export class Terreno2D extends Leyes {
             const v = this.vertices[i];
             const dist = Math.hypot(v.x - localX, v.y - localY);
             if (dist < radius) {
-                const strength = 1.0 - (dist / radius);
-                v.y += delta * strength;
+                const influence = (1.0 - (dist / radius)) * strength;
+                if (isHole) {
+                    this.visibilityMask[i] = Math.max(0, this.visibilityMask[i] - influence);
+                } else {
+                    this.visibilityMask[i] = Math.min(1, this.visibilityMask[i] + influence);
+                }
             }
         }
-
-        const collider = this.materia.getComponent(TerrenoCollider2D);
-        if (collider) collider.isDirty = true;
     }
 
     paint(worldX, worldY, radius, layerIndex, strength) {
@@ -2207,8 +2259,13 @@ export class Terreno2D extends Leyes {
             texturePath: l.texturePath,
             maskData: new Float32Array(l.maskData)
         }));
+        if (this.visibilityMask) {
+            newTerreno.visibilityMask = new Float32Array(this.visibilityMask);
+        }
         newTerreno.sortingLayer = this.sortingLayer;
         newTerreno.orderInLayer = this.orderInLayer;
+        newTerreno.baseColor = this.baseColor;
+        newTerreno.showMesh = this.showMesh;
         return newTerreno;
     }
 }
@@ -2242,16 +2299,18 @@ export class TerrenoCollider2D extends Leyes {
             const vTR = vertices[idxR];
             const vBR = vertices[idxR + 1];
 
-            // Aproximación: Caja rectangular que cubre el segmento
-            const minTop = Math.min(vTL.y, vTR.y);
-            const maxBottom = Math.max(vBL.y, vBR.y);
+            // Use the bounding box of the 4 vertices for the segment
+            const minX = Math.min(vTL.x, vBL.x, vTR.x, vBR.x);
+            const maxX = Math.max(vTL.x, vBL.x, vTR.x, vBR.x);
+            const minY = Math.min(vTL.y, vBL.y, vTR.y, vBR.y);
+            const maxY = Math.max(vTL.y, vBL.y, vTR.y, vBR.y);
 
-            const width = vTR.x - vTL.x;
-            const height = maxBottom - minTop;
-            const centerX = vTL.x + width / 2;
-            const centerY = minTop + height / 2;
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const centerX = minX + width / 2;
+            const centerY = minY + height / 2;
 
-            if (height > 0) {
+            if (height > 0 && width > 0) {
                 this.generatedColliders.push({
                     x: centerX,
                     y: centerY,

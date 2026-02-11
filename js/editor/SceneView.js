@@ -1115,6 +1115,7 @@ export function initialize(dependencies) {
         // --- Terrain Brush Logic (Left-click) ---
         if (e.button === 0 && activeTool === 'terrain-brush') {
             e.stopPropagation();
+            lastMousePosition = { x: e.clientX, y: e.clientY };
 
             const useBrush = (event) => {
                 const selectedMateria = getSelectedMateria();
@@ -1126,15 +1127,32 @@ export function initialize(dependencies) {
                 const worldMouse = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
                 const settings = TerrenoEditorWindow.settings;
 
-                if (settings.mode === 'deform') {
+                if (settings.mode === 'sculpt') {
                     // Si se presiona Shift, deformamos hacia abajo
                     const delta = event.shiftKey ? -settings.brushStrength : settings.brushStrength;
-                    terreno.deform(worldMouse.x, worldMouse.y, settings.brushSize, delta);
+                    terreno.deform(worldMouse.x, worldMouse.y, settings.brushSize, delta, 'vertical');
+                } else if (settings.mode === 'push-pull') {
+                    // Empujar o tirar radialmente
+                    const strength = event.shiftKey ? -settings.brushStrength : settings.brushStrength;
+                    const mode = strength >= 0 ? 'push' : 'pull';
+                    terreno.deform(worldMouse.x, worldMouse.y, settings.brushSize, Math.abs(strength), mode);
+                } else if (settings.mode === 'grab') {
+                    // Arrastrar vértices con el ratón
+                    const dx = (event.clientX - lastMousePosition.x) / renderer.camera.effectiveZoom;
+                    const dy = (event.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
+                    terreno.deform(worldMouse.x, worldMouse.y, settings.brushSize, settings.brushStrength, 'grab', dx, dy);
                 } else if (settings.mode === 'paint') {
                     // Si se presiona Shift, pintamos con fuerza negativa (borrar)
                     const strength = event.shiftKey ? -settings.brushStrength / 100 : settings.brushStrength / 100;
                     terreno.paint(worldMouse.x, worldMouse.y, settings.brushSize, settings.selectedLayer, strength);
+                } else if (settings.mode === 'hole') {
+                    // Crear o tapar hoyos (transparencia)
+                    const strength = settings.brushStrength / 100;
+                    const isHole = !event.shiftKey;
+                    terreno.paintVisibility(worldMouse.x, worldMouse.y, settings.brushSize, strength, isHole);
                 }
+
+                lastMousePosition = { x: event.clientX, y: event.clientY };
             };
 
             useBrush(e);

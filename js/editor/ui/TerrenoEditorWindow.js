@@ -6,7 +6,7 @@ export const TerrenoEditorWindow = {
     settings: {
         brushSize: 100,
         brushStrength: 20,
-        mode: 'deform', // 'deform', 'paint'
+        mode: 'sculpt', // 'sculpt', 'push-pull', 'grab', 'paint', 'hole'
         selectedLayer: 0
     },
 
