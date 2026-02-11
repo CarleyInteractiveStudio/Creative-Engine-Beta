@@ -190,6 +190,7 @@ export function handleContextMenuAction(action) {
             newMateria = createTilemapObject(selectedMateria);
             break;
         case 'create-terrain':
+            console.log("[Hierarchy] Iniciando creación de terreno...");
             newMateria = createTerrenoObject(selectedMateria);
             break;
         case 'create-parallax':

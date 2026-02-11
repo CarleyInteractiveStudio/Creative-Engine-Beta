@@ -222,7 +222,7 @@ export function serializeMateria(materia, recursive = false) {
                         }));
                     } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
                         leyData.properties[key] = Array.from(ley[key].entries());
-                    } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
+                    } else if ((ley.constructor.name === 'TilemapRenderer' || ley.constructor.name === 'Terreno2D') && key === 'imageCache') {
                         leyData.properties[key] = [];
                     } else if (ley[key] instanceof Materia) {
                         leyData.properties[key] = { __materiaId: ley[key].id };
@@ -309,7 +309,7 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 } else if (leyData.type === 'TilemapCollider2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey._cachedMesh = new Map(newLey._cachedMesh || []);
-                } else if (leyData.type === 'TilemapRenderer') {
+                } else if (leyData.type === 'TilemapRenderer' || leyData.type === 'Terreno2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey.imageCache = new Map();
                 } else {

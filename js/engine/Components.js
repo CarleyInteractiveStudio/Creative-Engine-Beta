@@ -2089,6 +2089,8 @@ export class Terreno2D extends Leyes {
         this.layers = []; // [{texturePath, maskData}] - maskData es un array de pesos por vértice
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
+        this.showMesh = true;
+        this.baseColor = '#4a4a4a';
 
         this.imageCache = new Map();
         this.initializeMesh();

@@ -2286,6 +2286,20 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Resolución</label>
                         <input type="number" class="prop-input" data-component="Terreno2D" data-prop="resolution" value="${ley.resolution}" min="2" max="200">
                     </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Terreno2D" data-prop="showMesh" ${ley.showMesh ? 'checked' : ''}>
+                        <label>Mostrar Malla (Editor)</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Color Base</label>
+                        <div class="prop-inputs">
+                            <input type="color" class="prop-input" data-component="Terreno2D" data-prop="baseColor" value="${ley.baseColor || '#4a4a4a'}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="Terreno2D" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
                     <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.initializeMesh(); window.updateInspector();">Reiniciar Malla</button>
                     <hr>
                     <h5>Configuración del Pincel</h5>

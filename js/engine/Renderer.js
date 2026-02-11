@@ -178,6 +178,60 @@ export class Renderer {
         this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
+        const res = terreno.resolution;
+        const verts = terreno.vertices;
+
+        // 1. Determinar si mostrar el fondo base/malla
+        const isEditorMode = this.isEditor;
+        const showMesh = isEditorMode && terreno.showMesh;
+
+        let hasVisibleLayer = false;
+        for (let l = 0; l < terreno.layers.length; l++) {
+            const img = terreno.getImageForLayer(l);
+            if (img && img.complete && img.naturalWidth > 0) {
+                hasVisibleLayer = true;
+                break;
+            }
+        }
+
+        if (showMesh || !hasVisibleLayer) {
+            // Dibujar el relleno sólido de la base
+            this.ctx.beginPath();
+            this.ctx.moveTo(verts[0].x, verts[0].y);
+            for (let i = 1; i <= res; i++) {
+                this.ctx.lineTo(verts[i * 2].x, verts[i * 2].y);
+            }
+            this.ctx.lineTo(verts[res * 2 + 1].x, verts[res * 2 + 1].y);
+            for (let i = res - 1; i >= 0; i--) {
+                this.ctx.lineTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
+            }
+            this.ctx.closePath();
+
+            this.ctx.fillStyle = terreno.baseColor || '#4a4a4a';
+            this.ctx.globalAlpha = hasVisibleLayer ? 0.3 : 1.0; // Más transparente si hay texturas encima
+            this.ctx.fill();
+            this.ctx.globalAlpha = 1.0;
+
+            if (showMesh) {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 1;
+                // Líneas verticales
+                for (let i = 0; i <= res; i++) {
+                    this.ctx.moveTo(verts[i * 2].x, verts[i * 2].y);
+                    this.ctx.lineTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
+                }
+                // Líneas horizontales (superior e inferior)
+                for (let i = 0; i < res; i++) {
+                    this.ctx.moveTo(verts[i * 2].x, verts[i * 2].y);
+                    this.ctx.lineTo(verts[(i + 1) * 2].x, verts[(i + 1) * 2].y);
+                    this.ctx.moveTo(verts[i * 2 + 1].x, verts[i * 2 + 1].y);
+                    this.ctx.lineTo(verts[(i + 1) * 2 + 1].x, verts[(i + 1) * 2 + 1].y);
+                }
+                this.ctx.stroke();
+            }
+        }
+
         for (let l = 0; l < terreno.layers.length; l++) {
             const layer = terreno.layers[l];
             const img = terreno.getImageForLayer(l);

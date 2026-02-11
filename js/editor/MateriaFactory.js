@@ -55,10 +55,12 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
-export function createTerrenoObject() {
+export function createTerrenoObject(parent = null) {
+    console.log("[MateriaFactory] Creando objeto de terreno...");
     const name = generateUniqueName('Terreno');
-    const newMateria = createBaseMateria(name);
+    const newMateria = createBaseMateria(name, parent);
     newMateria.addComponent(new Components.Terreno2D(newMateria));
+    console.log("[MateriaFactory] Terreno creado con éxito:", newMateria);
     return newMateria;
 }
 
