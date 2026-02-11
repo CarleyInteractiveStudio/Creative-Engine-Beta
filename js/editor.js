@@ -1279,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const textureRender = materia.getComponent(Components.TextureRender);
                 const terreno2D = materia.getComponent(Components.Terreno2D);
+                const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
                 const transform = materia.getComponent(Components.Transform);
                 const parallax = materia.getComponent(Components.Parallax);
@@ -1446,6 +1447,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (terreno2D) {
                     rendererInstance.drawTerreno2D(terreno2D);
+                } else if (gyzmo) {
+                    rendererInstance.drawGyzmo(gyzmo);
                 }
             }
 

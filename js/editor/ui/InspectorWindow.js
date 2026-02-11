@@ -30,6 +30,7 @@ const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
     'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
+    'Utilidades': [Components.Gyzmo],
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
     'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
@@ -46,7 +47,8 @@ const componentIcons = {
     Terreno2D: '⛰️', TerrenoCollider2D: '⛰️',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
     Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️',
-    ParticleSystem: '✨'
+    'ParticleSystem': '✨',
+    'Gyzmo': '🎯'
 };
 
 const fileIcons = {
@@ -720,6 +722,24 @@ function handleInspectorClick(e) {
             terreno.removeLayer(index);
             const collider = selectedMateria.getComponent(Components.TerrenoCollider2D);
             if (collider) collider.generateColliders();
+            updateInspector();
+        }
+    }
+
+    // --- Gyzmo Layer Management ---
+    if (e.target.matches('[data-action="gyzmo-add-layer"]')) {
+        const gyzmo = selectedMateria.getComponent(Components.Gyzmo);
+        if (gyzmo) {
+            gyzmo.addLayer();
+            updateInspector();
+        }
+    }
+
+    if (e.target.matches('[data-action="gyzmo-remove-layer"]')) {
+        const gyzmo = selectedMateria.getComponent(Components.Gyzmo);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (gyzmo && !isNaN(index)) {
+            gyzmo.removeLayer(index);
             updateInspector();
         }
     }
@@ -2349,6 +2369,57 @@ async function updateInspectorForMateria(selectedMateria) {
                     <hr>
                     <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Regenerar Colisiones</button>
                     <p class="field-description" style="margin-top: 8px;">Rectángulos activos: ${ley.generatedColliders?.length || 0}</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.Gyzmo) {
+            componentHTML = `
+                ${renderComponentHeader("Gyzmo (Áreas)", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Gyzmo" data-prop="showInGame" ${ley.showInGame ? 'checked' : ''}>
+                        <label>Mostrar en Juego (Global)</label>
+                    </div>
+                    <hr>
+                    <div class="layer-manager-ui">
+                        <div class="layer-list-header">
+                            <h5>Rectángulos</h5>
+                            <button class="layer-btn add" data-action="gyzmo-add-layer" title="Añadir Rectángulo">+</button>
+                        </div>
+                        <div class="layer-list">
+                            ${ley.layers.map((layer, lIdx) => `
+                                <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <input type="text" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.name" value="${layer.name || ''}" style="flex-grow: 1; margin-right: 5px;" placeholder="Nombre">
+                                        <button class="layer-btn remove" data-action="gyzmo-remove-layer" data-index="${lIdx}">-</button>
+                                    </div>
+                                    <div class="prop-row-multi">
+                                        <label>Pos (X/Y)</label>
+                                        <div class="prop-inputs">
+                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.x" value="${layer.x}" title="X">
+                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.y" value="${layer.y}" title="Y">
+                                        </div>
+                                    </div>
+                                    <div class="prop-row-multi">
+                                        <label>Size (W/H)</label>
+                                        <div class="prop-inputs">
+                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.width" value="${layer.width}" title="Width">
+                                            <input type="number" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.height" value="${layer.height}" title="Height">
+                                        </div>
+                                    </div>
+                                    <div class="prop-row-multi">
+                                        <label>Color</label>
+                                        <div class="prop-inputs">
+                                            <input type="color" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.color" value="${layer.color || '#00ff00'}">
+                                        </div>
+                                    </div>
+                                    <div class="checkbox-field">
+                                        <input type="checkbox" class="prop-input" data-component="Gyzmo" data-prop="layers.${lIdx}.showInGame" ${layer.showInGame ? 'checked' : ''}>
+                                        <label>Visible en Juego</label>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
             `;
         }

@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -167,6 +167,50 @@ export class Renderer {
             transformedText = text.toLowerCase();
         }
         this.ctx.fillText(transformedText, x, y);
+    }
+
+    drawGyzmo(gyzmo) {
+        const transform = gyzmo.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const isEditor = this.isEditor;
+        const showInGameGlobal = gyzmo.showInGame;
+
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(transform.scale.x, transform.scale.y);
+
+        const zoom = this.camera?.effectiveZoom || 1;
+
+        for (const layer of gyzmo.layers) {
+            if (!isEditor && (!showInGameGlobal || !layer.showInGame)) continue;
+
+            const { x, y, width, height, color, name } = layer;
+
+            // Draw rectangle
+            this.ctx.globalAlpha = isEditor ? 0.3 : 0.5;
+            this.ctx.fillStyle = color || '#00ff00';
+            this.ctx.fillRect(x - width / 2, y - height / 2, width, height);
+
+            // Draw border
+            this.ctx.globalAlpha = 0.8;
+            this.ctx.strokeStyle = color || '#00ff00';
+            this.ctx.lineWidth = 2 / zoom;
+            this.ctx.strokeRect(x - width / 2, y - height / 2, width, height);
+
+            if (isEditor) {
+                // Draw name tag
+                this.ctx.globalAlpha = 1.0;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = `${12 / zoom}px sans-serif`;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(name || "Área", x, y - height / 2 - (5 / zoom));
+            }
+        }
+
+        this.ctx.restore();
+        this.ctx.globalAlpha = 1.0;
     }
 
     drawTerreno2D(terreno) {

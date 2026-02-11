@@ -51,7 +51,8 @@ const componentAliases = {
     'Patrol': 'patrulla',
     'ParticleSystem': 'sistemaDeParticulas',
     'Terreno2D': 'terreno2D',
-    'TerrenoCollider2D': 'colisionadorTerreno2D'
+    'TerrenoCollider2D': 'colisionadorTerreno2D',
+    'Gyzmo': 'gyzmo'
 };
 
 
@@ -2085,6 +2086,12 @@ export class Terreno2D extends Leyes {
         this._width = 1024;
         this._height = 1024;
         this.layers = []; // [{texturePath, opacity, serializedMask, maskCanvas, maskCtx}]
+
+        // Add a default layer if created fresh
+        if (materia) {
+            this.addLayer('');
+        }
+
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
         this.baseColor = '#4a4a4a';
@@ -2182,8 +2189,13 @@ export class Terreno2D extends Leyes {
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
+        if (this.layers.length === 0) {
+            if (erase) return;
+            this.addLayer('');
+            layerIndex = 0;
+        }
+
         if (layerIndex < 0 || layerIndex >= this.layers.length) {
-            if (!erase) return; // Si estamos borrando, borramos de todas? No, mejor solo de la activa.
             layerIndex = 0;
         }
 
@@ -2354,6 +2366,52 @@ export class TerrenoCollider2D extends Leyes {
     }
 }
 registerComponent('TerrenoCollider2D', TerrenoCollider2D);
+
+/**
+ * Componente Gyzmo: Define áreas rectangulares para diseño y lógica.
+ */
+export class Gyzmo extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.layers = []; // [{name, x, y, width, height, color, showInGame}]
+        this.showInGame = false;
+
+        if (materia) {
+            this.addLayer("Área Principal", 0, 0, 200, 200, "#00ff00");
+        }
+    }
+
+    addLayer(name = "Nueva Capa", x = 0, y = 0, width = 100, height = 100, color = "#00ff00") {
+        this.layers.push({
+            name,
+            x,
+            y,
+            width,
+            height,
+            color,
+            showInGame: true
+        });
+    }
+
+    removeLayer(index) {
+        if (index >= 0 && index < this.layers.length) {
+            this.layers.splice(index, 1);
+        }
+    }
+
+    getLayer(nameOrIndex) {
+        if (typeof nameOrIndex === 'number') return this.layers[nameOrIndex];
+        return this.layers.find(l => l.name === nameOrIndex);
+    }
+
+    clone() {
+        const newGyzmo = new Gyzmo(null);
+        newGyzmo.layers = JSON.parse(JSON.stringify(this.layers));
+        newGyzmo.showInGame = this.showInGame;
+        return newGyzmo;
+    }
+}
+registerComponent('Gyzmo', Gyzmo);
 
 /**
  * Componente que lanza proyectiles (prefabs) al presionar una tecla o llamar a fire().

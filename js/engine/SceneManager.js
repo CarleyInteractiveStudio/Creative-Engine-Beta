@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, AudioSource, Tilemap, TilemapRenderer, CustomComponent, Terreno2D, Gyzmo } from './Components.js';
 import { Materia } from './Materia.js';
 
 let customComponentProvider = null;
@@ -299,7 +299,12 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     }
                 } else if (leyData.type === 'Terreno2D') {
                     Object.assign(newLey, leyData.properties);
-                    // maskCanvas y maskCtx ya se inicializan en el constructor
+                    // Re-hidratar capas
+                    if (newLey.layers) {
+                        for (const layer of newLey.layers) {
+                            newLey._initializeLayerCanvas(layer);
+                        }
+                    }
                 } else if (leyData.type === 'TilemapCollider2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey._cachedMesh = new Map(newLey._cachedMesh || []);
@@ -316,6 +321,7 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 if (newLey instanceof CreativeScript) await newLey.load(projectsDirHandle);
                 if (newLey instanceof Animator) await newLey.loadAnimationClip(projectsDirHandle);
                 if (newLey instanceof AnimatorController) await newLey.initialize(projectsDirHandle);
+                if (newLey instanceof Terreno2D) await newLey.loadTextures(projectsDirHandle);
                 if (newLey instanceof AudioSource) { /* AudioSource handles its own loading on play or start */ }
             }
         }
