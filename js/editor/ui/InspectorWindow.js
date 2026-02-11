@@ -2273,22 +2273,14 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.Terreno2D) {
             const settings = TerrenoEditorWindow.settings;
             componentHTML = `
-                ${renderComponentHeader("Terreno 2D", icon, index)}
+                ${renderComponentHeader("Terreno 2D (Píxeles)", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Dimensions</label>
+                        <label>Canvas Size</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Terreno2D" data-prop="width" value="${ley.width}" title="Width">
                             <input type="number" class="prop-input" data-component="Terreno2D" data-prop="height" value="${ley.height}" title="Height">
                         </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Resolución</label>
-                        <input type="number" class="prop-input" data-component="Terreno2D" data-prop="resolution" value="${ley.resolution}" min="2" max="200">
-                    </div>
-                    <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="Terreno2D" data-prop="showMesh" ${ley.showMesh ? 'checked' : ''}>
-                        <label>Mostrar Malla (Editor)</label>
                     </div>
                     <div class="prop-row-multi">
                         <label>Color Base</label>
@@ -2300,38 +2292,30 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Order in Layer</label>
                         <input type="number" class="prop-input" step="1" data-component="Terreno2D" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
-                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.initializeMesh(); window.updateInspector();">Reiniciar Malla</button>
+                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.maskCtx.clearRect(0,0,t.width,t.height); window.updateScene();">Limpiar Todo</button>
                     <hr>
-                    <h5>Configuración del Pincel</h5>
+                    <h5>Pincel de Terreno</h5>
                     <div class="prop-row-multi">
                         <label>Modo</label>
                         <select class="terrain-tool-input" onchange="window.TerrenoEditorWindow.setMode(this.value)">
-                            <option value="sculpt" ${settings.mode === 'sculpt' ? 'selected' : ''}>Esculpir (Vertical)</option>
-                            <option value="push-pull" ${settings.mode === 'push-pull' ? 'selected' : ''}>Push / Pull (Radial)</option>
-                            <option value="grab" ${settings.mode === 'grab' ? 'selected' : ''}>Agarrar (Grab)</option>
-                            <option value="paint" ${settings.mode === 'paint' ? 'selected' : ''}>Pintar Textura</option>
-                            <option value="hole" ${settings.mode === 'hole' ? 'selected' : ''}>Hacer Hoyos (Hole)</option>
+                            <option value="draw" ${settings.mode === 'draw' ? 'selected' : ''}>Dibujar Terreno</option>
+                            <option value="erase" ${settings.mode === 'erase' ? 'selected' : ''}>Borrar Terreno</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
                         <label>Tamaño</label>
-                        <input type="range" min="1" max="500" value="${settings.brushSize}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
+                        <input type="range" min="1" max="200" value="${settings.brushSize}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
                         <span style="min-width: 30px; text-align: right;">${settings.brushSize}</span>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Fuerza</label>
-                        <input type="range" min="1" max="100" value="${settings.brushStrength}" oninput="window.TerrenoEditorWindow.setBrushStrength(this.value); this.nextElementSibling.innerText = this.value;">
-                        <span style="min-width: 30px; text-align: right;">${settings.brushStrength}</span>
                     </div>
                     <hr>
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">
-                            <h5>Capas de Textura</h5>
+                            <h5>Texturas de Relleno</h5>
                             <button class="layer-btn add" data-action="terrain-add-layer" title="Añadir Capa">+</button>
                         </div>
                         <div class="layer-list">
                             ${ley.layers.map((layer, lIdx) => `
-                                <div class="layer-item ${lIdx === settings.selectedLayer ? 'active' : ''}" onclick="window.TerrenoEditorWindow.setSelectedLayer(${lIdx}); window.updateInspector();">
+                                <div class="layer-item">
                                     <div style="flex-grow:1;">
                                         ${renderPropertyDropper('Sprite', layer.texturePath, `data-action="terrain-layer-texture" data-layer-index="${lIdx}"`)}
                                     </div>
@@ -2340,7 +2324,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             `).join('')}
                         </div>
                     </div>
-                    <p class="field-description">Selecciona una capa para pintar en ella. Mantén Shift para invertir el efecto (bajar terreno o borrar textura).</p>
+                    <p class="field-description">Dibuja libremente en la escena con la herramienta de pincel de terreno activada. Las texturas rellenarán las zonas pintadas.</p>
                 </div>
             `;
         } else if (ley instanceof Components.TerrenoCollider2D) {
@@ -2351,8 +2335,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="TerrenoCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
                         <label>Is Trigger</label>
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Resolución (Píxeles)</label>
+                        <input type="number" class="prop-input" step="1" min="4" max="64" data-component="TerrenoCollider2D" data-prop="resolution" value="${ley.resolution || 16}">
+                    </div>
+                    <p class="field-description">Cuanto menor sea la resolución, más precisas (y costosas) serán las colisiones.</p>
                     <hr>
-                    <p class="field-description">Este colisionador se ajusta automáticamente a la forma del componente Terreno2D en el mismo objeto.</p>
+                    <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Regenerar Colisiones</button>
+                    <p class="field-description" style="margin-top: 8px;">Rectángulos activos: ${ley.generatedColliders?.length || 0}</p>
                 </div>
             `;
         }

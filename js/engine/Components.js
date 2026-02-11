@@ -2077,24 +2077,28 @@ export class CompositeCollider2D extends Leyes {
 registerComponent('CompositeCollider2D', CompositeCollider2D);
 
 /**
- * Componente Terreno2D: Permite crear superficies deformables con múltiples capas de textura.
+ * Componente Terreno2D: Permite dibujar formas de terreno arbitrarias (píxeles/máscara).
  */
 export class Terreno2D extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 800;
-        this.height = 300;
-        this.resolution = 40; // Segmentos horizontales
-        this.vertices = []; // [{x, y, u, v}]
-        this.layers = []; // [{texturePath, maskData}] - maskData es un array de pesos por vértice
-        this.visibilityMask = null; // Array de visibilidad (0-1) por vértice
+        this._width = 1024;
+        this._height = 1024;
+        this.layers = []; // [{texturePath, opacity}]
         this.sortingLayer = 'Default';
         this.orderInLayer = 0;
-        this.showMesh = true;
         this.baseColor = '#4a4a4a';
 
+        // El mapa de bits del terreno (0 = aire, >0 = terreno)
+        this.maskCanvas = document.createElement('canvas');
+        this.maskCanvas.width = this.width;
+        this.maskCanvas.height = this.height;
+        this.maskCtx = this.maskCanvas.getContext('2d');
+
+        // Datos para persistencia (base64)
+        this.serializedMask = null;
+
         this.imageCache = new Map();
-        this.initializeMesh();
     }
 
     async loadTextures(projectsDirHandle) {
@@ -2116,6 +2120,26 @@ export class Terreno2D extends Leyes {
                 }
             }
         }
+
+        // Cargar máscara si existe
+        if (this.serializedMask) {
+            const img = new Image();
+            img.src = this.serializedMask;
+            await new Promise(r => img.onload = r);
+            this.maskCtx.clearRect(0, 0, this.width, this.height);
+            this.maskCtx.drawImage(img, 0, 0);
+        }
+    }
+
+    get width() { return this._width; }
+    set width(v) {
+        this._width = v;
+        if (this.maskCanvas) this.maskCanvas.width = v;
+    }
+    get height() { return this._height; }
+    set height(v) {
+        this._height = v;
+        if (this.maskCanvas) this.maskCanvas.height = v;
     }
 
     getImageForLayer(index) {
@@ -2123,33 +2147,10 @@ export class Terreno2D extends Leyes {
         return this.imageCache.get(this.layers[index].texturePath);
     }
 
-    initializeMesh() {
-        this.vertices = [];
-        const stepX = this.width / this.resolution;
-        for (let i = 0; i <= this.resolution; i++) {
-            const x = (i * stepX) - (this.width / 2);
-            // Vértice superior (deformable)
-            this.vertices.push({ x: x, y: -this.height / 2, u: i / this.resolution, v: 0 });
-            // Vértice inferior (fijo o base)
-            this.vertices.push({ x: x, y: this.height / 2, u: i / this.resolution, v: 1 });
-        }
-        this.visibilityMask = new Float32Array(this.vertices.length).fill(1.0);
-        this.resetLayers();
-    }
-
-    resetLayers() {
-        // Inicializar pesos de capas (1.0 = 100% visible)
-        for (const layer of this.layers) {
-            if (!layer.maskData || layer.maskData.length !== this.vertices.length) {
-                layer.maskData = new Float32Array(this.vertices.length).fill(0);
-            }
-        }
-    }
-
     addLayer(texturePath) {
         this.layers.push({
             texturePath: texturePath,
-            maskData: new Float32Array(this.vertices.length).fill(0)
+            opacity: 1.0
         });
     }
 
@@ -2160,119 +2161,52 @@ export class Terreno2D extends Leyes {
     }
 
     /**
-     * Deforma la malla del terreno.
+     * Pinta en la máscara del terreno.
      * @param {number} worldX
      * @param {number} worldY
      * @param {number} radius
-     * @param {number} strength Fuerza de la deformación
-     * @param {string} mode 'vertical', 'push', 'pull', 'grab'
-     * @param {number} dx_mouse Delta X del ratón (para modo grab)
-     * @param {number} dy_mouse Delta Y del ratón (para modo grab)
+     * @param {boolean} erase
      */
-    deform(worldX, worldY, radius, strength, mode = 'vertical', dx_mouse = 0, dy_mouse = 0) {
+    paint(worldX, worldY, radius, erase = false) {
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
-        const localX = worldX - transform.x;
-        const localY = worldY - transform.y;
+        // Convertir mundo a local (centrado en el canvas del terreno)
+        const localX = (worldX - transform.x) + (this.width / 2);
+        const localY = (worldY - transform.y) + (this.height / 2);
 
-        for (let i = 0; i < this.vertices.length; i++) {
-            const v = this.vertices[i];
-            const dx = v.x - localX;
-            const dy = v.y - localY;
-            const dist = Math.hypot(dx, dy);
+        this.maskCtx.save();
+        this.maskCtx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+        this.maskCtx.beginPath();
+        this.maskCtx.arc(localX, localY, radius, 0, Math.PI * 2);
+        this.maskCtx.fillStyle = 'white';
+        this.maskCtx.fill();
+        this.maskCtx.restore();
 
-            if (dist < radius) {
-                const influence = 1.0 - (dist / radius);
-
-                if (mode === 'vertical') {
-                    v.y += strength * influence;
-                } else if (mode === 'push') {
-                    if (dist > 0) {
-                        v.x += (dx / dist) * strength * influence;
-                        v.y += (dy / dist) * strength * influence;
-                    }
-                } else if (mode === 'pull') {
-                    if (dist > 0) {
-                        v.x -= (dx / dist) * strength * influence;
-                        v.y -= (dy / dist) * strength * influence;
-                    }
-                } else if (mode === 'grab') {
-                    v.x += dx_mouse * influence;
-                    v.y += dy_mouse * influence;
-                }
-            }
-        }
-
+        // Notificar al colisionador que debe regenerarse
         const collider = this.materia.getComponent(TerrenoCollider2D);
         if (collider) collider.isDirty = true;
-    }
 
-    paintVisibility(worldX, worldY, radius, strength, isHole = true) {
-        const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        const localX = worldX - transform.x;
-        const localY = worldY - transform.y;
-
-        for (let i = 0; i < this.vertices.length; i++) {
-            const v = this.vertices[i];
-            const dist = Math.hypot(v.x - localX, v.y - localY);
-            if (dist < radius) {
-                const influence = (1.0 - (dist / radius)) * strength;
-                if (isHole) {
-                    this.visibilityMask[i] = Math.max(0, this.visibilityMask[i] - influence);
-                } else {
-                    this.visibilityMask[i] = Math.min(1, this.visibilityMask[i] + influence);
-                }
-            }
-        }
-    }
-
-    paint(worldX, worldY, radius, layerIndex, strength) {
-        if (layerIndex < 0 || layerIndex >= this.layers.length) return;
-
-        const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        const localX = worldX - transform.x;
-        const localY = worldY - transform.y;
-        const maskData = this.layers[layerIndex].maskData;
-
-        for (let i = 0; i < this.vertices.length; i++) {
-            const v = this.vertices[i];
-            const dist = Math.hypot(v.x - localX, v.y - localY);
-            if (dist < radius) {
-                const s = (1.0 - (dist / radius)) * strength;
-                maskData[i] = Math.max(0, Math.min(1, maskData[i] + s));
-            }
-        }
+        // Actualizar datos serializados para el próximo guardado
+        this.serializedMask = this.maskCanvas.toDataURL();
     }
 
     clone() {
         const newTerreno = new Terreno2D(null);
         newTerreno.width = this.width;
         newTerreno.height = this.height;
-        newTerreno.resolution = this.resolution;
-        newTerreno.vertices = JSON.parse(JSON.stringify(this.vertices));
-        newTerreno.layers = this.layers.map(l => ({
-            texturePath: l.texturePath,
-            maskData: new Float32Array(l.maskData)
-        }));
-        if (this.visibilityMask) {
-            newTerreno.visibilityMask = new Float32Array(this.visibilityMask);
-        }
+        newTerreno.layers = JSON.parse(JSON.stringify(this.layers));
         newTerreno.sortingLayer = this.sortingLayer;
         newTerreno.orderInLayer = this.orderInLayer;
         newTerreno.baseColor = this.baseColor;
-        newTerreno.showMesh = this.showMesh;
+        newTerreno.serializedMask = this.maskCanvas.toDataURL();
         return newTerreno;
     }
 }
 registerComponent('Terreno2D', Terreno2D);
 
 /**
- * Componente TerrenoCollider2D: Genera colisiones basadas en la forma del Terreno2D.
+ * Componente TerrenoCollider2D: Genera colisiones automáticas a partir de la máscara de Terreno2D.
  */
 export class TerrenoCollider2D extends Leyes {
     constructor(materia) {
@@ -2280,46 +2214,87 @@ export class TerrenoCollider2D extends Leyes {
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
         this.isDirty = true;
-        this.generatedPoints = [];
+        this.generatedColliders = [];
+        this.resolution = 16; // Tamaño del bloque para simplificar colisiones (en píxeles)
     }
 
     generateColliders() {
         const terreno = this.materia.getComponent(Terreno2D);
-        if (!terreno) return;
+        if (!terreno || !terreno.maskCanvas) return;
 
         this.generatedColliders = [];
-        const { resolution, vertices } = terreno;
+        const { width, height, maskCanvas } = terreno;
+        const ctx = maskCanvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, width, height).data;
 
-        for (let i = 0; i < resolution; i++) {
-            const idxL = i * 2;
-            const idxR = (i + 1) * 2;
+        const res = this.resolution;
+        const cols = Math.ceil(width / res);
+        const rows = Math.ceil(height / res);
 
-            const vTL = vertices[idxL];
-            const vBL = vertices[idxL + 1];
-            const vTR = vertices[idxR];
-            const vBR = vertices[idxR + 1];
-
-            // Use the bounding box of the 4 vertices for the segment
-            const minX = Math.min(vTL.x, vBL.x, vTR.x, vBR.x);
-            const maxX = Math.max(vTL.x, vBL.x, vTR.x, vBR.x);
-            const minY = Math.min(vTL.y, vBL.y, vTR.y, vBR.y);
-            const maxY = Math.max(vTL.y, vBL.y, vTR.y, vBR.y);
-
-            const width = maxX - minX;
-            const height = maxY - minY;
-            const centerX = minX + width / 2;
-            const centerY = minY + height / 2;
-
-            if (height > 0 && width > 0) {
-                this.generatedColliders.push({
-                    x: centerX,
-                    y: centerY,
-                    width: width,
-                    height: height
-                });
+        // 1. Crear una rejilla de ocupación
+        const grid = new Uint8Array(cols * rows);
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                // Comprobar el centro del bloque
+                const px = Math.min(width - 1, c * res + res / 2);
+                const py = Math.min(height - 1, r * res + res / 2);
+                const idx = (Math.floor(py) * width + Math.floor(px)) * 4;
+                if (imgData[idx + 3] > 128) { // Si el alpha es > 50%
+                    grid[r * cols + c] = 1;
+                }
             }
         }
+
+        // 2. Greedy Meshing: Combinar bloques adyacentes en rectángulos más grandes
+        const visited = new Uint8Array(cols * rows);
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (grid[r * cols + c] === 1 && !visited[r * cols + c]) {
+                    // Intentar expandir a la derecha
+                    let w = 1;
+                    while (c + w < cols && grid[r * cols + (c + w)] === 1 && !visited[r * cols + (c + w)]) {
+                        w++;
+                    }
+
+                    // Intentar expandir hacia abajo
+                    let h = 1;
+                    while (r + h < rows) {
+                        let canExpand = true;
+                        for (let k = 0; k < w; k++) {
+                            if (grid[(r + h) * cols + (c + k)] !== 1 || visited[(r + h) * cols + (c + k)]) {
+                                canExpand = false;
+                                break;
+                            }
+                        }
+                        if (!canExpand) break;
+                        h++;
+                    }
+
+                    // Marcar como visitados
+                    for (let hh = 0; hh < h; hh++) {
+                        for (let ww = 0; ww < w; ww++) {
+                            visited[(r + hh) * cols + (c + ww)] = 1;
+                        }
+                    }
+
+                    // Crear colisionador (centrado respecto al terreno)
+                    const rectWidth = w * res;
+                    const rectHeight = h * res;
+                    const centerX = (c * res + rectWidth / 2) - (width / 2);
+                    const centerY = (r * res + rectHeight / 2) - (height / 2);
+
+                    this.generatedColliders.push({
+                        x: centerX,
+                        y: centerY,
+                        width: rectWidth,
+                        height: rectHeight
+                    });
+                }
+            }
+        }
+
         this.isDirty = false;
+        console.log(`[TerrenoCollider2D] Generados ${this.generatedColliders.length} rectángulos de colisión.`);
     }
 
     generate() {
@@ -2330,6 +2305,7 @@ export class TerrenoCollider2D extends Leyes {
         const newCollider = new TerrenoCollider2D(null);
         newCollider.isTrigger = this.isTrigger;
         newCollider.offset = { ...this.offset };
+        newCollider.resolution = this.resolution;
         newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
         return newCollider;
     }

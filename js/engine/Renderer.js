@@ -171,104 +171,58 @@ export class Renderer {
 
     drawTerreno2D(terreno) {
         const transform = terreno.materia.getComponent(Transform);
-        if (!transform || !terreno.vertices || terreno.vertices.length < 4) return;
+        if (!transform || !terreno.maskCanvas) return;
 
         this.ctx.save();
         this.ctx.translate(transform.x, transform.y);
         this.ctx.rotate(transform.rotation * Math.PI / 180);
         this.ctx.scale(transform.scale.x, transform.scale.y);
 
-        const res = terreno.resolution;
-        const verts = terreno.vertices;
-        const vmask = terreno.visibilityMask || new Float32Array(verts.length).fill(1.0);
+        const w = terreno.width;
+        const h = terreno.height;
+        const x = -w / 2;
+        const y = -h / 2;
 
-        // 1. Determinar si mostrar el fondo base/malla
-        const isEditorMode = this.isEditor;
-        const showMesh = isEditorMode && terreno.showMesh;
-
-        let hasVisibleLayer = false;
-        for (let l = 0; l < terreno.layers.length; l++) {
-            const img = terreno.getImageForLayer(l);
-            if (img && img.complete && img.naturalWidth > 0) {
-                hasVisibleLayer = true;
-                break;
-            }
+        // 1. Usar un buffer offscreen para aplicar la máscara a las texturas
+        if (!this._terrainBuffer) {
+            this._terrainBuffer = document.createElement('canvas');
+            this._terrainBufferCtx = this._terrainBuffer.getContext('2d');
         }
+        this._terrainBuffer.width = w;
+        this._terrainBuffer.height = h;
+        const bCtx = this._terrainBufferCtx;
 
-        // Dibujar base sólida y malla (respetando visibilidad)
-        if (showMesh || !hasVisibleLayer) {
-            const baseAlpha = hasVisibleLayer ? 0.3 : 1.0;
-            const color = terreno.baseColor || '#4a4a4a';
+        bCtx.clearRect(0, 0, w, h);
 
-            for (let i = 0; i < res; i++) {
-                const idx = i * 2;
-                const v0 = verts[idx], v1 = verts[idx+1], v2 = verts[idx+2], v3 = verts[idx+3];
-                const m0 = vmask[idx], m1 = vmask[idx+1], m2 = vmask[idx+2], m3 = vmask[idx+3];
+        // A. Dibujar el color base en todo el buffer
+        bCtx.fillStyle = terreno.baseColor || '#4a4a4a';
+        bCtx.fillRect(0, 0, w, h);
 
-                const a1 = (m0 + m1 + m2) / 3;
-                if (a1 > 0.01) {
-                    this.ctx.globalAlpha = baseAlpha * a1;
-                    this._drawSolidTriangle(v0, v1, v2, color);
-                }
-                const a2 = (m1 + m3 + m2) / 3;
-                if (a2 > 0.01) {
-                    this.ctx.globalAlpha = baseAlpha * a2;
-                    this._drawSolidTriangle(v1, v3, v2, color);
-                }
-            }
-            this.ctx.globalAlpha = 1.0;
-
-            if (showMesh) {
-                this.ctx.beginPath();
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.lineWidth = 1;
-                for (let i = 0; i < res; i++) {
-                    const idx = i * 2;
-                    const v0 = verts[idx], v1 = verts[idx+1], v2 = verts[idx+2], v3 = verts[idx+3];
-                    const m0 = vmask[idx], m1 = vmask[idx+1], m2 = vmask[idx+2], m3 = vmask[idx+3];
-
-                    if (m0 > 0.1 || m1 > 0.1 || m2 > 0.1 || m3 > 0.1) {
-                        this.ctx.moveTo(v0.x, v0.y);
-                        this.ctx.lineTo(v1.x, v1.y);
-                        this.ctx.lineTo(v3.x, v3.y);
-                        this.ctx.lineTo(v2.x, v2.y);
-                        this.ctx.lineTo(v0.x, v0.y);
-                    }
-                }
-                this.ctx.stroke();
-            }
-        }
-
-        // Dibujar capas de textura
+        // B. Dibujar capas de textura (en modo tiling)
         for (let l = 0; l < terreno.layers.length; l++) {
             const layer = terreno.layers[l];
             const img = terreno.getImageForLayer(l);
-            if (!img || !img.complete) continue;
-
-            for (let i = 0; i < terreno.resolution; i++) {
-                const idx = i * 2;
-                const v0 = terreno.vertices[idx];
-                const v1 = terreno.vertices[idx + 1];
-                const v2 = terreno.vertices[idx + 2];
-                const v3 = terreno.vertices[idx + 3];
-
-                const mask = layer.maskData;
-                const a0 = mask[idx], a1 = mask[idx + 1], a2 = mask[idx + 2], a3 = mask[idx + 3];
-                const m0 = vmask[idx], m1 = vmask[idx + 1], m2 = vmask[idx + 2], m3 = vmask[idx + 3];
-
-                const alpha1 = ((a0 + a1 + a2) / 3) * ((m0 + m1 + m2) / 3);
-                if (alpha1 > 0.01) {
-                    this.ctx.globalAlpha = alpha1;
-                    this._drawTexturedTriangle(img, v0, v1, v2);
-                }
-
-                const alpha2 = ((a1 + a3 + a2) / 3) * ((m1 + m3 + m2) / 3);
-                if (alpha2 > 0.01) {
-                    this.ctx.globalAlpha = alpha2;
-                    this._drawTexturedTriangle(img, v1, v3, v2);
-                }
+            if (img && img.complete && img.naturalWidth > 0) {
+                bCtx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
+                const pattern = bCtx.createPattern(img, 'repeat');
+                bCtx.fillStyle = pattern;
+                bCtx.fillRect(0, 0, w, h);
             }
-            this.ctx.globalAlpha = 1.0;
+        }
+
+        // C. Aplicar la máscara del terreno (lo que "recorta" la forma)
+        bCtx.globalCompositeOperation = 'destination-in';
+        bCtx.drawImage(terreno.maskCanvas, 0, 0);
+        bCtx.globalCompositeOperation = 'source-over';
+
+        // 2. Dibujar el resultado final en el canvas principal
+        this.ctx.drawImage(this._terrainBuffer, x, y, w, h);
+
+        // 3. Dibujar borde del área de dibujo si estamos en el editor
+        if (this.isEditor) {
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            this.ctx.lineWidth = 1 / (this.camera?.effectiveZoom || 1);
+            this.ctx.strokeRect(x, y, w, h);
         }
 
         this.ctx.restore();

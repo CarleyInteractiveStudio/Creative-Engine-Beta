@@ -4,9 +4,9 @@ import * as Components from '../../engine/Components.js';
 
 export const TerrenoEditorWindow = {
     settings: {
-        brushSize: 100,
-        brushStrength: 20,
-        mode: 'sculpt', // 'sculpt', 'push-pull', 'grab', 'paint', 'hole'
+        brushSize: 50,
+        brushStrength: 100,
+        mode: 'draw', // 'draw', 'erase'
         selectedLayer: 0
     },
 
