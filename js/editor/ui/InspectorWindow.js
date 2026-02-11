@@ -33,14 +33,14 @@ const availableComponents = {
     'Utilidades': [Components.Gyzmo],
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
+    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
     'Scripting': [Components.CreativeScript]
 };
 
 const componentIcons = {
-    Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', SpriteRenderer: '🖼️',
+    Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', PolygonCollider2D: '⬡', SpriteRenderer: '🖼️',
     Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
@@ -597,7 +597,7 @@ function handleInspectorClick(e) {
     }
 
     if (e.target.matches('[data-action="generate-colliders"]')) {
-        const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
+        const collider = selectedMateria.getComponent(Components.TilemapCollider2D) || selectedMateria.getComponent(Components.TerrenoCollider2D);
         if (collider) {
             collider.generate();
             updateInspector(); // Refresh to show new collider count and for visualizer
@@ -1282,6 +1282,29 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
                         </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.PolygonCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                ${renderComponentHeader("Polygon Collider 2D", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="PolygonCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>Offset</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="Offset X">
+                            <input type="number" class="prop-input" step="0.1" data-component="PolygonCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="Offset Y">
+                        </div>
+                    </div>
+                    <div class="inspector-field-group">
+                        <label>Vértices (${ley.vertices?.length || 0})</label>
+                        <p class="field-description">La edición manual de vértices se habilitará próximamente. Actualmente se genera automáticamente para terrenos.</p>
                     </div>
                 </div>
             </div>`;
@@ -2354,21 +2377,35 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.TerrenoCollider2D) {
+            const isPolygon = ley.mode === 'Polygon';
             componentHTML = `
                 ${renderComponentHeader("Terreno Collider 2D", icon, index)}
                 <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Modo</label>
+                        <select class="prop-input inspector-re-render" data-component="TerrenoCollider2D" data-prop="mode">
+                            <option value="Rectangles" ${ley.mode === 'Rectangles' ? 'selected' : ''}>Rectángulos (Grilla)</option>
+                            <option value="Polygon" ${ley.mode === 'Polygon' ? 'selected' : ''}>Polígono (Exacto)</option>
+                        </select>
+                    </div>
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="TerrenoCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
                         <label>Is Trigger</label>
                     </div>
-                    <div class="prop-row-multi">
-                        <label>Resolución (Píxeles)</label>
+                    <div class="prop-row-multi" style="display: ${isPolygon ? 'none' : 'flex'};">
+                        <label>Resolución</label>
                         <input type="number" class="prop-input" step="1" min="4" max="64" data-component="TerrenoCollider2D" data-prop="resolution" value="${ley.resolution || 16}">
                     </div>
-                    <p class="field-description">Cuanto menor sea la resolución, más precisas (y costosas) serán las colisiones.</p>
+                    <div class="prop-row-multi" style="display: ${isPolygon ? 'flex' : 'none'};">
+                        <label>Simplicidad</label>
+                        <input type="number" class="prop-input" step="0.5" min="0" data-component="TerrenoCollider2D" data-prop="simplifyTolerance" value="${ley.simplifyTolerance || 2.0}">
+                    </div>
+                    <p class="field-description">${isPolygon ? 'Mayor simplicidad = menos puntos en el polígono.' : 'Cuanto menor sea la resolución, más precisos serán los rectángulos.'}</p>
                     <hr>
                     <button class="primary-btn" data-action="generate-colliders" style="width: 100%;">Regenerar Colisiones</button>
-                    <p class="field-description" style="margin-top: 8px;">Rectángulos activos: ${ley.generatedColliders?.length || 0}</p>
+                    <p class="field-description" style="margin-top: 8px;">
+                        ${isPolygon ? `Islas (Polígonos): ${ley.generatedPolygons?.length || 0}` : `Rectángulos: ${ley.generatedColliders?.length || 0}`}
+                    </p>
                 </div>
             `;
         } else if (ley instanceof Components.Gyzmo) {

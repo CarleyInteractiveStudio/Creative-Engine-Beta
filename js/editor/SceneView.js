@@ -1827,8 +1827,24 @@ function drawTerrenoColliders() {
     ctx.lineWidth = 2 / camera.effectiveZoom;
     ctx.setLineDash([4 / camera.effectiveZoom, 4 / camera.effectiveZoom]);
 
+    // Draw rectangles
     for (const rect of collider.generatedColliders) {
         ctx.strokeRect(rect.x - rect.width / 2, rect.y - rect.height / 2, rect.width, rect.height);
+    }
+
+    // Draw polygons
+    if (collider.generatedPolygons) {
+        for (const poly of collider.generatedPolygons) {
+            if (poly.vertices && poly.vertices.length > 2) {
+                ctx.beginPath();
+                ctx.moveTo(poly.vertices[0].x, poly.vertices[0].y);
+                for (let i = 1; i < poly.vertices.length; i++) {
+                    ctx.lineTo(poly.vertices[i].x, poly.vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
     }
 
     ctx.restore();

@@ -133,7 +133,7 @@ export class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -280,6 +280,8 @@ export class PhysicsSystem {
                 collisionInfo = this.isBoxVsBox(materiaA, materiaB);
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isBoxVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.PolygonCollider2D) {
+                collisionInfo = this.isPolygonVsPolygon(materiaB, materiaA); // Reusing logic
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
@@ -288,11 +290,23 @@ export class PhysicsSystem {
                 collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertir orden
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isCapsuleVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.PolygonCollider2D) {
+                collisionInfo = this.isPolygonVsCapsule(materiaB, materiaA);
+            } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
+                collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            }
+        } else if (colliderA instanceof Components.PolygonCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D) {
+                collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
+            } else if (colliderB instanceof Components.CapsuleCollider2D) {
+                collisionInfo = this.isPolygonVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.PolygonCollider2D) {
+                collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.TilemapCollider2D || colliderA instanceof Components.TerrenoCollider2D) {
-            if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D || colliderB instanceof Components.PolygonCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaB, materiaA); // Invertir orden
             }
             // No implementamos Tilemap vs Tilemap por ahora
@@ -422,6 +436,7 @@ export class PhysicsSystem {
     getCollider(materia) {
         return materia.getComponent(Components.BoxCollider2D) ||
                materia.getComponent(Components.CapsuleCollider2D) ||
+               materia.getComponent(Components.PolygonCollider2D) ||
                materia.getComponent(Components.TilemapCollider2D) ||
                materia.getComponent(Components.TerrenoCollider2D);
     }
@@ -437,18 +452,15 @@ export class PhysicsSystem {
             tilemapCollider.generate();
         }
 
+        // 1. Check generated rectangles (Standard for Tilemap and Terreno in Rectangles mode)
         for (const rect of tilemapCollider.generatedColliders) {
-            // Crear un objeto 'Materia' temporal para representar el tile
             const tileMateria = new Materia('tile_part');
             const tileTransform = new Components.Transform(tileMateria);
+            const worldPos = tilemapTransform.position;
 
-            // ¡Corrección CRÍTICA! Convertir las coordenadas locales del collider a coordenadas mundiales.
-            // Las 'rect' vienen con coordenadas relativas al pivote del Tilemap.
-            // Necesitamos sumar la posición del Tilemap para obtener su posición en el mundo.
-            const tileWorldPos = tilemapTransform.position;
             tileTransform.position = {
-                x: tileWorldPos.x + rect.x,
-                y: tileWorldPos.y + rect.y
+                x: worldPos.x + rect.x,
+                y: worldPos.y + rect.y
             };
             tileMateria.addComponent(tileTransform);
 
@@ -460,13 +472,38 @@ export class PhysicsSystem {
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                // isBoxVsCapsule espera (box, capsule), así que invertimos el orden
                 collisionInfo = this.isBoxVsCapsule(tileMateria, colliderMateria);
+            } else if (otherCollider instanceof Components.PolygonCollider2D) {
+                collisionInfo = this.isPolygonVsPolygon(colliderMateria, tileMateria);
             }
 
-            if (collisionInfo) {
-                // Se encontró una colisión, no necesitamos comprobar el resto de tiles
-                return collisionInfo;
+            if (collisionInfo) return collisionInfo;
+        }
+
+        // 2. Check generated polygons (Terreno in Polygon mode)
+        if (tilemapCollider.generatedPolygons && tilemapCollider.generatedPolygons.length > 0) {
+            for (const poly of tilemapCollider.generatedPolygons) {
+                const polyMateria = new Materia('poly_part');
+                const polyTransform = new Components.Transform(polyMateria);
+                const worldPos = tilemapTransform.position;
+
+                polyTransform.position = { x: worldPos.x, y: worldPos.y };
+                polyMateria.addComponent(polyTransform);
+
+                const polyCollider = new Components.PolygonCollider2D(polyMateria);
+                polyCollider.vertices = poly.vertices;
+                polyMateria.addComponent(polyCollider);
+
+                let collisionInfo = null;
+                if (otherCollider instanceof Components.BoxCollider2D) {
+                    collisionInfo = this.isPolygonVsPolygon(polyMateria, colliderMateria); // Invert order
+                } else if (otherCollider instanceof Components.CapsuleCollider2D) {
+                    collisionInfo = this.isPolygonVsCapsule(polyMateria, colliderMateria);
+                } else if (otherCollider instanceof Components.PolygonCollider2D) {
+                    collisionInfo = this.isPolygonVsPolygon(polyMateria, colliderMateria);
+                }
+
+                if (collisionInfo) return collisionInfo;
             }
         }
 
@@ -561,76 +598,96 @@ export class PhysicsSystem {
         return { a: closestPointA, b: closestPointB };
     }
 
-    isBoxVsCapsule(boxMateria, capsuleMateria) {
-        const transformB = boxMateria.getComponent(Components.Transform);
-        const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
+    isPolygonVsCapsule(polyMateria, capsuleMateria) {
+        const transformP = polyMateria.getComponent(Components.Transform);
+        const colliderP = polyMateria.getComponent(Components.PolygonCollider2D) || polyMateria.getComponent(Components.BoxCollider2D);
         const transformC = capsuleMateria.getComponent(Components.Transform);
         const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
 
-        // --- 1. Simplificar a colisión Círculo vs AABB ---
-        // Para simplificar, trataremos la caja como un AABB (Axis-Aligned Bounding Box).
-        // Esto ignora la rotación de la caja, pero es un buen punto de partida.
-        const box = {
-            x: transformB.x + colliderB.offset.x - (colliderB.size.x / 2),
-            y: transformB.y + colliderB.offset.y - (colliderB.size.y / 2),
-            width: colliderB.size.x,
-            height: colliderB.size.y
-        };
+        const vertices = (colliderP instanceof Components.PolygonCollider2D) ?
+            this._getPolygonVertices(transformP, colliderP) :
+            this._getVertices(transformP, colliderP);
 
         // La cápsula es un segmento de línea con un radio.
-        // Por ahora, también ignoraremos la rotación de la cápsula.
         const radius = colliderC.size.x / 2;
         const segmentHeight = Math.max(0, colliderC.size.y - colliderC.size.x);
         const p1 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y - segmentHeight / 2 };
         const p2 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y + segmentHeight / 2 };
 
-        // --- 2. Encontrar el punto más cercano en la caja al segmento de la cápsula ---
-        // Esto es complejo. Un enfoque más simple es encontrar el punto más cercano
-        // en el segmento de la cápsula al centro de la caja.
-        const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        // Encontrar el punto más cercano en el polígono al segmento de la cápsula
+        // Una forma simple es encontrar el punto más cercano en el segmento a cada vértice del polígono
+        // y también el punto más cercano en los bordes del polígono al segmento.
+        // Pero para simplificar, usaremos el centro del polígono para encontrar el punto más cercano en el segmento.
+        const polyCenter = { x: transformP.x, y: transformP.y };
+        const closestOnSegment = this._closestPointOnSegment(polyCenter, p1, p2);
 
-        const closestPointOnSegment = this._closestPointOnSegment(boxCenter, p1, p2);
+        // Ahora tenemos un círculo vs polígono
+        return this._isCircleVsPolygon(closestOnSegment, radius, vertices);
+    }
 
-        // --- 3. Ahora tenemos una colisión Círculo vs AABB ---
-        const circle = {
-            x: closestPointOnSegment.x,
-            y: closestPointOnSegment.y,
-            radius: radius
-        };
+    _isCircleVsPolygon(circleCenter, radius, vertices) {
+        let minOverlap = Infinity;
+        let mtvAxis = null;
 
-        // --- 4. Test de intersección Círculo-AABB ---
-        const closestPointInBox = {
-            x: this._clamp(circle.x, box.x, box.x + box.width),
-            y: this._clamp(circle.y, box.y, box.y + box.height)
-        };
+        // Ejes: normales de los bordes del polígono
+        const axes = this._getAxes(vertices);
 
-        const distance = Math.hypot(circle.x - closestPointInBox.x, circle.y - closestPointInBox.y);
-
-        if (distance < circle.radius) {
-            // Hay colisión. Calcular el vector de penetración (MTV).
-            const overlap = circle.radius - distance;
-            let normal = {
-                x: circle.x - closestPointInBox.x,
-                y: circle.y - closestPointInBox.y
-            };
-
-            // Si el centro del círculo está dentro de la caja, el cálculo del normal es diferente.
-            if (normal.x === 0 && normal.y === 0) {
-                 // Elige un eje, por ejemplo, el eje x
-                normal = { x: 1, y: 0 };
-            }
-
-            const normalizedNormal = this._normalize(normal);
-
-            return {
-                x: normalizedNormal.x * overlap,
-                y: normalizedNormal.y * overlap,
-                magnitude: overlap,
-                contactPoint: { x: (circle.x + closestPointInBox.x) / 2, y: (circle.y + closestPointInBox.y) / 2 }
-            };
+        // También necesitamos el eje desde el círculo al punto más cercano en el polígono
+        const closestPoint = this._getClosestPointOnPolygon(circleCenter, vertices);
+        const toCircle = { x: circleCenter.x - closestPoint.x, y: circleCenter.y - closestPoint.y };
+        if (toCircle.x !== 0 || toCircle.y !== 0) {
+            axes.push(this._normalize(toCircle));
         }
 
-        return null;
+        for (const axis of axes) {
+            const polyProj = this._project(vertices, axis);
+            const circleProj = {
+                min: this._dot(circleCenter, axis) - radius,
+                max: this._dot(circleCenter, axis) + radius
+            };
+
+            const overlap = Math.min(polyProj.max, circleProj.max) - Math.max(polyProj.min, circleProj.min);
+            if (overlap < 0) return null;
+
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                mtvAxis = axis;
+            }
+        }
+
+        const polyCenter = vertices.reduce((acc, v) => ({ x: acc.x + v.x / vertices.length, y: acc.y + v.y / vertices.length }), { x: 0, y: 0 });
+        const direction = { x: circleCenter.x - polyCenter.x, y: circleCenter.y - polyCenter.y };
+        if (this._dot(direction, mtvAxis) < 0) {
+            mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
+        }
+
+        return {
+            x: mtvAxis.x * minOverlap,
+            y: mtvAxis.y * minOverlap,
+            magnitude: minOverlap,
+            contactPoint: closestPoint
+        };
+    }
+
+    _getClosestPointOnPolygon(point, vertices) {
+        let minDistance = Infinity;
+        let closest = { x: 0, y: 0 };
+
+        for (let i = 0; i < vertices.length; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[(i + 1) % vertices.length];
+            const cp = this._closestPointOnSegment(point, p1, p2);
+            const dist = Math.hypot(point.x - cp.x, point.y - cp.y);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closest = cp;
+            }
+        }
+        return closest;
+    }
+
+    isBoxVsCapsule(boxMateria, capsuleMateria) {
+        return this.isPolygonVsCapsule(boxMateria, capsuleMateria);
     }
 
     _clamp(value, min, max) {
@@ -653,14 +710,18 @@ export class PhysicsSystem {
         };
     }
 
-    isBoxVsBox(materiaA, materiaB) {
+    isPolygonVsPolygon(materiaA, materiaB) {
         const transformA = materiaA.getComponent(Components.Transform);
-        const colliderA = materiaA.getComponent(Components.BoxCollider2D);
+        const colliderA = materiaA.getComponent(Components.PolygonCollider2D) || materiaA.getComponent(Components.BoxCollider2D);
         const transformB = materiaB.getComponent(Components.Transform);
-        const colliderB = materiaB.getComponent(Components.BoxCollider2D);
+        const colliderB = materiaB.getComponent(Components.PolygonCollider2D) || materiaB.getComponent(Components.BoxCollider2D);
 
-        const verticesA = this._getVertices(transformA, colliderA);
-        const verticesB = this._getVertices(transformB, colliderB);
+        const verticesA = (colliderA instanceof Components.PolygonCollider2D) ?
+            this._getPolygonVertices(transformA, colliderA) :
+            this._getVertices(transformA, colliderA);
+        const verticesB = (colliderB instanceof Components.PolygonCollider2D) ?
+            this._getPolygonVertices(transformB, colliderB) :
+            this._getVertices(transformB, colliderB);
 
         const axes = [
             ...this._getAxes(verticesA),
@@ -696,26 +757,21 @@ export class PhysicsSystem {
         }
 
         // --- MANIFOLD CONTACT POINT LOGIC ---
-        // Find all vertices of A that are inside B, and all vertices of B that are inside A.
-        // This provides much better stability and symmetric rotation.
         const contactPoints = [];
         for (const v of verticesA) {
-            if (this._isPointInBox(v, verticesB)) contactPoints.push(v);
+            if (this._isPointInPolygon(v, verticesB)) contactPoints.push(v);
         }
         for (const v of verticesB) {
-            if (this._isPointInBox(v, verticesA)) contactPoints.push(v);
+            if (this._isPointInPolygon(v, verticesA)) contactPoints.push(v);
         }
 
         let contactPoint;
         if (contactPoints.length > 0) {
-            // Average all points to find the center of the contact manifold
             contactPoint = {
                 x: contactPoints.reduce((sum, p) => sum + p.x, 0) / contactPoints.length,
                 y: contactPoints.reduce((sum, p) => sum + p.y, 0) / contactPoints.length
             };
         } else {
-            // Fallback for edge-edge collisions or when no vertex is clearly inside:
-            // find the "deepest" vertex as a single point of contact.
             let deepestOverlap = -Infinity;
             let bestPoint = { x: (centerA.x + centerB.x) / 2, y: (centerA.y + centerB.y) / 2 };
 
@@ -749,20 +805,52 @@ export class PhysicsSystem {
         };
     }
 
+    isBoxVsBox(materiaA, materiaB) {
+        return this.isPolygonVsPolygon(materiaA, materiaB);
+    }
+
+    isBoxVsPolygon(boxMateria, polyMateria) {
+        return this.isPolygonVsPolygon(boxMateria, polyMateria);
+    }
+
     /**
-     * Comprueba si un punto está dentro de un cuadrilátero definido por 4 vértices (en orden horario).
+     * Comprueba si un punto está dentro de un polígono convexo.
      */
-    _isPointInBox(point, vertices) {
-        for (let i = 0; i < 4; i++) {
+    _isPointInPolygon(point, vertices) {
+        for (let i = 0; i < vertices.length; i++) {
             const p1 = vertices[i];
-            const p2 = vertices[(i + 1) % 4];
+            const p2 = vertices[(i + 1) % vertices.length];
             const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
             const toPoint = { x: point.x - p1.x, y: point.y - p1.y };
-            // El producto cruzado indica de qué lado del borde está el punto.
-            // Para vértices en sentido horario, un punto interno debe estar siempre a la derecha (cross > -epsilon).
             if (this._cross(edge, toPoint) < -1e-6) return false;
         }
         return true;
+    }
+
+    _getPolygonVertices(transform, collider) {
+        const angle = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+
+        const rotatedOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const rotatedOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+
+        const center = {
+            x: transform.position.x + rotatedOffsetX,
+            y: transform.position.y + rotatedOffsetY
+        };
+
+        return collider.vertices.map(v => {
+            const sx = v.x * transform.scale.x;
+            const sy = v.y * transform.scale.y;
+            return {
+                x: center.x + (sx * cos - sy * sin),
+                y: center.y + (sx * sin + sy * cos)
+            };
+        });
     }
 
     _getVertices(transform, collider) {
@@ -880,7 +968,7 @@ export class PhysicsSystem {
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D))
         );
 
         for (const materia of collidables) {
@@ -894,6 +982,8 @@ export class PhysicsSystem {
                 hit = this._rayVsBox(origin, direction, transform, collider);
             } else if (collider instanceof Components.CapsuleCollider2D) {
                 hit = this._rayVsCapsule(origin, direction, transform, collider);
+            } else if (collider instanceof Components.PolygonCollider2D) {
+                hit = this._rayVsPolygon(origin, direction, transform, collider);
             }
 
             if (hit && hit.distance < minDistance) {
@@ -1011,5 +1101,53 @@ export class PhysicsSystem {
             point: hitPoint,
             normal: normal
         };
+    }
+
+    _rayVsPolygon(origin, direction, transform, collider) {
+        const vertices = this._getPolygonVertices(transform, collider);
+        let closestT = Infinity;
+        let closestNormal = { x: 0, y: 0 };
+
+        for (let i = 0; i < vertices.length; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[(i + 1) % vertices.length];
+
+            const hit = this._rayVsSegment(origin, direction, p1, p2);
+            if (hit && hit.t < closestT) {
+                closestT = hit.t;
+                closestNormal = hit.normal;
+            }
+        }
+
+        if (closestT === Infinity) return null;
+
+        return {
+            distance: closestT,
+            point: { x: origin.x + direction.x * closestT, y: origin.y + direction.y * closestT },
+            normal: closestNormal
+        };
+    }
+
+    _rayVsSegment(origin, direction, p1, p2) {
+        const v1 = { x: origin.x - p1.x, y: origin.y - p1.y };
+        const v2 = { x: p2.x - p1.x, y: p2.y - p1.y };
+        const v3 = { x: -direction.y, y: direction.x };
+
+        const dot = this._dot(v2, v3);
+        if (Math.abs(dot) < 1e-6) return null;
+
+        const t1 = this._cross(v2, v1) / dot;
+        const t2 = this._dot(v1, v3) / dot;
+
+        if (t1 >= 0 && t2 >= 0 && t2 <= 1) {
+            const normal = this._normalize({ x: -v2.y, y: v2.x });
+            // Asegurarse de que la normal apunta hacia afuera del rayo
+            if (this._dot(direction, normal) > 0) {
+                normal.x = -normal.x;
+                normal.y = -normal.y;
+            }
+            return { t: t1, normal: normal };
+        }
+        return null;
     }
 }

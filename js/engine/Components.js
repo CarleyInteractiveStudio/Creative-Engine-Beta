@@ -52,6 +52,7 @@ const componentAliases = {
     'ParticleSystem': 'sistemaDeParticulas',
     'Terreno2D': 'terreno2D',
     'TerrenoCollider2D': 'colisionadorTerreno2D',
+    'PolygonCollider2D': 'colisionadorPoligono2D',
     'Gyzmo': 'gyzmo'
 };
 
@@ -933,6 +934,27 @@ export class BoxCollider2D extends Leyes {
     }
 }
 
+export class PolygonCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.vertices = [
+            { x: -50, y: -50 },
+            { x:  50, y: -50 },
+            { x:  50, y:  50 },
+            { x: -50, y:  50 }
+        ];
+    }
+    clone() {
+        const newCollider = new PolygonCollider2D(null);
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.vertices = this.vertices.map(v => ({ ...v }));
+        return newCollider;
+    }
+}
+
 export class CapsuleCollider2D extends Leyes {
     constructor(materia) {
         super(materia);
@@ -1425,6 +1447,7 @@ registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);
 registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
+registerComponent('PolygonCollider2D', PolygonCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
@@ -2257,8 +2280,11 @@ export class TerrenoCollider2D extends Leyes {
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
         this.isDirty = true;
+        this.mode = 'Rectangles'; // 'Rectangles' or 'Polygon'
         this.generatedColliders = [];
+        this.generatedPolygons = [];
         this.resolution = 16; // Tamaño del bloque para simplificar colisiones (en píxeles)
+        this.simplifyTolerance = 2.0;
     }
 
     generateColliders() {
@@ -2266,6 +2292,7 @@ export class TerrenoCollider2D extends Leyes {
         if (!terreno || terreno.layers.length === 0) return;
 
         this.generatedColliders = [];
+        this.generatedPolygons = [];
         const { width, height } = terreno;
 
         // Crear un canvas temporal para combinar todas las máscaras
@@ -2280,17 +2307,26 @@ export class TerrenoCollider2D extends Leyes {
             }
         }
 
-        const imgData = tCtx.getImageData(0, 0, width, height).data;
+        const imgData = tCtx.getImageData(0, 0, width, height);
 
+        if (this.mode === 'Polygon') {
+            this._generatePolygonColliders(imgData);
+        } else {
+            this._generateRectangleColliders(imgData);
+        }
+
+        this.isDirty = false;
+    }
+
+    _generateRectangleColliders(imgData) {
+        const { width, height, data } = imgData;
         const res = this.resolution;
         const cols = Math.ceil(width / res);
         const rows = Math.ceil(height / res);
 
-        // 1. Crear una rejilla de ocupación
         const grid = new Uint8Array(cols * rows);
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                // Comprobar si hay algún píxel sólido en este bloque
                 let occupied = false;
                 const startY = r * res;
                 const endY = Math.min(height, (r + 1) * res);
@@ -2300,32 +2336,23 @@ export class TerrenoCollider2D extends Leyes {
                 for (let py = startY; py < endY; py++) {
                     for (let px = startX; px < endX; px++) {
                         const idx = (py * width + px) * 4;
-                        if (imgData[idx + 3] > 128) { // Alpha > 50%
+                        if (data[idx + 3] > 128) {
                             occupied = true;
                             break;
                         }
                     }
                     if (occupied) break;
                 }
-
-                if (occupied) {
-                    grid[r * cols + c] = 1;
-                }
+                if (occupied) grid[r * cols + c] = 1;
             }
         }
 
-        // 2. Greedy Meshing: Combinar bloques adyacentes en rectángulos más grandes
         const visited = new Uint8Array(cols * rows);
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r * cols + c] === 1 && !visited[r * cols + c]) {
-                    // Intentar expandir a la derecha
                     let w = 1;
-                    while (c + w < cols && grid[r * cols + (c + w)] === 1 && !visited[r * cols + (c + w)]) {
-                        w++;
-                    }
-
-                    // Intentar expandir hacia abajo
+                    while (c + w < cols && grid[r * cols + (c + w)] === 1 && !visited[r * cols + (c + w)]) w++;
                     let h = 1;
                     while (r + h < rows) {
                         let canExpand = true;
@@ -2338,32 +2365,153 @@ export class TerrenoCollider2D extends Leyes {
                         if (!canExpand) break;
                         h++;
                     }
-
-                    // Marcar como visitados
                     for (let hh = 0; hh < h; hh++) {
-                        for (let ww = 0; ww < w; ww++) {
-                            visited[(r + hh) * cols + (c + ww)] = 1;
-                        }
+                        for (let ww = 0; ww < w; ww++) visited[(r + hh) * cols + (c + ww)] = 1;
                     }
-
-                    // Crear colisionador (centrado respecto al terreno)
                     const rectWidth = w * res;
                     const rectHeight = h * res;
                     const centerX = (c * res + rectWidth / 2) - (width / 2);
                     const centerY = (r * res + rectHeight / 2) - (height / 2);
-
-                    this.generatedColliders.push({
-                        x: centerX,
-                        y: centerY,
-                        width: rectWidth,
-                        height: rectHeight
-                    });
+                    this.generatedColliders.push({ x: centerX, y: centerY, width: rectWidth, height: rectHeight });
                 }
             }
         }
+        console.log(`[TerrenoCollider2D] Generados ${this.generatedColliders.length} rectángulos.`);
+    }
 
-        this.isDirty = false;
-        console.log(`[TerrenoCollider2D] Generados ${this.generatedColliders.length} rectángulos de colisión.`);
+    _generatePolygonColliders(imgData) {
+        const { width, height, data } = imgData;
+        // Rejilla de booleanos para rastrear píxeles visitados al buscar contornos
+        const visited = new Uint8Array(width * height);
+
+        const getAlpha = (x, y) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
+            return data[(y * width + x) * 4 + 3];
+        };
+
+        for (let y = 0; y < height; y += 2) {
+            for (let x = 0; x < width; x += 2) {
+                const idx = y * width + x;
+                if (data[idx * 4 + 3] > 128 && !visited[idx]) {
+                    // Encontramos un píxel sólido no visitado, trazar su contorno
+                    const contour = this._traceContour(x, y, width, height, data, visited);
+                    if (contour && contour.length > 3) {
+                        // Simplificar el contorno
+                        const simplified = this._ramerDouglasPeucker(contour, this.simplifyTolerance);
+                        if (simplified.length > 2) {
+                            // Centrar vértices respecto al terreno
+                            const vertices = simplified.map(v => ({
+                                x: v.x - width / 2,
+                                y: v.y - height / 2
+                            }));
+                            this.generatedPolygons.push({ vertices });
+                        }
+                    }
+                }
+            }
+        }
+        console.log(`[TerrenoCollider2D] Generados ${this.generatedPolygons.length} polígonos.`);
+    }
+
+    _traceContour(startX, startY, width, height, data, globalVisited) {
+        const getAlpha = (x, y) => {
+            if (x < 0 || x >= width || y < 0 || y >= height) return 0;
+            return data[(y * width + x) * 4 + 3];
+        };
+
+        const points = [];
+        let currX = startX;
+        let currY = startY;
+
+        // Moore-Neighbor Tracing
+        // Direcciones: 0:N, 1:NE, 2:E, 3:SE, 4:S, 5:SW, 6:W, 7:NW
+        const dx = [0, 1, 1, 1, 0, -1, -1, -1];
+        const dy = [-1, -1, 0, 1, 1, 1, 0, -1];
+
+        let backX = startX - 1;
+        let backY = startY;
+        let entryDir = 2; // Entramos desde el oeste, el primer vecino a chequear es N (dir 0)
+
+        let iterations = 0;
+        const maxIterations = width * height;
+
+        do {
+            points.push({ x: currX, y: currY });
+            globalVisited[currY * width + currX] = 1;
+
+            let found = false;
+            // El primer vecino a chequear es (entryDir + 6) % 8
+            let checkDir = (entryDir + 6) % 8;
+
+            for (let i = 0; i < 8; i++) {
+                const dir = (checkDir + i) % 8;
+                const nextX = currX + dx[dir];
+                const nextY = currY + dy[dir];
+
+                if (getAlpha(nextX, nextY) > 128) {
+                    // Marcar píxeles internos como visitados para no empezar nuevas islas dentro
+                    // (Simplificación: marcar una pequeña área alrededor)
+                    for (let sy = -1; sy <= 1; sy++) {
+                        for (let sx = -1; sx <= 1; sx++) {
+                            const vx = currX + sx;
+                            const vy = currY + sy;
+                            if (vx >= 0 && vx < width && vy >= 0 && vy < height) {
+                                globalVisited[vy * width + vx] = 1;
+                            }
+                        }
+                    }
+
+                    currX = nextX;
+                    currY = nextY;
+                    entryDir = dir;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) break;
+            iterations++;
+        } while ((currX !== startX || currY !== startY) && iterations < maxIterations);
+
+        return points;
+    }
+
+    _ramerDouglasPeucker(points, epsilon) {
+        if (points.length < 3) return points;
+
+        let dmax = 0;
+        let index = 0;
+        const end = points.length - 1;
+
+        for (let i = 1; i < end; i++) {
+            const d = this._perpendicularDistance(points[i], points[0], points[end]);
+            if (d > dmax) {
+                index = i;
+                dmax = d;
+            }
+        }
+
+        if (dmax > epsilon) {
+            const res1 = this._ramerDouglasPeucker(points.slice(0, index + 1), epsilon);
+            const res2 = this._ramerDouglasPeucker(points.slice(index), epsilon);
+            return res1.slice(0, res1.length - 1).concat(res2);
+        } else {
+            return [points[0], points[end]];
+        }
+    }
+
+    _perpendicularDistance(p, p1, p2) {
+        let x = p1.x, y = p1.y, dx = p2.x - x, dy = p2.y - y;
+        if (dx !== 0 || dy !== 0) {
+            let t = ((p.x - x) * dx + (p.y - y) * dy) / (dx * dx + dy * dy);
+            if (t > 1) {
+                x = p2.x; y = p2.y;
+            } else if (t > 0) {
+                x += dx * t; y += dy * t;
+            }
+        }
+        dx = p.x - x; dy = p.y - y;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     generate() {
