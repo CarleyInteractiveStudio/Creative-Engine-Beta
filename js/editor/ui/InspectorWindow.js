@@ -5,6 +5,7 @@ import * as SpriteSlicer from './SpriteSlicerWindow.js';
 import { getCustomComponentDefinitions } from '../EngineAPIExtension.js';
 import * as CES_Transpiler from '../../editor/CES_Transpiler.js';
 import { showPrompt, showNotification } from './DialogWindow.js';
+import { TerrenoEditorWindow } from './TerrenoEditorWindow.js';
 
 // --- Module State ---
 let dom;
@@ -27,11 +28,11 @@ const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
     'Renderizado': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
-    'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax],
+    'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
     'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'Animación': [Components.Animator, Components.AnimatorController],
     'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D],
+    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
     'Scripting': [Components.CreativeScript]
@@ -42,6 +43,7 @@ const componentIcons = {
     Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
     UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
     Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
+    Terreno2D: '⛰️', TerrenoCollider2D: '⛰️',
     Button: '🖲️', UIText: '📝', Canvas: '🖼️',
     Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️',
     ParticleSystem: '✨'
@@ -692,6 +694,41 @@ function handleInspectorClick(e) {
             updateSceneCallback();
         } else {
             window.Dialogs.showNotification('Aviso', 'Se necesita un SpriteRenderer con una imagen cargada.');
+        }
+    }
+
+    // --- Terrain Layer Management ---
+    if (e.target.matches('[data-action="terrain-add-layer"]')) {
+        const terreno = selectedMateria.getComponent(Components.Terreno2D);
+        if (terreno) {
+            openAssetSelectorCallback(async (fileHandle, path) => {
+                terreno.addLayer(path);
+                await terreno.loadTextures(projectsDirHandle);
+                updateInspector();
+            }, { filter: ['image'], title: 'Seleccionar Textura para Capa' });
+        }
+    }
+
+    if (e.target.matches('[data-action="terrain-remove-layer"]')) {
+        const terreno = selectedMateria.getComponent(Components.Terreno2D);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (terreno && !isNaN(index)) {
+            terreno.removeLayer(index);
+            updateInspector();
+        }
+    }
+
+    if (e.target.closest('[data-action="terrain-layer-texture"]')) {
+        const dropper = e.target.closest('[data-action="terrain-layer-texture"]');
+        const lIdx = parseInt(dropper.dataset.layerIndex, 10);
+        const terreno = selectedMateria.getComponent(Components.Terreno2D);
+
+        if (terreno && !isNaN(lIdx)) {
+            openAssetSelectorCallback(async (fileHandle, path) => {
+                terreno.layers[lIdx].texturePath = path;
+                await terreno.loadTextures(projectsDirHandle);
+                updateInspector();
+            }, { filter: ['image'], title: 'Cambiar Textura de Capa' });
         }
     }
 }
@@ -2231,6 +2268,74 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <p class="field-description">Scroll Factor: 0 = Pegado a cámara. 1 = Mundo real.<br>Mirroring: Tamaño de repetición (0 = no repite).</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.Terreno2D) {
+            const settings = TerrenoEditorWindow.settings;
+            componentHTML = `
+                ${renderComponentHeader("Terreno 2D", icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Dimensions</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Terreno2D" data-prop="width" value="${ley.width}" title="Width">
+                            <input type="number" class="prop-input" data-component="Terreno2D" data-prop="height" value="${ley.height}" title="Height">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Resolución</label>
+                        <input type="number" class="prop-input" data-component="Terreno2D" data-prop="resolution" value="${ley.resolution}" min="2" max="200">
+                    </div>
+                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.initializeMesh(); window.updateInspector();">Reiniciar Malla</button>
+                    <hr>
+                    <h5>Configuración del Pincel</h5>
+                    <div class="prop-row-multi">
+                        <label>Modo</label>
+                        <select class="terrain-tool-input" onchange="window.TerrenoEditorWindow.setMode(this.value)">
+                            <option value="deform" ${settings.mode === 'deform' ? 'selected' : ''}>Deformar (Esculpir)</option>
+                            <option value="paint" ${settings.mode === 'paint' ? 'selected' : ''}>Pintar Textura</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Tamaño</label>
+                        <input type="range" min="1" max="500" value="${settings.brushSize}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
+                        <span style="min-width: 30px; text-align: right;">${settings.brushSize}</span>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza</label>
+                        <input type="range" min="1" max="100" value="${settings.brushStrength}" oninput="window.TerrenoEditorWindow.setBrushStrength(this.value); this.nextElementSibling.innerText = this.value;">
+                        <span style="min-width: 30px; text-align: right;">${settings.brushStrength}</span>
+                    </div>
+                    <hr>
+                    <div class="layer-manager-ui">
+                        <div class="layer-list-header">
+                            <h5>Capas de Textura</h5>
+                            <button class="layer-btn add" data-action="terrain-add-layer" title="Añadir Capa">+</button>
+                        </div>
+                        <div class="layer-list">
+                            ${ley.layers.map((layer, lIdx) => `
+                                <div class="layer-item ${lIdx === settings.selectedLayer ? 'active' : ''}" onclick="window.TerrenoEditorWindow.setSelectedLayer(${lIdx}); window.updateInspector();">
+                                    <div style="flex-grow:1;">
+                                        ${renderPropertyDropper('Sprite', layer.texturePath, `data-action="terrain-layer-texture" data-layer-index="${lIdx}"`)}
+                                    </div>
+                                    <button class="layer-btn remove" data-action="terrain-remove-layer" data-index="${lIdx}">-</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <p class="field-description">Selecciona una capa para pintar en ella. Mantén Shift para invertir el efecto (bajar terreno o borrar textura).</p>
+                </div>
+            `;
+        } else if (ley instanceof Components.TerrenoCollider2D) {
+            componentHTML = `
+                ${renderComponentHeader("Terreno Collider 2D", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="TerrenoCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>Is Trigger</label>
+                    </div>
+                    <hr>
+                    <p class="field-description">Este colisionador se ajusta automáticamente a la forma del componente Terreno2D en el mismo objeto.</p>
                 </div>
             `;
         }

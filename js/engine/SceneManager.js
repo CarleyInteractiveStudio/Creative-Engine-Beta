@@ -215,6 +215,11 @@ export function serializeMateria(materia, recursive = false) {
                             ...layer,
                             tileData: Array.from(layer.tileData.entries())
                         }));
+                    } else if (ley.constructor.name === 'Terreno2D' && key === 'layers') {
+                        leyData.properties[key] = ley[key].map(layer => ({
+                            ...layer,
+                            maskData: Array.from(layer.maskData)
+                        }));
                     } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
                         leyData.properties[key] = Array.from(ley[key].entries());
                     } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
@@ -292,6 +297,13 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                     if (newLey.layers && Array.isArray(newLey.layers)) {
                         newLey.layers.forEach(layer => {
                             layer.tileData = new Map(layer.tileData || []);
+                        });
+                    }
+                } else if (leyData.type === 'Terreno2D') {
+                    Object.assign(newLey, leyData.properties);
+                    if (newLey.layers && Array.isArray(newLey.layers)) {
+                        newLey.layers.forEach(layer => {
+                            layer.maskData = new Float32Array(layer.maskData || []);
                         });
                     }
                 } else if (leyData.type === 'TilemapCollider2D') {

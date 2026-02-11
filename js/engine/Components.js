@@ -49,7 +49,9 @@ const componentAliases = {
     'AutoDestroy': 'destruccionAutomatica',
     'Health': 'vida',
     'Patrol': 'patrulla',
-    'ParticleSystem': 'sistemaDeParticulas'
+    'ParticleSystem': 'sistemaDeParticulas',
+    'Terreno2D': 'terreno2D',
+    'TerrenoCollider2D': 'colisionadorTerreno2D'
 };
 
 
@@ -2073,6 +2075,205 @@ export class CompositeCollider2D extends Leyes {
 }
 
 registerComponent('CompositeCollider2D', CompositeCollider2D);
+
+/**
+ * Componente Terreno2D: Permite crear superficies deformables con múltiples capas de textura.
+ */
+export class Terreno2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 800;
+        this.height = 300;
+        this.resolution = 40; // Segmentos horizontales
+        this.vertices = []; // [{x, y, u, v}]
+        this.layers = []; // [{texturePath, maskData}] - maskData es un array de pesos por vértice
+        this.sortingLayer = 'Default';
+        this.orderInLayer = 0;
+
+        this.imageCache = new Map();
+        this.initializeMesh();
+    }
+
+    async loadTextures(projectsDirHandle) {
+        for (const layer of this.layers) {
+            if (layer.texturePath && !this.imageCache.has(layer.texturePath)) {
+                try {
+                    const url = await getURLForAssetPath(layer.texturePath, projectsDirHandle);
+                    if (url) {
+                        const img = new Image();
+                        img.src = url;
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                        });
+                        this.imageCache.set(layer.texturePath, img);
+                    }
+                } catch (e) {
+                    console.error(`Error al cargar textura de terreno: ${layer.texturePath}`, e);
+                }
+            }
+        }
+    }
+
+    getImageForLayer(index) {
+        if (index < 0 || index >= this.layers.length) return null;
+        return this.imageCache.get(this.layers[index].texturePath);
+    }
+
+    initializeMesh() {
+        this.vertices = [];
+        const stepX = this.width / this.resolution;
+        for (let i = 0; i <= this.resolution; i++) {
+            const x = (i * stepX) - (this.width / 2);
+            // Vértice superior (deformable)
+            this.vertices.push({ x: x, y: -this.height / 2, u: i / this.resolution, v: 0 });
+            // Vértice inferior (fijo o base)
+            this.vertices.push({ x: x, y: this.height / 2, u: i / this.resolution, v: 1 });
+        }
+        this.resetLayers();
+    }
+
+    resetLayers() {
+        // Inicializar pesos de capas (1.0 = 100% visible)
+        for (const layer of this.layers) {
+            if (!layer.maskData || layer.maskData.length !== this.vertices.length) {
+                layer.maskData = new Float32Array(this.vertices.length).fill(0);
+            }
+        }
+    }
+
+    addLayer(texturePath) {
+        this.layers.push({
+            texturePath: texturePath,
+            maskData: new Float32Array(this.vertices.length).fill(0)
+        });
+    }
+
+    removeLayer(index) {
+        if (index >= 0 && index < this.layers.length) {
+            this.layers.splice(index, 1);
+        }
+    }
+
+    deform(worldX, worldY, radius, delta) {
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const localX = worldX - transform.x;
+        const localY = worldY - transform.y;
+
+        for (let i = 0; i < this.vertices.length; i++) {
+            const v = this.vertices[i];
+            const dist = Math.hypot(v.x - localX, v.y - localY);
+            if (dist < radius) {
+                const strength = 1.0 - (dist / radius);
+                v.y += delta * strength;
+            }
+        }
+
+        const collider = this.materia.getComponent(TerrenoCollider2D);
+        if (collider) collider.isDirty = true;
+    }
+
+    paint(worldX, worldY, radius, layerIndex, strength) {
+        if (layerIndex < 0 || layerIndex >= this.layers.length) return;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const localX = worldX - transform.x;
+        const localY = worldY - transform.y;
+        const maskData = this.layers[layerIndex].maskData;
+
+        for (let i = 0; i < this.vertices.length; i++) {
+            const v = this.vertices[i];
+            const dist = Math.hypot(v.x - localX, v.y - localY);
+            if (dist < radius) {
+                const s = (1.0 - (dist / radius)) * strength;
+                maskData[i] = Math.max(0, Math.min(1, maskData[i] + s));
+            }
+        }
+    }
+
+    clone() {
+        const newTerreno = new Terreno2D(null);
+        newTerreno.width = this.width;
+        newTerreno.height = this.height;
+        newTerreno.resolution = this.resolution;
+        newTerreno.vertices = JSON.parse(JSON.stringify(this.vertices));
+        newTerreno.layers = this.layers.map(l => ({
+            texturePath: l.texturePath,
+            maskData: new Float32Array(l.maskData)
+        }));
+        newTerreno.sortingLayer = this.sortingLayer;
+        newTerreno.orderInLayer = this.orderInLayer;
+        return newTerreno;
+    }
+}
+registerComponent('Terreno2D', Terreno2D);
+
+/**
+ * Componente TerrenoCollider2D: Genera colisiones basadas en la forma del Terreno2D.
+ */
+export class TerrenoCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.isDirty = true;
+        this.generatedPoints = [];
+    }
+
+    generateColliders() {
+        const terreno = this.materia.getComponent(Terreno2D);
+        if (!terreno) return;
+
+        this.generatedColliders = [];
+        const { resolution, vertices } = terreno;
+
+        for (let i = 0; i < resolution; i++) {
+            const idxL = i * 2;
+            const idxR = (i + 1) * 2;
+
+            const vTL = vertices[idxL];
+            const vBL = vertices[idxL + 1];
+            const vTR = vertices[idxR];
+            const vBR = vertices[idxR + 1];
+
+            // Aproximación: Caja rectangular que cubre el segmento
+            const minTop = Math.min(vTL.y, vTR.y);
+            const maxBottom = Math.max(vBL.y, vBR.y);
+
+            const width = vTR.x - vTL.x;
+            const height = maxBottom - minTop;
+            const centerX = vTL.x + width / 2;
+            const centerY = minTop + height / 2;
+
+            if (height > 0) {
+                this.generatedColliders.push({
+                    x: centerX,
+                    y: centerY,
+                    width: width,
+                    height: height
+                });
+            }
+        }
+        this.isDirty = false;
+    }
+
+    generate() {
+        this.generateColliders();
+    }
+
+    clone() {
+        const newCollider = new TerrenoCollider2D(null);
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
+        return newCollider;
+    }
+}
+registerComponent('TerrenoCollider2D', TerrenoCollider2D);
 
 /**
  * Componente que lanza proyectiles (prefabs) al presionar una tecla o llamar a fire().

@@ -35,6 +35,7 @@ import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow
 import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
+import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
@@ -716,6 +717,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 't':
                     setActiveTool('universal');
                     break;
+                case 'b':
+                    setActiveTool('terrain-brush');
+                    break;
                 case 'delete':
                 case 'backspace':
                     if (selectedMateria) {
@@ -1208,10 +1212,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender)))
+            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)))
             .sort((a, b) => {
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender);
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.Terreno2D);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.Terreno2D);
                 const orderA = rendererA.orderInLayer || 0;
                 const orderB = rendererB.orderInLayer || 0;
                 if (orderA !== orderB) return orderA - orderB;
@@ -1257,8 +1261,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (b.isAncestorOf(a)) return 1;  // b is parent, draw first (behind)
 
                 // 3. Renderer orderInLayer
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer);
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D);
                 const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
@@ -1274,6 +1278,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const textureRender = materia.getComponent(Components.TextureRender);
+                const terreno2D = materia.getComponent(Components.Terreno2D);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
                 const transform = materia.getComponent(Components.Transform);
                 const parallax = materia.getComponent(Components.Parallax);
@@ -1439,6 +1444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         drawTex();
                     }
+                } else if (terreno2D) {
+                    rendererInstance.drawTerreno2D(terreno2D);
                 }
             }
 
@@ -1741,6 +1748,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (!materia.getComponent(Components.AnimatorController)) {
                                     await ley.loadAnimationClip(projectsDirHandle);
                                 }
+                            } else if (ley instanceof Components.Terreno2D) {
+                                await ley.loadTextures(projectsDirHandle);
                             } else {
                                 // Generic start for other components (like AudioSource)
                                 if (typeof ley.start === 'function') {
@@ -2951,6 +2960,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         window.updateInspector = updateInspector;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
+        window.TerrenoEditorWindow = TerrenoEditorWindow;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests
@@ -3395,6 +3405,7 @@ public start() {
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
             VerificationSystem.initialize({ dom });
+            TerrenoEditorWindow.initialize({ dom, updateInspector });
             AmbienteControlWindow.initialize({
                 dom,
                 editorRenderer: renderer,

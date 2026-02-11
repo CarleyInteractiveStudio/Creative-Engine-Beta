@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -167,6 +167,77 @@ export class Renderer {
             transformedText = text.toLowerCase();
         }
         this.ctx.fillText(transformedText, x, y);
+    }
+
+    drawTerreno2D(terreno) {
+        const transform = terreno.materia.getComponent(Transform);
+        if (!transform || !terreno.vertices || terreno.vertices.length < 4) return;
+
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
+        this.ctx.rotate(transform.rotation * Math.PI / 180);
+        this.ctx.scale(transform.scale.x, transform.scale.y);
+
+        for (let l = 0; l < terreno.layers.length; l++) {
+            const layer = terreno.layers[l];
+            const img = terreno.getImageForLayer(l);
+            if (!img || !img.complete) continue;
+
+            for (let i = 0; i < terreno.resolution; i++) {
+                const idx = i * 2;
+                const v0 = terreno.vertices[idx];
+                const v1 = terreno.vertices[idx + 1];
+                const v2 = terreno.vertices[idx + 2];
+                const v3 = terreno.vertices[idx + 3];
+
+                const mask = layer.maskData;
+                const a0 = mask[idx], a1 = mask[idx + 1], a2 = mask[idx + 2], a3 = mask[idx + 3];
+
+                const alpha1 = (a0 + a1 + a2) / 3;
+                if (alpha1 > 0.01) {
+                    this.ctx.globalAlpha = alpha1;
+                    this._drawTexturedTriangle(img, v0, v1, v2);
+                }
+
+                const alpha2 = (a1 + a3 + a2) / 3;
+                if (alpha2 > 0.01) {
+                    this.ctx.globalAlpha = alpha2;
+                    this._drawTexturedTriangle(img, v1, v3, v2);
+                }
+            }
+            this.ctx.globalAlpha = 1.0;
+        }
+
+        this.ctx.restore();
+    }
+
+    _drawTexturedTriangle(img, v0, v1, v2) {
+        const ctx = this.ctx;
+        const x0 = v0.x, y0 = v0.y, u0 = v0.u * img.width, v0_uv = v0.v * img.height;
+        const x1 = v1.x, y1 = v1.y, u1 = v1.u * img.width, v1_uv = v1.v * img.height;
+        const x2 = v2.x, y2 = v2.y, u2 = v2.u * img.width, v2_uv = v2.v * img.height;
+
+        const delta = u0 * v1_uv + v0_uv * u2 + u1 * v2_uv - v1_uv * u2 - v0_uv * u1 - u0 * v2_uv;
+        if (delta === 0) return;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.closePath();
+        ctx.clip();
+
+        const a = (x0 * v1_uv + v0_uv * x2 + x1 * v2_uv - v1_uv * x2 - v0_uv * x1 - x0 * v2_uv) / delta;
+        const b = (u0 * x1 + x0 * u2 + u1 * x2 - x1 * u2 - x0 * u1 - u0 * x2) / delta;
+        const c = (u0 * v1_uv * x2 + v0_uv * x1 * u2 + x0 * u1 * v2_uv - x0 * v1_uv * u2 - v0_uv * u1 * x2 - u0 * x1 * v2_uv) / delta;
+        const d = (y0 * v1_uv + v0_uv * y2 + y1 * v2_uv - v1_uv * y2 - v0_uv * y1 - y0 * v2_uv) / delta;
+        const e = (u0 * y1 + y0 * u2 + u1 * y2 - y1 * u2 - y0 * u1 - u0 * y2) / delta;
+        const f = (u0 * v1_uv * y2 + v0_uv * y1 * u2 + y0 * u1 * v2_uv - y0 * v1_uv * u2 - v0_uv * u1 * y2 - u0 * y1 * v2_uv) / delta;
+
+        ctx.transform(a, d, b, e, c, f);
+        ctx.drawImage(img, 0, 0);
+        ctx.restore();
     }
 
     drawTilemap(tilemapRenderer) {

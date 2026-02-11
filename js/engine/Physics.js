@@ -288,10 +288,10 @@ export class PhysicsSystem {
                 collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertir orden
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isCapsuleVsCapsule(materiaA, materiaB);
-            } else if (colliderB instanceof Components.TilemapCollider2D) {
+            } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
-        } else if (colliderA instanceof Components.TilemapCollider2D) {
+        } else if (colliderA instanceof Components.TilemapCollider2D || colliderA instanceof Components.TerrenoCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaB, materiaA); // Invertir orden
             }
@@ -422,15 +422,20 @@ export class PhysicsSystem {
     getCollider(materia) {
         return materia.getComponent(Components.BoxCollider2D) ||
                materia.getComponent(Components.CapsuleCollider2D) ||
-               materia.getComponent(Components.TilemapCollider2D);
+               materia.getComponent(Components.TilemapCollider2D) ||
+               materia.getComponent(Components.TerrenoCollider2D);
     }
 
     isColliderVsTilemap(colliderMateria, tilemapMateria) {
         const otherCollider = this.getCollider(colliderMateria);
-        const tilemapCollider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+        const tilemapCollider = tilemapMateria.getComponent(Components.TilemapCollider2D) || tilemapMateria.getComponent(Components.TerrenoCollider2D);
         const tilemapTransform = tilemapMateria.getComponent(Components.Transform);
 
         if (!otherCollider || !tilemapCollider || !tilemapTransform) return null;
+
+        if (tilemapCollider.isDirty) {
+            tilemapCollider.generate();
+        }
 
         for (const rect of tilemapCollider.generatedColliders) {
             // Crear un objeto 'Materia' temporal para representar el tile

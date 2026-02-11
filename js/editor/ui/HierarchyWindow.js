@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -188,6 +188,9 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-tilemap':
             newMateria = createTilemapObject(selectedMateria);
+            break;
+        case 'create-terrain':
+            newMateria = createTerrenoObject(selectedMateria);
             break;
         case 'create-parallax':
             newMateria = createBaseMateria(generateUniqueName('Parallax'), selectedMateria);

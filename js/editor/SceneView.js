@@ -162,6 +162,7 @@ function drawUIGizmos(renderer, materia) {
 
 import * as VerificationSystem from './ui/VerificationSystem.js';
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
+import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
 
 // Dependencies from editor.js
 let dom;
@@ -179,7 +180,7 @@ let getSelectedTile;
 let setPaletteActiveTool = null;
 
 // Module State
-let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
+let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser', 'terrain-brush'
 let isAddingLayer = false;
 let isDragging = false;
 let lastSelectedId = -1;
@@ -1111,6 +1112,47 @@ export function initialize(dependencies) {
             return; // Stop further execution to prevent gizmo logic
         }
 
+        // --- Terrain Brush Logic (Left-click) ---
+        if (e.button === 0 && activeTool === 'terrain-brush') {
+            e.stopPropagation();
+
+            const useBrush = (event) => {
+                const selectedMateria = getSelectedMateria();
+                if (!selectedMateria) return;
+                const terreno = selectedMateria.getComponent(Components.Terreno2D);
+                if (!terreno) return;
+
+                const rect = dom.sceneCanvas.getBoundingClientRect();
+                const worldMouse = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+                const settings = TerrenoEditorWindow.settings;
+
+                if (settings.mode === 'deform') {
+                    // Si se presiona Shift, deformamos hacia abajo
+                    const delta = event.shiftKey ? -settings.brushStrength : settings.brushStrength;
+                    terreno.deform(worldMouse.x, worldMouse.y, settings.brushSize, delta);
+                } else if (settings.mode === 'paint') {
+                    // Si se presiona Shift, pintamos con fuerza negativa (borrar)
+                    const strength = event.shiftKey ? -settings.brushStrength / 100 : settings.brushStrength / 100;
+                    terreno.paint(worldMouse.x, worldMouse.y, settings.brushSize, settings.selectedLayer, strength);
+                }
+            };
+
+            useBrush(e);
+
+            const onBrushMove = (moveEvent) => {
+                useBrush(moveEvent);
+            };
+
+            const onBrushEnd = () => {
+                window.removeEventListener('mousemove', onBrushMove);
+                window.removeEventListener('mouseup', onBrushEnd);
+            };
+
+            window.addEventListener('mousemove', onBrushMove);
+            window.addEventListener('mouseup', onBrushEnd);
+            return;
+        }
+
         // --- Gizmo Dragging Logic (Left-click) ---
         if (e.button === 0) {
             const selectedMateria = getSelectedMateria();
@@ -1489,6 +1531,40 @@ export function drawOverlay() {
     // Draw Canvas gizmos
     drawCanvasGizmos();
     drawUIGizmos(renderer, getSelectedMateria());
+
+    drawTerrainBrushGizmo();
+}
+
+function drawTerrainBrushGizmo() {
+    if (activeTool !== 'terrain-brush' || !renderer) return;
+
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !selectedMateria.getComponent(Components.Terreno2D)) return;
+
+    const mousePos = InputManager.getMousePositionInCanvas();
+    const worldMouse = screenToWorld(mousePos.x, mousePos.y);
+    const settings = TerrenoEditorWindow.settings;
+    const zoom = renderer.camera.effectiveZoom;
+
+    const { ctx } = renderer;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(worldMouse.x, worldMouse.y, settings.brushSize, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.lineWidth = 2 / zoom;
+    ctx.stroke();
+
+    // Draw center crosshair
+    const cs = 5 / zoom;
+    ctx.beginPath();
+    ctx.moveTo(worldMouse.x - cs, worldMouse.y);
+    ctx.lineTo(worldMouse.x + cs, worldMouse.y);
+    ctx.moveTo(worldMouse.x, worldMouse.y - cs);
+    ctx.lineTo(worldMouse.x, worldMouse.y + cs);
+    ctx.stroke();
+
+    ctx.restore();
 }
 
 function checkBoxColliderGizmoHit(canvasPos) {

@@ -55,6 +55,13 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
+export function createTerrenoObject() {
+    const name = generateUniqueName('Terreno');
+    const newMateria = createBaseMateria(name);
+    newMateria.addComponent(new Components.Terreno2D(newMateria));
+    return newMateria;
+}
+
 export function createTextObject(parent) {
     if (!parent) {
         console.error("createTextObject requiere un padre que sea un Canvas.");
