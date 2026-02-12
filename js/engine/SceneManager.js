@@ -93,6 +93,41 @@ export async function saveScene(scene, fileHandle) {
     await writable.close();
 }
 
+export async function initialize(projectsDirHandle) {
+    const projectName = new URLSearchParams(window.location.search).get('project');
+    if (!projectName) return null;
+
+    try {
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+        let fileHandle;
+        try {
+            fileHandle = await assetsHandle.getFileHandle('main.ceScene');
+        } catch (e) {
+            for await (const entry of assetsHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                    fileHandle = entry;
+                    break;
+                }
+            }
+        }
+
+        if (fileHandle) {
+            const scene = await loadScene(fileHandle, projectsDirHandle);
+            return { scene, fileHandle };
+        } else {
+            const scene = createNewScene();
+            const newFileHandle = await assetsHandle.getFileHandle('main.ceScene', { create: true });
+            await saveScene(scene, newFileHandle);
+            return { scene, fileHandle: newFileHandle };
+        }
+    } catch (error) {
+        console.error("Error initializing SceneManager:", error);
+        return null;
+    }
+}
+
 export async function loadScene(fileHandle, projectsDirHandle) {
     const file = await fileHandle.getFile();
     const contents = await file.text();
