@@ -860,16 +860,41 @@ export class PhysicsSystem {
         return this.isPolygonVsPolygon(boxMateria, polyMateria);
     }
 
+    _getPolygonArea(vertices) {
+        let area = 0;
+        for (let i = 0; i < vertices.length; i++) {
+            const j = (i + 1) % vertices.length;
+            area += vertices[i].x * vertices[j].y;
+            area -= vertices[j].x * vertices[i].y;
+        }
+        return area / 2;
+    }
+
     /**
      * Comprueba si un punto está dentro de un polígono convexo.
+     * Robusto ante cualquier sentido de giro (CW o CCW).
      */
     _isPointInPolygon(point, vertices) {
+        if (vertices.length < 3) return false;
+
+        const area = this._getPolygonArea(vertices);
+        const isCW = area > 0;
+
         for (let i = 0; i < vertices.length; i++) {
             const p1 = vertices[i];
             const p2 = vertices[(i + 1) % vertices.length];
             const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
             const toPoint = { x: point.x - p1.x, y: point.y - p1.y };
-            if (this._cross(edge, toPoint) < -1e-6) return false;
+            const cross = this._cross(edge, toPoint);
+
+            // En coordenadas de pantalla (Y abajo):
+            // Si es CW (area > 0), el interior está a la derecha (cross > 0)
+            // Si es CCW (area < 0), el interior está a la izquierda (cross < 0)
+            // Nota: El signo del cross product depende de la implementación de _cross.
+            // Nuestra _cross(v1, v2) es v1.x * v2.y - v1.y * v2.x
+
+            if (isCW && cross < -1e-6) return false;
+            if (!isCW && cross > 1e-6) return false;
         }
         return true;
     }

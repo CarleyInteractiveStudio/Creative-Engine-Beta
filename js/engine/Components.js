@@ -2327,6 +2327,81 @@ export class TerrenoCollider2D extends Leyes {
         this.isDirty = false;
     }
 
+    _getPolygonArea(vertices) {
+        let area = 0;
+        for (let i = 0; i < vertices.length; i++) {
+            const j = (i + 1) % vertices.length;
+            area += vertices[i].x * vertices[j].y;
+            area -= vertices[j].x * vertices[i].y;
+        }
+        return area / 2;
+    }
+
+    _isPointInTriangle(p, a, b, c) {
+        const det = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+        const s = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / det;
+        const t = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / det;
+        const u = 1 - s - t;
+        return s >= 0 && t >= 0 && u >= 0;
+    }
+
+    _isEar(p1, p2, p3, allVertices) {
+        // En coordenadas de pantalla (Y abajo), cross > 0 es CW.
+        // Pero queremos triangles CCW para consistencia.
+        // Un ángulo es convexo si el giro es hacia la "izquierda".
+        const cross = (p2.x - p1.x) * (p3.y - p2.y) - (p2.y - p1.y) * (p3.x - p2.x);
+        if (cross >= 0) return false; // Es CW o colineal (no convexo)
+
+        for (const p of allVertices) {
+            if (p === p1 || p === p2 || p === p3) continue;
+            if (this._isPointInTriangle(p, p1, p2, p3)) return false;
+        }
+        return true;
+    }
+
+    _triangulate(vertices) {
+        if (vertices.length < 3) return [];
+        if (vertices.length === 3) return [vertices];
+
+        const triangles = [];
+        let workingVerts = vertices.map((v, i) => ({ x: v.x, y: v.y }));
+
+        // Asegurar CCW para el algoritmo de orejas (area < 0 en pantalla)
+        if (this._getPolygonArea(workingVerts) > 0) {
+            workingVerts.reverse();
+        }
+
+        let iterations = 0;
+        const maxIterations = workingVerts.length * 10;
+
+        while (workingVerts.length > 3 && iterations < maxIterations) {
+            let earFound = false;
+            for (let i = 0; i < workingVerts.length; i++) {
+                const prev = workingVerts[(i + workingVerts.length - 1) % workingVerts.length];
+                const curr = workingVerts[i];
+                const next = workingVerts[(i + 1) % workingVerts.length];
+
+                if (this._isEar(prev, curr, next, workingVerts)) {
+                    triangles.push([prev, curr, next]);
+                    workingVerts.splice(i, 1);
+                    earFound = true;
+                    break;
+                }
+            }
+            if (!earFound) {
+                console.warn("[TerrenoCollider2D] No se pudo encontrar una oreja en la triangulación.");
+                break;
+            }
+            iterations++;
+        }
+
+        if (workingVerts.length === 3) {
+            triangles.push([workingVerts[0], workingVerts[1], workingVerts[2]]);
+        }
+
+        return triangles;
+    }
+
     _generateRectangleColliders(imgData) {
         const { width, height, data } = imgData;
         const res = this.resolution;
@@ -2417,11 +2492,16 @@ export class TerrenoCollider2D extends Leyes {
                         const simplified = this._ramerDouglasPeucker(contour, this.simplifyTolerance);
                         if (simplified.length > 2) {
                             // Centrar vértices respecto al terreno
-                            const vertices = simplified.map(v => ({
+                            const centered = simplified.map(v => ({
                                 x: v.x - width / 2,
                                 y: v.y - height / 2
                             }));
-                            this.generatedPolygons.push({ vertices });
+
+                            // Triangular para manejar formas cóncavas
+                            const triangles = this._triangulate(centered);
+                            for (const tri of triangles) {
+                                this.generatedPolygons.push({ vertices: tri });
+                            }
                         }
                     }
                 }
