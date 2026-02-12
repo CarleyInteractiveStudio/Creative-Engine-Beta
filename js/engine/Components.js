@@ -2258,11 +2258,20 @@ export class Terreno2D extends Leyes {
         const newTerreno = new Terreno2D(null);
         newTerreno.width = this.width;
         newTerreno.height = this.height;
-        newTerreno.layers = this.layers.map(l => ({
-            texturePath: l.texturePath,
-            opacity: l.opacity,
-            serializedMask: l.serializedMask
-        }));
+        newTerreno.layers = this.layers.map(l => {
+            const newLayer = {
+                texturePath: l.texturePath,
+                opacity: l.opacity,
+                serializedMask: l.serializedMask
+            };
+            // Inicializar canvas para el clon
+            newTerreno._initializeLayerCanvas(newLayer);
+            if (l.maskCanvas) {
+                // Copiar el contenido actual del canvas al clon inmediatamente
+                newLayer.maskCtx.drawImage(l.maskCanvas, 0, 0);
+            }
+            return newLayer;
+        });
         newTerreno.sortingLayer = this.sortingLayer;
         newTerreno.orderInLayer = this.orderInLayer;
         newTerreno.baseColor = this.baseColor;
@@ -2530,8 +2539,11 @@ export class TerrenoCollider2D extends Leyes {
         const newCollider = new TerrenoCollider2D(null);
         newCollider.isTrigger = this.isTrigger;
         newCollider.offset = { ...this.offset };
+        newCollider.mode = this.mode;
         newCollider.resolution = this.resolution;
+        newCollider.simplifyTolerance = this.simplifyTolerance;
         newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
+        newCollider.generatedPolygons = JSON.parse(JSON.stringify(this.generatedPolygons));
         return newCollider;
     }
 }

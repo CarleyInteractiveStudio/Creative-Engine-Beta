@@ -532,28 +532,61 @@ export class PhysicsSystem {
         return null;
     }
 
+    _getCapsulePoints(materia) {
+        const transform = materia.getComponent(Components.Transform);
+        const collider = materia.getComponent(Components.CapsuleCollider2D);
+        const angle = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        // Centro de la cápsula en el espacio del mundo (incluyendo offset escalado y rotado)
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+        const worldOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const worldOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+
+        const centerX = transform.x + worldOffsetX;
+        const centerY = transform.y + worldOffsetY;
+
+        const sizeX = collider.size.x * transform.scale.x;
+        const sizeY = collider.size.y * transform.scale.y;
+        const radius = sizeX / 2;
+        const segmentHeight = Math.max(0, sizeY - sizeX);
+        const hh = segmentHeight / 2;
+
+        // Puntos finales en el espacio local (asumiendo cápsula vertical por defecto)
+        let p1Local = { x: 0, y: -hh };
+        let p2Local = { x: 0, y: hh };
+
+        if (collider.direction === 'Horizontal') {
+            const segmentWidth = Math.max(0, sizeX - sizeY);
+            const hw = segmentWidth / 2;
+            p1Local = { x: -hw, y: 0 };
+            p2Local = { x: hw, y: 0 };
+        }
+
+        return {
+            p1: {
+                x: centerX + (p1Local.x * cos - p1Local.y * sin),
+                y: centerY + (p1Local.x * sin + p1Local.y * cos)
+            },
+            p2: {
+                x: centerX + (p2Local.x * cos - p2Local.y * sin),
+                y: centerY + (p2Local.x * sin + p2Local.y * cos)
+            },
+            radius: radius
+        };
+    }
+
     isCapsuleVsCapsule(materiaA, materiaB) {
-        const transformA = materiaA.getComponent(Components.Transform);
-        const colliderA = materiaA.getComponent(Components.CapsuleCollider2D);
-        const transformB = materiaB.getComponent(Components.Transform);
-        const colliderB = materiaB.getComponent(Components.CapsuleCollider2D);
-
-        // Ignorando la rotación por simplicidad por ahora
-        const radiusA = colliderA.size.x / 2;
-        const heightA = Math.max(0, colliderA.size.y - colliderA.size.x);
-        const p1A = { x: transformA.x + colliderA.offset.x, y: transformA.y + colliderA.offset.y - heightA / 2 };
-        const p2A = { x: transformA.x + colliderA.offset.x, y: transformA.y + colliderA.offset.y + heightA / 2 };
-
-        const radiusB = colliderB.size.x / 2;
-        const heightB = Math.max(0, colliderB.size.y - colliderB.size.x);
-        const p1B = { x: transformB.x + colliderB.offset.x, y: transformB.y + colliderB.offset.y - heightB / 2 };
-        const p2B = { x: transformB.x + colliderB.offset.x, y: transformB.y + colliderB.offset.y + heightB / 2 };
+        const capA = this._getCapsulePoints(materiaA);
+        const capB = this._getCapsulePoints(materiaB);
 
         // Encontrar los puntos más cercanos entre los dos segmentos de línea
-        const { a, b } = this._closestPointsOnTwoSegments(p1A, p2A, p1B, p2B);
+        const { a, b } = this._closestPointsOnTwoSegments(capA.p1, capA.p2, capB.p1, capB.p2);
 
         const distance = Math.hypot(a.x - b.x, a.y - b.y);
-        const totalRadius = radiusA + radiusB;
+        const totalRadius = capA.radius + capB.radius;
 
         if (distance < totalRadius) {
             const overlap = totalRadius - distance;
@@ -624,28 +657,18 @@ export class PhysicsSystem {
     isPolygonVsCapsule(polyMateria, capsuleMateria) {
         const transformP = polyMateria.getComponent(Components.Transform);
         const colliderP = polyMateria.getComponent(Components.PolygonCollider2D) || polyMateria.getComponent(Components.BoxCollider2D);
-        const transformC = capsuleMateria.getComponent(Components.Transform);
-        const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
+        const cap = this._getCapsulePoints(capsuleMateria);
 
         const vertices = (colliderP instanceof Components.PolygonCollider2D) ?
             this._getPolygonVertices(transformP, colliderP) :
             this._getVertices(transformP, colliderP);
 
-        // La cápsula es un segmento de línea con un radio.
-        const radius = colliderC.size.x / 2;
-        const segmentHeight = Math.max(0, colliderC.size.y - colliderC.size.x);
-        const p1 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y - segmentHeight / 2 };
-        const p2 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y + segmentHeight / 2 };
-
         // Encontrar el punto más cercano en el polígono al segmento de la cápsula
-        // Una forma simple es encontrar el punto más cercano en el segmento a cada vértice del polígono
-        // y también el punto más cercano en los bordes del polígono al segmento.
-        // Pero para simplificar, usaremos el centro del polígono para encontrar el punto más cercano en el segmento.
         const polyCenter = { x: transformP.x, y: transformP.y };
-        const closestOnSegment = this._closestPointOnSegment(polyCenter, p1, p2);
+        const closestOnSegment = this._closestPointOnSegment(polyCenter, cap.p1, cap.p2);
 
         // Ahora tenemos un círculo vs polígono
-        return this._isCircleVsPolygon(closestOnSegment, radius, vertices);
+        return this._isCircleVsPolygon(closestOnSegment, cap.radius, vertices);
     }
 
     _isCircleVsPolygon(circleCenter, radius, vertices) {
@@ -772,8 +795,8 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = { x: transformA.x, y: transformA.y };
-        const centerB = { x: transformB.x, y: transformB.y };
+        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / verticesA.length, y: acc.y + v.y / verticesA.length }), { x: 0, y: 0 });
+        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / verticesB.length, y: acc.y + v.y / verticesB.length }), { x: 0, y: 0 });
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {
