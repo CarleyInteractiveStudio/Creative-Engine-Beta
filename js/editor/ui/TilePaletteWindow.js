@@ -146,25 +146,37 @@ export async function openPalette(fileHandle) {
 }
 
 export function getSelectedTile() {
-    // For rectangle tool, return all selected tiles
+    // For rectangle selection tool, return all selected tiles with relative offsets
     if (activeTool === 'tile-rectangle-fill' && selectedTileIds.length > 0) {
-        return selectedTileIds.map(id => {
+        let minX = Infinity, minY = Infinity;
+        const tilesWithCoords = selectedTileIds.map(id => {
             const tile = allTiles[id];
             if (!tile) return null;
-            return {
-                spriteName: tile.spriteName,
-                imageData: tile.imageData,
-                coord: tile.coord
-            };
+            const [x, y] = tile.coord.split(',').map(Number);
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            return { ...tile, x, y };
         }).filter(Boolean);
+
+        return tilesWithCoords.map(tile => ({
+            spriteName: tile.spriteName,
+            imageData: tile.imageData,
+            type: tile.type || 'sprite',
+            animationPath: tile.animationPath || null,
+            offsetX: tile.x - minX,
+            offsetY: tile.y - minY
+        }));
     }
     // For brush tool, CONSISTENTLY return the single selected tile in an array
-    else if (activeTool === 'tile-brush' && selectedTileId !== -1 && allTiles[selectedTileId]) {
+    else if ((activeTool === 'tile-brush' || activeTool === 'tile-bucket') && selectedTileId !== -1 && allTiles[selectedTileId]) {
         const tile = allTiles[selectedTileId];
         return [{ // Always return an array
             spriteName: tile.spriteName,
             imageData: tile.imageData,
-            coord: tile.coord
+            type: tile.type || 'sprite',
+            animationPath: tile.animationPath || null,
+            offsetX: 0,
+            offsetY: 0
         }];
     }
     // No valid selection
@@ -178,7 +190,7 @@ export function getActiveTool() {
 export function setActiveTool(toolName) {
     // This function allows external modules to set the palette's active tool.
     // Ensure the tool is valid for the palette.
-    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-eraser', 'organize'];
+    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-bucket', 'tile-eraser', 'organize'];
     if (!validTools.includes(toolName)) return;
 
     // Don't do anything if organize mode is active and a paint tool is selected
@@ -225,9 +237,9 @@ function setupEventListeners() {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
-                showNotification('Aviso', 'Este paquete de sprites ya está asociado.');
+                showNotification('Aviso', 'Este asset ya está asociado.');
             }
-        }, ['.ceSprite']);
+        }, ['.ceSprite', 'image', '.cea']);
     });
 
     dom.deleteSpriteBtn.addEventListener('click', () => {
@@ -340,7 +352,9 @@ function setupEventListeners() {
         if (e.target.matches('.sidebar-sprite-preview')) {
             draggedSpriteData = {
                 spriteName: e.target.dataset.spriteName,
-                imageData: e.target.dataset.imageData
+                imageData: e.target.dataset.imageData,
+                type: e.target.dataset.type || 'sprite',
+                animationPath: e.target.dataset.animationPath || null
             };
             e.dataTransfer.effectAllowed = 'copy';
         }
@@ -398,7 +412,7 @@ function toggleOrganizeMode() {
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
 
     // Hide/show relevant parts of the main toolbar bubble
-    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-eraser"]').forEach(btn => {
+    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-bucket"], [data-tool="tile-eraser"]').forEach(btn => {
         btn.style.display = isOrganizeMode ? 'none' : 'flex';
     });
 
@@ -509,7 +523,12 @@ function handleCanvasMouseDown(event) {
 
             const selectedSprite = dom.spritePackList.querySelector('.selected');
             if (selectedSprite) {
-                const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
+            const newTileData = {
+                spriteName: selectedSprite.dataset.spriteName,
+                imageData: selectedSprite.dataset.imageData,
+                type: selectedSprite.dataset.type || 'sprite',
+                animationPath: selectedSprite.dataset.animationPath || null
+            };
                 currentPalette.tiles[coord] = newTileData;
                 const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
                 if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
@@ -567,59 +586,91 @@ async function loadAndDisplayAssociatedSprites() {
 
     for (const packPath of currentPalette.associatedSpritePacks) {
         let isValid = true;
+        const lowerPath = packPath.toLowerCase();
         try {
-            if (!packPath.toLowerCase().endsWith('.cesprite')) {
-                console.warn(`Invalid association removed: '${packPath}' is not a .ceSprite file.`);
-                isValid = false;
-                wasCleaned = true;
-                continue;
-            }
+            if (lowerPath.endsWith('.cesprite')) {
+                const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
+                const packFile = await packFileHandle.getFile();
+                const packData = JSON.parse(await packFile.text());
 
-            const packFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
-            const packFile = await packFileHandle.getFile();
-            const packData = JSON.parse(await packFile.text());
-
-            let sourceImage = imageCache.get(packData.sourceImage);
-            if (!sourceImage) {
-                const sourceImagePath = `Assets/${packData.sourceImage}`;
-                const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
-                if (!imageUrl) {
-                    console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);
-                    isValid = false;
-                    wasCleaned = true;
-                    continue;
+                let sourceImage = imageCache.get(packData.sourceImage);
+                if (!sourceImage) {
+                    const sourceImagePath = `Assets/${packData.sourceImage}`;
+                    const imageUrl = await getURLForAssetPath(sourceImagePath, projectsDirHandle);
+                    if (!imageUrl) {
+                        console.error(`Could not get URL for source image '${packData.sourceImage}' in pack '${packPath}'. Skipping.`);
+                        isValid = false;
+                        wasCleaned = true;
+                        continue;
+                    }
+                    sourceImage = new Image();
+                    sourceImage.src = imageUrl;
+                    await sourceImage.decode();
+                    imageCache.set(packData.sourceImage, sourceImage);
                 }
-                sourceImage = new Image();
-                sourceImage.src = imageUrl;
-                await sourceImage.decode();
-                imageCache.set(packData.sourceImage, sourceImage);
-            }
 
-            validSpritePacks.push(packPath);
+                validSpritePacks.push(packPath);
 
-            for (const spriteName in packData.sprites) {
-                const spriteData = packData.sprites[spriteName];
-                const canvas = document.createElement('canvas');
-                const tempSize = 64;
-                canvas.width = tempSize;
-                canvas.height = tempSize;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(
-                    sourceImage,
-                    spriteData.rect.x, spriteData.rect.y,
-                    spriteData.rect.width, spriteData.rect.height,
-                    0, 0, tempSize, tempSize
-                );
+                for (const spriteName in packData.sprites) {
+                    const spriteData = packData.sprites[spriteName];
+                    const canvas = document.createElement('canvas');
+                    const tempSize = 64;
+                    canvas.width = tempSize;
+                    canvas.height = tempSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(
+                        sourceImage,
+                        spriteData.rect.x, spriteData.rect.y,
+                        spriteData.rect.width, spriteData.rect.height,
+                        0, 0, tempSize, tempSize
+                    );
 
+                    const img = new Image();
+                    img.src = canvas.toDataURL();
+                    img.title = `${spriteName}\n(${packPath})`;
+                    img.dataset.spriteName = spriteName;
+                    img.dataset.spritePackPath = packPath;
+                    img.dataset.imageData = img.src;
+                    img.classList.add('sidebar-sprite-preview');
+                    img.draggable = true;
+                    dom.spritePackList.appendChild(img);
+                }
+            } else if (lowerPath.endsWith('.cea')) {
+                const animFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
+                const animData = JSON.parse(await (await animFileHandle.getFile()).text());
+
+                if (animData.frames && animData.frames.length > 0) {
+                    const firstFrame = animData.frames[0];
+                    const img = new Image();
+                    img.src = firstFrame.imageData;
+                    img.title = `${animData.name} (Animación)\n(${packPath})`;
+                    img.dataset.spriteName = animData.name;
+                    img.dataset.spritePackPath = packPath;
+                    img.dataset.imageData = img.src;
+                    img.dataset.type = 'animation';
+                    img.dataset.animationPath = packPath;
+                    img.classList.add('sidebar-sprite-preview');
+                    img.draggable = true;
+                    dom.spritePackList.appendChild(img);
+                    validSpritePacks.push(packPath);
+                }
+            } else if (lowerPath.endsWith('.png') || lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) {
+                const imageUrl = await getURLForAssetPath(packPath, projectsDirHandle);
                 const img = new Image();
-                img.src = canvas.toDataURL();
-                img.title = `${spriteName}\n(${packPath})`;
-                img.dataset.spriteName = spriteName;
+                img.src = imageUrl;
+                const fileName = packPath.split('/').pop();
+                img.title = `${fileName}\n(${packPath})`;
+                img.dataset.spriteName = fileName;
                 img.dataset.spritePackPath = packPath;
-                img.dataset.imageData = img.src;
+                img.dataset.imageData = imageUrl;
                 img.classList.add('sidebar-sprite-preview');
                 img.draggable = true;
                 dom.spritePackList.appendChild(img);
+                validSpritePacks.push(packPath);
+            } else {
+                console.warn(`Association skipped: '${packPath}' format not recognized for palette.`);
+                isValid = false;
+                wasCleaned = true;
             }
 
         } catch (error) {

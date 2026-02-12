@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, Animator, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -331,16 +331,28 @@ export class Renderer {
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
 
+        const animator = tilemapRenderer.materia.getComponent(Animator);
+
         for (const layer of tilemap.layers) {
             const layerOffsetX = layer.position.x * mapTotalWidth;
             const layerOffsetY = layer.position.y * mapTotalHeight;
             for (const [coord, tileData] of layer.tileData.entries()) {
-                const image = tilemapRenderer.getImageForTile(tileData);
+                let image = tilemapRenderer.getImageForTile(tileData);
+
+                // Handle animated tiles
+                if (tileData.type === 'animation' && animator && animator.animationClip && animator.animationClip.frames) {
+                    const frame = animator.animationClip.frames[animator.currentFrame];
+                    if (frame && typeof frame === 'object' && frame.imageData) {
+                        image = tilemapRenderer.getImageForTile(frame);
+                    }
+                }
+
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x, grid.cellSize.y);
+                    // Add a tiny overlap (0.5px) to prevent sub-pixel gaps between tiles
+                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }
