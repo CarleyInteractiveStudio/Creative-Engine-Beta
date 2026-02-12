@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, Animator } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -160,6 +160,7 @@ export class Renderer {
     drawTilemap(tilemapRenderer) {
         const tilemap = tilemapRenderer.materia.getComponent(Tilemap);
         const transform = tilemapRenderer.materia.getComponent(Transform);
+        const animator = tilemapRenderer.materia.getComponent(Animator);
         let gridMateria = null;
         const parent = tilemapRenderer.materia.parent;
         if (parent) {
@@ -182,7 +183,13 @@ export class Renderer {
             const layerOffsetX = layer.position.x * mapTotalWidth;
             const layerOffsetY = layer.position.y * mapTotalHeight;
             for (const [coord, tileData] of layer.tileData.entries()) {
-                const image = tilemapRenderer.getImageForTile(tileData);
+                let image;
+                if (tileData.isAnimation && animator) {
+                    image = tilemapRenderer.getAnimationImageForTile(tileData, animator);
+                } else {
+                    image = tilemapRenderer.getImageForTile(tileData);
+                }
+
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);

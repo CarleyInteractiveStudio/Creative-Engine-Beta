@@ -58,6 +58,32 @@ export function initialize(dependencies) {
     dom.saveBtn.style.display = 'none'; // Will be shown when a palette is open
 
     setupEventListeners();
+
+    // Add listeners for overlay buttons
+    const overlayNewBtn = document.getElementById('palette-overlay-new-btn');
+    const overlayLoadBtn = document.getElementById('palette-overlay-load-btn');
+    if (overlayNewBtn) {
+        overlayNewBtn.addEventListener('click', async () => {
+            const name = prompt("Nombre de la nueva paleta:", "NuevaPaleta.cepalette");
+            if (name) {
+                const finalName = name.endsWith('.cepalette') ? name : name + '.cepalette';
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                    createNewPalette(finalName, assetsHandle);
+                } catch (e) {
+                    console.error("Error creating palette from overlay:", e);
+                    showNotification('Error', 'No se pudo crear la paleta en la carpeta Assets.');
+                }
+            }
+        });
+    }
+    if (overlayLoadBtn) {
+        overlayLoadBtn.addEventListener('click', () => {
+             dom.loadBtn.click();
+        });
+    }
 }
 
 export async function createNewPalette(name, dirHandle) {
@@ -154,7 +180,9 @@ export function getSelectedTile() {
             return {
                 spriteName: tile.spriteName,
                 imageData: tile.imageData,
-                coord: tile.coord
+                coord: tile.coord,
+                isAnimation: tile.isAnimation,
+                animationPath: tile.animationPath
             };
         }).filter(Boolean);
     }
@@ -164,7 +192,9 @@ export function getSelectedTile() {
         return [{ // Always return an array
             spriteName: tile.spriteName,
             imageData: tile.imageData,
-            coord: tile.coord
+            coord: tile.coord,
+            isAnimation: tile.isAnimation,
+            animationPath: tile.animationPath
         }];
     }
     // No valid selection
@@ -225,9 +255,9 @@ function setupEventListeners() {
                 currentPalette.associatedSpritePacks.push(fullPath);
                 await loadAndDisplayAssociatedSprites();
             } else {
-                showNotification('Aviso', 'Este paquete de sprites ya está asociado.');
+                showNotification('Aviso', 'Este recurso ya está asociado.');
             }
-        }, ['.ceSprite']);
+        }, ['.ceSprite', '.png', '.jpg', '.jpeg', '.cea']);
     });
 
     dom.deleteSpriteBtn.addEventListener('click', () => {
@@ -340,7 +370,9 @@ function setupEventListeners() {
         if (e.target.matches('.sidebar-sprite-preview')) {
             draggedSpriteData = {
                 spriteName: e.target.dataset.spriteName,
-                imageData: e.target.dataset.imageData
+                imageData: e.target.dataset.imageData,
+                isAnimation: e.target.dataset.isAnimation === "true",
+                animationPath: e.target.dataset.animationPath || null
             };
             e.dataTransfer.effectAllowed = 'copy';
         }
@@ -374,7 +406,12 @@ function setupEventListeners() {
         if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
 
         const image = new Image();
-        image.src = draggedSpriteData.imageData;
+        if (draggedSpriteData.isAnimation) {
+            // For animations, we use a placeholder icon in the palette
+            image.src = 'image/Paquete.png'; // Or some other icon
+        } else {
+            image.src = draggedSpriteData.imageData;
+        }
         image.onload = () => {
             allTiles.push({ ...draggedSpriteData, coord, image });
             drawTiles();
@@ -509,12 +546,21 @@ function handleCanvasMouseDown(event) {
 
             const selectedSprite = dom.spritePackList.querySelector('.selected');
             if (selectedSprite) {
-                const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
+                const newTileData = {
+                    spriteName: selectedSprite.dataset.spriteName,
+                    imageData: selectedSprite.dataset.imageData,
+                    isAnimation: selectedSprite.dataset.isAnimation === "true",
+                    animationPath: selectedSprite.dataset.animationPath || null
+                };
                 currentPalette.tiles[coord] = newTileData;
                 const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
                 if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
                 const image = new Image();
-                image.src = newTileData.imageData;
+                if (newTileData.isAnimation) {
+                    image.src = 'image/Paquete.png';
+                } else {
+                    image.src = newTileData.imageData;
+                }
                 image.onload = () => {
                     allTiles.push({ ...newTileData, coord, image });
                     drawTiles();
@@ -568,10 +614,78 @@ async function loadAndDisplayAssociatedSprites() {
     for (const packPath of currentPalette.associatedSpritePacks) {
         let isValid = true;
         try {
-            if (!packPath.toLowerCase().endsWith('.cesprite')) {
-                console.warn(`Invalid association removed: '${packPath}' is not a .ceSprite file.`);
+            const isSpritePack = packPath.toLowerCase().endsWith('.cesprite');
+            const isImage = packPath.toLowerCase().endsWith('.png') || packPath.toLowerCase().endsWith('.jpg') || packPath.toLowerCase().endsWith('.jpeg');
+            const isAnimation = packPath.toLowerCase().endsWith('.cea');
+
+            if (!isSpritePack && !isImage && !isAnimation) {
+                console.warn(`Invalid association removed: '${packPath}' is not a supported file type.`);
                 isValid = false;
                 wasCleaned = true;
+                continue;
+            }
+
+            if (isImage) {
+                const imageUrl = await getURLForAssetPath(packPath, projectsDirHandle);
+                if (!imageUrl) {
+                    isValid = false;
+                    continue;
+                }
+                const img = new Image();
+                img.src = imageUrl;
+                await img.decode();
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                canvas.getContext('2d').drawImage(img, 0, 0, 64, 64);
+
+                const thumbImg = new Image();
+                thumbImg.src = canvas.toDataURL();
+                const fileName = packPath.split('/').pop();
+                const spriteName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+                thumbImg.title = `${spriteName}\n(${packPath})`;
+                thumbImg.dataset.spriteName = spriteName;
+                thumbImg.dataset.spritePackPath = packPath;
+
+                // For a single image tile, we store the full image data
+                const fullCanvas = document.createElement('canvas');
+                fullCanvas.width = img.naturalWidth;
+                fullCanvas.height = img.naturalHeight;
+                fullCanvas.getContext('2d').drawImage(img, 0, 0);
+                thumbImg.dataset.imageData = fullCanvas.toDataURL();
+
+                thumbImg.classList.add('sidebar-sprite-preview');
+                thumbImg.draggable = true;
+                dom.spritePackList.appendChild(thumbImg);
+                validSpritePacks.push(packPath);
+                continue;
+            }
+
+            if (isAnimation) {
+                const animFileHandle = await getFileHandleForPath(packPath, projectsDirHandle);
+                const animFile = await animFileHandle.getFile();
+                const animData = JSON.parse(await animFile.text());
+
+                const thumbImg = document.createElement('div');
+                thumbImg.className = 'sidebar-sprite-preview animation-preview';
+                thumbImg.innerHTML = '🎬';
+                thumbImg.style.display = 'flex';
+                thumbImg.style.alignItems = 'center';
+                thumbImg.style.justifyContent = 'center';
+                thumbImg.style.fontSize = '24px';
+                thumbImg.style.background = '#333';
+                thumbImg.style.borderRadius = '4px';
+                thumbImg.style.aspectRatio = '1';
+
+                thumbImg.title = `${animData.name || 'Animación'}\n(${packPath})`;
+                thumbImg.dataset.spriteName = animData.name || 'Animación';
+                thumbImg.dataset.spritePackPath = packPath;
+                thumbImg.dataset.isAnimation = "true";
+                thumbImg.dataset.animationPath = packPath;
+                thumbImg.dataset.imageData = ""; // Placeholder
+                thumbImg.draggable = true;
+                dom.spritePackList.appendChild(thumbImg);
+                validSpritePacks.push(packPath);
                 continue;
             }
 

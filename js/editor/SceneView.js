@@ -177,6 +177,7 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let projectsDirHandle;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -543,6 +544,7 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    projectsDirHandle = dependencies.projectsDirHandle;
 
     // --- Gizmo Drag Handlers (defined at a higher scope) ---
     const onGizmoDrag = (moveEvent) => {
@@ -1526,6 +1528,41 @@ function drawTilemapOutline() {
     ctx.restore();
 }
 
+function floodFillTilemap(layer, startCol, startRow, targetTileData, replacementTileData, width, height) {
+    const getTileId = (tile) => {
+        if (!tile) return "empty";
+        return `${tile.id}_${tile.source}`;
+    };
+
+    const targetId = getTileId(targetTileData);
+    const replacementId = getTileId(replacementTileData);
+    if (targetId === replacementId) return 0;
+
+    const queue = [[startCol, startRow]];
+    let count = 0;
+    const visited = new Set();
+
+    while (queue.length > 0) {
+        const [c, r] = queue.shift();
+        const key = `${c},${r}`;
+        if (c < 0 || c >= width || r < 0 || r >= height || visited.has(key)) continue;
+
+        const currentTile = layer.tileData.get(key);
+        const currentId = getTileId(currentTile);
+
+        if (currentId === targetId) {
+            visited.add(key);
+            layer.tileData.set(key, replacementTileData);
+            count++;
+            queue.push([c + 1, r]);
+            queue.push([c - 1, r]);
+            queue.push([c, r + 1]);
+            queue.push([c, r - 1]);
+        }
+    }
+    return count;
+}
+
 function drawTilemapColliders() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
@@ -1628,45 +1665,121 @@ function paintTile(event) {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    for (const layer of tilemap.layers) {
-        const layerOffsetX = layer.position.x * layerWidth;
-        const layerOffsetY = layer.position.y * layerHeight;
-        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
-        const mouseInLayerX = worldMouse.x - layerTopLeftX;
-        const mouseInLayerY = worldMouse.y - layerTopLeftY;
-        const col = Math.floor(mouseInLayerX / cellSize.x);
-        const row = Math.floor(mouseInLayerY / cellSize.y);
+    let tileAffected = false;
 
-        if (col >= 0 && col < width && row >= 0 && row < height) {
+    // Para borrar, procesamos todas las capas para asegurar que se elimina lo que el usuario ve
+    if (activeTool === 'tile-eraser') {
+        tilemap.layers.forEach((layer, idx) => {
+            const layerOffsetX = layer.position.x * layerWidth;
+            const layerOffsetY = layer.position.y * layerHeight;
+            const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+            const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+            const mouseInLayerX = worldMouse.x - layerTopLeftX;
+            const mouseInLayerY = worldMouse.y - layerTopLeftY;
+            const col = Math.floor(mouseInLayerX / cellSize.x);
+            const row = Math.floor(mouseInLayerY / cellSize.y);
+
+            if (col >= 0 && col < width && row >= 0 && row < height) {
+                const key = `${col},${row}`;
+                if (layer.tileData.has(key)) {
+                    layer.tileData.delete(key);
+                    tileAffected = true;
+                }
+            }
+        });
+
+        if (tileAffected) {
+            // Usamos la primera capa para calcular las coordenadas mostradas en el status
+            const refLayer = tilemap.layers[0];
+            const col = Math.floor((worldMouse.x - (tilemapCenterX + refLayer.position.x * layerWidth - layerWidth / 2)) / cellSize.x);
+            const row = Math.floor((worldMouse.y - (tilemapCenterY + refLayer.position.y * layerHeight - layerHeight / 2)) / cellSize.y);
+
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
-            const key = `${col},${row}`;
-            if (activeTool === 'tile-brush') {
-                const tilesToPaint = getSelectedTile();
-                if (tilesToPaint && tilesToPaint.length > 0) {
-                    const tileObject = tilesToPaint[0];
-                    layer.tileData.set(key, tileObject);
-                    VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nDatos: ${tileObject.spriteName}`);
-                } else {
-                    VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
-                    return;
-                }
-            } else if (activeTool === 'tile-eraser') {
-                layer.tileData.delete(key);
-                VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}]`);
-            }
-
+            VerificationSystem.updateStatus(null, true, "Tile Borrado", `Coordenadas: [${col}, ${row}] (En todas las capas)`);
             lastPaintedCoords = { col, row };
-            tilemapRenderer.setDirty();
+        }
+    } else {
+        // Para pintar, usamos la capa activa preferentemente
+        const layer = tilemap.layers[tilemap.activeLayerIndex] || tilemap.layers[0];
+        if (layer) {
+            const layerOffsetX = layer.position.x * layerWidth;
+            const layerOffsetY = layer.position.y * layerHeight;
+            const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
+            const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+            const mouseInLayerX = worldMouse.x - layerTopLeftX;
+            const mouseInLayerY = worldMouse.y - layerTopLeftY;
+            const col = Math.floor(mouseInLayerX / cellSize.x);
+            const row = Math.floor(mouseInLayerY / cellSize.y);
 
-            // After painting, find the collider and regenerate its mesh
-            const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
-            if (collider) {
-                collider.generateMesh();
+            if (col >= 0 && col < width && row >= 0 && row < height) {
+                if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
+
+                const key = `${col},${row}`;
+                if (activeTool === 'tile-brush') {
+                    const tilesToPaint = getSelectedTile();
+                    if (tilesToPaint && tilesToPaint.length > 0) {
+                        if (tilesToPaint.length === 1) {
+                            const tileObject = tilesToPaint[0];
+                            layer.tileData.set(key, tileObject);
+                            VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nCapa: ${tilemap.activeLayerIndex}`);
+                        } else {
+                            // Pintado Multi-Tile (Patrón)
+                            let minX = Infinity, minY = Infinity;
+                            tilesToPaint.forEach(t => {
+                                const [tx, ty] = t.coord.split(',').map(Number);
+                                minX = Math.min(minX, tx);
+                                minY = Math.min(minY, ty);
+                            });
+
+                            tilesToPaint.forEach(t => {
+                                const [tx, ty] = t.coord.split(',').map(Number);
+                                const offsetX = tx - minX;
+                                const offsetY = ty - minY;
+                                const targetCol = col + offsetX;
+                                const targetRow = row + offsetY;
+                                if (targetCol >= 0 && targetCol < width && targetRow >= 0 && targetRow < height) {
+                                    layer.tileData.set(`${targetCol},${targetRow}`, t);
+                                }
+                            });
+                            VerificationSystem.updateStatus(tilesToPaint[0], true, `¡${tilesToPaint.length} Tiles Pintados!`, `Origen: [${col}, ${row}]\nCapa: ${tilemap.activeLayerIndex}`);
+                        }
+                        tileAffected = true;
+                        lastPaintedCoords = { col, row };
+                    } else {
+                        VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
+                        return;
+                    }
+                } else if (activeTool === 'tile-bucket') {
+                    const tilesToPaint = getSelectedTile();
+                    if (tilesToPaint && tilesToPaint.length > 0) {
+                        const replacementTile = tilesToPaint[0];
+                        const targetTile = layer.tileData.get(key);
+                        const filledCount = floodFillTilemap(layer, col, row, targetTile, replacementTile, width, height);
+                        if (filledCount > 0) {
+                            VerificationSystem.updateStatus(replacementTile, true, `¡Cubo: ${filledCount} Tiles!`, `Inicio: [${col}, ${row}]\nCapa: ${tilemap.activeLayerIndex}`);
+                            tileAffected = true;
+                            lastPaintedCoords = { col, row };
+                        }
+                    } else {
+                        VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
+                        return;
+                    }
+                }
             }
+        }
+    }
 
-            return;
+    if (tileAffected) {
+        tilemapRenderer.setDirty();
+        // Cargar clips de animación si es necesario
+        if (typeof tilemapRenderer.loadAnimatedTileClips === 'function') {
+            tilemapRenderer.loadAnimatedTileClips(projectsDirHandle);
+        }
+
+        const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+        if (collider) {
+            collider.generateMesh();
         }
     }
     VerificationSystem.updateStatus(null, false, "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap.");

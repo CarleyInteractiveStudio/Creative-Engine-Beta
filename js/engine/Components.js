@@ -670,8 +670,9 @@ export class Animator extends Leyes {
         if (!this.animationClipPath) return;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-        if (!this.spriteRenderer) {
-            console.error('Animator requires a SpriteRenderer component on the same Materia.');
+        this.tilemapRenderer = this.materia.getComponent(TilemapRenderer);
+        if (!this.spriteRenderer && !this.tilemapRenderer) {
+            console.error('Animator requires a SpriteRenderer or TilemapRenderer component on the same Materia.');
             return;
         }
 
@@ -711,7 +712,7 @@ export class Animator extends Leyes {
     }
 
     update(deltaTime) {
-        if (!this.isPlaying || !this.animationClip || !this.spriteRenderer) {
+        if (!this.isPlaying || !this.animationClip || (!this.spriteRenderer && !this.tilemapRenderer)) {
             return;
         }
 
@@ -741,8 +742,14 @@ export class Animator extends Leyes {
 
             // Update the SpriteRenderer
             const spriteName = clip.frames[this.currentFrame];
-            if (this.spriteRenderer.spriteName !== spriteName) {
-                this.spriteRenderer.spriteName = spriteName;
+            if (this.spriteRenderer) {
+                if (this.spriteRenderer.spriteName !== spriteName) {
+                    this.spriteRenderer.spriteName = spriteName;
+                }
+            }
+
+            if (this.tilemapRenderer) {
+                this.tilemapRenderer.setDirty();
             }
         }
     }
@@ -1227,6 +1234,8 @@ export class TilemapRenderer extends Leyes {
         // Always initialize imageCache as a Map. This prevents corrupted data
         // from scene deserialization from breaking the renderer.
         this.imageCache = new Map();
+        this.animFramesCache = new Map(); // path + frameIdx -> Image
+        this.clipsCache = new Map(); // path -> animationClipData
     }
 
     setDirty() {
@@ -1249,6 +1258,72 @@ export class TilemapRenderer extends Leyes {
             // For immediate drawing, we would need to handle the onload event.
             return image;
         }
+    }
+
+    getAnimationImage(animator) {
+        if (!animator || !animator.animationClip) return null;
+        const frameIdx = animator.currentFrame;
+        const clipPath = animator.animationClipPath;
+        return this._getFrameImage(clipPath, animator.animationClip, frameIdx);
+    }
+
+    getAnimationImageForTile(tileData, animator) {
+        if (!tileData.isAnimation || !tileData.animationPath || !animator) return null;
+
+        const clip = this.clipsCache.get(tileData.animationPath);
+        if (!clip) {
+            // If not loaded, we might need to trigger a load.
+            // For now, we return the static image if available
+            return this.getImageForTile(tileData);
+        }
+
+        const frameIdx = animator.currentFrame % clip.frames.length;
+        return this._getFrameImage(tileData.animationPath, clip, frameIdx);
+    }
+
+    _getFrameImage(path, clip, frameIdx) {
+        const cacheKey = `${path}_${frameIdx}`;
+        if (this.animFramesCache.has(cacheKey)) {
+            return this.animFramesCache.get(cacheKey);
+        } else {
+            const frameData = clip.frames[frameIdx];
+            if (!frameData) return null;
+            const image = new Image();
+            image.src = frameData;
+            this.animFramesCache.set(cacheKey, image);
+            return image;
+        }
+    }
+
+    async loadAnimatedTileClips(projectsDirHandle) {
+        const tilemap = this.materia.getComponent(Tilemap);
+        if (!tilemap) return;
+
+        const clipsToLoad = new Set();
+        for (const layer of tilemap.layers) {
+            for (const tileData of layer.tileData.values()) {
+                if (tileData && tileData.isAnimation && tileData.animationPath) {
+                    clipsToLoad.add(tileData.animationPath);
+                }
+            }
+        }
+
+        for (const path of clipsToLoad) {
+            if (!this.clipsCache.has(path)) {
+                try {
+                    const url = await getURLForAssetPath(path, projectsDirHandle);
+                    if (!url) continue;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    const clipData = data.animations ? data.animations[0] : data;
+                    this.clipsCache.set(path, clipData);
+                    console.log(`[TilemapRenderer] Loaded clip for animated tiles: ${path}`);
+                } catch (e) {
+                    console.error(`Error loading animated tile clip at ${path}:`, e);
+                }
+            }
+        }
+        this.setDirty();
     }
 
     clone() {
@@ -1371,16 +1446,18 @@ export class TilemapCollider2D extends Leyes {
                 const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
                 for (const rect of rects) {
-                    const rectWidth_pixels = rect.width * cellSize.x;
-                    const rectHeight_pixels = rect.height * cellSize.y;
+                    // Se añade un pequeño margen (0.1px) para evitar huecos entre colisionadores adyacentes
+                    const padding = 0.1;
+                    const rectWidth_pixels = (rect.width * cellSize.x) + padding;
+                    const rectHeight_pixels = (rect.height * cellSize.y) + padding;
 
                     // Ajuste clave: Restar la mitad de la altura total del layer para alinear con el pivote central
                     const rectTopLeftX = (rect.col * cellSize.x) - (layerWidth / 2);
                     const rectTopLeftY = (rect.row * cellSize.y) - (layerHeight / 2);
 
                     this.generatedColliders.push({
-                        x: rectTopLeftX + rectWidth_pixels / 2,
-                        y: rectTopLeftY + rectHeight_pixels / 2,
+                        x: rectTopLeftX + (rect.width * cellSize.x) / 2,
+                        y: rectTopLeftY + (rect.height * cellSize.y) / 2,
                         width: rectWidth_pixels,
                         height: rectHeight_pixels
                     });

@@ -378,6 +378,7 @@ public star() {
                                     <hr class="tilemap-tool-divider" style="display: none;">
                                     <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
                                     <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
+                                    <button id="tool-tile-bucket" class="toolbar-btn tilemap-tool" title="Cubo de Tiles (G)" style="display: none;">🪣 Cubo</button>
                                 </div>
                             </div>
                         </div>
@@ -515,6 +516,10 @@ public star() {
                     </div>
                     <div id="animation-panel-overlay">
                         <p>Selecciona un asset de animación (.cea) para empezar.</p>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button id="animation-overlay-new-btn" class="primary-btn">Nueva Animación</button>
+                            <button id="animation-overlay-load-btn" class="secondary-btn">Cargar Animación...</button>
+                        </div>
                     </div>
                 <div class="resize-handle" data-direction="n"></div>
                 <div class="resize-handle" data-direction="ne"></div>
@@ -1246,10 +1251,10 @@ public star() {
                         <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                     </div>
                     <div class="tool-bubble">
-                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
-                        <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Relleno Rectangular">🖼️</button>
-                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
-                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Modo Organizar">✏️</button>
+                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel">🖌️</button>
+                        <button id="palette-tool-bucket" class="tool-btn" data-tool="tile-bucket" title="Cubo">🪣</button>
+                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Borrador">🧼</button>
+                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Organizar">✏️</button>
                     </div>
                     <div class="toolbar-group">
                         <label>Tile:</label>
@@ -1275,6 +1280,10 @@ public star() {
         </div>
         <div id="palette-panel-overlay">
             <p>Carga un asset de paleta (.cepalette) para empezar a pintar.</p>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="palette-overlay-new-btn" class="primary-btn">Nueva Paleta</button>
+                <button id="palette-overlay-load-btn" class="secondary-btn">Cargar Paleta...</button>
+            </div>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

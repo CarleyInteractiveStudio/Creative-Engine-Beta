@@ -117,8 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     openAssetSelector = async function(callback, options) {
-        // For backwards compatibility, if the second argument isn't an object, treat it as the old 'filter'.
-        if (typeof options !== 'object' || options === null) {
+        // For backwards compatibility, if the second argument isn't a plain object (or is an array), treat it as the old 'filter'.
+        if (typeof options !== 'object' || options === null || Array.isArray(options)) {
             options = { filter: options };
         }
 
@@ -2617,13 +2617,39 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, projectsDirHandle });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig);
             initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
+
+            // Listeners para botones de overlay en Editor de Animación
+            const animOverlayNewBtn = document.getElementById('animation-overlay-new-btn');
+            const animOverlayLoadBtn = document.getElementById('animation-overlay-load-btn');
+            if (animOverlayNewBtn) {
+                animOverlayNewBtn.addEventListener('click', async () => {
+                    const name = prompt("Nombre de la animación:", "animacion.cea");
+                    if (name) {
+                        const finalName = name.endsWith('.cea') ? name : name + '.cea';
+                        const content = { name: finalName.replace('.cea', ''), frames: [], speed: 10, loop: true };
+                        const projectName = new URLSearchParams(window.location.search).get('project');
+                        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+                        await createAsset(finalName, JSON.stringify(content, null, 2), assetsHandle);
+                        const fileHandle = await assetsHandle.getFileHandle(finalName);
+                        openAnimationAsset(fileHandle);
+                    }
+                });
+            }
+            if (animOverlayLoadBtn) {
+                animOverlayLoadBtn.addEventListener('click', () => {
+                    openAssetSelector(async (fileHandle) => {
+                        openAnimationAsset(fileHandle);
+                    }, ['.cea']);
+                });
+            }
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
 
             updateLoadingProgress(70, "Construyendo interfaz...");
