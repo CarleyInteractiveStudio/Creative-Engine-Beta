@@ -2497,10 +2497,15 @@ export class TerrenoCollider2D extends Leyes {
                                 y: v.y - height / 2
                             }));
 
-                            // Triangular para manejar formas cóncavas
-                            const triangles = this._triangulate(centered);
-                            for (const tri of triangles) {
-                                this.generatedPolygons.push({ vertices: tri });
+                            // Comprobar si es una isla o un hueco
+                            // En coordenadas de pantalla (Y abajo), CW > 0 es isla, CCW < 0 es hueco
+                            const area = this._getPolygonArea(centered);
+                            if (area > 0) {
+                                // Solo triangular e incluir si es una isla (área positiva)
+                                const triangles = this._triangulate(centered);
+                                for (const tri of triangles) {
+                                    this.generatedPolygons.push({ vertices: tri });
+                                }
                             }
                         }
                     }

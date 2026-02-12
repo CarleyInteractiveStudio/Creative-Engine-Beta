@@ -339,12 +339,12 @@ export class PhysicsSystem {
     }
 
     resolveCollision(materiaA, materiaB, collisionInfo) {
-        const mtv = { x: collisionInfo.x, y: collisionInfo.y };
-        const contactPoint = collisionInfo.contactPoint || { x: (materiaA.x + materiaB.x) / 2, y: (materiaA.y + materiaB.y) / 2 };
-        const rbA = materiaA.getComponent(Components.Rigidbody2D);
-        const rbB = materiaB.getComponent(Components.Rigidbody2D);
         const transformA = materiaA.getComponent(Components.Transform);
         const transformB = materiaB.getComponent(Components.Transform);
+        const mtv = { x: collisionInfo.x, y: collisionInfo.y };
+        const contactPoint = collisionInfo.contactPoint || { x: (transformA.x + transformB.x) / 2, y: (transformA.y + transformB.y) / 2 };
+        const rbA = materiaA.getComponent(Components.Rigidbody2D);
+        const rbB = materiaB.getComponent(Components.Rigidbody2D);
 
         // --- 1. Position Correction ---
         const isADynamic = rbA && rbA.bodyType === 'Dynamic';
@@ -499,7 +499,15 @@ export class PhysicsSystem {
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, this._tempPartMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                collisionInfo = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
+                // isBoxVsCapsule(Box, Capsule) -> MTV Capsule to Box.
+                // We want MTV Terrain to Player (B to A).
+                // So info = isBoxVsCapsule(Terrain, Player) -> Player to Terrain.
+                // Invert to get Terrain to Player.
+                const info = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
             } else if (otherCollider instanceof Components.PolygonCollider2D) {
                 collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
             }
@@ -520,7 +528,15 @@ export class PhysicsSystem {
                 if (otherCollider instanceof Components.BoxCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                    collisionInfo = this.isPolygonVsCapsule(this._tempPartMateria, colliderMateria);
+                    // isPolygonVsCapsule(Poly, Capsule) -> MTV Capsule to Poly.
+                    // We want MTV Terrain to Player (B to A).
+                    // So info = isPolygonVsCapsule(Terrain, Player) -> Player to Terrain.
+                    // Invert to get Terrain to Player.
+                    const info = this.isPolygonVsCapsule(this._tempPartMateria, colliderMateria);
+                    if (info) {
+                        info.x = -info.x; info.y = -info.y;
+                        collisionInfo = info;
+                    }
                 } else if (otherCollider instanceof Components.PolygonCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 }
