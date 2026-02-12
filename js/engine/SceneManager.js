@@ -1,6 +1,6 @@
 import { showConfirmation } from '../editor/ui/DialogWindow.js';
 import { Leyes } from './Leyes.js';
-import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, Tilemap, TilemapRenderer, CustomComponent } from './Components.js';
+import { Transform, SpriteRenderer, CreativeScript, Camera, Animator, AnimatorController, Tilemap, TilemapRenderer, TilemapCollider2D, CustomComponent } from './Components.js';
 import { Materia } from './Materia.js';
 import { getCustomComponentDefinitions } from '../editor/EngineAPIExtension.js';
 import { getComponent } from './ComponentRegistry.js';
@@ -45,11 +45,41 @@ export class Scene {
     findMateriaById(id) {
         return this.getAllMaterias().find(m => m.id === id);
     }
+
+    getRootMaterias() {
+        return this.materias;
+    }
+
+    createMateria(name) {
+        const newMateria = new Materia(name);
+        newMateria.addComponent(new Transform(newMateria));
+        this.addMateria(newMateria);
+        return newMateria;
+    }
 }
 
 let currentScene = new Scene();
 
 export { currentScene };
+
+export let currentSceneFileHandle = null;
+let isSceneDirty = false;
+
+export function setCurrentScene(scene) {
+    currentScene = scene;
+}
+
+export function setCurrentSceneFileHandle(handle) {
+    currentSceneFileHandle = handle;
+}
+
+export function setSceneDirty(dirty) {
+    isSceneDirty = dirty;
+}
+
+export function getIsSceneDirty() {
+    return isSceneDirty;
+}
 
 export function createNewScene() {
     currentScene = new Scene();

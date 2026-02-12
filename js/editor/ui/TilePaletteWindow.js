@@ -172,7 +172,7 @@ export async function openPalette(fileHandle) {
 }
 
 export function getSelectedTile() {
-    // For rectangle tool, return all selected tiles
+    // For multi-select tool, return all selected tiles
     if (activeTool === 'tile-rectangle-fill' && selectedTileIds.length > 0) {
         return selectedTileIds.map(id => {
             const tile = allTiles[id];
@@ -186,8 +186,8 @@ export function getSelectedTile() {
             };
         }).filter(Boolean);
     }
-    // For brush tool, CONSISTENTLY return the single selected tile in an array
-    else if (activeTool === 'tile-brush' && selectedTileId !== -1 && allTiles[selectedTileId]) {
+    // For brush and bucket tools, return the single selected tile in an array
+    else if ((activeTool === 'tile-brush' || activeTool === 'tile-bucket') && selectedTileId !== -1 && allTiles[selectedTileId]) {
         const tile = allTiles[selectedTileId];
         return [{ // Always return an array
             spriteName: tile.spriteName,
@@ -208,7 +208,7 @@ export function getActiveTool() {
 export function setActiveTool(toolName) {
     // This function allows external modules to set the palette's active tool.
     // Ensure the tool is valid for the palette.
-    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-eraser', 'organize'];
+    const validTools = ['tile-brush', 'tile-rectangle-fill', 'tile-bucket', 'tile-eraser', 'organize'];
     if (!validTools.includes(toolName)) return;
 
     // Don't do anything if organize mode is active and a paint tool is selected
@@ -435,7 +435,7 @@ function toggleOrganizeMode() {
     dom.organizeSidebar.classList.toggle('hidden', !isOrganizeMode);
 
     // Hide/show relevant parts of the main toolbar bubble
-    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-eraser"]').forEach(btn => {
+    dom.panel.querySelector('.tool-bubble').querySelectorAll('[data-tool="tile-brush"], [data-tool="tile-rectangle-fill"], [data-tool="tile-bucket"], [data-tool="tile-eraser"]').forEach(btn => {
         btn.style.display = isOrganizeMode ? 'none' : 'flex';
     });
 

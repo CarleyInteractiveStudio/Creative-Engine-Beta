@@ -1531,7 +1531,8 @@ function drawTilemapOutline() {
 function floodFillTilemap(layer, startCol, startRow, targetTileData, replacementTileData, width, height) {
     const getTileId = (tile) => {
         if (!tile) return "empty";
-        return `${tile.id}_${tile.source}`;
+        if (tile.isAnimation) return `anim_${tile.animationPath}`;
+        return `tile_${tile.spriteName}_${tile.imageData.substring(0, 100)}`;
     };
 
     const targetId = getTileId(targetTileData);
