@@ -2294,11 +2294,36 @@ export class TerrenoCollider2D extends Leyes {
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
         this.isDirty = true;
-        this.mode = 'Rectangles'; // 'Rectangles' or 'Polygon'
+        this._mode = 'Rectangles'; // 'Rectangles' or 'Polygon'
         this.generatedColliders = [];
         this.generatedPolygons = [];
-        this.resolution = 16; // Tamaño del bloque para simplificar colisiones (en píxeles)
-        this.simplifyTolerance = 2.0;
+        this.debugPolygons = []; // Contornos completos para renderizado
+        this._resolution = 16; // Tamaño del bloque para simplificar colisiones (en píxeles)
+        this._simplifyTolerance = 2.0;
+    }
+
+    get mode() { return this._mode; }
+    set mode(v) {
+        if (this._mode !== v) {
+            this._mode = v;
+            this.isDirty = true;
+        }
+    }
+
+    get resolution() { return this._resolution; }
+    set resolution(v) {
+        if (this._resolution !== v) {
+            this._resolution = v;
+            this.isDirty = true;
+        }
+    }
+
+    get simplifyTolerance() { return this._simplifyTolerance; }
+    set simplifyTolerance(v) {
+        if (this._simplifyTolerance !== v) {
+            this._simplifyTolerance = v;
+            this.isDirty = true;
+        }
     }
 
     generateColliders() {
@@ -2310,6 +2335,7 @@ export class TerrenoCollider2D extends Leyes {
 
         this.generatedColliders = [];
         this.generatedPolygons = [];
+        this.debugPolygons = [];
 
         // Crear un canvas temporal para combinar todas las máscaras
         const tempCanvas = document.createElement('canvas');
@@ -2332,7 +2358,7 @@ export class TerrenoCollider2D extends Leyes {
 
         const imgData = tCtx.getImageData(0, 0, width, height);
 
-        if (this.mode === 'Polygon') {
+        if (this._mode === 'Polygon') {
             this._generatePolygonColliders(imgData);
         } else {
             this._generateRectangleColliders(imgData);
@@ -2418,7 +2444,7 @@ export class TerrenoCollider2D extends Leyes {
 
     _generateRectangleColliders(imgData) {
         const { width, height, data } = imgData;
-        const res = this.resolution;
+        const res = this._resolution;
         const cols = Math.ceil(width / res);
         const rows = Math.ceil(height / res);
 
@@ -2495,7 +2521,7 @@ export class TerrenoCollider2D extends Leyes {
         };
 
         // Escanear con un paso mayor para mejorar rendimiento (mínimo 2px)
-        const step = Math.max(2, Math.floor(this.resolution / 4));
+        const step = Math.max(2, Math.floor(this._resolution / 4));
 
         for (let y = 0; y < height; y += step) {
             for (let x = 0; x < width; x += step) {
@@ -2506,7 +2532,7 @@ export class TerrenoCollider2D extends Leyes {
                     const contour = this._traceContour(x, y, width, height, data, visited);
                     if (contour && contour.length > 3) {
                         // Simplificar el contorno
-                        const simplified = this._ramerDouglasPeucker(contour, this.simplifyTolerance);
+                        const simplified = this._ramerDouglasPeucker(contour, this._simplifyTolerance);
                         if (simplified.length > 2) {
                             // Centrar vértices respecto al terreno
                             const centered = simplified.map(v => ({
@@ -2518,6 +2544,9 @@ export class TerrenoCollider2D extends Leyes {
                             // En coordenadas de pantalla (Y abajo), CW > 0 es isla, CCW < 0 es hueco
                             const area = this._getPolygonArea(centered);
                             if (area > 10) { // Ignorar islas minúsculas (menos de 10px² aprox)
+                                // Guardar el polígono completo para el gizmo
+                                this.debugPolygons.push({ vertices: centered });
+
                                 // Solo triangular e incluir si es una isla (área positiva)
                                 const triangles = this._triangulate(centered);
                                 for (const tri of triangles) {
@@ -2641,11 +2670,12 @@ export class TerrenoCollider2D extends Leyes {
         const newCollider = new TerrenoCollider2D(null);
         newCollider.isTrigger = this.isTrigger;
         newCollider.offset = { ...this.offset };
-        newCollider.mode = this.mode;
-        newCollider.resolution = this.resolution;
-        newCollider.simplifyTolerance = this.simplifyTolerance;
+        newCollider._mode = this._mode;
+        newCollider._resolution = this._resolution;
+        newCollider._simplifyTolerance = this._simplifyTolerance;
         newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
         newCollider.generatedPolygons = JSON.parse(JSON.stringify(this.generatedPolygons));
+        newCollider.debugPolygons = JSON.parse(JSON.stringify(this.debugPolygons || []));
         return newCollider;
     }
 }
