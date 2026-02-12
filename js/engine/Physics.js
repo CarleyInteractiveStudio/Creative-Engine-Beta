@@ -487,7 +487,10 @@ export class PhysicsSystem {
         partTransform.rotation = tilemapTransform.rotation;
         partTransform.scale = tilemapTransform.scale;
 
-        // 1. Check generated rectangles (Standard for Tilemap and Terreno in Rectangles mode)
+        let bestCollision = null;
+        let maxOverlap = -1;
+
+        // 1. Check generated rectangles
         const partBox = this._tempPartBox;
         partBox.isTrigger = tilemapCollider.isTrigger;
 
@@ -499,20 +502,21 @@ export class PhysicsSystem {
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, this._tempPartMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                // isBoxVsCapsule(Box, Capsule) -> MTV Capsule to Box.
-                // We want MTV Terrain to Player (B to A).
-                // So info = isBoxVsCapsule(Terrain, Player) -> Player to Terrain.
-                // Invert to get Terrain to Player.
-                const info = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
-                if (info) {
-                    info.x = -info.x; info.y = -info.y;
-                    collisionInfo = info;
+                // isBoxVsCapsule(A, B) devuelve B -> A.
+                // colliderMateria (Player) es B, terrain es A.
+                // Así que devuelve Player -> Terrain. Queremos Terrain -> Player. Invertimos:
+                collisionInfo = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
+                if (collisionInfo) {
+                    collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y;
                 }
             } else if (otherCollider instanceof Components.PolygonCollider2D) {
                 collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
             }
 
-            if (collisionInfo) return collisionInfo;
+            if (collisionInfo && collisionInfo.magnitude > maxOverlap) {
+                maxOverlap = collisionInfo.magnitude;
+                bestCollision = collisionInfo;
+            }
         }
 
         // 2. Check generated polygons (Terreno in Polygon mode)
@@ -522,30 +526,30 @@ export class PhysicsSystem {
         if (tilemapCollider.generatedPolygons && tilemapCollider.generatedPolygons.length > 0) {
             for (const poly of tilemapCollider.generatedPolygons) {
                 partPoly.vertices = poly.vertices;
-                partPoly.offset = { x: 0, y: 0 }; // Los vértices ya vienen con offset relativo al centro
+                partPoly.offset = { x: 0, y: 0 };
 
                 let collisionInfo = null;
                 if (otherCollider instanceof Components.BoxCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                    // isPolygonVsCapsule(Poly, Capsule) -> MTV Capsule to Poly.
-                    // We want MTV Terrain to Player (B to A).
-                    // So info = isPolygonVsCapsule(Terrain, Player) -> Player to Terrain.
-                    // Invert to get Terrain to Player.
-                    const info = this.isPolygonVsCapsule(this._tempPartMateria, colliderMateria);
-                    if (info) {
-                        info.x = -info.x; info.y = -info.y;
-                        collisionInfo = info;
+                    // isPolygonVsCapsule(A, B) devuelve B -> A. (Capsule -> Poly)
+                    // Invertimos para obtener Poly -> Capsule:
+                    collisionInfo = this.isPolygonVsCapsule(this._tempPartMateria, colliderMateria);
+                    if (collisionInfo) {
+                        collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y;
                     }
                 } else if (otherCollider instanceof Components.PolygonCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 }
 
-                if (collisionInfo) return collisionInfo;
+                if (collisionInfo && collisionInfo.magnitude > maxOverlap) {
+                    maxOverlap = collisionInfo.magnitude;
+                    bestCollision = collisionInfo;
+                }
             }
         }
 
-        return null;
+        return bestCollision;
     }
 
     _getCapsulePoints(materia) {
@@ -752,66 +756,66 @@ export class PhysicsSystem {
     isBoxVsCapsule(boxMateria, capsuleMateria) {
         const transformB = boxMateria.getComponent(Components.Transform);
         const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
-        const transformC = capsuleMateria.getComponent(Components.Transform);
-        const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
+        const cap = this._getCapsulePoints(capsuleMateria);
 
-        // --- 1. Simplificar a colisión Círculo vs AABB ---
-        // Para simplificar, trataremos la caja como un AABB (Axis-Aligned Bounding Box).
-        // Esto ignora la rotación de la caja, pero es un buen punto de partida.
-        const box = {
-            x: transformB.x + colliderB.offset.x - (colliderB.size.x / 2),
-            y: transformB.y + colliderB.offset.y - (colliderB.size.y / 2),
-            width: colliderB.size.x,
-            height: colliderB.size.y
+        // --- 1. Simplificar a colisión Círculo vs Caja Rotada ---
+        const bw = colliderB.size.x * transformB.scale.x;
+        const bh = colliderB.size.y * transformB.scale.y;
+
+        const scaledOffsetX = colliderB.offset.x * transformB.scale.x;
+        const scaledOffsetY = colliderB.offset.y * transformB.scale.y;
+        const angle = transformB.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const worldOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const worldOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+
+        const boxCenter = { x: transformB.x + worldOffsetX, y: transformB.y + worldOffsetY };
+
+        // Encontrar el punto más cercano en el segmento de la cápsula al centro de la caja
+        const closestOnSegment = this._closestPointOnSegment(boxCenter, cap.p1, cap.p2);
+
+        // Transformar el punto más cercano al espacio local de la caja (un-rotate)
+        const relX = closestOnSegment.x - boxCenter.x;
+        const relY = closestOnSegment.y - boxCenter.y;
+        const localX = relX * cos + relY * sin;
+        const localY = -relX * sin + relY * cos;
+
+        // Pinzar el punto en el espacio local AABB
+        const halfW = bw / 2;
+        const halfH = bh / 2;
+        const clampedLocalX = this._clamp(localX, -halfW, halfW);
+        const clampedLocalY = this._clamp(localY, -halfH, halfH);
+
+        // Transformar de vuelta al espacio mundial
+        const closestInBox = {
+            x: boxCenter.x + (clampedLocalX * cos - clampedLocalY * sin),
+            y: boxCenter.y + (clampedLocalX * sin + clampedLocalY * cos)
         };
 
-        // La cápsula es un segmento de línea con un radio.
-        // Por ahora, también ignoraremos la rotación de la cápsula.
-        const radius = colliderC.size.x / 2;
-        const segmentHeight = Math.max(0, colliderC.size.y - colliderC.size.x);
-        const p1 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y - segmentHeight / 2 };
-        const p2 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y + segmentHeight / 2 };
+        const dist = Math.hypot(closestOnSegment.x - closestInBox.x, closestOnSegment.y - closestInBox.y);
 
-        // --- 2. Encontrar el punto más cercano en la caja al segmento de la cápsula ---
-        const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-        const closestPointOnSegment = this._closestPointOnSegment(boxCenter, p1, p2);
+        if (dist < cap.radius) {
+            const overlap = cap.radius - dist;
+            // Normal apuntando de Cápsula (B) a Caja (A)
+            let nx = closestInBox.x - closestOnSegment.x;
+            let ny = closestInBox.y - closestOnSegment.y;
 
-        // --- 3. Ahora tenemos una colisión Círculo vs AABB ---
-        const circle = {
-            x: closestPointOnSegment.x,
-            y: closestPointOnSegment.y,
-            radius: radius
-        };
-
-        // --- 4. Test de intersección Círculo-AABB ---
-        const closestPointInBox = {
-            x: this._clamp(circle.x, box.x, box.x + box.width),
-            y: this._clamp(circle.y, box.y, box.y + box.height)
-        };
-
-        const distance = Math.hypot(circle.x - closestPointInBox.x, circle.y - closestPointInBox.y);
-
-        if (distance < circle.radius) {
-            // Hay colisión. Calcular el vector de penetración (MTV).
-            const overlap = circle.radius - distance;
-            let normal = {
-                x: circle.x - closestPointInBox.x,
-                y: circle.y - closestPointInBox.y
-            };
-
-            if (normal.x === 0 && normal.y === 0) {
-                normal = { x: 1, y: 0 };
-            } else {
-                const len = Math.hypot(normal.x, normal.y);
-                normal.x /= len;
-                normal.y /= len;
+            if (nx === 0 && ny === 0) {
+                // Si están perfectamente superpuestos, usar la dirección desde el centro
+                nx = boxCenter.x - closestOnSegment.x;
+                ny = boxCenter.y - closestOnSegment.y;
+                if (nx === 0 && ny === 0) nx = 1;
             }
 
+            const len = Math.hypot(nx, ny);
+            nx /= len; ny /= len;
+
             return {
-                x: normal.x * overlap,
-                y: normal.y * overlap,
+                x: nx * overlap,
+                y: ny * overlap,
                 magnitude: overlap,
-                contactPoint: closestPointInBox
+                contactPoint: closestInBox
             };
         }
 
@@ -967,8 +971,8 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = { x: transformA.x, y: transformA.y };
-        const centerB = { x: transformB.x, y: transformB.y };
+        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
+        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {
