@@ -467,55 +467,62 @@ export class PhysicsSystem {
             tilemapCollider.generate();
         }
 
-        // 1. Check generated rectangles (Standard for Tilemap and Terreno in Rectangles mode)
-        for (const rect of tilemapCollider.generatedColliders) {
-            const tileMateria = new Materia('tile_part');
-            const tileTransform = new Components.Transform(tileMateria);
-            const worldPos = tilemapTransform.position;
+        // Reutilizar objetos temporales para evitar Garbage Collection masivo
+        if (!this._tempPartMateria) {
+            this._tempPartMateria = new Materia('_physics_part_temp');
+            this._tempPartTransform = new Components.Transform(this._tempPartMateria);
+            this._tempPartBox = new Components.BoxCollider2D(this._tempPartMateria);
+            this._tempPartPoly = new Components.PolygonCollider2D(this._tempPartMateria);
 
-            tileTransform.position = {
-                x: worldPos.x + rect.x,
-                y: worldPos.y + rect.y
+            this._tempPartMateria.getComponent = (type) => {
+                if (type === Components.Transform) return this._tempPartTransform;
+                if (type === Components.BoxCollider2D) return this._tempPartBox;
+                if (type === Components.PolygonCollider2D) return this._tempPartPoly;
+                return null;
             };
-            tileMateria.addComponent(tileTransform);
+        }
 
-            const tileBoxCollider = new Components.BoxCollider2D(tileMateria);
-            tileBoxCollider.size = { x: rect.width, y: rect.height };
-            tileMateria.addComponent(tileBoxCollider);
+        const partTransform = this._tempPartTransform;
+        partTransform.position = tilemapTransform.position;
+        partTransform.rotation = tilemapTransform.rotation;
+        partTransform.scale = tilemapTransform.scale;
+
+        // 1. Check generated rectangles (Standard for Tilemap and Terreno in Rectangles mode)
+        const partBox = this._tempPartBox;
+        partBox.isTrigger = tilemapCollider.isTrigger;
+
+        for (const rect of tilemapCollider.generatedColliders) {
+            partBox.offset = { x: rect.x, y: rect.y };
+            partBox.size = { x: rect.width, y: rect.height };
 
             let collisionInfo = null;
             if (otherCollider instanceof Components.BoxCollider2D) {
-                collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
+                collisionInfo = this.isBoxVsBox(colliderMateria, this._tempPartMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                collisionInfo = this.isBoxVsCapsule(colliderMateria, tileMateria);
+                collisionInfo = this.isBoxVsCapsule(this._tempPartMateria, colliderMateria);
             } else if (otherCollider instanceof Components.PolygonCollider2D) {
-                collisionInfo = this.isPolygonVsPolygon(colliderMateria, tileMateria);
+                collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
             }
 
             if (collisionInfo) return collisionInfo;
         }
 
         // 2. Check generated polygons (Terreno in Polygon mode)
+        const partPoly = this._tempPartPoly;
+        partPoly.isTrigger = tilemapCollider.isTrigger;
+
         if (tilemapCollider.generatedPolygons && tilemapCollider.generatedPolygons.length > 0) {
             for (const poly of tilemapCollider.generatedPolygons) {
-                const polyMateria = new Materia('poly_part');
-                const polyTransform = new Components.Transform(polyMateria);
-                const worldPos = tilemapTransform.position;
-
-                polyTransform.position = { x: worldPos.x, y: worldPos.y };
-                polyMateria.addComponent(polyTransform);
-
-                const polyCollider = new Components.PolygonCollider2D(polyMateria);
-                polyCollider.vertices = poly.vertices;
-                polyMateria.addComponent(polyCollider);
+                partPoly.vertices = poly.vertices;
+                partPoly.offset = { x: 0, y: 0 }; // Los vértices ya vienen con offset relativo al centro
 
                 let collisionInfo = null;
                 if (otherCollider instanceof Components.BoxCollider2D) {
-                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, polyMateria);
+                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                    collisionInfo = this.isPolygonVsCapsule(colliderMateria, polyMateria);
+                    collisionInfo = this.isPolygonVsCapsule(this._tempPartMateria, colliderMateria);
                 } else if (otherCollider instanceof Components.PolygonCollider2D) {
-                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, polyMateria);
+                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
                 }
 
                 if (collisionInfo) return collisionInfo;
