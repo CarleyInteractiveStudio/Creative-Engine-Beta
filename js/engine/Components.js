@@ -2116,7 +2116,7 @@ export class Terreno2D extends Leyes {
         }
 
         this.sortingLayer = 'Default';
-        this.orderInLayer = -50;
+        this.orderInLayer = 0;
         this.baseColor = '#4a4a4a';
 
         this.imageCache = new Map();
@@ -2389,11 +2389,19 @@ export class TerrenoCollider2D extends Leyes {
             return data[(y * width + x) * 4 + 3];
         };
 
+        const isBoundary = (x, y) => {
+            if (getAlpha(x, y) <= 128) return false;
+            // Si tiene algún vecino vacío, es borde
+            return getAlpha(x - 1, y) <= 128 || getAlpha(x + 1, y) <= 128 ||
+                   getAlpha(x, y - 1) <= 128 || getAlpha(x, y + 1) <= 128;
+        };
+
         for (let y = 0; y < height; y += 2) {
             for (let x = 0; x < width; x += 2) {
                 const idx = y * width + x;
-                if (data[idx * 4 + 3] > 128 && !visited[idx]) {
-                    // Encontramos un píxel sólido no visitado, trazar su contorno
+                // Solo iniciamos trazado si es un píxel sólido no visitado Y está en el borde
+                if (data[idx * 4 + 3] > 128 && !visited[idx] && isBoundary(x, y)) {
+                    // Encontramos un píxel de borde sólido no visitado, trazar su contorno
                     const contour = this._traceContour(x, y, width, height, data, visited);
                     if (contour && contour.length > 3) {
                         // Simplificar el contorno

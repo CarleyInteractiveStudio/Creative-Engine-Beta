@@ -275,23 +275,35 @@ export class PhysicsSystem {
         let collisionInfo = null;
 
         // --- Dispatcher de Colisiones ---
+        // El sistema espera que collisionInfo (MTV) apunte de B hacia A para que resolveCollision funcione correctamente
         if (colliderA instanceof Components.BoxCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(materiaA, materiaB);
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isBoxVsCapsule(materiaA, materiaB);
             } else if (colliderB instanceof Components.PolygonCollider2D) {
-                collisionInfo = this.isPolygonVsPolygon(materiaB, materiaA); // Reusing logic
+                collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.CapsuleCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
-                collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertir orden
+                collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertimos para que devuelva Box -> Capsule? No, queremos Box -> Capsule si A=Capsule?
+                // Mejor: isBoxVsCapsule(B, A) devuelve MTV de A a B. Invertimos el resultado:
+                const info = this.isBoxVsCapsule(materiaB, materiaA);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isCapsuleVsCapsule(materiaA, materiaB);
             } else if (colliderB instanceof Components.PolygonCollider2D) {
-                collisionInfo = this.isPolygonVsCapsule(materiaB, materiaA);
+                // Queremos Polygon -> Capsule. isPolygonVsCapsule(B, A) devuelve Capsule -> Polygon. Invertimos:
+                const info = this.isPolygonVsCapsule(materiaB, materiaA);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
             }
@@ -307,9 +319,12 @@ export class PhysicsSystem {
             }
         } else if (colliderA instanceof Components.TilemapCollider2D || colliderA instanceof Components.TerrenoCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D || colliderB instanceof Components.PolygonCollider2D) {
-                collisionInfo = this.isColliderVsTilemap(materiaB, materiaA); // Invertir orden
+                const info = this.isColliderVsTilemap(materiaB, materiaA);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
             }
-            // No implementamos Tilemap vs Tilemap por ahora
         }
 
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
@@ -472,7 +487,7 @@ export class PhysicsSystem {
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, tileMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                collisionInfo = this.isBoxVsCapsule(tileMateria, colliderMateria);
+                collisionInfo = this.isBoxVsCapsule(colliderMateria, tileMateria);
             } else if (otherCollider instanceof Components.PolygonCollider2D) {
                 collisionInfo = this.isPolygonVsPolygon(colliderMateria, tileMateria);
             }
@@ -496,11 +511,11 @@ export class PhysicsSystem {
 
                 let collisionInfo = null;
                 if (otherCollider instanceof Components.BoxCollider2D) {
-                    collisionInfo = this.isPolygonVsPolygon(polyMateria, colliderMateria); // Invert order
+                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, polyMateria);
                 } else if (otherCollider instanceof Components.CapsuleCollider2D) {
-                    collisionInfo = this.isPolygonVsCapsule(polyMateria, colliderMateria);
+                    collisionInfo = this.isPolygonVsCapsule(colliderMateria, polyMateria);
                 } else if (otherCollider instanceof Components.PolygonCollider2D) {
-                    collisionInfo = this.isPolygonVsPolygon(polyMateria, colliderMateria);
+                    collisionInfo = this.isPolygonVsPolygon(colliderMateria, polyMateria);
                 }
 
                 if (collisionInfo) return collisionInfo;
@@ -535,7 +550,8 @@ export class PhysicsSystem {
 
         if (distance < totalRadius) {
             const overlap = totalRadius - distance;
-            const normal = distance > 0 ? { x: (b.x - a.x) / distance, y: (b.y - a.y) / distance } : { x: 1, y: 0 };
+            // Normal apuntando de B a A
+            const normal = distance > 0 ? { x: (a.x - b.x) / distance, y: (a.y - b.y) / distance } : { x: 1, y: 0 };
 
             return {
                 x: normal.x * overlap,
@@ -655,8 +671,9 @@ export class PhysicsSystem {
             }
         }
 
+        // Asegurar que el eje apunta del círculo al polígono (B a A si A es polígono)
         const polyCenter = vertices.reduce((acc, v) => ({ x: acc.x + v.x / vertices.length, y: acc.y + v.y / vertices.length }), { x: 0, y: 0 });
-        const direction = { x: circleCenter.x - polyCenter.x, y: circleCenter.y - polyCenter.y };
+        const direction = { x: polyCenter.x - circleCenter.x, y: polyCenter.y - circleCenter.y };
         if (this._dot(direction, mtvAxis) < 0) {
             mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
         }
