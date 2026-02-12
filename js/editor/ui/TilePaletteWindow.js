@@ -1,6 +1,7 @@
 import { getURLForAssetPath, getFileHandleForPath } from '../../engine/AssetUtils.js';
-let allTiles = [];
 import { showNotification, showConfirmation, showSelection } from './DialogWindow.js';
+
+let allTiles = [];
 
 const PALETTE_TILE_SIZE = 32;
 let dom = {};
