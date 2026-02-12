@@ -1817,6 +1817,10 @@ function drawTerrenoColliders() {
 
     if (!collider || !transform) return;
 
+    if (collider.isDirty) {
+        collider.generate();
+    }
+
     const { ctx, camera } = renderer;
 
     ctx.save();

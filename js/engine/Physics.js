@@ -750,7 +750,72 @@ export class PhysicsSystem {
     }
 
     isBoxVsCapsule(boxMateria, capsuleMateria) {
-        return this.isPolygonVsCapsule(boxMateria, capsuleMateria);
+        const transformB = boxMateria.getComponent(Components.Transform);
+        const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
+        const transformC = capsuleMateria.getComponent(Components.Transform);
+        const colliderC = capsuleMateria.getComponent(Components.CapsuleCollider2D);
+
+        // --- 1. Simplificar a colisión Círculo vs AABB ---
+        // Para simplificar, trataremos la caja como un AABB (Axis-Aligned Bounding Box).
+        // Esto ignora la rotación de la caja, pero es un buen punto de partida.
+        const box = {
+            x: transformB.x + colliderB.offset.x - (colliderB.size.x / 2),
+            y: transformB.y + colliderB.offset.y - (colliderB.size.y / 2),
+            width: colliderB.size.x,
+            height: colliderB.size.y
+        };
+
+        // La cápsula es un segmento de línea con un radio.
+        // Por ahora, también ignoraremos la rotación de la cápsula.
+        const radius = colliderC.size.x / 2;
+        const segmentHeight = Math.max(0, colliderC.size.y - colliderC.size.x);
+        const p1 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y - segmentHeight / 2 };
+        const p2 = { x: transformC.x + colliderC.offset.x, y: transformC.y + colliderC.offset.y + segmentHeight / 2 };
+
+        // --- 2. Encontrar el punto más cercano en la caja al segmento de la cápsula ---
+        const boxCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        const closestPointOnSegment = this._closestPointOnSegment(boxCenter, p1, p2);
+
+        // --- 3. Ahora tenemos una colisión Círculo vs AABB ---
+        const circle = {
+            x: closestPointOnSegment.x,
+            y: closestPointOnSegment.y,
+            radius: radius
+        };
+
+        // --- 4. Test de intersección Círculo-AABB ---
+        const closestPointInBox = {
+            x: this._clamp(circle.x, box.x, box.x + box.width),
+            y: this._clamp(circle.y, box.y, box.y + box.height)
+        };
+
+        const distance = Math.hypot(circle.x - closestPointInBox.x, circle.y - closestPointInBox.y);
+
+        if (distance < circle.radius) {
+            // Hay colisión. Calcular el vector de penetración (MTV).
+            const overlap = circle.radius - distance;
+            let normal = {
+                x: circle.x - closestPointInBox.x,
+                y: circle.y - closestPointInBox.y
+            };
+
+            if (normal.x === 0 && normal.y === 0) {
+                normal = { x: 1, y: 0 };
+            } else {
+                const len = Math.hypot(normal.x, normal.y);
+                normal.x /= len;
+                normal.y /= len;
+            }
+
+            return {
+                x: normal.x * overlap,
+                y: normal.y * overlap,
+                magnitude: overlap,
+                contactPoint: closestPointInBox
+            };
+        }
+
+        return null;
     }
 
     _clamp(value, min, max) {
@@ -869,7 +934,105 @@ export class PhysicsSystem {
     }
 
     isBoxVsBox(materiaA, materiaB) {
-        return this.isPolygonVsPolygon(materiaA, materiaB);
+        const transformA = materiaA.getComponent(Components.Transform);
+        const colliderA = materiaA.getComponent(Components.BoxCollider2D);
+        const transformB = materiaB.getComponent(Components.Transform);
+        const colliderB = materiaB.getComponent(Components.BoxCollider2D);
+
+        const verticesA = this._getVertices(transformA, colliderA);
+        const verticesB = this._getVertices(transformB, colliderB);
+
+        const axes = [
+            ...this._getAxes(verticesA),
+            ...this._getAxes(verticesB)
+        ];
+
+        let minOverlap = Infinity;
+        let mtvAxis = null;
+
+        for (const axis of axes) {
+            const projectionA = this._project(verticesA, axis);
+            const projectionB = this._project(verticesB, axis);
+
+            const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
+
+            if (overlap < 0) {
+                return null; // Separating axis found, no collision
+            }
+
+            if (overlap < minOverlap) {
+                minOverlap = overlap;
+                mtvAxis = axis;
+            }
+        }
+
+        // Ensure MTV axis points from B to A
+        const centerA = { x: transformA.x, y: transformA.y };
+        const centerB = { x: transformB.x, y: transformB.y };
+        let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
+
+        if (this._dot(direction, mtvAxis) < 0) {
+            mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
+        }
+
+        // --- MANIFOLD CONTACT POINT LOGIC ---
+        const contactPoints = [];
+        for (const v of verticesA) {
+            if (this._isPointInBox(v, verticesB)) contactPoints.push(v);
+        }
+        for (const v of verticesB) {
+            if (this._isPointInBox(v, verticesA)) contactPoints.push(v);
+        }
+
+        let contactPoint;
+        if (contactPoints.length > 0) {
+            contactPoint = {
+                x: contactPoints.reduce((sum, p) => sum + p.x, 0) / contactPoints.length,
+                y: contactPoints.reduce((sum, p) => sum + p.y, 0) / contactPoints.length
+            };
+        } else {
+            let deepestOverlap = -Infinity;
+            let bestPoint = { x: (centerA.x + centerB.x) / 2, y: (centerA.y + centerB.y) / 2 };
+
+            for (const vertex of verticesA) {
+                const projected = this._dot(vertex, mtvAxis);
+                const projectionB = this._project(verticesB, mtvAxis);
+                const overlap = projectionB.max - projected;
+                if (overlap > deepestOverlap) {
+                    deepestOverlap = overlap;
+                    bestPoint = { x: vertex.x, y: vertex.y };
+                }
+            }
+            const invAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
+            for (const vertex of verticesB) {
+                const projected = this._dot(vertex, invAxis);
+                const projectionA = this._project(verticesA, invAxis);
+                const overlap = projectionA.max - projected;
+                if (overlap > deepestOverlap) {
+                    deepestOverlap = overlap;
+                    bestPoint = { x: vertex.x, y: vertex.y };
+                }
+            }
+            contactPoint = bestPoint;
+        }
+
+        return {
+            x: mtvAxis.x * minOverlap,
+            y: mtvAxis.y * minOverlap,
+            magnitude: minOverlap,
+            contactPoint: contactPoint
+        };
+    }
+
+    _isPointInBox(point, vertices) {
+        for (let i = 0; i < 4; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[(i + 1) % 4];
+            const edge = { x: p2.x - p1.x, y: p2.y - p1.y };
+            const toPoint = { x: point.x - p1.x, y: point.y - p1.y };
+            if (this._cross(edge, toPoint) < -1e-6) return false;
+        }
+        return true;
     }
 
     isBoxVsPolygon(boxMateria, polyMateria) {

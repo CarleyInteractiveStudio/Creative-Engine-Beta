@@ -2236,7 +2236,14 @@ export class Terreno2D extends Leyes {
 
         // Notificar al colisionador que debe regenerarse automáticamente
         const collider = this.materia.getComponent(TerrenoCollider2D);
-        if (collider) collider.generateColliders();
+        if (collider) {
+            // Usar un debounce simple para no saturar el hilo principal durante el pintado
+            if (this._collisionTimer) clearTimeout(this._collisionTimer);
+            this._collisionTimer = setTimeout(() => {
+                collider.isDirty = true;
+                this._collisionTimer = null;
+            }, 150);
+        }
     }
 
     _paintOnLayer(layer, x, y, radius, erase) {
@@ -2256,18 +2263,16 @@ export class Terreno2D extends Leyes {
 
     clone() {
         const newTerreno = new Terreno2D(null);
-        newTerreno.width = this.width;
-        newTerreno.height = this.height;
+        newTerreno._width = this._width;
+        newTerreno._height = this._height;
         newTerreno.layers = this.layers.map(l => {
             const newLayer = {
                 texturePath: l.texturePath,
                 opacity: l.opacity,
                 serializedMask: l.serializedMask
             };
-            // Inicializar canvas para el clon
             newTerreno._initializeLayerCanvas(newLayer);
-            if (l.maskCanvas) {
-                // Copiar el contenido actual del canvas al clon inmediatamente
+            if (l.maskCanvas && l.maskCanvas.width > 0 && l.maskCanvas.height > 0) {
                 newLayer.maskCtx.drawImage(l.maskCanvas, 0, 0);
             }
             return newLayer;
@@ -2300,9 +2305,11 @@ export class TerrenoCollider2D extends Leyes {
         const terreno = this.materia.getComponent(Terreno2D);
         if (!terreno || terreno.layers.length === 0) return;
 
+        const { width, height } = terreno;
+        if (width <= 0 || height <= 0) return;
+
         this.generatedColliders = [];
         this.generatedPolygons = [];
-        const { width, height } = terreno;
 
         // Crear un canvas temporal para combinar todas las máscaras
         const tempCanvas = document.createElement('canvas');
@@ -2310,10 +2317,17 @@ export class TerrenoCollider2D extends Leyes {
         tempCanvas.height = height;
         const tCtx = tempCanvas.getContext('2d');
 
+        let hasData = false;
         for (const layer of terreno.layers) {
-            if (layer.maskCanvas) {
+            if (layer.maskCanvas && layer.maskCanvas.width > 0 && layer.maskCanvas.height > 0) {
                 tCtx.drawImage(layer.maskCanvas, 0, 0);
+                hasData = true;
             }
+        }
+
+        if (!hasData) {
+            this.isDirty = false;
+            return;
         }
 
         const imgData = tCtx.getImageData(0, 0, width, height);
@@ -2480,8 +2494,11 @@ export class TerrenoCollider2D extends Leyes {
                    getAlpha(x, y - 1) <= 128 || getAlpha(x, y + 1) <= 128;
         };
 
-        for (let y = 0; y < height; y += 2) {
-            for (let x = 0; x < width; x += 2) {
+        // Escanear con un paso mayor para mejorar rendimiento (mínimo 2px)
+        const step = Math.max(2, Math.floor(this.resolution / 4));
+
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
                 const idx = y * width + x;
                 // Solo iniciamos trazado si es un píxel sólido no visitado Y está en el borde
                 if (data[idx * 4 + 3] > 128 && !visited[idx] && isBoundary(x, y)) {
@@ -2500,7 +2517,7 @@ export class TerrenoCollider2D extends Leyes {
                             // Comprobar si es una isla o un hueco
                             // En coordenadas de pantalla (Y abajo), CW > 0 es isla, CCW < 0 es hueco
                             const area = this._getPolygonArea(centered);
-                            if (area > 0) {
+                            if (area > 10) { // Ignorar islas minúsculas (menos de 10px² aprox)
                                 // Solo triangular e incluir si es una isla (área positiva)
                                 const triangles = this._triangulate(centered);
                                 for (const tri of triangles) {
