@@ -27,11 +27,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Create Global Auth Object ---
   // This is now safely created after _supabase is guaranteed to be initialized.
+  let _getUserPromise = null;
   window.auth = {
     _supabase: _supabase,
     getUser: async function() {
-      const result = await _supabase.auth.getUser();
-      return result.data ? result.data.user : null;
+      if (_getUserPromise) return _getUserPromise;
+
+      _getUserPromise = (async () => {
+        try {
+          // Check local session first
+          const { data: { session } } = await _supabase.auth.getSession();
+          if (session) return session.user;
+
+          // If no local session, verify with server
+          const result = await _supabase.auth.getUser();
+          return result.data ? result.data.user : null;
+        } finally {
+          _getUserPromise = null;
+        }
+      })();
+
+      return _getUserPromise;
     },
     openAuthModal: function() {
       const authModal = document.getElementById('auth-modal');

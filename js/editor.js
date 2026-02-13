@@ -262,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'loading-overlay', 'loading-status-message', 'progress-bar', 'loading-error-section', 'loading-error-message',
             'btn-retry-loading', 'btn-back-to-launcher',
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
+            'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
             'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
             // Asset Selector Bubble Elements
@@ -595,6 +596,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             viewModesContainer.style.display = 'flex';
             breadcrumbsEl.style.display = 'block';
+
+            if (!projectsDirHandle) {
+                console.warn("Asset Selector: No projectsDirHandle available. Aborting open.");
+                selectorPanel.classList.add('hidden');
+                return;
+            }
+
             // Normal initialization for folder browsing
             const projectName = new URLSearchParams(window.location.search).get('project');
             const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
@@ -2964,6 +2972,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         window.updateHierarchy = updateHierarchy;
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
+        window.openAssetSelector = openAssetSelector;
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.TerrenoEditorWindow = TerrenoEditorWindow;

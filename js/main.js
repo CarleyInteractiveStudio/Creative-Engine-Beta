@@ -263,6 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- View Switching & Project Creation ---
     if (startButton) {
         startButton.addEventListener('click', async () => {
+            if (startButton.disabled) return;
+
+            startButton.disabled = true;
+            const originalText = startButton.textContent;
+            startButton.textContent = 'Verificando...';
+
             console.log("Start button clicked.");
             try {
                 if (window.auth) {
