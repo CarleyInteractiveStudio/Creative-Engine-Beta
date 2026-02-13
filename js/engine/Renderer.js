@@ -331,7 +331,10 @@ export class Renderer {
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
 
-        const animator = tilemapRenderer.materia.getComponent(Animator);
+        let animator = tilemapRenderer.materia.getComponent(Animator);
+        if (!animator) {
+            animator = tilemapRenderer.materia.getComponentInParent(Animator);
+        }
 
         for (const layer of tilemap.layers) {
             const layerOffsetX = layer.position.x * mapTotalWidth;

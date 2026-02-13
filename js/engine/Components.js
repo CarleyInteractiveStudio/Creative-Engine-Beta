@@ -1126,12 +1126,9 @@ export class Animator extends Leyes {
     detener() { this.stop(); }
 
     update(deltaTime) {
-        if (!this.isPlaying || !this.animationClip) {
+        if (!this.isPlaying) {
             return;
         }
-
-        const clip = this.animationClip;
-        if (!clip.frames || clip.frames.length === 0) return;
 
         this.frameTimer += deltaTime;
         const frameDuration = 1 / (this.speed || 10);
@@ -1140,32 +1137,38 @@ export class Animator extends Leyes {
             this.frameTimer %= frameDuration; // Keep the remainder for more accurate timing
             this.currentFrame++;
 
-            const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length -1;
+            // If we have an associated clip, we handle its specific logic (looping, wrapping, SpriteRenderer)
+            if (this.animationClip) {
+                const clip = this.animationClip;
+                if (!clip.frames || clip.frames.length === 0) return;
 
-            if (this.currentFrame > endFrame) {
-                // Notificar finalización de animación
-                const scripts = this.materia.getComponents(CreativeScript);
-                for (const script of scripts) {
-                    script._safeInvoke('alFinalizarAnimacion', this.animationClip.name);
-                    script._safeInvoke('OnAnimationEnd', this.animationClip.name);
+                const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length -1;
+
+                if (this.currentFrame > endFrame) {
+                    // Notificar finalización de animación
+                    const scripts = this.materia.getComponents(CreativeScript);
+                    for (const script of scripts) {
+                        script._safeInvoke('alFinalizarAnimacion', this.animationClip.name);
+                        script._safeInvoke('OnAnimationEnd', this.animationClip.name);
+                    }
+
+                    if (this.loop) {
+                        this.currentFrame = this.startFrame || 0;
+                    } else {
+                        this.currentFrame = endFrame; // Stay on last frame
+                        this.stop();
+                    }
                 }
 
-                if (this.loop) {
-                    this.currentFrame = this.startFrame || 0;
-                } else {
-                    this.currentFrame = endFrame; // Stay on last frame
-                    this.stop();
-                }
-            }
+                // Clamp the frame to be safe
+                this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
 
-            // Clamp the frame to be safe
-            this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
-
-            // Update the SpriteRenderer if it exists
-            if (this.spriteRenderer) {
-                const spriteName = clip.frames[this.currentFrame];
-                if (this.spriteRenderer.spriteName !== spriteName) {
-                    this.spriteRenderer.spriteName = spriteName;
+                // Update the SpriteRenderer if it exists
+                if (this.spriteRenderer) {
+                    const spriteName = clip.frames[this.currentFrame];
+                    if (this.spriteRenderer.spriteName !== spriteName) {
+                        this.spriteRenderer.spriteName = spriteName;
+                    }
                 }
             }
         }
