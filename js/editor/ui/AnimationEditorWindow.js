@@ -87,9 +87,13 @@ export function addFrameFromCanvas() {
         dataUrl = tempCanvas.toDataURL();
     }
 
-    if (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0) {
-        currentAnimationAsset.animations[0].frames.push(dataUrl);
-        currentFrameIndex = currentAnimationAsset.animations[0].frames.length - 1;
+    const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+        ? currentAnimationAsset.animations[0]
+        : null;
+
+    if (anim) {
+        anim.frames.push(dataUrl);
+        currentFrameIndex = anim.frames.length - 1;
         populateTimeline();
     } else {
         window.Dialogs.showNotification('Error', 'El asset de animación no tiene un estado de animación válido.');
@@ -100,9 +104,14 @@ export function addFrameFromCanvas() {
 
 export function populateTimeline() {
     dom.animationTimeline.innerHTML = '';
-    if (!currentAnimationAsset || !currentAnimationAsset.animations.length) return;
+    if (!currentAnimationAsset) return;
 
-    const animation = currentAnimationAsset.animations[0];
+    // Handle both formats: { animations: [...] } or { frames: [...] }
+    const animation = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+        ? currentAnimationAsset.animations[0]
+        : currentAnimationAsset;
+
+    if (!animation || !animation.frames) return;
     if (!animation) return;
 
     animation.frames.forEach((frameData, index) => {
@@ -140,7 +149,24 @@ export async function openAnimationAsset(fileHandle, dirHandle) {
         currentAnimationFileHandle = fileHandle;
         const file = await currentAnimationFileHandle.getFile();
         const content = await file.text();
-        currentAnimationAsset = JSON.parse(content);
+        let data = JSON.parse(content);
+
+        // Normalize structure if it's missing the animations array but has frames
+        if (!data.animations && data.frames) {
+            data = {
+                name: data.name || fileHandle.name.replace('.cea', ''),
+                animations: [
+                    {
+                        name: "default",
+                        speed: data.speed || 10,
+                        loop: data.loop !== undefined ? data.loop : true,
+                        frames: data.frames
+                    }
+                ]
+            };
+        }
+
+        currentAnimationAsset = data;
 
         dom.animationPanel.classList.remove('hidden');
         dom.animationPanelOverlay.classList.add('hidden');
@@ -329,11 +355,17 @@ function drawOnionSkin() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!animEditorSettings.onionSkin || currentFrameIndex < 1) {
+    if (!animEditorSettings.onionSkin || currentFrameIndex < 1 || !currentAnimationAsset) {
         return; // Don't draw if turned off or if it's the first frame
     }
 
-    const prevFrameData = currentAnimationAsset.animations[0].frames[currentFrameIndex - 1];
+    const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+        ? currentAnimationAsset.animations[0]
+        : null;
+
+    if (!anim || !anim.frames) return;
+
+    const prevFrameData = anim.frames[currentFrameIndex - 1];
     if (prevFrameData) {
         const img = new Image();
         img.onload = () => {
@@ -369,8 +401,12 @@ function drawOnionSkin() {
             return;
         }
 
-        if (currentAnimationAsset && currentAnimationAsset.animations[0]) {
-            currentAnimationAsset.animations[0].frames.splice(currentFrameIndex, 1);
+        const anim = (currentAnimationAsset && currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+            ? currentAnimationAsset.animations[0]
+            : null;
+
+        if (anim) {
+            anim.frames.splice(currentFrameIndex, 1);
             currentFrameIndex = -1; // Deselect
 
             const ctx = dom.drawingCanvas.getContext('2d');

@@ -58,7 +58,7 @@ const fileIcons = {
     ceScene: '🎬',
     ces: '📜',
     chc: '🤖',
-    cea: '🏃'
+    cea: '🎞️'
 };
 
 const typeExtensionMap = {

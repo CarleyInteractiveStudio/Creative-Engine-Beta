@@ -4206,3 +4206,34 @@ body.game-mode #loading-overlay {
     border-color: var(--accent-color, #007acc);
     box-shadow: 0 0 8px var(--accent-color, #007acc);
 }
+
+/* Tile Palette Sidebar Improvements */
+#palette-sprite-pack-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 4px;
+    padding: 8px;
+}
+
+.sidebar-sprite-preview {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+.sidebar-sprite-preview:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+    z-index: 1;
+}
+
+.sidebar-sprite-preview.selected {
+    border-color: var(--accent-color);
+    background-color: rgba(14, 99, 156, 0.3);
+    box-shadow: 0 0 5px var(--accent-color);
+}

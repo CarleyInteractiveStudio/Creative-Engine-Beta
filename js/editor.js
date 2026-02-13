@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Specific icons for known file types
                     if (name.endsWith('.cea')) {
-                        iconContainer.innerHTML = '🏃';
+                        iconContainer.innerHTML = '🎞️';
                     } else if (name.endsWith('.ceanim')) {
                         iconContainer.innerHTML = '🕹️';
                     } else if (name.endsWith('.ceprefab')) {
@@ -1632,6 +1632,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
+
+        // Update animators even in the editor
+        if (!isGameRunning && SceneManager.currentScene) {
+            SceneManager.currentScene.getAllMaterias().forEach(m => {
+                const animator = m.getComponent(Components.Animator);
+                if (animator && animator.isActive) {
+                    animator.update(deltaTime);
+                }
+            });
+        }
 
         // Ensure game canvas is always resized correctly when active
         if (activeView === 'game-content' && gameRenderer) {
@@ -2996,6 +3006,8 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         window.setActiveTool = SceneView.setActiveTool;
         window.CES_Transpiler = CES_Transpiler;
         window.TerrenoEditorWindow = TerrenoEditorWindow;
+        window.AnimationEditorWindow = AnimationEditorWindow;
+        window.TilePalette = TilePalette;
 
         // --- For Playwright Testing ---
         // This exposes a safe subset of the HierarchyWindow module for programmatic UI creation in tests

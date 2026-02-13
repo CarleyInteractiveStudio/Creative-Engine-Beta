@@ -164,6 +164,8 @@ export function getSelectedTile() {
             return {
                 spriteName: tile.spriteName,
                 imageData: tile.imageData,
+                type: tile.type,
+                animationPath: tile.animationPath,
                 offsetX: tx - minX,
                 offsetY: ty - minY
             };
@@ -175,6 +177,8 @@ export function getSelectedTile() {
         return [{
             spriteName: tile.spriteName,
             imageData: tile.imageData,
+            type: tile.type,
+            animationPath: tile.animationPath,
             offsetX: 0,
             offsetY: 0
         }];

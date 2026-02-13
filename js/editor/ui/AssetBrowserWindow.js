@@ -503,8 +503,7 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.chc')) {
                 iconContainer.textContent = '🧠';
             } else if (entry.name.endsWith('.cea')) {
-                imgIcon.src = 'image/cea.png';
-                iconContainer.appendChild(imgIcon);
+                iconContainer.textContent = '🎞️';
             } else if (entry.name.endsWith('.ceanim')) {
                 imgIcon.src = 'image/animacion_controler.svg';
                 iconContainer.appendChild(imgIcon);
