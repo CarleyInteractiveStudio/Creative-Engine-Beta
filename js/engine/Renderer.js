@@ -331,16 +331,30 @@ export class Renderer {
         const mapTotalWidth = tilemap.width * grid.cellSize.x;
         const mapTotalHeight = tilemap.height * grid.cellSize.y;
 
+        const animator = tilemapRenderer.materia.getComponent(Animator);
+
         for (const layer of tilemap.layers) {
             const layerOffsetX = layer.position.x * mapTotalWidth;
             const layerOffsetY = layer.position.y * mapTotalHeight;
             for (const [coord, tileData] of layer.tileData.entries()) {
-                const image = tilemapRenderer.getImageForTile(tileData);
+                let image = null;
+
+                if (tileData.type === 'animation' && animator && animator.animationClip) {
+                    const frameIndex = animator.currentFrame;
+                    const frameDataURL = animator.animationClip.frames[frameIndex];
+                    if (frameDataURL) {
+                        image = tilemapRenderer.getImageForTile({ imageData: frameDataURL });
+                    }
+                } else {
+                    image = tilemapRenderer.getImageForTile(tileData);
+                }
+
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
-                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x, grid.cellSize.y);
+                    // Add 0.5px to width and height to prevent gaps between tiles
+                    this.ctx.drawImage(image, dx, dy, grid.cellSize.x + 0.5, grid.cellSize.y + 0.5);
                 }
             }
         }

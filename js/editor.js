@@ -353,8 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     openAssetSelector = async function(callback, options) {
-        // For backwards compatibility, if the second argument isn't an object, treat it as the old 'filter'.
-        if (typeof options !== 'object' || options === null) {
+        // For backwards compatibility, if the second argument isn't an object (and not an array), treat it as the old 'filter'.
+        if (Array.isArray(options) || typeof options !== 'object' || options === null) {
             options = { filter: options };
         }
 
@@ -719,6 +719,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'b':
                     setActiveTool('terrain-brush');
+                    break;
+                case 'g':
+                    setActiveTool('tile-bucket');
                     break;
                 case 'delete':
                 case 'backspace':

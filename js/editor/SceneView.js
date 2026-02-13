@@ -1093,9 +1093,11 @@ export function initialize(dependencies) {
         }
 
         // --- Tile Painting Logic (Left-click) ---
-        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+        if (e.button === 0 && (activeTool === 'tile-brush' || activeTool === 'tile-eraser' || activeTool === 'tile-bucket' || activeTool === 'tile-rectangle-fill')) {
             e.stopPropagation();
             paintTile(e); // Paint on the first click
+
+            if (activeTool === 'tile-bucket') return; // Bucket is single click
 
             const onPaintMove = (moveEvent) => {
                 paintTile(moveEvent);
@@ -1222,7 +1224,7 @@ export function update() {
         });
 
         // If the selected object is not a tilemap, switch back to a default tool
-        if (!hasTilemap && (activeTool === 'tile-brush' || activeTool === 'tile-eraser')) {
+        if (!hasTilemap && (activeTool === 'tile-brush' || activeTool === 'tile-eraser' || activeTool === 'tile-bucket' || activeTool === 'tile-rectangle-fill')) {
             setActiveTool('move');
         }
 
@@ -1311,7 +1313,7 @@ function drawCameraGizmos(renderer) {
 }
 
 function drawTileCursor() {
-    if (activeTool !== 'tile-brush' && activeTool !== 'tile-eraser') return;
+    if (activeTool !== 'tile-brush' && activeTool !== 'tile-eraser' && activeTool !== 'tile-bucket' && activeTool !== 'tile-rectangle-fill') return;
 
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
@@ -1351,20 +1353,42 @@ function drawTileCursor() {
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
-            const cursorX = layerTopLeftX + col * cellSize.x;
-            const cursorY = layerTopLeftY + row * cellSize.y;
-
             ctx.save();
-            if (activeTool === 'tile-brush') {
+            ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
+
+            if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
                 ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)';
                 ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
-            } else {
+
+                const selectedTiles = getSelectedTile();
+                if (selectedTiles && selectedTiles.length > 0) {
+                    for (const tile of selectedTiles) {
+                        const tx = layerTopLeftX + (col + tile.offsetX) * cellSize.x;
+                        const ty = layerTopLeftY + (row + tile.offsetY) * cellSize.y;
+                        ctx.fillRect(tx, ty, cellSize.x, cellSize.y);
+                        ctx.strokeRect(tx, ty, cellSize.x, cellSize.y);
+                    }
+                } else {
+                    const cursorX = layerTopLeftX + col * cellSize.x;
+                    const cursorY = layerTopLeftY + row * cellSize.y;
+                    ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                    ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                }
+            } else if (activeTool === 'tile-bucket') {
+                ctx.strokeStyle = 'rgba(100, 255, 100, 0.8)';
+                ctx.fillStyle = 'rgba(100, 255, 100, 0.2)';
+                const cursorX = layerTopLeftX + col * cellSize.x;
+                const cursorY = layerTopLeftY + row * cellSize.y;
+                ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
+            } else { // eraser
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+                const cursorX = layerTopLeftX + col * cellSize.x;
+                const cursorY = layerTopLeftY + row * cellSize.y;
+                ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
+                ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             }
-            ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
-            ctx.fillRect(cursorX, cursorY, cellSize.x, cellSize.y);
-            ctx.strokeRect(cursorX, cursorY, cellSize.x, cellSize.y);
             ctx.restore();
             // Stop after finding the first layer under the cursor
             break;
@@ -1920,6 +1944,41 @@ function drawTilemapColliders() {
     ctx.restore();
 }
 
+function bucketFill(layer, col, row, replacementTile) {
+    const targetTile = layer.tileData.get(`${col},${row}`);
+    if (isSameTile(targetTile, replacementTile)) return;
+
+    const queue = [[col, row]];
+    const visited = new Set();
+    const maxTiles = 5000;
+
+    while (queue.length > 0 && visited.size < maxTiles) {
+        const [cx, cy] = queue.shift();
+        const key = `${cx},${cy}`;
+
+        if (visited.has(key)) continue;
+        visited.add(key);
+
+        const currentTile = layer.tileData.get(key);
+        if (isSameTile(currentTile, targetTile)) {
+            layer.tileData.set(key, {
+                spriteName: replacementTile.spriteName,
+                imageData: replacementTile.imageData,
+                type: replacementTile.type,
+                animationPath: replacementTile.animationPath
+            });
+
+            queue.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+        }
+    }
+}
+
+function isSameTile(tileA, tileB) {
+    if (!tileA && !tileB) return true;
+    if (!tileA || !tileB) return false;
+    return tileA.spriteName === tileB.spriteName && tileA.imageData === tileB.imageData;
+}
+
 function paintTile(event) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) {
@@ -1976,15 +2035,29 @@ function paintTile(event) {
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const key = `${col},${row}`;
-            if (activeTool === 'tile-brush') {
+            if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
                 const tilesToPaint = getSelectedTile();
                 if (tilesToPaint && tilesToPaint.length > 0) {
-                    const tileObject = tilesToPaint[0];
-                    layer.tileData.set(key, tileObject);
-                    VerificationSystem.updateStatus(tileObject, true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]\nDatos: ${tileObject.spriteName}`);
+                    for (const tile of tilesToPaint) {
+                        const targetKey = `${col + tile.offsetX},${row + tile.offsetY}`;
+                        layer.tileData.set(targetKey, {
+                            spriteName: tile.spriteName,
+                            imageData: tile.imageData,
+                            type: tile.type,
+                            animationPath: tile.animationPath
+                        });
+                    }
+                    VerificationSystem.updateStatus(tilesToPaint[0], true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]`);
                 } else {
                     VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
                     return;
+                }
+            } else if (activeTool === 'tile-bucket') {
+                const selectedTiles = getSelectedTile();
+                if (selectedTiles && selectedTiles.length > 0) {
+                    const tileToPaint = selectedTiles[0];
+                    bucketFill(layer, col, row, tileToPaint);
+                    VerificationSystem.updateStatus(tileToPaint, true, "¡Área Rellenada!", `Coordenadas: [${col}, ${row}]`);
                 }
             } else if (activeTool === 'tile-eraser') {
                 layer.tileData.delete(key);

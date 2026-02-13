@@ -1085,10 +1085,6 @@ export class Animator extends Leyes {
         if (!this.animationClipPath) return;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
-        if (!this.spriteRenderer) {
-            console.error('Animator requires a SpriteRenderer component on the same Materia.');
-            return;
-        }
 
         try {
             const url = await getURLForAssetPath(this.animationClipPath, projectsDirHandle);
@@ -1130,7 +1126,7 @@ export class Animator extends Leyes {
     detener() { this.stop(); }
 
     update(deltaTime) {
-        if (!this.isPlaying || !this.animationClip || !this.spriteRenderer) {
+        if (!this.isPlaying || !this.animationClip) {
             return;
         }
 
@@ -1165,10 +1161,12 @@ export class Animator extends Leyes {
             // Clamp the frame to be safe
             this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
 
-            // Update the SpriteRenderer
-            const spriteName = clip.frames[this.currentFrame];
-            if (this.spriteRenderer.spriteName !== spriteName) {
-                this.spriteRenderer.spriteName = spriteName;
+            // Update the SpriteRenderer if it exists
+            if (this.spriteRenderer) {
+                const spriteName = clip.frames[this.currentFrame];
+                if (this.spriteRenderer.spriteName !== spriteName) {
+                    this.spriteRenderer.spriteName = spriteName;
+                }
             }
         }
     }
