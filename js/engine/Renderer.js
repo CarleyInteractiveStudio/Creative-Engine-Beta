@@ -339,11 +339,16 @@ export class Renderer {
             for (const [coord, tileData] of layer.tileData.entries()) {
                 let image = null;
 
-                if (tileData.type === 'animation' && animator && animator.animationClip && animator.animationClip.frames) {
-                    const frameIndex = animator.currentFrame % animator.animationClip.frames.length;
-                    const frameDataURL = animator.animationClip.frames[frameIndex];
-                    if (frameDataURL) {
-                        image = tilemapRenderer.getImageForTile({ imageData: frameDataURL });
+                if (tileData.type === 'animation' && animator) {
+                    const clip = tilemapRenderer.getAnimationClip(tileData.animationPath);
+                    if (clip && clip.frames) {
+                        const frameIndex = animator.currentFrame % clip.frames.length;
+                        const frameDataURL = clip.frames[frameIndex];
+                        if (frameDataURL) {
+                            image = tilemapRenderer.getImageForTile({ imageData: frameDataURL });
+                        }
+                    } else {
+                        image = tilemapRenderer.getImageForTile(tileData);
                     }
                 } else {
                     image = tilemapRenderer.getImageForTile(tileData);

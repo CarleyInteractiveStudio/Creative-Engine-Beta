@@ -2038,6 +2038,7 @@ function paintTile(event) {
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
                 const tilesToPaint = getSelectedTile();
                 if (tilesToPaint && tilesToPaint.length > 0) {
+                    let hasAnimation = false;
                     for (const tile of tilesToPaint) {
                         const targetKey = `${col + tile.offsetX},${row + tile.offsetY}`;
                         layer.tileData.set(targetKey, {
@@ -2046,7 +2047,14 @@ function paintTile(event) {
                             type: tile.type,
                             animationPath: tile.animationPath
                         });
+                        if (tile.type === 'animation') hasAnimation = true;
                     }
+
+                    if (hasAnimation && !tilemapMateria.getComponent(Components.Animator)) {
+                        tilemapMateria.addComponent(new Components.Animator(tilemapMateria));
+                        updateInspector();
+                    }
+
                     VerificationSystem.updateStatus(tilesToPaint[0], true, "¡Tile Pintado!", `Coordenadas: [${col}, ${row}]`);
                 } else {
                     VerificationSystem.updateStatus(null, false, "Error: No hay ningún tile seleccionado en la paleta.");
@@ -2057,6 +2065,12 @@ function paintTile(event) {
                 if (selectedTiles && selectedTiles.length > 0) {
                     const tileToPaint = selectedTiles[0];
                     bucketFill(layer, col, row, tileToPaint);
+
+                    if (tileToPaint.type === 'animation' && !tilemapMateria.getComponent(Components.Animator)) {
+                        tilemapMateria.addComponent(new Components.Animator(tilemapMateria));
+                        updateInspector();
+                    }
+
                     VerificationSystem.updateStatus(tileToPaint, true, "¡Área Rellenada!", `Coordenadas: [${col}, ${row}]`);
                 }
             } else if (activeTool === 'tile-eraser') {

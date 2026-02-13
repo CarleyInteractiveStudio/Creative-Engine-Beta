@@ -3,7 +3,7 @@
 
 import { Leyes } from './Leyes.js';
 import { registerComponent } from './ComponentRegistry.js';
-import { getURLForAssetPath } from './AssetUtils.js';
+import { getURLForAssetPath, getFileHandleForPath } from './AssetUtils.js';
 import { InputManager } from './Input.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import { bus as MessageBus } from './Messaging.js';
@@ -1870,6 +1870,35 @@ export class TilemapRenderer extends Leyes {
         // Always initialize imageCache as a Map. This prevents corrupted data
         // from scene deserialization from breaking the renderer.
         this.imageCache = new Map();
+        this.clipCache = new Map();
+    }
+
+    getAnimationClip(path) {
+        if (!path) return null;
+        if (this.clipCache.get(path)) return this.clipCache.get(path);
+
+        if (!this._loadingClips) this._loadingClips = new Set();
+        if (this._loadingClips.has(path)) return null;
+
+        this._loadingClips.add(path);
+
+        // Background loading
+        const dirHandle = window.projectsDirHandle;
+        if (dirHandle) {
+            getURLForAssetPath(path, dirHandle)
+                .then(url => fetch(url))
+                .then(res => res.json())
+                .then(data => {
+                    const anim = (data.animations && data.animations.length > 0) ? data.animations[0] : data;
+                    this.clipCache.set(path, anim);
+                    this._loadingClips.delete(path);
+                })
+                .catch(e => {
+                    console.error(`Error al cargar clip de tilemap: ${path}`, e);
+                    this._loadingClips.delete(path);
+                });
+        }
+        return null;
     }
 
     setDirty() {
