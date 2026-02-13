@@ -335,6 +335,9 @@ export class Renderer {
         if (!animator) {
             animator = tilemapRenderer.materia.getComponentInParent(Animator);
         }
+        if (!animator) {
+            animator = tilemapRenderer.materia.getComponentInChildren(Animator);
+        }
 
         for (const layer of tilemap.layers) {
             const layerOffsetX = layer.position.x * mapTotalWidth;

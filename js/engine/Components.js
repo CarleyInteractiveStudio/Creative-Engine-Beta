@@ -1077,8 +1077,14 @@ export class Animator extends Leyes {
         this.startFrame = 0;
         this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
-        this.isPlaying = false;
+        this.isPlaying = this.playOnAwake;
         this.spriteRenderer = null;
+    }
+
+    start() {
+        if (this.playOnAwake) {
+            this.play();
+        }
     }
 
     async loadAnimationClip(projectsDirHandle) {
