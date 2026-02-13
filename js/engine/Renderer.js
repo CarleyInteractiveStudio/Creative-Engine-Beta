@@ -339,8 +339,8 @@ export class Renderer {
             for (const [coord, tileData] of layer.tileData.entries()) {
                 let image = null;
 
-                if (tileData.type === 'animation' && animator && animator.animationClip) {
-                    const frameIndex = animator.currentFrame;
+                if (tileData.type === 'animation' && animator && animator.animationClip && animator.animationClip.frames) {
+                    const frameIndex = animator.currentFrame % animator.animationClip.frames.length;
                     const frameDataURL = animator.animationClip.frames[frameIndex];
                     if (frameDataURL) {
                         image = tilemapRenderer.getImageForTile({ imageData: frameDataURL });

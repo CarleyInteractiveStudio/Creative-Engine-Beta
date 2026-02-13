@@ -519,7 +519,12 @@ function handleCanvasMouseDown(event) {
 
             const selectedSprite = dom.spritePackList.querySelector('.selected');
             if (selectedSprite) {
-                const newTileData = { spriteName: selectedSprite.dataset.spriteName, imageData: selectedSprite.dataset.imageData };
+                const newTileData = {
+                    spriteName: selectedSprite.dataset.spriteName,
+                    imageData: selectedSprite.dataset.imageData,
+                    type: selectedSprite.dataset.type,
+                    animationPath: selectedSprite.dataset.animationPath
+                };
                 currentPalette.tiles[coord] = newTileData;
                 const existingTileIndex = allTiles.findIndex(t => t.coord === coord);
                 if (existingTileIndex > -1) allTiles.splice(existingTileIndex, 1);
@@ -633,8 +638,11 @@ async function loadAndDisplayAssociatedSprites() {
                 const packFile = await packFileHandle.getFile();
                 const animData = JSON.parse(await packFile.text());
 
-                const animName = animData.name || packPath.split('/').pop();
-                const firstFrame = animData.frames && animData.frames.length > 0 ? animData.frames[0] : 'image/cea.png';
+                // Handle both legacy and new format
+                const anim = (animData.animations && animData.animations.length > 0) ? animData.animations[0] : animData;
+
+                const animName = anim.name || animData.name || packPath.split('/').pop();
+                const firstFrame = anim.frames && anim.frames.length > 0 ? anim.frames[0] : 'image/cea.png';
 
                 validSpritePacks.push(packPath);
 

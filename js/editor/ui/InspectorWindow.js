@@ -57,7 +57,8 @@ const fileIcons = {
     ceprefab: '🧊',
     ceScene: '🎬',
     ces: '📜',
-    chc: '🤖'
+    chc: '🤖',
+    cea: '🏃'
 };
 
 const typeExtensionMap = {
@@ -2979,8 +2980,21 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 if (url) imgElement.src = url;
             }
         } else if (assetName.endsWith('.cea')) {
-            const animData = JSON.parse(content);
-            const anim = animData.animations[0]; // Assume first animation
+            let animData;
+            try {
+                animData = JSON.parse(content);
+            } catch (e) {
+                dom.inspectorContent.innerHTML += `<p class="error-message">Error al parsear archivo de animación (.cea)</p>`;
+                return;
+            }
+
+            // Handle both legacy and new format
+            const anim = (animData.animations && animData.animations.length > 0) ? animData.animations[0] : animData;
+
+            if (!anim || !anim.frames) {
+                dom.inspectorContent.innerHTML += `<p class="error-message">Formato de animación inválido o sin fotogramas.</p>`;
+                return;
+            }
 
             const previewContainer = document.createElement('div');
             previewContainer.className = 'inspector-anim-preview';
@@ -3012,7 +3026,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
                     function loop(time) {
                         if (!isPlaying) return;
-                        if (time - lastTime > (1000 / anim.speed)) {
+                        if (time - lastTime > (1000 / (anim.speed || 10))) {
                             lastTime = time;
                             currentFrame = (currentFrame + 1) % anim.frames.length;
                             timeline.childNodes.forEach((node, i) => node.style.border = i === currentFrame ? '2px solid var(--accent-color)' : 'none');

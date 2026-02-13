@@ -474,12 +474,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else { // It's a file
                     const iconContainer = document.createElement('div');
                     iconContainer.className = 'icon';
-                    const imgIcon = document.createElement('img');
-                    imgIcon.className = 'icon-preview';
-                    getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
-                        imgIcon.src = url || '📄'; // Default icon
-                        iconContainer.appendChild(imgIcon);
-                    });
+
+                    // Specific icons for known file types
+                    if (name.endsWith('.cea')) {
+                        iconContainer.innerHTML = '🏃';
+                    } else if (name.endsWith('.ceanim')) {
+                        iconContainer.innerHTML = '🕹️';
+                    } else if (name.endsWith('.ceprefab')) {
+                        iconContainer.innerHTML = '🧊';
+                    } else if (name.endsWith('.ceScene')) {
+                        iconContainer.innerHTML = '🎬';
+                    } else if (name.endsWith('.ces')) {
+                        iconContainer.innerHTML = '📜';
+                    } else if (name.endsWith('.chc')) {
+                        iconContainer.innerHTML = '🤖';
+                    } else {
+                        const imgIcon = document.createElement('img');
+                        imgIcon.className = 'icon-preview';
+                        getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                            if (url && (name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg'))) {
+                                imgIcon.src = url;
+                                iconContainer.appendChild(imgIcon);
+                            } else {
+                                iconContainer.textContent = '📄';
+                            }
+                        });
+                    }
 
 
                     const nameDiv = document.createElement('div');
