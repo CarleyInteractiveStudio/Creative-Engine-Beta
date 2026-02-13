@@ -1738,44 +1738,136 @@ body {
 #animator-graph-view {
     flex-grow: 1;
     position: relative;
-    background-color: #2a2a2e; /* A slightly different background */
-    overflow: auto;
+    background-color: #2a2a2e;
+    overflow: hidden;
     background-image:
         linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
     background-size: 20px 20px;
 }
 
+#animator-connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.animator-controller-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.anim-sidebar {
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+}
+
+#animator-states-list {
+    border-right: none;
+    border-left: 1px solid var(--border-color);
+}
+
+.anim-sidebar .list-content {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.state-list-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.state-list-item:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.state-list-item .state-name {
+    font-weight: 600;
+}
+
+.state-list-item .state-anim {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+.list-toolbar {
+    padding: 5px;
+    display: flex;
+    gap: 5px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.list-toolbar button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.list-toolbar button:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
 .anim-state-node {
     position: absolute;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background-color: #555;
+    border: 2px solid #777;
     border-radius: 6px;
     padding: 10px 20px;
     cursor: grab;
     user-select: none;
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     text-align: center;
-    min-width: 120px;
+    min-width: 100px;
+    color: white;
+    font-size: 0.9em;
+    z-index: 10;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.anim-state-node:hover {
+    border-color: #aaa;
+}
+
+.anim-state-node.selected {
+    border-color: #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.anim-state-node.entry-state {
+    border-color: #2563eb;
+    background-color: #1d4ed8;
 }
 
 .anim-state-node:active {
     cursor: grabbing;
-    z-index: 10;
-}
-
-.anim-state-node.entry-state {
-    background-color: #5d3a00;
-    border-color: #ff8c00;
-    color: #ffc98a;
+    z-index: 100;
 }
 
 .anim-transition-line {
-    position: absolute;
-    height: 2px;
-    background-color: var(--accent-color);
-    transform-origin: 0 0;
-    z-index: 1; /* Below nodes */
+    stroke: #888;
+    stroke-width: 2;
+    stroke-dasharray: 8, 4;
+    animation: anim-flow 1s linear infinite;
+}
+
+@keyframes anim-flow {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
 }
 
 #animator-graph-view.is-connecting {

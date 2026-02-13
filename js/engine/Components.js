@@ -1158,6 +1158,12 @@ export class Animator extends Leyes {
                         script._safeInvoke('OnAnimationEnd', this.animationClip.name);
                     }
 
+                // Notify AnimatorController if present
+                const controller = this.materia.getComponent(AnimatorController);
+                if (controller && typeof controller.onAnimationEnd === 'function') {
+                    controller.onAnimationEnd(this.animationClip.name);
+                }
+
                     if (this.loop) {
                         this.currentFrame = this.startFrame || 0;
                     } else {
@@ -1471,6 +1477,13 @@ export class AnimatorController extends Leyes {
         this.currentStateName = '';
         this.animator = null; // Reference to the Animator component
         this.projectsDirHandle = null; // To load clips at runtime
+
+        this.parameters = {
+            horizontal: 0,
+            vertical: 0,
+            speed: 0,
+            isMoving: false
+        };
     }
 
     // Called by the engine when the game starts
@@ -1482,6 +1495,11 @@ export class AnimatorController extends Leyes {
             return;
         }
         await this.loadController(projectsDirHandle);
+
+        // Play entry state
+        if (this.controller && this.controller.entryState) {
+            this.play(this.controller.entryState);
+        }
     }
 
     async loadController(projectsDirHandle) {
@@ -1507,6 +1525,7 @@ export class AnimatorController extends Leyes {
     }
 
     play(stateName) {
+        if (!stateName) return;
         // Do not restart the animation if it's already playing
         if (!this.animator || !this.states.has(stateName) || this.currentStateName === stateName) {
             return;
@@ -1536,6 +1555,96 @@ export class AnimatorController extends Leyes {
 
     /** Alias en español */
     reproducir(nombreEstado) { this.play(nombreEstado); }
+
+    setParameter(name, value) {
+        this.parameters[name] = value;
+    }
+
+    establecerParametro(nombre, valor) { this.setParameter(nombre, valor); }
+
+    update(deltaTime) {
+        if (!this.animator || !this.controller) return;
+
+        // Auto-update parameters from Rigidbody2D if it exists
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            this.parameters.horizontal = rb.velocity.x;
+            this.parameters.vertical = rb.velocity.y;
+            this.parameters.speed = Math.sqrt(rb.velocity.x ** 2 + rb.velocity.y ** 2);
+            this.parameters.isMoving = this.parameters.speed > 0.01;
+        }
+
+        if (this.controller.smartMode) {
+            this._handleSmartMode();
+        }
+
+        this._checkTransitions();
+    }
+
+    _handleSmartMode() {
+        const p = this.parameters;
+        let newState = "";
+
+        if (!p.isMoving) {
+            newState = "Parado";
+        } else {
+            // Choose direction based on horizontal/vertical
+            if (Math.abs(p.horizontal) > Math.abs(p.vertical)) {
+                newState = p.horizontal > 0 ? "Derecha" : "Izquierda";
+            } else {
+                newState = p.vertical > 0 ? "Abajo" : "Arriba"; // Y positive is Down in many 2D engines, but check context
+            }
+        }
+
+        if (newState && this.states.has(newState)) {
+            this.play(newState);
+        }
+    }
+
+    _checkTransitions() {
+        if (!this.controller.transitions) return;
+
+        for (const trans of this.controller.transitions) {
+            if (trans.from === this.currentStateName) {
+                if (this._evaluateConditions(trans.conditions)) {
+                    this.play(trans.to);
+                    break;
+                }
+            }
+        }
+    }
+
+    _evaluateConditions(conditions) {
+        if (!conditions || conditions.length === 0) return false;
+
+        return conditions.every(cond => {
+            const paramValue = this.parameters[cond.parameter];
+            switch (cond.operator) {
+                case 'Greater': return paramValue > cond.threshold;
+                case 'Less': return paramValue < cond.threshold;
+                case 'Equals': return paramValue === cond.threshold;
+                case 'NotEqual': return paramValue !== cond.threshold;
+                case 'True': return paramValue === true;
+                case 'False': return paramValue === false;
+                default: return false;
+            }
+        });
+    }
+
+    onAnimationEnd(clipName) {
+        // Handle transitions with hasExitTime
+        if (!this.controller || !this.controller.transitions) return;
+
+        for (const trans of this.controller.transitions) {
+            if (trans.from === this.currentStateName && trans.hasExitTime) {
+                // If there are conditions, they must also be met
+                if (!trans.conditions || trans.conditions.length === 0 || this._evaluateConditions(trans.conditions)) {
+                    this.play(trans.to);
+                    break;
+                }
+            }
+        }
+    }
 
     clone() {
         const newController = new AnimatorController(null);

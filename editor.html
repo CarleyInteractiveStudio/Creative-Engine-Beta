@@ -569,18 +569,23 @@ public star() {
                     </div>
                     <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
                 </div>
-                <div class="panel-content no-padding">
-                    <div id="animator-assets-list">
+                <div class="panel-content no-padding animator-controller-layout">
+                    <div id="animator-assets-list" class="anim-sidebar">
                         <div class="list-header">Animaciones (.cea)</div>
-        <input type="search" placeholder="Buscar animaciones...">
+                        <input type="search" id="anim-assets-search" placeholder="Buscar animaciones...">
                         <div class="list-content"></div>
                     </div>
                     <div id="animator-graph-view">
+                        <svg id="animator-connections-layer"></svg>
+                        <div id="anim-nodes-container"></div>
                         <!-- The visual state machine graph will be rendered here -->
                     </div>
-                    <div id="animator-controllers-list">
-                        <div class="list-header">Controladores (.ceanim)</div>
-                        <input type="search" placeholder="Buscar controladores...">
+                    <div id="animator-states-list" class="anim-sidebar">
+                        <div class="list-header">Estados</div>
+                        <div class="list-toolbar">
+                            <button id="anim-state-add-btn" title="Añadir Estado">➕</button>
+                            <button id="anim-state-delete-btn" title="Eliminar Estado">➖</button>
+                        </div>
                         <div class="list-content"></div>
                     </div>
                 </div>
@@ -779,6 +784,7 @@ public star() {
                     <li data-action="create-chc-script">Script H-Code (.chc)</li>
                     <li data-action="create-readme">Archivo Léame (.md)</li>
                     <li data-action="create-animation">Asset de Animación (.cea)</li>
+                    <li data-action="create-animator-controller">Controlador de Animación (.ceanim)</li>
                     <li data-action="create-tile-palette">Paleta de Tiles (.cepalette)</li>
                     <li data-action="create-scene">Escena (.ceScene)</li>
                     <li data-action="create-prefab">Prefab (.ceprefab)</li>
