@@ -564,12 +564,17 @@ public star() {
                     <span>Controlador de Animación</span>
                     <div id="animator-controller-toolbar">
                         <button id="anim-ctrl-new-btn">Nuevo</button>
+                        <button id="anim-ctrl-open-btn">Abrir</button>
                         <button id="anim-ctrl-save-btn">Guardar</button>
                         <span id="current-anim-ctrl-name">Ninguno</span>
                     </div>
                     <button class="close-panel-btn" data-panel="animator-controller-panel">&times;</button>
                 </div>
                 <div class="panel-content no-padding animator-controller-layout">
+                    <div id="animator-controller-overlay" class="panel-overlay-message">
+                        <p>Carga un asset de controlador (.ceanim) para empezar.</p>
+                        <p>Puedes crear uno nuevo o abrir uno existente.</p>
+                    </div>
                     <div id="animator-assets-list" class="anim-sidebar">
                         <div class="list-header">Animaciones (.cea)</div>
                         <input type="search" id="anim-assets-search" placeholder="Buscar animaciones...">

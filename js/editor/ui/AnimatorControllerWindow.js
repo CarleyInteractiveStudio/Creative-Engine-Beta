@@ -39,13 +39,12 @@ export async function openAnimatorController(fileHandle) {
         currentControllerData = JSON.parse(content);
         currentControllerHandle = fileHandle;
 
-        // Visually mark the item as selected in the panel's list of controllers
-        const controllerAssetsList = dom.animatorControllerPanel.querySelector('#animator-controllers-list .list-content');
-        controllerAssetsList.querySelectorAll('.asset-list-item').forEach(i => i.classList.remove('active'));
-        const itemInList = controllerAssetsList.querySelector(`[data-name="${fileHandle.name}"]`);
-        if (itemInList) {
-            itemInList.classList.add('active');
-        }
+        // Update UI
+        const nameLabel = document.getElementById('current-anim-ctrl-name');
+        if (nameLabel) nameLabel.textContent = fileHandle.name;
+
+        const overlay = document.getElementById('animator-controller-overlay');
+        if (overlay) overlay.classList.add('hidden');
 
         console.log(`Cargado controlador: ${fileHandle.name}`, currentControllerData);
         renderAnimatorGraph();
@@ -58,6 +57,10 @@ export async function openAnimatorController(fileHandle) {
 
 function renderAnimatorGraph() {
     if (!currentControllerData || !graphView) return;
+
+    // Show/hide overlay
+    const overlay = document.getElementById('animator-controller-overlay');
+    if (overlay) overlay.classList.add('hidden');
 
     nodesContainer.innerHTML = '';
     connectionsLayer.innerHTML = '';
@@ -291,71 +294,41 @@ async function createNewAnimatorController() {
             if (!controllerName) return;
 
             const fileName = `${controllerName}.ceanim`;
-    const defaultContent = {
-        name: controllerName,
-        entryState: "Parado",
-        smartMode: true,
-        states: [
-            { name: "Parado", animationAsset: "", speed: 1.0, position: { x: 300, y: 200 } },
-            { name: "Arriba", animationAsset: "", speed: 1.0, position: { x: 300, y: 50 } },
-            { name: "Abajo", animationAsset: "", speed: 1.0, position: { x: 300, y: 350 } },
-            { name: "Izquierda", animationAsset: "", speed: 1.0, position: { x: 100, y: 200 } },
-            { name: "Derecha", animationAsset: "", speed: 1.0, position: { x: 500, y: 200 } }
-        ],
-        transitions: []
-    };
+            const defaultContent = {
+                name: controllerName,
+                entryState: "Parado",
+                smartMode: true,
+                states: [
+                    { name: "Parado", animationAsset: "", speed: 1.0, position: { x: 300, y: 200 } },
+                    { name: "Arriba", animationAsset: "", speed: 1.0, position: { x: 300, y: 50 } },
+                    { name: "Abajo", animationAsset: "", speed: 1.0, position: { x: 300, y: 350 } },
+                    { name: "Izquierda", animationAsset: "", speed: 1.0, position: { x: 100, y: 200 } },
+                    { name: "Derecha", animationAsset: "", speed: 1.0, position: { x: 500, y: 200 } }
+                ],
+                transitions: []
+            };
 
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+            try {
+                const projectName = new URLSearchParams(window.location.search).get('project');
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
 
-        const fileHandle = await assetsHandle.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(defaultContent, null, 2));
-        await writable.close();
+                const fileHandle = await assetsHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(defaultContent, null, 2));
+                await writable.close();
 
-        console.log(`Creado nuevo controlador: ${fileName}`);
-        // After creating, refresh the panel to show the new controller
-        await populateControllerList();
+                console.log(`Creado nuevo controlador: ${fileName}`);
+                // After creating, open it
+                await openAnimatorController(fileHandle);
 
-    } catch (error) {
-        console.error("Error al crear el controlador de animación:", error);
-        window.Dialogs.showNotification('Error', 'No se pudo crear el archivo del controlador.');
-    }
+            } catch (error) {
+                console.error("Error al crear el controlador de animación:", error);
+                window.Dialogs.showNotification('Error', 'No se pudo crear el archivo del controlador.');
+            }
         },
         'NewAnimator'
     );
-}
-
-async function populateControllerList() {
-    const controllerAssetsList = dom.animatorControllerPanel.querySelector('#animator-controllers-list .list-content');
-    controllerAssetsList.innerHTML = 'Buscando...';
-
-    const controllerFiles = [];
-    async function findFiles(dirHandle) {
-        for await (const entry of dirHandle.values()) {
-            if (entry.kind === 'file' && entry.name.endsWith('.ceanim')) {
-                controllerFiles.push({ name: entry.name, handle: entry });
-            } else if (entry.kind === 'directory') {
-                await findFiles(entry);
-            }
-        }
-    }
-
-    const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-    await findFiles(projectHandle);
-
-    controllerAssetsList.innerHTML = '';
-    controllerFiles.forEach(fileInfo => {
-        const item = document.createElement('div');
-        item.textContent = fileInfo.name;
-        item.className = 'asset-list-item';
-        item.dataset.name = fileInfo.name;
-        item.addEventListener('click', () => openAnimatorController(fileInfo.handle));
-        controllerAssetsList.appendChild(item);
-    });
 }
 
 
@@ -403,8 +376,14 @@ function setupEventListeners() {
             updateWindowMenuUI();
 
             if (!isHiding) {
-                await populateControllerList();
                 await populateAnimationsList();
+
+                // If nothing is open, show overlay
+                const overlay = document.getElementById('animator-controller-overlay');
+                if (overlay) {
+                    if (currentControllerHandle) overlay.classList.add('hidden');
+                    else overlay.classList.remove('hidden');
+                }
             }
         });
     }
@@ -418,6 +397,15 @@ function setupEventListeners() {
     const saveBtn = document.getElementById('anim-ctrl-save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', saveAnimatorController);
+    }
+
+    const openBtn = document.getElementById('anim-ctrl-open-btn');
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            window.openAssetSelector((handle) => {
+                if (handle) openAnimatorController(handle);
+            }, { extensions: ['.ceanim'] });
+        });
     }
 
     // Graph interactions
