@@ -200,7 +200,15 @@ export async function handleContextMenuAction(action) {
                     if (animName) {
                         const fileName = animName.endsWith('.cea') ? animName : `${animName}.cea`;
                         // Default empty animation content
-                        const defaultContent = '{"name": "New Animation", "frames": []}';
+                        const defaultContent = JSON.stringify({
+                            name: animName.replace('.cea', ''),
+                            animations: [{
+                                name: "default",
+                                speed: 10,
+                                loop: true,
+                                frames: []
+                            }]
+                        }, null, 2);
                         try {
                             const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();

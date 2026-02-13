@@ -292,6 +292,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("An error occurred in the start button click handler:", error);
                 await showCustomAlert("Error Inesperado", `Ocurrió un error: ${error.message}`);
+            } finally {
+                startButton.disabled = false;
+                startButton.textContent = originalText;
             }
         });
     } else {

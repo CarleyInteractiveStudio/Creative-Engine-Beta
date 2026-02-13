@@ -7,7 +7,7 @@ import * as UISystem from './engine/ui/UISystem.js';
 import * as Components from './engine/Components.js';
 import { Materia } from './engine/Materia.js';
 import { getURLForAssetPath } from './engine/AssetUtils.js';
-import { initializeAnimationEditor, openAnimationAsset as openAnimationAssetFromModule } from './editor/ui/AnimationEditorWindow.js';
+import * as AnimationEditorWindow from './editor/ui/AnimationEditorWindow.js';
 import { initialize as initializePreferences, getPreferences, loadExternalPreferences } from './editor/ui/PreferencesWindow.js';
 import { initialize as initializeProjectSettings, populateUI as populateProjectSettingsUI, saveProjectConfig as saveProjectConfigFromModule } from './editor/ui/ProjectSettingsWindow.js';
 import { initialize as initializeAnimatorController, openAnimatorController } from './editor/ui/AnimatorControllerWindow.js';
@@ -3339,7 +3339,7 @@ public start() {
                 switch (extension) {
                     case 'cea':
                         console.log(`Opening animation asset: ${name}`);
-                        openAnimationAssetFromModule(fileHandle, dirHandle);
+                        AnimationEditorWindow.openAnimationAsset(fileHandle, dirHandle);
                         break;
                     case 'cepalette':
                         console.log(`Opening tile palette: ${name}`);
@@ -3422,7 +3422,7 @@ public start() {
             updateLoadingProgress(60, "Aplicando preferencias...");
             initializePreferences(dom, CodeEditor.saveCurrentScript);
             initializeProjectSettings(dom, projectsDirHandle, currentProjectConfig, getPreferences);
-            initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
+            AnimationEditorWindow.initializeAnimationEditor({ dom, projectsDirHandle, getCurrentDirectoryHandle, updateWindowMenuUI });
             initializeAnimatorController({ dom, projectsDirHandle, updateWindowMenuUI });
 
             // Provide saveProjectConfig to the DOM for modular access
