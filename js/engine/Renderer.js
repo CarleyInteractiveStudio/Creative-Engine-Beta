@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
