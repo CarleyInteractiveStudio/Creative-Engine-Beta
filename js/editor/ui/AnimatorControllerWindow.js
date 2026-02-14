@@ -404,7 +404,7 @@ function setupEventListeners() {
         openBtn.addEventListener('click', () => {
             window.openAssetSelector((handle) => {
                 if (handle) openAnimatorController(handle);
-            }, { extensions: ['.ceanim'] });
+            }, { filter: ['.ceanim'] });
         });
     }
 
@@ -452,21 +452,18 @@ function setupEventListeners() {
         }
     });
 
+    graphView.addEventListener('contextmenu', (e) => {
+        if (e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer) {
+            e.preventDefault();
+            showGraphContextMenu(e);
+        }
+    });
+
     // Add state button
     const addStateBtn = document.getElementById('anim-state-add-btn');
     if (addStateBtn) {
         addStateBtn.addEventListener('click', () => {
-            window.Dialogs.showPrompt('Nuevo Estado', 'Nombre del estado:', (name) => {
-                if (name) {
-                    currentControllerData.states.push({
-                        name: name,
-                        animationAsset: "",
-                        speed: 1.0,
-                        position: { x: 50, y: 50 }
-                    });
-                    renderAnimatorGraph();
-                }
-            });
+            addNewStatePrompt(50, 50);
         });
     }
 
@@ -487,4 +484,55 @@ function setupEventListeners() {
             }
         }
     });
+}
+
+function addNewStatePrompt(x, y) {
+    if (!currentControllerData) return;
+    window.Dialogs.showPrompt('Nuevo Estado', 'Nombre del estado:', (name) => {
+        if (name) {
+            currentControllerData.states.push({
+                name: name,
+                animationAsset: "",
+                speed: 1.0,
+                position: { x: x, y: y }
+            });
+            renderAnimatorGraph();
+        }
+    });
+}
+
+function showGraphContextMenu(e) {
+    if (!currentControllerData) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.display = 'block';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+    menu.style.zIndex = '3000';
+
+    const ul = document.createElement('ul');
+    const li = document.createElement('li');
+    li.textContent = 'Crear Estado';
+    li.onclick = (event) => {
+        event.stopPropagation();
+        const rect = graphView.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        addNewStatePrompt(x, y);
+        menu.remove();
+        document.removeEventListener('mousedown', onMouseDown);
+    };
+    ul.appendChild(li);
+    menu.appendChild(ul);
+    document.body.appendChild(menu);
+
+    // Close menu when clicking outside
+    const onMouseDown = (event) => {
+        if (!menu.contains(event.target)) {
+            menu.remove();
+            document.removeEventListener('mousedown', onMouseDown);
+        }
+    };
+    setTimeout(() => document.addEventListener('mousedown', onMouseDown), 10);
 }
