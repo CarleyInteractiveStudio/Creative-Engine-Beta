@@ -9,6 +9,7 @@ let projectsDirHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
+let dragCounter = 0; // For robust drag-over UI
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -42,13 +43,15 @@ export function initialize(dependencies) {
 
     // Global dragover for the whole panel to allow internal drops
     dom.assetsContent.addEventListener('dragover', (e) => {
-        const dataText = e.dataTransfer.getData('text/plain');
-        if (dataText.includes('"type":"Materia"') || dataText.includes('"type":"Asset"')) {
+        // Use types to detect if there's data being dragged (getData is restricted in dragover)
+        if (e.dataTransfer.types.includes('text/plain') || e.dataTransfer.types.includes('Files')) {
             e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
+            // Default to move for internal, copy for external (handled below)
+            e.dataTransfer.dropEffect = 'move';
         }
     });
 
+    dom.assetsContent.addEventListener('dragenter', handleExternalFileDragEnter);
     dom.assetsContent.addEventListener('dragover', handleExternalFileDragOver);
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
@@ -56,9 +59,36 @@ export function initialize(dependencies) {
     // The event listener is now centralized in editor.js
 }
 
+function handleExternalFileDragEnter(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter++;
+    dom.assetsContent.classList.add('drag-over-fs');
+}
+
 export async function handleContextMenuAction(action) {
     // This function is now called from editor.js
     const selectedAsset = contextAsset;
+
+    // Determine the target directory for "create" actions
+    let targetHandle = currentDirectoryHandle.handle;
+    let targetPathDisplay = currentDirectoryHandle.path;
+
+    // If we right-clicked on a directory item, create inside it
+    if (selectedAsset && selectedAsset.kind === 'directory' && action.startsWith('create-')) {
+        try {
+            targetHandle = await currentDirectoryHandle.handle.getDirectoryHandle(selectedAsset.name);
+            targetPathDisplay = `${currentDirectoryHandle.path}/${selectedAsset.name}`;
+            console.log(`[AssetBrowser] Acción '${action}' dirigida a subcarpeta: ${targetPathDisplay}`);
+        } catch (e) {
+            console.warn("[AssetBrowser] No se pudo obtener el handle de la subcarpeta, usando carpeta actual.");
+        }
+    }
+
+    if (!targetHandle) {
+        console.error("[AssetBrowser] No hay una carpeta de destino válida para la acción:", action);
+        return;
+    }
 
     switch(action) {
         case 'create-folder': {
@@ -68,7 +98,7 @@ export async function handleContextMenuAction(action) {
                 async (folderName) => {
                     if (folderName) {
                         try {
-                            await currentDirectoryHandle.handle.getDirectoryHandle(folderName, { create: true });
+                            await targetHandle.getDirectoryHandle(folderName, { create: true });
                             await updateAssetBrowserCallback();
                         } catch (err) {
                             console.error("Error al crear la carpeta:", err);
@@ -100,7 +130,7 @@ export async function handleContextMenuAction(action) {
                             transitions: []
                         }, null, 2);
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -138,7 +168,7 @@ export async function handleContextMenuAction(action) {
                             "children": []
                         }, null, 2);
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -161,7 +191,7 @@ export async function handleContextMenuAction(action) {
                         const fileName = scriptName.endsWith('.chc') ? scriptName : `${scriptName}.chc`;
                         const defaultContent = `# Mi Script Humano\n\nCuando se presione la tecla W, mover arriba.\nSi hay colisión con un enemigo, destruir este objeto.`;
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -184,7 +214,7 @@ export async function handleContextMenuAction(action) {
                         const fileName = scriptName.endsWith('.ces') ? scriptName : `${scriptName}.ces`;
                         const defaultContent = `// Nuevo script de Creative Engine\n\npublic start() {\n    \n}\n\npublic update(deltaTime) {\n    \n}\n`;
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -210,7 +240,7 @@ export async function handleContextMenuAction(action) {
                         // Default empty scene content
                         const defaultContent = '{"materias": [], "ambiente": {"luzAmbiental":"#1a1a2a","hora":6,"cicloAutomatico":false,"duracionDia":60,"mascaraTipo":"ninguna"}}';
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -245,7 +275,7 @@ export async function handleContextMenuAction(action) {
                             }]
                         }, null, 2);
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -268,7 +298,7 @@ export async function handleContextMenuAction(action) {
                         const fileName = readmeName.endsWith('.md') ? readmeName : `${readmeName}.md`;
                         const defaultContent = '# Nuevo Archivo Léame\n\nEscribe aquí la documentación...';
                         try {
-                            const fileHandle = await currentDirectoryHandle.handle.getFileHandle(fileName, { create: true });
+                            const fileHandle = await targetHandle.getFileHandle(fileName, { create: true });
                             const writable = await fileHandle.createWritable();
                             await writable.write(defaultContent);
                             await writable.close();
@@ -290,7 +320,7 @@ export async function handleContextMenuAction(action) {
                 async (paletteName) => {
                     if (paletteName) {
                         const fileName = paletteName.endsWith('.cepalette') ? paletteName : `${paletteName}.cepalette`;
-                        await createNewPalette(fileName, currentDirectoryHandle.handle);
+                        await createNewPalette(fileName, targetHandle);
                         await updateAssetBrowserCallback();
                     }
                 }
@@ -396,10 +426,12 @@ export async function updateAssetBrowser() {
     }
 
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
+        if (!targetFolderHandle) return;
+
         if (droppedData.type === 'Materia') {
             const materiaId = parseInt(droppedData.id, 10);
             // Try to find the materia in the module's currentScene, fallback to global window.SceneManager
-            let materia = SceneManager.currentScene.findMateriaById(materiaId);
+            let materia = SceneManager.currentScene ? SceneManager.currentScene.findMateriaById(materiaId) : null;
             if (!materia && window.SceneManager && window.SceneManager.currentScene) {
                 materia = window.SceneManager.currentScene.findMateriaById(materiaId);
             }
@@ -430,33 +462,46 @@ export async function updateAssetBrowser() {
             return;
         }
 
-        console.log(`Soltado ${droppedData.path} en ${targetPath}`);
-        try {
-            const sourcePath = droppedData.path;
-            const sourceParts = sourcePath.split('/').filter(p => p);
-            const sourceFileName = sourceParts.pop();
+        if (droppedData.type === 'Asset') {
+            console.log(`[AssetBrowser] Intentando mover ${droppedData.path} a ${targetPath}`);
+            try {
+                const sourcePath = droppedData.path;
+                const sourceParts = sourcePath.split('/').filter(p => p);
+                const sourceFileName = sourceParts.pop();
 
-            let sourceDirHandle = projectHandle;
-            for(const part of sourceParts) {
-                if(part) sourceDirHandle = await sourceDirHandle.getDirectoryHandle(part);
+                // Check if target is same as source directory
+                const targetPathClean = targetPath.endsWith('/') ? targetPath.slice(0, -1) : targetPath;
+                const sourceDirPath = sourceParts.join('/');
+
+                if (targetPathClean === sourceDirPath) {
+                    console.log("[AssetBrowser] El destino es igual al origen. Ignorando movimiento.");
+                    return;
+                }
+
+                let sourceDirHandle = projectHandle;
+                for(const part of sourceParts) {
+                    if(part) sourceDirHandle = await sourceDirHandle.getDirectoryHandle(part);
+                }
+
+                const sourceFileHandle = await sourceDirHandle.getFileHandle(sourceFileName);
+                const file = await sourceFileHandle.getFile();
+
+                // Create new file
+                const newFileHandle = await targetFolderHandle.getFileHandle(sourceFileName, { create: true });
+                const writable = await newFileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+
+                // IMPORTANT: Delete original ONLY if it was successfully copied to a DIFFERENT location
+                await sourceDirHandle.removeEntry(sourceFileName);
+
+                console.log(`[AssetBrowser] Movido ${sourceFileName} a ${targetPath}`);
+                await updateAssetBrowserCallback();
+
+            } catch (error) {
+                console.error("[AssetBrowser] Error al mover el archivo:", error);
+                showNotification('Error', 'No se pudo mover el archivo.');
             }
-
-            const sourceFileHandle = await sourceDirHandle.getFileHandle(sourceFileName);
-            const file = await sourceFileHandle.getFile();
-
-            const newFileHandle = await targetFolderHandle.getFileHandle(sourceFileName, { create: true });
-            const writable = await newFileHandle.createWritable();
-            await writable.write(file);
-            await writable.close();
-
-            await sourceDirHandle.removeEntry(sourceFileName);
-
-            console.log(`Movido ${sourceFileName} a ${targetPath}`);
-            await updateAssetBrowserCallback();
-
-        } catch (error) {
-            console.error("Error al mover el archivo:", error);
-            showNotification('Error', 'No se pudo mover el archivo.');
         }
     }
 
@@ -468,7 +513,7 @@ export async function updateAssetBrowser() {
         // Unified drop handler for the grid view background
         gridViewContainer.ondragover = (e) => {
             e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
+            e.dataTransfer.dropEffect = 'move';
             gridViewContainer.classList.add('drag-over');
         };
         gridViewContainer.ondragleave = () => gridViewContainer.classList.remove('drag-over');
@@ -476,12 +521,17 @@ export async function updateAssetBrowser() {
             e.preventDefault();
             e.stopPropagation();
             gridViewContainer.classList.remove('drag-over');
+            // Cleanup parent blue state if drop handled here
+            dom.assetsContent.classList.remove('drag-over-fs');
+
             try {
                 const dataText = e.dataTransfer.getData('text/plain');
-                const droppedData = JSON.parse(dataText);
-                await handleDropOnFolder(dirHandle, dirPath, droppedData);
+                if (dataText) {
+                    const droppedData = JSON.parse(dataText);
+                    await handleDropOnFolder(dirHandle, dirPath, droppedData);
+                }
             } catch (err) {
-                // Not JSON or other error
+                console.warn("[AssetBrowser] Error procesando drop en grid:", err);
             }
         };
 
@@ -523,9 +573,19 @@ export async function updateAssetBrowser() {
                     item.classList.remove('drag-over');
                     e.preventDefault();
                     e.stopPropagation();
-                    const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
-                    await handleDropOnFolder(targetFolderHandle, `${dirPath}/${entry.name}`, droppedData);
+                    // Cleanup parent blue state
+                    dom.assetsContent.classList.remove('drag-over-fs');
+
+                    try {
+                        const dataText = e.dataTransfer.getData('text/plain');
+                        if (dataText) {
+                            const droppedData = JSON.parse(dataText);
+                            const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
+                            await handleDropOnFolder(targetFolderHandle, `${dirPath}/${entry.name}`, droppedData);
+                        }
+                    } catch(err) {
+                        console.warn("[AssetBrowser] Error al soltar sobre carpeta:", err);
+                    }
                 });
             } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg')) {
                 getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
@@ -627,8 +687,18 @@ export async function updateAssetBrowser() {
             e.preventDefault();
             e.stopPropagation();
             folderItem.classList.remove('drag-over');
-            const droppedData = JSON.parse(e.dataTransfer.getData('text/plain'));
-            await handleDropOnFolder(dirHandle, currentPath, droppedData);
+            // Cleanup parent blue state
+            dom.assetsContent.classList.remove('drag-over-fs');
+
+            try {
+                const dataText = e.dataTransfer.getData('text/plain');
+                if (dataText) {
+                    const droppedData = JSON.parse(dataText);
+                    await handleDropOnFolder(dirHandle, currentPath, droppedData);
+                }
+            } catch(err) {
+                console.warn("[AssetBrowser] Error al soltar en árbol de carpetas:", err);
+            }
         });
 
         container.appendChild(folderItem);
@@ -755,16 +825,22 @@ function handleGridDragStart(e) {
 function handleExternalFileDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
+    // Ensure it stays visible during hover
     dom.assetsContent.classList.add('drag-over-fs');
 }
 
 function handleExternalFileDragLeave(e) {
     e.preventDefault();
     e.stopPropagation();
-    dom.assetsContent.classList.remove('drag-over-fs');
+    dragCounter--;
+    if (dragCounter <= 0) {
+        dragCounter = 0;
+        dom.assetsContent.classList.remove('drag-over-fs');
+    }
 }
 
 async function handleExternalFileDrop(e) {
+    dragCounter = 0;
     dom.assetsContent.classList.remove('drag-over-fs');
 
     // This handles files from the user's OS

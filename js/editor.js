@@ -2459,7 +2459,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Window Menu Logic
         document.getElementById('window-menu-content').addEventListener('click', async (e) => {
             e.preventDefault();
-            const targetId = e.target.id;
+            const menuItem = e.target.closest('a');
+            if (!menuItem) return;
+
+            const targetId = menuItem.id;
             let panelName = '';
             // A bit of a hacky way to get the panel name from the menu item id
             if (targetId.startsWith('menu-window-')) {
@@ -2468,37 +2471,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // The assets panel is special, its menu item is 'assets' but panel is 'assets-panel'
-            if (panelName === 'assets' || panelName === 'hierarchy' || panelName === 'inspector') {
-                 const panel = document.getElementById(`${panelName}-panel`);
-                if (panel) {
-                    const isVisible = !panel.classList.contains('hidden');
-                    panel.classList.toggle('hidden', isVisible);
+            // Unified panel toggle logic
+            let panelId = `${panelName}-panel`;
+
+            // Handle exceptions where panel ID doesn't match menu ID perfectly
+            if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
+            else if (panelName === 'verification-system') panelId = 'verification-system-panel';
+            else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
+            else if (panelName === 'asset-store') panelId = 'asset-store-panel';
+            else if (panelName === 'ambiente-control') panelId = 'ambiente-control-panel';
+            else if (panelName === 'animator') panelId = 'animator-controller-panel';
+
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                const isVisible = !panel.classList.contains('hidden');
+                panel.classList.toggle('hidden', isVisible);
+
+                // If it's a docked panel, update layout
+                if (['assets', 'hierarchy', 'inspector'].includes(panelName)) {
                     panelVisibility[panelName] = !isVisible;
                     updateEditorLayout();
-                    updateWindowMenuUI();
                 }
-            } else if (panelName === 'tile-palette' || panelName === 'sprite-editor' || panelName === 'verification-system') {
-                let panelId;
-                if (panelName === 'sprite-editor') {
-                    panelId = 'sprite-slicer-panel';
-                } else if (panelName === 'verification-system') {
-                    panelId = 'verification-system-panel';
-                } else {
-                    panelId = 'tile-palette-panel';
-                }
-                const panel = document.getElementById(panelId);
-                if (panel) {
-                    panel.classList.toggle('hidden');
-                    updateWindowMenuUI();
-                }
-            } else if (panelName === 'asset-store' || panelName === 'ambiente-control') {
-                 let panelId = panelName === 'asset-store' ? 'asset-store-panel' : 'ambiente-control-panel';
-                const panel = document.getElementById(panelId);
-                if (panel) {
-                    panel.classList.toggle('hidden');
-                    updateWindowMenuUI();
-                }
+
+                updateWindowMenuUI();
             }
         });
 
