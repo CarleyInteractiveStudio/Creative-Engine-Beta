@@ -255,7 +255,7 @@ export function serializeMateria(materia, recursive = false) {
                         leyData.properties[key] = [];
                     } else if (ley.constructor.name === 'AnimatorController' && (key === 'states' || key === 'controller' || key === 'animator' || key === 'projectsDirHandle' || key === 'isLoading' || key === 'isError')) {
                         continue;
-                    } else if (ley.constructor.name === 'Animator' && (key === 'animationClip' || key === 'spriteRenderer' || key === 'projectsDirHandle' || key === 'isLoading' || key === 'isError')) {
+                    } else if (ley.constructor.name === 'Animator' && (key === 'animationClip' || key === 'spriteRenderer' || key === 'projectsDirHandle' || key === 'isLoading' || key === 'isError' || key === 'isPlaying')) {
                         continue;
                     } else if ((ley.constructor.name === 'SpriteRenderer' || ley.constructor.name === 'UIImage') && (key === 'sprite' || key === 'spriteSheet' || key === 'isLoading' || key === 'isError')) {
                         continue;

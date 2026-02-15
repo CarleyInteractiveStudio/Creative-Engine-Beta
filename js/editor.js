@@ -42,6 +42,9 @@ import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject } from './editor/BuildSystem.js';
 
+// Debug configuration
+window.CE_DEBUG_ANIMATION = true;
+
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -1698,6 +1701,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         lastFrameTime = timestamp;
 
+        // Enable verbose animation debugging in the editor
+        window.CE_DEBUG_ANIMATION = true;
+
         SceneView.update(); // Handle all editor input logic
         AmbienteControlWindow.update(deltaTime, isGameRunning);
         EngineAPI.CEEngine.update(deltaTime);
@@ -1716,27 +1722,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        // Update components even in the editor, but ONLY for the selected object to provide feedback
-        if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
-            // Update controller BEFORE animator so it can set the current animation for this frame
-            const controller = selectedMateria.getComponent(Components.AnimatorController);
-            if (controller && controller.isActive) {
-                controller.update(deltaTime);
-            }
-            const animator = selectedMateria.getComponent(Components.Animator);
-            if (animator && animator.isActive) {
-                if (window.CE_DEBUG_ANIMATION && Math.random() < 0.01) {
-                    console.log(`[EditorLoop] Actualizando Animator en '${selectedMateria.name}'`);
+        // Update components even in the editor
+        if (!isGameRunning && SceneManager.currentScene) {
+            // We update ALL renderers to ensure assets are loaded even for non-selected objects
+            for (const materia of SceneManager.currentScene.getAllMaterias()) {
+                if (!materia.isActive) continue;
+
+                // Always update renderers for asset loading logic
+                const sr = materia.getComponent(Components.SpriteRenderer);
+                if (sr) sr.update(deltaTime);
+                const ui = materia.getComponent(Components.UIImage);
+                if (ui) ui.update(deltaTime);
+
+                // ONLY update Animator and Controller for selected object to avoid performance issues
+                // but allow the user to see the character animate when selected.
+                if (materia === selectedMateria) {
+                    const ctrl = materia.getComponent(Components.AnimatorController);
+                    if (ctrl) ctrl.update(deltaTime);
+                    const anim = materia.getComponent(Components.Animator);
+                    if (anim) anim.update(deltaTime);
                 }
-                animator.update(deltaTime);
-            }
-            const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
-            if (spriteRenderer && spriteRenderer.isActive) {
-                spriteRenderer.update(deltaTime);
-            }
-            const uiImage = selectedMateria.getComponent(Components.UIImage);
-            if (uiImage && uiImage.isActive) {
-                uiImage.update(deltaTime);
             }
         }
 

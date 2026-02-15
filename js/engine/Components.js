@@ -1071,30 +1071,38 @@ export class SpriteRenderer extends Leyes {
             return;
         }
 
-        // If already loading the SAME source, don't restart
-        if (this.isLoading && this._loadingSource === this.source) return;
-        this._loadingSource = this.source;
-
-        this.isLoading = true;
-        this.isError = false;
+        const currentDirHandle = projectsDirHandle || window.projectsDirHandle;
 
         try {
-            const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
+            const imageUrl = await getURLForAssetPath(this.source, currentDirHandle);
             if (!imageUrl) {
                 this.isError = true;
                 return;
             }
+
+            // Check if we are already loading this source or if it's already loaded
+            if (this._lastLoadedSource === this.source && this.sprite.complete && this.sprite.naturalWidth > 0) {
+                this.isLoading = false;
+                this.isError = false;
+                return;
+            }
+
+            // If already loading the SAME URL, don't restart
+            if (this.isLoading && this._loadingUrl === imageUrl) return;
+            this._loadingUrl = imageUrl;
+            this.isLoading = true;
+            this.isError = false;
 
             // If the URL is already set but the image isn't complete, we still want to wait
             if (this.sprite.src !== imageUrl || !this.sprite.complete) {
                 await new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => {
                         cleanup();
-                        reject(new Error("Timeout loading image"));
-                    }, 5000);
+                        reject(new Error("Timeout loading image: " + this.source));
+                    }, 8000);
 
                     const onload = () => { cleanup(); resolve(); };
-                    const onerror = (e) => { cleanup(); reject(e); };
+                    const onerror = (e) => { cleanup(); reject(new Error("Failed to load image: " + this.source)); };
                     const cleanup = () => {
                         clearTimeout(timeout);
                         this.sprite.removeEventListener('load', onload);
@@ -1111,15 +1119,15 @@ export class SpriteRenderer extends Leyes {
                     }
                 });
             }
+
+            this._lastLoadedSource = this.source;
+            this.isError = false;
         } catch (error) {
-            console.error(`Error loading sprite: ${this.source}`, error);
+            if (window.CE_DEBUG_ANIMATION) console.error(`Error loading sprite: ${this.source}`, error);
             this.isError = true;
         } finally {
             this.isLoading = false;
-            this._loadingSource = null;
-            if (!this.isError) {
-                this._lastLoadedSource = this.source;
-            }
+            this._loadingUrl = null;
         }
     }
     clone() {
@@ -1158,7 +1166,8 @@ export class Animator extends Leyes {
         this.startFrame = 0;
         this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
-        this.isPlaying = this.playOnAwake;
+        // Importante: Empezar pausado en el editor. El motor llamará a play() al iniciar el juego.
+        this.isPlaying = false;
         this.spriteRenderer = null;
         this.projectsDirHandle = null;
         this._frameCache = []; // Cache of preloaded Image objects
@@ -1447,46 +1456,54 @@ export class UIImage extends Leyes {
             return;
         }
 
-        if (this.isLoading && this._loadingSource === this.source) return;
-        this._loadingSource = this.source;
-
-        this.isLoading = true;
-        this.isError = false;
+        const currentDirHandle = projectsDirHandle || window.projectsDirHandle;
 
         try {
-            const url = await getURLForAssetPath(this.source, projectsDirHandle);
-            if (url) {
-                if (this.sprite.src !== url || !this.sprite.complete) {
-                    await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => { cleanup(); reject(new Error("Timeout loading UI image")); }, 5000);
-                        const onload = () => { cleanup(); resolve(); };
-                        const onerror = (e) => { cleanup(); reject(e); };
-                        const cleanup = () => {
-                            clearTimeout(timeout);
-                            this.sprite.removeEventListener('load', onload);
-                            this.sprite.removeEventListener('error', onerror);
-                        };
-                        this.sprite.addEventListener('load', onload);
-                        this.sprite.addEventListener('error', onerror);
-                        if (this.sprite.src !== url) {
-                            this.sprite.src = url;
-                        } else if (this.sprite.complete) {
-                            onload();
-                        }
-                    });
-                }
-            } else {
+            const url = await getURLForAssetPath(this.source, currentDirHandle);
+            if (!url) {
                 this.isError = true;
+                return;
             }
+
+            if (this._lastLoadedSource === this.source && this.sprite.complete && this.sprite.naturalWidth > 0) {
+                this.isLoading = false;
+                this.isError = false;
+                return;
+            }
+
+            if (this.isLoading && this._loadingUrl === url) return;
+            this._loadingUrl = url;
+            this.isLoading = true;
+            this.isError = false;
+
+            if (this.sprite.src !== url || !this.sprite.complete) {
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => { cleanup(); reject(new Error("Timeout loading UI image: " + this.source)); }, 8000);
+                    const onload = () => { cleanup(); resolve(); };
+                    const onerror = (e) => { cleanup(); reject(new Error("Failed to load UI image: " + this.source)); };
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        this.sprite.removeEventListener('load', onload);
+                        this.sprite.removeEventListener('error', onerror);
+                    };
+                    this.sprite.addEventListener('load', onload);
+                    this.sprite.addEventListener('error', onerror);
+                    if (this.sprite.src !== url) {
+                        this.sprite.src = url;
+                    } else if (this.sprite.complete) {
+                        onload();
+                    }
+                });
+            }
+
+            this._lastLoadedSource = this.source;
+            this.isError = false;
         } catch (error) {
-            console.error(`Error loading UI image: ${this.source}`, error);
+            if (window.CE_DEBUG_ANIMATION) console.error(`Error loading UI image: ${this.source}`, error);
             this.isError = true;
         } finally {
             this.isLoading = false;
-            this._loadingSource = null;
-            if (!this.isError) {
-                this._lastLoadedSource = this.source;
-            }
+            this._loadingUrl = null;
         }
     }
     clone() {
@@ -1905,28 +1922,32 @@ export class AnimatorController extends Leyes {
         let horiz = 0, vert = 0, moving = false;
 
         // 1. Check Movement component (Highest priority for intentional input)
-        if (movement && (Math.abs(movement.lastMove.x) > 0.05 || Math.abs(movement.lastMove.y) > 0.05)) {
+        if (movement && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01)) {
             horiz = movement.lastMove.x;
             vert = movement.lastMove.y;
             moving = true;
+            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz}, ${vert}`);
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
-        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) {
+        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.1 || Math.abs(rb.velocity.y) > 0.1)) {
             horiz = rb.velocity.x;
             vert = rb.velocity.y;
             moving = true;
+            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: ${horiz}, ${vert}`);
         }
 
         // 3. Fallback: Position tracking (Useful for custom movement scripts or editor dragging)
         if (!moving && transform) {
-            if (this._hasLastPosition) {
+            if (this._hasLastPosition && deltaTime > 0) {
                 const dx = (transform.x - this._lastPosition.x) / deltaTime;
                 const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+                // Use a slightly higher threshold for delta tracking to avoid jitter
+                if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
                     horiz = dx;
                     vert = dy;
                     moving = true;
+                    if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: ${horiz}, ${vert}`);
                 }
             }
         }
