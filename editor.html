@@ -510,6 +510,7 @@ public star() {
                         <input type="number" id="animation-speed" value="10" min="1">
                         <span>FPS</span>
                         <button id="add-frame-btn">➕ Añadir Frame</button>
+                        <button id="animation-import-btn" title="Importar imagen(es) como fotogramas">📥 Importar</button>
                         <button id="delete-frame-btn" title="Borrar Frame Seleccionado">🗑️</button>
                         <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo">▲</button>
                     </div>
@@ -1461,6 +1462,9 @@ public star() {
             <div id="asset-selector-grid-view" class="asset-grid-view-style">
                 <!-- Asset items will be populated by JS -->
             </div>
+        </div>
+        <div id="asset-selector-footer" class="hidden">
+            <button id="asset-selector-confirm-btn" class="primary-btn">Aceptar</button>
         </div>
         <div class="resize-handle" data-direction="n"></div>
         <div class="resize-handle" data-direction="ne"></div>

@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'preferences-modal', 'code-editor-content', 'add-component-modal', 'component-list', 'sprite-selector-modal',
             'sprite-selector-grid', 'codemirror-container', 'asset-folder-tree', 'asset-grid-view', 'animation-panel',
             'drawing-canvas', 'code-editor-toolbar', 'code-save-btn', 'code-undo-btn', 'code-redo-btn', 'drawing-tools', 'drawing-color-picker',
-            'add-frame-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
+            'add-frame-btn', 'animation-import-btn', 'delete-frame-btn', 'animation-timeline', 'animation-panel-overlay', 'animation-edit-view',
             'animation-playback-view', 'animation-playback-canvas', 'animation-play-btn', 'animation-stop-btn',
             'animation-save-btn', 'current-scene-name', 'animator-controller-panel', 'drawing-canvas-container',
             'anim-onion-skin-canvas', 'anim-grid-canvas', 'anim-bg-toggle-btn', 'anim-grid-toggle-btn',
@@ -268,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
+            'asset-selector-footer', 'asset-selector-confirm-btn',
             // Disassociate Sprite Modal
             'disassociate-sprite-modal', 'disassociate-sprite-list',
             // Verification System Panel
@@ -365,6 +366,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const gridView = dom.assetSelectorGridView;
         const searchInput = dom.assetSelectorSearch;
         const viewModesContainer = dom.assetSelectorViewModes;
+        const footerEl = document.getElementById('asset-selector-footer');
+        const confirmBtn = document.getElementById('asset-selector-confirm-btn');
+
+        const isMultiple = options && options.multiple;
+        let selectedItems = []; // Array of { handle, path, dirHandle }
+
+        if (isMultiple) {
+            footerEl.classList.remove('hidden');
+        } else {
+            footerEl.classList.add('hidden');
+        }
 
         // NEW: Check if we're in file list mode.
         const isFileListMode = options && options.fileList && Array.isArray(options.fileList);
@@ -469,6 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     uiItem.addEventListener('dblclick', async () => {
                         currentDirHandle = await currentDirHandle.getDirectoryHandle(name);
                         currentPath = `${currentPath}/${name}`;
+                        if (isMultiple) selectedItems = []; // Clear selection when changing folder
                         populateSelector();
                     });
                 } else { // It's a file
@@ -510,11 +523,37 @@ document.addEventListener('DOMContentLoaded', () => {
                     uiItem.appendChild(iconContainer);
                     uiItem.appendChild(nameDiv);
 
+                    // Update visual selection state
+                    if (isMultiple && selectedItems.some(si => si.path === fullPath)) {
+                        uiItem.classList.add('selected');
+                    }
+
+                    uiItem.addEventListener('click', async (e) => {
+                        if (isMultiple) {
+                            const index = selectedItems.findIndex(si => si.path === fullPath);
+                            if (index >= 0) {
+                                selectedItems.splice(index, 1);
+                                uiItem.classList.remove('selected');
+                            } else {
+                                const fileHandle = item.handle || await displayDirHandle.getFileHandle(name);
+                                selectedItems.push({ handle: fileHandle, path: fullPath, dirHandle: displayDirHandle });
+                                uiItem.classList.add('selected');
+                            }
+                        }
+                    });
 
                     uiItem.addEventListener('dblclick', async () => {
                         // Get the file handle, which might be nested inside the item object
                         const fileHandle = item.handle || await displayDirHandle.getFileHandle(name);
-                        callback(fileHandle, fullPath, displayDirHandle);
+                        if (isMultiple) {
+                            // If multiple, dblclick acts as "add this and finish"
+                            if (!selectedItems.some(si => si.path === fullPath)) {
+                                selectedItems.push({ handle: fileHandle, path: fullPath, dirHandle: displayDirHandle });
+                            }
+                            callback(selectedItems);
+                        } else {
+                            callback(fileHandle, fullPath, displayDirHandle);
+                        }
                         selectorPanel.classList.add('hidden');
                     });
                 }
@@ -656,6 +695,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         await populateSelector();
+
+        // --- Multi-selection Confirm ---
+        confirmBtn.onclick = () => {
+            if (isMultiple) {
+                callback(selectedItems);
+                selectorPanel.classList.add('hidden');
+            }
+        };
 
         // Re-attach close button listener to prevent duplicates
         const closeBtn = selectorPanel.querySelector('.close-panel-btn');

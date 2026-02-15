@@ -1,3 +1,5 @@
+import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+
 // --- Animation Editor Module ---
 
 // State variables will be encapsulated here
@@ -185,6 +187,132 @@ export function resetAnimationPanel() {
     currentFrameIndex = -1;
     dom.animationTimeline.innerHTML = '';
     stopAnimationPlayback();
+}
+
+async function imageToDataURL(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => reject(new Error("No se pudo cargar la imagen."));
+        img.src = url;
+    });
+}
+
+async function extractFramesFromImage(imageUrl, cols, rows) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const frames = [];
+            const frameWidth = img.naturalWidth / cols;
+            const frameHeight = img.naturalHeight / rows;
+            const canvas = document.createElement('canvas');
+            canvas.width = frameWidth;
+            canvas.height = frameHeight;
+            const ctx = canvas.getContext('2d');
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    ctx.clearRect(0, 0, frameWidth, frameHeight);
+                    const sx = c * frameWidth;
+                    const sy = r * frameHeight;
+                    ctx.drawImage(img, sx, sy, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+                    frames.push(canvas.toDataURL('image/png'));
+                }
+            }
+            resolve(frames);
+        };
+        img.onerror = () => reject(new Error("No se pudo cargar la imagen para extraer los fotogramas."));
+        img.src = imageUrl;
+    });
+}
+
+function addFramesToAnimation(newFrames) {
+    if (!currentAnimationAsset) return;
+    const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
+        ? currentAnimationAsset.animations[0]
+        : null;
+
+    if (anim) {
+        anim.frames.push(...newFrames);
+        currentFrameIndex = anim.frames.length - 1;
+        populateTimeline();
+        drawOnionSkin();
+    }
+}
+
+export async function importAssets() {
+    if (!currentAnimationAsset) {
+        window.Dialogs.showNotification('Error', 'No hay ningún asset de animación cargado.');
+        return;
+    }
+
+    window.openAssetSelector(async (selectedItems) => {
+        if (!selectedItems || selectedItems.length === 0) return;
+
+        // If openAssetSelector returned an array (multiple mode), handle it
+        const items = Array.isArray(selectedItems) ? selectedItems : [selectedItems];
+
+        if (items.length === 1) {
+            const item = items[0];
+            const url = await getURLForAssetPath(item.path, projectsDirHandle);
+            if (!url) return;
+
+            window.Dialogs.showSelection(
+                "Importar Imagen",
+                "¿Cómo quieres importar esta imagen?",
+                ["Como un solo fotograma", "Como una hoja de sprites (Slice)"],
+                async (value, index) => {
+                    if (index === 0) { // Single frame
+                        try {
+                            const dataUrl = await imageToDataURL(url);
+                            addFramesToAnimation([dataUrl]);
+                        } catch (e) {
+                            console.error(e);
+                            window.Dialogs.showNotification("Error", "No se pudo importar la imagen.");
+                        }
+                    } else { // Spritesheet
+                        window.Dialogs.showPrompt("Hoja de Sprites", "Número de Columnas:", (cols) => {
+                            if (!cols || isNaN(cols)) return;
+                            window.Dialogs.showPrompt("Hoja de Sprites", "Número de Filas:", async (rows) => {
+                                if (!rows || isNaN(rows)) return;
+                                try {
+                                    const frames = await extractFramesFromImage(url, parseInt(cols), parseInt(rows));
+                                    addFramesToAnimation(frames);
+                                } catch (e) {
+                                    console.error(e);
+                                    window.Dialogs.showNotification("Error", "No se pudieron extraer los fotogramas.");
+                                }
+                            });
+                        });
+                    }
+                }
+            );
+        } else {
+            // Multiple images
+            const dataUrls = [];
+            for (const item of items) {
+                const url = await getURLForAssetPath(item.path, projectsDirHandle);
+                if (url) {
+                    try {
+                        const dataUrl = await imageToDataURL(url);
+                        dataUrls.push(dataUrl);
+                    } catch (e) {
+                        console.error(`Error importando ${item.path}:`, e);
+                    }
+                }
+            }
+            addFramesToAnimation(dataUrls);
+        }
+    }, { multiple: true, filter: ['image'], title: "Importar Imagen(es) para Animación" });
 }
 
 export function startAnimationPlayback() {
@@ -394,6 +522,9 @@ function drawOnionSkin() {
     dom.animationSaveBtn.addEventListener('click', saveAnimationAsset);
 
     dom.addFrameBtn.addEventListener('click', addFrameFromCanvas);
+    if (dom.animationImportBtn) {
+        dom.animationImportBtn.addEventListener('click', importAssets);
+    }
 
     dom.deleteFrameBtn.addEventListener('click', () => {
         if (currentFrameIndex === -1) {

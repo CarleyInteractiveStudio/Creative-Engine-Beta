@@ -4329,3 +4329,20 @@ body.game-mode #loading-overlay {
     background-color: rgba(14, 99, 156, 0.3);
     box-shadow: 0 0 5px var(--accent-color);
 }
+
+#asset-selector-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px;
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-background-dark);
+}
+
+#asset-selector-footer.hidden {
+    display: none;
+}
+
+.asset-grid-view-style .grid-item.selected {
+    background-color: rgba(14, 99, 156, 0.4);
+    border: 1px solid var(--accent-color);
+}
