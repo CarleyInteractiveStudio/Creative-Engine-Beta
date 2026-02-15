@@ -259,6 +259,15 @@ async function populateAnimationsList() {
         item.textContent = file.name;
         item.draggable = true;
         item.dataset.path = file.path;
+
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'animation',
+                path: file.path
+            }));
+            e.dataTransfer.effectAllowed = 'copy';
+        });
+
         list.appendChild(item);
     });
 }
