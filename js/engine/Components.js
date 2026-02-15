@@ -1583,21 +1583,52 @@ export class AnimatorController extends Leyes {
 
     _handleSmartMode() {
         const p = this.parameters;
-        let newState = "";
+        if (!this.controller.movementMapping) return;
 
-        if (!p.isMoving) {
-            newState = "Parado";
-        } else {
-            // Choose direction based on horizontal/vertical
-            if (Math.abs(p.horizontal) > Math.abs(p.vertical)) {
-                newState = p.horizontal > 0 ? "Derecha" : "Izquierda";
-            } else {
-                newState = p.vertical > 0 ? "Abajo" : "Arriba"; // Y positive is Down in many 2D engines, but check context
-            }
+        let dirIndex = 4; // Center (Idle)
+
+        if (p.isMoving) {
+            let h = 0;
+            if (p.horizontal > 0.1) h = 1;
+            else if (p.horizontal < -0.1) h = -1;
+
+            let v = 0;
+            if (p.vertical > 0.1) v = 1;
+            else if (p.vertical < -0.1) v = -1;
+
+            dirIndex = (v + 1) * 3 + (h + 1);
         }
 
-        if (newState && this.states.has(newState)) {
-            this.play(newState);
+        const stateName = this.controller.movementMapping[dirIndex];
+        if (stateName && this.states.has(stateName)) {
+            this.play(stateName);
+        } else if (p.isMoving) {
+            // Fallback: If diagonal is not defined, try pure horizontal or vertical
+            let h = p.horizontal > 0.1 ? 1 : (p.horizontal < -0.1 ? -1 : 0);
+            let v = p.vertical > 0.1 ? 1 : (p.vertical < -0.1 ? -1 : 0);
+
+            if (h !== 0 && v !== 0) {
+                // Try pure horizontal
+                let fallbackIndex = (1) * 3 + (h + 1);
+                let fallbackState = this.controller.movementMapping[fallbackIndex];
+                if (fallbackState && this.states.has(fallbackState)) {
+                    this.play(fallbackState);
+                    return;
+                }
+                // Try pure vertical
+                fallbackIndex = (v + 1) * 3 + (1);
+                fallbackState = this.controller.movementMapping[fallbackIndex];
+                if (fallbackState && this.states.has(fallbackState)) {
+                    this.play(fallbackState);
+                    return;
+                }
+            }
+
+            // Second fallback: Idle
+            const idleState = this.controller.movementMapping[4];
+            if (idleState && this.states.has(idleState)) {
+                this.play(idleState);
+            }
         }
     }
 

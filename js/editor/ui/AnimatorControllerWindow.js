@@ -18,11 +18,18 @@ let currentControllerData = null;
 let graphView = null;
 let nodesContainer = null;
 let connectionsLayer = null;
+let graphContent = null;
 
 let isDraggingNode = false;
 let dragNodeInfo = {};
 let isConnecting = false;
 let connectionSource = null;
+
+let isPanning = false;
+let lastPanPos = { x: 0, y: 0 };
+let viewOffset = { x: 0, y: 0 };
+
+let selectedState = null;
 
 // This function is exported and called from other modules (like the asset browser)
 // to open a controller asset in this window.
@@ -47,6 +54,19 @@ export async function openAnimatorController(fileHandle) {
         if (overlay) overlay.classList.add('hidden');
 
         console.log(`Cargado controlador: ${fileHandle.name}`, currentControllerData);
+
+        // Ensure default mapping exists
+        if (!currentControllerData.movementMapping) {
+            currentControllerData.movementMapping = {
+                "4": "Parado",
+                "1": "Arriba",
+                "7": "Abajo",
+                "3": "Izquierda",
+                "5": "Derecha"
+            };
+        }
+
+        await populateAnimationsList();
         renderAnimatorGraph();
     } catch (error) {
         console.error(`Error al cargar el controlador '${fileHandle.name}':`, error);
@@ -209,22 +229,29 @@ function deleteState(stateName) {
 
 async function populateAnimationsList() {
     const list = dom.animatorControllerPanel.querySelector('#animator-assets-list .list-content');
+    if (!list) return;
     list.innerHTML = '';
 
     const animFiles = [];
-    async function findAnims(dirHandle, path = 'Assets') {
+    async function findAnims(dirHandle, path = '') {
         for await (const entry of dirHandle.values()) {
+            const entryPath = path ? `${path}/${entry.name}` : entry.name;
             if (entry.kind === 'file' && entry.name.endsWith('.cea')) {
-                animFiles.push({ name: entry.name, path: `${path}/${entry.name}` });
+                animFiles.push({ name: entry.name, path: entryPath });
             } else if (entry.kind === 'directory') {
-                await findAnims(entry, `${path}/${entry.name}`);
+                await findAnims(entry, entryPath);
             }
         }
     }
 
-    const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-    await findAnims(projectHandle);
+    try {
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        await findAnims(assetsHandle, 'Assets');
+    } catch (e) {
+        console.error("Error populating animations list:", e);
+    }
 
     animFiles.forEach(file => {
         const item = document.createElement('div');
@@ -255,13 +282,125 @@ function populateStatesList() {
 }
 
 function selectState(state) {
+    selectedState = state;
     // Highlight in graph and list
     nodesContainer.querySelectorAll('.anim-state-node').forEach(n => n.classList.remove('selected'));
     const node = nodesContainer.querySelector(`[data-name="${state.name}"]`);
     if (node) node.classList.add('selected');
 
-    // Show properties (optional, maybe later)
-    console.log("Selected state:", state);
+    const stateItems = dom.animatorControllerPanel.querySelectorAll('.state-list-item');
+    stateItems.forEach(item => {
+        item.classList.toggle('selected', item.querySelector('.state-name').textContent === state.name);
+    });
+
+    updateStateInspector();
+}
+
+function updateStateInspector() {
+    const container = dom.animatorControllerPanel.querySelector('#animator-state-inspector .list-content');
+    if (!container) return;
+
+    if (!selectedState) {
+        container.innerHTML = `
+            <div class="panel-overlay-message" style="position: static; padding: 20px;">
+                <p>Selecciona un estado para editar sus propiedades.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="inspector-section">
+            <div class="inspector-row">
+                <label>Nombre</label>
+                <input type="text" id="anim-state-name" value="${selectedState.name}">
+            </div>
+            <div class="inspector-row">
+                <label>Animación (.cea)</label>
+                <div class="file-picker">
+                    <input type="text" id="anim-state-asset" value="${selectedState.animationAsset || ''}" readonly>
+                    <button id="anim-state-asset-btn">...</button>
+                </div>
+            </div>
+            <div class="inspector-row">
+                <label>Velocidad</label>
+                <input type="number" id="anim-state-speed" value="${selectedState.speed || 1.0}" step="0.1">
+            </div>
+            <div class="checkbox-field">
+                <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
+                <label for="anim-state-loop">Bucle (Loop)</label>
+            </div>
+            <hr>
+            <div class="inspector-section-header">
+                <span>Mapeo de Movimiento</span>
+            </div>
+            <p class="field-description">Asigna este estado a una dirección del personaje.</p>
+            <div class="direction-grid-container">
+                <div class="direction-grid" id="anim-direction-grid">
+                    ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
+                        const isAssigned = currentControllerData.movementMapping[i] === selectedState.name;
+                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}"></div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Listeners for inspector
+    container.querySelector('#anim-state-name').onchange = (e) => {
+        const oldName = selectedState.name;
+        const newName = e.target.value;
+        if (!newName || newName === oldName) return;
+
+        // Update name in mapping
+        for (let key in currentControllerData.movementMapping) {
+            if (currentControllerData.movementMapping[key] === oldName) {
+                currentControllerData.movementMapping[key] = newName;
+            }
+        }
+        // Update transitions
+        currentControllerData.transitions.forEach(t => {
+            if (t.from === oldName) t.from = newName;
+            if (t.to === oldName) t.to = newName;
+        });
+        if (currentControllerData.entryState === oldName) currentControllerData.entryState = newName;
+
+        selectedState.name = newName;
+        renderAnimatorGraph();
+    };
+
+    container.querySelector('#anim-state-asset-btn').onclick = () => {
+        window.openAssetSelector((handle, path) => {
+            if (handle) {
+                selectedState.animationAsset = path;
+                updateStateInspector();
+                populateStatesList();
+            }
+        }, { filter: ['.cea'] });
+    };
+
+    container.querySelector('#anim-state-speed').oninput = (e) => {
+        selectedState.speed = parseFloat(e.target.value) || 1.0;
+    };
+
+    container.querySelector('#anim-state-loop').onchange = (e) => {
+        selectedState.loop = e.target.checked;
+    };
+
+    container.querySelector('#anim-direction-grid').onclick = (e) => {
+        const cell = e.target.closest('.direction-cell');
+        if (!cell) return;
+
+        const index = cell.dataset.index;
+        const isCurrentlySet = currentControllerData.movementMapping[index] === selectedState.name;
+
+        if (isCurrentlySet) {
+            delete currentControllerData.movementMapping[index];
+        } else {
+            currentControllerData.movementMapping[index] = selectedState.name;
+        }
+        updateStateInspector();
+    };
 }
 
 function updateGraphData() {
@@ -342,6 +481,7 @@ export function initialize(dependencies) {
 
     if (dom.animatorControllerPanel) {
         graphView = dom.animatorControllerPanel.querySelector('#animator-graph-view');
+        graphContent = dom.animatorControllerPanel.querySelector('#animator-graph-content');
         nodesContainer = dom.animatorControllerPanel.querySelector('#anim-nodes-container');
         connectionsLayer = dom.animatorControllerPanel.querySelector('#animator-connections-layer');
 
@@ -388,6 +528,49 @@ function setupEventListeners() {
         });
     }
 
+    // --- Layout Resizers ---
+    initAnimResizer(document.getElementById('anim-resizer-left'), 'left');
+    initAnimResizer(document.getElementById('anim-resizer-right'), 'right');
+    initAnimResizer(dom.animatorControllerPanel.querySelector('.resizer-h-simple'), 'bottom');
+
+    function initAnimResizer(resizer, type) {
+        if (!resizer) return;
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const assetsPanel = dom.animatorControllerPanel.querySelector('#animator-assets-list');
+            const rightSidebar = dom.animatorControllerPanel.querySelector('#animator-right-sidebar');
+            const statesList = dom.animatorControllerPanel.querySelector('#animator-states-list');
+
+            const startWidthLeft = assetsPanel.offsetWidth;
+            const startWidthRight = rightSidebar.offsetWidth;
+            const startHeightTop = statesList.offsetHeight;
+
+            const onMouseMove = (moveEvent) => {
+                if (type === 'left') {
+                    const newWidth = startWidthLeft + (moveEvent.clientX - startX);
+                    assetsPanel.style.width = `${Math.max(100, newWidth)}px`;
+                } else if (type === 'right') {
+                    const newWidth = startWidthRight - (moveEvent.clientX - startX);
+                    rightSidebar.style.width = `${Math.max(150, newWidth)}px`;
+                } else if (type === 'bottom') {
+                    const newHeight = startHeightTop + (moveEvent.clientY - startY);
+                    statesList.style.flex = 'none';
+                    statesList.style.height = `${Math.max(100, newHeight)}px`;
+                }
+            };
+
+            const onMouseUp = () => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
     // Toolbar button listeners
     const newBtn = document.getElementById('anim-ctrl-new-btn');
     if (newBtn) {
@@ -409,7 +592,26 @@ function setupEventListeners() {
     }
 
     // Graph interactions
+    graphView.addEventListener('mousedown', (e) => {
+        if ((e.button === 1 || (e.button === 0 && e.altKey)) && !isConnecting) {
+            isPanning = true;
+            lastPanPos = { x: e.clientX, y: e.clientY };
+            graphView.style.cursor = 'grabbing';
+            e.preventDefault();
+        }
+    });
+
     window.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+            const dx = e.clientX - lastPanPos.x;
+            const dy = e.clientY - lastPanPos.y;
+            viewOffset.x += dx;
+            viewOffset.y += dy;
+            lastPanPos = { x: e.clientX, y: e.clientY };
+            graphContent.style.transform = `translate(${viewOffset.x}px, ${viewOffset.y}px)`;
+            return;
+        }
+
         if (isDraggingNode && dragNodeInfo.node) {
             const dx = (e.clientX - dragNodeInfo.startX);
             const dy = (e.clientY - dragNodeInfo.startY);
@@ -423,8 +625,8 @@ function setupEventListeners() {
         if (isConnecting && connectionSource) {
             renderTransitions();
             const rect = graphView.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+            const mouseX = (e.clientX - rect.left) - viewOffset.x;
+            const mouseY = (e.clientY - rect.top) - viewOffset.y;
 
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             const ox = 50, oy = 20;
@@ -441,14 +643,24 @@ function setupEventListeners() {
 
     window.addEventListener('mouseup', () => {
         isDraggingNode = false;
+        if (isPanning) {
+            isPanning = false;
+            graphView.style.cursor = '';
+        }
     });
 
     graphView.addEventListener('click', (e) => {
         if (isConnecting) {
              // If clicked empty space, stop connecting
-             if (e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer) {
+             if (e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer || e.target === graphContent) {
                  stopConnecting();
              }
+        } else {
+            if (e.target === graphView || e.target === connectionsLayer || e.target === nodesContainer || e.target === graphContent) {
+                selectedState = null;
+                nodesContainer.querySelectorAll('.anim-state-node').forEach(n => n.classList.remove('selected'));
+                updateStateInspector();
+            }
         }
     });
 

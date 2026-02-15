@@ -581,18 +581,33 @@ public star() {
                         <input type="search" id="anim-assets-search" placeholder="Buscar animaciones...">
                         <div class="list-content"></div>
                     </div>
+                    <div id="anim-resizer-left" class="resizer-v-simple"></div>
                     <div id="animator-graph-view">
-                        <svg id="animator-connections-layer"></svg>
-                        <div id="anim-nodes-container"></div>
+                        <div id="animator-graph-content">
+                            <svg id="animator-connections-layer"></svg>
+                            <div id="anim-nodes-container"></div>
+                        </div>
                         <!-- The visual state machine graph will be rendered here -->
                     </div>
-                    <div id="animator-states-list" class="anim-sidebar">
-                        <div class="list-header">Estados</div>
-                        <div class="list-toolbar">
-                            <button id="anim-state-add-btn" title="Añadir Estado">➕</button>
-                            <button id="anim-state-delete-btn" title="Eliminar Estado">➖</button>
+                    <div id="anim-resizer-right" class="resizer-v-simple"></div>
+                    <div id="animator-right-sidebar">
+                        <div id="animator-states-list" class="anim-sidebar-section">
+                            <div class="list-header">Estados</div>
+                            <div class="list-toolbar">
+                                <button id="anim-state-add-btn" title="Añadir Estado">➕</button>
+                                <button id="anim-state-delete-btn" title="Eliminar Estado">➖</button>
+                            </div>
+                            <div class="list-content"></div>
                         </div>
-                        <div class="list-content"></div>
+                        <div class="resizer-h-simple"></div>
+                        <div id="animator-state-inspector" class="anim-sidebar-section">
+                            <div class="list-header">Inspector de Estado</div>
+                            <div class="list-content inspector-content">
+                                <div class="panel-overlay-message" style="position: static; padding: 20px;">
+                                    <p>Selecciona un estado para editar sus propiedades.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="resize-handle" data-direction="right"></div>
