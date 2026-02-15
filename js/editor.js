@@ -1703,13 +1703,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update animators even in the editor, but ONLY for the selected object
         if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
-            const animator = selectedMateria.getComponent(Components.Animator);
-            if (animator && animator.isActive) {
-                animator.update(deltaTime);
-            }
+            // Update controller BEFORE animator so it can set the current animation for this frame
             const controller = selectedMateria.getComponent(Components.AnimatorController);
             if (controller && controller.isActive) {
                 controller.update(deltaTime);
+            }
+            const animator = selectedMateria.getComponent(Components.Animator);
+            if (animator && animator.isActive) {
+                animator.update(deltaTime);
             }
         }
 

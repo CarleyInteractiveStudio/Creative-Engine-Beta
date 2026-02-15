@@ -1189,12 +1189,18 @@ export class Animator extends Leyes {
     }
 
     play() {
+        if (!this.isPlaying) {
+            console.log(`[Animator] Reproduciendo animación: ${this.animationClipPath}`);
+        }
         this.isPlaying = true;
         this.currentFrame = this.startFrame || 0;
         this.frameTimer = 0;
     }
 
     stop() {
+        if (this.isPlaying) {
+            console.log(`[Animator] Deteniendo animación`);
+        }
         this.isPlaying = false;
     }
 
@@ -1203,13 +1209,21 @@ export class Animator extends Leyes {
     detener() { this.stop(); }
 
     update(deltaTime) {
-        if (!this.isPlaying) {
-            return;
-        }
-
-        // Lazy lookup of SpriteRenderer
+        // Lazy lookup of SpriteRenderer (do it even if not playing so it's ready)
         if (!this.spriteRenderer && this.materia) {
             this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+        }
+
+        // Auto-load clip if path exists but no data
+        if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+            this._isLoading = true;
+            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).finally(() => {
+                this._isLoading = false;
+            });
+        }
+
+        if (!this.isPlaying) {
+            return;
         }
 
         this.frameTimer += deltaTime;
@@ -1692,7 +1706,9 @@ export class AnimatorController extends Leyes {
         }
 
         const state = this.states.get(stateName);
-        console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
+        if (this.currentStateName !== stateName) {
+            console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
+        }
         this.currentStateName = stateName;
 
         // Configure the Animator component with the new state's data
@@ -2103,6 +2119,11 @@ export class Movement extends Leyes {
 
         if (this.useRigidbody && rb) {
             rb.velocity.x = moveX * (this.speed / 10);
+
+            // If gravity is disabled, allow vertical movement (Top-Down)
+            if (rb.gravityScale === 0) {
+                rb.velocity.y = moveY * (this.speed / 10);
+            }
 
             if (this.isGrounded && input.isKeyJustPressed(this.jumpKey)) {
                  rb.addImpulse(0, -this.jumpForce / 10);
