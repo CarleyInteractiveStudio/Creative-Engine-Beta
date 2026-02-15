@@ -284,7 +284,7 @@ function populateStatesList() {
         item.className = 'state-list-item';
         item.innerHTML = `
             <span class="state-name">${state.name}</span>
-            <span class="state-anim">${state.animationAsset ? state.animationAsset.split('/').pop() : 'Ninguana'}</span>
+            <span class="state-anim">${state.animationClip ? state.animationClip.split('/').pop() : 'Ninguna'}</span>
         `;
         item.onclick = () => selectState(state);
         list.appendChild(item);
@@ -328,7 +328,7 @@ function updateStateInspector() {
             <div class="inspector-row">
                 <label>Animación (.cea)</label>
                 <div class="file-picker">
-                    <input type="text" id="anim-state-asset" value="${selectedState.animationAsset || ''}" readonly>
+                    <input type="text" id="anim-state-asset" value="${selectedState.animationClip || ''}" readonly>
                     <button id="anim-state-asset-btn">...</button>
                 </div>
             </div>
@@ -382,7 +382,7 @@ function updateStateInspector() {
     container.querySelector('#anim-state-asset-btn').onclick = () => {
         window.openAssetSelector((handle, path) => {
             if (handle) {
-                selectedState.animationAsset = path;
+                selectedState.animationClip = path;
                 updateStateInspector();
                 populateStatesList();
             }
@@ -448,13 +448,20 @@ async function createNewAnimatorController() {
                 entryState: "Parado",
                 smartMode: true,
                 states: [
-                    { name: "Parado", animationAsset: "", speed: 1.0, position: { x: 300, y: 200 } },
-                    { name: "Arriba", animationAsset: "", speed: 1.0, position: { x: 300, y: 50 } },
-                    { name: "Abajo", animationAsset: "", speed: 1.0, position: { x: 300, y: 350 } },
-                    { name: "Izquierda", animationAsset: "", speed: 1.0, position: { x: 100, y: 200 } },
-                    { name: "Derecha", animationAsset: "", speed: 1.0, position: { x: 500, y: 200 } }
+                    { name: "Parado", animationClip: "", speed: 1.0, position: { x: 300, y: 200 } },
+                    { name: "Arriba", animationClip: "", speed: 1.0, position: { x: 300, y: 50 } },
+                    { name: "Abajo", animationClip: "", speed: 1.0, position: { x: 300, y: 350 } },
+                    { name: "Izquierda", animationClip: "", speed: 1.0, position: { x: 100, y: 200 } },
+                    { name: "Derecha", animationClip: "", speed: 1.0, position: { x: 500, y: 200 } }
                 ],
-                transitions: []
+                transitions: [],
+                movementMapping: {
+                    "4": "Parado",
+                    "1": "Arriba",
+                    "7": "Abajo",
+                    "3": "Izquierda",
+                    "5": "Derecha"
+                }
             };
 
             try {
@@ -701,7 +708,7 @@ function setupEventListeners() {
             const state = currentControllerData.states.find(s => s.name === stateName);
             const animData = JSON.parse(e.dataTransfer.getData('text/plain'));
             if (animData.path && animData.path.endsWith('.cea')) {
-                state.animationAsset = animData.path;
+                state.animationClip = animData.path;
                 renderAnimatorGraph();
             }
         }
@@ -714,7 +721,7 @@ function addNewStatePrompt(x, y) {
         if (name) {
             currentControllerData.states.push({
                 name: name,
-                animationAsset: "",
+                animationClip: "",
                 speed: 1.0,
                 position: { x: x, y: y }
             });

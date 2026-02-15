@@ -121,11 +121,11 @@ export async function handleContextMenuAction(action) {
                             entryState: "Parado",
                             smartMode: true,
                             states: [
-                                { name: "Parado", animationAsset: "", speed: 1.0, position: { x: 300, y: 200 } },
-                                { name: "Arriba", animationAsset: "", speed: 1.0, position: { x: 300, y: 50 } },
-                                { name: "Abajo", animationAsset: "", speed: 1.0, position: { x: 300, y: 350 } },
-                                { name: "Izquierda", animationAsset: "", speed: 1.0, position: { x: 100, y: 200 } },
-                                { name: "Derecha", animationAsset: "", speed: 1.0, position: { x: 500, y: 200 } }
+                                { name: "Parado", animationClip: "", speed: 1.0, position: { x: 300, y: 200 } },
+                                { name: "Arriba", animationClip: "", speed: 1.0, position: { x: 300, y: 50 } },
+                                { name: "Abajo", animationClip: "", speed: 1.0, position: { x: 300, y: 350 } },
+                                { name: "Izquierda", animationClip: "", speed: 1.0, position: { x: 100, y: 200 } },
+                                { name: "Derecha", animationClip: "", speed: 1.0, position: { x: 500, y: 200 } }
                             ],
                             transitions: []
                         }, null, 2);

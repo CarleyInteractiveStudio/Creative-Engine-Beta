@@ -991,11 +991,17 @@ export class SpriteRenderer extends Leyes {
         if (this._spriteName === value) return;
         this._spriteName = value;
 
-        // If it's a data URL and we don't have a spritesheet, update the image source directly.
-        // This is used for animations that use individual image data.
-        if (!this.spriteSheet && value && value.startsWith('data:')) {
-            if (this.sprite.src !== value) {
-                this.sprite.src = value;
+        // If we don't have a spritesheet, value can be a data URL or a direct file path (from an animation)
+        if (!this.spriteSheet && value) {
+            if (value.startsWith('data:')) {
+                if (this.sprite.src !== value) {
+                    this.sprite.src = value;
+                }
+            } else if (value.includes('/') || value.includes('.')) {
+                // If it looks like a path, treat it as a source override.
+                // This allows animations to use multiple individual files as frames.
+                this.source = value;
+                this.loadSprite(window.projectsDirHandle);
             }
         }
     }
@@ -1564,6 +1570,7 @@ export class AnimatorController extends Leyes {
             return;
         }
 
+        console.log(`[AnimatorController] Reproduciendo estado: ${stateName}`);
         const state = this.states.get(stateName);
         this.currentStateName = stateName;
 
