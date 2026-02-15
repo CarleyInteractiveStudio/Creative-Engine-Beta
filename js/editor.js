@@ -1389,9 +1389,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (spriteRenderer) {
-                    // Optimized check: if we have a valid image object with data, use it even if not "complete" per-browser
+                    // Optimized check: only draw if the image has valid dimensions
                     const img = spriteRenderer.sprite;
-                    if (img && (img.complete || img.naturalWidth > 0)) {
+                    if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
                         let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
                         let pivotX = 0.5, pivotY = 0.5;
 
@@ -1425,7 +1425,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let sourceImg = img;
                         let sourceSX = sx, sourceSY = sy, sourceSW = sWidth, sourceSH = sHeight;
 
-                        if (!isWhite) {
+                        if (!isWhite && sWidth > 0 && sHeight > 0) {
                             scratchCanvas.width = Math.ceil(sWidth);
                             scratchCanvas.height = Math.ceil(sHeight);
                             scratchCtx.clearRect(0, 0, scratchCanvas.width, scratchCanvas.height);
@@ -1436,6 +1436,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             scratchCtx.globalCompositeOperation = 'source-over';
                             sourceImg = scratchCanvas;
                             sourceSX = 0; sourceSY = 0;
+                            sourceSW = scratchCanvas.width;
+                            sourceSH = scratchCanvas.height;
                         }
 
                         const mirrorX = parallax ? parallax.mirroring.x : 0;

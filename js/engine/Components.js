@@ -986,6 +986,7 @@ export class SpriteRenderer extends Leyes {
         this.spriteSheet = null; // Holds the loaded .ceSprite data
         this.isError = false;
         this.isLoading = false;
+        this._lastLoadedSource = '';
     }
 
     get spriteName() { return this._spriteName; }
@@ -1050,12 +1051,9 @@ export class SpriteRenderer extends Leyes {
     }
 
     update(deltaTime) {
-        // Auto-load if source is set but not loaded or loading
-        if (this.source && !this.sprite.src.includes(this.source) && !this.isLoading && !this.isError) {
-            // Check if it's already a blob/data URL representing the source
-            if (!this.sprite.src.startsWith('blob:') && !this.sprite.src.startsWith('data:')) {
-                this.loadSprite(window.projectsDirHandle);
-            }
+        // Auto-load if source is set but not yet loaded
+        if (this.source && this.source !== this._lastLoadedSource && !this.isLoading && !this.isError) {
+            this.loadSprite(window.projectsDirHandle);
         }
     }
 
@@ -1069,6 +1067,7 @@ export class SpriteRenderer extends Leyes {
             this.sprite.src = '';
             this.isError = false;
             this.isLoading = false;
+            this._lastLoadedSource = '';
             return;
         }
 
@@ -1118,6 +1117,9 @@ export class SpriteRenderer extends Leyes {
         } finally {
             this.isLoading = false;
             this._loadingSource = null;
+            if (!this.isError) {
+                this._lastLoadedSource = this.source;
+            }
         }
     }
     clone() {
@@ -1390,14 +1392,13 @@ export class UIImage extends Leyes {
         this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
         this.isError = false;
         this.isLoading = false;
+        this._lastLoadedSource = '';
     }
 
     update(deltaTime) {
-        // Auto-load if source is set but not loaded or loading
-        if (this.source && !this.sprite.src.includes(this.source) && !this.isLoading && !this.isError) {
-            if (!this.sprite.src.startsWith('blob:') && !this.sprite.src.startsWith('data:')) {
-                this.loadSprite(window.projectsDirHandle);
-            }
+        // Auto-load if source is set but not yet loaded
+        if (this.source && this.source !== this._lastLoadedSource && !this.isLoading && !this.isError) {
+            this.loadSprite(window.projectsDirHandle);
         }
     }
 
@@ -1411,6 +1412,7 @@ export class UIImage extends Leyes {
             this.sprite.src = '';
             this.isError = false;
             this.isLoading = false;
+            this._lastLoadedSource = '';
             return;
         }
 
@@ -1451,6 +1453,9 @@ export class UIImage extends Leyes {
         } finally {
             this.isLoading = false;
             this._loadingSource = null;
+            if (!this.isError) {
+                this._lastLoadedSource = this.source;
+            }
         }
     }
     clone() {
