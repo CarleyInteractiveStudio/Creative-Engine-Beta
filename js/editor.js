@@ -1389,8 +1389,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (spriteRenderer) {
-                    if (spriteRenderer.sprite && spriteRenderer.sprite.complete && spriteRenderer.sprite.naturalWidth > 0) {
-                        const img = spriteRenderer.sprite;
+                    // Optimized check: if we have a valid image object with data, use it even if not "complete" per-browser
+                    const img = spriteRenderer.sprite;
+                    if (img && (img.complete || img.naturalWidth > 0)) {
                         let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
                         let pivotX = 0.5, pivotY = 0.5;
 

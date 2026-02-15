@@ -1146,7 +1146,7 @@ export class Animator extends Leyes {
     constructor(materia) {
         super(materia);
         this.animationClipPath = ''; // Path to the .ceanimclip or .cea asset
-        this.speed = 10;
+        this.speed = 12;
         this.loop = true;
         this.playOnAwake = true;
 
@@ -1184,10 +1184,8 @@ export class Animator extends Leyes {
             // Handle both .cea and .ceanimclip formats
             let clip;
             if (data.animations && data.animations.length > 0) {
-                // Legacy .cea format
                 clip = data.animations[0];
             } else {
-                // New .ceanimclip format
                 clip = data;
             }
 
@@ -1196,22 +1194,29 @@ export class Animator extends Leyes {
             // Preload frames to avoid flicker
             if (clip && clip.frames) {
                 this._frameCache = [];
-                for (let i = 0; i < clip.frames.length; i++) {
-                    const frameData = clip.frames[i];
+                const preloadPromises = clip.frames.map(async (frameData, index) => {
                     if (typeof frameData === 'string') {
                         const img = new Image();
-                        // For Data URLs, this is almost instant
-                        if (frameData.startsWith('data:')) {
-                            img.src = frameData;
-                        } else {
-                            // For file paths, we need to resolve the URL
-                            getURLForAssetPath(frameData, projectsDirHandle).then(url => {
-                                if (url) img.src = url;
+                        this._frameCache[index] = img;
+
+                        let src = frameData;
+                        if (!frameData.startsWith('data:')) {
+                            src = await getURLForAssetPath(frameData, projectsDirHandle);
+                        }
+
+                        if (src) {
+                            return new Promise((resolve) => {
+                                img.onload = () => resolve();
+                                img.onerror = () => resolve(); // Resolve anyway to not block
+                                img.src = src;
                             });
                         }
-                        this._frameCache[i] = img;
                     }
-                }
+                    return Promise.resolve();
+                });
+
+                // Wait for all frames to be ready (or fail) before proceeding
+                await Promise.all(preloadPromises);
             }
 
             if (this.playOnAwake) {
@@ -1311,13 +1316,16 @@ export class Animator extends Leyes {
                 // Update the SpriteRenderer if it exists
                 if (this.spriteRenderer) {
                     // Check cache first to avoid flicker
-                    if (this._frameCache[this.currentFrame] && this._frameCache[this.currentFrame].complete) {
-                        this.spriteRenderer.sprite = this._frameCache[this.currentFrame];
+                    const cachedImg = this._frameCache[this.currentFrame];
+                    if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+                        this.spriteRenderer.sprite = cachedImg;
                         this.spriteRenderer.isLoading = false;
-                        // Still update spriteName/source for consistency, but the Image object is already swapped
+                        this.spriteRenderer.isError = false;
+
+                        // Sync names without triggering re-loads
                         const frame = clip.frames[this.currentFrame];
                         if (typeof frame === 'string') {
-                            this.spriteRenderer._spriteName = frame; // Internal set to avoid re-triggering load
+                            this.spriteRenderer._spriteName = frame;
                             this.spriteRenderer.source = frame;
                         }
                     } else {
@@ -1776,7 +1784,7 @@ export class AnimatorController extends Leyes {
         this.currentStateName = stateName;
 
         // Configure the Animator component with the new state's data
-        this.animator.speed = state.speed || 10;
+        this.animator.speed = state.speed || 12;
         this.animator.loop = state.loop !== undefined ? state.loop : true;
         this.animator.startFrame = state.startFrame || 0;
         this.animator.endFrame = state.endFrame !== undefined ? state.endFrame : -1;

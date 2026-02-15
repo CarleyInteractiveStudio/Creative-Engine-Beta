@@ -335,7 +335,7 @@ function updateStateInspector() {
             </div>
             <div class="inspector-row">
                 <label>Velocidad</label>
-                <input type="number" id="anim-state-speed" value="${selectedState.speed !== undefined ? selectedState.speed : 10.0}" step="0.1">
+                <input type="number" id="anim-state-speed" value="${selectedState.speed !== undefined ? selectedState.speed : 12.0}" step="0.1">
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
@@ -449,11 +449,11 @@ async function createNewAnimatorController() {
                 entryState: "Parado",
                 smartMode: true,
                 states: [
-                    { name: "Parado", animationClip: "", speed: 10.0, position: { x: 300, y: 200 } },
-                    { name: "Arriba", animationClip: "", speed: 10.0, position: { x: 300, y: 50 } },
-                    { name: "Abajo", animationClip: "", speed: 10.0, position: { x: 300, y: 350 } },
-                    { name: "Izquierda", animationClip: "", speed: 10.0, position: { x: 100, y: 200 } },
-                    { name: "Derecha", animationClip: "", speed: 10.0, position: { x: 500, y: 200 } }
+                    { name: "Parado", animationClip: "", speed: 12.0, position: { x: 300, y: 200 } },
+                    { name: "Arriba", animationClip: "", speed: 12.0, position: { x: 300, y: 50 } },
+                    { name: "Abajo", animationClip: "", speed: 12.0, position: { x: 300, y: 350 } },
+                    { name: "Izquierda", animationClip: "", speed: 12.0, position: { x: 100, y: 200 } },
+                    { name: "Derecha", animationClip: "", speed: 12.0, position: { x: 500, y: 200 } }
                 ],
                 transitions: [],
                 movementMapping: {
@@ -724,7 +724,7 @@ function addNewStatePrompt(x, y) {
             currentControllerData.states.push({
                 name: name,
                 animationClip: "",
-                speed: 10.0,
+                speed: 12.0,
                 position: { x: x, y: y }
             });
             renderAnimatorGraph();
