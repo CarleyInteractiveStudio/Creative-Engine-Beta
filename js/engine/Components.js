@@ -991,15 +991,15 @@ export class SpriteRenderer extends Leyes {
         if (this._spriteName === value) return;
         this._spriteName = value;
 
-        // If we don't have a spritesheet, value can be a data URL or a direct file path (from an animation)
-        if (!this.spriteSheet && value) {
+        // If it's a data URL or a path, it's a direct source override (e.g. from imported frames)
+        if (typeof value === 'string' && value) {
             if (value.startsWith('data:')) {
+                this.spriteSheet = null; // Important: Clear spritesheet mode
                 if (this.sprite.src !== value) {
                     this.sprite.src = value;
                 }
             } else if (value.includes('/') || value.includes('.')) {
-                // If it looks like a path, treat it as a source override.
-                // This allows animations to use multiple individual files as frames.
+                this.spriteSheet = null;
                 this.source = value;
                 this.loadSprite(window.projectsDirHandle);
             }
@@ -1203,9 +1203,20 @@ export class Animator extends Leyes {
 
                 // Update the SpriteRenderer if it exists
                 if (this.spriteRenderer) {
-                    const spriteName = clip.frames[this.currentFrame];
-                    if (this.spriteRenderer.spriteName !== spriteName) {
-                        this.spriteRenderer.spriteName = spriteName;
+                    const frame = clip.frames[this.currentFrame];
+                    if (typeof frame === 'object' && frame !== null) {
+                        // Frame refers to a specific sprite in a .ceSprite asset
+                        if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
+                            this.spriteRenderer.setSourcePath(frame.spriteAssetPath, window.projectsDirHandle);
+                        }
+                        if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
+                            this.spriteRenderer.spriteName = frame.spriteName;
+                        }
+                    } else if (typeof frame === 'string') {
+                        // Frame is a direct Data URL or file path
+                        if (this.spriteRenderer.spriteName !== frame) {
+                            this.spriteRenderer.spriteName = frame;
+                        }
                     }
                 }
             }
@@ -1560,6 +1571,11 @@ export class AnimatorController extends Leyes {
     play(stateName) {
         if (!stateName) return;
 
+        // Lazy lookup of Animator
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+
         // Defensive check
         if (!(this.states instanceof Map)) {
             this.states = new Map();
@@ -1584,7 +1600,7 @@ export class AnimatorController extends Leyes {
         if (this.animator.animationClipPath !== state.animationClip) {
             this.animator.animationClipPath = state.animationClip;
             // The animator needs the handle to load the new clip
-            this.animator.loadAnimationClip(this.projectsDirHandle).then(() => {
+            this.animator.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
                 this.animator.play();
             });
         } else {
@@ -1603,6 +1619,25 @@ export class AnimatorController extends Leyes {
     establecerParametro(nombre, valor) { this.setParameter(nombre, valor); }
 
     update(deltaTime) {
+        // Lazy lookup of Animator
+        if (!this.animator && this.materia) {
+            this.animator = this.materia.getComponent(Animator);
+        }
+
+        // Auto-load controller data if needed
+        if (!this.controller && this.controllerPath) {
+            if (!this._isAutoLoading) {
+                this._isAutoLoading = true;
+                this.loadController(this.projectsDirHandle || window.projectsDirHandle).then(() => {
+                    this._isAutoLoading = false;
+                    // Play entry state after auto-load
+                    if (this.controller && this.controller.entryState) {
+                        this.play(this.controller.entryState);
+                    }
+                });
+            }
+        }
+
         if (!this.animator || !this.controller) return;
 
         // Auto-update parameters from Rigidbody2D if it exists

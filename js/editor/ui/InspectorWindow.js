@@ -236,6 +236,15 @@ async function handleInspectorDrop(e) {
             if (targetComponent instanceof Components.UIText && propName === 'fontAssetPath') {
                 await targetComponent.loadFont(projectsDirHandle);
             }
+            if (targetComponent instanceof Components.Animator && propName === 'animationClipPath') {
+                await targetComponent.loadAnimationClip(projectsDirHandle);
+            }
+            if (targetComponent instanceof Components.AnimatorController && propName === 'controllerPath') {
+                await targetComponent.loadController(projectsDirHandle);
+                if (targetComponent.controller && targetComponent.controller.entryState) {
+                    targetComponent.play(targetComponent.controller.entryState);
+                }
+            }
 
             updateInspector();
             if (updateSceneCallback) updateSceneCallback();
