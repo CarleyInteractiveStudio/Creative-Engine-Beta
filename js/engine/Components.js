@@ -1159,6 +1159,7 @@ export class Animator extends Leyes {
         this.isPlaying = this.playOnAwake;
         this.spriteRenderer = null;
         this.projectsDirHandle = null;
+        this._frameCache = []; // Cache of preloaded Image objects
     }
 
     start() {
@@ -1181,12 +1182,36 @@ export class Animator extends Leyes {
             const data = await response.json();
 
             // Handle both .cea and .ceanimclip formats
+            let clip;
             if (data.animations && data.animations.length > 0) {
                 // Legacy .cea format
-                this.animationClip = data.animations[0];
+                clip = data.animations[0];
             } else {
                 // New .ceanimclip format
-                this.animationClip = data;
+                clip = data;
+            }
+
+            this.animationClip = clip;
+
+            // Preload frames to avoid flicker
+            if (clip && clip.frames) {
+                this._frameCache = [];
+                for (let i = 0; i < clip.frames.length; i++) {
+                    const frameData = clip.frames[i];
+                    if (typeof frameData === 'string') {
+                        const img = new Image();
+                        // For Data URLs, this is almost instant
+                        if (frameData.startsWith('data:')) {
+                            img.src = frameData;
+                        } else {
+                            // For file paths, we need to resolve the URL
+                            getURLForAssetPath(frameData, projectsDirHandle).then(url => {
+                                if (url) img.src = url;
+                            });
+                        }
+                        this._frameCache[i] = img;
+                    }
+                }
             }
 
             if (this.playOnAwake) {
@@ -1285,22 +1310,34 @@ export class Animator extends Leyes {
 
                 // Update the SpriteRenderer if it exists
                 if (this.spriteRenderer) {
-                    const frame = clip.frames[this.currentFrame];
-                    if (typeof frame === 'object' && frame !== null) {
-                        // Frame refers to a specific sprite in a .ceSprite asset
-                        let changed = false;
-                        if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
-                            this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
-                            changed = true;
+                    // Check cache first to avoid flicker
+                    if (this._frameCache[this.currentFrame] && this._frameCache[this.currentFrame].complete) {
+                        this.spriteRenderer.sprite = this._frameCache[this.currentFrame];
+                        this.spriteRenderer.isLoading = false;
+                        // Still update spriteName/source for consistency, but the Image object is already swapped
+                        const frame = clip.frames[this.currentFrame];
+                        if (typeof frame === 'string') {
+                            this.spriteRenderer._spriteName = frame; // Internal set to avoid re-triggering load
+                            this.spriteRenderer.source = frame;
                         }
-                        if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
-                            this.spriteRenderer.spriteName = frame.spriteName;
-                            changed = true;
-                        }
-                    } else if (typeof frame === 'string') {
-                        // Frame is a direct Data URL or file path
-                        if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
-                            this.spriteRenderer.spriteName = frame;
+                    } else {
+                        const frame = clip.frames[this.currentFrame];
+                        if (typeof frame === 'object' && frame !== null) {
+                            // Frame refers to a specific sprite in a .ceSprite asset
+                            let changed = false;
+                            if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
+                                this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
+                                changed = true;
+                            }
+                            if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
+                                this.spriteRenderer.spriteName = frame.spriteName;
+                                changed = true;
+                            }
+                        } else if (typeof frame === 'string') {
+                            // Frame is a direct Data URL or file path
+                            if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
+                                this.spriteRenderer.spriteName = frame;
+                            }
                         }
                     }
                 }

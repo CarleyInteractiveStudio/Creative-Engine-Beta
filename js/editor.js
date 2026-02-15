@@ -1485,14 +1485,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             ctx.lineWidth = 2;
                             ctx.strokeRect(dx, dy, dWidth, dHeight);
                         } else if (spriteRenderer.isLoading) {
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                            ctx.fillRect(dx, dy, dWidth, dHeight);
-                            ctx.strokeStyle = 'white';
-                            ctx.lineWidth = 1;
-                            ctx.strokeRect(dx, dy, dWidth, dHeight);
+                            // Draw a very faint placeholder only if it's the first load
+                            if (!img || img.naturalWidth === 0) {
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                                ctx.fillRect(dx, dy, dWidth, dHeight);
+                                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                                ctx.lineWidth = 1;
+                                ctx.strokeRect(dx, dy, dWidth, dHeight);
+                            }
                         } else {
-                            ctx.fillStyle = spriteRenderer.color || 'white';
-                            ctx.fillRect(dx, dy, dWidth, dHeight);
+                            // If not loading and no image, only draw a solid box if no source is assigned (default state)
+                            if (!spriteRenderer.source && !spriteRenderer.spriteAssetPath) {
+                                ctx.fillStyle = spriteRenderer.color || 'white';
+                                ctx.fillRect(dx, dy, dWidth, dHeight);
+                            }
                         }
                         ctx.restore();
                     }

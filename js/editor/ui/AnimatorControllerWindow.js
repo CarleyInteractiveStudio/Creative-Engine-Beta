@@ -335,7 +335,7 @@ function updateStateInspector() {
             </div>
             <div class="inspector-row">
                 <label>Velocidad</label>
-                <input type="number" id="anim-state-speed" value="${selectedState.speed || 1.0}" step="0.1">
+                <input type="number" id="anim-state-speed" value="${selectedState.speed !== undefined ? selectedState.speed : 10.0}" step="0.1">
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
@@ -724,7 +724,7 @@ function addNewStatePrompt(x, y) {
             currentControllerData.states.push({
                 name: name,
                 animationClip: "",
-                speed: 1.0,
+                speed: 10.0,
                 position: { x: x, y: y }
             });
             renderAnimatorGraph();
