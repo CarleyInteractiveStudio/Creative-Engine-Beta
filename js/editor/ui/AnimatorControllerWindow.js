@@ -100,6 +100,7 @@ function renderAnimatorGraph() {
         // State interactions
         node.addEventListener('mousedown', (e) => {
             if (e.button === 0 && !isConnecting) {
+                selectState(state);
                 isDraggingNode = true;
                 dragNodeInfo = {
                     node: node,

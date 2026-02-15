@@ -1906,6 +1906,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateHierarchy();
             selectMateria(null); // Deselect everything
             updateInspector();
+
+            // Re-cargar assets para que sean visibles en el editor después de la restauración
+            SceneManager.currentScene.loadAllAssets(projectsDirHandle).then(() => {
+                console.log("Assets de la escena restaurada cargados.");
+                updateScene(renderer, false);
+            });
+
             console.log("Escena restaurada.");
         } else {
             console.warn("No se encontró una snapshot de la escena para restaurar. El estado del editor puede ser inconsistente.");

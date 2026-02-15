@@ -979,11 +979,25 @@ export class SpriteRenderer extends Leyes {
         this.sprite = new Image();
         this.source = ''; // Path to the source image file (e.g., player.png)
         this.spriteAssetPath = ''; // Path to the .ceSprite asset
-        this.spriteName = ''; // Name of the specific sprite from the .ceSprite asset
+        this._spriteName = ''; // Name of the specific sprite from the .ceSprite asset
         this.color = '#ffffff';
         this.opacity = 1.0;
         this.orderInLayer = 0;
         this.spriteSheet = null; // Holds the loaded .ceSprite data
+    }
+
+    get spriteName() { return this._spriteName; }
+    set spriteName(value) {
+        if (this._spriteName === value) return;
+        this._spriteName = value;
+
+        // If it's a data URL and we don't have a spritesheet, update the image source directly.
+        // This is used for animations that use individual image data.
+        if (!this.spriteSheet && value && value.startsWith('data:')) {
+            if (this.sprite.src !== value) {
+                this.sprite.src = value;
+            }
+        }
     }
 
     setSourcePath(path, projectsDirHandle) {
@@ -1045,6 +1059,7 @@ export class SpriteRenderer extends Leyes {
     clone() {
         const newRenderer = new SpriteRenderer(null);
         newRenderer.source = this.source;
+        newRenderer.spriteAssetPath = this.spriteAssetPath;
         newRenderer.spriteName = this.spriteName;
         newRenderer.color = this.color;
         newRenderer.opacity = this.opacity;
@@ -1136,6 +1151,11 @@ export class Animator extends Leyes {
             return;
         }
 
+        // Lazy lookup of SpriteRenderer
+        if (!this.spriteRenderer && this.materia) {
+            this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
+        }
+
         this.frameTimer += deltaTime;
         const frameDuration = 1 / (this.speed || 10);
 
@@ -1192,6 +1212,8 @@ export class Animator extends Leyes {
         newAnimator.speed = this.speed;
         newAnimator.loop = this.loop;
         newAnimator.playOnAwake = this.playOnAwake;
+        newAnimator.startFrame = this.startFrame;
+        newAnimator.endFrame = this.endFrame;
         return newAnimator;
     }
 }

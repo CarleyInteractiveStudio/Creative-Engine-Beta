@@ -7,6 +7,11 @@ export function setStandaloneMode(value) {
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 
+    // --- Data, Blob, and HTTP URL Support ---
+    if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
+        return path;
+    }
+
     if (isStandalone) {
         // In standalone mode, we assume assets are served relative to the root
         // and paths are already correct (e.g., 'Assets/image.png')

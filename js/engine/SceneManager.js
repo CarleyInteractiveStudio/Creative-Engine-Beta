@@ -157,6 +157,37 @@ export class Scene {
 
         return newScene;
     }
+
+    /**
+     * Re-carga todos los assets necesarios para los componentes en la escena.
+     * Útil después de restaurar una escena desde un snapshot o cargarla por primera vez.
+     */
+    async loadAllAssets(projectsDirHandle) {
+        const promises = [];
+        for (const materia of this.getAllMaterias()) {
+            for (const ley of materia.leyes) {
+                const className = ley.constructor.name;
+                if (className === 'SpriteRenderer') {
+                    if (ley.spriteAssetPath) {
+                        promises.push(ley.loadSpriteSheet(projectsDirHandle));
+                    } else if (ley.source) {
+                        promises.push(ley.loadSprite(projectsDirHandle));
+                    }
+                } else if (className === 'Animator') {
+                    if (ley.animationClipPath) {
+                        promises.push(ley.loadAnimationClip(projectsDirHandle));
+                    }
+                } else if (className === 'AnimatorController') {
+                    if (ley.controllerPath) {
+                        promises.push(ley.initialize(projectsDirHandle));
+                    }
+                } else if (className === 'Terreno2D') {
+                    promises.push(ley.loadTextures(projectsDirHandle));
+                }
+            }
+        }
+        await Promise.allSettled(promises);
+    }
 }
 
 export let currentScene = new Scene();
