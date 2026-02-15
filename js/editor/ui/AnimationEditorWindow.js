@@ -299,54 +299,93 @@ export async function importAssets() {
         return;
     }
 
-    window.openAssetSelector(async (selectedItems) => {
-        if (!selectedItems || selectedItems.length === 0) return;
+    const pickFromAssets = () => {
+        window.openAssetSelector(async (selectedItems) => {
+            if (!selectedItems || selectedItems.length === 0) return;
+            const items = Array.isArray(selectedItems) ? selectedItems : [selectedItems];
+            processImportItems(items);
+        }, { multiple: true, filter: ['image'], title: "Importar Imagen(es) de Assets" });
+    };
 
-        // If openAssetSelector returned an array (multiple mode), handle it
-        const items = Array.isArray(selectedItems) ? selectedItems : [selectedItems];
+    const pickFromDisk = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
 
-        if (items.length === 1) {
-            const item = items[0];
-            const url = await getURLForAssetPath(item.path, projectsDirHandle);
-            if (!url) return;
+            const items = await Promise.all(files.map(async file => {
+                const dataUrl = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => resolve(ev.target.result);
+                    reader.readAsDataURL(file);
+                });
+                return { path: file.name, dataUrl: dataUrl };
+            }));
+            processImportItems(items);
+        };
+        input.click();
+    };
 
-            window.Dialogs.showSelection(
-                "Importar Imagen",
-                "¿Cómo quieres importar esta imagen?",
-                ["Como un solo fotograma", "Como una hoja de sprites (Slice)"],
-                async (value, index) => {
-                    if (index === 0) { // Single frame
-                        try {
-                            const dataUrl = await imageToDataURL(url);
-                            addFramesToAnimation([dataUrl]);
-                        } catch (e) {
-                            console.error(e);
-                            window.Dialogs.showNotification("Error", "No se pudo importar la imagen.");
-                        }
-                    } else { // Spritesheet
-                        window.Dialogs.showPrompt("Hoja de Sprites", "Número de Columnas:", (cols) => {
-                            if (!cols || isNaN(cols)) return;
-                            window.Dialogs.showPrompt("Hoja de Sprites", "Número de Filas:", async (rows) => {
-                                if (!rows || isNaN(rows)) return;
-                                try {
-                                    const frames = await extractFramesFromImage(url, parseInt(cols), parseInt(rows));
-                                    addFramesToAnimation(frames);
-                                } catch (e) {
-                                    console.error(e);
-                                    window.Dialogs.showNotification("Error", "No se pudieron extraer los fotogramas.");
-                                }
-                            });
-                        });
+    window.Dialogs.showSelection(
+        "Importar Imágenes",
+        "¿De dónde quieres importar las fotos?",
+        ["De la Carpeta Assets (Proyecto)", "De mi Computadora (Disco)"],
+        (value, index) => {
+            if (index === 0) pickFromAssets();
+            else pickFromDisk();
+        }
+    );
+}
+
+async function processImportItems(items) {
+    if (items.length === 1) {
+        const item = items[0];
+        const url = item.dataUrl || await getURLForAssetPath(item.path, projectsDirHandle);
+        if (!url) return;
+
+        window.Dialogs.showSelection(
+            "Importar Imagen",
+            "¿Cómo quieres importar esta imagen?",
+            ["Como un solo fotograma", "Como una hoja de sprites (Slice)"],
+            async (value, index) => {
+                if (index === 0) { // Single frame
+                    try {
+                        const dataUrl = item.dataUrl || await imageToDataURL(url);
+                        addFramesToAnimation([dataUrl]);
+                    } catch (e) {
+                        console.error(e);
+                        window.Dialogs.showNotification("Error", "No se pudo importar la imagen.");
                     }
+                } else { // Spritesheet
+                    window.Dialogs.showPrompt("Hoja de Sprites", "Número de Columnas:", (cols) => {
+                        if (!cols || isNaN(cols) || cols <= 0) return;
+                        window.Dialogs.showPrompt("Hoja de Sprites", "Número de Filas:", async (rows) => {
+                            if (!rows || isNaN(rows) || rows <= 0) return;
+                            try {
+                                const frames = await extractFramesFromImage(url, parseInt(cols), parseInt(rows));
+                                addFramesToAnimation(frames);
+                            } catch (e) {
+                                console.error(e);
+                                window.Dialogs.showNotification("Error", "No se pudieron extraer los fotogramas.");
+                            }
+                        });
+                    });
                 }
-            );
-        } else {
-            // Multiple images
-            const dataUrls = [];
-            // Sort items by path to maintain order
-            items.sort((a, b) => a.path.localeCompare(b.path));
+            }
+        );
+    } else {
+        // Multiple images
+        const dataUrls = [];
+        // Sort items by path/name to maintain order
+        items.sort((a, b) => a.path.localeCompare(b.path));
 
-            for (const item of items) {
+        for (const item of items) {
+            if (item.dataUrl) {
+                dataUrls.push(item.dataUrl);
+            } else {
                 const url = await getURLForAssetPath(item.path, projectsDirHandle);
                 if (url) {
                     try {
@@ -357,9 +396,9 @@ export async function importAssets() {
                     }
                 }
             }
-            addFramesToAnimation(dataUrls);
         }
-    }, { multiple: true, filter: ['image'], title: "Importar Imagen(es) para Animación" });
+        addFramesToAnimation(dataUrls);
+    }
 }
 
 export function startAnimationPlayback() {
@@ -572,6 +611,81 @@ function drawOnionSkin() {
     if (dom.animationImportBtn) {
         dom.animationImportBtn.addEventListener('click', importAssets);
     }
+
+    // --- Quick Create from Overlay ---
+    const quickCreateBtn = document.getElementById('btn-create-animation-quick');
+    if (quickCreateBtn) {
+        quickCreateBtn.onclick = async () => {
+            if (window.Dialogs) {
+                window.Dialogs.showPrompt("Nueva Animación", "Introduce el nombre del asset (.cea):", async (name) => {
+                    if (!name) return;
+                    const fileName = name.endsWith('.cea') ? name : `${name}.cea`;
+                    const dirHandle = getCurrentDirectoryHandle ? getCurrentDirectoryHandle() : null;
+                    if (!dirHandle) {
+                        window.Dialogs.showNotification("Error", "No se pudo obtener el directorio actual de assets.");
+                        return;
+                    }
+
+                    const emptyAnim = {
+                        name: name,
+                        animations: [{ name: "default", speed: 10, loop: true, frames: [] }]
+                    };
+
+                    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify(emptyAnim, null, 2));
+                    await writable.close();
+
+                    if (window.updateAssetBrowser) window.updateAssetBrowser();
+                    openAnimationAsset(fileHandle, dirHandle);
+                });
+            }
+        };
+    }
+
+    // --- Drag and Drop Listeners ---
+    dom.animationPanel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        dom.animationPanel.classList.add('drag-over');
+    });
+
+    dom.animationPanel.addEventListener('dragleave', () => {
+        dom.animationPanel.classList.remove('drag-over');
+    });
+
+    dom.animationPanel.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dom.animationPanel.classList.remove('drag-over');
+
+        if (!currentAnimationAsset) {
+            window.Dialogs.showNotification('Error', 'Carga un asset de animación (.cea) antes de soltar imágenes.');
+            return;
+        }
+
+        const dataText = e.dataTransfer.getData('text/plain');
+        if (dataText) {
+            try {
+                const data = JSON.parse(dataText);
+                if (data.type === 'Asset' && (data.name.endsWith('.png') || data.name.endsWith('.jpg') || data.name.endsWith('.jpeg'))) {
+                    processImportItems([{ path: data.path }]);
+                }
+            } catch (err) {}
+        } else if (e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (files.length > 0) {
+                const items = await Promise.all(files.map(async file => {
+                    const dataUrl = await new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => resolve(ev.target.result);
+                        reader.readAsDataURL(file);
+                    });
+                    return { path: file.name, dataUrl: dataUrl };
+                }));
+                processImportItems(items);
+            }
+        }
+    });
 
     dom.deleteFrameBtn.addEventListener('click', () => {
         if (currentFrameIndex === -1) {

@@ -2058,6 +2058,16 @@ body {
 .resize-handle[data-direction="nw"] { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
 
 
+#animation-panel {
+    transition: outline 0.2s, background-color 0.2s;
+}
+
+#animation-panel.drag-over {
+    outline: 2px dashed var(--accent-color);
+    outline-offset: -4px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 #animation-panel .panel-header {
     cursor: move;
 }
