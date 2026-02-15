@@ -417,6 +417,24 @@ export class CreativeScriptBehavior {
         return `rgba(${r},${g},${b},${a})`;
     }
 
+    /**
+     * Reproduce una animación específica en esta materia.
+     * Si hay un AnimatorController, esto sobrescribirá el estado actual temporalmente.
+     * @param {string} path - Ruta al archivo .cea o .ceanimclip
+     * @param {boolean} [loop=true] - Si la animación debe repetirse
+     * @param {number} [speed=12] - Velocidad de reproducción
+     */
+    reproducirAnimacion(path, loop = true, speed = 12) {
+        if (!this.materia) return;
+        const animator = this.obtenerComponente('Animator');
+        if (animator) {
+            animator.play(path, { loop, speed, source: 'script' });
+        }
+    }
+
+    /** Alias en inglés */
+    playAnimation(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
@@ -1166,15 +1184,18 @@ export class Animator extends Leyes {
         this.startFrame = 0;
         this.endFrame = -1; // -1 means play until the end of the clip
         this.frameTimer = 0;
+
         // Importante: Empezar pausado en el editor. El motor llamará a play() al iniciar el juego.
         this.isPlaying = false;
         this.spriteRenderer = null;
         this.projectsDirHandle = null;
         this._frameCache = []; // Cache of preloaded Image objects
+        this._controlSource = 'none'; // 'none', 'controller', 'script'
+        this._isLoading = false;
     }
 
     start() {
-        if (this.playOnAwake) {
+        if (this.playOnAwake && !this.isPlaying) {
             this.play();
         }
     }
@@ -1182,6 +1203,7 @@ export class Animator extends Leyes {
     async loadAnimationClip(projectsDirHandle) {
         if (!this.animationClipPath) return;
         this.projectsDirHandle = projectsDirHandle;
+        this._isLoading = true;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
 
@@ -1202,6 +1224,13 @@ export class Animator extends Leyes {
 
             this.animationClip = clip;
 
+            // Set speed from clip if not already defined as something else
+            if (this.speed === 12.0 && clip.frameRate) {
+                this.speed = clip.frameRate;
+            } else if (this.speed === 12.0 && clip.speed) {
+                this.speed = clip.speed;
+            }
+
             // Preload frames to avoid flicker
             if (clip && clip.frames) {
                 this._frameCache = [];
@@ -1210,10 +1239,6 @@ export class Animator extends Leyes {
                     if (typeof frameData === 'string') {
                         path = frameData;
                     } else if (typeof frameData === 'object' && frameData !== null) {
-                        // Frame data might be { spriteAssetPath: "...", spriteName: "..." }
-                        // For simplicity, we preload the base image if it's a direct path
-                        // If it's a .ceSprite, we'd need to load the JSON first.
-                        // For now let's focus on string paths which are most common.
                         if (frameData.spriteAssetPath) path = frameData.spriteAssetPath;
                     }
 
@@ -1228,14 +1253,8 @@ export class Animator extends Leyes {
 
                         if (src) {
                             return new Promise((resolve) => {
-                                img.onload = () => {
-                                    if (window.CE_DEBUG_ANIMATION) console.log(`[Animator] Pre-cargado frame ${index}: ${path}`);
-                                    resolve();
-                                };
-                                img.onerror = () => {
-                                    console.error(`[Animator] Error al pre-cargar frame ${index}: ${path}`);
-                                    resolve();
-                                };
+                                img.onload = () => resolve();
+                                img.onerror = () => resolve();
                                 img.src = src;
                             });
                         }
@@ -1243,68 +1262,85 @@ export class Animator extends Leyes {
                     return Promise.resolve();
                 });
 
-                // Wait for all frames to be ready (or fail) before proceeding
                 await Promise.all(preloadPromises);
             }
 
-            if (this.playOnAwake) {
-                this.play();
+            // If we were supposed to be playing, make sure the first frame is applied immediately
+            if (this.isPlaying) {
+                this.applyCurrentFrame();
             }
 
         } catch (error) {
             console.error(`Failed to load animation clip at '${this.animationClipPath}':`, error);
+        } finally {
+            this._isLoading = false;
         }
     }
 
-    play() {
-        if (!this.isPlaying) {
-            console.log(`[Animator] Reproduciendo animación: ${this.animationClipPath}`);
+    /**
+     * Reproduce una animación.
+     * @param {string} [path] - Ruta opcional a un nuevo clip.
+     * @param {object} [options] - Opciones: { loop, speed, startFrame, endFrame, source }
+     */
+    play(path = null, options = {}) {
+        const debug = window.CE_DEBUG_ANIMATION;
+
+        if (path && path !== this.animationClipPath) {
+            this.animationClipPath = path;
+            this.animationClip = null; // Clear old data to trigger reload
         }
+
+        if (options.loop !== undefined) this.loop = options.loop;
+        if (options.speed !== undefined) this.speed = options.speed;
+        if (options.startFrame !== undefined) this.startFrame = options.startFrame;
+        if (options.endFrame !== undefined) this.endFrame = options.endFrame;
+        if (options.source !== undefined) this._controlSource = options.source;
+
+        if (debug) console.log(`[Animator] Play: ${this.animationClipPath}, source=${this._controlSource}`);
+
         this.isPlaying = true;
         this.currentFrame = this.startFrame || 0;
         this.frameTimer = 0;
+
+        // Trigger immediate load if needed
+        if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
+        } else if (this.animationClip) {
+            this.applyCurrentFrame();
+        }
+    }
+
+    reset() {
+        this.currentFrame = this.startFrame || 0;
+        this.frameTimer = 0;
+        if (this.animationClip) this.applyCurrentFrame();
     }
 
     stop() {
-        if (this.isPlaying) {
+        if (this.isPlaying && window.CE_DEBUG_ANIMATION) {
             console.log(`[Animator] Deteniendo animación`);
         }
         this.isPlaying = false;
     }
 
     /** Alias en español */
-    reproducir() { this.play(); }
+    reproducir(ruta, opciones) { this.play(ruta, opciones); }
     detener() { this.stop(); }
+    reiniciar() { this.reset(); }
 
     update(deltaTime) {
-        // Trace log (disabled by default, but useful for debugging)
         const debug = window.CE_DEBUG_ANIMATION;
 
-        // Lazy lookup of SpriteRenderer (do it even if not playing so it's ready)
         if (!this.spriteRenderer && this.materia) {
             this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
         }
 
-        if (debug && Math.random() < 0.01) console.log(`[Animator] Update: isPlaying=${this.isPlaying}, clipPath=${this.animationClipPath}, hasClip=${!!this.animationClip}`);
-
-        // Auto-load clip if path exists but no data
+        // Auto-load if path exists but no data
         if (!this.animationClip && this.animationClipPath && !this._isLoading) {
-            console.log(`[Animator] Auto-cargando clip desde: ${this.animationClipPath}`);
-            this._isLoading = true;
-            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).finally(() => {
-                this._isLoading = false;
-            });
+            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
         }
 
-        // Wait for clip to load before advancing frames
-        if (!this.animationClip && this.animationClipPath) {
-            if (this.isPlaying && Math.random() < 0.05) {
-                console.log(`[Animator] Esperando a que cargue el clip: ${this.animationClipPath}`);
-            }
-            return;
-        }
-
-        if (!this.isPlaying) {
+        if (!this.isPlaying || !this.animationClip) {
             return;
         }
 
@@ -1313,83 +1349,74 @@ export class Animator extends Leyes {
         const frameDuration = 1 / speed;
 
         if (this.frameTimer >= frameDuration) {
-            const oldFrame = this.currentFrame;
-            this.frameTimer %= frameDuration; // Keep the remainder for more accurate timing
+            this.frameTimer %= frameDuration;
             this.currentFrame++;
 
-            if (debug) console.log(`[Animator] Cambio de frame en '${this.materia.name}': ${oldFrame} -> ${this.currentFrame} (Timer reset: ${this.frameTimer.toFixed(4)})`);
+            const clip = this.animationClip;
+            if (!clip.frames || clip.frames.length === 0) return;
 
-            // If we have an associated clip, we handle its specific logic (looping, wrapping, SpriteRenderer)
-            if (this.animationClip) {
-                const clip = this.animationClip;
-                if (!clip.frames || clip.frames.length === 0) return;
+            const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length - 1;
 
-                const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length -1;
+            if (this.currentFrame > endFrame) {
+                // Animation Finished
+                const scripts = this.materia.getComponents(CreativeScript);
+                for (const script of scripts) {
+                    script._safeInvoke('alFinalizarAnimacion', clip.name || this.animationClipPath);
+                    script._safeInvoke('OnAnimationEnd', clip.name || this.animationClipPath);
+                }
 
-                if (this.currentFrame > endFrame) {
-                    // Notificar finalización de animación
-                    const scripts = this.materia.getComponents(CreativeScript);
-                    for (const script of scripts) {
-                        script._safeInvoke('alFinalizarAnimacion', this.animationClip.name);
-                        script._safeInvoke('OnAnimationEnd', this.animationClip.name);
-                    }
-
-                // Notify AnimatorController if present
                 const controller = this.materia.getComponent(AnimatorController);
                 if (controller && typeof controller.onAnimationEnd === 'function') {
-                    controller.onAnimationEnd(this.animationClip.name);
+                    controller.onAnimationEnd(clip.name || this.animationClipPath);
                 }
 
-                    if (this.loop) {
-                        if (debug) console.log(`[Animator] Bucle: volviendo al frame inicial (${this.startFrame || 0})`);
-                        this.currentFrame = this.startFrame || 0;
-                    } else {
-                        if (debug) console.log(`[Animator] Animación finalizada (sin bucle).`);
-                        this.currentFrame = endFrame; // Stay on last frame
-                        this.stop();
-                    }
+                if (this.loop) {
+                    this.currentFrame = this.startFrame || 0;
+                } else {
+                    this.currentFrame = endFrame;
+                    this.stop();
                 }
+            }
 
-                // Clamp the frame to be safe
-                this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
+            this.applyCurrentFrame();
+        }
+    }
 
-                // Update the SpriteRenderer if it exists
-                if (this.spriteRenderer) {
-                    // Check cache first to avoid flicker
-                    const cachedImg = this._frameCache[this.currentFrame];
-                    if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
-                        this.spriteRenderer.sprite = cachedImg;
-                        this.spriteRenderer.isLoading = false;
-                        this.spriteRenderer.isError = false;
+    applyCurrentFrame() {
+        if (!this.animationClip || !this.spriteRenderer) return;
 
-                        // Sync names without triggering re-loads in SpriteRenderer.update
-                        const frame = clip.frames[this.currentFrame];
-                        if (typeof frame === 'string') {
-                            this.spriteRenderer._spriteName = frame;
-                            this.spriteRenderer.source = frame;
-                            this.spriteRenderer._lastLoadedSource = frame; // Important: prevent flicker
-                        }
-                    } else {
-                        const frame = clip.frames[this.currentFrame];
-                        if (typeof frame === 'object' && frame !== null) {
-                            // Frame refers to a specific sprite in a .ceSprite asset
-                            let changed = false;
-                            if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
-                                this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
-                                this.spriteRenderer._lastLoadedSource = frame.spriteAssetPath;
-                                changed = true;
-                            }
-                            if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
-                                this.spriteRenderer.spriteName = frame.spriteName;
-                                changed = true;
-                            }
-                        } else if (typeof frame === 'string') {
-                            // Frame is a direct Data URL or file path
-                            if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
-                                this.spriteRenderer.spriteName = frame;
-                            }
-                        }
-                    }
+        const clip = this.animationClip;
+        const frames = clip.frames;
+        if (!frames || frames.length === 0) return;
+
+        const endFrame = (this.endFrame !== -1 && this.endFrame < frames.length) ? this.endFrame : frames.length - 1;
+        const frameIdx = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
+
+        const cachedImg = this._frameCache[frameIdx];
+        if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+            this.spriteRenderer.sprite = cachedImg;
+            this.spriteRenderer.isLoading = false;
+            this.spriteRenderer.isError = false;
+
+            const frame = frames[frameIdx];
+            if (typeof frame === 'string') {
+                this.spriteRenderer._spriteName = frame;
+                this.spriteRenderer.source = frame;
+                this.spriteRenderer._lastLoadedSource = frame;
+            }
+        } else {
+            const frame = frames[frameIdx];
+            if (typeof frame === 'object' && frame !== null) {
+                if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
+                    this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
+                    this.spriteRenderer._lastLoadedSource = frame.spriteAssetPath;
+                }
+                if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
+                    this.spriteRenderer.spriteName = frame.spriteName;
+                }
+            } else if (typeof frame === 'string') {
+                if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
+                    this.spriteRenderer.spriteName = frame;
                 }
             }
         }
@@ -1801,6 +1828,9 @@ export class AnimatorController extends Leyes {
                 this.states.set(state.name, state);
             }
 
+            // Reset state to force entry state playback
+            this.currentStateName = '';
+
             console.log(`AnimatorController loaded '${this.controller.name}' with ${this.states.size} states.`);
 
         } catch (error) {
@@ -1809,73 +1839,49 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    play(stateName) {
+    play(stateName, force = false) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
-        // Lazy lookup of Animator
         if (!this.animator && this.materia) {
             this.animator = this.materia.getComponent(Animator);
         }
 
-        // Defensive check
         if (!(this.states instanceof Map)) {
             this.states = new Map();
         }
 
-        if (debug) console.log(`[AnimatorController] Intentando reproducir estado: ${stateName}. Actual: ${this.currentStateName}`);
-
-        if (!this.animator) {
-            if (debug) console.warn(`[AnimatorController] No se encontró componente Animator para reproducir '${stateName}'`);
-            return;
-        }
+        if (!this.animator) return;
 
         if (!this.states.has(stateName)) {
-            if (debug) console.warn(`[AnimatorController] El estado '${stateName}' no existe en el controlador.`);
+            if (debug) console.warn(`[AnimatorController] El estado '${stateName}' no existe.`);
             return;
         }
 
-        // Do not restart the animation if it's already playing
-        if (this.currentStateName === stateName && this.animator.isPlaying) {
+        // If animator is under script control, don't interrupt unless forced
+        if (!force && this.animator._controlSource === 'script' && this.animator.isPlaying) {
             return;
-        }
-
-        if (this.currentStateName === stateName && !this.animator.isPlaying) {
-             const stateData = this.states.get(stateName);
-             if (stateData && stateData.animationClip) {
-                 if (debug) console.log(`[AnimatorController] Reanudando animación del estado actual: ${stateName}`);
-                 this.animator.play();
-             }
-             return;
         }
 
         const state = this.states.get(stateName);
-        if (this.currentStateName !== stateName) {
-            console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
+        const isSameState = this.currentStateName === stateName;
+
+        // If already playing this state and animator is active, do nothing
+        if (isSameState && this.animator.isPlaying && this.animator.animationClipPath === state.animationClip) {
+            return;
         }
+
+        if (debug) console.log(`[AnimatorController] Play State: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
-        // Configure the Animator component with the new state's data
-        this.animator.speed = state.speed || 12;
-        this.animator.loop = state.loop !== undefined ? state.loop : true;
-        this.animator.startFrame = state.startFrame || 0;
-        this.animator.endFrame = state.endFrame !== undefined ? state.endFrame : -1;
-
-        // If the clip path is different, tell the animator to load the new clip and play it
-        if (state.animationClip && this.animator.animationClipPath !== state.animationClip) {
-            this.animator.animationClipPath = state.animationClip;
-            // The animator needs the handle to load the new clip
-            const handle = this.projectsDirHandle || window.projectsDirHandle;
-            this.animator.loadAnimationClip(handle).then(() => {
-                this.animator.play();
-            }).catch(e => console.error(`[AnimatorController] Error cargando clip para estado ${stateName}:`, e));
-        } else if (state.animationClip) {
-            // If it's the same clip, just restart it if not playing
-            if (!this.animator.isPlaying) this.animator.play();
-        } else {
-            // No clip for this state
-            this.animator.stop();
-        }
+        // Pass control to animator
+        this.animator.play(state.animationClip, {
+            loop: state.loop !== undefined ? state.loop : true,
+            speed: state.speed || 12,
+            startFrame: state.startFrame || 0,
+            endFrame: state.endFrame !== undefined ? state.endFrame : -1,
+            source: 'controller'
+        });
     }
 
     /** Alias en español */
@@ -1942,8 +1948,12 @@ export class AnimatorController extends Leyes {
             if (this._hasLastPosition && deltaTime > 0) {
                 const dx = (transform.x - this._lastPosition.x) / deltaTime;
                 const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                // Use a slightly higher threshold for delta tracking to avoid jitter
-                if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+
+                // Use a higher threshold in the editor to avoid jitter while dragging or clicking
+                const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+                const threshold = isGame ? 0.1 : 10.0;
+
+                if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
                     horiz = dx;
                     vert = dy;
                     moving = true;
@@ -1980,7 +1990,7 @@ export class AnimatorController extends Leyes {
 
     _handleSmartMode() {
         const p = this.parameters;
-        if (!this.controller.movementMapping) return;
+        if (!this.controller || !this.controller.movementMapping) return;
 
         let dirIndex = 4; // Center (Idle)
 
@@ -1997,37 +2007,30 @@ export class AnimatorController extends Leyes {
         }
 
         const stateName = this.controller.movementMapping[dirIndex];
-        if (stateName && this.states.has(stateName)) {
-            if (this.currentStateName !== stateName) {
-                console.log(`[AnimatorController] SmartMode: Direccion detectada ${dirIndex} -> Estado ${stateName}`);
-            }
+
+        if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
             this.play(stateName);
-        } else if (p.isMoving) {
+        } else if (!stateName && p.isMoving) {
             // Fallback: If diagonal is not defined, try pure horizontal or vertical
             let h = p.horizontal > 0.1 ? 1 : (p.horizontal < -0.1 ? -1 : 0);
             let v = p.vertical > 0.1 ? 1 : (p.vertical < -0.1 ? -1 : 0);
 
+            let fallbackState = null;
             if (h !== 0 && v !== 0) {
                 // Try pure horizontal
-                let fallbackIndex = (1) * 3 + (h + 1);
-                let fallbackState = this.controller.movementMapping[fallbackIndex];
-                if (fallbackState && this.states.has(fallbackState)) {
-                    this.play(fallbackState);
-                    return;
-                }
-                // Try pure vertical
-                fallbackIndex = (v + 1) * 3 + (1);
-                fallbackState = this.controller.movementMapping[fallbackIndex];
-                if (fallbackState && this.states.has(fallbackState)) {
-                    this.play(fallbackState);
-                    return;
+                fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
+                if (!fallbackState || !this.states.has(fallbackState)) {
+                    // Try pure vertical
+                    fallbackState = this.controller.movementMapping[(v + 1) * 3 + (1)];
                 }
             }
 
-            // Second fallback: Idle
-            const idleState = this.controller.movementMapping[4];
-            if (idleState && this.states.has(idleState)) {
-                this.play(idleState);
+            if (!fallbackState || !this.states.has(fallbackState)) {
+                fallbackState = this.controller.movementMapping[4]; // Idle
+            }
+
+            if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
+                this.play(fallbackState);
             }
         }
     }
