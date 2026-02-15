@@ -1210,8 +1210,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const component = selectedMateria.getComponent(ComponentClass);
                     if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
+                        if (component.setSourcePath.constructor.name === 'AsyncFunction') {
+                            await component.setSourcePath(imgPath, projectsDirHandle);
+                        } else {
+                            component.setSourcePath(imgPath);
+                            if (typeof component.loadSprite === 'function') {
+                                await component.loadSprite(projectsDirHandle);
+                            }
+                        }
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -1680,21 +1686,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        // Update animators even in the editor
-        if (!isGameRunning && SceneManager.currentScene) {
-            SceneManager.currentScene.getAllMaterias().forEach(m => {
-                if (!m.isActive) return;
-
-                const animator = m.getComponent(Components.Animator);
-                if (animator && animator.isActive) {
-                    animator.update(deltaTime);
-                }
-                const controller = m.getComponent(Components.AnimatorController);
-                if (controller && controller.isActive) {
-                    controller.update(deltaTime);
-                }
-            });
-        }
 
         // Ensure game canvas is always resized correctly when active
         if (activeView === 'game-content' && gameRenderer) {

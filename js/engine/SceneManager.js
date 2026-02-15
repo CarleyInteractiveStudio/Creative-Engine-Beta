@@ -450,7 +450,7 @@ export async function loadScene(fileHandle, projectsDirHandle) {
 export function createSprite(name, imagePath) {
     const newMateria = new Materia(name);
     const spriteRenderer = new SpriteRenderer(newMateria);
-    spriteRenderer.setSourcePath(imagePath);
+    spriteRenderer.setSourcePath(imagePath, window.projectsDirHandle);
     // Note: The sprite will be loaded when the scene is rendered or the component is updated in the editor.
     newMateria.addComponent(spriteRenderer);
     currentScene.addMateria(newMateria);

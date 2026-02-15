@@ -954,7 +954,7 @@ export function initialize(dependencies) {
 
                 // Add and configure the SpriteRenderer
                 const spriteRenderer = new Components.SpriteRenderer(newMateria);
-                spriteRenderer.setSourcePath(data.assetPath); // This will load the .ceSprite
+                await spriteRenderer.setSourcePath(data.assetPath, window.projectsDirHandle); // This will load the .ceSprite
                 spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
                 newMateria.addComponent(spriteRenderer);
 

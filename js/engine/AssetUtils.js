@@ -4,12 +4,18 @@ export function setStandaloneMode(value) {
     isStandalone = value;
 }
 
+const assetUrlCache = new Map();
+
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 
     // --- Data, Blob, and HTTP URL Support ---
     if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
         return path;
+    }
+
+    if (assetUrlCache.has(path)) {
+        return assetUrlCache.get(path);
     }
 
     if (isStandalone) {
@@ -50,7 +56,9 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
 
         // --- Default Logic ---
         // For images or other files that can be displayed directly.
-        return URL.createObjectURL(file);
+        const url = URL.createObjectURL(file);
+        assetUrlCache.set(path, url);
+        return url;
 
     } catch (error) {
         console.error(`Could not create URL for asset path: ${path}`, error);

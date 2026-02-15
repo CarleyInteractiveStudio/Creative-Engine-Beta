@@ -1006,16 +1006,16 @@ export class SpriteRenderer extends Leyes {
         }
     }
 
-    setSourcePath(path, projectsDirHandle) {
+    async setSourcePath(path, projectsDirHandle) {
         if (path.endsWith('.ceSprite')) {
             this.spriteAssetPath = path;
-            this.loadSpriteSheet(projectsDirHandle);
+            await this.loadSpriteSheet(projectsDirHandle);
         } else {
             this.source = path;
             this.spriteAssetPath = '';
             this.spriteSheet = null;
             this.spriteName = '';
-            this.loadSprite(projectsDirHandle);
+            await this.loadSprite(projectsDirHandle);
         }
     }
 
@@ -1055,11 +1055,14 @@ export class SpriteRenderer extends Leyes {
         }
 
         if (this.sprite.src !== imageUrl) {
-            await new Promise((resolve, reject) => {
-                this.sprite.onload = resolve;
-                this.sprite.onerror = reject;
+            return new Promise((resolve, reject) => {
+                this.sprite.onload = () => resolve();
+                this.sprite.onerror = (e) => {
+                    console.error(`Failed to load image: ${imageUrl}`, e);
+                    reject(e);
+                };
                 this.sprite.src = imageUrl;
-            }).catch(e => console.error(`Failed to load image: ${imageUrl}`, e));
+            });
         }
     }
     clone() {
@@ -1642,11 +1645,24 @@ export class AnimatorController extends Leyes {
 
         // Auto-update parameters from Rigidbody2D if it exists
         const rb = this.materia.getComponent(Rigidbody2D);
-        if (rb) {
+        const movement = this.materia.getComponent(Movement);
+
+        if (rb && Math.abs(rb.velocity.x) + Math.abs(rb.velocity.y) > 0.01) {
             this.parameters.horizontal = rb.velocity.x;
             this.parameters.vertical = rb.velocity.y;
             this.parameters.speed = Math.sqrt(rb.velocity.x ** 2 + rb.velocity.y ** 2);
+            this.parameters.isMoving = true;
+        } else if (movement) {
+            this.parameters.horizontal = movement.lastMove.x;
+            this.parameters.vertical = movement.lastMove.y;
+            this.parameters.speed = Math.sqrt(movement.lastMove.x ** 2 + movement.lastMove.y ** 2);
             this.parameters.isMoving = this.parameters.speed > 0.01;
+        } else if (rb) {
+            // Rigidbody exists but not moving
+            this.parameters.horizontal = 0;
+            this.parameters.vertical = 0;
+            this.parameters.speed = 0;
+            this.parameters.isMoving = false;
         }
 
         if (this.controller.smartMode) {
@@ -1920,6 +1936,7 @@ export class Movement extends Leyes {
         this.useRigidbody = true;
         this.groundTag = 'Ground';
         this.isGrounded = false;
+        this.lastMove = { x: 0, y: 0 };
     }
     update(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
@@ -1941,6 +1958,9 @@ export class Movement extends Leyes {
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
         if (input.isKeyPressed(this.upKey)) moveY -= 1;
         if (input.isKeyPressed(this.downKey)) moveY += 1;
+
+        this.lastMove.x = moveX;
+        this.lastMove.y = moveY;
 
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
