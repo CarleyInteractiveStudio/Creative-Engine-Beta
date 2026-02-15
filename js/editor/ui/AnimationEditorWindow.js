@@ -341,9 +341,10 @@ export async function importAssets() {
 }
 
 async function processImportItems(items) {
+    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
     if (items.length === 1) {
         const item = items[0];
-        const url = item.dataUrl || await getURLForAssetPath(item.path, projectsDirHandle);
+        const url = item.dataUrl || await getURLForAssetPath(item.path, currentDirHandle);
         if (!url) return;
 
         window.Dialogs.showSelection(
@@ -386,7 +387,7 @@ async function processImportItems(items) {
             if (item.dataUrl) {
                 dataUrls.push(item.dataUrl);
             } else {
-                const url = await getURLForAssetPath(item.path, projectsDirHandle);
+                const url = await getURLForAssetPath(item.path, currentDirHandle);
                 if (url) {
                     try {
                         const dataUrl = await imageToDataURL(url);

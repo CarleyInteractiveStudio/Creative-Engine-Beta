@@ -121,11 +121,11 @@ export async function handleContextMenuAction(action) {
                             entryState: "Parado",
                             smartMode: true,
                             states: [
-                                { name: "Parado", animationClip: "", speed: 1.0, position: { x: 300, y: 200 } },
-                                { name: "Arriba", animationClip: "", speed: 1.0, position: { x: 300, y: 50 } },
-                                { name: "Abajo", animationClip: "", speed: 1.0, position: { x: 300, y: 350 } },
-                                { name: "Izquierda", animationClip: "", speed: 1.0, position: { x: 100, y: 200 } },
-                                { name: "Derecha", animationClip: "", speed: 1.0, position: { x: 500, y: 200 } }
+                                { name: "Parado", animationClip: "", speed: 10.0, position: { x: 300, y: 200 } },
+                                { name: "Arriba", animationClip: "", speed: 10.0, position: { x: 300, y: 50 } },
+                                { name: "Abajo", animationClip: "", speed: 10.0, position: { x: 300, y: 350 } },
+                                { name: "Izquierda", animationClip: "", speed: 10.0, position: { x: 100, y: 200 } },
+                                { name: "Derecha", animationClip: "", speed: 10.0, position: { x: 500, y: 200 } }
                             ],
                             transitions: []
                         }, null, 2);
@@ -411,14 +411,15 @@ export async function handleContextMenuAction(action) {
 
 // --- Core Functions ---
 export async function updateAssetBrowser() {
-    if (!projectsDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
+    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+    if (!currentDirHandle || !dom.assetFolderTree || !dom.assetGridView) return;
 
     const folderTreeContainer = dom.assetFolderTree;
     const gridViewContainer = dom.assetGridView;
     folderTreeContainer.innerHTML = '';
 
     const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+    const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
     const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
     if (!currentDirectoryHandle.handle) {
@@ -588,7 +589,8 @@ export async function updateAssetBrowser() {
                     }
                 });
             } else if (entry.name.endsWith('.png') || entry.name.endsWith('.jpg') || entry.name.endsWith('.jpeg')) {
-                getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                getURLForAssetPath(fullPath, currentDirHandle).then(url => {
                     if (url) {
                         imgIcon.src = url;
                         iconContainer.appendChild(imgIcon);
@@ -611,7 +613,8 @@ export async function updateAssetBrowser() {
                 imgIcon.src = 'image/animacion_controler.svg';
                 iconContainer.appendChild(imgIcon);
             } else if (entry.name.endsWith('.ceSprite')) {
-                getURLForAssetPath(fullPath, projectsDirHandle).then(url => {
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                getURLForAssetPath(fullPath, currentDirHandle).then(url => {
                     if (url) {
                         imgIcon.src = url;
                         iconContainer.appendChild(imgIcon);
@@ -856,7 +859,8 @@ async function handleExternalFileDrop(e) {
                 // Special handling for library files
                 try {
                     const projectName = new URLSearchParams(window.location.search).get('project');
-                    const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                    const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
                     const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
 
                     const fileHandle = await libDirHandle.getFileHandle(file.name, { create: true });

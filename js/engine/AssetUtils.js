@@ -5,6 +5,7 @@ export function setStandaloneMode(value) {
 }
 
 const assetUrlCache = new Map();
+const assetPromiseCache = new Map();
 
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
@@ -14,56 +15,73 @@ export async function getURLForAssetPath(path, projectsDirHandle) {
         return path;
     }
 
+    // Check completed cache first
     if (assetUrlCache.has(path)) {
         return assetUrlCache.get(path);
     }
 
+    // Check ongoing request cache
+    if (assetPromiseCache.has(path)) {
+        return assetPromiseCache.get(path);
+    }
+
     if (isStandalone) {
         // In standalone mode, we assume assets are served relative to the root
-        // and paths are already correct (e.g., 'Assets/image.png')
         return path;
     }
 
     if (!projectsDirHandle) return null;
 
-    try {
-        const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+    // Create a new promise for this path
+    const loadPromise = (async () => {
+        try {
+            const projectName = new URLSearchParams(window.location.search).get('project');
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
 
-        let currentHandle = projectHandle;
-        const parts = path.split('/').filter(p => p);
-        const fileName = parts.pop();
+            let currentHandle = projectHandle;
+            const parts = path.split('/').filter(p => p);
+            const fileName = parts.pop();
 
-        for (const part of parts) {
-            currentHandle = await currentHandle.getDirectoryHandle(part);
-        }
-
-        const fileHandle = await currentHandle.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
-
-        // --- Custom Icon Logic ---
-        if (fileName.toLowerCase().endsWith('.cesprite')) {
-            return await generateSpritePreview(file, currentHandle);
-        }
-
-        if (fileName.toLowerCase().endsWith('.celib')) {
-            const content = await file.text();
-            const libData = JSON.parse(content);
-            if (libData.icon_base64) {
-                return `data:image/png;base64,${libData.icon_base64}`;
+            for (const part of parts) {
+                currentHandle = await currentHandle.getDirectoryHandle(part);
             }
+
+            const fileHandle = await currentHandle.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+
+            // --- Custom Icon Logic ---
+            if (fileName.toLowerCase().endsWith('.cesprite')) {
+                const preview = await generateSpritePreview(file, currentHandle);
+                assetUrlCache.set(path, preview);
+                return preview;
+            }
+
+            if (fileName.toLowerCase().endsWith('.celib')) {
+                const content = await file.text();
+                const libData = JSON.parse(content);
+                if (libData.icon_base64) {
+                    const dataUrl = `data:image/png;base64,${libData.icon_base64}`;
+                    assetUrlCache.set(path, dataUrl);
+                    return dataUrl;
+                }
+            }
+
+            // --- Default Logic ---
+            const url = URL.createObjectURL(file);
+            assetUrlCache.set(path, url);
+            return url;
+
+        } catch (error) {
+            console.error(`Could not create URL for asset path: ${path}`, error);
+            return null;
+        } finally {
+            // Remove from promise cache once finished (it's now in assetUrlCache or failed)
+            assetPromiseCache.delete(path);
         }
+    })();
 
-        // --- Default Logic ---
-        // For images or other files that can be displayed directly.
-        const url = URL.createObjectURL(file);
-        assetUrlCache.set(path, url);
-        return url;
-
-    } catch (error) {
-        console.error(`Could not create URL for asset path: ${path}`, error);
-        return null; // Return null to indicate failure
-    }
+    assetPromiseCache.set(path, loadPromise);
+    return loadPromise;
 }
 
 async function generateSpritePreview(spriteFile, directoryHandle) {

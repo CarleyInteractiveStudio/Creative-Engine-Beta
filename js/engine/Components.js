@@ -1052,6 +1052,10 @@ export class SpriteRenderer extends Leyes {
             return;
         }
 
+        // If already loading the SAME source, don't restart
+        if (this.isLoading && this._loadingSource === this.source) return;
+        this._loadingSource = this.source;
+
         this.isLoading = true;
         this.isError = false;
 
@@ -1062,11 +1066,30 @@ export class SpriteRenderer extends Leyes {
                 return;
             }
 
-            if (this.sprite.src !== imageUrl) {
+            // If the URL is already set but the image isn't complete, we still want to wait
+            if (this.sprite.src !== imageUrl || !this.sprite.complete) {
                 await new Promise((resolve, reject) => {
-                    this.sprite.onload = resolve;
-                    this.sprite.onerror = reject;
-                    this.sprite.src = imageUrl;
+                    const timeout = setTimeout(() => {
+                        cleanup();
+                        reject(new Error("Timeout loading image"));
+                    }, 5000);
+
+                    const onload = () => { cleanup(); resolve(); };
+                    const onerror = (e) => { cleanup(); reject(e); };
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        this.sprite.removeEventListener('load', onload);
+                        this.sprite.removeEventListener('error', onerror);
+                    };
+
+                    this.sprite.addEventListener('load', onload);
+                    this.sprite.addEventListener('error', onerror);
+
+                    if (this.sprite.src !== imageUrl) {
+                        this.sprite.src = imageUrl;
+                    } else if (this.sprite.complete) {
+                        onload(); // Already done
+                    }
                 });
             }
         } catch (error) {
@@ -1074,6 +1097,7 @@ export class SpriteRenderer extends Leyes {
             this.isError = true;
         } finally {
             this.isLoading = false;
+            this._loadingSource = null;
         }
     }
     clone() {
@@ -1222,15 +1246,18 @@ export class Animator extends Leyes {
                     const frame = clip.frames[this.currentFrame];
                     if (typeof frame === 'object' && frame !== null) {
                         // Frame refers to a specific sprite in a .ceSprite asset
+                        let changed = false;
                         if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
                             this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
+                            changed = true;
                         }
                         if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
                             this.spriteRenderer.spriteName = frame.spriteName;
+                            changed = true;
                         }
                     } else if (typeof frame === 'string') {
                         // Frame is a direct Data URL or file path
-                        if (this.spriteRenderer.spriteName !== frame) {
+                        if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
                             this.spriteRenderer.spriteName = frame;
                         }
                     }
@@ -1286,17 +1313,32 @@ export class UIImage extends Leyes {
             return;
         }
 
+        if (this.isLoading && this._loadingSource === this.source) return;
+        this._loadingSource = this.source;
+
         this.isLoading = true;
         this.isError = false;
 
         try {
             const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {
-                if (this.sprite.src !== url) {
+                if (this.sprite.src !== url || !this.sprite.complete) {
                     await new Promise((resolve, reject) => {
-                        this.sprite.onload = resolve;
-                        this.sprite.onerror = reject;
-                        this.sprite.src = url;
+                        const timeout = setTimeout(() => { cleanup(); reject(new Error("Timeout loading UI image")); }, 5000);
+                        const onload = () => { cleanup(); resolve(); };
+                        const onerror = (e) => { cleanup(); reject(e); };
+                        const cleanup = () => {
+                            clearTimeout(timeout);
+                            this.sprite.removeEventListener('load', onload);
+                            this.sprite.removeEventListener('error', onerror);
+                        };
+                        this.sprite.addEventListener('load', onload);
+                        this.sprite.addEventListener('error', onerror);
+                        if (this.sprite.src !== url) {
+                            this.sprite.src = url;
+                        } else if (this.sprite.complete) {
+                            onload();
+                        }
                     });
                 }
             } else {
@@ -1307,6 +1349,7 @@ export class UIImage extends Leyes {
             this.isError = true;
         } finally {
             this.isLoading = false;
+            this._loadingSource = null;
         }
     }
     clone() {
@@ -1562,6 +1605,10 @@ export class AnimatorController extends Leyes {
             speed: 0,
             isMoving: false
         };
+
+        this._lastPosition = { x: 0, y: 0 };
+        this._hasLastPosition = false;
+        this._failedToLoad = false;
     }
 
     // Called by the engine when the game starts
@@ -1581,7 +1628,7 @@ export class AnimatorController extends Leyes {
     }
 
     async loadController(projectsDirHandle) {
-        if (!this.controllerPath) return;
+        if (!this.controllerPath || this._failedToLoad) return;
 
         try {
             const url = await getURLForAssetPath(this.controllerPath, projectsDirHandle);
@@ -1604,6 +1651,7 @@ export class AnimatorController extends Leyes {
 
         } catch (error) {
             console.error(`Failed to load Animator Controller at '${this.controllerPath}':`, error);
+            this._failedToLoad = true;
         }
     }
 
@@ -1661,13 +1709,15 @@ export class AnimatorController extends Leyes {
     establecerParametro(nombre, valor) { this.setParameter(nombre, valor); }
 
     update(deltaTime) {
+        if (!this.materia.isActive) return;
+
         // Lazy lookup of Animator
         if (!this.animator && this.materia) {
             this.animator = this.materia.getComponent(Animator);
         }
 
         // Auto-load controller data if needed
-        if (!this.controller && this.controllerPath) {
+        if (!this.controller && this.controllerPath && !this._failedToLoad) {
             if (!this._isAutoLoading) {
                 this._isAutoLoading = true;
                 this.loadController(this.projectsDirHandle || window.projectsDirHandle).then(() => {
@@ -1685,21 +1735,42 @@ export class AnimatorController extends Leyes {
         // Auto-update parameters from Rigidbody2D if it exists
         const rb = this.materia.getComponent(Rigidbody2D);
         const movement = this.materia.getComponent(Movement);
+        const transform = this.materia.getComponent(Transform);
 
-        const isActuallyMoving = (rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) ||
-                                 (movement && (Math.abs(movement.lastMove.x) > 0.05 || Math.abs(movement.lastMove.y) > 0.05));
+        let horiz = 0, vert = 0, moving = false;
 
-        if (isActuallyMoving) {
-            // Favor Movement component input for direction as it's more intentional from the player
-            if (movement && (Math.abs(movement.lastMove.x) > 0 || Math.abs(movement.lastMove.y) > 0)) {
-                this.parameters.horizontal = movement.lastMove.x;
-                this.parameters.vertical = movement.lastMove.y;
-                this.parameters.speed = Math.sqrt(this.parameters.horizontal ** 2 + this.parameters.vertical ** 2);
-            } else if (rb) {
-                this.parameters.horizontal = rb.velocity.x;
-                this.parameters.vertical = rb.velocity.y;
-                this.parameters.speed = Math.sqrt(rb.velocity.x ** 2 + rb.velocity.y ** 2);
+        // 1. Check Movement component (Highest priority for intentional input)
+        if (movement && (Math.abs(movement.lastMove.x) > 0.05 || Math.abs(movement.lastMove.y) > 0.05)) {
+            horiz = movement.lastMove.x;
+            vert = movement.lastMove.y;
+            moving = true;
+        }
+        // 2. Check Rigidbody velocity
+        else if (rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) {
+            horiz = rb.velocity.x;
+            vert = rb.velocity.y;
+            moving = true;
+        }
+        // 3. Fallback: Position tracking (Useful for custom movement scripts)
+        else if (transform) {
+            if (this._hasLastPosition) {
+                const dx = (transform.x - this._lastPosition.x) / deltaTime;
+                const dy = (transform.y - this._lastPosition.y) / deltaTime;
+                if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                    horiz = dx;
+                    vert = dy;
+                    moving = true;
+                }
             }
+            this._lastPosition.x = transform.x;
+            this._lastPosition.y = transform.y;
+            this._hasLastPosition = true;
+        }
+
+        if (moving) {
+            this.parameters.horizontal = horiz;
+            this.parameters.vertical = vert;
+            this.parameters.speed = Math.sqrt(horiz**2 + vert**2);
             this.parameters.isMoving = true;
         } else {
             this.parameters.horizontal = 0;

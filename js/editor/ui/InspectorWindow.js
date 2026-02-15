@@ -213,10 +213,11 @@ async function handleInspectorDrop(e) {
         }
 
         if (targetComponent) {
+            const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
             if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                 targetComponent.publicVars[propName] = valueToAssign;
             } else if (targetComponent instanceof Components.SpriteRenderer && propName === 'source') {
-                await targetComponent.setSourcePath(valueToAssign, projectsDirHandle);
+                await targetComponent.setSourcePath(valueToAssign, currentDirHandle);
             } else {
                 // Generic property assignment
                 const props = propName.split('.');
@@ -231,16 +232,16 @@ async function handleInspectorDrop(e) {
             // Post-assignment logic
             if (targetComponent instanceof Components.Tilemap) {
                 const renderer = selectedMateria.getComponent(Components.TilemapRenderer);
-                if (renderer) await renderer.loadPalette(projectsDirHandle);
+                if (renderer) await renderer.loadPalette(currentDirHandle);
             }
             if (targetComponent instanceof Components.UIText && propName === 'fontAssetPath') {
-                await targetComponent.loadFont(projectsDirHandle);
+                await targetComponent.loadFont(currentDirHandle);
             }
             if (targetComponent instanceof Components.Animator && propName === 'animationClipPath') {
-                await targetComponent.loadAnimationClip(projectsDirHandle);
+                await targetComponent.loadAnimationClip(currentDirHandle);
             }
             if (targetComponent instanceof Components.AnimatorController && propName === 'controllerPath') {
-                await targetComponent.loadController(projectsDirHandle);
+                await targetComponent.loadController(currentDirHandle);
                 if (targetComponent.controller && targetComponent.controller.entryState) {
                     targetComponent.play(targetComponent.controller.entryState);
                 }
@@ -556,7 +557,8 @@ function handleInspectorClick(e) {
             openAssetSelectorCallback(async (fileHandle, path) => {
                 const component = selectedMateria.getComponent(Components[componentName]);
                 if (component) {
-                    await component.setSourcePath(path, projectsDirHandle);
+                    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                    await component.setSourcePath(path, currentDirHandle);
                     updateInspector();
                     updateSceneCallback();
                 }
@@ -719,7 +721,8 @@ function handleInspectorClick(e) {
         if (terreno) {
             openAssetSelectorCallback(async (fileHandle, path) => {
                 terreno.addLayer(path);
-                await terreno.loadTextures(projectsDirHandle);
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                await terreno.loadTextures(currentDirHandle);
                 updateInspector();
             }, { filter: ['image'], title: 'Seleccionar Textura para Capa' });
         }
@@ -762,7 +765,8 @@ function handleInspectorClick(e) {
         if (terreno && !isNaN(lIdx)) {
             openAssetSelectorCallback(async (fileHandle, path) => {
                 terreno.layers[lIdx].texturePath = path;
-                await terreno.loadTextures(projectsDirHandle);
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                await terreno.loadTextures(currentDirHandle);
                 updateInspector();
             }, { filter: ['image'], title: 'Cambiar Textura de Capa' });
         }

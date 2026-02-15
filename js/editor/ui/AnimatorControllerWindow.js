@@ -247,7 +247,8 @@ async function populateAnimationsList() {
 
     try {
         const projectName = new URLSearchParams(window.location.search).get('project');
-        const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+        const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+        const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
         await findAnims(assetsHandle, 'Assets');
     } catch (e) {
@@ -466,7 +467,8 @@ async function createNewAnimatorController() {
 
             try {
                 const projectName = new URLSearchParams(window.location.search).get('project');
-                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
                 const assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
 
                 const fileHandle = await assetsHandle.getFileHandle(fileName, { create: true });
