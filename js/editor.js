@@ -1466,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         ctx.restore();
                     } else {
-                        // If there's a renderer but no sprite, draw a white box placeholder
+                        // If there's a renderer but no sprite, draw a placeholder
                         const dWidth = 50 * transform.scale.x;
                         const dHeight = 50 * transform.scale.y;
                         const dx = -dWidth * 0.5;
@@ -1477,8 +1477,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         ctx.rotate(transform.rotation * Math.PI / 180);
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
                         ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
-                        ctx.fillStyle = spriteRenderer.color || 'white';
-                        ctx.fillRect(dx, dy, dWidth, dHeight);
+
+                        if (spriteRenderer.isError) {
+                            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                            ctx.fillRect(dx, dy, dWidth, dHeight);
+                            ctx.strokeStyle = 'red';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(dx, dy, dWidth, dHeight);
+                        } else if (spriteRenderer.isLoading) {
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                            ctx.fillRect(dx, dy, dWidth, dHeight);
+                            ctx.strokeStyle = 'white';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(dx, dy, dWidth, dHeight);
+                        } else {
+                            ctx.fillStyle = spriteRenderer.color || 'white';
+                            ctx.fillRect(dx, dy, dWidth, dHeight);
+                        }
                         ctx.restore();
                     }
                 } else if (textureRender) {
@@ -1685,6 +1700,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
+
+        // Update animators even in the editor, but ONLY for the selected object
+        if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
+            const animator = selectedMateria.getComponent(Components.Animator);
+            if (animator && animator.isActive) {
+                animator.update(deltaTime);
+            }
+            const controller = selectedMateria.getComponent(Components.AnimatorController);
+            if (controller && controller.isActive) {
+                controller.update(deltaTime);
+            }
+        }
 
 
         // Ensure game canvas is always resized correctly when active

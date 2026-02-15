@@ -984,6 +984,8 @@ export class SpriteRenderer extends Leyes {
         this.opacity = 1.0;
         this.orderInLayer = 0;
         this.spriteSheet = null; // Holds the loaded .ceSprite data
+        this.isError = false;
+        this.isLoading = false;
     }
 
     get spriteName() { return this._spriteName; }
@@ -1045,24 +1047,39 @@ export class SpriteRenderer extends Leyes {
     async loadSprite(projectsDirHandle) {
         if (!this.source) {
             this.sprite.src = '';
+            this.isError = false;
+            this.isLoading = false;
             return;
         }
+
+        this.isLoading = true;
+        this.isError = false;
 
         const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
         if (!imageUrl) {
             console.error(`Could not get URL for sprite source: ${this.source}`);
+            this.isError = true;
+            this.isLoading = false;
             return;
         }
 
         if (this.sprite.src !== imageUrl) {
             return new Promise((resolve, reject) => {
-                this.sprite.onload = () => resolve();
+                this.sprite.onload = () => {
+                    this.isLoading = false;
+                    this.isError = false;
+                    resolve();
+                };
                 this.sprite.onerror = (e) => {
                     console.error(`Failed to load image: ${imageUrl}`, e);
+                    this.isError = true;
+                    this.isLoading = false;
                     reject(e);
                 };
                 this.sprite.src = imageUrl;
             });
+        } else {
+            this.isLoading = false;
         }
     }
     clone() {
@@ -1261,16 +1278,41 @@ export class UIImage extends Leyes {
         this.sprite = new Image();
         this.source = '';
         this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
+        this.isError = false;
+        this.isLoading = false;
     }
 
     async loadSprite(projectsDirHandle) {
         if (this.source) {
+            this.isLoading = true;
+            this.isError = false;
             const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {
-                this.sprite.src = url;
+                if (this.sprite.src !== url) {
+                    return new Promise((resolve) => {
+                        this.sprite.onload = () => {
+                            this.isLoading = false;
+                            this.isError = false;
+                            resolve();
+                        };
+                        this.sprite.onerror = () => {
+                            this.isLoading = false;
+                            this.isError = true;
+                            resolve();
+                        };
+                        this.sprite.src = url;
+                    });
+                } else {
+                    this.isLoading = false;
+                }
+            } else {
+                this.isLoading = false;
+                this.isError = true;
             }
         } else {
             this.sprite.src = '';
+            this.isError = false;
+            this.isLoading = false;
         }
     }
     clone() {
@@ -1647,18 +1689,22 @@ export class AnimatorController extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         const movement = this.materia.getComponent(Movement);
 
-        if (rb && Math.abs(rb.velocity.x) + Math.abs(rb.velocity.y) > 0.01) {
-            this.parameters.horizontal = rb.velocity.x;
-            this.parameters.vertical = rb.velocity.y;
-            this.parameters.speed = Math.sqrt(rb.velocity.x ** 2 + rb.velocity.y ** 2);
+        const isActuallyMoving = (rb && (Math.abs(rb.velocity.x) > 0.01 || Math.abs(rb.velocity.y) > 0.01)) ||
+                                 (movement && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01));
+
+        if (isActuallyMoving) {
+            // Favor Movement component input for direction as it's more intentional from the player
+            if (movement && (Math.abs(movement.lastMove.x) > 0 || Math.abs(movement.lastMove.y) > 0)) {
+                this.parameters.horizontal = movement.lastMove.x;
+                this.parameters.vertical = movement.lastMove.y;
+                this.parameters.speed = Math.sqrt(this.parameters.horizontal ** 2 + this.parameters.vertical ** 2);
+            } else if (rb) {
+                this.parameters.horizontal = rb.velocity.x;
+                this.parameters.vertical = rb.velocity.y;
+                this.parameters.speed = Math.sqrt(rb.velocity.x ** 2 + rb.velocity.y ** 2);
+            }
             this.parameters.isMoving = true;
-        } else if (movement) {
-            this.parameters.horizontal = movement.lastMove.x;
-            this.parameters.vertical = movement.lastMove.y;
-            this.parameters.speed = Math.sqrt(movement.lastMove.x ** 2 + movement.lastMove.y ** 2);
-            this.parameters.isMoving = this.parameters.speed > 0.01;
-        } else if (rb) {
-            // Rigidbody exists but not moving
+        } else {
             this.parameters.horizontal = 0;
             this.parameters.vertical = 0;
             this.parameters.speed = 0;

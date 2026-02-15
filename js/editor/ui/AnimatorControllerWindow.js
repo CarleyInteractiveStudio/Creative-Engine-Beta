@@ -448,11 +448,11 @@ async function createNewAnimatorController() {
                 entryState: "Parado",
                 smartMode: true,
                 states: [
-                    { name: "Parado", animationClip: "", speed: 1.0, position: { x: 300, y: 200 } },
-                    { name: "Arriba", animationClip: "", speed: 1.0, position: { x: 300, y: 50 } },
-                    { name: "Abajo", animationClip: "", speed: 1.0, position: { x: 300, y: 350 } },
-                    { name: "Izquierda", animationClip: "", speed: 1.0, position: { x: 100, y: 200 } },
-                    { name: "Derecha", animationClip: "", speed: 1.0, position: { x: 500, y: 200 } }
+                    { name: "Parado", animationClip: "", speed: 10.0, position: { x: 300, y: 200 } },
+                    { name: "Arriba", animationClip: "", speed: 10.0, position: { x: 300, y: 50 } },
+                    { name: "Abajo", animationClip: "", speed: 10.0, position: { x: 300, y: 350 } },
+                    { name: "Izquierda", animationClip: "", speed: 10.0, position: { x: 100, y: 200 } },
+                    { name: "Derecha", animationClip: "", speed: 10.0, position: { x: 500, y: 200 } }
                 ],
                 transitions: [],
                 movementMapping: {
