@@ -1148,7 +1148,7 @@ export class Animator extends Leyes {
     constructor(materia) {
         super(materia);
         this.animationClipPath = ''; // Path to the .ceanimclip or .cea asset
-        this.speed = 12;
+        this.speed = 12.0;
         this.loop = true;
         this.playOnAwake = true;
 
@@ -1251,13 +1251,19 @@ export class Animator extends Leyes {
     detener() { this.stop(); }
 
     update(deltaTime) {
+        // Trace log (disabled by default, but useful for debugging)
+        const debug = window.CE_DEBUG_ANIMATION;
+
         // Lazy lookup of SpriteRenderer (do it even if not playing so it's ready)
         if (!this.spriteRenderer && this.materia) {
             this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
         }
 
+        if (debug && Math.random() < 0.01) console.log(`[Animator] Update: isPlaying=${this.isPlaying}, clipPath=${this.animationClipPath}, hasClip=${!!this.animationClip}`);
+
         // Auto-load clip if path exists but no data
         if (!this.animationClip && this.animationClipPath && !this._isLoading) {
+            console.log(`[Animator] Auto-cargando clip desde: ${this.animationClipPath}`);
             this._isLoading = true;
             this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).finally(() => {
                 this._isLoading = false;
@@ -1266,7 +1272,7 @@ export class Animator extends Leyes {
 
         // Wait for clip to load before advancing frames
         if (!this.animationClip && this.animationClipPath) {
-            if (this.isPlaying && Math.random() < 0.01) { // Log occasionally to avoid spam
+            if (this.isPlaying && Math.random() < 0.05) {
                 console.log(`[Animator] Esperando a que cargue el clip: ${this.animationClipPath}`);
             }
             return;
@@ -1277,7 +1283,8 @@ export class Animator extends Leyes {
         }
 
         this.frameTimer += deltaTime;
-        const frameDuration = 1 / (this.speed || 10);
+        const speed = Math.max(0.1, this.speed || 12.0);
+        const frameDuration = 1 / speed;
 
         if (this.frameTimer >= frameDuration) {
             this.frameTimer %= frameDuration; // Keep the remainder for more accurate timing
@@ -1324,11 +1331,12 @@ export class Animator extends Leyes {
                         this.spriteRenderer.isLoading = false;
                         this.spriteRenderer.isError = false;
 
-                        // Sync names without triggering re-loads
+                        // Sync names without triggering re-loads in SpriteRenderer.update
                         const frame = clip.frames[this.currentFrame];
                         if (typeof frame === 'string') {
                             this.spriteRenderer._spriteName = frame;
                             this.spriteRenderer.source = frame;
+                            this.spriteRenderer._lastLoadedSource = frame; // Important: prevent flicker
                         }
                     } else {
                         const frame = clip.frames[this.currentFrame];
@@ -1337,6 +1345,7 @@ export class Animator extends Leyes {
                             let changed = false;
                             if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
                                 this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
+                                this.spriteRenderer._lastLoadedSource = frame.spriteAssetPath;
                                 changed = true;
                             }
                             if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
@@ -1763,6 +1772,7 @@ export class AnimatorController extends Leyes {
 
     play(stateName) {
         if (!stateName) return;
+        const debug = window.CE_DEBUG_ANIMATION;
 
         // Lazy lookup of Animator
         if (!this.animator && this.materia) {
@@ -1774,12 +1784,30 @@ export class AnimatorController extends Leyes {
             this.states = new Map();
         }
 
-        // Do not restart the animation if it's already playing
-        if (!this.animator || !this.states.has(stateName) || (this.currentStateName === stateName && this.animator.isPlaying)) {
-            if (this.animator && !this.animator.isPlaying && this.states.has(stateName) && this.states.get(stateName).animationClip) {
-                this.animator.play();
-            }
+        if (debug) console.log(`[AnimatorController] Intentando reproducir estado: ${stateName}. Actual: ${this.currentStateName}`);
+
+        if (!this.animator) {
+            if (debug) console.warn(`[AnimatorController] No se encontró componente Animator para reproducir '${stateName}'`);
             return;
+        }
+
+        if (!this.states.has(stateName)) {
+            if (debug) console.warn(`[AnimatorController] El estado '${stateName}' no existe en el controlador.`);
+            return;
+        }
+
+        // Do not restart the animation if it's already playing
+        if (this.currentStateName === stateName && this.animator.isPlaying) {
+            return;
+        }
+
+        if (this.currentStateName === stateName && !this.animator.isPlaying) {
+             const stateData = this.states.get(stateName);
+             if (stateData && stateData.animationClip) {
+                 if (debug) console.log(`[AnimatorController] Reanudando animación del estado actual: ${stateName}`);
+                 this.animator.play();
+             }
+             return;
         }
 
         const state = this.states.get(stateName);
@@ -1822,11 +1850,14 @@ export class AnimatorController extends Leyes {
 
     update(deltaTime) {
         if (!this.materia.isActive) return;
+        const debug = window.CE_DEBUG_ANIMATION;
 
         // Lazy lookup of Animator
         if (!this.animator && this.materia) {
             this.animator = this.materia.getComponent(Animator);
         }
+
+        if (debug && Math.random() < 0.01) console.log(`[AnimatorController] Update. Path: ${this.controllerPath}, hasController: ${!!this.controller}`);
 
         // Auto-load controller data if needed
         if (!this.controller && this.controllerPath && !this._failedToLoad) {

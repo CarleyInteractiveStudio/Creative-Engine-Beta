@@ -1710,6 +1710,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
+        // Enable verbose animation debugging in the editor
+        window.CE_DEBUG_ANIMATION = true;
+
         // Update components even in the editor, but ONLY for the selected object to provide feedback
         if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
             // Update controller BEFORE animator so it can set the current animation for this frame
@@ -1719,6 +1722,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const animator = selectedMateria.getComponent(Components.Animator);
             if (animator && animator.isActive) {
+                if (window.CE_DEBUG_ANIMATION && Math.random() < 0.01) {
+                    console.log(`[EditorLoop] Actualizando Animator en '${selectedMateria.name}'`);
+                }
                 animator.update(deltaTime);
             }
             const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
