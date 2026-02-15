@@ -237,7 +237,7 @@ async function populateAnimationsList() {
     async function findAnims(dirHandle, path = '') {
         for await (const entry of dirHandle.values()) {
             const entryPath = path ? `${path}/${entry.name}` : entry.name;
-            if (entry.kind === 'file' && entry.name.endsWith('.cea')) {
+            if (entry.kind === 'file' && (entry.name.endsWith('.cea') || entry.name.endsWith('.ceanimclip'))) {
                 animFiles.push({ name: entry.name, path: entryPath });
             } else if (entry.kind === 'directory') {
                 await findAnims(entry, entryPath);
@@ -327,7 +327,7 @@ function updateStateInspector() {
                 <input type="text" id="anim-state-name" value="${selectedState.name}">
             </div>
             <div class="inspector-row">
-                <label>Animación (.cea)</label>
+                <label>Animación</label>
                 <div class="file-picker">
                     <input type="text" id="anim-state-asset" value="${selectedState.animationClip || ''}" readonly>
                     <button id="anim-state-asset-btn">...</button>
@@ -336,6 +336,14 @@ function updateStateInspector() {
             <div class="inspector-row">
                 <label>Velocidad</label>
                 <input type="number" id="anim-state-speed" value="${selectedState.speed !== undefined ? selectedState.speed : 12.0}" step="0.1">
+            </div>
+            <div class="inspector-row">
+                <label>Fotograma Inicio</label>
+                <input type="number" id="anim-state-start" value="${selectedState.startFrame || 0}" min="0">
+            </div>
+            <div class="inspector-row">
+                <label>Fotograma Fin</label>
+                <input type="number" id="anim-state-end" value="${selectedState.endFrame !== undefined ? selectedState.endFrame : -1}" min="-1">
             </div>
             <div class="checkbox-field">
                 <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
@@ -387,11 +395,20 @@ function updateStateInspector() {
                 updateStateInspector();
                 populateStatesList();
             }
-        }, { filter: ['.cea'] });
+        }, { filter: ['.cea', '.ceanimclip'] });
     };
 
     container.querySelector('#anim-state-speed').oninput = (e) => {
-        selectedState.speed = parseFloat(e.target.value) || 1.0;
+        selectedState.speed = parseFloat(e.target.value) || 12.0;
+    };
+
+    container.querySelector('#anim-state-start').oninput = (e) => {
+        selectedState.startFrame = parseInt(e.target.value) || 0;
+    };
+
+    container.querySelector('#anim-state-end').oninput = (e) => {
+        selectedState.endFrame = parseInt(e.target.value);
+        if (isNaN(selectedState.endFrame)) selectedState.endFrame = -1;
     };
 
     container.querySelector('#anim-state-loop').onchange = (e) => {
@@ -709,7 +726,7 @@ function setupEventListeners() {
             const stateName = node.dataset.name;
             const state = currentControllerData.states.find(s => s.name === stateName);
             const animData = JSON.parse(e.dataTransfer.getData('text/plain'));
-            if (animData.path && animData.path.endsWith('.cea')) {
+            if (animData.path && (animData.path.endsWith('.cea') || animData.path.endsWith('.ceanimclip'))) {
                 state.animationClip = animData.path;
                 renderAnimatorGraph();
             }

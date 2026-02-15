@@ -1034,6 +1034,7 @@ export class SpriteRenderer extends Leyes {
 
     async setSourcePath(path, projectsDirHandle) {
         if (path.endsWith('.ceSprite')) {
+            if (this.spriteAssetPath === path && this.spriteSheet) return;
             this.spriteAssetPath = path;
             await this.loadSpriteSheet(projectsDirHandle);
         } else {
@@ -1234,21 +1235,45 @@ export class Animator extends Leyes {
             // Preload frames to avoid flicker
             if (clip && clip.frames) {
                 this._frameCache = [];
+                const spritesheetCache = new Map(); // Cache for .ceSprite JSONs during preload
+
                 const preloadPromises = clip.frames.map(async (frameData, index) => {
-                    let path = '';
+                    let imagePath = '';
+
                     if (typeof frameData === 'string') {
-                        path = frameData;
+                        imagePath = frameData;
                     } else if (typeof frameData === 'object' && frameData !== null) {
-                        if (frameData.spriteAssetPath) path = frameData.spriteAssetPath;
+                        const assetPath = frameData.spriteAssetPath;
+                        if (assetPath) {
+                            if (assetPath.endsWith('.ceSprite')) {
+                                // For .ceSprite, we need to load the JSON to find the actual image path
+                                let sheet = spritesheetCache.get(assetPath);
+                                if (!sheet) {
+                                    try {
+                                        const sheetUrl = await getURLForAssetPath(assetPath, projectsDirHandle);
+                                        const sheetRes = await fetch(sheetUrl);
+                                        sheet = await sheetRes.json();
+                                        spritesheetCache.set(assetPath, sheet);
+                                    } catch (e) {
+                                        console.warn(`[Animator] Error preloading spritesheet ${assetPath}:`, e);
+                                    }
+                                }
+                                if (sheet && sheet.sourceImage) {
+                                    imagePath = `Assets/${sheet.sourceImage}`;
+                                }
+                            } else {
+                                imagePath = assetPath;
+                            }
+                        }
                     }
 
-                    if (path) {
+                    if (imagePath) {
                         const img = new Image();
                         this._frameCache[index] = img;
 
-                        let src = path;
-                        if (!path.startsWith('data:')) {
-                            src = await getURLForAssetPath(path, projectsDirHandle);
+                        let src = imagePath;
+                        if (!imagePath.startsWith('data:')) {
+                            src = await getURLForAssetPath(imagePath, projectsDirHandle);
                         }
 
                         if (src) {
@@ -1348,12 +1373,14 @@ export class Animator extends Leyes {
         const speed = Math.max(0.1, this.speed || 12.0);
         const frameDuration = 1 / speed;
 
-        if (this.frameTimer >= frameDuration) {
-            this.frameTimer %= frameDuration;
+        let frameChanged = false;
+        while (this.frameTimer >= frameDuration) {
+            this.frameTimer -= frameDuration;
             this.currentFrame++;
+            frameChanged = true;
 
             const clip = this.animationClip;
-            if (!clip.frames || clip.frames.length === 0) return;
+            if (!clip.frames || clip.frames.length === 0) break;
 
             const endFrame = (this.endFrame !== -1 && this.endFrame < clip.frames.length) ? this.endFrame : clip.frames.length - 1;
 
@@ -1375,9 +1402,12 @@ export class Animator extends Leyes {
                 } else {
                     this.currentFrame = endFrame;
                     this.stop();
+                    break;
                 }
             }
+        }
 
+        if (frameChanged) {
             this.applyCurrentFrame();
         }
     }
@@ -1392,32 +1422,31 @@ export class Animator extends Leyes {
         const endFrame = (this.endFrame !== -1 && this.endFrame < frames.length) ? this.endFrame : frames.length - 1;
         const frameIdx = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
 
+        const frame = frames[frameIdx];
         const cachedImg = this._frameCache[frameIdx];
+
         if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
             this.spriteRenderer.sprite = cachedImg;
             this.spriteRenderer.isLoading = false;
             this.spriteRenderer.isError = false;
+        }
 
-            const frame = frames[frameIdx];
-            if (typeof frame === 'string') {
-                this.spriteRenderer._spriteName = frame;
+        // Apply metadata (source, spriteName) regardless of cache to ensure SpriteRenderer has correct UVs
+        if (typeof frame === 'object' && frame !== null) {
+            if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
+                // If we have cachedImg, SpriteRenderer.loadSpriteSheet will skip loading the image
+                this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
+            }
+            if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
+                this.spriteRenderer.spriteName = frame.spriteName;
+            }
+        } else if (typeof frame === 'string') {
+            if (cachedImg) {
                 this.spriteRenderer.source = frame;
                 this.spriteRenderer._lastLoadedSource = frame;
             }
-        } else {
-            const frame = frames[frameIdx];
-            if (typeof frame === 'object' && frame !== null) {
-                if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
-                    this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
-                    this.spriteRenderer._lastLoadedSource = frame.spriteAssetPath;
-                }
-                if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
-                    this.spriteRenderer.spriteName = frame.spriteName;
-                }
-            } else if (typeof frame === 'string') {
-                if (this.spriteRenderer.source !== frame && this.spriteRenderer.spriteName !== frame) {
-                    this.spriteRenderer.spriteName = frame;
-                }
+            if (this.spriteRenderer.spriteName !== frame) {
+                this.spriteRenderer.spriteName = frame;
             }
         }
     }
@@ -1946,18 +1975,31 @@ export class AnimatorController extends Leyes {
         // 3. Fallback: Position tracking (Useful for custom movement scripts or editor dragging)
         if (!moving && transform) {
             if (this._hasLastPosition && deltaTime > 0) {
-                const dx = (transform.x - this._lastPosition.x) / deltaTime;
-                const dy = (transform.y - this._lastPosition.y) / deltaTime;
-
-                // Use a higher threshold in the editor to avoid jitter while dragging or clicking
                 const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-                const threshold = isGame ? 0.1 : 10.0;
 
-                if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-                    horiz = dx;
-                    vert = dy;
-                    moving = true;
-                    if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: ${horiz}, ${vert}`);
+                if (isGame) {
+                    // In game, use velocity-based threshold
+                    const dx = (transform.x - this._lastPosition.x) / deltaTime;
+                    const dy = (transform.y - this._lastPosition.y) / deltaTime;
+                    const threshold = 0.1;
+                    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                        horiz = dx;
+                        vert = dy;
+                        moving = true;
+                    }
+                } else {
+                    // In editor, use absolute distance threshold to avoid jitter from clicking/dragging
+                    const distSq = (transform.x - this._lastPosition.x)**2 + (transform.y - this._lastPosition.y)**2;
+                    const thresholdDist = 1.0; // At least 1 pixel movement required in the editor
+                    if (distSq > thresholdDist**2) {
+                        horiz = (transform.x - this._lastPosition.x);
+                        vert = (transform.y - this._lastPosition.y);
+                        moving = true;
+                    }
+                }
+
+                if (moving && debug && Math.random() < 0.05) {
+                    console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: ${horiz}, ${vert}`);
                 }
             }
         }
