@@ -743,7 +743,7 @@ export function initialize(dependencies) {
         dom.sceneCanvas.classList.remove('drag-over-scene');
     });
 
-    dom.sceneCanvas.addEventListener('drop', (e) => {
+    dom.sceneCanvas.addEventListener('drop', async (e) => {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
