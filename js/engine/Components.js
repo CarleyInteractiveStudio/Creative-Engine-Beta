@@ -1534,6 +1534,11 @@ export class AnimatorController extends Leyes {
             const response = await fetch(url);
             this.controller = await response.json();
 
+            // Defensive check to ensure 'states' is a Map (prevents crashes from legacy corrupted data)
+            if (!(this.states instanceof Map)) {
+                this.states = new Map();
+            }
+
             this.states.clear();
             for (const state of this.controller.states) {
                 this.states.set(state.name, state);
@@ -1548,6 +1553,12 @@ export class AnimatorController extends Leyes {
 
     play(stateName) {
         if (!stateName) return;
+
+        // Defensive check
+        if (!(this.states instanceof Map)) {
+            this.states = new Map();
+        }
+
         // Do not restart the animation if it's already playing
         if (!this.animator || !this.states.has(stateName) || this.currentStateName === stateName) {
             return;

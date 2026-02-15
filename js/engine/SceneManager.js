@@ -251,8 +251,10 @@ export function serializeMateria(materia, recursive = false) {
                         continue;
                     } else if (ley.constructor.name === 'TilemapCollider2D' && key === '_cachedMesh') {
                         leyData.properties[key] = Array.from(ley[key].entries());
-                    } else if (ley.constructor.name === 'TilemapRenderer' && key === 'imageCache') {
+                    } else if (ley.constructor.name === 'TilemapRenderer' && (key === 'imageCache' || key === 'clipCache')) {
                         leyData.properties[key] = [];
+                    } else if (ley.constructor.name === 'AnimatorController' && (key === 'states' || key === 'controller' || key === 'animator' || key === 'projectsDirHandle')) {
+                        continue;
                     } else if (ley[key] instanceof Materia) {
                         leyData.properties[key] = { __materiaId: ley[key].id };
                     } else {
@@ -342,6 +344,10 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
                 } else if (leyData.type === 'TilemapRenderer' || leyData.type === 'Terreno2D') {
                     Object.assign(newLey, leyData.properties);
                     newLey.imageCache = new Map();
+                    if (leyData.type === 'TilemapRenderer') newLey.clipCache = new Map();
+                } else if (leyData.type === 'AnimatorController') {
+                    Object.assign(newLey, leyData.properties);
+                    newLey.states = new Map();
                 } else {
                     Object.assign(newLey, leyData.properties);
                 }
