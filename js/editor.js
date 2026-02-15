@@ -771,8 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const component = selectedMateria.getComponent(ComponentClass);
                     if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
+                        await component.setSourcePath(imgPath, projectsDirHandle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -2617,7 +2616,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, projectsDirHandle });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
