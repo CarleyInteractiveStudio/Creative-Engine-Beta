@@ -1055,30 +1055,24 @@ export class SpriteRenderer extends Leyes {
         this.isLoading = true;
         this.isError = false;
 
-        const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
-        if (!imageUrl) {
-            console.error(`Could not get URL for sprite source: ${this.source}`);
-            this.isError = true;
-            this.isLoading = false;
-            return;
-        }
+        try {
+            const imageUrl = await getURLForAssetPath(this.source, projectsDirHandle);
+            if (!imageUrl) {
+                this.isError = true;
+                return;
+            }
 
-        if (this.sprite.src !== imageUrl) {
-            return new Promise((resolve, reject) => {
-                this.sprite.onload = () => {
-                    this.isLoading = false;
-                    this.isError = false;
-                    resolve();
-                };
-                this.sprite.onerror = (e) => {
-                    console.error(`Failed to load image: ${imageUrl}`, e);
-                    this.isError = true;
-                    this.isLoading = false;
-                    reject(e);
-                };
-                this.sprite.src = imageUrl;
-            });
-        } else {
+            if (this.sprite.src !== imageUrl) {
+                await new Promise((resolve, reject) => {
+                    this.sprite.onload = resolve;
+                    this.sprite.onerror = reject;
+                    this.sprite.src = imageUrl;
+                });
+            }
+        } catch (error) {
+            console.error(`Error loading sprite: ${this.source}`, error);
+            this.isError = true;
+        } finally {
             this.isLoading = false;
         }
     }
@@ -1120,6 +1114,7 @@ export class Animator extends Leyes {
         this.frameTimer = 0;
         this.isPlaying = this.playOnAwake;
         this.spriteRenderer = null;
+        this.projectsDirHandle = null;
     }
 
     start() {
@@ -1130,6 +1125,7 @@ export class Animator extends Leyes {
 
     async loadAnimationClip(projectsDirHandle) {
         if (!this.animationClipPath) return;
+        this.projectsDirHandle = projectsDirHandle;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
 
@@ -1227,7 +1223,7 @@ export class Animator extends Leyes {
                     if (typeof frame === 'object' && frame !== null) {
                         // Frame refers to a specific sprite in a .ceSprite asset
                         if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
-                            this.spriteRenderer.setSourcePath(frame.spriteAssetPath, window.projectsDirHandle);
+                            this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
                         }
                         if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
                             this.spriteRenderer.spriteName = frame.spriteName;
@@ -1283,35 +1279,33 @@ export class UIImage extends Leyes {
     }
 
     async loadSprite(projectsDirHandle) {
-        if (this.source) {
-            this.isLoading = true;
+        if (!this.source) {
+            this.sprite.src = '';
             this.isError = false;
+            this.isLoading = false;
+            return;
+        }
+
+        this.isLoading = true;
+        this.isError = false;
+
+        try {
             const url = await getURLForAssetPath(this.source, projectsDirHandle);
             if (url) {
                 if (this.sprite.src !== url) {
-                    return new Promise((resolve) => {
-                        this.sprite.onload = () => {
-                            this.isLoading = false;
-                            this.isError = false;
-                            resolve();
-                        };
-                        this.sprite.onerror = () => {
-                            this.isLoading = false;
-                            this.isError = true;
-                            resolve();
-                        };
+                    await new Promise((resolve, reject) => {
+                        this.sprite.onload = resolve;
+                        this.sprite.onerror = reject;
                         this.sprite.src = url;
                     });
-                } else {
-                    this.isLoading = false;
                 }
             } else {
-                this.isLoading = false;
                 this.isError = true;
             }
-        } else {
-            this.sprite.src = '';
-            this.isError = false;
+        } catch (error) {
+            console.error(`Error loading UI image: ${this.source}`, error);
+            this.isError = true;
+        } finally {
             this.isLoading = false;
         }
     }
@@ -1627,12 +1621,12 @@ export class AnimatorController extends Leyes {
         }
 
         // Do not restart the animation if it's already playing
-        if (!this.animator || !this.states.has(stateName) || this.currentStateName === stateName) {
+        if (!this.animator || !this.states.has(stateName) || (this.currentStateName === stateName && this.animator.isPlaying)) {
             return;
         }
 
-        console.log(`[AnimatorController] Reproduciendo estado: ${stateName}`);
         const state = this.states.get(stateName);
+        console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
         // Configure the Animator component with the new state's data
@@ -1642,15 +1636,18 @@ export class AnimatorController extends Leyes {
         this.animator.endFrame = state.endFrame !== undefined ? state.endFrame : -1;
 
         // If the clip path is different, tell the animator to load the new clip and play it
-        if (this.animator.animationClipPath !== state.animationClip) {
+        if (state.animationClip && this.animator.animationClipPath !== state.animationClip) {
             this.animator.animationClipPath = state.animationClip;
             // The animator needs the handle to load the new clip
             this.animator.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
                 this.animator.play();
             });
+        } else if (state.animationClip) {
+            // If it's the same clip, just restart it if not playing
+            if (!this.animator.isPlaying) this.animator.play();
         } else {
-            // If it's the same clip, just restart it
-            this.animator.play();
+            // No clip for this state
+            this.animator.stop();
         }
     }
 
@@ -1689,8 +1686,8 @@ export class AnimatorController extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         const movement = this.materia.getComponent(Movement);
 
-        const isActuallyMoving = (rb && (Math.abs(rb.velocity.x) > 0.01 || Math.abs(rb.velocity.y) > 0.01)) ||
-                                 (movement && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01));
+        const isActuallyMoving = (rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) ||
+                                 (movement && (Math.abs(movement.lastMove.x) > 0.05 || Math.abs(movement.lastMove.y) > 0.05));
 
         if (isActuallyMoving) {
             // Favor Movement component input for direction as it's more intentional from the player
