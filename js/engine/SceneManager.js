@@ -253,7 +253,16 @@ export function serializeMateria(materia, recursive = false) {
                         leyData.properties[key] = Array.from(ley[key].entries());
                     } else if (ley.constructor.name === 'TilemapRenderer' && (key === 'imageCache' || key === 'clipCache')) {
                         leyData.properties[key] = [];
-                    } else if (ley.constructor.name === 'AnimatorController' && (key === 'states' || key === 'controller' || key === 'animator' || key === 'projectsDirHandle')) {
+                    } else if (ley.constructor.name === 'AnimatorController' && (key === 'states' || key === 'controller' || key === 'animator' || key === 'projectsDirHandle' || key === 'isLoading' || key === 'isError')) {
+                        continue;
+                    } else if (ley.constructor.name === 'Animator' && (key === 'animationClip' || key === 'spriteRenderer' || key === 'projectsDirHandle' || key === 'isLoading' || key === 'isError')) {
+                        continue;
+                    } else if ((ley.constructor.name === 'SpriteRenderer' || ley.constructor.name === 'UIImage') && (key === 'sprite' || key === 'spriteSheet' || key === 'isLoading' || key === 'isError')) {
+                        continue;
+                    } else if (ley.constructor.name === 'TextureRender' && key === 'texture') {
+                        continue;
+                    } else if (key.startsWith('_')) {
+                        // Skip "private" or internal state properties
                         continue;
                     } else if (ley[key] instanceof Materia) {
                         leyData.properties[key] = { __materiaId: ley[key].id };

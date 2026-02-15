@@ -997,6 +997,11 @@ export class SpriteRenderer extends Leyes {
         if (typeof value === 'string' && value) {
             if (value.startsWith('data:')) {
                 this.spriteSheet = null; // Important: Clear spritesheet mode
+                this.isLoading = false;
+                this.isError = false;
+                if (!this.sprite || typeof this.sprite.addEventListener !== 'function') {
+                    this.sprite = new Image();
+                }
                 if (this.sprite.src !== value) {
                     this.sprite.src = value;
                 }
@@ -1045,6 +1050,11 @@ export class SpriteRenderer extends Leyes {
     }
 
     async loadSprite(projectsDirHandle) {
+        // Ensure this.sprite is a valid Image object (serialization might have overwritten it)
+        if (!this.sprite || typeof this.sprite.addEventListener !== 'function') {
+            this.sprite = new Image();
+        }
+
         if (!this.source) {
             this.sprite.src = '';
             this.isError = false;
@@ -1306,6 +1316,11 @@ export class UIImage extends Leyes {
     }
 
     async loadSprite(projectsDirHandle) {
+        // Ensure this.sprite is a valid Image object (serialization might have overwritten it)
+        if (!this.sprite || typeof this.sprite.addEventListener !== 'function') {
+            this.sprite = new Image();
+        }
+
         if (!this.source) {
             this.sprite.src = '';
             this.isError = false;
@@ -1670,6 +1685,9 @@ export class AnimatorController extends Leyes {
 
         // Do not restart the animation if it's already playing
         if (!this.animator || !this.states.has(stateName) || (this.currentStateName === stateName && this.animator.isPlaying)) {
+            if (this.animator && !this.animator.isPlaying && this.states.has(stateName) && this.states.get(stateName).animationClip) {
+                this.animator.play();
+            }
             return;
         }
 
@@ -1687,9 +1705,10 @@ export class AnimatorController extends Leyes {
         if (state.animationClip && this.animator.animationClipPath !== state.animationClip) {
             this.animator.animationClipPath = state.animationClip;
             // The animator needs the handle to load the new clip
-            this.animator.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
+            const handle = this.projectsDirHandle || window.projectsDirHandle;
+            this.animator.loadAnimationClip(handle).then(() => {
                 this.animator.play();
-            });
+            }).catch(e => console.error(`[AnimatorController] Error cargando clip para estado ${stateName}:`, e));
         } else if (state.animationClip) {
             // If it's the same clip, just restart it if not playing
             if (!this.animator.isPlaying) this.animator.play();
@@ -1756,7 +1775,7 @@ export class AnimatorController extends Leyes {
             if (this._hasLastPosition) {
                 const dx = (transform.x - this._lastPosition.x) / deltaTime;
                 const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
                     horiz = dx;
                     vert = dy;
                     moving = true;
@@ -1794,18 +1813,21 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            if (p.horizontal > 0.1) h = 1;
-            else if (p.horizontal < -0.1) h = -1;
+            if (p.horizontal > 0.05) h = 1;
+            else if (p.horizontal < -0.05) h = -1;
 
             let v = 0;
-            if (p.vertical > 0.1) v = 1;
-            else if (p.vertical < -0.1) v = -1;
+            if (p.vertical > 0.05) v = 1;
+            else if (p.vertical < -0.05) v = -1;
 
             dirIndex = (v + 1) * 3 + (h + 1);
         }
 
         const stateName = this.controller.movementMapping[dirIndex];
         if (stateName && this.states.has(stateName)) {
+            if (this.currentStateName !== stateName) {
+                console.log(`[AnimatorController] SmartMode: Direccion detectada ${dirIndex} -> Estado ${stateName}`);
+            }
             this.play(stateName);
         } else if (p.isMoving) {
             // Fallback: If diagonal is not defined, try pure horizontal or vertical
