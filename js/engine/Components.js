@@ -1197,19 +1197,36 @@ export class Animator extends Leyes {
             if (clip && clip.frames) {
                 this._frameCache = [];
                 const preloadPromises = clip.frames.map(async (frameData, index) => {
+                    let path = '';
                     if (typeof frameData === 'string') {
+                        path = frameData;
+                    } else if (typeof frameData === 'object' && frameData !== null) {
+                        // Frame data might be { spriteAssetPath: "...", spriteName: "..." }
+                        // For simplicity, we preload the base image if it's a direct path
+                        // If it's a .ceSprite, we'd need to load the JSON first.
+                        // For now let's focus on string paths which are most common.
+                        if (frameData.spriteAssetPath) path = frameData.spriteAssetPath;
+                    }
+
+                    if (path) {
                         const img = new Image();
                         this._frameCache[index] = img;
 
-                        let src = frameData;
-                        if (!frameData.startsWith('data:')) {
-                            src = await getURLForAssetPath(frameData, projectsDirHandle);
+                        let src = path;
+                        if (!path.startsWith('data:')) {
+                            src = await getURLForAssetPath(path, projectsDirHandle);
                         }
 
                         if (src) {
                             return new Promise((resolve) => {
-                                img.onload = () => resolve();
-                                img.onerror = () => resolve(); // Resolve anyway to not block
+                                img.onload = () => {
+                                    if (window.CE_DEBUG_ANIMATION) console.log(`[Animator] Pre-cargado frame ${index}: ${path}`);
+                                    resolve();
+                                };
+                                img.onerror = () => {
+                                    console.error(`[Animator] Error al pre-cargar frame ${index}: ${path}`);
+                                    resolve();
+                                };
                                 img.src = src;
                             });
                         }
@@ -1287,8 +1304,11 @@ export class Animator extends Leyes {
         const frameDuration = 1 / speed;
 
         if (this.frameTimer >= frameDuration) {
+            const oldFrame = this.currentFrame;
             this.frameTimer %= frameDuration; // Keep the remainder for more accurate timing
             this.currentFrame++;
+
+            if (debug) console.log(`[Animator] Cambio de frame en '${this.materia.name}': ${oldFrame} -> ${this.currentFrame} (Timer reset: ${this.frameTimer.toFixed(4)})`);
 
             // If we have an associated clip, we handle its specific logic (looping, wrapping, SpriteRenderer)
             if (this.animationClip) {
@@ -1312,8 +1332,10 @@ export class Animator extends Leyes {
                 }
 
                     if (this.loop) {
+                        if (debug) console.log(`[Animator] Bucle: volviendo al frame inicial (${this.startFrame || 0})`);
                         this.currentFrame = this.startFrame || 0;
                     } else {
+                        if (debug) console.log(`[Animator] Animación finalizada (sin bucle).`);
                         this.currentFrame = endFrame; // Stay on last frame
                         this.stop();
                     }

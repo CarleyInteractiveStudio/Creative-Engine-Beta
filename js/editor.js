@@ -1456,7 +1456,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ctx.save();
                                     ctx.translate(worldPosition.x + tx + dWidth / 2 + dx, worldPosition.y + ty + dHeight / 2 + dy);
                                     ctx.rotate(worldRotation * Math.PI / 180);
-                                    ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                                    if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
+                                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                                    }
                                     ctx.restore();
                                     if (mirrorY === 0) break;
                                 }
@@ -1465,7 +1467,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             ctx.translate(worldPosition.x, worldPosition.y);
                             ctx.rotate(worldRotation * Math.PI / 180);
-                            ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, dx, dy, dWidth, dHeight);
+
+                            // Absolute safety check to prevent InvalidStateError
+                            if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
+                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, dx, dy, dWidth, dHeight);
+                            }
                         }
                         ctx.restore();
                     } else {
@@ -1709,9 +1715,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update layouts before game logic and rendering
         runLayoutUpdate();
-
-        // Enable verbose animation debugging in the editor
-        window.CE_DEBUG_ANIMATION = true;
 
         // Update components even in the editor, but ONLY for the selected object to provide feedback
         if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
