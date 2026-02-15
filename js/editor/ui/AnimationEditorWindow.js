@@ -175,7 +175,31 @@ export async function openAnimationAsset(fileHandle, dirHandle) {
         console.log(`Abierto ${currentAnimationFileHandle.name}:`, currentAnimationAsset);
 
         populateTimeline();
-        drawOnionSkin();
+
+        // Select first frame by default if available
+        const anim = data.animations[0];
+        if (anim && anim.frames && anim.frames.length > 0) {
+            currentFrameIndex = 0;
+            const img = new Image();
+            img.onload = () => {
+                const w = img.naturalWidth || img.width;
+                const h = img.naturalHeight || img.height;
+                [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => {
+                    canvas.width = w;
+                    canvas.height = h;
+                });
+                const ctx = dom.drawingCanvas.getContext('2d');
+                ctx.clearRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0);
+                drawOnionSkin();
+                drawAnimEditorGrid();
+                populateTimeline(); // Refresh active class
+            };
+            img.src = anim.frames[0];
+        } else {
+            drawOnionSkin();
+            drawAnimEditorGrid();
+        }
     } catch(error) {
         console.error(`Error al abrir el asset de animación '${fileHandle.name}':`, error);
     }
@@ -236,7 +260,7 @@ async function extractFramesFromImage(imageUrl, cols, rows) {
 }
 
 function addFramesToAnimation(newFrames) {
-    if (!currentAnimationAsset) return;
+    if (!currentAnimationAsset || !newFrames.length) return;
     const anim = (currentAnimationAsset.animations && currentAnimationAsset.animations.length > 0)
         ? currentAnimationAsset.animations[0]
         : null;
@@ -245,7 +269,27 @@ function addFramesToAnimation(newFrames) {
         anim.frames.push(...newFrames);
         currentFrameIndex = anim.frames.length - 1;
         populateTimeline();
-        drawOnionSkin();
+
+        // Select and draw the last added frame
+        const lastFrameData = anim.frames[currentFrameIndex];
+        const img = new Image();
+        img.onload = () => {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+
+            [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => {
+                canvas.width = w;
+                canvas.height = h;
+            });
+
+            const ctx = dom.drawingCanvas.getContext('2d');
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0);
+
+            drawOnionSkin();
+            drawAnimEditorGrid();
+        };
+        img.src = lastFrameData;
     }
 }
 
@@ -299,6 +343,9 @@ export async function importAssets() {
         } else {
             // Multiple images
             const dataUrls = [];
+            // Sort items by path to maintain order
+            items.sort((a, b) => a.path.localeCompare(b.path));
+
             for (const item of items) {
                 const url = await getURLForAssetPath(item.path, projectsDirHandle);
                 if (url) {
@@ -555,12 +602,22 @@ function drawOnionSkin() {
         const index = parseInt(frame.dataset.index, 10);
         currentFrameIndex = index;
 
+        // Resize all canvases to match the frame size
+        const w = frame.naturalWidth || frame.width;
+        const h = frame.naturalHeight || frame.height;
+
+        [dom.drawingCanvas, dom.animOnionSkinCanvas, dom.animGridCanvas].forEach(canvas => {
+            if (canvas.width !== w) canvas.width = w;
+            if (canvas.height !== h) canvas.height = h;
+        });
+
         const ctx = dom.drawingCanvas.getContext('2d');
         ctx.clearRect(0, 0, dom.drawingCanvas.width, dom.drawingCanvas.height);
         ctx.drawImage(frame, 0, 0);
 
         populateTimeline();
         drawOnionSkin();
+        drawAnimEditorGrid();
     });
 
     drawAnimEditorGrid(); // Draw initial grid
