@@ -1701,7 +1701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update layouts before game logic and rendering
         runLayoutUpdate();
 
-        // Update animators even in the editor, but ONLY for the selected object
+        // Update components even in the editor, but ONLY for the selected object to provide feedback
         if (!isGameRunning && SceneManager.currentScene && selectedMateria) {
             // Update controller BEFORE animator so it can set the current animation for this frame
             const controller = selectedMateria.getComponent(Components.AnimatorController);
@@ -1711,6 +1711,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const animator = selectedMateria.getComponent(Components.Animator);
             if (animator && animator.isActive) {
                 animator.update(deltaTime);
+            }
+            const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
+            if (spriteRenderer && spriteRenderer.isActive) {
+                spriteRenderer.update(deltaTime);
+            }
+            const uiImage = selectedMateria.getComponent(Components.UIImage);
+            if (uiImage && uiImage.isActive) {
+                uiImage.update(deltaTime);
             }
         }
 

@@ -1049,6 +1049,16 @@ export class SpriteRenderer extends Leyes {
         }
     }
 
+    update(deltaTime) {
+        // Auto-load if source is set but not loaded or loading
+        if (this.source && !this.sprite.src.includes(this.source) && !this.isLoading && !this.isError) {
+            // Check if it's already a blob/data URL representing the source
+            if (!this.sprite.src.startsWith('blob:') && !this.sprite.src.startsWith('data:')) {
+                this.loadSprite(window.projectsDirHandle);
+            }
+        }
+    }
+
     async loadSprite(projectsDirHandle) {
         // Ensure this.sprite is a valid Image object (serialization might have overwritten it)
         if (!this.sprite || typeof this.sprite.addEventListener !== 'function') {
@@ -1222,6 +1232,14 @@ export class Animator extends Leyes {
             });
         }
 
+        // Wait for clip to load before advancing frames
+        if (!this.animationClip && this.animationClipPath) {
+            if (this.isPlaying && Math.random() < 0.01) { // Log occasionally to avoid spam
+                console.log(`[Animator] Esperando a que cargue el clip: ${this.animationClipPath}`);
+            }
+            return;
+        }
+
         if (!this.isPlaying) {
             return;
         }
@@ -1327,6 +1345,15 @@ export class UIImage extends Leyes {
         this.color = '#FFFFFF'; // Ensure it's a solid, valid color by default
         this.isError = false;
         this.isLoading = false;
+    }
+
+    update(deltaTime) {
+        // Auto-load if source is set but not loaded or loading
+        if (this.source && !this.sprite.src.includes(this.source) && !this.isLoading && !this.isError) {
+            if (!this.sprite.src.startsWith('blob:') && !this.sprite.src.startsWith('data:')) {
+                this.loadSprite(window.projectsDirHandle);
+            }
+        }
     }
 
     async loadSprite(projectsDirHandle) {
@@ -1780,14 +1807,16 @@ export class AnimatorController extends Leyes {
             vert = movement.lastMove.y;
             moving = true;
         }
-        // 2. Check Rigidbody velocity
-        else if (rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) {
+
+        // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
+        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.05 || Math.abs(rb.velocity.y) > 0.05)) {
             horiz = rb.velocity.x;
             vert = rb.velocity.y;
             moving = true;
         }
-        // 3. Fallback: Position tracking (Useful for custom movement scripts)
-        else if (transform) {
+
+        // 3. Fallback: Position tracking (Useful for custom movement scripts or editor dragging)
+        if (!moving && transform) {
             if (this._hasLastPosition) {
                 const dx = (transform.x - this._lastPosition.x) / deltaTime;
                 const dy = (transform.y - this._lastPosition.y) / deltaTime;
@@ -1797,6 +1826,10 @@ export class AnimatorController extends Leyes {
                     moving = true;
                 }
             }
+        }
+
+        // Always update last position if transform exists
+        if (transform) {
             this._lastPosition.x = transform.x;
             this._lastPosition.y = transform.y;
             this._hasLastPosition = true;
