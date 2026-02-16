@@ -1315,10 +1315,8 @@ export class Animator extends Leyes {
                 await Promise.all(preloadPromises);
             }
 
-            // If we were supposed to be playing, make sure the first frame is applied immediately
-            if (this.isPlaying) {
-                this.applyCurrentFrame();
-            }
+            // Always apply the first frame immediately after loading so it's visible in the editor
+            this.applyCurrentFrame();
 
         } catch (error) {
             console.error(`Failed to load animation clip at '${this.animationClipPath}':`, error);
@@ -1893,8 +1891,18 @@ export class AnimatorController extends Leyes {
         await this.loadController(projectsDirHandle);
 
         // Play entry state
-        if (this.controller && this.controller.entryState) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (isGame && this.controller && this.controller.entryState) {
             this.play(this.controller.entryState);
+        } else if (this.controller && this.controller.entryState) {
+            // In editor, just set the state but don't start playing
+            this.currentStateName = this.controller.entryState;
+            const state = this.states.get(this.currentStateName);
+            if (state && state.animationClip) {
+                this.animator.animationClipPath = state.animationClip;
+                // Just load it to show the first frame
+                this.animator.loadAnimationClip(projectsDirHandle);
+            }
         }
     }
 
@@ -2019,8 +2027,16 @@ export class AnimatorController extends Leyes {
                 this.loadController(this.projectsDirHandle || window.projectsDirHandle).then(() => {
                     this._isAutoLoading = false;
                     // Play entry state after auto-load
-                    if (this.controller && this.controller.entryState) {
+                    const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+                    if (isGame && this.controller && this.controller.entryState) {
                         this.play(this.controller.entryState);
+                    } else if (this.controller && this.controller.entryState) {
+                        this.currentStateName = this.controller.entryState;
+                        const state = this.states.get(this.currentStateName);
+                        if (state && state.animationClip) {
+                            this.animator.animationClipPath = state.animationClip;
+                            this.animator.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
+                        }
                     }
                 });
             }
@@ -2117,8 +2133,9 @@ export class AnimatorController extends Leyes {
             this.parameters.isMoving = false;
         }
 
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
         const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
-        if (this.smartMode || hasMapping) {
+        if (isGame && (this.smartMode || hasMapping)) {
             this._handleSmartMode();
         }
 

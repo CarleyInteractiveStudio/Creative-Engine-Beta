@@ -242,8 +242,17 @@ async function handleInspectorDrop(e) {
             }
             if (targetComponent instanceof Components.AnimatorController && propName === 'controllerPath') {
                 await targetComponent.loadController(currentDirHandle);
-                if (targetComponent.controller && targetComponent.controller.entryState) {
+                const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+                if (isGame && targetComponent.controller && targetComponent.controller.entryState) {
                     targetComponent.play(targetComponent.controller.entryState);
+                } else if (targetComponent.controller && targetComponent.controller.entryState) {
+                    // Just set state in editor to show first frame
+                    targetComponent.currentStateName = targetComponent.controller.entryState;
+                    const state = targetComponent.states.get(targetComponent.currentStateName);
+                    if (state && state.animationClip && targetComponent.animator) {
+                        targetComponent.animator.animationClipPath = state.animationClip;
+                        await targetComponent.animator.loadAnimationClip(currentDirHandle);
+                    }
                 }
             }
 
