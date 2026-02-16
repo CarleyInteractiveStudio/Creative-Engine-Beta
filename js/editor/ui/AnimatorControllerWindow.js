@@ -311,16 +311,35 @@ function updateStateInspector() {
     const container = dom.animatorControllerPanel.querySelector('#animator-state-inspector .list-content');
     if (!container) return;
 
+    const globalSettingsHTML = `
+        <div class="inspector-section">
+            <div class="inspector-section-header">
+                <span>Configuración Global</span>
+            </div>
+            <div class="checkbox-field" title="Cambia automáticamente entre animaciones según la dirección de movimiento.">
+                <input type="checkbox" id="anim-ctrl-smart-mode-toggle" ${currentControllerData.smartMode ? 'checked' : ''}>
+                <label for="anim-ctrl-smart-mode-toggle">Modo Inteligente (Direcciones)</label>
+            </div>
+        </div>
+        <hr>
+    `;
+
     if (!selectedState) {
         container.innerHTML = `
+            ${globalSettingsHTML}
             <div class="panel-overlay-message" style="position: static; padding: 20px;">
                 <p>Selecciona un estado para editar sus propiedades.</p>
             </div>
         `;
+
+        container.querySelector('#anim-ctrl-smart-mode-toggle').onchange = (e) => {
+            currentControllerData.smartMode = e.target.checked;
+        };
         return;
     }
 
     container.innerHTML = `
+        ${globalSettingsHTML}
         <div class="inspector-section">
             <div class="inspector-row">
                 <label>Nombre</label>
@@ -358,7 +377,9 @@ function updateStateInspector() {
                 <div class="direction-grid" id="anim-direction-grid">
                     ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
                         const isAssigned = currentControllerData.movementMapping[i] === selectedState.name;
-                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}"></div>`;
+                        const icons = ['↖️', '⬆️', '↗️', '⬅️', '⏹️', '➡️', '↙️', '⬇️', '↘️'];
+                        const labels = ['Noroeste', 'Norte', 'Noreste', 'Oeste', 'Quieto', 'Este', 'Suroeste', 'Sur', 'Sureste'];
+                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}" title="${labels[i]}">${icons[i]}</div>`;
                     }).join('')}
                 </div>
             </div>
@@ -413,6 +434,10 @@ function updateStateInspector() {
 
     container.querySelector('#anim-state-loop').onchange = (e) => {
         selectedState.loop = e.target.checked;
+    };
+
+    container.querySelector('#anim-ctrl-smart-mode-toggle').onchange = (e) => {
+        currentControllerData.smartMode = e.target.checked;
     };
 
     container.querySelector('#anim-direction-grid').onclick = (e) => {

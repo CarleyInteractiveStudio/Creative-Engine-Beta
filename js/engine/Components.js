@@ -1335,16 +1335,18 @@ export class Animator extends Leyes {
         const isSamePath = !path || path === this.animationClipPath;
 
         if (debug) {
-            console.log(`[Animator] Play llamado: path=${path || this.animationClipPath}, source=${options.source || this._controlSource}, isSamePath=${isSamePath}`);
+            console.log(`[Animator] Play llamado: path=${path || this.animationClipPath}, source=${options.source || this._controlSource}, isSamePath=${isSamePath}, loading=${this._isLoading}`);
         }
 
         // Guard: If already playing the same clip and same source, don't reset unless forced
-        if (!options.force && isSamePath && this.isPlaying && this.animationClip && (options.source === undefined || options.source === this._controlSource)) {
-            if (debug) console.log(`[Animator] Ignorando play() redundante para mantener el frame actual.`);
-            // Just update properties that might have changed without resetting frame
-            if (options.loop !== undefined) this.loop = options.loop;
-            if (options.speed !== undefined) this.speed = options.speed;
-            return;
+        if (!options.force && isSamePath && this.isPlaying && (options.source === undefined || options.source === this._controlSource)) {
+            // If already loading or already has clip, just update properties but don't reset timer/frame
+            if (this.animationClip || this._isLoading) {
+                if (debug) console.log(`[Animator] Ignorando play() redundante (está en curso o cargado) para mantener el frame actual.`);
+                if (options.loop !== undefined) this.loop = options.loop;
+                if (options.speed !== undefined) this.speed = options.speed;
+                return;
+            }
         }
 
         if (path && path !== this.animationClipPath) {
@@ -1858,6 +1860,15 @@ export class AnimatorController extends Leyes {
         this._lastPosition = { x: 0, y: 0 };
         this._hasLastPosition = false;
         this._failedToLoad = false;
+        this._smartModeOverride = null;
+    }
+
+    get smartMode() {
+        if (this._smartModeOverride !== null) return this._smartModeOverride;
+        return this.controller ? !!this.controller.smartMode : false;
+    }
+    set smartMode(v) {
+        this._smartModeOverride = v;
     }
 
     // Called by the engine when the game starts
@@ -2078,7 +2089,8 @@ export class AnimatorController extends Leyes {
             this.parameters.isMoving = false;
         }
 
-        if (this.controller.smartMode) {
+        const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
+        if (this.smartMode || hasMapping) {
             this._handleSmartMode();
         }
 
@@ -2088,7 +2100,10 @@ export class AnimatorController extends Leyes {
     _handleSmartMode() {
         const p = this.parameters;
         const debug = window.CE_DEBUG_ANIMATION;
-        if (!this.controller || !this.controller.movementMapping) return;
+        if (!this.controller || !this.controller.movementMapping) {
+            if (debug && Math.random() < 0.01) console.warn(`[AnimatorController] SmartMode activo pero no hay mapeo de movimiento.`);
+            return;
+        }
 
         let dirIndex = 4; // Center (Idle)
 
@@ -2133,15 +2148,19 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
+                    if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' para movimiento diagonal.`);
                     this.play(fallbackState);
                 }
             } else {
                 // If not moving and dirIndex 4 is not mapped, we should probably stop the animator
                 // to avoid "walking in place"
                 if (this.animator.isPlaying && this.animator._controlSource === 'controller') {
+                    if (debug) console.log(`[AnimatorController] SmartMode: No hay estado para Idle (index 4), deteniendo animator.`);
                     this.animator.stop();
                 }
             }
+        } else if (stateName && !this.states.has(stateName)) {
+            if (debug) console.warn(`[AnimatorController] SmartMode: El estado mapeado '${stateName}' no existe.`);
         }
     }
 

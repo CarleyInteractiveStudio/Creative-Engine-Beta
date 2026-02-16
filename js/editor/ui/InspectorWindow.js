@@ -1671,6 +1671,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Controller</label>
                         ${renderPropertyDropper('AnimatorController', ley.controllerPath, 'data-component="AnimatorController" data-prop="controllerPath"')}
                     </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
+                        <label>Modo Inteligente (Direcciones)</label>
+                    </div>
                     <div class="inspector-field-group">
                         <label>States</label>
                         ${statesListHTML}

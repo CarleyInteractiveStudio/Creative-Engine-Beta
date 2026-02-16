@@ -4443,6 +4443,11 @@ body.game-mode #loading-overlay {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    user-select: none;
 }
 
 .direction-cell:hover {
