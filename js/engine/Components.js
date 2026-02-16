@@ -2052,7 +2052,7 @@ export class AnimatorController extends Leyes {
         let horiz = 0, vert = 0, moving = false;
 
         // 1. Check Movement component (Highest priority for intentional input)
-        if (movement && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01)) {
+        if (movement && movement.isActive && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01)) {
             horiz = movement.lastMove.x;
             vert = movement.lastMove.y;
             moving = true;
@@ -2060,12 +2060,15 @@ export class AnimatorController extends Leyes {
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
-        // Threshold increased to 0.5 to avoid jitter from collisions/physics noise
-        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.5 || Math.abs(rb.velocity.y) > 0.5)) {
-            horiz = rb.velocity.x;
-            vert = rb.velocity.y;
-            moving = true;
-            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: ${horiz}, ${vert}`);
+        // Threshold increased to 0.8 by default, and 2.0 when standing still to avoid jitter.
+        if (!moving && rb && rb.isActive) {
+            const rbThreshold = (movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0) ? 2.0 : 0.8;
+            if (Math.abs(rb.velocity.x) > rbThreshold || Math.abs(rb.velocity.y) > rbThreshold) {
+                horiz = rb.velocity.x;
+                vert = rb.velocity.y;
+                moving = true;
+                if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: ${horiz}, ${vert}`);
+            }
         }
 
         // 3. Fallback: Position tracking (Useful for custom movement scripts or editor dragging)
@@ -2074,10 +2077,10 @@ export class AnimatorController extends Leyes {
                 const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
                 if (isGame) {
-                    // In game, use velocity-based threshold (increased to 0.5)
+                    // In game, use velocity-based threshold (increased to 1.0)
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                    const threshold = 0.5;
+                    const threshold = 1.0;
                     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
                         horiz = dx;
                         vert = dy;
@@ -2110,7 +2113,7 @@ export class AnimatorController extends Leyes {
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
             this._isMovingSmooth = true;
-            this._movingStopTimer = 0.15; // Stay 'moving' for at least 150ms
+            this._movingStopTimer = 0.3; // Stay 'moving' for at least 300ms
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
@@ -2134,12 +2137,14 @@ export class AnimatorController extends Leyes {
         }
 
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
-        if (isGame && (this.smartMode || hasMapping)) {
-            this._handleSmartMode();
-        }
 
-        this._checkTransitions();
+        if (isGame) {
+            const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
+            if (this.smartMode || hasMapping) {
+                this._handleSmartMode();
+            }
+            this._checkTransitions();
+        }
     }
 
     _handleSmartMode() {
@@ -2154,14 +2159,19 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            if (p.horizontal > 0.05) h = 1;
-            else if (p.horizontal < -0.05) h = -1;
+            if (p.horizontal > 0.1) h = 1;
+            else if (p.horizontal < -0.1) h = -1;
 
             let v = 0;
-            if (p.vertical > 0.05) v = 1;
-            else if (p.vertical < -0.05) v = -1;
+            if (p.vertical > 0.1) v = 1;
+            else if (p.vertical < -0.1) v = -1;
 
+            // Only use index 4 (Idle) if both components are truly zero
             dirIndex = (v + 1) * 3 + (h + 1);
+
+            // IF dirIndex is 4 but p.isMoving is true, it means we have movement but no clear direction.
+            // In this case, we should probably maintain the last state if it was a movement state,
+            // or default to something sensible. But for now, we'll let it be 4.
         }
 
         const stateName = this.controller.movementMapping[dirIndex];
@@ -2446,10 +2456,12 @@ export class Movement extends Leyes {
         if (input.isKeyPressed(this.downKey)) moveY += 1;
 
         // Normalize movement for diagonal speed consistency
-        if (moveX !== 0 && moveY !== 0) {
+        if (moveX !== 0 || moveY !== 0) {
             const length = Math.sqrt(moveX * moveX + moveY * moveY);
-            moveX /= length;
-            moveY /= length;
+            if (length > 0) {
+                moveX /= length;
+                moveY /= length;
+            }
         }
 
         this.lastMove.x = moveX;
