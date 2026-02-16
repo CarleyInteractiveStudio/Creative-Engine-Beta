@@ -1866,6 +1866,12 @@ export class AnimatorController extends Leyes {
         this._hasLastPosition = false;
         this._failedToLoad = false;
         this._smartModeOverride = null;
+
+        // Anti-flicker state
+        this._isMovingSmooth = false;
+        this._movingStopTimer = 0;
+        this._lastMovingHoriz = 0;
+        this._lastMovingVert = 0;
     }
 
     get smartMode() {
@@ -1956,9 +1962,11 @@ export class AnimatorController extends Leyes {
         const state = this.states.get(stateName);
         const isSameState = this.currentStateName === stateName;
 
-        // If already playing this state and animator is active, do nothing
-        if (isSameState && this.animator.isPlaying && this.animator.animationClipPath === state.animationClip) {
-            if (debug) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
+        // If already in this state and animator is still busy with it, do nothing.
+        // If it's the same state and same clip, we don't restart it even if it finished (isPlaying=false),
+        // to avoid the "stuck at frame 0" effect when a non-looping animation finishes.
+        if (isSameState && this.animator.animationClipPath === state.animationClip) {
+            if (debug && this.animator.isPlaying) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
             return;
         }
 
@@ -2036,7 +2044,8 @@ export class AnimatorController extends Leyes {
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
-        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.1 || Math.abs(rb.velocity.y) > 0.1)) {
+        // Threshold increased to 0.5 to avoid jitter from collisions/physics noise
+        if (!moving && rb && (Math.abs(rb.velocity.x) > 0.5 || Math.abs(rb.velocity.y) > 0.5)) {
             horiz = rb.velocity.x;
             vert = rb.velocity.y;
             moving = true;
@@ -2049,10 +2058,10 @@ export class AnimatorController extends Leyes {
                 const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
                 if (isGame) {
-                    // In game, use velocity-based threshold
+                    // In game, use velocity-based threshold (increased to 0.5)
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                    const threshold = 0.1;
+                    const threshold = 0.5;
                     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
                         horiz = dx;
                         vert = dy;
@@ -2082,10 +2091,24 @@ export class AnimatorController extends Leyes {
             this._hasLastPosition = true;
         }
 
+        // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
-            this.parameters.horizontal = horiz;
-            this.parameters.vertical = vert;
-            this.parameters.speed = Math.sqrt(horiz**2 + vert**2);
+            this._isMovingSmooth = true;
+            this._movingStopTimer = 0.15; // Stay 'moving' for at least 150ms
+            this._lastMovingHoriz = horiz;
+            this._lastMovingVert = vert;
+        } else if (this._isMovingSmooth) {
+            this._movingStopTimer -= deltaTime;
+            if (this._movingStopTimer <= 0) {
+                this._isMovingSmooth = false;
+            }
+        }
+
+        if (this._isMovingSmooth) {
+            // Use current movement if available, otherwise use last known movement to maintain direction
+            this.parameters.horizontal = moving ? horiz : this._lastMovingHoriz;
+            this.parameters.vertical = moving ? vert : this._lastMovingVert;
+            this.parameters.speed = Math.sqrt(this.parameters.horizontal**2 + this.parameters.vertical**2);
             this.parameters.isMoving = true;
         } else {
             this.parameters.horizontal = 0;
@@ -2404,6 +2427,13 @@ export class Movement extends Leyes {
         if (input.isKeyPressed(this.leftKey)) moveX -= 1;
         if (input.isKeyPressed(this.upKey)) moveY -= 1;
         if (input.isKeyPressed(this.downKey)) moveY += 1;
+
+        // Normalize movement for diagonal speed consistency
+        if (moveX !== 0 && moveY !== 0) {
+            const length = Math.sqrt(moveX * moveX + moveY * moveY);
+            moveX /= length;
+            moveY /= length;
+        }
 
         this.lastMove.x = moveX;
         this.lastMove.y = moveY;
