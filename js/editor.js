@@ -43,7 +43,7 @@ import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject } from './editor/BuildSystem.js';
 
 // Debug configuration
-window.CE_DEBUG_ANIMATION = true;
+window.CE_DEBUG_ANIMATION = false;
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1856,6 +1856,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         isGameRunning = true;
+        window.isGameRunning = true;
         // NO auto-cambiar a vista de juego - mantener vista actual
         // const gameViewButton = dom.scenePanel.querySelector('[data-view="game-content"]');
         // if (gameViewButton && activeView !== 'game-content') {
@@ -1894,6 +1895,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // If there's no controller, the animator runs standalone.
                                 if (!materia.getComponent(Components.AnimatorController)) {
                                     await ley.loadAnimationClip(projectsDirHandle);
+                                    if (ley.playOnAwake) ley.play();
                                 }
                             } else if (ley instanceof Components.Terreno2D) {
                                 await ley.loadTextures(projectsDirHandle);
@@ -1935,6 +1937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         isGameRunning = false;
+        window.isGameRunning = false;
         document.body.classList.remove('game-mode');
         // Restore InputManager out of game mode
         try { InputManager.setGameRunning(false); } catch(e) { /* ignore if not available */ }

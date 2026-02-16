@@ -1905,6 +1905,7 @@ export class AnimatorController extends Leyes {
             const state = this.states.get(this.currentStateName);
             if (state && state.animationClip) {
                 this.animator.animationClipPath = state.animationClip;
+                if (this.animator.isPlaying) this.animator.stop();
                 // Just load it to show the first frame
                 this.animator.loadAnimationClip(projectsDirHandle);
             }
@@ -2069,7 +2070,7 @@ export class AnimatorController extends Leyes {
         if (!moving && rb && rb.isActive) {
             // Be extremely strict if we are supposed to be stopped on ground
             const isGroundedStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
-            const rbThreshold = isGroundedStop ? 5.0 : 1.2;
+            const rbThreshold = isGroundedStop ? 8.0 : 2.0; // Increased thresholds significantly
 
             if (Math.abs(rb.velocity.x) > rbThreshold || Math.abs(rb.velocity.y) > rbThreshold) {
                 horiz = rb.velocity.x;
@@ -2090,7 +2091,7 @@ export class AnimatorController extends Leyes {
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
 
                     const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
-                    const threshold = isIntentionalStop ? 5.0 : 2.0;
+                    const threshold = isIntentionalStop ? 8.0 : 3.0; // Increased thresholds
 
                     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
                         horiz = dx;
