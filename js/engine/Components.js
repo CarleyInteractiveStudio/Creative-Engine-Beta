@@ -1250,6 +1250,9 @@ export class Animator extends Leyes {
             if (this.loop === true && clip.loop === false) {
                 this.loop = false;
             }
+            if (this.endFrame === -1 && clip.frames) {
+                this.endFrame = clip.frames.length - 1;
+            }
 
             // Preload frames to avoid flicker
             if (clip && clip.frames) {
@@ -1345,6 +1348,8 @@ export class Animator extends Leyes {
                 if (debug) console.log(`[Animator] Ignorando play() redundante (está en curso o cargado) para mantener el frame actual.`);
                 if (options.loop !== undefined) this.loop = options.loop;
                 if (options.speed !== undefined) this.speed = options.speed;
+                if (options.startFrame !== undefined) this.startFrame = options.startFrame;
+                if (options.endFrame !== undefined) this.endFrame = options.endFrame;
                 return;
             }
         }

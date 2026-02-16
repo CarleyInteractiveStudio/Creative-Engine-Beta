@@ -410,9 +410,26 @@ function updateStateInspector() {
     };
 
     container.querySelector('#anim-state-asset-btn').onclick = () => {
-        window.openAssetSelector((handle, path) => {
+        window.openAssetSelector(async (handle, path) => {
             if (handle) {
                 selectedState.animationClip = path;
+
+                // Automatically detect frame count
+                try {
+                    const file = await handle.getFile();
+                    const content = await file.text();
+                    const data = JSON.parse(content);
+                    const anim = (data.animations && data.animations.length > 0) ? data.animations[0] : data;
+
+                    if (anim && anim.frames) {
+                        selectedState.endFrame = anim.frames.length - 1;
+                        if (anim.speed) selectedState.speed = anim.speed;
+                        if (anim.loop !== undefined) selectedState.loop = anim.loop;
+                    }
+                } catch (e) {
+                    console.warn("[AnimatorController] No se pudo leer el archivo de animación para autoconfiguración:", e);
+                }
+
                 updateStateInspector();
                 populateStatesList();
             }
