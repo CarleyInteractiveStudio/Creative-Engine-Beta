@@ -435,6 +435,20 @@ export class CreativeScriptBehavior {
     /** Alias en inglés */
     playAnimation(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
 
+    /**
+     * Detiene la animación actual.
+     */
+    detenerAnimacion() {
+        if (!this.materia) return;
+        const animator = this.obtenerComponente('Animator');
+        if (animator) {
+            animator.stop();
+        }
+    }
+
+    /** Alias en inglés */
+    stopAnimation() { this.detenerAnimacion(); }
+
     // --- Collision & Trigger Event Stubs ---
     alEntrarEnColision(colision) {}
     alPermanecerEnColision(colision) {}
@@ -1225,11 +1239,13 @@ export class Animator extends Leyes {
 
             this.animationClip = clip;
 
-            // Set speed from clip if not already defined as something else
-            if (this.speed === 12.0 && clip.frameRate) {
-                this.speed = clip.frameRate;
-            } else if (this.speed === 12.0 && clip.speed) {
-                this.speed = clip.speed;
+            // Set properties from clip if they were at defaults
+            if (this.speed === 12.0) {
+                if (clip.frameRate) this.speed = clip.frameRate;
+                else if (clip.speed) this.speed = clip.speed;
+            }
+            if (this.loop === true && clip.loop === false) {
+                this.loop = false;
             }
 
             // Preload frames to avoid flicker
@@ -1279,7 +1295,10 @@ export class Animator extends Leyes {
                         if (src) {
                             return new Promise((resolve) => {
                                 img.onload = () => resolve();
-                                img.onerror = () => resolve();
+                                img.onerror = () => {
+                                    if (window.CE_DEBUG_ANIMATION) console.warn(`[Animator] Error al precargar frame: ${src}`);
+                                    resolve();
+                                };
                                 img.src = src;
                             });
                         }
@@ -1305,10 +1324,20 @@ export class Animator extends Leyes {
     /**
      * Reproduce una animación.
      * @param {string} [path] - Ruta opcional a un nuevo clip.
-     * @param {object} [options] - Opciones: { loop, speed, startFrame, endFrame, source }
+     * @param {object} [options] - Opciones: { loop, speed, startFrame, endFrame, source, force }
      */
     play(path = null, options = {}) {
         const debug = window.CE_DEBUG_ANIMATION;
+
+        const isSamePath = !path || path === this.animationClipPath;
+
+        // Guard: If already playing the same clip and same source, don't reset unless forced
+        if (!options.force && isSamePath && this.isPlaying && this.animationClip && (options.source === undefined || options.source === this._controlSource)) {
+            // Just update properties that might have changed without resetting frame
+            if (options.loop !== undefined) this.loop = options.loop;
+            if (options.speed !== undefined) this.speed = options.speed;
+            return;
+        }
 
         if (path && path !== this.animationClipPath) {
             this.animationClipPath = path;
@@ -1329,7 +1358,9 @@ export class Animator extends Leyes {
 
         // Trigger immediate load if needed
         if (!this.animationClip && this.animationClipPath && !this._isLoading) {
-            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle);
+            this.loadAnimationClip(this.projectsDirHandle || window.projectsDirHandle).then(() => {
+                if (this.isPlaying) this.applyCurrentFrame();
+            });
         } else if (this.animationClip) {
             this.applyCurrentFrame();
         }
@@ -1903,13 +1934,20 @@ export class AnimatorController extends Leyes {
         if (debug) console.log(`[AnimatorController] Play State: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
+        // Handle empty clip
+        if (!state.animationClip) {
+            this.animator.stop();
+            return;
+        }
+
         // Pass control to animator
         this.animator.play(state.animationClip, {
             loop: state.loop !== undefined ? state.loop : true,
             speed: state.speed || 12,
             startFrame: state.startFrame || 0,
             endFrame: state.endFrame !== undefined ? state.endFrame : -1,
-            source: 'controller'
+            source: 'controller',
+            force: force
         });
     }
 
@@ -2052,27 +2090,35 @@ export class AnimatorController extends Leyes {
 
         if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
             this.play(stateName);
-        } else if (!stateName && p.isMoving) {
-            // Fallback: If diagonal is not defined, try pure horizontal or vertical
-            let h = p.horizontal > 0.1 ? 1 : (p.horizontal < -0.1 ? -1 : 0);
-            let v = p.vertical > 0.1 ? 1 : (p.vertical < -0.1 ? -1 : 0);
+        } else if (!stateName) {
+            if (p.isMoving) {
+                // Fallback for diagonals: Try pure horizontal or vertical
+                let h = p.horizontal > 0.1 ? 1 : (p.horizontal < -0.1 ? -1 : 0);
+                let v = p.vertical > 0.1 ? 1 : (p.vertical < -0.1 ? -1 : 0);
 
-            let fallbackState = null;
-            if (h !== 0 && v !== 0) {
-                // Try pure horizontal
-                fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
-                if (!fallbackState || !this.states.has(fallbackState)) {
-                    // Try pure vertical
-                    fallbackState = this.controller.movementMapping[(v + 1) * 3 + (1)];
+                let fallbackState = null;
+                if (h !== 0 && v !== 0) {
+                    // Try pure horizontal
+                    fallbackState = this.controller.movementMapping[(1) * 3 + (h + 1)];
+                    if (!fallbackState || !this.states.has(fallbackState)) {
+                        // Try pure vertical
+                        fallbackState = this.controller.movementMapping[(v + 1) * 3 + (1)];
+                    }
                 }
-            }
 
-            if (!fallbackState || !this.states.has(fallbackState)) {
-                fallbackState = this.controller.movementMapping[4]; // Idle
-            }
+                if (!fallbackState || !this.states.has(fallbackState)) {
+                    fallbackState = this.controller.movementMapping[4]; // Idle
+                }
 
-            if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
-                this.play(fallbackState);
+                if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
+                    this.play(fallbackState);
+                }
+            } else {
+                // If not moving and dirIndex 4 is not mapped, we should probably stop the animator
+                // to avoid "walking in place"
+                if (this.animator.isPlaying && this.animator._controlSource === 'controller') {
+                    this.animator.stop();
+                }
             }
         }
     }

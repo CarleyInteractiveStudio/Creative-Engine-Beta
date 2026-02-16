@@ -3231,6 +3231,12 @@ export async function showAddComponentModal() {
                 const newComponent = new ComponentClass(selectedMateria);
                 selectedMateria.addComponent(newComponent);
 
+                // Initialization for specific components
+                if (newComponent instanceof Components.AnimatorController) {
+                    const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
+                    newComponent.initialize(currentDirHandle);
+                }
+
                 // If a UI component is added, ensure it has a UITransform
                 // and remove the standard Transform to avoid conflicts.
                 if (newComponent instanceof Components.UIImage || newComponent instanceof Components.UIText || newComponent instanceof Components.Button) {
