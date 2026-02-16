@@ -1870,6 +1870,11 @@ export class AnimatorController extends Leyes {
         this._movingStopTimer = 0;
         this._lastMovingHoriz = 0;
         this._lastMovingVert = 0;
+
+        // Direction stability
+        this._lastDirIndex = 4;
+        this._desiredDirIndex = 4;
+        this._dirStabilityTimer = 0;
     }
 
     get smartMode() {
@@ -2052,7 +2057,8 @@ export class AnimatorController extends Leyes {
         let horiz = 0, vert = 0, moving = false;
 
         // 1. Check Movement component (Highest priority for intentional input)
-        if (movement && movement.isActive && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01)) {
+        const hasIntentionalInput = movement && movement.isActive && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01);
+        if (hasIntentionalInput) {
             horiz = movement.lastMove.x;
             vert = movement.lastMove.y;
             moving = true;
@@ -2060,9 +2066,11 @@ export class AnimatorController extends Leyes {
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
-        // Threshold increased to 0.8 by default, and 2.0 when standing still to avoid jitter.
         if (!moving && rb && rb.isActive) {
-            const rbThreshold = (movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0) ? 2.0 : 0.8;
+            // Be extremely strict if we are supposed to be stopped on ground
+            const isGroundedStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
+            const rbThreshold = isGroundedStop ? 5.0 : 1.2;
+
             if (Math.abs(rb.velocity.x) > rbThreshold || Math.abs(rb.velocity.y) > rbThreshold) {
                 horiz = rb.velocity.x;
                 vert = rb.velocity.y;
@@ -2077,10 +2085,13 @@ export class AnimatorController extends Leyes {
                 const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
                 if (isGame) {
-                    // In game, use velocity-based threshold (increased to 1.0)
+                    // In game, use velocity-based threshold
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
-                    const threshold = 1.0;
+
+                    const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
+                    const threshold = isIntentionalStop ? 5.0 : 2.0;
+
                     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
                         horiz = dx;
                         vert = dy;
@@ -2113,11 +2124,15 @@ export class AnimatorController extends Leyes {
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
             this._isMovingSmooth = true;
-            this._movingStopTimer = 0.3; // Stay 'moving' for at least 300ms
+            this._movingStopTimer = 0.3; // Stay 'moving' for at least 300ms buffer
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
-            this._movingStopTimer -= deltaTime;
+            // If we are grounded and have no intentional input, reduce the buffer significantly
+            // to avoid "sliding" animation when stopping.
+            const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
+            this._movingStopTimer -= isIntentionalStop ? (deltaTime * 5) : deltaTime;
+
             if (this._movingStopTimer <= 0) {
                 this._isMovingSmooth = false;
             }
@@ -2150,34 +2165,52 @@ export class AnimatorController extends Leyes {
     _handleSmartMode() {
         const p = this.parameters;
         const debug = window.CE_DEBUG_ANIMATION;
+        const deltaTime = this.materia.scene ? (1/60) : 0.016; // Fallback if no engine delta
+        const engine = RuntimeAPIManager.getAPI('engine');
+        const dt = engine ? engine.getDeltaTime() : deltaTime;
+
         if (!this.controller || !this.controller.movementMapping) {
             if (debug && Math.random() < 0.01) console.warn(`[AnimatorController] SmartMode activo pero no hay mapeo de movimiento.`);
             return;
         }
 
-        let dirIndex = 4; // Center (Idle)
+        let currentDirIndex = 4; // Center (Idle)
 
         if (p.isMoving) {
             let h = 0;
-            if (p.horizontal > 0.1) h = 1;
-            else if (p.horizontal < -0.1) h = -1;
+            if (p.horizontal > 0.4) h = 1;
+            else if (p.horizontal < -0.4) h = -1;
 
             let v = 0;
-            if (p.vertical > 0.1) v = 1;
-            else if (p.vertical < -0.1) v = -1;
+            if (p.vertical > 0.4) v = 1;
+            else if (p.vertical < -0.4) v = -1;
 
-            // Only use index 4 (Idle) if both components are truly zero
-            dirIndex = (v + 1) * 3 + (h + 1);
-
-            // IF dirIndex is 4 but p.isMoving is true, it means we have movement but no clear direction.
-            // In this case, we should probably maintain the last state if it was a movement state,
-            // or default to something sensible. But for now, we'll let it be 4.
+            currentDirIndex = (v + 1) * 3 + (h + 1);
         }
 
-        const stateName = this.controller.movementMapping[dirIndex];
+        // Direction Stability Check
+        if (currentDirIndex !== this._desiredDirIndex) {
+            this._desiredDirIndex = currentDirIndex;
+            this._dirStabilityTimer = 0.1; // Require 100ms of stability to change direction
+
+            // Special Case: If moving from Idle (4) to anything else, do it immediately for responsiveness
+            if (this._lastDirIndex === 4) this._dirStabilityTimer = 0;
+        }
+
+        if (this._dirStabilityTimer > 0) {
+            this._dirStabilityTimer -= dt;
+            if (this._dirStabilityTimer <= 0) {
+                this._lastDirIndex = this._desiredDirIndex;
+            }
+        } else {
+            this._lastDirIndex = currentDirIndex;
+        }
+
+        const dirIndexToPlay = this._lastDirIndex;
+        const stateName = this.controller.movementMapping[dirIndexToPlay];
 
         if (debug && Math.random() < 0.05) {
-            console.log(`[AnimatorController] SmartMode: dirIndex=${dirIndex}, stateName=${stateName}, current=${this.currentStateName}`);
+            console.log(`[AnimatorController] SmartMode: dirIndex=${dirIndexToPlay}, stateName=${stateName}, current=${this.currentStateName}`);
         }
 
         if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {

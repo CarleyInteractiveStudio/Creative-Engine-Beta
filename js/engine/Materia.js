@@ -248,7 +248,7 @@ export class Materia {
 
     update(deltaTime = 0) {
         for (const ley of this.leyes) {
-            if (typeof ley.update === 'function') {
+            if (ley.isActive && typeof ley.update === 'function') {
                 try {
                     ley.update(deltaTime);
                 } catch (e) {
