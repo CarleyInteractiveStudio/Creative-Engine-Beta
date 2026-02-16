@@ -1238,6 +1238,9 @@ export class Animator extends Leyes {
             }
 
             this.animationClip = clip;
+            if (window.CE_DEBUG_ANIMATION) {
+                console.log(`[Animator] Clip cargado correctamente: ${this.animationClipPath}`, clip);
+            }
 
             // Set properties from clip if they were at defaults
             if (this.speed === 12.0) {
@@ -1331,8 +1334,13 @@ export class Animator extends Leyes {
 
         const isSamePath = !path || path === this.animationClipPath;
 
+        if (debug) {
+            console.log(`[Animator] Play llamado: path=${path || this.animationClipPath}, source=${options.source || this._controlSource}, isSamePath=${isSamePath}`);
+        }
+
         // Guard: If already playing the same clip and same source, don't reset unless forced
         if (!options.force && isSamePath && this.isPlaying && this.animationClip && (options.source === undefined || options.source === this._controlSource)) {
+            if (debug) console.log(`[Animator] Ignorando play() redundante para mantener el frame actual.`);
             // Just update properties that might have changed without resetting frame
             if (options.loop !== undefined) this.loop = options.loop;
             if (options.speed !== undefined) this.speed = options.speed;
@@ -1350,7 +1358,7 @@ export class Animator extends Leyes {
         if (options.endFrame !== undefined) this.endFrame = options.endFrame;
         if (options.source !== undefined) this._controlSource = options.source;
 
-        if (debug) console.log(`[Animator] Play: ${this.animationClipPath}, source=${this._controlSource}`);
+        if (debug) console.log(`[Animator] Iniciando reproducción: ${this.animationClipPath}, source=${this._controlSource}, loop=${this.loop}`);
 
         this.isPlaying = true;
         this.currentFrame = this.startFrame || 0;
@@ -1903,6 +1911,8 @@ export class AnimatorController extends Leyes {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
+        if (debug) console.log(`[AnimatorController] Intento de play: state=${stateName}, force=${force}`);
+
         if (!this.animator && this.materia) {
             this.animator = this.materia.getComponent(Animator);
         }
@@ -1911,15 +1921,19 @@ export class AnimatorController extends Leyes {
             this.states = new Map();
         }
 
-        if (!this.animator) return;
+        if (!this.animator) {
+            if (debug) console.warn(`[AnimatorController] No se pudo encontrar el componente Animator.`);
+            return;
+        }
 
         if (!this.states.has(stateName)) {
-            if (debug) console.warn(`[AnimatorController] El estado '${stateName}' no existe.`);
+            if (debug) console.warn(`[AnimatorController] El estado '${stateName}' no existe en este controlador.`);
             return;
         }
 
         // If animator is under script control, don't interrupt unless forced
         if (!force && this.animator._controlSource === 'script' && this.animator.isPlaying) {
+            if (debug) console.log(`[AnimatorController] Ignorando cambio a '${stateName}' porque el script tiene la prioridad.`);
             return;
         }
 
@@ -1928,10 +1942,11 @@ export class AnimatorController extends Leyes {
 
         // If already playing this state and animator is active, do nothing
         if (isSameState && this.animator.isPlaying && this.animator.animationClipPath === state.animationClip) {
+            if (debug) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
             return;
         }
 
-        if (debug) console.log(`[AnimatorController] Play State: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
+        if (debug) console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
 
         // Handle empty clip
@@ -1969,7 +1984,9 @@ export class AnimatorController extends Leyes {
             this.animator = this.materia.getComponent(Animator);
         }
 
-        if (debug && Math.random() < 0.01) console.log(`[AnimatorController] Update. Path: ${this.controllerPath}, hasController: ${!!this.controller}`);
+        if (debug && Math.random() < 0.01) {
+            console.log(`[AnimatorController] Update activo. Path: ${this.controllerPath}, hasController: ${!!this.controller}, currentState: ${this.currentStateName}`);
+        }
 
         // Auto-load controller data if needed
         if (!this.controller && this.controllerPath && !this._failedToLoad) {
@@ -2070,6 +2087,7 @@ export class AnimatorController extends Leyes {
 
     _handleSmartMode() {
         const p = this.parameters;
+        const debug = window.CE_DEBUG_ANIMATION;
         if (!this.controller || !this.controller.movementMapping) return;
 
         let dirIndex = 4; // Center (Idle)
@@ -2087,6 +2105,10 @@ export class AnimatorController extends Leyes {
         }
 
         const stateName = this.controller.movementMapping[dirIndex];
+
+        if (debug && Math.random() < 0.05) {
+            console.log(`[AnimatorController] SmartMode: dirIndex=${dirIndex}, stateName=${stateName}, current=${this.currentStateName}`);
+        }
 
         if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
             this.play(stateName);
