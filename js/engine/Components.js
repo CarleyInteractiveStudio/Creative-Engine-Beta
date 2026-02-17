@@ -2050,32 +2050,34 @@ export class AnimatorController extends Leyes {
 
         if (!this.animator || !this.controller) return;
 
-        // Auto-update parameters from Rigidbody2D if it exists
+        // Auto-update parameters from components
         const rb = this.materia.getComponent(Rigidbody2D);
         const movement = this.materia.getComponent(Movement);
         const transform = this.materia.getComponent(Transform);
 
+        // Intention check: is the user trying to move via Input?
+        const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
+        const isGrounded = movement && movement.isActive && movement.isGrounded;
+
         let horiz = 0, vert = 0, moving = false;
 
         // 1. Check Movement component (Highest priority for intentional input)
-        const hasIntentionalInput = movement && movement.isActive && (Math.abs(movement.lastMove.x) > 0.01 || Math.abs(movement.lastMove.y) > 0.01);
-        if (hasIntentionalInput) {
+        if (movement && movement.isActive && !isIntentionalStop) {
             horiz = movement.lastMove.x;
             vert = movement.lastMove.y;
             moving = true;
-            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz}, ${vert}`);
+            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
         if (!moving && rb && rb.isActive) {
             // Be extremely strict if we are supposed to be stopped on ground
-            const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
-            const isGroundedStop = isIntentionalStop && movement.isGrounded;
+            const isGroundedStop = isIntentionalStop && isGrounded;
 
             // In platformers, Y velocity is often noisy due to gravity/collisions.
             // If grounded and not trying to move, ignore Y velocity for "moving" detection.
             const checkY = !(isGroundedStop && rb.gravityScale > 0);
-            const rbThreshold = isGroundedStop ? 12.0 : 2.5;
+            const rbThreshold = isGroundedStop ? 20.0 : 4.0; // Increased thresholds significantly
 
             if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
                 horiz = rb.velocity.x;
@@ -2095,10 +2097,8 @@ export class AnimatorController extends Leyes {
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
 
-                    const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
-                    const isGroundedStop = isIntentionalStop && movement.isGrounded;
-
-                    const threshold = isGroundedStop ? 12.0 : 3.5;
+                    const isGroundedStop = isIntentionalStop && isGrounded;
+                    const threshold = isGroundedStop ? 20.0 : 5.0; // Increased thresholds
                     const checkY = !(isGroundedStop && rb && rb.gravityScale > 0);
 
                     if (Math.abs(dx) > threshold || (checkY && Math.abs(dy) > threshold)) {
@@ -2140,8 +2140,8 @@ export class AnimatorController extends Leyes {
         } else if (this._isMovingSmooth) {
             // If we are grounded and have no intentional input, reduce the buffer significantly
             // to avoid "sliding" animation when stopping.
-            const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
-            this._movingStopTimer -= isIntentionalStop ? (deltaTime * 5) : deltaTime;
+            const isGroundedStop = isIntentionalStop && isGrounded;
+            this._movingStopTimer -= isGroundedStop ? (deltaTime * 10) : deltaTime; // Even faster stop if grounded
 
             if (this._movingStopTimer <= 0) {
                 this._isMovingSmooth = false;
@@ -2149,9 +2149,19 @@ export class AnimatorController extends Leyes {
         }
 
         if (this._isMovingSmooth) {
-            // Use current movement if available, otherwise use last known movement to maintain direction
-            this.parameters.horizontal = moving ? horiz : this._lastMovingHoriz;
-            this.parameters.vertical = moving ? vert : this._lastMovingVert;
+            // Use current movement if available.
+            // If we are in the hysteresis buffer, only use last values if NOT in an intentional stop.
+            if (moving) {
+                this.parameters.horizontal = horiz;
+                this.parameters.vertical = vert;
+            } else if (!isIntentionalStop) {
+                this.parameters.horizontal = this._lastMovingHoriz;
+                this.parameters.vertical = this._lastMovingVert;
+            } else {
+                this.parameters.horizontal = 0;
+                this.parameters.vertical = 0;
+            }
+
             this.parameters.speed = Math.sqrt(this.parameters.horizontal**2 + this.parameters.vertical**2);
             this.parameters.isMoving = true;
         } else {
@@ -2202,10 +2212,15 @@ export class AnimatorController extends Leyes {
         // Direction Stability Check
         if (currentDirIndex !== this._desiredDirIndex) {
             this._desiredDirIndex = currentDirIndex;
-            this._dirStabilityTimer = 0.15; // Increased to 150ms of stability to change direction
 
-            // Special Case: If moving from Idle (4) to anything else, do it immediately for responsiveness
-            if (this._lastDirIndex === 4) this._dirStabilityTimer = 0;
+            // If going from Idle to Move, add a small delay to filter spikes
+            if (this._lastDirIndex === 4) {
+                this._dirStabilityTimer = 0.08; // 80ms delay to start moving
+            } else if (currentDirIndex === 4) {
+                this._dirStabilityTimer = 0.02; // 20ms delay to stop (fast but not instant)
+            } else {
+                this._dirStabilityTimer = 0.15; // 150ms for direction changes
+            }
         }
 
         if (this._dirStabilityTimer > 0) {
@@ -2220,8 +2235,8 @@ export class AnimatorController extends Leyes {
         const dirIndexToPlay = this._lastDirIndex;
         const stateName = this.controller.movementMapping[dirIndexToPlay];
 
-        if (debug && Math.random() < 0.05) {
-            console.log(`[AnimatorController] SmartMode: dirIndex=${dirIndexToPlay}, stateName=${stateName}, current=${this.currentStateName}`);
+        if (debug && Math.random() < 0.04) {
+            console.log(`[AnimatorController] SmartMode: target=${this._desiredDirIndex}, stable=${this._lastDirIndex}, state=${stateName}, isMoving=${p.isMoving}`);
         }
 
         if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
