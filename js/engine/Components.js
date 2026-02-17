@@ -1478,16 +1478,20 @@ export class Animator extends Leyes {
         // Apply metadata (source, spriteName) regardless of cache to ensure SpriteRenderer has correct UVs
         if (typeof frame === 'object' && frame !== null) {
             if (frame.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frame.spriteAssetPath) {
-                // If we have cachedImg, SpriteRenderer.loadSpriteSheet will skip loading the image
+                // If we have cachedImg, SpriteRenderer.setSourcePath will skip loading if already set.
+                // We pass the projectsDirHandle to ensure it can load if needed.
                 this.spriteRenderer.setSourcePath(frame.spriteAssetPath, this.projectsDirHandle || window.projectsDirHandle);
             }
             if (frame.spriteName && this.spriteRenderer.spriteName !== frame.spriteName) {
                 this.spriteRenderer.spriteName = frame.spriteName;
             }
         } else if (typeof frame === 'string') {
-            if (cachedImg) {
+            if (this.spriteRenderer.source !== frame) {
                 this.spriteRenderer.source = frame;
-                this.spriteRenderer._lastLoadedSource = frame;
+                // If we don't have a cached image yet, this will trigger SpriteRenderer.loadSprite() as a fallback
+                if (!cachedImg || !cachedImg.complete) {
+                    this.spriteRenderer.loadSprite(this.projectsDirHandle || window.projectsDirHandle);
+                }
             }
             if (this.spriteRenderer.spriteName !== frame) {
                 this.spriteRenderer.spriteName = frame;
@@ -1898,7 +1902,7 @@ export class AnimatorController extends Leyes {
         // Play entry state
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
         if (isGame && this.controller && this.controller.entryState) {
-            this.play(this.controller.entryState);
+            this.play(this.controller.entryState, true); // Force play entry state on start to ensure frame 0
         } else if (this.controller && this.controller.entryState) {
             // In editor, just set the state but don't start playing
             this.currentStateName = this.controller.entryState;
@@ -2035,7 +2039,7 @@ export class AnimatorController extends Leyes {
                     // Play entry state after auto-load
                     const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
                     if (isGame && this.controller && this.controller.entryState) {
-                        this.play(this.controller.entryState);
+                        this.play(this.controller.entryState, true);
                     } else if (this.controller && this.controller.entryState) {
                         this.currentStateName = this.controller.entryState;
                         const state = this.states.get(this.currentStateName);
@@ -2071,19 +2075,20 @@ export class AnimatorController extends Leyes {
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
         if (!moving && rb && rb.isActive) {
-            // Be extremely strict if we are supposed to be stopped on ground
+            const isPlatformer = rb.gravityScale > 0;
             const isGroundedStop = isIntentionalStop && isGrounded;
 
-            // In platformers, Y velocity is often noisy due to gravity/collisions.
-            // If grounded and not trying to move, ignore Y velocity for "moving" detection.
-            const checkY = !(isGroundedStop && rb.gravityScale > 0);
-            const rbThreshold = isGroundedStop ? 20.0 : 4.0; // Increased thresholds significantly
+            // In platformers, Y velocity is often noisy. Only count Y if not grounded or high enough.
+            const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(rb.velocity.y) > 50.0;
 
-            if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
+            const hThreshold = isGroundedStop ? 20.0 : 12.0;
+            const vThreshold = isPlatformer ? 50.0 : hThreshold;
+
+            if (Math.abs(rb.velocity.x) > hThreshold || (checkY && Math.abs(rb.velocity.y) > vThreshold)) {
                 horiz = rb.velocity.x;
                 vert = rb.velocity.y;
                 moving = true;
-                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
+                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
             }
         }
 
@@ -2097,15 +2102,18 @@ export class AnimatorController extends Leyes {
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
 
+                    const isPlatformer = rb && rb.isActive && rb.gravityScale > 0;
                     const isGroundedStop = isIntentionalStop && isGrounded;
-                    const threshold = isGroundedStop ? 20.0 : 5.0; // Increased thresholds
-                    const checkY = !(isGroundedStop && rb && rb.gravityScale > 0);
 
-                    if (Math.abs(dx) > threshold || (checkY && Math.abs(dy) > threshold)) {
+                    const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(dy) > 50.0;
+                    const hThreshold = isGroundedStop ? 20.0 : 15.0;
+                    const vThreshold = isPlatformer ? 50.0 : hThreshold;
+
+                    if (Math.abs(dx) > hThreshold || (checkY && Math.abs(dy) > vThreshold)) {
                         horiz = dx;
                         vert = dy;
                         moving = true;
-                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${threshold})`);
+                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
                     }
                 } else {
                     // In editor, use absolute distance threshold to avoid jitter from clicking/dragging
@@ -2138,10 +2146,10 @@ export class AnimatorController extends Leyes {
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
-            // If we are grounded and have no intentional input, reduce the buffer significantly
-            // to avoid "sliding" animation when stopping.
-            const isGroundedStop = isIntentionalStop && isGrounded;
-            this._movingStopTimer -= isGroundedStop ? (deltaTime * 10) : deltaTime; // Even faster stop if grounded
+            // If we have an intentional stop, we clear the buffer immediately or very fast.
+            // If we don't have a Movement component, we rely on the timer but make it faster.
+            const stopMultiplier = isIntentionalStop ? 20 : (movement ? 1 : 5);
+            this._movingStopTimer -= deltaTime * stopMultiplier;
 
             if (this._movingStopTimer <= 0) {
                 this._isMovingSmooth = false;
@@ -2174,17 +2182,35 @@ export class AnimatorController extends Leyes {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
         if (isGame) {
-            const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
-            if (this.smartMode || hasMapping) {
-                this._handleSmartMode();
+            // Transitions have priority over Smart Mode.
+            // If a transition is taken, we don't let Smart Mode override it in the same frame.
+            const transitionTaken = this._checkTransitions();
+
+            if (!transitionTaken) {
+                const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
+                if (this.smartMode || hasMapping) {
+                    this._handleSmartMode();
+                }
             }
-            this._checkTransitions();
         }
     }
 
     _handleSmartMode() {
         const p = this.parameters;
         const debug = window.CE_DEBUG_ANIMATION;
+
+        // Guard: Smart Mode should only control movement-related states.
+        // If we are in a special state like 'Jump', 'Attack', etc. (not in mapping),
+        // we don't want Smart Mode to interrupt it.
+        const movementStates = Object.values(this.controller.movementMapping || {});
+        const isCurrentlyMovement = movementStates.includes(this.currentStateName);
+        const isEntryState = this.currentStateName === this.controller.entryState;
+
+        if (this.currentStateName !== '' && !isCurrentlyMovement && !isEntryState) {
+            if (debug && Math.random() < 0.01) console.log(`[AnimatorController] SmartMode ignorado porque el estado actual '${this.currentStateName}' no es de movimiento.`);
+            return;
+        }
+
         const deltaTime = this.materia.scene ? (1/60) : 0.016; // Fallback if no engine delta
         const engine = RuntimeAPIManager.getAPI('engine');
         const dt = engine ? engine.getDeltaTime() : deltaTime;
@@ -2279,16 +2305,17 @@ export class AnimatorController extends Leyes {
     }
 
     _checkTransitions() {
-        if (!this.controller.transitions) return;
+        if (!this.controller.transitions) return false;
 
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName) {
                 if (this._evaluateConditions(trans.conditions)) {
                     this.play(trans.to);
-                    break;
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     _evaluateConditions(conditions) {
