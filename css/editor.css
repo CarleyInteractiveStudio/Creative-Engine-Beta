@@ -1785,11 +1785,17 @@ body {
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .state-list-item:hover {
     background-color: rgba(255,255,255,0.05);
+}
+
+.state-list-item .state-info {
+    display: flex;
+    flex-direction: column;
 }
 
 .state-list-item .state-name {
@@ -2924,6 +2930,25 @@ body {
 .text-transform-controls button.active {
     background-color: var(--accent-color);
     border-color: var(--accent-color);
+}
+
+.state-list-item .delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.state-list-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.state-list-item .delete-btn:hover {
+    color: var(--danger-color);
 }
 
 /* --- Tabbed Panel Styles --- */
@@ -4487,27 +4512,3 @@ body.game-mode #loading-overlay {
 }
 
 .anim-sidebar .list-content,
-.anim-sidebar-section .list-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-    min-height: 0;
-}
-
-#animator-right-sidebar {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    width: 250px;
-    border-left: 1px solid var(--border-color);
-}
-
-#animator-state-inspector .list-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#animator-assets-list, #animator-states-list {
-    min-height: 150px;
-}

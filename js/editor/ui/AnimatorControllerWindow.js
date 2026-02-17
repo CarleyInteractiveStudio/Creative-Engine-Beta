@@ -181,28 +181,40 @@ function showNodeContextMenu(e, state) {
     menu.style.display = 'block';
     menu.style.left = `${e.clientX}px`;
     menu.style.top = `${e.clientY}px`;
+    menu.style.zIndex = '3000';
 
-    // Clear and add items
-    menu.innerHTML = '';
-    const addItem = (label, action) => {
+    // Instead of innerHTML='', we reconstruct the UL to keep proper structure and listeners
+    menu.innerHTML = '<ul></ul>';
+    const ul = menu.querySelector('ul');
+
+    const addItem = (label, action, dataAction, isDanger = false) => {
         const li = document.createElement('li');
         li.textContent = label;
-        li.onclick = () => { action(); menu.style.display = 'none'; };
-        menu.appendChild(li);
+        if (dataAction) li.setAttribute('data-action', dataAction);
+        if (isDanger) li.className = 'danger';
+
+        li.onclick = (event) => {
+            event.stopPropagation();
+            action();
+            menu.style.display = 'none';
+        };
+        ul.appendChild(li);
     };
 
     addItem('Establecer como Principal', () => {
         currentControllerData.entryState = state.name;
         renderAnimatorGraph();
-    });
+    }, 'set-as-entry');
 
     addItem('Conectar', () => {
         startConnecting(state);
-    });
+    }, 'create-transition');
+
+    ul.appendChild(document.createElement('hr'));
 
     addItem('Eliminar Estado', () => {
         deleteState(state.name);
-    });
+    }, 'delete-state', true);
 }
 
 function startConnecting(state) {
@@ -218,14 +230,42 @@ function stopConnecting() {
 }
 
 function deleteState(stateName) {
+    if (!currentControllerData) return;
+
+    // Remove state
     currentControllerData.states = currentControllerData.states.filter(s => s.name !== stateName);
+
+    // Cleanup transitions
     if (currentControllerData.transitions) {
         currentControllerData.transitions = currentControllerData.transitions.filter(t => t.from !== stateName && t.to !== stateName);
     }
+
+    // Cleanup movement mapping
+    if (currentControllerData.movementMapping) {
+        for (let key in currentControllerData.movementMapping) {
+            if (currentControllerData.movementMapping[key] === stateName) {
+                delete currentControllerData.movementMapping[key];
+            }
+        }
+    }
+
+    // Update entry state if needed
     if (currentControllerData.entryState === stateName) {
         currentControllerData.entryState = currentControllerData.states.length > 0 ? currentControllerData.states[0].name : "";
     }
+
+    // Clear selection if deleted
+    if (selectedState && selectedState.name === stateName) {
+        selectedState = null;
+    }
+
+    // Stop connecting if source was deleted
+    if (isConnecting && connectionSource && connectionSource.name === stateName) {
+        stopConnecting();
+    }
+
     renderAnimatorGraph();
+    updateStateInspector();
 }
 
 async function populateAnimationsList() {
@@ -284,10 +324,19 @@ function populateStatesList() {
         const item = document.createElement('div');
         item.className = 'state-list-item';
         item.innerHTML = `
-            <span class="state-name">${state.name}</span>
-            <span class="state-anim">${state.animationClip ? state.animationClip.split('/').pop() : 'Ninguna'}</span>
+            <div class="state-info">
+                <span class="state-name">${state.name}</span>
+                <span class="state-anim">${state.animationClip ? state.animationClip.split('/').pop() : 'Ninguna'}</span>
+            </div>
+            <button class="delete-btn" title="Eliminar Estado">×</button>
         `;
         item.onclick = () => selectState(state);
+
+        item.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            deleteState(state.name);
+        };
+
         list.appendChild(item);
     });
 }
