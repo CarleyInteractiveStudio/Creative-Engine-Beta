@@ -2027,7 +2027,7 @@ export class AnimatorController extends Leyes {
         }
 
         if (debug && Math.random() < 0.01) {
-            console.log(`[AnimatorController] Update activo. Path: ${this.controllerPath}, hasController: ${!!this.controller}, currentState: ${this.currentStateName}`);
+            console.log(`[AnimatorController] Update: State=${this.currentStateName}, Speed=${this.parameters.speed.toFixed(2)}, isMoving=${this.parameters.isMoving}`);
         }
 
         // Auto-load controller data if needed
@@ -2067,10 +2067,12 @@ export class AnimatorController extends Leyes {
 
         // 1. Check Movement component (Highest priority for intentional input)
         if (movement && movement.isActive && !isIntentionalStop) {
-            horiz = movement.lastMove.x;
-            vert = movement.lastMove.y;
+            // Scale by movement.speed to maintain consistency with Rigidbody velocity units
+            const scale = (movement.speed || 200) / 10;
+            horiz = movement.lastMove.x * scale;
+            vert = movement.lastMove.y * scale;
             moving = true;
-            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: ${horiz.toFixed(2)}, ${vert.toFixed(2)}`);
+            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
@@ -2170,8 +2172,13 @@ export class AnimatorController extends Leyes {
                 this.parameters.vertical = 0;
             }
 
-            this.parameters.speed = Math.sqrt(this.parameters.horizontal**2 + this.parameters.vertical**2);
-            this.parameters.isMoving = true;
+            const rawSpeed = Math.sqrt(this.parameters.horizontal**2 + this.parameters.vertical**2);
+            // Apply a small deadzone to the speed parameter itself to avoid jitter
+            this.parameters.speed = rawSpeed > 0.1 ? rawSpeed : 0;
+
+            // isMoving should be false if we have an intentional stop and speed is zero,
+            // even if the smoothing timer is still running.
+            this.parameters.isMoving = (this.parameters.speed > 0.1);
         } else {
             this.parameters.horizontal = 0;
             this.parameters.vertical = 0;
@@ -2288,7 +2295,7 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
-                    if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' para movimiento diagonal.`);
+                    if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' para movimiento (Target Index: ${dirIndexToPlay}).`);
                     this.play(fallbackState);
                 }
             } else {
