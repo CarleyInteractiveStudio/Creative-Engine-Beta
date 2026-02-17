@@ -2069,14 +2069,19 @@ export class AnimatorController extends Leyes {
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
         if (!moving && rb && rb.isActive) {
             // Be extremely strict if we are supposed to be stopped on ground
-            const isGroundedStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
-            const rbThreshold = isGroundedStop ? 8.0 : 2.0; // Increased thresholds significantly
+            const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
+            const isGroundedStop = isIntentionalStop && movement.isGrounded;
 
-            if (Math.abs(rb.velocity.x) > rbThreshold || Math.abs(rb.velocity.y) > rbThreshold) {
+            // In platformers, Y velocity is often noisy due to gravity/collisions.
+            // If grounded and not trying to move, ignore Y velocity for "moving" detection.
+            const checkY = !(isGroundedStop && rb.gravityScale > 0);
+            const rbThreshold = isGroundedStop ? 12.0 : 2.5;
+
+            if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
                 horiz = rb.velocity.x;
                 vert = rb.velocity.y;
                 moving = true;
-                if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: ${horiz}, ${vert}`);
+                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${rbThreshold})`);
             }
         }
 
@@ -2090,13 +2095,17 @@ export class AnimatorController extends Leyes {
                     const dx = (transform.x - this._lastPosition.x) / deltaTime;
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
 
-                    const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0 && movement.isGrounded;
-                    const threshold = isIntentionalStop ? 8.0 : 3.0; // Increased thresholds
+                    const isIntentionalStop = movement && movement.isActive && movement.lastMove.x === 0 && movement.lastMove.y === 0;
+                    const isGroundedStop = isIntentionalStop && movement.isGrounded;
 
-                    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                    const threshold = isGroundedStop ? 12.0 : 3.5;
+                    const checkY = !(isGroundedStop && rb && rb.gravityScale > 0);
+
+                    if (Math.abs(dx) > threshold || (checkY && Math.abs(dy) > threshold)) {
                         horiz = dx;
                         vert = dy;
                         moving = true;
+                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)} (Threshold: ${threshold})`);
                     }
                 } else {
                     // In editor, use absolute distance threshold to avoid jitter from clicking/dragging
@@ -2179,12 +2188,13 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            if (p.horizontal > 0.4) h = 1;
-            else if (p.horizontal < -0.4) h = -1;
+            const deadZone = 0.6; // Increased deadZone for direction mapping
+            if (p.horizontal > deadZone) h = 1;
+            else if (p.horizontal < -deadZone) h = -1;
 
             let v = 0;
-            if (p.vertical > 0.4) v = 1;
-            else if (p.vertical < -0.4) v = -1;
+            if (p.vertical > deadZone) v = 1;
+            else if (p.vertical < -deadZone) v = -1;
 
             currentDirIndex = (v + 1) * 3 + (h + 1);
         }
@@ -2192,7 +2202,7 @@ export class AnimatorController extends Leyes {
         // Direction Stability Check
         if (currentDirIndex !== this._desiredDirIndex) {
             this._desiredDirIndex = currentDirIndex;
-            this._dirStabilityTimer = 0.1; // Require 100ms of stability to change direction
+            this._dirStabilityTimer = 0.15; // Increased to 150ms of stability to change direction
 
             // Special Case: If moving from Idle (4) to anything else, do it immediately for responsiveness
             if (this._lastDirIndex === 4) this._dirStabilityTimer = 0;
