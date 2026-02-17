@@ -1980,11 +1980,11 @@ export class AnimatorController extends Leyes {
         const state = this.states.get(stateName);
         const isSameState = this.currentStateName === stateName;
 
-        // If already in this state and animator is still busy with it, do nothing.
-        // If it's the same state and same clip, we don't restart it even if it finished (isPlaying=false),
-        // to avoid the "stuck at frame 0" effect when a non-looping animation finishes.
-        if (isSameState && this.animator.animationClipPath === state.animationClip) {
-            if (debug && this.animator.isPlaying) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
+        // Guard: If already in this state and the animator is currently playing it, do nothing.
+        // We only allow proceeding if it's a DIFFERENT state, or if the animator has STOPPED
+        // (to allow restarting non-looping animations or recovering from an external stop).
+        if (isSameState && this.animator.animationClipPath === state.animationClip && this.animator.isPlaying && !force) {
+            if (debug) console.log(`[AnimatorController] Ignorando play redundante para '${stateName}' (ya se está reproduciendo).`);
             return;
         }
 
@@ -2072,7 +2072,6 @@ export class AnimatorController extends Leyes {
             horiz = movement.lastMove.x * scale;
             vert = movement.lastMove.y * scale;
             moving = true;
-            if (debug && Math.random() < 0.05) console.log(`[AnimatorController] Movimiento detectado vía componente Movement: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
         }
 
         // 2. Check Rigidbody velocity (Fallback if Movement didn't provide input)
@@ -2081,16 +2080,17 @@ export class AnimatorController extends Leyes {
             const isGroundedStop = isIntentionalStop && isGrounded;
 
             // In platformers, Y velocity is often noisy. Only count Y if not grounded or high enough.
-            const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(rb.velocity.y) > 50.0;
+            const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(rb.velocity.y) > 40.0;
 
-            const hThreshold = isGroundedStop ? 20.0 : 12.0;
-            const vThreshold = isPlatformer ? 50.0 : hThreshold;
+            // If the user IS trying to move via keys, use a very low threshold.
+            // If they are NOT trying to move, use a higher threshold to filter physics drift.
+            const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 25.0 : 10.0);
+            const vThreshold = isPlatformer ? 40.0 : hThreshold;
 
             if (Math.abs(rb.velocity.x) > hThreshold || (checkY && Math.abs(rb.velocity.y) > vThreshold)) {
                 horiz = rb.velocity.x;
                 vert = rb.velocity.y;
                 moving = true;
-                if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía Rigidbody2D: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
             }
         }
 
@@ -2107,15 +2107,14 @@ export class AnimatorController extends Leyes {
                     const isPlatformer = rb && rb.isActive && rb.gravityScale > 0;
                     const isGroundedStop = isIntentionalStop && isGrounded;
 
-                    const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(dy) > 50.0;
-                    const hThreshold = isGroundedStop ? 20.0 : 15.0;
-                    const vThreshold = isPlatformer ? 50.0 : hThreshold;
+                    const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(dy) > 40.0;
+                    const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 25.0 : 15.0);
+                    const vThreshold = isPlatformer ? 40.0 : hThreshold;
 
                     if (Math.abs(dx) > hThreshold || (checkY && Math.abs(dy) > vThreshold)) {
                         horiz = dx;
                         vert = dy;
                         moving = true;
-                        if (debug && Math.random() < 0.02) console.log(`[AnimatorController] Movimiento detectado vía DeltaPos: H=${horiz.toFixed(2)}, V=${vert.toFixed(2)}`);
                     }
                 } else {
                     // In editor, use absolute distance threshold to avoid jitter from clicking/dragging
@@ -2143,17 +2142,20 @@ export class AnimatorController extends Leyes {
 
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
+            // Log state transition to movement
+            if (debug && !this._isMovingSmooth) console.log(`[AnimatorController] Inicio de movimiento detectado.`);
+
             this._isMovingSmooth = true;
-            this._movingStopTimer = 0.3; // Stay 'moving' for at least 300ms buffer
+            this._movingStopTimer = 0.2; // Reduced buffer to 200ms for more responsiveness
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
             // If we have an intentional stop, we clear the buffer immediately or very fast.
-            // If we don't have a Movement component, we rely on the timer but make it faster.
-            const stopMultiplier = isIntentionalStop ? 20 : (movement ? 1 : 5);
+            const stopMultiplier = isIntentionalStop ? 50 : (movement && movement.isActive ? 5 : 2);
             this._movingStopTimer -= deltaTime * stopMultiplier;
 
             if (this._movingStopTimer <= 0) {
+                if (debug) console.log(`[AnimatorController] Fin de movimiento detectado.`);
                 this._isMovingSmooth = false;
             }
         }
@@ -2231,7 +2233,9 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            const deadZone = 0.6; // Increased deadZone for direction mapping
+            // Lower deadZone since p.isMoving already uses robust thresholds.
+            // This ensures we always pick a direction when moving.
+            const deadZone = 0.1;
             if (p.horizontal > deadZone) h = 1;
             else if (p.horizontal < -deadZone) h = -1;
 
@@ -2269,11 +2273,13 @@ export class AnimatorController extends Leyes {
         const stateName = this.controller.movementMapping[dirIndexToPlay];
 
         if (debug && Math.random() < 0.04) {
-            console.log(`[AnimatorController] SmartMode: target=${this._desiredDirIndex}, stable=${this._lastDirIndex}, state=${stateName}, isMoving=${p.isMoving}`);
+            console.log(`[AnimatorController] SmartMode: Index=${dirIndexToPlay}, State=${stateName}, isMoving=${p.isMoving}`);
         }
 
         if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
-            this.play(stateName);
+            // Use force: true if we are transitioning to a NEW movement state to ensure it starts at frame 0
+            const forcePlay = this.currentStateName !== stateName;
+            this.play(stateName, forcePlay);
         } else if (!stateName) {
             if (p.isMoving) {
                 // Fallback for diagonals: Try pure horizontal or vertical
