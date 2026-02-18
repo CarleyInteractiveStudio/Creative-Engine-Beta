@@ -1413,11 +1413,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldScale = transform.scale;
                         const worldRotation = transform.rotation;
 
-                        const dWidth = sWidth * worldScale.x;
-                        const dHeight = sHeight * worldScale.y;
-                        const dx = -dWidth * pivotX;
-                        const dy = -dHeight * pivotY;
-
                         ctx.save();
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
                         ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
@@ -1470,23 +1465,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             ctx.translate(worldPosition.x, worldPosition.y);
                             ctx.rotate(worldRotation * Math.PI / 180);
+                            ctx.scale(worldScale.x, worldScale.y);
+
+                            const drawX = -sWidth * pivotX;
+                            const drawY = -sHeight * pivotY;
 
                             // Absolute safety check to prevent InvalidStateError
                             if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, dx, dy, dWidth, dHeight);
+                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
                             }
                         }
                         ctx.restore();
                     } else {
                         // If there's a renderer but no sprite, draw a placeholder
-                        const dWidth = 50 * transform.scale.x;
-                        const dHeight = 50 * transform.scale.y;
+                        const worldScale = transform.scale;
+                        const dWidth = 50;
+                        const dHeight = 50;
                         const dx = -dWidth * 0.5;
                         const dy = -dHeight * 0.5;
 
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
                         ctx.rotate(transform.rotation * Math.PI / 180);
+                        ctx.scale(worldScale.x, worldScale.y);
+
                         const opacity = typeof spriteRenderer.opacity === 'number' ? spriteRenderer.opacity : parseFloat(spriteRenderer.opacity || 1);
                         ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
 

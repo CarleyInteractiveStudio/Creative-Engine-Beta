@@ -1406,10 +1406,24 @@ export class Animator extends Leyes {
             // If already loading or already has clip, just update properties but don't reset timer/frame
             if (this.animationClip || this._isLoading) {
                 if (debug) console.log(`[Animator] Ignorando play() redundante (está en curso o cargado) para mantener el frame actual.`);
+
+                const rangeChanged = (options.startFrame !== undefined && options.startFrame !== this.startFrame) ||
+                                     (options.endFrame !== undefined && options.endFrame !== this.endFrame);
+
                 if (options.loop !== undefined) this.loop = options.loop;
                 if (options.speed !== undefined) this.speed = options.speed;
                 if (options.startFrame !== undefined) this.startFrame = options.startFrame;
                 if (options.endFrame !== undefined) this.endFrame = options.endFrame;
+
+                if (rangeChanged && this.animationClip) {
+                    // Clamp current frame to new range immediately
+                    const frames = this.animationClip.frames;
+                    if (frames && frames.length > 0) {
+                        const end = (this.endFrame !== -1 && this.endFrame < frames.length) ? this.endFrame : frames.length - 1;
+                        this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, end));
+                    }
+                    this.applyCurrentFrame();
+                }
                 return;
             }
         }

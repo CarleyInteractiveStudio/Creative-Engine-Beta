@@ -151,7 +151,18 @@ export class Renderer {
     }
 
     drawImage(image, x, y, width, height) {
-        this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+        // Safe check for negative dimensions
+        if (width === 0 || height === 0) return;
+
+        if (width < 0 || height < 0) {
+            this.ctx.save();
+            this.ctx.translate(x, y);
+            this.ctx.scale(width < 0 ? -1 : 1, height < 0 ? -1 : 1);
+            this.ctx.drawImage(image, -Math.abs(width) / 2, -Math.abs(height) / 2, Math.abs(width), Math.abs(height));
+            this.ctx.restore();
+        } else {
+            this.ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+        }
     }
 
     drawText(text, x, y, color, fontSize, fontFamily, textTransform) {

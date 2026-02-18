@@ -214,12 +214,11 @@ export class StandaloneRuntime {
 
                     const worldPos = transform.position;
                     const worldScale = transform.scale;
-                    const dWidth = sWidth * worldScale.x;
-                    const dHeight = sHeight * worldScale.y;
 
                     ctx.save();
                     ctx.translate(worldPos.x, worldPos.y);
                     ctx.rotate(transform.rotation * Math.PI / 180);
+                    ctx.scale(worldScale.x, worldScale.y);
                     const opacity = typeof sr.opacity === 'number' ? sr.opacity : parseFloat(sr.opacity || 1);
                     ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
 
@@ -238,9 +237,9 @@ export class StandaloneRuntime {
                         this.scratchCtx.fillRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
                         this.scratchCtx.globalCompositeOperation = 'source-over';
 
-                        ctx.drawImage(this.scratchCanvas, 0, 0, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
+                        ctx.drawImage(this.scratchCanvas, 0, 0, sWidth, sHeight, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     } else {
-                        ctx.drawImage(img, sx, sy, sWidth, sHeight, -dWidth * pivotX, -dHeight * pivotY, dWidth, dHeight);
+                        ctx.drawImage(img, sx, sy, sWidth, sHeight, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     }
                     ctx.restore();
                 }
