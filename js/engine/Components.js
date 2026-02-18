@@ -98,6 +98,25 @@ export class CreativeScriptBehavior {
                 }
             }
         }
+
+        // --- Setup 'reproducir' proxy for state access (reproducir.correr()) ---
+        const self = this;
+        const baseReproducir = this.reproducir.bind(this);
+        this.reproducir = new Proxy(baseReproducir, {
+            get: (target, prop) => {
+                if (prop in target) return target[prop];
+                return (opciones) => self.reproducir(prop, opciones);
+            }
+        });
+
+        // Same for English 'play'
+        const basePlay = this.play.bind(this);
+        this.play = new Proxy(basePlay, {
+            get: (target, prop) => {
+                if (prop in target) return target[prop];
+                return (opciones) => self.play(prop, opciones);
+            }
+        });
     }
     start() { /* To be overridden by user scripts */ }
     update(deltaTime) { /* To be overridden by user scripts */ } // Kept for compatibility; user scripts receive deltaTime now
@@ -434,6 +453,26 @@ export class CreativeScriptBehavior {
 
     /** Alias en inglés */
     playAnimation(path, loop, speed) { this.reproducirAnimacion(path, loop, speed); }
+
+    /**
+     * Reproduce un estado del AnimatorController si existe una conexión.
+     * @param {string} estado - Nombre del estado.
+     * @param {boolean|object} [opciones] - Si es boolean, es el parámetro 'force'. Si es objeto, son overrides (loop, speed, etc).
+     */
+    reproducir(estado, opciones = false) {
+        if (!this.materia) return;
+        const controller = this.obtenerComponente('AnimatorController');
+        if (controller) {
+            if (typeof opciones === 'boolean') {
+                controller.play(estado, opciones);
+            } else {
+                controller.play(estado, opciones.force || false, opciones);
+            }
+        }
+    }
+
+    /** Alias en inglés */
+    play(estado, opciones) { this.reproducir(estado, opciones); }
 
     /**
      * Detiene la animación actual.
@@ -1207,6 +1246,7 @@ export class Animator extends Leyes {
         this._frameCache = []; // Cache of preloaded Image objects
         this._controlSource = 'none'; // 'none', 'controller', 'script'
         this._isLoading = false;
+        this.hasError = false;
     }
 
     start() {
@@ -1320,6 +1360,7 @@ export class Animator extends Leyes {
 
         } catch (error) {
             console.error(`Failed to load animation clip at '${this.animationClipPath}':`, error);
+            this.hasError = true;
         } finally {
             this._isLoading = false;
         }
@@ -1366,6 +1407,7 @@ export class Animator extends Leyes {
         if (debug) console.log(`[Animator] Iniciando reproducción: ${this.animationClipPath}, source=${this._controlSource}, loop=${this.loop}`);
 
         this.isPlaying = true;
+        this.hasError = false;
         this.currentFrame = this.startFrame || 0;
         this.frameTimer = 0;
 
@@ -1473,6 +1515,9 @@ export class Animator extends Leyes {
             this.spriteRenderer.sprite = cachedImg;
             this.spriteRenderer.isLoading = false;
             this.spriteRenderer.isError = false;
+        } else if (cachedImg && cachedImg.complete) {
+            // Failed to load image
+            this.hasError = true;
         }
 
         // Apply metadata (source, spriteName) regardless of cache to ensure SpriteRenderer has correct UVs
@@ -1943,11 +1988,19 @@ export class AnimatorController extends Leyes {
         }
     }
 
-    play(stateName, force = false) {
+    play(stateName, force = false, overrides = {}) {
         if (!stateName) return;
         const debug = window.CE_DEBUG_ANIMATION;
 
         if (debug) console.log(`[AnimatorController] Intento de play: state=${stateName}, force=${force}`);
+
+        // Check transitions if not forced and not the first state
+        if (!force && this.currentStateName && this.currentStateName !== stateName) {
+            if (!this.canTransitionTo(stateName)) {
+                if (debug) console.warn(`[AnimatorController] Transición denegada: No hay conexión de '${this.currentStateName}' a '${stateName}'.`);
+                return;
+            }
+        }
 
         if (!this.animator && this.materia) {
             this.animator = this.materia.getComponent(Animator);
@@ -1993,12 +2046,12 @@ export class AnimatorController extends Leyes {
             return;
         }
 
-        // Pass control to animator
+        // Pass control to animator with overrides support
         this.animator.play(state.animationClip, {
-            loop: state.loop !== undefined ? state.loop : true,
-            speed: state.speed || 12,
-            startFrame: state.startFrame || 0,
-            endFrame: state.endFrame !== undefined ? state.endFrame : -1,
+            loop: overrides.loop !== undefined ? overrides.loop : (state.loop !== undefined ? state.loop : true),
+            speed: overrides.speed || state.speed || 12,
+            startFrame: overrides.startFrame !== undefined ? overrides.startFrame : (state.startFrame || 0),
+            endFrame: overrides.endFrame !== undefined ? overrides.endFrame : (state.endFrame !== undefined ? state.endFrame : -1),
             source: 'controller',
             force: force
         });
@@ -2012,6 +2065,16 @@ export class AnimatorController extends Leyes {
     }
 
     establecerParametro(nombre, valor) { this.setParameter(nombre, valor); }
+
+    canTransitionTo(targetStateName) {
+        if (!this.controller || !this.controller.transitions) return false;
+        // If we don't have a current state, we can only go to entryState by default,
+        // but for robustness we allow the first transition.
+        if (!this.currentStateName) return true;
+        if (this.currentStateName === targetStateName) return true;
+
+        return this.controller.transitions.some(t => t.from === this.currentStateName && t.to === targetStateName);
+    }
 
     update(deltaTime) {
         if (!this.materia.isActive) return;
@@ -2050,6 +2113,13 @@ export class AnimatorController extends Leyes {
 
         if (!this.animator || !this.controller) return;
 
+        // Fallback to Principal (Entry State) on animation failure
+        if (this.animator.hasError && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+            if (debug) console.log(`[AnimatorController] Fallback a estado principal '${this.controller.entryState}' por error en animación.`);
+            this.play(this.controller.entryState, true); // force fallback
+            this.animator.hasError = false; // reset error after fallback
+        }
+
         // Auto-update parameters from components
         const rb = this.materia.getComponent(Rigidbody2D);
         const movement = this.materia.getComponent(Movement);
@@ -2077,7 +2147,7 @@ export class AnimatorController extends Leyes {
             // In platformers, Y velocity is often noisy due to gravity/collisions.
             // If grounded and not trying to move, ignore Y velocity for "moving" detection.
             const checkY = !(isGroundedStop && rb.gravityScale > 0);
-            const rbThreshold = isGroundedStop ? 20.0 : 4.0; // Increased thresholds significantly
+            const rbThreshold = isGroundedStop ? 40.0 : 10.0; // Even higher thresholds
 
             if (Math.abs(rb.velocity.x) > rbThreshold || (checkY && Math.abs(rb.velocity.y) > rbThreshold)) {
                 horiz = rb.velocity.x;
@@ -2098,7 +2168,7 @@ export class AnimatorController extends Leyes {
                     const dy = (transform.y - this._lastPosition.y) / deltaTime;
 
                     const isGroundedStop = isIntentionalStop && isGrounded;
-                    const threshold = isGroundedStop ? 20.0 : 5.0; // Increased thresholds
+                    const threshold = isGroundedStop ? 40.0 : 12.0; // Even higher thresholds
                     const checkY = !(isGroundedStop && rb && rb.gravityScale > 0);
 
                     if (Math.abs(dx) > threshold || (checkY && Math.abs(dy) > threshold)) {
@@ -2198,7 +2268,7 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            const deadZone = 0.6; // Increased deadZone for direction mapping
+            const deadZone = 0.8; // Increased deadZone for direction mapping
             if (p.horizontal > deadZone) h = 1;
             else if (p.horizontal < -deadZone) h = -1;
 
@@ -2213,13 +2283,13 @@ export class AnimatorController extends Leyes {
         if (currentDirIndex !== this._desiredDirIndex) {
             this._desiredDirIndex = currentDirIndex;
 
-            // If going from Idle to Move, add a small delay to filter spikes
+            // Stability timers to filter out noise
             if (this._lastDirIndex === 4) {
-                this._dirStabilityTimer = 0.08; // 80ms delay to start moving
+                this._dirStabilityTimer = 0.12; // 120ms delay to start moving
             } else if (currentDirIndex === 4) {
-                this._dirStabilityTimer = 0.02; // 20ms delay to stop (fast but not instant)
+                this._dirStabilityTimer = 0.05; // 50ms delay to stop
             } else {
-                this._dirStabilityTimer = 0.15; // 150ms for direction changes
+                this._dirStabilityTimer = 0.2; // 200ms for direction changes
             }
         }
 
@@ -2239,8 +2309,14 @@ export class AnimatorController extends Leyes {
             console.log(`[AnimatorController] SmartMode: target=${this._desiredDirIndex}, stable=${this._lastDirIndex}, state=${stateName}, isMoving=${p.isMoving}`);
         }
 
-        if (stateName && (this.currentStateName !== stateName || !this.animator.isPlaying)) {
-            this.play(stateName);
+        if (stateName) {
+            const isSameState = this.currentStateName === stateName;
+            if (!isSameState || !this.animator.isPlaying) {
+                // Smart mode follows transitions
+                if (isSameState || this.canTransitionTo(stateName)) {
+                    this.play(stateName);
+                }
+            }
         } else if (!stateName) {
             if (p.isMoving) {
                 // Fallback for diagonals: Try pure horizontal or vertical
