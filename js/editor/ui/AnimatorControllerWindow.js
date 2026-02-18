@@ -368,6 +368,14 @@ function updateStateInspector() {
                 <input type="checkbox" id="anim-state-loop" ${selectedState.loop !== false ? 'checked' : ''}>
                 <label for="anim-state-loop">Bucle (Loop)</label>
             </div>
+            <div class="checkbox-field">
+                <input type="checkbox" id="anim-state-flip-x" ${selectedState.flipX ? 'checked' : ''}>
+                <label for="anim-state-flip-x">Voltear Horizontal</label>
+            </div>
+            <div class="checkbox-field">
+                <input type="checkbox" id="anim-state-flip-y" ${selectedState.flipY ? 'checked' : ''}>
+                <label for="anim-state-flip-y">Voltear Vertical</label>
+            </div>
             <hr>
             <div class="inspector-section-header">
                 <span>Mapeo de Movimiento</span>
@@ -453,6 +461,14 @@ function updateStateInspector() {
         selectedState.loop = e.target.checked;
     };
 
+    container.querySelector('#anim-state-flip-x').onchange = (e) => {
+        selectedState.flipX = e.target.checked;
+    };
+
+    container.querySelector('#anim-state-flip-y').onchange = (e) => {
+        selectedState.flipY = e.target.checked;
+    };
+
     container.querySelector('#anim-ctrl-smart-mode-toggle').onchange = (e) => {
         currentControllerData.smartMode = e.target.checked;
     };
@@ -508,11 +524,11 @@ async function createNewAnimatorController() {
                 entryState: "Parado",
                 smartMode: true,
                 states: [
-                    { name: "Parado", animationClip: "", speed: 12.0, position: { x: 300, y: 200 } },
-                    { name: "Arriba", animationClip: "", speed: 12.0, position: { x: 300, y: 50 } },
-                    { name: "Abajo", animationClip: "", speed: 12.0, position: { x: 300, y: 350 } },
-                    { name: "Izquierda", animationClip: "", speed: 12.0, position: { x: 100, y: 200 } },
-                    { name: "Derecha", animationClip: "", speed: 12.0, position: { x: 500, y: 200 } }
+                    { name: "Parado", animationClip: "", speed: 12.0, position: { x: 300, y: 200 }, flipX: false, flipY: false },
+                    { name: "Arriba", animationClip: "", speed: 12.0, position: { x: 300, y: 50 }, flipX: false, flipY: false },
+                    { name: "Abajo", animationClip: "", speed: 12.0, position: { x: 300, y: 350 }, flipX: false, flipY: false },
+                    { name: "Izquierda", animationClip: "", speed: 12.0, position: { x: 100, y: 200 }, flipX: false, flipY: false },
+                    { name: "Derecha", animationClip: "", speed: 12.0, position: { x: 500, y: 200 }, flipX: false, flipY: false }
                 ],
                 transitions: [],
                 movementMapping: {
@@ -784,7 +800,9 @@ function addNewStatePrompt(x, y) {
                 name: name,
                 animationClip: "",
                 speed: 12.0,
-                position: { x: x, y: y }
+                position: { x: x, y: y },
+                flipX: false,
+                flipY: false
             });
             renderAnimatorGraph();
         }

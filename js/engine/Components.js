@@ -232,6 +232,15 @@ export class CreativeScriptBehavior {
     get tag() { return this.materia ? this.materia.tag : ''; }
     set tag(v) { if (this.materia) this.materia.tag = v; }
 
+    get voltearH() { return this.transform ? this.transform.flipX : false; }
+    set voltearH(v) { if (this.transform) this.transform.flipX = v; }
+    get voltearV() { return this.transform ? this.transform.flipY : false; }
+    set voltearV(v) { if (this.transform) this.transform.flipY = v; }
+    get flipX() { return this.voltearH; }
+    set flipX(v) { this.voltearH = v; }
+    get flipY() { return this.voltearV; }
+    set flipY(v) { this.voltearV = v; }
+
     get motor() { return this; }
     get engine() { return this; }
     get mtr() { return this.materia; }
@@ -507,6 +516,8 @@ export class Transform extends Leyes {
         this.localPosition = { x: 0, y: 0 };
         this.localRotation = 0;
         this.localScale = { x: 1, y: 1 };
+        this.flipX = false;
+        this.flipY = false;
     }
 
     // --- Posición Global (World Position) ---
@@ -585,17 +596,24 @@ export class Transform extends Leyes {
 
     // --- Escala Global (World Scale) ---
     get scale() {
+        let baseScale;
         if (!this.materia || !this.materia.parent) {
-            return { ...this.localScale };
+            baseScale = { ...this.localScale };
+        } else {
+            const parentTransform = this.materia.parent.getComponent(Transform);
+            if (!parentTransform) {
+                baseScale = { ...this.localScale };
+            } else {
+                const parentScale = parentTransform.scale;
+                baseScale = {
+                    x: parentScale.x * this.localScale.x,
+                    y: parentScale.y * this.localScale.y
+                };
+            }
         }
-        const parentTransform = this.materia.parent.getComponent(Transform);
-        if (!parentTransform) {
-            return { ...this.localScale };
-        }
-        const parentScale = parentTransform.scale;
         return {
-            x: parentScale.x * this.localScale.x,
-            y: parentScale.y * this.localScale.y
+            x: baseScale.x * (this.flipX ? -1 : 1),
+            y: baseScale.y * (this.flipY ? -1 : 1)
         };
     }
 
@@ -649,6 +667,8 @@ export class Transform extends Leyes {
         newTransform.localPosition = { ...this.localPosition };
         newTransform.localRotation = this.localRotation;
         newTransform.localScale = { ...this.localScale };
+        newTransform.flipX = this.flipX;
+        newTransform.flipY = this.flipY;
         return newTransform;
     }
 }
@@ -2040,6 +2060,13 @@ export class AnimatorController extends Leyes {
 
         if (debug) console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
+
+        // Handle flipping
+        const transform = this.materia.getComponent(Transform);
+        if (transform) {
+            transform.flipX = !!state.flipX;
+            transform.flipY = !!state.flipY;
+        }
 
         // Handle empty clip
         if (!state.animationClip) {
