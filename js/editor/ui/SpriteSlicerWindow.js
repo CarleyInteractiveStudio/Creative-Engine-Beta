@@ -1,3 +1,5 @@
+import { clearAssetCache } from '../../engine/AssetUtils.js';
+
 // --- Module State ---
 let localDom = {};
 let currentFileHandle = null; // Handle of the source image being displayed
@@ -284,6 +286,9 @@ async function createSpriteAsset() {
             const writable = await fileHandle.createWritable();
             await writable.write(jsonContent);
             await writable.close();
+
+            // Invalidate cache
+            clearAssetCache(`Assets/${fileHandle.name}`);
         } else {
             // Create a new file
             fileHandle = await createAssetCallback(assetName, jsonContent, assetsDirHandle);

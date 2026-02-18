@@ -1,4 +1,4 @@
-import { getURLForAssetPath } from '../../engine/AssetUtils.js';
+import { getURLForAssetPath, clearAssetCache } from '../../engine/AssetUtils.js';
 
 // --- Animation Editor Module ---
 
@@ -138,6 +138,27 @@ export async function saveAnimationAsset() {
         const content = JSON.stringify(currentAnimationAsset, null, 2);
         await writable.write(content);
         await writable.close();
+
+        // Invalidate cache
+        const assetPath = `Assets/${currentAnimationFileHandle.name}`;
+        clearAssetCache(assetPath);
+
+        // Notify components in the scene
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            const allMaterias = window.SceneManager.currentScene.getAllMaterias();
+            allMaterias.forEach(m => {
+                const animator = m.getComponentByName('Animator');
+                if (animator && animator.animationClipPath &&
+                   (animator.animationClipPath.includes(currentAnimationFileHandle.name))) {
+                    animator.loadAnimationClip(window.projectsDirHandle);
+                }
+                const controller = m.getComponentByName('AnimatorController');
+                if (controller) {
+                    controller.refresh();
+                }
+            });
+        }
+
         window.Dialogs.showNotification('Éxito', `Asset '${currentAnimationFileHandle.name}' guardado.`);
     } catch (error) {
         console.error("Error al guardar el asset de animación:", error);

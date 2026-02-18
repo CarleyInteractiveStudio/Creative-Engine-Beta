@@ -2414,12 +2414,9 @@ export class AnimatorController extends Leyes {
                     if (this.canTransitionTo(idleState)) {
                         if (debug) console.log(`[AnimatorController] SmartMode: Deteniendo movimiento, volviendo a Idle '${idleState}'.`);
                         this.play(idleState);
-                    } else if (this.animator.isPlaying && this.animator._controlSource === 'controller') {
-                        // If cannot return to Idle because of missing connection, at least stop the walking animation
-                        this.animator.stop();
                     }
-                } else if (!idleState && this.animator.isPlaying && this.animator._controlSource === 'controller') {
-                    this.animator.stop();
+                    // Else: continue playing current animation if no connection back to Idle
+                    // as requested by the user ("se segura reproduciendo el de caminar por que no hay a donde devolver el estado")
                 }
             }
         } else if (stateName && !this.states.has(stateName)) {

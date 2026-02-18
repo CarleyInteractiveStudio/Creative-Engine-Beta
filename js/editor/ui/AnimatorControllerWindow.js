@@ -1,5 +1,5 @@
 // js/editor/ui/AnimatorControllerWindow.js
-import { clearAssetCache } from '../../engine/AssetUtils.js';
+import { clearAssetCache, getFileHandleForPath } from '../../engine/AssetUtils.js';
 
 /**
  * AnimatorControllerWindow.js
@@ -501,13 +501,33 @@ async function saveAnimatorController() {
         window.Dialogs.showNotification('Error', 'No hay ningún controlador seleccionado para guardar.');
         return;
     }
+
+    const savedName = currentControllerHandle.name;
+    const savedPath = `Assets/${savedName}`;
+
     try {
-        const writable = await currentControllerHandle.createWritable();
+        let writable;
+        try {
+            writable = await currentControllerHandle.createWritable();
+        } catch (e) {
+            if (e.name === 'InvalidStateError' || e.name === 'NotFoundError') {
+                console.warn(`[AnimatorController] Handle stale, trying to re-acquire for '${savedPath}'`);
+                const freshHandle = await getFileHandleForPath(savedPath, window.projectsDirHandle);
+                if (freshHandle) {
+                    currentControllerHandle = freshHandle;
+                    writable = await currentControllerHandle.createWritable();
+                } else {
+                    throw e;
+                }
+            } else {
+                throw e;
+            }
+        }
+
         await writable.write(JSON.stringify(currentControllerData, null, 2));
         await writable.close();
 
         // Invalidate cache for the saved file so refresh() picks up the new version
-        const savedPath = `Assets/${currentControllerHandle.name}`;
         clearAssetCache(savedPath);
 
         // Hot-reload: Notify components in the scene
@@ -516,17 +536,17 @@ async function saveAnimatorController() {
             allMaterias.forEach(m => {
                 const controller = m.getComponentByName('AnimatorController');
                 if (controller && controller.controllerPath &&
-                   (controller.controllerPath.endsWith(currentControllerHandle.name))) {
+                   (controller.controllerPath.includes(savedName))) {
                     controller.refresh();
                 }
             });
         }
 
-        window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
+        window.Dialogs.showNotification('Éxito', `Controlador '${savedName}' guardado.`);
 
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
-        window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador.');
+        window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador. Intenta abrirlo de nuevo.');
     }
 }
 
