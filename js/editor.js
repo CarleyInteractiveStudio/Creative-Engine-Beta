@@ -1882,6 +1882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const materia of SceneManager.currentScene.getAllMaterias()) {
                     if (materia.isActive) {
                         for (const ley of materia.leyes) {
+                            // 1. Script Initialization
                             if (ley instanceof Components.CreativeScript) {
                                 await ley.initializeInstance();
                                 if (ley.isInitialized) {
@@ -1896,11 +1897,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                         console.error(`Error en onEnable() del script '${ley.scriptName}' en '${materia.name}':`, e);
                                     }
                                 }
-                            } else if (ley instanceof Components.AnimatorController) {
-                                // AnimatorController needs explicit initialization
+                            }
+                            // 2. Specific Component Initialization
+                            else if (ley instanceof Components.AnimatorController) {
                                 await ley.initialize(projectsDirHandle);
                             } else if (ley instanceof Components.Animator) {
-                                // If there's no controller, the animator runs standalone.
                                 if (!materia.getComponent(Components.AnimatorController)) {
                                     await ley.loadAnimationClip(projectsDirHandle);
                                     if (ley.playOnAwake) ley.play();
@@ -1909,13 +1910,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                 await ley.loadTextures(projectsDirHandle);
                             }
 
-                            // Generic start for components that aren't Scripts (already started above)
+                            // 3. Generic start for all non-script components (including AnimatorController)
                             if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
-                                    try {
-                                        await ley.start();
-                                    } catch (e) {
-                                        console.error(`Error en start() del componente ${ley.constructor.name} en '${materia.name}':`, e);
-                                    }
+                                try {
+                                    await ley.start();
+                                } catch (e) {
+                                    console.error(`Error en start() del componente ${ley.constructor.name} en '${materia.name}':`, e);
                                 }
                             }
                         }
@@ -1925,7 +1925,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Un error crítico ocurrió durante la inicialización de los scripts:", error);
         } finally {
-            // Ensure UI always updates, even if scripts fail
             updateGameControlsUI();
         }
     };
