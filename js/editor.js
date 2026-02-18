@@ -1438,6 +1438,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             sourceSH = scratchCanvas.height;
                         }
 
+                        const dWidth = sWidth * Math.abs(worldScale.x);
+                        const dHeight = sHeight * Math.abs(worldScale.y);
+                        const dx = -dWidth * pivotX;
+                        const dy = -dHeight * pivotY;
+
                         const mirrorX = parallax ? parallax.mirroring.x : 0;
                         const mirrorY = parallax ? parallax.mirroring.y : 0;
 
@@ -1452,10 +1457,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             for (let tx = startX; tx < endX; tx += stepX) {
                                 for (let ty = startY; ty < endY; ty += stepY) {
                                     ctx.save();
-                                    ctx.translate(worldPosition.x + tx + dWidth / 2 + dx, worldPosition.y + ty + dHeight / 2 + dy);
+                                    ctx.translate(worldPosition.x + tx - dx, worldPosition.y + ty - dy);
                                     ctx.rotate(worldRotation * Math.PI / 180);
+                                    ctx.scale(worldScale.x, worldScale.y);
                                     if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                                     }
                                     ctx.restore();
                                     if (mirrorY === 0) break;

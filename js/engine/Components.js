@@ -2069,7 +2069,7 @@ export class AnimatorController extends Leyes {
         // If already in this state and animator is still busy with it, do nothing.
         // If it's the same state and same clip, we don't restart it even if it finished (isPlaying=false),
         // to avoid the "stuck at frame 0" effect when a non-looping animation finishes.
-        if (isSameState && this.animator.animationClipPath === state.animationClip) {
+        if (!force && isSameState && this.animator.animationClipPath === state.animationClip) {
             if (debug && this.animator.isPlaying) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
             return;
         }
@@ -2369,11 +2369,19 @@ export class AnimatorController extends Leyes {
                 // Smart mode follows transitions
                 if (isSameState || this.canTransitionTo(stateName)) {
                     this.play(stateName);
+                } else {
+                    // If transition to movement state is denied, try to fallback to Idle (Principal)
+                    // if it's connected, as requested by the user.
+                    const idleState = this.controller.movementMapping[4];
+                    if (idleState && idleState !== this.currentStateName && this.canTransitionTo(idleState)) {
+                        if (debug) console.log(`[AnimatorController] SmartMode: Transición a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
+                        this.play(idleState);
+                    }
                 }
             }
         } else if (!stateName) {
             if (p.isMoving) {
-                // Fallback for diagonals: Try pure horizontal or vertical
+                // Fallback for diagonals or missing directions
                 let h = p.horizontal > 0.1 ? 1 : (p.horizontal < -0.1 ? -1 : 0);
                 let v = p.vertical > 0.1 ? 1 : (p.vertical < -0.1 ? -1 : 0);
 
@@ -2388,18 +2396,28 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (!fallbackState || !this.states.has(fallbackState)) {
-                    fallbackState = this.controller.movementMapping[4]; // Idle
+                    fallbackState = this.controller.movementMapping[4]; // Idle (Principal)
                 }
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
-                    if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' para movimiento diagonal.`);
-                    this.play(fallbackState);
+                    if (this.canTransitionTo(fallbackState)) {
+                        if (debug) console.log(`[AnimatorController] SmartMode Fallback: Usando '${fallbackState}' por falta de mapeo o denegación.`);
+                        this.play(fallbackState);
+                    }
                 }
             } else {
-                // If not moving and dirIndex 4 is not mapped, we should probably stop the animator
-                // to avoid "walking in place"
-                if (this.animator.isPlaying && this.animator._controlSource === 'controller') {
-                    if (debug) console.log(`[AnimatorController] SmartMode: No hay estado para Idle (index 4), deteniendo animator.`);
+                // If not moving and dirIndex 4 is not mapped directly, or we are in a walking state
+                // and want to return to Idle.
+                const idleState = this.controller.movementMapping[4];
+                if (idleState && this.currentStateName !== idleState) {
+                    if (this.canTransitionTo(idleState)) {
+                        if (debug) console.log(`[AnimatorController] SmartMode: Deteniendo movimiento, volviendo a Idle '${idleState}'.`);
+                        this.play(idleState);
+                    } else if (this.animator.isPlaying && this.animator._controlSource === 'controller') {
+                        // If cannot return to Idle because of missing connection, at least stop the walking animation
+                        this.animator.stop();
+                    }
+                } else if (!idleState && this.animator.isPlaying && this.animator._controlSource === 'controller') {
                     this.animator.stop();
                 }
             }
