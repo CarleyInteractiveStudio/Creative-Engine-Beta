@@ -93,6 +93,7 @@ const componentShortcuts = [
     'ui', 'texto', 'boton', 'imagen', 'lienzo',
     'obtenerScript', 'getScript', 'destruir', 'destroy', 'instanciar', 'instantiate',
     'crear', 'create', 'estaActivado', 'activo',
+    'reproducir', 'play',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
