@@ -200,7 +200,8 @@ export class StandaloneRuntime {
                 if (sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
                     const img = sr.sprite;
                     let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                    let pivotX = 0.5, pivotY = 0.5;
+                    let pivotX = sr.pivot ? sr.pivot.x : 0.5;
+                    let pivotY = sr.pivot ? sr.pivot.y : 0.5;
 
                     if (sr.spriteSheet && sr.spriteName && sr.spriteSheet.sprites[sr.spriteName]) {
                         const spriteData = sr.spriteSheet.sprites[sr.spriteName];

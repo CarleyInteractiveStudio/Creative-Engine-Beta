@@ -1619,6 +1619,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Order in Layer</label>
                         <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Pivot</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot ? ley.pivot.x : 0.5}" title="Pivot X">
+                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot ? ley.pivot.y : 0.5}" title="Pivot Y">
+                        </div>
+                    </div>
                 </div>`;
         }
         else if (ley instanceof Components.CreativeScript) {

@@ -1396,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const img = spriteRenderer.sprite;
                     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
                         let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                        let pivotX = 0.5, pivotY = 0.5;
+                        let pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+                        let pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
 
                         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
                             const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];

@@ -1079,6 +1079,7 @@ export class SpriteRenderer extends Leyes {
         this.isError = false;
         this.isLoading = false;
         this._lastLoadedSource = '';
+        this.pivot = { x: 0.5, y: 0.5 };
     }
 
     get spriteName() { return this._spriteName; }
@@ -1231,6 +1232,7 @@ export class SpriteRenderer extends Leyes {
         newRenderer.color = this.color;
         newRenderer.opacity = this.opacity;
         newRenderer.orderInLayer = this.orderInLayer;
+        newRenderer.pivot = { ...this.pivot };
         // The sprite and spritesheet will be loaded automatically
         return newRenderer;
     }
