@@ -466,7 +466,8 @@ export class CreativeScriptBehavior {
             if (typeof opciones === 'boolean') {
                 controller.play(estado, opciones);
             } else {
-                controller.play(estado, opciones.force || false, opciones);
+                const opt = opciones || {};
+                controller.play(estado, opt.force || false, opt);
             }
         }
     }
@@ -2244,8 +2245,7 @@ export class AnimatorController extends Leyes {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
         if (isGame) {
-            const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
-            if (this.smartMode || hasMapping) {
+            if (this.smartMode) {
                 this._handleSmartMode();
             }
             this._checkTransitions();
@@ -2390,10 +2390,22 @@ export class AnimatorController extends Leyes {
 
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName && trans.hasExitTime) {
-                // If there are conditions, they must also be met
-                if (!trans.conditions || trans.conditions.length === 0 || this._evaluateConditions(trans.conditions)) {
-                    this.play(trans.to);
-                    break;
+                const hasConditions = trans.conditions && trans.conditions.length > 0;
+
+                // If there are conditions, they must be met
+                if (hasConditions) {
+                    if (this._evaluateConditions(trans.conditions)) {
+                        this.play(trans.to);
+                        break;
+                    }
+                } else {
+                    // Automatic transition (no conditions):
+                    // Only follow if the current animation is NOT looping.
+                    // This prevents "Idle -> Walk" automatic jumps when the user is just standing still.
+                    if (!this.animator.loop) {
+                        this.play(trans.to);
+                        break;
+                    }
                 }
             }
         }
