@@ -1998,8 +1998,10 @@ export class AnimatorController extends Leyes {
                 this.states.set(state.name, state);
             }
 
-            // Reset state to force entry state playback
-            this.currentStateName = '';
+            // Reset state to force entry state playback if it's the first time
+            if (!this.currentStateName) {
+                this.currentStateName = '';
+            }
 
             console.log(`AnimatorController loaded '${this.controller.name}' with ${this.states.size} states.`);
 
@@ -2087,6 +2089,17 @@ export class AnimatorController extends Leyes {
 
     /** Alias en español */
     reproducir(nombreEstado) { this.play(nombreEstado); }
+
+    async refresh() {
+        if (window.CE_DEBUG_ANIMATION) console.log(`[AnimatorController] Refrescando controlador: ${this.controllerPath}`);
+        const lastState = this.currentStateName;
+        await this.loadController(this.projectsDirHandle || window.projectsDirHandle);
+        if (lastState && this.states.has(lastState)) {
+            this.play(lastState, true); // Force restart to apply changes
+        } else if (this.controller && this.controller.entryState) {
+            this.play(this.controller.entryState, true);
+        }
+    }
 
     setParameter(name, value) {
         this.parameters[name] = value;

@@ -505,6 +505,24 @@ async function saveAnimatorController() {
         await writable.write(JSON.stringify(currentControllerData, null, 2));
         await writable.close();
         window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
+
+        // Hot-reload: Notify components in the scene
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            // We need to resolve the full asset path for comparison
+            // AnimatorControllerWindow uses relative paths usually starting with 'Assets/'
+            const savedPath = `Assets/${currentControllerHandle.name}`; // Basic heuristic
+
+            const allMaterias = window.SceneManager.currentScene.getAllMaterias();
+            allMaterias.forEach(m => {
+                const controller = m.getComponent('AnimatorController');
+                // Check if path matches (ignoring leading slashes or case for robustness)
+                if (controller && controller.controllerPath &&
+                   (controller.controllerPath.endsWith(currentControllerHandle.name))) {
+                    controller.refresh();
+                }
+            });
+        }
+
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
         window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador.');
