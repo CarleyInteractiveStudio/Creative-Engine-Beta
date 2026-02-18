@@ -39,10 +39,12 @@ export class Materia {
     }
 
     getComponent(componentClass) {
+        if (typeof componentClass !== 'function') return null;
         return this.leyes.find(ley => ley instanceof componentClass);
     }
 
     getComponents(componentClass) {
+        if (typeof componentClass !== 'function') return [];
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 

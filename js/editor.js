@@ -1907,9 +1907,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             } else if (ley instanceof Components.Terreno2D) {
                                 await ley.loadTextures(projectsDirHandle);
-                            } else {
-                                // Generic start for other components (like AudioSource)
-                                if (typeof ley.start === 'function') {
+                            }
+
+                            // Generic start for components that aren't Scripts (already started above)
+                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
                                     try {
                                         await ley.start();
                                     } catch (e) {

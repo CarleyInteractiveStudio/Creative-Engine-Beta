@@ -7,6 +7,25 @@ export function setStandaloneMode(value) {
 const assetUrlCache = new Map();
 const assetPromiseCache = new Map();
 
+/**
+ * Clears the cached URL for a specific asset path, or clears the entire cache if no path is provided.
+ * Use this when an asset has been modified and needs to be reloaded.
+ * @param {string} [path] - The asset path to invalidate.
+ */
+export function clearAssetCache(path) {
+    if (path) {
+        assetUrlCache.delete(path);
+        // Also remove leading slash variant if it exists, for robustness
+        if (path.startsWith('/')) {
+            assetUrlCache.delete(path.substring(1));
+        } else {
+            assetUrlCache.delete('/' + path);
+        }
+    } else {
+        assetUrlCache.clear();
+    }
+}
+
 export async function getURLForAssetPath(path, projectsDirHandle) {
     if (!path) return null;
 

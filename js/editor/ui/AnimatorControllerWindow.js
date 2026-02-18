@@ -1,4 +1,5 @@
 // js/editor/ui/AnimatorControllerWindow.js
+import { clearAssetCache } from '../../engine/AssetUtils.js';
 
 /**
  * AnimatorControllerWindow.js
@@ -504,24 +505,24 @@ async function saveAnimatorController() {
         const writable = await currentControllerHandle.createWritable();
         await writable.write(JSON.stringify(currentControllerData, null, 2));
         await writable.close();
-        window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
+
+        // Invalidate cache for the saved file so refresh() picks up the new version
+        const savedPath = `Assets/${currentControllerHandle.name}`;
+        clearAssetCache(savedPath);
 
         // Hot-reload: Notify components in the scene
         if (window.SceneManager && window.SceneManager.currentScene) {
-            // We need to resolve the full asset path for comparison
-            // AnimatorControllerWindow uses relative paths usually starting with 'Assets/'
-            const savedPath = `Assets/${currentControllerHandle.name}`; // Basic heuristic
-
             const allMaterias = window.SceneManager.currentScene.getAllMaterias();
             allMaterias.forEach(m => {
-                const controller = m.getComponent('AnimatorController');
-                // Check if path matches (ignoring leading slashes or case for robustness)
+                const controller = m.getComponentByName('AnimatorController');
                 if (controller && controller.controllerPath &&
                    (controller.controllerPath.endsWith(currentControllerHandle.name))) {
                     controller.refresh();
                 }
             });
         }
+
+        window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
 
     } catch (error) {
         console.error("Error al guardar el controlador:", error);

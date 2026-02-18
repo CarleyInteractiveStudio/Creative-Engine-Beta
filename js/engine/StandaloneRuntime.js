@@ -79,10 +79,10 @@ export class StandaloneRuntime {
                         if (!materia.getComponent(Components.AnimatorController)) {
                             await ley.loadAnimationClip(null);
                         }
-                    } else {
-                        if (typeof ley.start === 'function') {
-                            try { await ley.start(); } catch(e) {}
-                        }
+                    }
+
+                    if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                        try { await ley.start(); } catch(e) {}
                     }
                 }
             }
