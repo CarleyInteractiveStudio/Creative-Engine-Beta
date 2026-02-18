@@ -4512,3 +4512,8 @@ body.game-mode #loading-overlay {
 }
 
 .anim-sidebar .list-content,
+.anim-sidebar-section .list-content,
+#animator-state-inspector .list-content {
+    flex: 1;
+    overflow-y: auto;
+}

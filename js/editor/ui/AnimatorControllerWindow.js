@@ -538,6 +538,22 @@ async function saveAnimatorController() {
         await writable.write(JSON.stringify(currentControllerData, null, 2));
         await writable.close();
         window.Dialogs.showNotification('Éxito', `Controlador '${currentControllerHandle.name}' guardado.`);
+
+        // Notify engine to reload this controller if it's being used in the current scene
+        if (window.SceneManager && window.SceneManager.currentScene) {
+            window.SceneManager.currentScene.materias.forEach(m => {
+                m.leyes.forEach(l => {
+                    if (l.constructor.name === 'AnimatorController') {
+                        // Match by filename to handle path differences
+                        if (l.controllerPath && l.controllerPath.includes(currentControllerHandle.name)) {
+                            if (typeof l.refresh === 'function') {
+                                l.refresh();
+                            }
+                        }
+                    }
+                });
+            });
+        }
     } catch (error) {
         console.error("Error al guardar el controlador:", error);
         window.Dialogs.showNotification('Error', 'No se pudo guardar el controlador.');
@@ -803,6 +819,17 @@ function setupEventListeners() {
     if (addStateBtn) {
         addStateBtn.addEventListener('click', () => {
             addNewStatePrompt(50, 50);
+        });
+    }
+
+    const deleteStateBtn = document.getElementById('anim-state-delete-btn');
+    if (deleteStateBtn) {
+        deleteStateBtn.addEventListener('click', () => {
+            if (!selectedState) {
+                window.Dialogs.showNotification('Aviso', 'Selecciona un estado para eliminarlo.');
+                return;
+            }
+            deleteState(selectedState.name);
         });
     }
 

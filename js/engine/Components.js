@@ -1916,6 +1916,18 @@ export class AnimatorController extends Leyes {
         }
     }
 
+    async refresh() {
+        if (!this.controllerPath) return;
+        if (window.CE_DEBUG_ANIMATION) console.log(`[AnimatorController] Recargando controlador: ${this.controllerPath}`);
+        this._failedToLoad = false; // Reset failure flag to allow retry
+        await this.loadController(this.projectsDirHandle || window.projectsDirHandle);
+
+        // If the animator is playing, we re-trigger the current state to apply any metadata changes (speed, loop, frames)
+        if (this.currentStateName) {
+            this.play(this.currentStateName, true);
+        }
+    }
+
     async loadController(projectsDirHandle) {
         if (!this.controllerPath || this._failedToLoad) return;
 
@@ -2084,8 +2096,8 @@ export class AnimatorController extends Leyes {
 
             // If the user IS trying to move via keys, use a very low threshold.
             // If they are NOT trying to move, use a higher threshold to filter physics drift.
-            const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 25.0 : 10.0);
-            const vThreshold = isPlatformer ? 40.0 : hThreshold;
+            const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 40.0 : 25.0);
+            const vThreshold = isPlatformer ? 60.0 : hThreshold;
 
             if (Math.abs(rb.velocity.x) > hThreshold || (checkY && Math.abs(rb.velocity.y) > vThreshold)) {
                 horiz = rb.velocity.x;
@@ -2107,9 +2119,9 @@ export class AnimatorController extends Leyes {
                     const isPlatformer = rb && rb.isActive && rb.gravityScale > 0;
                     const isGroundedStop = isIntentionalStop && isGrounded;
 
-                    const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(dy) > 40.0;
-                    const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 25.0 : 15.0);
-                    const vThreshold = isPlatformer ? 40.0 : hThreshold;
+                    const checkY = !isPlatformer || (movement && !movement.isGrounded) || Math.abs(dy) > 60.0;
+                    const hThreshold = (movement && movement.isActive && !isIntentionalStop) ? 0.1 : (isGroundedStop ? 40.0 : 30.0);
+                    const vThreshold = isPlatformer ? 60.0 : hThreshold;
 
                     if (Math.abs(dx) > hThreshold || (checkY && Math.abs(dy) > vThreshold)) {
                         horiz = dx;
@@ -2195,11 +2207,8 @@ export class AnimatorController extends Leyes {
             // If a transition is taken, we don't let Smart Mode override it in the same frame.
             const transitionTaken = this._checkTransitions();
 
-            if (!transitionTaken) {
-                const hasMapping = this.controller.movementMapping && Object.keys(this.controller.movementMapping).length > 0;
-                if (this.smartMode || hasMapping) {
-                    this._handleSmartMode();
-                }
+            if (!transitionTaken && this.smartMode) {
+                this._handleSmartMode();
             }
         }
     }
@@ -2297,7 +2306,13 @@ export class AnimatorController extends Leyes {
                 }
 
                 if (!fallbackState || !this.states.has(fallbackState)) {
-                    fallbackState = this.controller.movementMapping[4]; // Idle
+                    // If moving, we prefer to stay in the current state if it's a movement state,
+                    // rather than snapping to Idle if a specific diagonal/fallback isn't found.
+                    const movementStates = Object.values(this.controller.movementMapping || {});
+                    if (movementStates.includes(this.currentStateName)) {
+                        return; // Mantener la animación actual de movimiento
+                    }
+                    fallbackState = this.controller.movementMapping[4]; // Idle como último recurso
                 }
 
                 if (fallbackState && (this.currentStateName !== fallbackState || !this.animator.isPlaying)) {
