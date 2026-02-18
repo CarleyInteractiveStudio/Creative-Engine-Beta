@@ -1457,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             for (let tx = startX; tx < endX; tx += stepX) {
                                 for (let ty = startY; ty < endY; ty += stepY) {
                                     ctx.save();
-                                    ctx.translate(worldPosition.x + tx - dx, worldPosition.y + ty - dy);
+                                    ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                                     ctx.rotate(worldRotation * Math.PI / 180);
                                     ctx.scale(worldScale.x, worldScale.y);
                                     if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {

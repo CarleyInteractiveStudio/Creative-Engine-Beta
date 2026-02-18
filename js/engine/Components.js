@@ -1975,20 +1975,22 @@ export class AnimatorController extends Leyes {
         }
         await this.loadController(projectsDirHandle);
 
-        // Play entry state
-        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        if (isGame && this.controller && this.controller.entryState) {
-            this.play(this.controller.entryState);
-        } else if (this.controller && this.controller.entryState) {
-            // In editor, just set the state but don't start playing
+        if (this.controller && this.controller.entryState) {
+            // In editor or at start, just set the state to show the first frame
             this.currentStateName = this.controller.entryState;
             const state = this.states.get(this.currentStateName);
             if (state && state.animationClip) {
                 this.animator.animationClipPath = state.animationClip;
-                if (this.animator.isPlaying) this.animator.stop();
                 // Just load it to show the first frame
                 this.animator.loadAnimationClip(projectsDirHandle);
             }
+        }
+    }
+
+    start() {
+        // Force play entry state when game actually starts
+        if (this.controller && this.controller.entryState) {
+            this.play(this.controller.entryState, true);
         }
     }
 
@@ -2065,14 +2067,6 @@ export class AnimatorController extends Leyes {
 
         const state = this.states.get(stateName);
         const isSameState = this.currentStateName === stateName;
-
-        // If already in this state and animator is still busy with it, do nothing.
-        // If it's the same state and same clip, we don't restart it even if it finished (isPlaying=false),
-        // to avoid the "stuck at frame 0" effect when a non-looping animation finishes.
-        if (!force && isSameState && this.animator.animationClipPath === state.animationClip) {
-            if (debug && this.animator.isPlaying) console.log(`[AnimatorController] Ya se está reproduciendo el estado '${stateName}'.`);
-            return;
-        }
 
         if (debug) console.log(`[AnimatorController] Cambiando a estado: ${stateName} (Clip: ${state.animationClip || 'Ninguno'})`);
         this.currentStateName = stateName;
@@ -2372,10 +2366,17 @@ export class AnimatorController extends Leyes {
                 } else {
                     // If transition to movement state is denied, try to fallback to Idle (Principal)
                     // if it's connected, as requested by the user.
-                    const idleState = this.controller.movementMapping[4];
+                    const idleState = this.controller.movementMapping[4] || this.controller.entryState;
                     if (idleState && idleState !== this.currentStateName && this.canTransitionTo(idleState)) {
                         if (debug) console.log(`[AnimatorController] SmartMode: Transición a '${stateName}' denegada. Volviendo a Idle '${idleState}'.`);
                         this.play(idleState);
+                    } else if (idleState && idleState !== this.currentStateName) {
+                        // If even fallback to idle is denied by graph, but we are stuck in a non-looping finished animation
+                        // we MUST return to principal to avoid freezing, as it is the "root" animation.
+                        if (!this.animator.isPlaying && this.animator._controlSource === 'controller') {
+                            if (debug) console.log(`[AnimatorController] SmartMode: Stuck and denied. Forcing fallback to Principal '${this.controller.entryState}'.`);
+                            this.play(this.controller.entryState, true);
+                        }
                     }
                 }
             }
@@ -2460,6 +2461,8 @@ export class AnimatorController extends Leyes {
         // Handle transitions with hasExitTime
         if (!this.controller || !this.controller.transitions) return;
 
+        let transitionFound = false;
+
         for (const trans of this.controller.transitions) {
             if (trans.from === this.currentStateName && trans.hasExitTime) {
                 const hasConditions = trans.conditions && trans.conditions.length > 0;
@@ -2468,6 +2471,7 @@ export class AnimatorController extends Leyes {
                 if (hasConditions) {
                     if (this._evaluateConditions(trans.conditions)) {
                         this.play(trans.to);
+                        transitionFound = true;
                         break;
                     }
                 } else {
@@ -2476,10 +2480,18 @@ export class AnimatorController extends Leyes {
                     // This prevents "Idle -> Walk" automatic jumps when the user is just standing still.
                     if (!this.animator.loop) {
                         this.play(trans.to);
+                        transitionFound = true;
                         break;
                     }
                 }
             }
+        }
+
+        // Safety fallback: If a non-looping animation finished and no transition was found,
+        // automatically return to the Principal (entryState) to avoid staying "frozen" on the last frame.
+        if (!transitionFound && !this.animator.loop && this.controller.entryState && this.currentStateName !== this.controller.entryState) {
+            if (window.CE_DEBUG_ANIMATION) console.log(`[AnimatorController] No hay transición de salida para '${this.currentStateName}'. Volviendo a Principal.`);
+            this.play(this.controller.entryState, true); // Use force to bypass any connection issues for safety fallback
         }
     }
 
