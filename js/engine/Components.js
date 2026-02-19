@@ -2263,7 +2263,7 @@ export class AnimatorController extends Leyes {
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
             this._isMovingSmooth = true;
-            this._movingStopTimer = 0.3; // Stay 'moving' for at least 300ms buffer
+            this._movingStopTimer = 0.05; // Snappy 50ms buffer
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
@@ -2326,7 +2326,7 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            const deadZone = 0.8; // Increased deadZone for direction mapping
+            const deadZone = 0.1; // Reduced deadZone for responsive direction mapping
             if (p.horizontal > deadZone) h = 1;
             else if (p.horizontal < -deadZone) h = -1;
 
@@ -2341,13 +2341,13 @@ export class AnimatorController extends Leyes {
         if (currentDirIndex !== this._desiredDirIndex) {
             this._desiredDirIndex = currentDirIndex;
 
-            // Stability timers to filter out noise
+            // Stability timers to filter out noise (Snappy settings: ~20ms start/stop, 50ms turn)
             if (this._lastDirIndex === 4) {
-                this._dirStabilityTimer = 0.12; // 120ms delay to start moving
+                this._dirStabilityTimer = 0.02; // 20ms delay to start moving
             } else if (currentDirIndex === 4) {
-                this._dirStabilityTimer = 0.05; // 50ms delay to stop
+                this._dirStabilityTimer = 0.02; // 20ms delay to stop
             } else {
-                this._dirStabilityTimer = 0.2; // 200ms for direction changes
+                this._dirStabilityTimer = 0.05; // 50ms for direction changes
             }
         }
 
