@@ -209,8 +209,7 @@ export class StandaloneRuntime {
                         sy = spriteData.rect.y;
                         sWidth = spriteData.rect.width;
                         sHeight = spriteData.rect.height;
-                        pivotX = spriteData.pivot?.x ?? pivotX;
-                        pivotY = spriteData.pivot?.y ?? pivotY;
+                        // Component pivot already contains the correct value or override
                     }
 
                     const worldPos = transform.position;

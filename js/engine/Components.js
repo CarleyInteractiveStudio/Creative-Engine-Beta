@@ -1087,6 +1087,14 @@ export class SpriteRenderer extends Leyes {
         if (this._spriteName === value) return;
         this._spriteName = value;
 
+        // Update pivot from sheet if available
+        if (this.spriteSheet && this.spriteSheet.sprites && this.spriteSheet.sprites[value]) {
+            const sd = this.spriteSheet.sprites[value];
+            if (sd.pivot) {
+                this.pivot = { x: sd.pivot.x ?? 0.5, y: sd.pivot.y ?? 0.5 };
+            }
+        }
+
         // If it's a data URL or a path, it's a direct source override (e.g. from imported frames)
         if (typeof value === 'string' && value) {
             if (value.startsWith('data:')) {

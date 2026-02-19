@@ -1406,8 +1406,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 sy = spriteData.rect.y;
                                 sWidth = spriteData.rect.width;
                                 sHeight = spriteData.rect.height;
-                                pivotX = spriteData.pivot?.x ?? pivotX;
-                                pivotY = spriteData.pivot?.y ?? pivotY;
+                                // Component pivot (which is synced with spriteData.pivot in the setter)
+                                // already contains the correct value or the user override.
                             }
                         }
 

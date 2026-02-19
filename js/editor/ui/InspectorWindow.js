@@ -270,6 +270,7 @@ async function handleInspectorDrop(e) {
             if (updateSceneCallback) updateSceneCallback();
         }
     }
+
 }
 
 
@@ -541,6 +542,29 @@ function handleInspectorClick(e) {
         const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
         if (spriteRenderer) {
             spriteRenderer.pivot = { x: 0.5, y: 0.5 };
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.closest('[data-action="auto-pivot-sprite"]')) {
+        const selectedMateria = getSelectedMateria();
+        const sr = selectedMateria.getComponent(Components.SpriteRenderer);
+        if (sr && sr.sprite && (sr.sprite.naturalWidth > 0 || sr.sprite.width > 0)) {
+            const pivot = calculateAutoPivot(sr.sprite);
+            sr.pivot = pivot;
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.closest('[data-action="auto-pivot-ui"]')) {
+        const selectedMateria = getSelectedMateria();
+        const uiTrans = selectedMateria.getComponent(Components.UITransform);
+        const uiImg = selectedMateria.getComponent(Components.UIImage);
+        if (uiTrans && uiImg && uiImg.sprite && (uiImg.sprite.naturalWidth > 0 || uiImg.sprite.width > 0)) {
+            const pivot = calculateAutoPivot(uiImg.sprite);
+            uiTrans.pivot = pivot;
             updateInspector();
             if (updateSceneCallback) updateSceneCallback();
         }
@@ -1403,6 +1427,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-inputs">
                         <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
                         <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
+                        <button class="small-btn" data-action="auto-pivot-ui" title="Ajustar al Contenido (Auto-Pivot)" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                     </div>
                 </div>
             </div>`;
@@ -1658,6 +1683,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
                             <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">🎯</button>
+                            <button class="small-btn" data-action="auto-pivot-sprite" title="Ajustar al Contenido (Auto-Pivot)" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                         </div>
                     </div>
                     <div class="inspector-row">
@@ -3641,4 +3667,47 @@ async function saveProjectConfig() {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
         showNotification('Error', 'No se pudo guardar la configuración del proyecto.');
     }
+}
+
+/**
+ * Analiza una imagen para encontrar el recuadro que contiene píxeles no transparentes
+ * y devuelve el pivote que centraría ese recuadro.
+ */
+function calculateAutoPivot(image) {
+    const canvas = document.createElement('canvas');
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    let minX = width, minY = height, maxX = -1, maxY = -1;
+    let found = false;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const alpha = data[(y * width + x) * 4 + 3];
+            if (alpha > 10) { // Umbral de transparencia
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+                found = true;
+            }
+        }
+    }
+
+    if (!found) return { x: 0.5, y: 0.5 };
+
+    // El centro geométrico de los píxeles visibles
+    const centerX = (minX + maxX + 1) / 2;
+    const centerY = (minY + maxY + 1) / 2;
+
+    return {
+        x: parseFloat((centerX / width).toFixed(4)),
+        y: parseFloat((centerY / height).toFixed(4))
+    };
 }
