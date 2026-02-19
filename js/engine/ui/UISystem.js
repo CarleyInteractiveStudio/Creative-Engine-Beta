@@ -56,8 +56,7 @@ function handleButtonStates() {
                 continue;
             }
 
-            const uiTransform = buttonMateria.getComponent(Components.UITransform);
-            const screenRect = UITransformUtils.getScreenRect(uiTransform, canvas, canvasSize);
+            const screenRect = UITransformUtils.getScreenRect(buttonMateria, canvas, canvasSize);
             const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
                             mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
 

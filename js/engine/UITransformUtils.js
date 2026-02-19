@@ -94,6 +94,45 @@ export function getAbsoluteRect(materia, rectCache) {
     return absoluteRect;
 }
 
+/**
+ * Calculates the screen-space rectangle (in Client/Browser coordinates) for a UI element.
+ * @param {UITransform|Materia} target - The UI element or its UITransform.
+ * @param {Canvas} canvas - The Canvas component it belongs to.
+ * @param {{width: number, height: number}} canvasSize - The actual pixel size of the canvas on screen.
+ * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in client coordinates.
+ */
+export function getScreenRect(target, canvas, canvasSize) {
+    const materia = target.materia || target;
+    const rectCache = new Map();
+    const canvasMateria = canvas.materia;
+
+    // Use a virtual rectangle for the canvas to compute children positions
+    if (canvas.renderMode === 'Screen Space') {
+        const refRes = canvas.referenceResolution || { width: 800, height: 600 };
+        const virtualCanvasRect = { x: 0, y: 0, width: refRes.width, height: refRes.height };
+        rectCache.set(canvasMateria.id, virtualCanvasRect);
+
+        const virtualRect = getAbsoluteRect(materia, rectCache);
+
+        const scaleX = canvasSize.width / refRes.width;
+        const scaleY = canvasSize.height / refRes.height;
+
+        // Get the canvas element's position on the page
+        const canvasElement = document.getElementById(canvas.renderMode === 'Screen Space' ? 'game-canvas' : 'scene-canvas');
+        const canvasOffset = canvasElement ? canvasElement.getBoundingClientRect() : { left: 0, top: 0 };
+
+        return {
+            x: canvasOffset.left + virtualRect.x * scaleX,
+            y: canvasOffset.top + virtualRect.y * scaleY,
+            width: virtualRect.width * scaleX,
+            height: virtualRect.height * scaleY
+        };
+    } else {
+        // World Space: For now, fallback to absolute world rect (this won't perfectly match screen coords without camera)
+        return getAbsoluteRect(materia, rectCache);
+    }
+}
+
 
 /**
  * Calculates the scale and offset to fit a source rectangle within a target rectangle,

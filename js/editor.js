@@ -1871,7 +1871,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
-        UISystem.initialize(SceneManager.currentScene);
+        uiSystem = UISystem;
+        uiSystem.initialize(SceneManager.currentScene);
         EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
 
 

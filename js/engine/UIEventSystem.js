@@ -2,7 +2,8 @@
 
 import { InputManager } from './Input.js';
 import * as SceneManager from './SceneManager.js';
-import { RectTransform, UIButton } from './Components.js';
+import { UITransform, Button } from './Components.js';
+import * as UITransformUtils from './UITransformUtils.js';
 
 class UIEventSystem {
     constructor() {
@@ -66,7 +67,7 @@ class UIEventSystem {
         // This is a simplified version. A real implementation would be more optimized.
         const interactables = [];
         SceneManager.currentScene.materias.forEach(materia => {
-            if (materia.isActive && materia.getComponent(UIButton)) {
+            if (materia.isActive && materia.getComponent(Button)) {
                 interactables.push(materia);
             }
         });
@@ -77,21 +78,16 @@ class UIEventSystem {
     }
 
     isPointerOver(materia, mousePos) {
-        const rectTransform = materia.getComponent(RectTransform);
-        if (!rectTransform) return false;
+        const uiTransform = materia.getComponent(UITransform);
+        if (!uiTransform) return false;
 
-        // This is a simplified check for screen-space overlay.
-        // It doesn't account for anchors, pivots, or camera-space UI yet.
-        const left = rectTransform.x - (rectTransform.width * rectTransform.pivot.x);
-        const right = left + rectTransform.width;
-        const top = rectTransform.y - (rectTransform.height * rectTransform.pivot.y);
-        const bottom = top + rectTransform.height;
-
-        return mousePos.x >= left && mousePos.x <= right && mousePos.y >= top && mousePos.y <= bottom;
+        const screenRect = UITransformUtils.getAbsoluteRect(materia, new Map());
+        return mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+               mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
     }
 
     dispatch(materia, eventType) {
-        const button = materia.getComponent(UIButton);
+        const button = materia.getComponent(Button);
         if (!button) return;
 
         switch (eventType) {
