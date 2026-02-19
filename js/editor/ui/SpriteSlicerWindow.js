@@ -227,6 +227,27 @@ function handlePivotChange(e) {
     localDom.customPivotContainer.classList.toggle('hidden', e.target.value !== 'Custom');
 }
 
+function getSelectedPivot() {
+    const value = localDom.pivotSelect.value;
+    switch (value) {
+        case 'Center': return { x: 0.5, y: 0.5 };
+        case 'Top Left': return { x: 0, y: 0 };
+        case 'Top': return { x: 0.5, y: 0 };
+        case 'Top Right': return { x: 1, y: 0 };
+        case 'Left': return { x: 0, y: 0.5 };
+        case 'Right': return { x: 1, y: 0.5 };
+        case 'Bottom Left': return { x: 0, y: 1 };
+        case 'Bottom': return { x: 0.5, y: 1 };
+        case 'Bottom Right': return { x: 1, y: 1 };
+        case 'Custom':
+            return {
+                x: parseFloat(document.getElementById('slice-custom-pivot-x').value) || 0.5,
+                y: parseFloat(document.getElementById('slice-custom-pivot-y').value) || 0.5
+            };
+        default: return { x: 0.5, y: 0.5 };
+    }
+}
+
 function executeSlice() {
     if (!sourceImage) return;
 
@@ -266,12 +287,14 @@ async function createSpriteAsset() {
             sprites: {}
         };
 
+        const selectedPivot = getSelectedPivot();
+
         generatedSlices.forEach((rect, index) => {
             const spriteName = `${baseName}_${index}`;
             spriteAssetContent.sprites[spriteName] = {
                 name: spriteName,
                 rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-                pivot: { x: 0.5, y: 0.5 },
+                pivot: { x: selectedPivot.x, y: selectedPivot.y },
                 border: { left: 0, top: 0, right: 0, bottom: 0 }
             };
         });

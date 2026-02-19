@@ -17,23 +17,43 @@ export function getOOB(materia, explicitPosition = null) {
     const transform = materia.getComponent(Transform);
     const spriteRenderer = materia.getComponent(SpriteRenderer);
 
-    if (!transform || !spriteRenderer || !spriteRenderer.sprite || !spriteRenderer.sprite.naturalWidth) {
+    if (!transform || !spriteRenderer || !spriteRenderer.sprite || (!spriteRenderer.sprite.naturalWidth && !spriteRenderer.sprite.width)) {
         return null;
     }
 
-    const w = spriteRenderer.sprite.naturalWidth;
-    const h = spriteRenderer.sprite.naturalHeight;
+    let w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
+    let h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
+    let pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+    let pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+
+    // If using a sprite sheet, use the sprite's rect dimensions and pivot
+    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+        if (spriteData.rect) {
+            w = spriteData.rect.width;
+            h = spriteData.rect.height;
+            pivotX = spriteData.pivot.x;
+            pivotY = spriteData.pivot.y;
+        }
+    }
+
     const sx = transform.scale.x;
     const sy = transform.scale.y;
 
-    // Local-space corners of the scaled sprite
-    const halfWidth = (w * sx) / 2;
-    const halfHeight = (h * sy) / 2;
+    // Local-space corners relative to pivot
+    // We scale by sx/sy because we want the OOB in world units (pixels at scale 1)
+    // but the local coordinates should reflect the scaling.
+    // Wait, transform.scale is already used in the final multiplication or here?
+    // Actually, localCorners should be in "sprite-local" space, then scaled.
+
+    const drawX = -w * pivotX;
+    const drawY = -h * pivotY;
+
     const localCorners = [
-        { x: -halfWidth, y: -halfHeight }, // Top-left
-        { x:  halfWidth, y: -halfHeight }, // Top-right
-        { x:  halfWidth, y:  halfHeight }, // Bottom-right
-        { x: -halfWidth, y:  halfHeight }  // Bottom-left
+        { x: drawX * sx, y: drawY * sy }, // Top-left
+        { x: (drawX + w) * sx, y: drawY * sy }, // Top-right
+        { x: (drawX + w) * sx, y: (drawY + h) * sy }, // Bottom-right
+        { x: drawX * sx, y: (drawY + h) * sy }  // Bottom-left
     ];
 
     const angleRad = transform.rotation * Math.PI / 180;
