@@ -1398,6 +1398,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="Height">
                     </div>
                 </div>
+                <div class="prop-row-multi">
+                    <label>Pivot</label>
+                    <div class="prop-inputs">
+                        <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
+                        <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
+                    </div>
+                </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
@@ -1648,8 +1655,8 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>Pivot</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot ? ley.pivot.x : 0.5}" title="Pivot X">
-                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot ? ley.pivot.y : 0.5}" title="Pivot Y">
+                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
+                            <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
                             <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">🎯</button>
                         </div>
                     </div>

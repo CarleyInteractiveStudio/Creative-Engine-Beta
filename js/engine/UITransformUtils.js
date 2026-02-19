@@ -77,9 +77,11 @@ export function getAbsoluteRect(materia, rectCache) {
     const elementCenterX = anchorPos.x + uiTransform.position.x;
     const elementCenterY = anchorPos.y + uiTransform.position.y;
 
-    // Calculate the top-left corner from the center.
-    const finalX = elementCenterX - uiTransform.size.width / 2;
-    const finalY = elementCenterY - uiTransform.size.height / 2;
+    // Calculate the top-left corner using the pivot.
+    const pivotX = uiTransform.pivot?.x ?? 0.5;
+    const pivotY = uiTransform.pivot?.y ?? 0.5;
+    const finalX = elementCenterX - uiTransform.size.width * pivotX;
+    const finalY = elementCenterY - uiTransform.size.height * pivotY;
 
     const absoluteRect = {
         x: finalX,

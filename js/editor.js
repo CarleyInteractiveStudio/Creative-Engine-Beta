@@ -1396,8 +1396,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const img = spriteRenderer.sprite;
                     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
                         let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                        let pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-                        let pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+                        let pivotX = spriteRenderer.pivot?.x ?? 0.5;
+                        let pivotY = spriteRenderer.pivot?.y ?? 0.5;
 
                         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
                             const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
@@ -1406,8 +1406,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 sy = spriteData.rect.y;
                                 sWidth = spriteData.rect.width;
                                 sHeight = spriteData.rect.height;
-                                pivotX = spriteData.pivot.x;
-                                pivotY = spriteData.pivot.y;
+                                pivotX = spriteData.pivot?.x ?? pivotX;
+                                pivotY = spriteData.pivot?.y ?? pivotY;
                             }
                         }
 
@@ -1488,8 +1488,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldScale = transform.scale;
                         const dWidth = 50;
                         const dHeight = 50;
-                        const pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-                        const pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+                        const pivotX = spriteRenderer.pivot?.x ?? 0.5;
+                        const pivotY = spriteRenderer.pivot?.y ?? 0.5;
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 

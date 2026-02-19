@@ -200,8 +200,8 @@ export class StandaloneRuntime {
                 if (sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
                     const img = sr.sprite;
                     let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                    let pivotX = sr.pivot ? sr.pivot.x : 0.5;
-                    let pivotY = sr.pivot ? sr.pivot.y : 0.5;
+                    let pivotX = sr.pivot?.x ?? 0.5;
+                    let pivotY = sr.pivot?.y ?? 0.5;
 
                     if (sr.spriteSheet && sr.spriteName && sr.spriteSheet.sprites[sr.spriteName]) {
                         const spriteData = sr.spriteSheet.sprites[sr.spriteName];
@@ -209,8 +209,8 @@ export class StandaloneRuntime {
                         sy = spriteData.rect.y;
                         sWidth = spriteData.rect.width;
                         sHeight = spriteData.rect.height;
-                        pivotX = spriteData.pivot.x;
-                        pivotY = spriteData.pivot.y;
+                        pivotX = spriteData.pivot?.x ?? pivotX;
+                        pivotY = spriteData.pivot?.y ?? pivotY;
                     }
 
                     const worldPos = transform.position;

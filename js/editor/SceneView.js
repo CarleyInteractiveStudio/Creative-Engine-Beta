@@ -278,13 +278,13 @@ function checkGizmoHit(canvasPos) {
         const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
         let pivotX = 0.5, pivotY = 0.5;
         if (spriteRenderer) {
-            pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-            pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+            pivotX = spriteRenderer.pivot?.x ?? 0.5;
+            pivotY = spriteRenderer.pivot?.y ?? 0.5;
             if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
                 const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
                 if (spriteData.pivot) {
-                    pivotX = spriteData.pivot.x;
-                    pivotY = spriteData.pivot.y;
+                    pivotX = spriteData.pivot.x ?? pivotX;
+                    pivotY = spriteData.pivot.y ?? pivotY;
                 }
             }
         }
@@ -557,14 +557,14 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
     let pivotY = 0.5;
 
     if (spriteRenderer) {
-        pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-        pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+        pivotX = spriteRenderer.pivot?.x ?? 0.5;
+        pivotY = spriteRenderer.pivot?.y ?? 0.5;
 
         if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
             const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
             if (spriteData.pivot) {
-                pivotX = spriteData.pivot.x;
-                pivotY = spriteData.pivot.y;
+                pivotX = spriteData.pivot.x ?? pivotX;
+                pivotY = spriteData.pivot.y ?? pivotY;
             }
         }
     }
