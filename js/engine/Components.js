@@ -1965,6 +1965,13 @@ export class AnimatorController extends Leyes {
         this._lastDirIndex = 4;
         this._desiredDirIndex = 4;
         this._dirStabilityTimer = 0;
+
+        // Configurable responsiveness (Snappy defaults)
+        this.deadZone = 0.1;
+        this.startDelay = 0.02;
+        this.stopDelay = 0.02;
+        this.directionDelay = 0.05;
+        this.stopBuffer = 0.05;
     }
 
     get smartMode() {
@@ -2263,7 +2270,7 @@ export class AnimatorController extends Leyes {
         // Apply smoothing/hysteresis to 'moving' state to prevent flickering
         if (moving) {
             this._isMovingSmooth = true;
-            this._movingStopTimer = 0.05; // Snappy 50ms buffer
+            this._movingStopTimer = this.stopBuffer ?? 0.05; // Use configurable buffer
             this._lastMovingHoriz = horiz;
             this._lastMovingVert = vert;
         } else if (this._isMovingSmooth) {
@@ -2326,13 +2333,13 @@ export class AnimatorController extends Leyes {
 
         if (p.isMoving) {
             let h = 0;
-            const deadZone = 0.1; // Reduced deadZone for responsive direction mapping
-            if (p.horizontal > deadZone) h = 1;
-            else if (p.horizontal < -deadZone) h = -1;
+            const dz = this.deadZone ?? 0.1;
+            if (p.horizontal > dz) h = 1;
+            else if (p.horizontal < -dz) h = -1;
 
             let v = 0;
-            if (p.vertical > deadZone) v = 1;
-            else if (p.vertical < -deadZone) v = -1;
+            if (p.vertical > dz) v = 1;
+            else if (p.vertical < -dz) v = -1;
 
             currentDirIndex = (v + 1) * 3 + (h + 1);
         }
@@ -2341,13 +2348,13 @@ export class AnimatorController extends Leyes {
         if (currentDirIndex !== this._desiredDirIndex) {
             this._desiredDirIndex = currentDirIndex;
 
-            // Stability timers to filter out noise (Snappy settings: ~20ms start/stop, 50ms turn)
+            // Stability timers to filter out noise
             if (this._lastDirIndex === 4) {
-                this._dirStabilityTimer = 0.02; // 20ms delay to start moving
+                this._dirStabilityTimer = this.startDelay ?? 0.02;
             } else if (currentDirIndex === 4) {
-                this._dirStabilityTimer = 0.02; // 20ms delay to stop
+                this._dirStabilityTimer = this.stopDelay ?? 0.02;
             } else {
-                this._dirStabilityTimer = 0.05; // 50ms for direction changes
+                this._dirStabilityTimer = this.directionDelay ?? 0.05;
             }
         }
 

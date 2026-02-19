@@ -1759,6 +1759,29 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
                         <label>Modo Inteligente (Direcciones)</label>
                     </div>
+
+                    <div class="inspector-section-header"><span>Configuración de Respuesta</span></div>
+                    <div class="prop-row-multi">
+                        <label title="Movimiento mínimo para activar dirección">Sensibilidad (Deadzone)</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="AnimatorController" data-prop="deadZone" value="${ley.deadZone ?? 0.1}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Tiempo de espera para empezar animación">Retraso Inicio (s)</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="startDelay" value="${ley.startDelay ?? 0.02}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Tiempo de espera para volver a parado">Retraso Parada (s)</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopDelay" value="${ley.stopDelay ?? 0.02}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Tiempo de espera para cambiar dirección">Retraso Giro (s)</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="directionDelay" value="${ley.directionDelay ?? 0.05}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Tiempo que la animación sigue activa tras soltar">Buffer Inercia (s)</label>
+                        <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopBuffer" value="${ley.stopBuffer ?? 0.05}">
+                    </div>
+
                     <div class="inspector-field-group">
                         <label>States</label>
                         ${statesListHTML}
