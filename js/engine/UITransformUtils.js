@@ -1,5 +1,6 @@
 // js/engine/UITransformUtils.js
 import { UITransform, Canvas, Transform } from './Components.js';
+import { InputManager } from './Input.js';
 
 /**
  * Calculates the world-space position of a specific anchor point within a parent rectangle.
@@ -98,13 +99,17 @@ export function getAbsoluteRect(materia, rectCache) {
  * Calculates the screen-space rectangle (in Client/Browser coordinates) for a UI element.
  * @param {UITransform|Materia} target - The UI element or its UITransform.
  * @param {Canvas} canvas - The Canvas component it belongs to.
- * @param {{width: number, height: number}} canvasSize - The actual pixel size of the canvas on screen.
  * @returns {{x: number, y: number, width: number, height: number}} The absolute rectangle in client coordinates.
  */
-export function getScreenRect(target, canvas, canvasSize) {
+export function getScreenRect(target, canvas) {
     const materia = target.materia || target;
     const rectCache = new Map();
     const canvasMateria = canvas.materia;
+
+    // Determine the actual canvas element
+    const canvasElement = (canvas.renderMode === 'Screen Space') ? InputManager.gameCanvas : InputManager.sceneCanvas;
+    const canvasOffset = canvasElement ? canvasElement.getBoundingClientRect() : { left: 0, top: 0, width: 800, height: 600 };
+    const canvasSize = { width: canvasOffset.width, height: canvasOffset.height };
 
     // Use a virtual rectangle for the canvas to compute children positions
     if (canvas.renderMode === 'Screen Space') {
@@ -116,10 +121,6 @@ export function getScreenRect(target, canvas, canvasSize) {
 
         const scaleX = canvasSize.width / refRes.width;
         const scaleY = canvasSize.height / refRes.height;
-
-        // Get the canvas element's position on the page
-        const canvasElement = document.getElementById(canvas.renderMode === 'Screen Space' ? 'game-canvas' : 'scene-canvas');
-        const canvasOffset = canvasElement ? canvasElement.getBoundingClientRect() : { left: 0, top: 0 };
 
         return {
             x: canvasOffset.left + virtualRect.x * scaleX,

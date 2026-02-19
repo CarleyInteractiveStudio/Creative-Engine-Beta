@@ -1,6 +1,6 @@
 import * as Components from '../Components.js';
 import * as SceneManager from '../SceneManager.js';
-import * as Input from '../Input.js';
+import { InputManager as Input } from '../Input.js';
 import * as UITransformUtils from '../UITransformUtils.js';
 
 let activeScene = null;
@@ -27,11 +27,6 @@ function handleButtonStates() {
     for (const canvasMateria of canvases) {
         if (!canvasMateria.isActive) continue;
         const canvas = canvasMateria.getComponent(Components.Canvas);
-        const canvasElement = document.getElementById(canvas.renderMode === 'Screen Space' ? 'game-canvas' : 'scene-canvas');
-        if (!canvasElement) continue;
-
-        const canvasRect = canvasElement.getBoundingClientRect();
-        const canvasSize = { width: canvasRect.width, height: canvasRect.height };
         const buttons = activeScene.findAllMateriasWithComponent(Components.Button, canvasMateria);
 
         for (const buttonMateria of buttons) {
@@ -56,7 +51,7 @@ function handleButtonStates() {
                 continue;
             }
 
-            const screenRect = UITransformUtils.getScreenRect(buttonMateria, canvas, canvasSize);
+            const screenRect = UITransformUtils.getScreenRect(buttonMateria, canvas);
             const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
                             mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
 

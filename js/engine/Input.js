@@ -17,6 +17,10 @@ class InputManager {
     static _mousePositionInCanvas = { x: 0, y: 0 };
     static _canvasRect = null;
 
+    static get sceneCanvas() { return this._sceneCanvas; }
+    static get gameCanvas() { return this._gameCanvas; }
+    static get activeCanvas() { return this._activeCanvas; }
+
     // Long Press State
     static _longPressTimeoutId = null;
     static _longPressStartPosition = { x: 0, y: 0 };
