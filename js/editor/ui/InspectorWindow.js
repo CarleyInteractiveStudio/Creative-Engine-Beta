@@ -217,7 +217,17 @@ async function handleInspectorDrop(e) {
             if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                 targetComponent.publicVars[propName] = valueToAssign;
             } else if (targetComponent instanceof Components.SpriteRenderer && propName === 'source') {
+                const hadSource = !!(targetComponent.source || targetComponent.spriteAssetPath);
                 await targetComponent.setSourcePath(valueToAssign, currentDirHandle);
+
+                // If this is a new assignment or replacing a blank one, reset scale to 1:1
+                // to avoid confusion with the 50x50 placeholder size
+                if (!hadSource) {
+                    const transform = selectedMateria.getComponent(Components.Transform);
+                    if (transform) {
+                        transform.localScale = { x: 1, y: 1 };
+                    }
+                }
             } else {
                 // Generic property assignment
                 const props = propName.split('.');
@@ -514,6 +524,26 @@ function handleInspectorClick(e) {
 
     if (e.target.matches('#add-component-btn')) {
         showAddComponentModal();
+    }
+
+    if (e.target.closest('[data-action="reset-sprite-scale"]')) {
+        const selectedMateria = getSelectedMateria();
+        const transform = selectedMateria.getComponent(Components.Transform);
+        if (transform) {
+            transform.localScale = { x: 1, y: 1 };
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.closest('[data-action="center-sprite-pivot"]')) {
+        const selectedMateria = getSelectedMateria();
+        const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
+        if (spriteRenderer) {
+            spriteRenderer.pivot = { x: 0.5, y: 0.5 };
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
     }
 
     if (e.target.matches('.remove-component-btn')) {
@@ -1616,15 +1646,20 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
-                        <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
-                    </div>
-                    <div class="prop-row-multi">
                         <label>Pivot</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot ? ley.pivot.x : 0.5}" title="Pivot X">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot ? ley.pivot.y : 0.5}" title="Pivot Y">
+                            <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">🎯</button>
                         </div>
+                    </div>
+                    <div class="inspector-row">
+                        <label></label>
+                        <button class="inspector-btn" data-action="reset-sprite-scale" style="width: 100%; margin-top: 4px;">Restablecer Escala (1:1)</button>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Order in Layer</label>
+                        <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>`;
         }

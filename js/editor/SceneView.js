@@ -275,22 +275,36 @@ function checkGizmoHit(canvasPos) {
         const w = dims.width * Math.abs(transform.scale.x);
         const h = dims.height * Math.abs(transform.scale.y);
 
-        const hx = w / 2;
-        const hy = h / 2;
+        const spriteRenderer = selectedMateria.getComponent(Components.SpriteRenderer);
+        let pivotX = 0.5, pivotY = 0.5;
+        if (spriteRenderer) {
+            pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+            pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+            if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+                const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+                if (spriteData.pivot) {
+                    pivotX = spriteData.pivot.x;
+                    pivotY = spriteData.pivot.y;
+                }
+            }
+        }
+        const drawX = -w * pivotX;
+        const drawY = -h * pivotY;
 
         const handles = [
-            { x: -hx, y: -hy, name: 'scale-tl' }, { x: 0, y: -hy, name: 'scale-t' }, { x: hx, y: -hy, name: 'scale-tr' },
-            { x: -hx, y: 0, name: 'scale-l' }, { x: hx, y: 0, name: 'scale-r' },
-            { x: -hx, y: hy, name: 'scale-bl' }, { x: 0, y: hy, name: 'scale-b' }, { x: hx, y: hy, name: 'scale-br' }
+            { x: drawX, y: drawY, name: 'scale-tl' }, { x: drawX + w / 2, y: drawY, name: 'scale-t' }, { x: drawX + w, y: drawY, name: 'scale-tr' },
+            { x: drawX, y: drawY + h / 2, name: 'scale-l' }, { x: drawX + w, y: drawY + h / 2, name: 'scale-r' },
+            { x: drawX, y: drawY + h, name: 'scale-bl' }, { x: drawX + w / 2, y: drawY + h, name: 'scale-b' }, { x: drawX + w, y: drawY + h, name: 'scale-br' }
         ];
 
         let bestHandle = null;
         let minScore = Infinity;
 
-        for (const handle of handles) {
+        for (let i = 0; i < handles.length; i++) {
+            const handle = handles[i];
             const dx = lx - handle.x;
             const dy = ly - handle.y;
-            const isMidpoint = handle.x === 0 || handle.y === 0;
+            const isMidpoint = i === 1 || i === 3 || i === 4 || i === 6;
 
             // Larger hitbox for midpoint handles to make them easier to grab
             const currentHitbox = isMidpoint ? handleHitboxSize * 1.5 : handleHitboxSize;
@@ -538,6 +552,26 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
     const h = dims.height * Math.abs(transform.scale.y);
     const rad = transform.rotation * Math.PI / 180;
 
+    const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
+    let pivotX = 0.5;
+    let pivotY = 0.5;
+
+    if (spriteRenderer) {
+        pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+        pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            if (spriteData.pivot) {
+                pivotX = spriteData.pivot.x;
+                pivotY = spriteData.pivot.y;
+            }
+        }
+    }
+
+    const drawX = -w * pivotX;
+    const drawY = -h * pivotY;
+
     ctx.save();
     ctx.translate(transform.x, transform.y);
     ctx.rotate(rad);
@@ -546,7 +580,7 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.setLineDash([5 / zoom, 5 / zoom]);
     ctx.lineWidth = 1 / zoom;
-    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(drawX, drawY, w, h);
     ctx.setLineDash([]);
 
     ctx.fillStyle = '#ffffff';
@@ -555,9 +589,9 @@ function drawScaleGizmo(ctx, materia, transform, zoom, SCALE_BOX_SIZE, HANDLE_TH
     const halfBox = SCALE_BOX_SIZE / 2;
 
     const handles = [
-        { x: -w / 2, y: -h / 2 }, { x: 0, y: -h / 2 }, { x: w / 2, y: -h / 2 },
-        { x: -w / 2, y: 0 }, { x: w / 2, y: 0 },
-        { x: -w / 2, y: h / 2 }, { x: 0, y: h / 2 }, { x: w / 2, y: h / 2 }
+        { x: drawX, y: drawY }, { x: drawX + w / 2, y: drawY }, { x: drawX + w, y: drawY },
+        { x: drawX, y: drawY + h / 2 }, { x: drawX + w, y: drawY + h / 2 },
+        { x: drawX, y: drawY + h }, { x: drawX + w / 2, y: drawY + h }, { x: drawX + w, y: drawY + h }
     ];
 
     handles.forEach(pos => {

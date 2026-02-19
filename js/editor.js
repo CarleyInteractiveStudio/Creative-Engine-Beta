@@ -1488,8 +1488,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         const worldScale = transform.scale;
                         const dWidth = 50;
                         const dHeight = 50;
-                        const dx = -dWidth * 0.5;
-                        const dy = -dHeight * 0.5;
+                        const pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+                        const pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+                        const dx = -dWidth * pivotX;
+                        const dy = -dHeight * pivotY;
 
                         ctx.save();
                         ctx.translate(worldPosition.x, worldPosition.y);
