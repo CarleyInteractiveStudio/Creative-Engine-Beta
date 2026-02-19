@@ -1373,22 +1373,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
-                if (parallax && camTransform) {
+
+                // Get camera position for parallax (either from camera materia or editor camera)
+                const camX = camTransform ? camTransform.x : (rendererInstance.isEditor ? rendererInstance.camera.x : 0);
+                const camY = camTransform ? camTransform.y : (rendererInstance.isEditor ? rendererInstance.camera.y : 0);
+
+                if (parallax) {
                      worldPosition = {
-                         x: worldPosition.x + (camTransform.x * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
-                         y: worldPosition.y + (camTransform.y * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                         x: worldPosition.x + (camX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                         y: worldPosition.y + (camY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
                      };
                 }
 
-                if (cameraForCulling) {
+                if (cameraForCulling || (rendererInstance.isEditor && cameraViewBox)) {
                     const objectBounds = MathUtils.getOOB(materia, worldPosition);
-                    // Special culling for infinite parallax
-                    if (!parallax || (parallax.mirroring.x === 0 && parallax.mirroring.y === 0)) {
+                    // Special culling for infinite parallax: if repeating, skip frustum culling
+                    const isRepeating = parallax && (parallax.repeatX || parallax.repeatY || parallax.mirroring.x > 0 || parallax.mirroring.y > 0);
+                    if (!isRepeating) {
                         if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
                     }
-                    const cameraComponent = cameraForCulling.getComponent(Components.Camera);
-                    const objectLayerBit = 1 << materia.layer;
-                    if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+
+                    if (cameraForCulling) {
+                        const cameraComponent = cameraForCulling.getComponent(Components.Camera);
+                        const objectLayerBit = 1 << materia.layer;
+                        if ((cameraComponent.cullingMask & objectLayerBit) === 0) continue;
+                    }
                 }
 
                 if (spriteRenderer) {

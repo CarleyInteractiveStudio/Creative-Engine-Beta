@@ -5,6 +5,7 @@ import * as SceneManager from './SceneManager.js';
 import * as UISystem from './ui/UISystem.js';
 import { InputManager } from './Input.js';
 import * as EngineAPI from './EngineAPI.js';
+import * as MathUtils from './MathUtils.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as Components from './Components.js';
 import { setStandaloneMode } from './AssetUtils.js';
@@ -160,132 +161,196 @@ export class StandaloneRuntime {
         }
     }
 
-    drawScene(camera) {
+    drawScene(cameraMateria) {
         if (!this.renderer || !SceneManager.currentScene) return;
 
         const scene = SceneManager.currentScene;
         const materias = scene.getAllMaterias();
+        const ctx = this.renderer.ctx;
 
-        // 1. Filter and Sort Geometry
-        const materiasToRender = materias
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteRenderer))
-            .sort((a, b) => a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y);
+        const aspect = this.canvas.width / this.canvas.height;
+        const cameraViewBox = cameraMateria ? MathUtils.getCameraViewBox(cameraMateria, aspect) : null;
+        const viewport = cameraViewBox ? MathUtils.getBoundsFromCorners(cameraViewBox) : null;
+        const camTransform = cameraMateria ? cameraMateria.getComponent(Components.Transform) : null;
 
-        const textureRenderersToRender = materias
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TextureRender));
+        // 1. Filter and Sort Geometry (including inter-layer sorting like in editor)
+        const allInLayer = materias
+            .filter(m => m.getComponent(Components.Transform) && (
+                m.getComponent(Components.SpriteRenderer) ||
+                m.getComponent(Components.TextureRender) ||
+                m.getComponent(Components.TilemapRenderer)
+            ))
+            .sort((a, b) => {
+                const drawingOrderA = a.getComponent(Components.DrawingOrder);
+                const drawingOrderB = b.getComponent(Components.DrawingOrder);
+                const valA = drawingOrderA ? drawingOrderA.order : 0;
+                const valB = drawingOrderB ? drawingOrderB.order : 0;
+                if (valA !== valB) return valA - valB;
 
-        const tilemapsToRender = materias
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer));
+                if (a.isAncestorOf(b)) return -1;
+                if (b.isAncestorOf(a)) return 1;
 
-        const canvasesToRender = materias
-            .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.Canvas));
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer);
+                const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
+                const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
+                if (orderA !== orderB) return orderA - orderB;
+
+                const transformA = a.getComponent(Components.Transform);
+                const transformB = b.getComponent(Components.Transform);
+                return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
+            });
+
+        const canvasesToRender = materias.filter(m => m.getComponent(Components.Canvas));
 
         // 2. Filter Lights
         const allLights = {
-            point: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.PointLight2D)),
-            spot: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpotLight2D)),
-            freeform: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.FreeformLight2D)),
-            sprite: materias.filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.SpriteLight2D))
+            point: materias.filter(m => m.isActive && m.getComponent(Components.PointLight2D)),
+            spot: materias.filter(m => m.isActive && m.getComponent(Components.SpotLight2D)),
+            freeform: materias.filter(m => m.isActive && m.getComponent(Components.FreeformLight2D)),
+            sprite: materias.filter(m => m.isActive && m.getComponent(Components.SpriteLight2D))
         };
 
-        const ctx = this.renderer.ctx;
-
         const drawObjects = () => {
-            // Draw Sprites
-            for (const materia of materiasToRender) {
+            for (const materia of allInLayer) {
                 if (!materia.isActive) continue;
-                const sr = materia.getComponent(Components.SpriteRenderer);
-                const transform = materia.getComponent(Components.Transform);
 
-                if (sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
+                const transform = materia.getComponent(Components.Transform);
+                const parallax = materia.getComponent(Components.Parallax);
+                const sr = materia.getComponent(Components.SpriteRenderer);
+                const tr = materia.getComponent(Components.TextureRender);
+                const tmr = materia.getComponent(Components.TilemapRenderer);
+
+                // --- Parallax Displacement ---
+                let worldPosition = transform.position;
+                if (parallax && camTransform) {
+                     worldPosition = {
+                         x: worldPosition.x + (camTransform.x * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
+                         y: worldPosition.y + (camTransform.y * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)
+                     };
+                }
+
+                // Culling
+                if (cameraViewBox) {
+                    const isRepeating = parallax && (parallax.repeatX || parallax.repeatY || parallax.mirroring.x > 0 || parallax.mirroring.y > 0);
+                    if (!isRepeating) {
+                        const objectBounds = MathUtils.getOOB(materia, worldPosition);
+                        if (objectBounds && !MathUtils.checkIntersection(cameraViewBox, objectBounds)) continue;
+                    }
+                    const cameraComponent = cameraMateria.getComponent(Components.Camera);
+                    if ((cameraComponent.cullingMask & (1 << materia.layer)) === 0) continue;
+                }
+
+                if (sr && sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
                     const img = sr.sprite;
                     let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
-                    let pivotX = sr.pivot?.x ?? 0.5;
-                    let pivotY = sr.pivot?.y ?? 0.5;
+                    let pivotX = sr.pivot?.x ?? 0.5, pivotY = sr.pivot?.y ?? 0.5;
 
                     if (sr.spriteSheet && sr.spriteName && sr.spriteSheet.sprites[sr.spriteName]) {
                         const spriteData = sr.spriteSheet.sprites[sr.spriteName];
-                        sx = spriteData.rect.x;
-                        sy = spriteData.rect.y;
-                        sWidth = spriteData.rect.width;
-                        sHeight = spriteData.rect.height;
-                        // Component pivot already contains the correct value or override
+                        sx = spriteData.rect.x; sy = spriteData.rect.y;
+                        sWidth = spriteData.rect.width; sHeight = spriteData.rect.height;
                     }
 
-                    const worldPos = transform.position;
                     const worldScale = transform.scale;
+                    const worldRotation = transform.rotation;
+                    const dWidth = sWidth * Math.abs(worldScale.x);
+                    const dHeight = sHeight * Math.abs(worldScale.y);
+                    const dx = -dWidth * pivotX, dy = -dHeight * pivotY;
 
-                    ctx.save();
-                    ctx.translate(worldPos.x, worldPos.y);
-                    ctx.rotate(transform.rotation * Math.PI / 180);
-                    ctx.scale(worldScale.x, worldScale.y);
+                    let mirrorX = parallax ? parallax.mirroring.x : 0;
+                    let mirrorY = parallax ? parallax.mirroring.y : 0;
+                    if (parallax) {
+                        if (parallax.repeatX && mirrorX === 0) mirrorX = dWidth;
+                        if (parallax.repeatY && mirrorY === 0) mirrorY = dHeight;
+                    }
+
                     const opacity = typeof sr.opacity === 'number' ? sr.opacity : parseFloat(sr.opacity || 1);
-                    ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
-
                     const color = sr.color || '#ffffff';
                     const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
 
+                    let sourceImg = img, sourceSX = sx, sourceSY = sy, sourceSW = sWidth, sourceSH = sHeight;
                     if (!isWhite) {
-                        // Tinting logic using scratch canvas
-                        this.scratchCanvas.width = Math.ceil(sWidth);
-                        this.scratchCanvas.height = Math.ceil(sHeight);
+                        this.scratchCanvas.width = Math.ceil(sWidth); this.scratchCanvas.height = Math.ceil(sHeight);
                         this.scratchCtx.clearRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
                         this.scratchCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
                         this.scratchCtx.globalCompositeOperation = 'source-atop';
                         this.scratchCtx.fillStyle = color;
                         this.scratchCtx.fillRect(0, 0, this.scratchCanvas.width, this.scratchCanvas.height);
                         this.scratchCtx.globalCompositeOperation = 'source-over';
+                        sourceImg = this.scratchCanvas; sourceSX = 0; sourceSY = 0; sourceSW = sWidth; sourceSH = sHeight;
+                    }
 
-                        ctx.drawImage(this.scratchCanvas, 0, 0, sWidth, sHeight, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
+                    ctx.save();
+                    ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
+                    if ((mirrorX > 0 || mirrorY > 0) && viewport) {
+                        const stepX = mirrorX || dWidth, stepY = mirrorY || dHeight;
+                        const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
+                        const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
+                        const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;
+                        const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y - dy) / stepY) * stepY + stepY : dHeight;
+
+                        for (let tx = startX; tx < endX; tx += stepX) {
+                            for (let ty = startY; ty < endY; ty += stepY) {
+                                ctx.save();
+                                ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
+                                ctx.rotate(worldRotation * Math.PI / 180);
+                                ctx.scale(worldScale.x, worldScale.y);
+                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
+                                ctx.restore();
+                                if (mirrorY === 0) break;
+                            }
+                            if (mirrorX === 0) break;
+                        }
                     } else {
-                        ctx.drawImage(img, sx, sy, sWidth, sHeight, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
+                        ctx.translate(worldPosition.x, worldPosition.y);
+                        ctx.rotate(worldRotation * Math.PI / 180);
+                        ctx.scale(worldScale.x, worldScale.y);
+                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     }
                     ctx.restore();
+                } else if (tr) {
+                    const worldScale = transform.scale, worldRotation = transform.rotation;
+                    const dWidth = tr.width * worldScale.x, dHeight = tr.height * worldScale.y;
+                    const mirrorX = parallax ? parallax.mirroring.x : 0, mirrorY = parallax ? parallax.mirroring.y : 0;
+
+                    const drawTex = (tx = 0, ty = 0) => {
+                        ctx.save();
+                        ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
+                        ctx.rotate(worldRotation * Math.PI / 180);
+                        ctx.scale(worldScale.x, worldScale.y);
+                        if (tr.texture && tr.texture.complete) {
+                            ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
+                        } else {
+                            ctx.fillStyle = tr.color;
+                        }
+                        if (tr.shape === 'Rectangle') ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
+                        else if (tr.shape === 'Circle') { ctx.beginPath(); ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI); ctx.fill(); }
+                        else if (tr.shape === 'Triangle') { ctx.beginPath(); ctx.moveTo(0, -tr.height / 2); ctx.lineTo(-tr.width / 2, tr.height / 2); ctx.lineTo(tr.width / 2, tr.height / 2); ctx.closePath(); ctx.fill(); }
+                        ctx.restore();
+                    };
+
+                    if ((mirrorX > 0 || mirrorY > 0) && viewport) {
+                        const stepX = mirrorX || dWidth, stepY = mirrorY || dHeight;
+                        const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x + dWidth / 2) / stepX) * stepX : 0;
+                        const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x + dWidth / 2) / stepX) * stepX + stepX : dWidth;
+                        const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y + dHeight / 2) / stepY) * stepY : 0;
+                        const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y + dHeight / 2) / stepY) * stepY + stepY : dHeight;
+                        for (let tx = startX; tx < endX; tx += stepX) {
+                            for (let ty = startY; ty < endY; ty += stepY) {
+                                drawTex(tx, ty);
+                                if (mirrorY === 0) break;
+                            }
+                            if (mirrorX === 0) break;
+                        }
+                    } else {
+                        drawTex();
+                    }
+                } else if (tmr) {
+                    this.renderer.drawTilemap(tmr);
                 }
             }
 
-            // Draw Texture Renderers
-            for (const materia of textureRenderersToRender) {
-                if (!materia.isActive) continue;
-                const tr = materia.getComponent(Components.TextureRender);
-                const transform = materia.getComponent(Components.Transform);
-                const worldPos = transform.position;
-
-                ctx.save();
-                ctx.translate(worldPos.x, worldPos.y);
-                ctx.rotate(transform.rotation * Math.PI / 180);
-                ctx.scale(transform.scale.x, transform.scale.y);
-
-                if (tr.texture && tr.texture.complete) {
-                    ctx.fillStyle = ctx.createPattern(tr.texture, 'repeat');
-                } else {
-                    ctx.fillStyle = tr.color;
-                }
-
-                if (tr.shape === 'Rectangle') {
-                    ctx.fillRect(-tr.width / 2, -tr.height / 2, tr.width, tr.height);
-                } else if (tr.shape === 'Circle') {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, tr.radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (tr.shape === 'Triangle') {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -tr.height / 2);
-                    ctx.lineTo(-tr.width / 2, tr.height / 2);
-                    ctx.lineTo(tr.width / 2, tr.height / 2);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-                ctx.restore();
-            }
-
-            // Draw Tilemaps
-            for (const materia of tilemapsToRender) {
-                if (materia.isActive) this.renderer.drawTilemap(materia.getComponent(Components.TilemapRenderer));
-            }
-
-            // Draw UI Canvases
             for (const materia of canvasesToRender) {
                 this.renderer.drawCanvas(materia);
             }
