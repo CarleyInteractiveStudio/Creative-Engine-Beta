@@ -360,6 +360,14 @@ export class CreativeScriptBehavior {
     }
     getCollisionExit(...args) { return this.alSalirDeColision(...args); }
 
+    estaTocandoTag(...args) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return false;
+        if (args.length === 1) return engine.estaTocandoTag(this.materia, args[0]);
+        return engine.estaTocandoTag(args[0], args[1]);
+    }
+    isTouchingTag(...args) { return this.estaTocandoTag(...args); }
+
     /**
      * Difunde un mensaje global a todos los scripts interesados.
      * @param {string} mensaje - Nombre del mensaje.
@@ -2686,8 +2694,8 @@ export class Movement extends Leyes {
 
         // Ground check
         if (this.groundTag && engine) {
-            const collisions = engine.alPermanecerEnColision(this.materia, this.groundTag);
-            this.isGrounded = collisions.length > 0;
+            // Usamos estaTocandoTag para mayor robustez (detecta frame de inicio, frames de permanencia y triggers)
+            this.isGrounded = engine.isTouchingTag(this.materia, this.groundTag);
         } else {
             this.isGrounded = true; // No ground tag means always grounded
         }

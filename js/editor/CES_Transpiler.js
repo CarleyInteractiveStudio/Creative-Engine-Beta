@@ -95,6 +95,8 @@ const componentShortcuts = [
     'crear', 'create', 'estaActivado', 'activo',
     'reproducir', 'play', 'voltearH', 'voltearV', 'flipX', 'flipY',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
+    'alEntrarEnColision', 'getCollisionEnter', 'alPermanecerEnColision', 'getCollisionStay', 'alSalirDeColision', 'getCollisionExit',
+    'estaTocandoTag', 'isTouchingTag',
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',

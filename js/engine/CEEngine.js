@@ -60,20 +60,51 @@ function find(name) {
 
 function getCollisionEnter(materia, tag = null) {
     if (!physicsSystem) return [];
-    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    // Si solo se pasa un argumento y es un string, asumimos que es el tag
+    if (tag === null && typeof materia === 'string') {
+        tag = materia;
+        materia = null; // El sistema lo resolverá al objeto que llama si es posible, o fallará elegantemente
+    }
     return physicsSystem.getCollisionInfo(materia, 'enter', 'collision', tag);
 }
 
 function getCollisionStay(materia, tag = null) {
     if (!physicsSystem) return [];
-    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    if (tag === null && typeof materia === 'string') {
+        tag = materia;
+        materia = null;
+    }
     return physicsSystem.getCollisionInfo(materia, 'stay', 'collision', tag);
 }
 
 function getCollisionExit(materia, tag = null) {
     if (!physicsSystem) return [];
-    // Ahora pasamos el tag directamente al sistema de físicas para un filtrado eficiente.
+    if (tag === null && typeof materia === 'string') {
+        tag = materia;
+        materia = null;
+    }
     return physicsSystem.getCollisionInfo(materia, 'exit', 'collision', tag);
+}
+
+/**
+ * Comprueba si un objeto está tocando a otro con un tag específico.
+ * Busca tanto en colisiones físicas como en gatillos (triggers), y tanto
+ * en el frame de inicio como en los de permanencia.
+ */
+function isTouchingTag(materia, tag = null) {
+    if (!physicsSystem) return false;
+    if (tag === null && typeof materia === 'string') {
+        tag = materia;
+        materia = null;
+    }
+
+    // Comprobar tanto frame de inicio como de permanencia, y tanto colisiones como triggers
+    const enterCol = physicsSystem.getCollisionInfo(materia, 'enter', null, tag);
+    if (enterCol.length > 0) return true;
+    const stayCol = physicsSystem.getCollisionInfo(materia, 'stay', null, tag);
+    if (stayCol.length > 0) return true;
+
+    return false;
 }
 
 function raycast(origin, direction, maxDistance = Infinity, tag = null) {
@@ -89,6 +120,7 @@ const engineAPIs = {
     getCollisionEnter: getCollisionEnter,
     getCollisionStay: getCollisionStay,
     getCollisionExit: getCollisionExit,
+    isTouchingTag: isTouchingTag,
     raycast: raycast,
 
     // Spanish aliases
@@ -96,6 +128,7 @@ const engineAPIs = {
     alEntrarEnColision: getCollisionEnter,
     alPermanecerEnColision: getCollisionStay,
     alSalirDeColision: getCollisionExit,
+    estaTocandoTag: isTouchingTag,
     lanzarRayo: raycast,
     getDeltaTime: getDeltaTime,
     obtenerDeltaTime: getDeltaTime,

@@ -1190,19 +1190,36 @@ export class PhysicsSystem {
      */
     getCollisionInfo(materia, state, type, tag) {
         const collisions = [];
+        const targetId = (materia && typeof materia === 'object') ? materia.id : (typeof materia === 'number' ? materia : null);
+
         for (const [key, value] of this.collisionStates.entries()) {
-            if (value.state === state && value.type === type && value.frame === this.currentFrame) {
+            // Si type es null, permitimos tanto 'collision' como 'trigger'
+            const typeMatch = !type || value.type === type;
+
+            if (value.state === state && typeMatch && value.frame === this.currentFrame) {
                 const [id1, id2] = key.split('-').map(Number);
-                if (id1 === materia.id || id2 === materia.id) {
-                    const otherId = id1 === materia.id ? id2 : id1;
-                    const otherMateria = this.scene.findMateriaById(otherId);
-                    if (otherMateria) {
-                        // --- BUG FIX: Filtrar por tag si se proporciona ---
-                        if (tag && otherMateria.tag !== tag) {
-                            continue; // No coincide el tag, saltar a la siguiente colisión
+
+                // Si hay un targetId, filtramos por él. Si no, aceptamos cualquier colisión en la escena.
+                if (targetId === null || id1 === targetId || id2 === targetId) {
+                    const materiaA = this.scene.findMateriaById(id1);
+                    const materiaB = this.scene.findMateriaById(id2);
+
+                    if (materiaA && materiaB) {
+                        const trimmedTag = tag ? tag.trim() : null;
+
+                        if (targetId !== null) {
+                            const otherMateria = id1 === targetId ? materiaB : materiaA;
+                            const thisMateria = id1 === targetId ? materiaA : materiaB;
+
+                            if (!trimmedTag || otherMateria.tag.trim() === trimmedTag) {
+                                collisions.push(new Collision(thisMateria, otherMateria, this.getCollider(otherMateria)));
+                            }
+                        } else {
+                            // Búsqueda global por tag
+                            if (!trimmedTag || materiaA.tag.trim() === trimmedTag || materiaB.tag.trim() === trimmedTag) {
+                                collisions.push(new Collision(materiaA, materiaB, this.getCollider(materiaB)));
+                            }
                         }
-                        const otherCollider = this.getCollider(otherMateria);
-                        collisions.push(new Collision(materia, otherMateria, otherCollider));
                     }
                 }
             }
