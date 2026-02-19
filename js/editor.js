@@ -1444,12 +1444,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
-                        const mirrorX = parallax ? parallax.mirroring.x : 0;
-                        const mirrorY = parallax ? parallax.mirroring.y : 0;
+                        let mirrorX = parallax ? parallax.mirroring.x : 0;
+                        let mirrorY = parallax ? parallax.mirroring.y : 0;
+
+                        if (parallax) {
+                            if (parallax.repeatX && mirrorX === 0) mirrorX = dWidth;
+                            if (parallax.repeatY && mirrorY === 0) mirrorY = dHeight;
+                        }
 
                         if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                            const stepX = mirrorX || dWidth;
-                            const stepY = mirrorY || dHeight;
+                            const stepX = mirrorX;
+                            const stepY = mirrorY;
                             const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
                             const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
                             const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;

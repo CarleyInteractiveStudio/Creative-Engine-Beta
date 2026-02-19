@@ -2649,6 +2649,8 @@ export class Parallax extends Leyes {
         super(materia);
         this.scrollFactor = { x: 0.5, y: 0.5 };
         this.mirroring = { x: 0, y: 0 }; // 0 means no repeat
+        this.repeatX = false;
+        this.repeatY = false;
         this.offset = { x: 0, y: 0 };
         this.autoscroll = { x: 0, y: 0 };
 
@@ -2665,6 +2667,8 @@ export class Parallax extends Leyes {
         const newParallax = new Parallax(null);
         newParallax.scrollFactor = { ...this.scrollFactor };
         newParallax.mirroring = { ...this.mirroring };
+        newParallax.repeatX = this.repeatX;
+        newParallax.repeatY = this.repeatY;
         newParallax.offset = { ...this.offset };
         newParallax.autoscroll = { ...this.autoscroll };
         return newParallax;

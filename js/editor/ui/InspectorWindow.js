@@ -2420,6 +2420,19 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <div class="prop-row-multi">
+                        <label>Repetir (Infinito)</label>
+                        <div class="prop-inputs" style="display: flex; align-items: center; gap: 10px; justify-content: flex-start;">
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatX" ${ley.repeatX ? 'checked' : ''} id="parallax-repeat-x-${index}">
+                                <label for="parallax-repeat-x-${index}" style="font-size: 10px; margin: 0;">Horizontal</label>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatY" ${ley.repeatY ? 'checked' : ''} id="parallax-repeat-y-${index}">
+                                <label for="parallax-repeat-y-${index}" style="font-size: 10px; margin: 0;">Vertical</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
                         <label>Mirroring X/Y</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
