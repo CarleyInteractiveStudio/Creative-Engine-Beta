@@ -98,7 +98,8 @@ class DialogWindow {
  * @param {string} message The message to display.
  */
 export function showNotification(title, message) {
-    const dialog = new DialogWindow(title, message, [{ text: 'Aceptar' }]);
+    const L = window.Localization;
+    const dialog = new DialogWindow(title, message, [{ text: L.get('ACEPTAR', 'Aceptar') }]);
     dialog.show();
 }
 
@@ -110,9 +111,10 @@ export function showNotification(title, message) {
  * @param {function} [onCancel] The optional callback to execute if the user clicks "Cancelar".
  */
 export function showConfirmation(title, message, onConfirm, onCancel) {
+    const L = window.Localization;
     const buttons = [
-        { text: 'Aceptar', callback: onConfirm },
-        { text: 'Cancelar', callback: onCancel }
+        { text: L.get('ACEPTAR', 'Aceptar'), callback: onConfirm },
+        { text: L.get('CANCELAR', 'Cancelar'), callback: onCancel }
     ];
     const dialog = new DialogWindow(title, message, buttons);
     dialog.show();
@@ -126,6 +128,7 @@ export function showConfirmation(title, message, onConfirm, onCancel) {
  * @param {string} [defaultValue=''] The default value for the input field.
  */
 export function showPrompt(title, message, onConfirm, defaultValue = '') {
+    const L = window.Localization;
     // Create a unique ID for the input to focus it later
     const inputId = `dialog-input-${Date.now()}`;
     const content = `
@@ -135,7 +138,7 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
 
     const dialog = new DialogWindow(title, content, [
         {
-            text: 'Aceptar',
+            text: L.get('ACEPTAR', 'Aceptar'),
             callback: () => {
                 const input = dialog.dialogElement.querySelector(`#${inputId}`);
                 if (onConfirm) {
@@ -143,7 +146,7 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
                 }
             }
         },
-        { text: 'Cancelar' } // No callback needed for cancel
+        { text: L.get('CANCELAR', 'Cancelar') } // No callback needed for cancel
     ]);
 
     dialog.show();
@@ -164,6 +167,7 @@ export function showPrompt(title, message, onConfirm, defaultValue = '') {
  * @param {function} onSelect The callback to execute with the selected item's value and index.
  */
 export function showSelection(title, message, items, onSelect) {
+    const L = window.Localization;
     let listHtml = `<p>${message}</p><div class="dialog-selection-list">`;
     items.forEach((item, index) => {
         // Sanitize item content to prevent HTML injection if item names are user-generated
@@ -171,13 +175,13 @@ export function showSelection(title, message, items, onSelect) {
         listHtml += `
             <div class="dialog-selection-item">
                 <span>${sanitizedItem}</span>
-                <button class="dialog-button select-button" data-index="${index}" data-value="${sanitizedItem}">Seleccionar</button>
+                <button class="dialog-button select-button" data-index="${index}" data-value="${sanitizedItem}">${L.get('SELECCIONAR', 'Seleccionar')}</button>
             </div>
         `;
     });
     listHtml += `</div>`;
 
-    const dialog = new DialogWindow(title, listHtml, [{ text: 'Cancelar' }]);
+    const dialog = new DialogWindow(title, listHtml, [{ text: L.get('CANCELAR', 'Cancelar') }]);
 
     // Add event listener for the select buttons
     const listContainer = dialog.dialogElement.querySelector('.dialog-selection-list');

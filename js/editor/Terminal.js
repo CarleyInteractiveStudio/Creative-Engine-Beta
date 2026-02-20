@@ -360,15 +360,15 @@ function registerCoreCommands() {
             if (res.success) log(res.message);
             else logError(res.message);
         } else {
-            logError('Comando descargar no disponible.');
+            logError((window.Localization?.get('COMANDO_NO_DISPONIBLE') || 'Comando {cmd} no disponible.').replace('{cmd}', 'descargar'));
         }
-    }, 'Descarga un archivo desde una URL.');
+    }, window.Localization?.get('DESCARGAR_DESC') || 'Descarga un archivo desde una URL.');
 
     registerCommand('clear', clearScreen, 'Limpia la pantalla de la terminal.');
     registerCommand('help', () => {
-        log('Comandos disponibles:');
+        log(window.Localization?.get('COMANDOS_DISPONIBLES') || 'Comandos disponibles:');
         Object.entries(commands).sort().forEach(([name, { description }]) => {
-            log(`  <span style="color: #8be9fd;">${name.padEnd(10)}</span> - ${description || 'Sin descripción.'}`);
+            log(`  <span style="color: #8be9fd;">${name.padEnd(10)}</span> - ${description || window.Localization?.get('SIN_DESCRIPCION') || 'Sin descripción.'}`);
         });
 
         log('<br>Comandos de Escena (Bridge):');
@@ -378,11 +378,11 @@ function registerCoreCommands() {
         log('  <span style="color: #50fa7b;">inspect   </span> - Detalles de objeto. Uso: inspect &lt;id&gt;');
         log('  <span style="color: #50fa7b;">addcomp   </span> - Añade componente. Uso: addcomp &lt;id&gt; &lt;tipo&gt;');
         log('  <span style="color: #50fa7b;">setprop   </span> - Cambia propiedad. Uso: setprop &lt;id&gt; &lt;comp&gt; &lt;prop&gt; &lt;valor&gt;');
-    }, 'Muestra esta lista de ayuda.');
-    registerCommand('version', () => log('Creative Engine Version: 0.1.0-beta'), 'Muestra la versión del motor.');
+    }, window.Localization?.get('AYUDA_DESC') || 'Muestra esta lista de ayuda.');
+    registerCommand('version', () => log('Creative Engine Version: 0.1.0-beta'), window.Localization?.get('VERSION_DESC') || 'Muestra la versión del motor.');
 
     // Filesystem commands
-    registerCommand('ls', lsCommand, 'Lista los archivos y directorios.');
+    registerCommand('ls', lsCommand, window.Localization?.get('LS_DESC') || 'Lista los archivos y directorios.');
     registerCommand('pwd', pwdCommand, 'Muestra el directorio de trabajo actual.');
     registerCommand('cat', catCommand, 'Muestra el contenido de un archivo.');
     registerCommand('cd', cdCommand, 'Cambia el directorio de trabajo actual.');

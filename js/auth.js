@@ -110,8 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = signupForm['signup-password'].value;
     const button   = signupForm.querySelector('button');
 
+    const originalText = button.textContent;
     button.disabled   = true;
-    button.textContent = 'Registrando...';
+    button.textContent = window.Localization ? window.Localization.get('REGISTRANDO', 'Registrando...') : 'Registrando...';
 
     const { data, error } = await _supabase.auth.signUp({
       email,
@@ -123,14 +124,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (error) {
-      window.Dialogs.showNotification('Error de Registro', error.message);
+      window.Dialogs.showNotification(
+        window.Localization ? window.Localization.get('ERROR_REGISTRO', 'Error de Registro') : 'Error de Registro',
+        error.message
+      );
     } else {
-      window.Dialogs.showNotification('¡Registro Exitoso!', 'Revisa tu correo para verificar tu cuenta.');
+      window.Dialogs.showNotification(
+        window.Localization ? window.Localization.get('REGISTRO_EXITOSO', '¡Registro Exitoso!') : '¡Registro Exitoso!',
+        window.Localization ? window.Localization.get('REGISTRO_MSG', 'Revisa tu correo para verificar tu cuenta.') : 'Revisa tu correo para verificar tu cuenta.'
+      );
       showView(loginView);
     }
 
     button.disabled   = false;
-    button.textContent = 'Registrarse';
+    button.textContent = originalText;
   });
 
   if (loginForm) loginForm.addEventListener('submit', async (e) => {
@@ -139,19 +146,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = loginForm['login-password'].value;
     const button   = loginForm.querySelector('button');
 
+    const originalText = button.textContent;
     button.disabled   = true;
-    button.textContent = 'Iniciando Sesión...';
+    button.textContent = window.Localization ? window.Localization.get('INICIANDO_SESION_PROGRESO', 'Iniciando Sesión...') : 'Iniciando Sesión...';
 
     const { error } = await _supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      window.Dialogs.showNotification('Error de Inicio de Sesión', error.message);
+      window.Dialogs.showNotification(
+        window.Localization ? window.Localization.get('ERROR_LOGIN', 'Error de Inicio de Sesión') : 'Error de Inicio de Sesión',
+        error.message
+      );
     } else {
       closeAuthModal(); // onAuthStateChange handles the rest
     }
 
     button.disabled   = false;
-    button.textContent = 'Iniciar Sesión';
+    button.textContent = originalText;
   });
 
   if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async (e) => {
@@ -159,18 +170,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const email  = resetPasswordForm['reset-email'].value;
     const button = resetPasswordForm.querySelector('button');
 
+    const originalText = button.textContent;
     button.disabled   = true;
-    button.textContent = 'Enviando...';
+    button.textContent = window.Localization ? window.Localization.get('ENVIANDO', 'Enviando...') : 'Enviando...';
 
     await _supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://carleyinteractivestudio.github.io/Creative-Engine-Beta/#'
     });
 
-    window.Dialogs.showNotification('Recuperación de Contraseña', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.');
+    window.Dialogs.showNotification(
+        window.Localization ? window.Localization.get('AUTH_RESET_PASS', 'Recuperar Contraseña') : 'Recuperación de Contraseña',
+        window.Localization ? window.Localization.get('AUTH_RESET_SENT', 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.') : 'Si existe una cuenta con este correo, se ha enviado un enlace de recuperación.'
+    );
     showView(loginView);
 
     button.disabled   = false;
-    button.textContent = 'Enviar Enlace de Recuperación';
+    button.textContent = originalText;
   });
 
   // --- Session Management & UI Updates ---
@@ -181,12 +196,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const contactEmailInput   = document.getElementById('contact-email');
     const authStatusContainer = document.getElementById('auth-status-container');
 
+    const loc = window.Localization;
+
     if (session) {
       const userName = session.user.user_metadata.full_name || session.user.email;
       if (authStatusContainer) {
+          const holaText = loc ? loc.get('HOLA', 'Hola') : 'Hola';
+          const cerrarSesionText = loc ? loc.get('CERRAR_SESION', 'Cerrar Sesión') : 'Cerrar Sesión';
         authStatusContainer.innerHTML = `
-          <span class="user-greeting">Hola, ${userName}</span>
-          <button id="btn-auth-action">Cerrar Sesión</button>
+          <span class="user-greeting">${holaText}, ${userName}</span>
+          <button id="btn-auth-action">${cerrarSesionText}</button>
         `;
       }
       if (contactEmailInput) {
@@ -195,8 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else {
       if (authStatusContainer) {
+          const iniciarSesionText = loc ? loc.get('INICIAR_SESION', 'Iniciar Sesión') : 'Iniciar Sesión';
         authStatusContainer.innerHTML = `
-          <button id="btn-auth-action">Iniciar Sesión</button>
+          <button id="btn-auth-action">${iniciarSesionText}</button>
         `;
       }
       if (contactEmailInput) {

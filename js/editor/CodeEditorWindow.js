@@ -88,19 +88,21 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
         console.log(`Abierto ${fileName} en el editor.`);
     } catch (error) {
         console.error(`Error al abrir el script '${fileName}':`, error);
-        window.Dialogs.showNotification('Error', `No se pudo abrir el script '${fileName}'. Revisa la consola.`);
+        const L = window.Localization;
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), `${L.get('ERROR_ABRIR_SCRIPT', "No se pudo abrir el script")}: '${fileName}'.`);
     }
 }
 
 export async function saveCurrentScript() {
+    const L = window.Localization;
     if (!currentlyOpenFileHandle) {
-        window.Dialogs.showNotification('Aviso', 'No hay ningún script abierto para guardar.');
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningún script abierto para guardar.'));
         return;
     }
 
     const isChc = currentlyOpenFileHandle.name.endsWith('.chc');
     if (!isChc && !codeEditor) {
-        window.Dialogs.showNotification('Aviso', 'No hay ningún script abierto para guardar.');
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('ERROR_SIN_SCRIPT_ABIERTO', 'No hay ningún script abierto para guardar.'));
         return;
     }
 
@@ -109,22 +111,22 @@ export async function saveCurrentScript() {
         const writable = await currentlyOpenFileHandle.createWritable();
         await writable.write(scriptContent);
         await writable.close();
-        window.Dialogs.showNotification('Éxito', `Script '${currentlyOpenFileHandle.name}' guardado.`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_SCRIPT_GUARDADO', "Script guardado correctamente")}: '${currentlyOpenFileHandle.name}'.`);
 
         // Ahora, transpila y comprueba si hay errores
         console.clear(); // Limpia la consola antes de mostrar nuevos errores
         const result = transpile(scriptContent, currentlyOpenFileHandle.name);
         if (result.errors && result.errors.length > 0) {
-            console.error(`Errores de compilación en ${currentlyOpenFileHandle.name}:`);
+            console.error(`${L.get('ERROR_COMPILACION', 'Errores de compilación en')} ${currentlyOpenFileHandle.name}:`);
             result.errors.forEach(error => console.error(`- ${error}`));
             showConsoleCallback(); // Muestra la consola al usuario
         } else {
-            console.log(`Script ${currentlyOpenFileHandle.name} compilado exitosamente.`);
+            console.log(`${currentlyOpenFileHandle.name}: ${L.get('EXITO_COMPILACION', 'Script compilado exitosamente.')}`);
         }
 
     } catch (error) {
         console.error("Error al guardar el script:", error);
-        window.Dialogs.showNotification('Error', 'No se pudo guardar el script.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_GUARDAR_SCRIPT', 'No se pudo guardar el script.'));
     }
 }
 
@@ -147,10 +149,11 @@ export function openChcEditor(content) {
 
 async function runChc() {
     if (!currentlyOpenFileHandle || !currentlyOpenFileHandle.name.endsWith('.chc')) return;
+    const L = window.Localization;
 
     const humanText = dom.chcHumanText.value.trim();
     if (!humanText) {
-        window.Dialogs.showNotification('Aviso', 'Por favor, escribe algo antes de correr el script.');
+        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_ESCRIBE_SCRIPT', 'Por favor, escribe algo antes de correr el script.'));
         return;
     }
 
@@ -159,18 +162,18 @@ async function runChc() {
     const apiKey = localStorage.getItem(`creativeEngine_${provider}_apiKey`);
 
     if (!provider || provider === 'none' || !apiKey) {
-        window.Dialogs.showNotification('Configuración Requerida', 'Para usar CHC, debes configurar Carl IA en las Preferencias del motor.');
+        window.Dialogs.showNotification(L.get('TITULO_CONFIG_REQUERIDA', 'Configuración Requerida'), L.get('ERROR_CONFIG_CARL', 'Para usar CHC, debes configurar Carl IA en las Preferencias del motor.'));
         return;
     }
 
     dom.chcLoadingOverlay.classList.remove('hidden');
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Llamando a Carl IA...';
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_LLAMANDO_CARL', 'Llamando a Carl IA...');
     dom.chcRunBtn.classList.add('compiling');
-    dom.chcRunBtn.innerHTML = '<img src="icons/bot.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> Carl está pensando...';
+    dom.chcRunBtn.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> ${L.get('MSG_CARL_PENSANDO', 'Carl está pensando...')}`;
 
     // Simulate analysis phase for better UX
     await new Promise(r => setTimeout(r, 800));
-    if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Carl está analizando tu lógica creativa...';
+    if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_ANALIZANDO', 'Carl está analizando tu lógica creativa...');
 
     const prompt = `Actúa como el traductor de Creative H-Code (CHC) para Creative Engine.
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
@@ -278,7 +281,7 @@ ENTRADA DEL USUARIO:
             }
 
             console.warn(`[CHC] Intento ${attempts} fallido con errores de sintaxis:`, validation.errors);
-            if (dom.chcLoadingText) dom.chcLoadingText.textContent = `Carl está corrigiendo errores (${attempts})...`;
+            if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_CARL_CORRIGIENDO', 'Carl está corrigiendo errores ({attempts})...').replace('{attempts}', attempts);
 
             currentPrompt = `El código que generaste tiene ERRORES DE SINTAXIS. Por favor, corrígelo.
 Asegúrate de:
@@ -296,10 +299,10 @@ Por favor, devuelve solo el código corregido y funcional.`;
         }
 
         if (!finalGeneratedCode) {
-            throw new Error("Carl IA no pudo generar un código libre de errores tras varios intentos.");
+            throw new Error(L.get('ERROR_CARL_FAILED', "Carl IA no pudo generar un código libre de errores tras varios intentos."));
         }
 
-        if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Guardando lógica traducida...';
+        if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_GUARDANDO_LOGICA', 'Guardando lógica traducida...');
 
         // Save Human text to .chc
         const writable = await currentlyOpenFileHandle.createWritable();
@@ -322,20 +325,20 @@ Por favor, devuelve solo el código corregido y funcional.`;
         // Notify engine to reload transpilation maps
         transpile(finalGeneratedCode, currentlyOpenFileHandle.name);
 
-        if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Sincronizando con el motor...';
+        if (dom.chcLoadingText) dom.chcLoadingText.textContent = L.get('MSG_SINCRONIZANDO_MOTOR', 'Sincronizando con el motor...');
         // Hot reload in engine
         await hotReloadCallback(currentlyOpenFileHandle.name);
         await new Promise(r => setTimeout(r, 500));
 
-        window.Dialogs.showNotification('Carl IA', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!');
+        window.Dialogs.showNotification(L.get('TITULO_CARL_IA', 'Carl IA'), L.get('MSG_CARL_EXITO', '¡Listo! He traducido tu idea. ¡Mira cómo cobra vida!'));
 
     } catch (error) {
         console.error("CHC Error:", error);
-        window.Dialogs.showNotification('Error de Carl IA', `Vaya, algo salió mal al procesar tu lógica: ${error.message}`);
+        window.Dialogs.showNotification(L.get('ERROR_CARL_PROCESO', 'Error de Carl IA'), `${L.get('ERROR_CARL_PROCESO', "Vaya, algo salió mal al procesar tu lógica")}: ${error.message}`);
     } finally {
         dom.chcLoadingOverlay.classList.add('hidden');
         dom.chcRunBtn.classList.remove('compiling');
-        dom.chcRunBtn.innerHTML = '<img src="icons/rocket.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> Correr';
+        dom.chcRunBtn.innerHTML = `<img src="icons/rocket.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> ${L.get('BOTON_CORRER', 'Correr')}`;
     }
 }
 

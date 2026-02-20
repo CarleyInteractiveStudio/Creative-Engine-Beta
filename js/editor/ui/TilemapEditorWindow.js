@@ -184,8 +184,9 @@ function selectTile(event) {
 }
 
 async function onSave() {
+    const L = window.Localization;
     if (!currentMapHandle || !currentMapAsset) {
-        window.Dialogs.showNotification('Error', 'No hay ningún mapa abierto para guardar.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_SIN_MAPA_GUARDAR', 'No hay ningún mapa abierto para guardar.'));
         return;
     }
 
@@ -194,14 +195,15 @@ async function onSave() {
         const jsonString = JSON.stringify(currentMapAsset, null, 2);
         await writable.write(jsonString);
         await writable.close();
-        window.Dialogs.showNotification('Éxito', `Mapa '${currentMapHandle.name}' guardado.`);
+        window.Dialogs.showNotification(L.get('EXITO', 'Éxito'), `${L.get('EXITO_MAPA_GUARDADO', 'Mapa guardado correctamente')}: ${currentMapHandle.name}`);
     } catch (err) {
         console.error("Error al guardar el mapa:", err);
-        window.Dialogs.showNotification('Error', 'No se pudo guardar el mapa.');
+        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_GUARDAR_MAPA', 'No se pudo guardar el mapa.'));
     }
 }
 
 async function loadTileset() {
+    const L = window.Localization;
     try {
         const [fileHandle] = await window.showOpenFilePicker({
             types: [{ description: 'Images', accept: { 'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'] } }],
@@ -210,7 +212,7 @@ async function loadTileset() {
 
         const relativePath = await projectsDirHandle.resolve(fileHandle);
         if (!relativePath) {
-            window.Dialogs.showNotification('Error', 'El tileset debe estar dentro de la carpeta del proyecto.');
+            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_TILESET_DIR', 'El tileset debe estar dentro de la carpeta del proyecto.'));
             return;
         }
 
@@ -259,7 +261,8 @@ export function initialize(dependencies) {
     });
     dom.tilemapAddLayerBtn.addEventListener('click', () => {
         if (!currentMapAsset) return;
-        const layerName = prompt("Nombre de la nueva capa:", `Capa ${currentMapAsset.layers.length + 1}`);
+        const L = window.Localization;
+        const layerName = prompt(L.get('PROMPT_NOMBRE_CAPA', "Nombre de la nueva capa:"), `${L.get('CAPA_DEFAULT', 'Capa')} ${currentMapAsset.layers.length + 1}`);
         if (layerName) {
             currentMapAsset.layers.push({
                 name: layerName,
@@ -270,13 +273,14 @@ export function initialize(dependencies) {
         }
     });
     dom.tilemapRemoveLayerBtn.addEventListener('click', () => {
+        const L = window.Localization;
         if (!currentMapAsset || currentMapAsset.layers.length <= 1) {
-            window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
+            window.Dialogs.showNotification(L.get('ACCION_NO_PERMITIDA', 'Acción no permitida'), L.get('ERROR_ELIMINAR_ULTIMA_CAPA', 'No se puede eliminar la última capa.'));
             return;
         }
         window.Dialogs.showConfirmation(
-            'Confirmar Eliminación',
-            `¿Estás seguro de que quieres eliminar la capa '${currentMapAsset.layers[activeLayerIndex].name}'?`,
+            L.get('TITULO_ELIMINAR_CAPA', 'Confirmar Eliminación'),
+            `${L.get('PROMPT_ELIMINAR_CAPA', '¿Estás seguro de que quieres eliminar la capa')} '${currentMapAsset.layers[activeLayerIndex].name}'?`,
             () => {
                 currentMapAsset.layers.splice(activeLayerIndex, 1);
                 if (activeLayerIndex >= currentMapAsset.layers.length) {
@@ -358,7 +362,8 @@ export async function openMap(fileHandle, mapData) {
     }
     // Ensure layers structure exists for older maps
     if (!mapData.layers) {
-        mapData.layers = [{ name: 'Capa Base', tiles: mapData.tiles || Array(mapSize).fill(-1) }];
+        const L = window.Localization;
+        mapData.layers = [{ name: L.get('CAPA_BASE', 'Capa Base'), tiles: mapData.tiles || Array(mapSize).fill(-1) }];
         delete mapData.tiles;
     }
 

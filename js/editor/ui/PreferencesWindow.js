@@ -15,6 +15,7 @@ let _dom = null;
 let _saveCurrentScript = () => {}; // Placeholder for the function passed from editor.js
 
 const defaultPrefs = {
+    language: 'ES',
     theme: 'dark-modern',
     customColors: { bg: '#2d2d30', header: '#3f3f46', accent: '#0e639c' },
     autosave: false,
@@ -46,14 +47,14 @@ async function fetchAndPopulateModels(provider, apiKey) {
     if (!_dom.prefsAiModelSelector || !_dom.prefsAiModelSelectionGroup || !_dom.prefsAiErrorDisplay) return;
 
     _dom.prefsAiModelSelectionGroup.classList.remove('hidden');
-    _dom.prefsAiModelSelector.innerHTML = '<option value="">Cargando modelos...</option>';
+    _dom.prefsAiModelSelector.innerHTML = `<option value="">${window.Localization?.get('CARGANDO_MODELOS') || 'Cargando modelos...'}</option>`;
     _dom.prefsAiErrorDisplay.classList.add('hidden');
     _dom.prefsAiErrorDisplay.textContent = '';
 
     const result = await AIHandler.listModels(provider, apiKey);
 
     if (result.success) {
-        _dom.prefsAiModelSelector.innerHTML = '<option value="">Selecciona un modelo...</option>';
+        _dom.prefsAiModelSelector.innerHTML = `<option value="">${window.Localization?.get('SELECCIONA_MODELO') || 'Selecciona un modelo...'}</option>`;
         result.models.forEach(model => {
             const option = document.createElement('option');
             option.value = model.id;
@@ -66,7 +67,7 @@ async function fetchAndPopulateModels(provider, apiKey) {
             _dom.prefsAiModelSelector.value = currentPreferences.ai.model;
         }
     } else {
-        _dom.prefsAiModelSelector.innerHTML = '<option value="">Error al cargar modelos</option>';
+        _dom.prefsAiModelSelector.innerHTML = `<option value="">${window.Localization?.get('ERROR_CARGAR_MODELOS') || 'Error al cargar modelos'}</option>`;
         _dom.prefsAiErrorDisplay.textContent = result.error;
         _dom.prefsAiErrorDisplay.classList.remove('hidden');
     }
@@ -91,7 +92,7 @@ function updateAiProviderUi() {
             fetchAndPopulateModels(provider, savedKey);
         } else {
             _dom.prefsAiApiKey.value = '';
-            _dom.prefsAiApiKey.placeholder = `Introduce tu clave de API para ${provider}`;
+            _dom.prefsAiApiKey.placeholder = (window.Localization?.get('INTRODUCE_API_KEY') || "Introduce tu clave de API para") + " " + provider;
             _dom.prefsAiApiKey.disabled = false;
             _dom.prefsAiSaveKeyBtn.style.display = 'inline-block';
             _dom.prefsAiDeleteKeyBtn.style.display = 'none';
@@ -136,6 +137,7 @@ function applyPreferences() {
 async function savePreferences() {
     try {
     // Gather data from UI
+    currentPreferences.language = _dom.prefsLang.value;
     currentPreferences.theme = _dom.prefsTheme.value;
     if (currentPreferences.theme === 'custom') {
         currentPreferences.customColors = {
@@ -168,17 +170,28 @@ async function savePreferences() {
     // Save to LocalStorage for Editor-wide defaults
     localStorage.setItem('creativeEnginePrefs', JSON.stringify(currentPreferences));
 
+    // Apply language change
+    if (window.Localization) {
+        window.Localization.setLanguage(currentPreferences.language);
+    }
+
     // Also trigger save to project file via the provided callback
     if (typeof _dom.saveProjectConfig === 'function') {
         await _dom.saveProjectConfig(false);
     }
 
     applyPreferences();
-    showNotification('Éxito', 'Preferencias guardadas.');
+    showNotification(
+        window.Localization?.get('EXITO') || 'Éxito',
+        window.Localization?.get('PREFERENCIAS_GUARDADAS') || 'Preferencias guardadas.'
+    );
     _dom.preferencesModal.classList.remove('is-open');
     } catch (e) {
         console.error("Error in savePreferences:", e);
-        showNotification('Error', 'Error al guardar preferencias: ' + e.message);
+        showNotification(
+            window.Localization?.get('ERROR') || 'Error',
+            (window.Localization?.get('ERROR_GUARDAR_PREFERENCIAS') || 'Error al guardar preferencias: ') + e.message
+        );
     }
 }
 
@@ -199,6 +212,7 @@ function loadPreferences() {
     currentPreferences.ai = { ...defaultPrefs.ai, ...(loadedPrefs.ai || {}) };
     currentPreferences.carlPermissions = { ...defaultPrefs.carlPermissions, ...(loadedPrefs.carlPermissions || {}) };
 
+    if (_dom.prefsLang) _dom.prefsLang.value = currentPreferences.language || window.Localization.currentLanguage;
     if (_dom.prefsTheme) _dom.prefsTheme.value = currentPreferences.theme;
     if (_dom.prefsColorBg) _dom.prefsColorBg.value = currentPreferences.customColors.bg;
     if (_dom.prefsColorHeader) _dom.prefsColorHeader.value = currentPreferences.customColors.header;
@@ -278,16 +292,26 @@ function setupEventListeners() {
             const apiKey = _dom.prefsAiApiKey.value;
 
             if (!provider || provider === 'none') {
-                showNotification('Error', 'Por favor, selecciona un proveedor de IA válido.');
+                showNotification(
+                    window.Localization?.get('ERROR') || 'Error',
+                    window.Localization?.get('SELECCIONA_IA_VALIDO') || 'Por favor, selecciona un proveedor de IA válido.'
+                );
                 return;
             }
             if (!apiKey) {
-                showNotification('Error', 'Por favor, introduce una API Key.');
+                showNotification(
+                    window.Localization?.get('ERROR') || 'Error',
+                    window.Localization?.get('INTRODUCE_API_KEY_NOTIFICATION') || 'Por favor, introduce una API Key.'
+                );
                 return;
             }
 
             localStorage.setItem(`creativeEngine_${provider}_apiKey`, apiKey);
-            showNotification('Éxito', `API Key para ${provider} guardada.`);
+            showNotification(
+                window.Localization?.get('EXITO') || 'Éxito',
+                (window.Localization?.get('API_KEY_GUARDADA') || "API Key para {provider} guardada.")
+                    .replace('{provider}', provider)
+            );
             updateAiProviderUi();
         });
     }
@@ -296,11 +320,16 @@ function setupEventListeners() {
         _dom.prefsAiDeleteKeyBtn.addEventListener('click', () => {
             const provider = _dom.prefsAiProvider.value;
             showConfirmation(
-                'Confirmar Borrado',
-                `¿Estás seguro de que quieres borrar la API Key para ${provider}?`,
+                window.Localization?.get('CONFIRMAR_BORRADO') || 'Confirmar Borrado',
+                (window.Localization?.get('BORRAR_API_KEY_CONFIRM') || "¿Estás seguro de que quieres borrar la API Key para {provider}?")
+                    .replace('{provider}', provider),
                 () => {
                     localStorage.removeItem(`creativeEngine_${provider}_apiKey`);
-                    showNotification('Éxito', `API Key para ${provider} borrada.`);
+                    showNotification(
+                        window.Localization?.get('EXITO') || 'Éxito',
+                        (window.Localization?.get('API_KEY_BORRADA') || "API Key para {provider} borrada.")
+                            .replace('{provider}', provider)
+                    );
                     updateAiProviderUi();
                 }
             );

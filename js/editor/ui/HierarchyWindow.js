@@ -28,13 +28,14 @@ let contextMateria = null; // DIRECT REFERENCE to the materia under the context 
 // The main update function for this module, which is exported
 export function updateHierarchy() {
     if (!dom.hierarchyContent || !SceneManager.currentScene) return;
+    const L = window.Localization;
 
     const selectedMateria = getSelectedMateria();
     dom.hierarchyContent.innerHTML = '';
     const rootMaterias = SceneManager.currentScene.getRootMaterias();
 
     if (rootMaterias.length === 0) {
-        dom.hierarchyContent.innerHTML = `<p class="empty-message">La escena está vacía.<br>Click derecho para crear un objeto.</p>`;
+        dom.hierarchyContent.innerHTML = `<p class="empty-message" data-i18n="ESCENA_VACIA">${L.get('ESCENA_VACIA', 'La escena está vacía.<br>Click derecho para crear un objeto.')}</p>`;
         return;
     }
 
@@ -83,12 +84,13 @@ export function updateHierarchy() {
 
 // --- Hierarchy Creation Functions ---
 function createTilemapObject(parent = null) {
+    const L = window.Localization;
     // Create the parent Grid object
-    const gridMateria = createBaseMateria(generateUniqueName('Grid'), parent);
+    const gridMateria = createBaseMateria(generateUniqueName(L.get('GRID', 'Grid')), parent);
     gridMateria.addComponent(new Components.Grid(gridMateria));
 
     // Create the child Tilemap object
-    const tilemapMateria = createBaseMateria(generateUniqueName('Tilemap'), gridMateria); // Pass gridMateria as parent
+    const tilemapMateria = createBaseMateria(generateUniqueName(L.get('TILEMAP', 'Tilemap')), gridMateria); // Pass gridMateria as parent
     tilemapMateria.addComponent(new Components.Tilemap(tilemapMateria));
     tilemapMateria.addComponent(new Components.TilemapRenderer(tilemapMateria));
 
@@ -97,13 +99,15 @@ function createTilemapObject(parent = null) {
 }
 
 function createLightObject(name, lightComponent, parent = null) {
-    const newMateria = createBaseMateria(generateUniqueName(name), parent);
+    const L = window.Localization;
+    const newMateria = createBaseMateria(generateUniqueName(L.get(name.toUpperCase().replace(' ', '_'), name)), parent);
     newMateria.addComponent(new lightComponent(newMateria));
     return newMateria;
 }
 
 function createCameraObject(parent = null) {
-    const newMateria = createBaseMateria(generateUniqueName('Cámara'), parent);
+    const L = window.Localization;
+    const newMateria = createBaseMateria(generateUniqueName(L.get('CAMARA', 'Cámara')), parent);
     newMateria.addComponent(new Components.Camera(newMateria));
     return newMateria;
 }
@@ -111,9 +115,10 @@ function createCameraObject(parent = null) {
 export function duplicateSelectedMateria() {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria) return;
+    const L = window.Localization;
 
     const newMateria = selectedMateria.clone();
-    newMateria.name = `${selectedMateria.name} (Clone)`;
+    newMateria.name = `${selectedMateria.name} (${L.get('CLON', 'Clon')})`;
     // Add to the same parent as the original, or to the root if it has no parent.
     if (selectedMateria.parent) {
         selectedMateria.parent.addChild(newMateria);
@@ -141,6 +146,7 @@ export function initialize(dependencies) {
 
 export function handleContextMenuAction(action) {
     const selectedMateria = getSelectedMateria();
+    const L = window.Localization;
     // For actions on existing items, we MUST use the materia that was under the cursor
     // when the context menu was opened. This prevents race conditions if selection changes.
     // The `contextMateria` is now a direct reference, set during the 'contextmenu' event.
@@ -150,37 +156,37 @@ export function handleContextMenuAction(action) {
     switch (action) {
         case 'create-empty':
             // Parenting uses the selected materia, which is intuitive.
-            newMateria = createBaseMateria(generateUniqueName('Mater Vacío'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('MATERIA_VACIA', 'Materia Vacía')), selectedMateria);
             break;
         case 'create-audio':
-            newMateria = createBaseMateria(generateUniqueName('Audio'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('AUDIO', 'Audio')), selectedMateria);
             newMateria.addComponent(new Components.AudioSource(newMateria));
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);
             break;
         case 'create-sprite':
-            newMateria = createBaseMateria(generateUniqueName('Sprite'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('SPRITE', 'Sprite')), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));
             break;
         case 'create-rectangle':
-            newMateria = createBaseMateria(generateUniqueName('Rectangle'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('RECTANGULO', 'Rectangle')), selectedMateria);
             newMateria.addComponent(new Components.TextureRender(newMateria));
             break;
         case 'create-circle':
-            newMateria = createBaseMateria(generateUniqueName('Circle'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('CIRCULO', 'Circle')), selectedMateria);
             const textureRender = new Components.TextureRender(newMateria);
             textureRender.shape = 'Circle';
             newMateria.addComponent(textureRender);
             break;
         case 'create-triangle':
-            newMateria = createBaseMateria(generateUniqueName('Triangle'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('TRIANGULO', 'Triangle')), selectedMateria);
             const textureRenderTri = new Components.TextureRender(newMateria);
             textureRenderTri.shape = 'Triangle';
             newMateria.addComponent(textureRenderTri);
             break;
         case 'create-capsule':
-            newMateria = createBaseMateria(generateUniqueName('Capsule'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('CAPSULA', 'Capsule')), selectedMateria);
             const textureRenderCapsule = new Components.TextureRender(newMateria);
             textureRenderCapsule.shape = 'Capsule';
             newMateria.addComponent(textureRenderCapsule);
@@ -194,7 +200,7 @@ export function handleContextMenuAction(action) {
             newMateria = createTerrenoObject(selectedMateria);
             break;
         case 'create-parallax':
-            newMateria = createBaseMateria(generateUniqueName('Parallax'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('PARALLAX', 'Parallax')), selectedMateria);
             newMateria.addComponent(new Components.SpriteRenderer(newMateria));
             newMateria.addComponent(new Components.DrawingOrder(newMateria));
             const p = new Components.Parallax(newMateria);
@@ -214,7 +220,7 @@ export function handleContextMenuAction(action) {
             newMateria = createLightObject('Sprite Light', Components.SpriteLight2D, selectedMateria);
             break;
         case 'create-canvas':
-            newMateria = createBaseMateria(generateUniqueName('Canvas'), selectedMateria);
+            newMateria = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), selectedMateria);
             newMateria.addComponent(new Components.Canvas(newMateria));
             break;
         case 'create-ui-image':
@@ -239,7 +245,7 @@ export function handleContextMenuAction(action) {
 
                 // If after all that we don't have a canvas, create a new one at the root.
                 if (!parentCanvasMateria) {
-                    parentCanvasMateria = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvasMateria = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
                     parentCanvasMateria.addComponent(new Components.Canvas(parentCanvasMateria));
                     // The new UI element should be a child of this new canvas, not what was previously selected.
                     parentForNewImage = parentCanvasMateria;
@@ -251,7 +257,7 @@ export function handleContextMenuAction(action) {
                 }
 
 
-                newMateria = createBaseMateria(generateUniqueName('UIImage'), parentForNewImage);
+                newMateria = createBaseMateria(generateUniqueName(L.get('IMAGE', 'Imagen')), parentForNewImage);
                 newMateria.removeComponent(Components.Transform); // UI elements use UITransform
                 newMateria.addComponent(new Components.UITransform(newMateria));
                 newMateria.addComponent(new Components.UIImage(newMateria));
@@ -264,7 +270,7 @@ export function handleContextMenuAction(action) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
                 }
                 if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvas = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
                     parentCanvas.addComponent(new Components.Canvas(parentCanvas));
                 }
                 newMateria = createPanelObject(parentCanvas);
@@ -277,7 +283,7 @@ export function handleContextMenuAction(action) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
                 }
                 if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvas = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
                     parentCanvas.addComponent(new Components.Canvas(parentCanvas));
                 }
                 newMateria = createTextObject(parentCanvas);
@@ -290,7 +296,7 @@ export function handleContextMenuAction(action) {
                     parentCanvas = parentCanvas.findAncestorWithComponent(Components.Canvas);
                 }
                 if (!parentCanvas) {
-                    parentCanvas = createBaseMateria(generateUniqueName('Canvas'), null);
+                    parentCanvas = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
                     parentCanvas.addComponent(new Components.Canvas(parentCanvas));
                 }
                 newMateria = createButtonObject(parentCanvas);
@@ -299,7 +305,7 @@ export function handleContextMenuAction(action) {
 
         case 'rename':
             if (contextMateria) { // Use contextMateria
-                const newName = prompt(`Renombrar '${contextMateria.name}':`, contextMateria.name);
+                const newName = prompt(`${L.get('RENOMBRAR')} '${contextMateria.name}':`, contextMateria.name);
                 if (newName && newName.trim() !== '') {
                     contextMateria.name = newName.trim();
                     shouldUpdate = true;
@@ -322,7 +328,7 @@ export function handleContextMenuAction(action) {
         case 'duplicate':
             if (contextMateria) { // Use contextMateria
                 const newDuplicatedMateria = contextMateria.clone();
-                newDuplicatedMateria.name = `${contextMateria.name} (Clone)`;
+                newDuplicatedMateria.name = `${contextMateria.name} (${L.get('CLON', 'Clon')})`;
                 if (contextMateria.parent) {
                     contextMateria.parent.addChild(newDuplicatedMateria);
                 } else {

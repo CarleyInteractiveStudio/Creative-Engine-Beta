@@ -27,16 +27,16 @@ let enterAddTilemapLayerMode = () => {}; // Callback to notify SceneView
 const markdownConverter = new showdown.Converter();
 
 const availableComponents = {
-    'Renderizado': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
-    'Mapa': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
-    'Iluminación': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
-    'Utilidades': [Components.Gyzmo],
-    'Animación': [Components.Animator, Components.AnimatorController],
-    'Cámara': [Components.Camera],
-    'Físicas': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
-    'UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'Basico': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
-    'Scripting': [Components.CreativeScript]
+    'CAT_RENDERIZADO': [Components.SpriteRenderer, Components.TextureRender, Components.DrawingOrder],
+    'CAT_MAPA': [Components.Grid, Components.Tilemap, Components.TilemapRenderer, Components.Parallax, Components.Terreno2D],
+    'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
+    'CAT_UTILIDADES': [Components.Gyzmo],
+    'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
+    'CAT_CAMARA': [Components.Camera],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
+    'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
 const componentIcons = {
@@ -1012,7 +1012,7 @@ export async function updateInspector() {
     } else if (selectedAsset) {
         await updateInspectorForAsset(selectedAsset.name, selectedAsset.path);
     } else {
-        dom.inspectorContent.innerHTML = '<p class="inspector-placeholder">Nada seleccionado</p>';
+        dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
 }
 
@@ -1167,20 +1167,21 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
 
 async function updateInspectorForMateria(selectedMateria) {
     const config = getCurrentProjectConfig();
+    const L = window.Localization;
 
     // Name input and active toggle
     dom.inspectorContent.innerHTML = `
         <div class="inspector-materia-header">
-            <input type="checkbox" id="materia-active-toggle" title="Activar/Desactivar Materia" ${selectedMateria.isActive ? 'checked' : ''}>
+            <input type="checkbox" id="materia-active-toggle" title="${L.get('ACTIVAR_DESACTIVAR_MATERIA', 'Activar/Desactivar Materia')}" ${selectedMateria.isActive ? 'checked' : ''}>
             <input type="text" id="materia-name-input" value="${selectedMateria.name}">
         </div>
         <div class="tag-layer-container">
             <div class="inspector-row">
-                <label for="materia-tag-select">Tag</label>
+                <label for="materia-tag-select" data-i18n="TAG">Tag</label>
                 <select id="materia-tag-select"></select>
             </div>
             <div class="inspector-row">
-                <label for="materia-layer-select">Layer</label>
+                <label for="materia-layer-select" data-i18n="LAYER">Layer</label>
                 <select id="materia-layer-select"></select>
             </div>
         </div>
@@ -1205,7 +1206,8 @@ async function updateInspectorForMateria(selectedMateria) {
         tagSelect.appendChild(separator);
         const addTagOption = document.createElement('option');
         addTagOption.value = 'add_new_tag';
-        addTagOption.textContent = 'Añadir Tag...';
+        addTagOption.dataset.i18n = 'ADD_TAG_ELLIPSIS';
+        addTagOption.textContent = L.get('ADD_TAG_ELLIPSIS', 'Añadir Tag...');
         tagSelect.appendChild(addTagOption);
     }
 
@@ -1229,7 +1231,8 @@ async function updateInspectorForMateria(selectedMateria) {
         layerSelect.appendChild(separator);
         const addLayerOption = document.createElement('option');
         addLayerOption.value = 'edit_layers';
-        addLayerOption.textContent = 'Editar Layers...';
+        addLayerOption.dataset.i18n = 'EDIT_LAYERS_ELLIPSIS';
+        addLayerOption.textContent = L.get('EDIT_LAYERS_ELLIPSIS', 'Editar Layers...');
         layerSelect.appendChild(addLayerOption);
     }
 
@@ -1250,19 +1253,19 @@ async function updateInspectorForMateria(selectedMateria) {
             if (ley.shape === 'Rectangle' || ley.shape === 'Triangle' || ley.shape === 'Capsule') {
                 dimensionsHTML = `
                     <div class="prop-row-multi">
-                        <label>Dimensions</label>
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="Width">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="Height">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
                         </div>
                     </div>
                 `;
             } else if (ley.shape === 'Circle') {
                 dimensionsHTML = `
                     <div class="prop-row-multi">
-                        <label>Radius</label>
+                        <label data-i18n="PROP_RADIUS">${L.get('PROP_RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="Radius">
+                            <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="radius" value="${ley.radius}" title="${L.get('PROP_RADIUS', 'Radius')}">
                         </div>
                     </div>
                 `;
@@ -1272,7 +1275,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader("Texture Render", icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Shape</label>
+                        <label data-i18n="PROP_SHAPE">${L.get('PROP_SHAPE', 'Shape')}</label>
                         <div class="prop-inputs">
                             <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
                                 <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>Rectangle</option>
@@ -1284,18 +1287,18 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${dimensionsHTML}
                     <div class="prop-row-multi">
-                        <label>Color</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="TextureRender" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="inspector-row">
-                        <label>Texture</label>
+                        <label data-i18n="PROP_TEXTURE">${L.get('PROP_TEXTURE', 'Texture')}</label>
                         ${renderPropertyDropper('Sprite', ley.texturePath, 'data-component="TextureRender" data-prop="texturePath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
+                        <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>
@@ -1348,26 +1351,26 @@ async function updateInspectorForMateria(selectedMateria) {
             }
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader("Posición (Transform)", icon, index)}
+                ${renderComponentHeader(L.get('TRANSFORM', "Posición (Transform)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Position</label>
+                        <label data-i18n="PROP_POSITION">${L.get('PROP_POSITION', 'Position')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="Local Position X">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Local Position Y">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.x" value="${ley.localPosition.x}" title="X">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localPosition.y" value="${ley.localPosition.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Rotation</label>
+                        <label data-i18n="PROP_ROTATION">${L.get('PROP_ROTATION', 'Rotation')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Local Rotation Z">
+                            <input type="number" class="prop-input" step="1" data-component="Transform" data-prop="localRotation" value="${ley.localRotation || 0}" title="Z">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Scale</label>
+                        <label data-i18n="PROP_SCALE">${L.get('PROP_SCALE', 'Scale')}</label>
                         <div class="prop-inputs">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="Local Scale X">
-                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Local Scale Y">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
+                            <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
                         </div>
                     </div>
                 </div>
@@ -1657,7 +1660,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
                 spriteSelectorHTML = `
                     <div class="inspector-row">
-                        <label for="sprite-name-select">Sprite</label>
+                        <label for="sprite-name-select" data-i18n="SPRITE">Sprite</label>
                         <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
                             ${options}
                         </select>
@@ -1669,26 +1672,26 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader("Sprite Renderer", icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>Source</label>
+                        <label data-i18n="PROP_SOURCE">${L.get('PROP_SOURCE', 'Source')}</label>
                         ${renderPropertyDropper('Sprite', ley.spriteAssetPath || ley.source, 'data-component="SpriteRenderer" data-prop="source"')}
                     </div>
                     ${spriteSelectorHTML}
                     <div class="prop-row-multi">
-                        <label>Color</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="SpriteRenderer" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Opacity</label>
+                        <label data-i18n="PROP_OPACITY">${L.get('PROP_OPACITY', 'Opacity')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" data-component="SpriteRenderer" data-prop="opacity" value="${ley.opacity ?? 1}" min="0" max="1" step="0.01" style="flex-grow: 1;" oninput="this.nextElementSibling.innerText = Math.round(this.value * 100) + '%'">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.opacity ?? 1) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Pivot</label>
+                        <label data-i18n="PROP_PIVOT">${L.get('PROP_PIVOT', 'Pivot')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
@@ -1698,10 +1701,10 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="inspector-row">
                         <label></label>
-                        <button class="inspector-btn" data-action="reset-sprite-scale" style="width: 100%; margin-top: 4px;">Restablecer Escala (1:1)</button>
+                        <button class="inspector-btn" data-action="reset-sprite-scale" style="width: 100%; margin-top: 4px;" data-i18n="PROP_RESET_SCALE">${L.get('PROP_RESET_SCALE', 'Restablecer Escala (1:1)')}</button>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
+                        <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="SpriteRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>`;
@@ -2632,7 +2635,8 @@ async function updateInspectorForMateria(selectedMateria) {
     const addComponentBtn = document.createElement('button');
     addComponentBtn.id = 'add-component-btn';
     addComponentBtn.className = 'add-component-btn';
-    addComponentBtn.textContent = 'Añadir Ley';
+    addComponentBtn.dataset.i18n = 'ADD_LEY';
+    addComponentBtn.textContent = L.get('ADD_LEY', 'Añadir Ley');
     dom.inspectorContent.appendChild(addComponentBtn);
     console.log('7. Inspector update complete.');
 }
@@ -3344,10 +3348,11 @@ export async function showAddComponentModal() {
     const existingScripts = new Set(selectedMateria.leyes.filter(ley => ley instanceof Components.CreativeScript).map(ley => ley.scriptName));
 
     // --- 1. Render Built-in Components ---
+    const L = window.Localization;
     for (const category in availableComponents) {
-        if (category === 'Scripting') continue;
+        if (category === 'CAT_SCRIPTING') continue;
         const categoryHeader = document.createElement('h4');
-        categoryHeader.textContent = category;
+        categoryHeader.textContent = L.get(category, category);
         dom.componentList.appendChild(categoryHeader);
 
         availableComponents[category].forEach(ComponentClass => {
@@ -3396,7 +3401,7 @@ export async function showAddComponentModal() {
     const customComponentDefinitions = getCustomComponentDefinitions();
     if (customComponentDefinitions.size > 0) {
         const customHeader = document.createElement('h4');
-        customHeader.textContent = 'Componentes Personalizados';
+        customHeader.textContent = L.get('COMPONENTES_PERSONALIZADOS', 'Componentes Personalizados');
         dom.componentList.appendChild(customHeader);
 
         for (const [name, definition] of customComponentDefinitions.entries()) {
@@ -3428,7 +3433,7 @@ export async function showAddComponentModal() {
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
     const scriptsCategoryHeader = document.createElement('h4');
-    scriptsCategoryHeader.textContent = 'Scripts';
+    scriptsCategoryHeader.textContent = L.get('SCRIPTS', 'Scripts');
     dom.componentList.appendChild(scriptsCategoryHeader);
 
     const placeholder = document.createElement('p');
@@ -3440,12 +3445,12 @@ export async function showAddComponentModal() {
         return;
     }
     if (isScanningForComponents) {
-        placeholder.textContent = 'Escaneo de scripts ya en progreso...';
+        placeholder.textContent = L.get('ESCANEO_PROGRESO', 'Escaneo de scripts ya en progreso...');
         return;
     }
 
     isScanningForComponents = true;
-    placeholder.textContent = 'Buscando scripts...';
+    placeholder.textContent = L.get('BUSCANDO_SCRIPTS', 'Buscando scripts...');
 
     try {
         const scriptFiles = [];
@@ -3471,7 +3476,7 @@ export async function showAddComponentModal() {
         placeholder.remove();
 
         if (scriptFiles.length === 0) {
-            dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: "No se encontraron scripts (.ces) en la carpeta Assets." }));
+            dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
         } else {
             scriptFiles.forEach(fileHandle => {
                 const isPresent = existingScripts.has(fileHandle.name);
@@ -3499,7 +3504,7 @@ export async function showAddComponentModal() {
         }
     } catch (error) {
         console.error("Error crítico durante el escaneo de scripts:", error);
-        placeholder.textContent = "Error al buscar scripts.";
+        placeholder.textContent = L.get('ERROR_BUSCAR_SCRIPTS', "Error al buscar scripts.");
         placeholder.className += ' error-message';
     } finally {
         isScanningForComponents = false;

@@ -1,4 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
+import { Localization } from './engine/Localization.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize localization
+    await Localization.init();
+    Localization.updateUI();
+
     // --- DOM Elements ---
     const welcomeView = document.getElementById('welcome-view');
     const launcherView = document.getElementById('launcher-view');
@@ -31,39 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const projectList = document.getElementById('project-list');
 
     // --- Motivational Quotes ---
-    const quotes = [
-        "Tu juego empieza aquí. Lo que imagines, lo construyes. 🚀🧠",
-        "No necesitas experiencia, solo visión. Creative Engine hace el resto. 👁️✨",
-        "Cada escena que creas es una ventana a tu mundo. Ábrela. 🖼️🌍",
-        "No estás usando un motor. Estás liberando tu potencial creativo. 🔓🎨",
-        "¿Tienes una idea? Aquí se convierte en juego. 💡➡️🎮",
-        "Diseña sin límites. Crea sin miedo. Publica con orgullo. 🛠️🔥📢",
-        "Tu historia merece ser jugada. Creative Engine te da el control. 📖🎮🎛️",
-        "No esperes a que alguien más lo haga. Hazlo tú, hoy. ⏳💪",
-        "Cada píxel que colocas es una decisión. Cada decisión, una obra. 🧩🖌️",
-        "La creatividad no se enseña. Se desbloquea. 🧠🔑",
-        "Tus mundos, tus reglas. Creative Engine solo obedece a tu imaginación. 🌌🕹️",
-        "No necesitas millones. Solo necesitas comenzar. 💸❌✅",
-        "Aquí no hay límites técnicos. Solo los que tú pongas. 🧱🚫",
-        "¿Quieres que tu juego se vea como tú lo imaginas? Este es el lugar. 👓🎨",
-        "El motor está listo. ¿Y tú? ⚙️👊",
-        "No es solo código. Es arte en movimiento. 💻🎭",
-        "Tus ideas no son pequeñas. Solo necesitan el entorno correcto para crecer. 🌱🧠",
-        "Cada módulo que usas es una herramienta para tu libertad creativa. 🧰🕊️",
-        "No estás jugando con herramientas. Estás construyendo experiencias. 🛠️🎬",
-        "Creative Engine no te guía. Te sigue. 🧭🤝"
-    ];
+    const quoteKeys = [];
+    for (let i = 1; i <= 20; i++) quoteKeys.push(`QUOTE_${i}`);
 
     function startQuoteCarousel() {
         if (!motivationalQuoteEl) return;
         setInterval(() => {
-            let newQuote = quotes[Math.floor(Math.random() * quotes.length)];
-            while (newQuote === motivationalQuoteEl.textContent) {
-                newQuote = quotes[Math.floor(Math.random() * quotes.length)];
-            }
+            const randomKey = quoteKeys[Math.floor(Math.random() * quoteKeys.length)];
+            const newQuote = Localization.get(randomKey);
+
             motivationalQuoteEl.classList.add('quote-fade-out');
             setTimeout(() => {
-                motivationalQuoteEl.textContent = newQuote;
+                // We use innerHTML to allow icons if we decide to include them in the future
+                // But for now, text is enough. The updateUI will handle the initial one.
+                motivationalQuoteEl.innerHTML = newQuote;
                 motivationalQuoteEl.classList.remove('quote-fade-out');
             }, 500);
         }, 20000);
