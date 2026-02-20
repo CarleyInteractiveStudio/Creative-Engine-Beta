@@ -165,7 +165,7 @@ function addLogoToList(fileOrPath, duration = 5) {
     if (typeof fileOrPath === 'string') {
         fileName.textContent = fileOrPath;
         listItem.dataset.path = fileOrPath;
-        img.src = 'image/Paquete.png';
+        img.src = 'icons/box.svg';
     } else {
         fileName.textContent = fileOrPath.name;
         listItem.dataset.path = fileOrPath.name;
@@ -346,7 +346,7 @@ export function populateUI(config) {
 
     if (dom.settingsIconPreview && currentProjectConfig.iconPath) {
         dom.settingsIconPreview.style.display = 'block';
-        dom.settingsIconPreview.src = 'image/Paquete.png';
+        dom.settingsIconPreview.src = 'icons/box.svg';
     }
 
     dom.settingsLogoList.innerHTML = '';

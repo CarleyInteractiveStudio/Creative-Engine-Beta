@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentViewMode === 'folders' && !isFileListMode && currentPath !== 'Assets') {
                  const upItem = document.createElement('div');
                 upItem.className = 'grid-item';
-                upItem.innerHTML = `<div class="icon" style="font-size: 2.5em;">⤴️</div><div class="name">..</div>`;
+                upItem.innerHTML = `<div class="icon" style="font-size: 2em;"><img src="icons/skip-back.svg" class="ce-icon" style="transform: rotate(90deg); width: 32px; height: 32px;"></div><div class="name">..</div>`;
                 upItem.addEventListener('dblclick', async () => {
                     const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
                     const projectName = new URLSearchParams(window.location.search).get('project');
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 uiItem.dataset.name = name;
 
                 if (kind === 'directory') {
-                    uiItem.innerHTML = `<div class="icon">📁</div><div class="name">${name}</div>`;
+                    uiItem.innerHTML = `<div class="icon"><img src="icons/folder.svg" class="ce-icon" style="width: 32px; height: 32px;"></div><div class="name">${name}</div>`;
                     uiItem.addEventListener('dblclick', async () => {
                         currentDirHandle = await currentDirHandle.getDirectoryHandle(name);
                         currentPath = `${currentPath}/${name}`;
@@ -495,17 +495,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Specific icons for known file types
                     if (name.endsWith('.cea')) {
-                        iconContainer.innerHTML = '🎞️';
+                        iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceanim')) {
-                        iconContainer.innerHTML = '🕹️';
+                        iconContainer.innerHTML = `<img src="icons/gamepad.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceprefab')) {
-                        iconContainer.innerHTML = '🧊';
+                        iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ceScene')) {
-                        iconContainer.innerHTML = '🎬';
+                        iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.ces')) {
-                        iconContainer.innerHTML = '📜';
+                        iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else if (name.endsWith('.chc')) {
-                        iconContainer.innerHTML = '🤖';
+                        iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     } else {
                         const imgIcon = document.createElement('img');
                         imgIcon.className = 'icon-preview';
@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 imgIcon.src = url;
                                 iconContainer.appendChild(imgIcon);
                             } else {
-                                iconContainer.textContent = '📄';
+                                iconContainer.innerHTML = `<img src="icons/file.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                             }
                         });
                     }
@@ -862,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'verification-system-panel': 'menu-window-verification-system',
             'ambiente-control-panel': 'menu-window-ambiente-control'
         };
-        const checkmark = '✅ ';
+        const checkmark = '✓ ';
 
         for (const [panelId, menuId] of Object.entries(menuItems)) {
             const panel = document.getElementById(panelId);
@@ -1162,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cambiar a la pestaña de la consola para que los errores sean visibles
             dom.assetsPanel.querySelector('[data-tab="console-content"]').click();
         } else {
-            console.log("✅ Build exitoso. Todos los scripts se compilaron sin errores.");
+            console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La lógica ahora está en startGame.
             originalStartGame();
         }

@@ -113,8 +113,8 @@ async function refreshLibraryList() {
             card.dataset.libraryName = lib.data.name;
             card.dataset.fileName = lib.name;
 
-            const authorIconSrc = lib.data.author_icon_base64 || 'image/Paquete.png';
-            const libraryIconSrc = lib.data.library_icon_base64 || 'image/Paquete.png';
+            const authorIconSrc = lib.data.author_icon_base64 || 'icons/box.svg';
+            const libraryIconSrc = lib.data.library_icon_base64 || 'icons/box.svg';
 
             card.innerHTML = `
                 <!-- 1. Square library icon -->
@@ -403,8 +403,8 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
         dom.libraryPanelCreateBtn.addEventListener('click', () => {
             // Reset form before showing
             dom.createLibraryModal.querySelector('.settings-form').reset();
-            dom.libCreateIconPreview.src = 'image/Paquete.png';
-            dom.libCreateAuthorIconPreview.src = 'image/Paquete.png';
+            dom.libCreateIconPreview.src = 'icons/box.svg';
+            dom.libCreateAuthorIconPreview.src = 'icons/box.svg';
 
             // Reset the new file handling logic
             libraryFiles = [];
@@ -783,7 +783,7 @@ function setupDragAndDrop() {
 
             const starSpan = document.createElement('span');
             starSpan.className = 'main-script-star';
-            starSpan.textContent = '★';
+            starSpan.innerHTML = `<img src="icons/star.svg" class="ce-icon">`;
             starSpan.title = 'Marcar como script principal';
             if (file.name === mainScriptFile) {
                 starSpan.classList.add('selected');
@@ -796,7 +796,7 @@ function setupDragAndDrop() {
 
             const removeSpan = document.createElement('span');
             removeSpan.className = 'remove-file';
-            removeSpan.textContent = '✖';
+            removeSpan.innerHTML = `<img src="icons/x.svg" class="ce-icon">`;
             removeSpan.title = 'Eliminar archivo';
 
             li.appendChild(starSpan);

@@ -386,9 +386,10 @@ function updateStateInspector() {
                 <div class="direction-grid" id="anim-direction-grid">
                     ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => {
                         const isAssigned = currentControllerData.movementMapping[i] === selectedState.name;
-                        const icons = ['↖️', '⬆️', '↗️', '⬅️', '⏹️', '➡️', '↙️', '⬇️', '↘️'];
+                        const iconNames = ['arrow-up-left', 'arrow-up', 'arrow-up-right', 'arrow-left', 'stop', 'arrow-right', 'arrow-down-left', 'arrow-down', 'arrow-down-right'];
                         const labels = ['Noroeste', 'Norte', 'Noreste', 'Oeste', 'Quieto', 'Este', 'Suroeste', 'Sur', 'Sureste'];
-                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}" title="${labels[i]}">${icons[i]}</div>`;
+                        const iconHTML = `<img src="icons/${iconNames[i]}.svg" class="ce-icon" style="width: 20px; height: 20px;">`;
+                        return `<div class="direction-cell ${isAssigned ? 'active' : ''}" data-index="${i}" title="${labels[i]}">${iconHTML}</div>`;
                     }).join('')}
                 </div>
             </div>

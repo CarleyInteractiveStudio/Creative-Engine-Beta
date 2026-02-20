@@ -166,7 +166,7 @@ async function runChc() {
     dom.chcLoadingOverlay.classList.remove('hidden');
     if (dom.chcLoadingText) dom.chcLoadingText.textContent = 'Llamando a Carl IA...';
     dom.chcRunBtn.classList.add('compiling');
-    dom.chcRunBtn.textContent = '🤖 Carl está pensando...';
+    dom.chcRunBtn.innerHTML = '<img src="icons/bot.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> Carl está pensando...';
 
     // Simulate analysis phase for better UX
     await new Promise(r => setTimeout(r, 800));
@@ -335,7 +335,7 @@ Por favor, devuelve solo el código corregido y funcional.`;
     } finally {
         dom.chcLoadingOverlay.classList.add('hidden');
         dom.chcRunBtn.classList.remove('compiling');
-        dom.chcRunBtn.textContent = '🚀 Correr';
+        dom.chcRunBtn.innerHTML = '<img src="icons/rocket.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> Correr';
     }
 }
 

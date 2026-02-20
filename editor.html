@@ -100,7 +100,7 @@
                 </div>
             </div>
             <div class="menubar-right">
-                <button id="toolbar-music-btn" class="toolbar-btn" title="Reproductor de Música">🎵</button>
+                <button id="toolbar-music-btn" class="toolbar-btn" title="Reproductor de Música"><img src="icons/music.svg" class="ce-icon"></button>
             </div>
         </div>
         <main id="editor-main-content">
@@ -364,8 +364,8 @@ public star() {
                 <div class="panel-header">
                     <span>Jerarquía</span>
                     <div class="panel-header-controls">
-                        <button id="btn-save-prefab" class="panel-tool-btn hidden" title="Guardar Prefab">💾</button>
-                        <button id="btn-exit-prefab" class="panel-tool-btn hidden" title="Cerrar Prefab">✕</button>
+                        <button id="btn-save-prefab" class="panel-tool-btn hidden" title="Guardar Prefab"><img src="icons/save.svg" class="ce-icon"></button>
+                        <button id="btn-exit-prefab" class="panel-tool-btn hidden" title="Cerrar Prefab"><img src="icons/x.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="hierarchy-panel">&times;</button>
                     </div>
                 </div>
@@ -377,20 +377,20 @@ public star() {
                         <span id="current-scene-name">Escena Principal</span>
                         <div class="viewport-tools">
                             <div class="tool-dropdown">
-                                <button id="tool-active" class="toolbar-btn">🖐️</button>
+                                <button id="tool-active" class="toolbar-btn"><img src="icons/move.svg" class="ce-icon"></button>
                                 <div class="tool-dropdown-content">
-                                    <button id="tool-move" class="toolbar-btn active" title="Mover (Q)">🖐️ Mover</button>
-                                    <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)">🔄 Rotar</button>
-                                    <button id="tool-terrain-brush" class="toolbar-btn" title="Terreno (B)">⛰️ Terreno</button>
-                                    <button id="tool-scale" class="toolbar-btn" title="Escalar (E)">↗️ Escalar</button>
-                                    <button id="tool-scale-axis" class="toolbar-btn" title="Escalar por Ejes">💠 Escalar Ejes</button>
-                                    <button id="tool-universal" class="toolbar-btn" title="Universal (T)">🛠️ Universal</button>
-                                    <button id="tool-pan" class="toolbar-btn" title="Panear (W)">↔️ Panear</button>
+                                    <button id="tool-move" class="toolbar-btn active" title="Mover (Q)"><img src="icons/move.svg" class="ce-icon"> Mover</button>
+                                    <button id="tool-rotate" class="toolbar-btn" title="Rotar (R)"><img src="icons/rotate.svg" class="ce-icon"> Rotar</button>
+                                    <button id="tool-terrain-brush" class="toolbar-btn" title="Terreno (B)"><img src="icons/mountain.svg" class="ce-icon"> Terreno</button>
+                                    <button id="tool-scale" class="toolbar-btn" title="Escalar (E)"><img src="icons/scale.svg" class="ce-icon"> Escalar</button>
+                                    <button id="tool-scale-axis" class="toolbar-btn" title="Escalar por Ejes"><img src="icons/scale.svg" class="ce-icon"> Escalar Ejes</button>
+                                    <button id="tool-universal" class="toolbar-btn" title="Universal (T)"><img src="icons/wrench.svg" class="ce-icon"> Universal</button>
+                                    <button id="tool-pan" class="toolbar-btn" title="Panear (W)"><img src="icons/pan.svg" class="ce-icon"> Panear</button>
                                     <hr class="tilemap-tool-divider" style="display: none;">
-                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;">🖌️ Pincel</button>
-                                    <button id="tool-tile-bucket" class="toolbar-btn tilemap-tool" title="Relleno de Cubo (G)" style="display: none;">🪣 Cubo</button>
-                                    <button id="tool-tile-rectangle-fill" class="toolbar-btn tilemap-tool" title="Pincel Multi-casilla" style="display: none;">🖌️x Multi</button>
-                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;">🧼 Goma</button>
+                                    <button id="tool-tile-brush" class="toolbar-btn tilemap-tool" title="Pincel de Tiles (B)" style="display: none;"><img src="icons/brush.svg" class="ce-icon"> Pincel</button>
+                                    <button id="tool-tile-bucket" class="toolbar-btn tilemap-tool" title="Relleno de Cubo (G)" style="display: none;"><img src="icons/bucket.svg" class="ce-icon"> Cubo</button>
+                                    <button id="tool-tile-rectangle-fill" class="toolbar-btn tilemap-tool" title="Pincel Multi-casilla" style="display: none;"><img src="icons/brush.svg" class="ce-icon">x Multi</button>
+                                    <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" style="display: none;"><img src="icons/eraser.svg" class="ce-icon"> Goma</button>
                                 </div>
                             </div>
                         </div>
@@ -402,9 +402,9 @@ public star() {
                         </div>
                     </div>
                     <div id="game-controls" class="game-controls">
-                        <button id="btn-play" title="Play" disabled>▶️</button>
-                        <button id="btn-pause" title="Pause" style="display: none;">⏸️</button>
-                        <button id="btn-stop" title="Stop" style="display: none;">⏹️</button>
+                        <button id="btn-play" title="Play" disabled><img src="icons/play.svg" class="ce-icon"></button>
+                        <button id="btn-pause" title="Pause" style="display: none;"><img src="icons/pause.svg" class="ce-icon"></button>
+                        <button id="btn-stop" title="Stop" style="display: none;"><img src="icons/stop.svg" class="ce-icon"></button>
                     </div>
                 </div>
                 <div class="panel-content-container">
@@ -416,15 +416,15 @@ public star() {
                     </div>
                     <div id="code-editor-content" class="panel-content view-content no-padding">
                         <div id="code-editor-toolbar">
-                            <button id="code-save-btn" title="Guardar (Ctrl+S)">💾 Guardar</button>
-                            <button id="code-undo-btn" title="Deshacer (Ctrl+Z)">⬅️</button>
-                            <button id="code-redo-btn" title="Rehacer (Ctrl+Y)">➡️</button>
+                            <button id="code-save-btn" title="Guardar (Ctrl+S)"><img src="icons/save.svg" class="ce-icon"> Guardar</button>
+                            <button id="code-undo-btn" title="Deshacer (Ctrl+Z)"><img src="icons/arrow-left.svg" class="ce-icon"></button>
+                            <button id="code-redo-btn" title="Rehacer (Ctrl+Y)"><img src="icons/arrow-right.svg" class="ce-icon"></button>
                         </div>
                         <div id="codemirror-container"></div>
                         <!-- CHC Editor Integrated -->
                         <div id="chc-integrated-editor" class="chc-editor-container hidden">
                             <textarea id="chc-human-text" placeholder="Escribe aquí lo que quieres que haga tu script... Carl IA se encargará del resto."></textarea>
-                            <button id="chc-run-btn" class="chc-floating-run-btn">🚀 Correr</button>
+                            <button id="chc-run-btn" class="chc-floating-run-btn"><img src="icons/rocket.svg" class="ce-icon" style="filter: brightness(0) invert(1);"> Correr</button>
                             <div id="chc-loading-overlay" class="chc-overlay hidden">
                                 <div class="spinner"></div>
                                 <p id="chc-loading-text">Carl IA está traduciendo tu lógica...</p>
@@ -475,7 +475,7 @@ public star() {
                     </div>
                     <div id="console-content" class="panel-content tab-content no-padding">
                         <div class="console-toolbar">
-                            <button id="btn-clear-console" class="panel-tool-btn" title="Borrar todo">🗑️ Borrar</button>
+                            <button id="btn-clear-console" class="panel-tool-btn" title="Borrar todo"><img src="icons/trash.svg" class="ce-icon"> Borrar</button>
                             <div class="console-filters">
                                 <button class="filter-btn active" data-filter="all">Todo</button>
                                 <button class="filter-btn" data-filter="system">Sistema</button>
@@ -496,23 +496,23 @@ public star() {
                 <div class="panel-header">
                     <span>Editor de Animación</span>
                     <div class="panel-header-controls">
-                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                        <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="animation-panel">&times;</button>
                     </div>
                 </div>
                 <div class="panel-content">
                     <div id="animation-toolbar">
-                        <button id="animation-save-btn" title="Guardar Asset">💾 Guardar</button>
+                        <button id="animation-save-btn" title="Guardar Asset"><img src="icons/save.svg" class="ce-icon"> Guardar</button>
                         <select id="animation-state-selector"></select>
-                        <button id="animation-play-btn">▶️</button>
-                        <button id="animation-stop-btn">⏹️</button>
+                        <button id="animation-play-btn"><img src="icons/play.svg" class="ce-icon"></button>
+                        <button id="animation-stop-btn"><img src="icons/stop.svg" class="ce-icon"></button>
                         <label for="animation-speed">Velocidad:</label>
                         <input type="number" id="animation-speed" value="10" min="1">
                         <span>FPS</span>
-                        <button id="add-frame-btn">➕ Añadir Frame</button>
-                        <button id="animation-import-btn" title="Importar imagen(es) como fotogramas">📥 Importar</button>
-                        <button id="delete-frame-btn" title="Borrar Frame Seleccionado">🗑️</button>
-                        <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo">▲</button>
+                        <button id="add-frame-btn"><img src="icons/plus.svg" class="ce-icon"> Añadir Frame</button>
+                        <button id="animation-import-btn" title="Importar imagen(es) como fotogramas"><img src="icons/download.svg" class="ce-icon"> Importar</button>
+                        <button id="delete-frame-btn" title="Borrar Frame Seleccionado"><img src="icons/trash.svg" class="ce-icon"></button>
+                        <button id="timeline-toggle-btn" title="Ocultar/Mostrar Línea de Tiempo"><img src="icons/arrow-up.svg" class="ce-icon"></button>
                     </div>
                     <div id="animation-content-container">
                         <div id="animation-edit-view">
@@ -524,17 +524,17 @@ public star() {
                             <div id="timeline-resizer"></div>
                             <div id="animation-editor-main">
                                 <div id="drawing-tools">
-                                    <button class="tool-btn active" data-tool="pencil" title="Lápiz">✏️</button>
-                                    <button class="tool-btn" data-tool="eraser" title="Goma de Borrar">🧼</button>
+                                    <button class="tool-btn active" data-tool="pencil" title="Lápiz"><img src="icons/pencil.svg" class="ce-icon"></button>
+                                    <button class="tool-btn" data-tool="eraser" title="Goma de Borrar"><img src="icons/eraser.svg" class="ce-icon"></button>
                                     <input type="color" id="drawing-color-picker" value="#ffffff" title="Selector de Color">
                                     <hr>
-                                    <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre">✍️</button>
-                                    <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel">▦</button>
+                                    <button class="tool-btn active" data-draw-mode="free" title="Dibujo Libre"><img src="icons/pencil.svg" class="ce-icon"></button>
+                                    <button class="tool-btn" data-draw-mode="pixel" title="Modo Píxel"><img src="icons/grid.svg" class="ce-icon"></button>
                                 </div>
                                 <div id="animation-view-tools">
-                                    <button id="anim-bg-toggle-btn" class="tool-btn" title="Cambiar Fondo (Blanco/Transparente)">⬛</button>
-                                    <button id="anim-grid-toggle-btn" class="tool-btn active" title="Mostrar/Ocultar Rejilla">ızgara</button>
-                                    <button id="anim-onion-toggle-btn" class="tool-btn active" title="Activar/Desactivar Onion Skin">🧅</button>
+                                    <button id="anim-bg-toggle-btn" class="tool-btn" title="Cambiar Fondo (Blanco/Transparente)"><img src="icons/square.svg" class="ce-icon"></button>
+                                    <button id="anim-grid-toggle-btn" class="tool-btn active" title="Mostrar/Ocultar Rejilla"><img src="icons/grid.svg" class="ce-icon"></button>
+                                    <button id="anim-onion-toggle-btn" class="tool-btn active" title="Activar/Desactivar Onion Skin"><img src="icons/onion.svg" class="ce-icon"></button>
                                 </div>
                                 <div id="drawing-canvas-container">
                                     <canvas id="anim-grid-canvas" width="512" height="512"></canvas>
@@ -595,8 +595,8 @@ public star() {
                         <div id="animator-states-list" class="anim-sidebar-section">
                             <div class="list-header">Estados</div>
                             <div class="list-toolbar">
-                                <button id="anim-state-add-btn" title="Añadir Estado">➕</button>
-                                <button id="anim-state-delete-btn" title="Eliminar Estado">➖</button>
+                                <button id="anim-state-add-btn" title="Añadir Estado"><img src="icons/plus.svg" class="ce-icon"></button>
+                                <button id="anim-state-delete-btn" title="Eliminar Estado"><img src="icons/minus.svg" class="ce-icon"></button>
                             </div>
                             <div class="list-content"></div>
                         </div>
@@ -619,8 +619,8 @@ public star() {
                 <div class="panel-header">
                     <span id="current-ui-asset-name">Editor de UI</span>
                     <div id="ui-canvas-toolbar">
-                        <button id="ui-editor-save-btn" title="Guardar Asset UI">💾 Guardar</button>
-                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas">🗖</button>
+                        <button id="ui-editor-save-btn" title="Guardar Asset UI"><img src="icons/save.svg" class="ce-icon"> Guardar</button>
+                        <button id="ui-canvas-maximize-btn" title="Maximizar Canvas"><img src="icons/maximize-2.svg" class="ce-icon"></button>
                     </div>
                     <button class="close-panel-btn" data-panel="ui-editor-panel">&times;</button>
                 </div>
@@ -655,7 +655,7 @@ public star() {
                 <div class="panel-header">
                     <span>Tienda de Asset</span>
                     <div class="panel-header-controls">
-                        <button id="btn-open-asset-store-ext" class="panel-tool-btn" title="Abrir en nueva pestaña">↗️</button>
+                        <button id="btn-open-asset-store-ext" class="panel-tool-btn" title="Abrir en nueva pestaña"><img src="icons/external-link.svg" class="ce-icon"></button>
                         <button class="close-panel-btn" data-panel="asset-store-panel">&times;</button>
                     </div>
                 </div>
@@ -705,7 +705,7 @@ public star() {
                         </div>
                         <div id="carl-ia-input-area">
                             <textarea id="carl-ia-input" placeholder="Escribe tu mensaje..."></textarea>
-                            <button id="carl-ia-send-btn">➤</button>
+                            <button id="carl-ia-send-btn"><img src="icons/skip-forward.svg" class="ce-icon" style="filter: brightness(0) invert(1);"></button>
                         </div>
                     </div>
                     <div id="carl-ia-activity-view" class="carl-view">
@@ -799,7 +799,7 @@ public star() {
     <div id="context-menu" class="context-menu" style="display: none;">
         <ul>
             <li class="has-submenu">
-                Crear <span class="arrow">▶</span>
+                Crear <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                 <ul class="submenu">
                     <li data-action="create-folder">Carpeta</li>
                     <li data-action="create-script">Script (.ces)</li>
@@ -837,7 +837,7 @@ public star() {
                     <li data-action="create-camera">Cámara</li>
                     <hr>
                     <li class="has-submenu">
-                        Mater 2D <span class="arrow">▶</span>
+                        Mater 2D <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-sprite">Sprite</li>
                             <li data-action="create-tilemap">Tilemap</li>
@@ -850,7 +850,7 @@ public star() {
                         </ul>
                     </li>
                     <li class="has-submenu">
-                        UI <span class="arrow">▶</span>
+                        UI <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-canvas">Canvas</li>
                             <li data-action="create-ui-image">Image</li>
@@ -860,7 +860,7 @@ public star() {
                         </ul>
                     </li>
                     <li class="has-submenu">
-                        Luz <span class="arrow">▶</span>
+                        Luz <span class="arrow"><img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; vertical-align: middle;"></span>
                         <ul class="submenu">
                             <li data-action="create-point-light">Point Light</li>
                             <li data-action="create-spot-light">Spot Light</li>
@@ -1361,7 +1361,7 @@ public star() {
     <div id="verification-system-panel" class="editor-panel floating-panel hidden">
         <div class="panel-header">
             <span>Sistema de Verificación</span>
-            <button class="close-panel-btn" data-panel="verification-system-panel" title="Cerrar Panel">✖</button>
+            <button class="close-panel-btn" data-panel="verification-system-panel" title="Cerrar Panel"><img src="icons/x.svg" class="ce-icon"></button>
         </div>
         <div class="panel-content">
             <div id="verification-tile-preview">
@@ -1387,9 +1387,9 @@ public star() {
             </div>
             <div id="music-controls">
                 <button id="music-add-btn">Añadir</button>
-                <button id="music-prev-btn">⏮️</button>
-                <button id="music-play-pause-btn">▶️</button>
-                <button id="music-next-btn">⏭️</button>
+                <button id="music-prev-btn"><img src="icons/skip-back.svg" class="ce-icon"></button>
+                <button id="music-play-pause-btn"><img src="icons/play.svg" class="ce-icon"></button>
+                <button id="music-next-btn"><img src="icons/skip-forward.svg" class="ce-icon"></button>
                 <input type="range" id="music-volume-slider" min="0" max="1" step="0.01" value="0.5">
             </div>
         </div>
@@ -1407,7 +1407,7 @@ public star() {
         <div class="panel-header">
             <span id="palette-asset-name">Paleta de Tiles</span>
             <div class="panel-header-controls">
-                 <button id="palette-save-btn" title="Guardar Paleta">💾</button>
+                 <button id="palette-save-btn" title="Guardar Paleta"><img src="icons/save.svg" class="ce-icon"></button>
                  <button class="close-panel-btn" data-panel="tile-palette-panel">&times;</button>
             </div>
         </div>
@@ -1420,11 +1420,11 @@ public star() {
                         <button id="palette-load-btn" class="panel-tool-btn">Cargar</button>
                     </div>
                     <div class="tool-bubble">
-                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles">🖌️</button>
-                        <button id="palette-tool-bucket" class="tool-btn" data-tool="tile-bucket" title="Relleno Rectangular">🪣</button>
-                        <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Selección Múltiple">🖼️</button>
-                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles">🧼</button>
-                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Modo Organizar">✏️</button>
+                        <button id="palette-tool-brush" class="tool-btn active" data-tool="tile-brush" title="Pincel de Tiles"><img src="icons/brush.svg" class="ce-icon"></button>
+                        <button id="palette-tool-bucket" class="tool-btn" data-tool="tile-bucket" title="Relleno Rectangular"><img src="icons/bucket.svg" class="ce-icon"></button>
+                        <button id="palette-tool-rect" class="tool-btn" data-tool="tile-rectangle-fill" title="Selección Múltiple"><img src="icons/image.svg" class="ce-icon"></button>
+                        <button id="palette-tool-eraser" class="tool-btn" data-tool="tile-eraser" title="Goma de Tiles"><img src="icons/eraser.svg" class="ce-icon"></button>
+                        <button id="palette-edit-btn" class="tool-btn" data-tool="organize" title="Modo Organizar"><img src="icons/pencil.svg" class="ce-icon"></button>
                     </div>
                     <div class="toolbar-group">
                         <label>Tile:</label>
@@ -1435,9 +1435,9 @@ public star() {
             <div id="palette-main-content" style="display: flex; flex: 1; overflow: hidden;">
                 <div id="palette-organize-sidebar" class="hidden" style="width: 200px; background-color: var(--color-background-deep); padding: 5px; display: flex; flex-direction: column;">
                     <div class="sidebar-header" style="margin-bottom: 10px; display: flex; gap: 5px;">
-                        <button id="palette-associate-sprite-btn" class="panel-tool-btn" title="Asociar Spritesheet">+</button>
-                        <button id="palette-disassociate-sprite-btn" class="panel-tool-btn" title="Desasociar Spritesheet">-</button>
-                        <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite de la Paleta">🗑️</button>
+                        <button id="palette-associate-sprite-btn" class="panel-tool-btn" title="Asociar Spritesheet"><img src="icons/plus.svg" class="ce-icon"></button>
+                        <button id="palette-disassociate-sprite-btn" class="panel-tool-btn" title="Desasociar Spritesheet"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button id="palette-delete-sprite-btn" class="panel-tool-btn danger-btn" title="Eliminar Sprite de la Paleta"><img src="icons/trash.svg" class="ce-icon"></button>
                     </div>
                     <div id="palette-sprite-pack-list" style="overflow-y: auto; flex-grow: 1;">
                         <!-- Associated sprite previews will be here -->

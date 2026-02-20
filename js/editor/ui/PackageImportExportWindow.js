@@ -36,7 +36,8 @@ async function populateFileTree(container, dirHandle, pathPrefix = '') {
             exportFileHandleMap.set(currentPath, entry); // Store handle in map
 
             const label = document.createElement('label');
-            label.textContent = ` ${entry.kind === 'directory' ? '📁' : '📄'} ${entry.name}`;
+            const iconHTML = entry.kind === 'directory' ? '<img src="icons/folder.svg" class="ce-icon">' : '<img src="icons/file.svg" class="ce-icon">';
+            label.innerHTML = ` ${iconHTML} ${entry.name}`;
 
             itemDiv.appendChild(checkbox);
             itemDiv.appendChild(label);
@@ -156,7 +157,8 @@ async function handleImport() {
             checkbox.dataset.path = path;
 
             const label = document.createElement('label');
-            label.textContent = ` ${path.endsWith('/') ? '📁' : '📄'} ${path.split('/').pop() || path}`;
+            const iconHTML = path.endsWith('/') ? '<img src="icons/folder.svg" class="ce-icon">' : '<img src="icons/file.svg" class="ce-icon">';
+            label.innerHTML = ` ${iconHTML} ${path.split('/').pop() || path}`;
 
             itemDiv.appendChild(checkbox);
             itemDiv.appendChild(label);

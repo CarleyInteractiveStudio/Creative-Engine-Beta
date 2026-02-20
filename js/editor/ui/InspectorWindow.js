@@ -40,25 +40,32 @@ const availableComponents = {
 };
 
 const componentIcons = {
-    Transform: '✥', Rigidbody2D: '🏋️', BoxCollider2D: '🟩', CapsuleCollider2D: '💊', PolygonCollider2D: '⬡', SpriteRenderer: '🖼️',
-    Animator: '🏃', AnimatorController: '🕹️', Camera: '📷', CreativeScript: '📜',
-    UITransform: '⎚', UICanvas: '🖼️', UIImage: '🏞️', PointLight2D: '💡', SpotLight2D: '🔦', FreeformLight2D: '✏️', SpriteLight2D: '🎇',
-    Grid: '▦', Tilemap: '🗺️', TilemapRenderer: '🖌️', TilemapCollider2D: '▦',
-    Terreno2D: '⛰️', TerrenoCollider2D: '⛰️',
-    Button: '🖲️', UIText: '📝', Canvas: '🖼️',
-    Movement: '🏃', CameraFollow: '📹', Parallax: '🏔️', DrawingOrder: '🥞', ProjectileLauncher: '🚀', AutoDestroy: '⏱️', Health: '❤️', Patrol: '🛤️',
-    'ParticleSystem': '✨',
-    'Gyzmo': '🎯'
+    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
+    Animator: 'run', AnimatorController: 'gamepad', Camera: 'camera', CreativeScript: 'scroll',
+    UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
+    Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
+    Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
+    Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
+    Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
+    'ParticleSystem': 'sparkles',
+    'Gyzmo': 'target'
 };
 
 const fileIcons = {
-    png: '🖼️', jpg: '🖼️', jpeg: '🖼️',
-    mp3: '🔊', wav: '🔊',
-    ceprefab: '🧊',
-    ceScene: '🎬',
-    ces: '📜',
-    chc: '🤖',
-    cea: '🎞️'
+    png: 'image', jpg: 'image', jpeg: 'image',
+    mp3: 'music', wav: 'music',
+    ceprefab: 'box',
+    ceScene: 'clapperboard',
+    ces: 'scroll',
+    chc: 'bot',
+    cea: 'clapperboard'
+};
+
+const getIconHTML = (iconName) => {
+    if (!iconName) return '';
+    if (iconName.startsWith('<')) return iconName;
+    const path = iconName.includes('/') ? iconName : `icons/${iconName}.svg`;
+    return `<img src="${path}" class="ce-icon">`;
 };
 
 const typeExtensionMap = {
@@ -1010,10 +1017,11 @@ export async function updateInspector() {
 }
 
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
+    const iconHTML = getIconHTML(icon);
     return `
         <div class="component-header" data-ley-index="${leyIndex}">
             <div class="component-header-main">
-                <span class="component-icon">${icon}</span>
+                <span class="component-icon">${iconHTML}</span>
                 <h4>${title}</h4>
             </div>
             <div class="component-header-controls">
@@ -1055,7 +1063,7 @@ function renderLightColorPresets(componentName) {
 
 function renderPropertyDropper(type, currentValue, commonAttrs) {
     let displayName = 'None';
-    let icon = '❓';
+    let icon = 'help-circle';
 
     // Handle Materia object or ID
     let value = currentValue;
@@ -1071,26 +1079,28 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             const materia = window.SceneManager.currentScene.findMateriaById(value);
             displayName = materia ? materia.name : `Objeto #${value}`;
             // If type is a specific component, use its icon, otherwise use generic Materia icon
-            icon = componentIcons[type] || '✥';
+            icon = componentIcons[type] || 'move';
         } else if (typeof value === 'string') {
             // Assume Asset Path
             displayName = currentValue.split('/').pop();
             const ext = currentValue.split('.').pop().toLowerCase();
-            icon = fileIcons[ext] || '📄';
+            icon = fileIcons[ext] || 'file';
 
             // Check if it's a reference to a Materia by name (old system)
             if (type === 'Materia' && !currentValue.includes('/')) {
-                icon = '✥';
+                icon = 'move';
             }
         }
     } else {
         displayName = `Ninguno (${type})`;
-        icon = componentIcons[type] || '❓';
-        if (type === 'Sprite') icon = '🖼️';
-        if (type === 'Audio') icon = '🔊';
-        if (type === 'Prefab') icon = '📦';
-        if (type === 'Scene') icon = '🎬';
+        icon = componentIcons[type] || 'help-circle';
+        if (type === 'Sprite') icon = 'image';
+        if (type === 'Audio') icon = 'music';
+        if (type === 'Prefab') icon = 'box';
+        if (type === 'Scene') icon = 'clapperboard';
     }
+
+    const iconHTML = getIconHTML(icon);
 
     // Ensure commonAttrs includes the class but doesn't double it
     if (!commonAttrs.includes('class=')) {
@@ -1104,7 +1114,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
     return `
         <div ${commonAttrs} data-expected-type="${type}">
             <div class="dropper-main">
-                <span class="dropper-icon">${icon}</span>
+                <span class="dropper-icon">${iconHTML}</span>
                 <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
             </div>
         </div>
@@ -1232,8 +1242,8 @@ async function updateInspectorForMateria(selectedMateria) {
         console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
-        const icon = componentIcons[componentName] || '⚙️';
-        const iconHTML = `<span class="component-icon">${icon}</span>`;
+        const icon = componentIcons[componentName] || 'settings';
+        const iconHTML = `<span class="component-icon">${getIconHTML(icon)}</span>`;
 
         if (ley instanceof Components.TextureRender) {
             let dimensionsHTML = '';
@@ -1435,7 +1445,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">🎯</button></div></div>
+                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">${getIconHTML('target')}</button></div></div>
                 <div class="prop-row-multi">
                     <label>Color</label>
                     <div class="prop-inputs">
@@ -1447,7 +1457,7 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.UIText) {
             const fontName = ley.fontAssetPath ? ley.fontAssetPath.split('/').pop() : 'Default';
             componentHTML = `
-                ${renderComponentHeader("UI Text", "📝", index)}
+                ${renderComponentHeader("UI Text", "type", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Text</label>
@@ -1491,7 +1501,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const ssResolution = ley.referenceResolution || { width: 800, height: 600 };
 
             componentHTML = `
-                ${renderComponentHeader("Canvas", "🖼️", index)}
+                ${renderComponentHeader("Canvas", "image", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Render Mode</label>
@@ -1538,7 +1548,7 @@ async function updateInspectorForMateria(selectedMateria) {
             const isSpriteSwap = ley.transition === 'Sprite Swap';
             const isAnimation = ley.transition === 'Animation';
             componentHTML = `
-                ${renderComponentHeader("Button", "🖲️", index)}
+                ${renderComponentHeader("Button", "mouse-pointer", index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
@@ -1682,7 +1692,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="Pivot X">
                             <input type="number" class="prop-input" step="0.01" data-component="SpriteRenderer" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="Pivot Y">
-                            <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">🎯</button>
+                            <button class="small-btn" data-action="center-sprite-pivot" title="Centrar Pivot (0.5, 0.5)">${getIconHTML('target')}</button>
                             <button class="small-btn" data-action="auto-pivot-sprite" title="Ajustar al Contenido (Auto-Pivot)" style="font-size: 10px; padding: 2px 4px;">AUTO</button>
                         </div>
                     </div>
@@ -1946,7 +1956,7 @@ async function updateInspectorForMateria(selectedMateria) {
             // Safeguard against corrupted layer data from old scene files
             if (!ley.layers || !Array.isArray(ley.layers)) {
                 componentHTML = `
-                    ${renderComponentHeader('Tilemap', '🗺️', index)}
+                    ${renderComponentHeader('Tilemap', 'map', index)}
                     <div class="component-content">
                         <p class="error-message">Los datos de las capas del Tilemap están corruptos. Vuelva a guardar la escena para intentar repararlos.</p>
                     </div>
@@ -1976,7 +1986,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
 
                 componentHTML = `
-                    ${renderComponentHeader('Tilemap', '🗺️', index)}
+                    ${renderComponentHeader('Tilemap', 'map', index)}
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
@@ -2005,7 +2015,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
-                ${renderComponentHeader('Tilemap Renderer', '🖌️', index)}
+                ${renderComponentHeader('Tilemap Renderer', 'brush', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label>Order in Layer</label>
@@ -2023,7 +2033,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                ${renderComponentHeader('Tilemap Collider 2D', '▦', index)}
+                ${renderComponentHeader('Tilemap Collider 2D', 'grid', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
                         <label for="collider-source-layer">Capa de Origen</label>
@@ -2124,7 +2134,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>Sprite</label>
                         <div class="sprite-dropper">
                             <div class="sprite-preview">${previewImg}</div>
-                            <button class="sprite-select-btn" data-component="SpriteLight2D">🎯</button>
+                            <button class="sprite-select-btn" data-component="SpriteLight2D">${getIconHTML('target')}</button>
                         </div>
                     </div>
                     <div class="prop-row-multi">
@@ -2209,7 +2219,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 }
             }
             componentHTML = `
-                ${renderComponentHeader(ley.definition.nombre, '⚙️', index)}
+                ${renderComponentHeader(ley.definition.nombre, 'settings', index)}
                 <div class="component-content">
                     ${publicVarsHTML || '<p class="field-description">Este componente no tiene propiedades públicas.</p>'}
                 </div>
@@ -2998,6 +3008,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 const canvas = document.getElementById('anim-preview-canvas');
                 const playBtn = document.getElementById('anim-preview-play');
                 const stopBtn = document.getElementById('anim-preview-stop');
+            if (playBtn) playBtn.innerHTML = getIconHTML('play');
+            if (stopBtn) stopBtn.innerHTML = getIconHTML('stop');
                 const speedInput = document.getElementById('anim-preview-speed');
                 const colsInput = document.getElementById('anim-columns');
                 const rowsInput = document.getElementById('anim-rows');
@@ -3149,7 +3161,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
 
             const controls = document.createElement('div');
             const playBtn = document.createElement('button');
-            playBtn.textContent = '▶️ Play';
+            playBtn.innerHTML = `${getIconHTML('play')} Play`;
 
             let isPlaying = false;
             let playbackId = null;
@@ -3158,7 +3170,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             playBtn.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 if (isPlaying) {
-                    playBtn.textContent = '⏹️ Stop';
+                    playBtn.innerHTML = `${getIconHTML('stop')} Stop`;
                     let lastTime = performance.now();
 
                     function loop(time) {
@@ -3173,7 +3185,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                     playbackId = requestAnimationFrame(loop);
 
                 } else {
-                    playBtn.textContent = '▶️ Play';
+                    playBtn.innerHTML = `${getIconHTML('play')} Play`;
                     cancelAnimationFrame(playbackId);
                     timeline.childNodes.forEach(node => node.style.border = 'none');
                 }
@@ -3232,7 +3244,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             const preview = document.createElement('div');
             preview.className = 'asset-preview';
             preview.innerHTML = `
-                <span class="asset-preview-icon" style="font-size: 48px;">🎬</span>
+                <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px; margin: 0 auto;">${getIconHTML('clapperboard')}</span>
                 <p><strong>Scene</strong></p>
                 <p>Doble-click en el Navegador para abrir la escena.</p>
             `;
@@ -3344,7 +3356,7 @@ export async function showAddComponentModal() {
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             componentItem.innerHTML = `
                 <span>${ComponentClass.name}</span>
-                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
             componentItem.addEventListener('click', () => {
@@ -3393,7 +3405,7 @@ export async function showAddComponentModal() {
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
             componentItem.innerHTML = `
                 <span>${name}</span>
-                ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 
             componentItem.addEventListener('click', () => {
@@ -3467,7 +3479,7 @@ export async function showAddComponentModal() {
                 componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
                 componentItem.innerHTML = `
                     <span>${fileHandle.name}</span>
-                    ${isPresent ? '<span class="component-item-indicator">✓</span>' : ''}
+                ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
                 `;
 
                 componentItem.addEventListener('click', () => {

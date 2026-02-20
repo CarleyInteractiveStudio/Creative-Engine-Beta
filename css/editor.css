@@ -175,6 +175,24 @@ body.is-dragging-panel {
 
 /* Theme switcher styles removed as the element was deleted. */
 
+.ce-icon {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    filter: brightness(0) invert(0.9); /* Makes them light gray/white */
+    pointer-events: none;
+}
+
+.toolbar-btn .ce-icon, .panel-tool-btn .ce-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.game-controls .ce-icon {
+    width: 20px;
+    height: 20px;
+}
+
 
 body {
     font-family: var(--font-family);
@@ -3161,16 +3179,24 @@ body {
 }
 
 .asset-item::before {
-    content: '📄'; /* Default file icon */
-    font-size: 1.2em;
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    background-image: url('../icons/file.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+    filter: brightness(0) invert(0.9);
 }
 
 .asset-item.folder::before {
-    content: '📁';
+    background-image: url('../icons/folder.svg');
 }
 
 .asset-item.script::before {
-    content: '📜';
+    background-image: url('../icons/scroll.svg');
 }
 
 

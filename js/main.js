@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const openFolderBtn = document.createElement('div');
                 openFolderBtn.className = 'open-folder-btn';
-                openFolderBtn.textContent = '📁';
+                openFolderBtn.innerHTML = '<img src="icons/folder.svg" class="ce-icon" style="filter: invert(0.5);">';
                 openFolderBtn.title = 'Mostrar nombre de la carpeta del proyecto';
 
                 projectItem.appendChild(projectNameEl);
@@ -514,7 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleMusic() {
         music.muted = !music.muted;
-        muteBtn.textContent = music.muted ? '🔇' : '🔊';
+        muteBtn.innerHTML = music.muted ?
+            '<img src="icons/volume-x.svg" class="ce-icon" style="filter: brightness(0) invert(0.9) opacity(0.5);">' :
+            '<img src="icons/volume-2.svg" class="ce-icon">';
         localStorage.setItem('musicMuted', music.muted);
     }
 
@@ -535,7 +537,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Restore mute state from previous session
         if (localStorage.getItem('musicMuted') === 'true') {
             music.muted = true;
-            muteBtn.textContent = '🔇';
+            muteBtn.innerHTML = '<img src="icons/volume-x.svg" class="ce-icon" style="filter: brightness(0) invert(0.9) opacity(0.5);">';
+        } else {
+            muteBtn.innerHTML = '<img src="icons/volume-2.svg" class="ce-icon">';
         }
         muteBtn.addEventListener('click', toggleMusic);
     }

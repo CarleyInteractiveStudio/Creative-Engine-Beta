@@ -126,7 +126,7 @@ export function createFloatingPanel(id, options = {}) {
         <div class="panel-header">
             <span>${title}</span>
             <div class="panel-header-controls">
-                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar">🗖</button>
+                <button class="panel-tool-btn maximize-btn" title="Maximizar/Restaurar"><img src="icons/maximize-2.svg" class="ce-icon"></button>
                 <button class="close-panel-btn" data-panel="${id}">&times;</button>
             </div>
         </div>
