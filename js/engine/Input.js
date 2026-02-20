@@ -16,6 +16,10 @@ class InputManager {
     static _mousePosition = { x: 0, y: 0 };
     static _mousePositionInCanvas = { x: 0, y: 0 };
     static _canvasRect = null;
+    static _sceneCanvas = null;
+    static _gameCanvas = null;
+    static _activeCanvas = null;
+    static _isGameRunning = false;
 
     static get sceneCanvas() { return this._sceneCanvas; }
     static get gameCanvas() { return this._gameCanvas; }
@@ -394,9 +398,10 @@ class InputManager {
     }
 
     static _onWheel(event) {
-        // If the scroll event is on the scene canvas, we do nothing here.
-        // The dedicated listener in `SceneView.js` will handle it, including preventDefault.
-        if (this._canvas && this._canvas.contains(event.target)) {
+        // If the scroll event is on one of the canvases, we do nothing here.
+        // The dedicated listener in `SceneView.js` (for editor) or standalone logic will handle it.
+        if ((this._sceneCanvas && this._sceneCanvas.contains(event.target)) ||
+            (this._gameCanvas && this._gameCanvas.contains(event.target))) {
             return;
         }
 

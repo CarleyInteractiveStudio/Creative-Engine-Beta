@@ -65,8 +65,12 @@ export class Renderer {
         const oldWidth = this.canvas.width;
         const oldHeight = this.canvas.height;
         
-        this.canvas.width = this.canvas.clientWidth;
-        this.canvas.height = this.canvas.clientHeight;
+        // Safety check for client dimensions
+        const clientWidth = this.canvas.clientWidth || this.canvas.width || 800;
+        const clientHeight = this.canvas.clientHeight || this.canvas.height || 600;
+
+        this.canvas.width = clientWidth;
+        this.canvas.height = clientHeight;
         this.lightMapCanvas.width = this.canvas.width;
         this.lightMapCanvas.height = this.canvas.height;
         this.allLightsCanvas.width = this.canvas.width;
@@ -74,8 +78,20 @@ export class Renderer {
         
         const rendererType = this.isEditor ? 'EDITOR' : 'GAME';
         const containerElement = this.canvas.parentElement;
-        const containerDisplay = window.getComputedStyle(containerElement).display;
-        const containerVisible = containerElement.offsetParent !== null;
+
+        let containerDisplay = "block";
+        let containerVisible = true;
+
+        if (containerElement) {
+            try {
+                const win = containerElement.ownerDocument.defaultView || window;
+                const style = win.getComputedStyle(containerElement);
+                containerDisplay = style.display;
+                containerVisible = containerElement.offsetParent !== null;
+            } catch (e) {
+                // Fallback for cross-window or other issues
+            }
+        }
         
         console.log(`%c[resize ${rendererType}] canvas="${this.canvas.id}", clientSize=(${this.canvas.clientWidth}x${this.canvas.clientHeight}), canvasSize=(${this.canvas.width}x${this.canvas.height}), containerDisplay="${containerDisplay}", visible=${containerVisible}`, `color: ${this.isEditor ? '#FF6600' : '#00FF00'};`);
     }

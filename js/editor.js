@@ -73,11 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGamePaused = false;
     let lastFrameTime = 0;
     let gameWindow = null;
+    let isExternalRunnerReady = false;
 
     // --- External Game Window Listener ---
     window.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'CE_RUNNER_READY') {
             console.log("[Editor] External Game Runner Ready!");
+            isExternalRunnerReady = true;
             window.dispatchEvent(new CustomEvent('CE_EXTERNAL_RUNNER_READY'));
         }
     });
@@ -1833,19 +1835,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Wait for the runner to be ready
-            await new Promise(resolve => {
-                const onReady = () => {
-                    window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
-                    resolve();
-                };
-                window.addEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+            if (!isExternalRunnerReady) {
+                await new Promise(resolve => {
+                    const onReady = () => {
+                        window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+                        resolve();
+                    };
+                    window.addEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
 
-                // Safety timeout
-                setTimeout(() => {
-                    window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
-                    resolve();
-                }, 5000);
-            });
+                    // Safety timeout
+                    setTimeout(() => {
+                        window.removeEventListener('CE_EXTERNAL_RUNNER_READY', onReady);
+                        resolve();
+                    }, 5000);
+                });
+            }
 
             const externalCanvas = gameWindow.document.getElementById('game-canvas');
             if (externalCanvas) {
@@ -1957,6 +1961,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameWindow.close();
             }
             gameWindow = null;
+            isExternalRunnerReady = false;
             // Restore original game canvas
             gameRenderer.setCanvas(dom.gameCanvas);
             InputManager.setGameCanvas(dom.gameCanvas);
