@@ -40,6 +40,7 @@ const componentAliases = {
     'UITransform': 'transformacionUI',
     'UIText': 'textoUI',
     'Button': 'boton',
+    'UIEventTrigger': 'disparadorDeEventosUI',
     'CustomComponent': 'componentePersonalizado',
     'Parallax': 'parallax',
     'Movement': 'movimiento',
@@ -801,7 +802,14 @@ export class CreativeScript extends Leyes {
                     alEntrarEnTrigger: ['OnTriggerEnter'],
                     alPermanecerEnTrigger: ['OnTriggerStay'],
                     alSalirDeTrigger: ['OnTriggerExit'],
-                    alFinalizarAnimacion: ['OnAnimationEnd']
+                    alFinalizarAnimacion: ['OnAnimationEnd'],
+                    onPointerDown: ['alPresionar'],
+                    onPointerUp: ['alSoltar'],
+                    onPointerEnter: ['alEntrar'],
+                    onPointerExit: ['alSalir'],
+                    onPointerClick: ['alHacerClick'],
+                    onPointerDrag: ['alDeslizar'],
+                    onPointerHold: ['alMantener']
                 };
 
                 for (const [canonical, aliases] of Object.entries(aliasMap)) {
@@ -2624,6 +2632,32 @@ export class Button extends Leyes {
     }
 }
 registerComponent('Button', Button);
+
+export class UIEventTrigger extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.interactable = true;
+        this.showGizmo = true; // For editor visualization
+        this.events = {
+            onPointerDown: [],
+            onPointerUp: [],
+            onPointerEnter: [],
+            onPointerExit: [],
+            onPointerClick: [],
+            onPointerDrag: [],
+            onPointerHold: []
+        };
+    }
+
+    clone() {
+        const newTrigger = new UIEventTrigger(null);
+        newTrigger.interactable = this.interactable;
+        newTrigger.showGizmo = this.showGizmo;
+        newTrigger.events = JSON.parse(JSON.stringify(this.events));
+        return newTrigger;
+    }
+}
+registerComponent('UIEventTrigger', UIEventTrigger);
 
 registerComponent('PointLight2D', PointLight2D);
 registerComponent('SpotLight2D', SpotLight2D);

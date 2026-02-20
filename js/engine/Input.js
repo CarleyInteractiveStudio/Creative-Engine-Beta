@@ -15,6 +15,8 @@ class InputManager {
 
     static _mousePosition = { x: 0, y: 0 };
     static _mousePositionInCanvas = { x: 0, y: 0 };
+    static _mouseDelta = { x: 0, y: 0 };
+    static _buttonsDownTime = new Map();
     static _canvasRect = null;
     static _sceneCanvas = null;
     static _gameCanvas = null;
@@ -70,6 +72,8 @@ class InputManager {
         this._keysUp.clear();
         this._buttonsDown.clear();
         this._buttonsUp.clear();
+        this._mouseDelta.x = 0;
+        this._mouseDelta.y = 0;
 
         // Use the currently active canvas (scene or game) to compute canvas-relative positions
         if (this._activeCanvas) {
@@ -333,6 +337,9 @@ class InputManager {
 
     // Unified handlers
     static _updatePointerPosition(clientX, clientY, canvasRect) {
+        this._mouseDelta.x += clientX - this._mousePosition.x;
+        this._mouseDelta.y += clientY - this._mousePosition.y;
+
         this._mousePosition.x = clientX;
         this._mousePosition.y = clientY;
 
@@ -345,6 +352,7 @@ class InputManager {
     static _onPointerDown(button) {
         if (!this._mouseButtons.get(button)) {
             this._buttonsDown.add(button);
+            this._buttonsDownTime.set(button, performance.now());
         }
         this._mouseButtons.set(button, true);
     }
@@ -352,6 +360,7 @@ class InputManager {
     static _onPointerUp(button) {
         this._mouseButtons.set(button, false);
         this._buttonsUp.add(button);
+        this._buttonsDownTime.delete(button);
     }
 
     /**
@@ -395,6 +404,25 @@ class InputManager {
      */
     static getMousePositionInCanvas() {
         return this._mousePositionInCanvas;
+    }
+
+    /**
+     * Gets the mouse movement delta since the last frame.
+     * @returns {{x: number, y: number}}
+     */
+    static getMouseDelta() {
+        return this._mouseDelta;
+    }
+
+    /**
+     * Gets how many seconds a mouse button has been held down.
+     * @param {number} button
+     * @returns {number} Time in seconds.
+     */
+    static getMouseButtonDuration(button) {
+        if (!this._mouseButtons.get(button)) return 0;
+        const startTime = this._buttonsDownTime.get(button);
+        return startTime ? (performance.now() - startTime) / 1000 : 0;
     }
 
     static _onWheel(event) {

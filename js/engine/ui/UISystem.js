@@ -5,16 +5,21 @@ import * as UITransformUtils from '../UITransformUtils.js';
 
 let activeScene = null;
 let hoveredButton = null;
+let hoveredTriggers = new Set();
+let pressedTriggers = new Set();
 let originalSpriteCache = new WeakMap(); // Cache original sprites for sprite swap
 
 export function initialize(scene) {
     activeScene = scene;
+    hoveredTriggers.clear();
+    pressedTriggers.clear();
 }
 
 export function update(deltaTime) {
     if (!activeScene) return;
 
     handleButtonStates();
+    handleEventTriggers();
     checkForClicks();
 }
 
@@ -98,6 +103,160 @@ function handleButtonStates() {
     hoveredButton = currentHoveredButton;
 }
 
+function handleEventTriggers() {
+    if (!activeScene) return;
+    const canvases = activeScene.findAllMateriasWithComponent(Components.Canvas);
+    const mousePos = Input.getMousePosition();
+    const mouseDelta = Input.getMouseDelta();
+    const currentHoveredTriggers = new Set();
+
+    for (const canvasMateria of canvases) {
+        if (!canvasMateria.isActive) continue;
+        const canvas = canvasMateria.getComponent(Components.Canvas);
+        const triggers = activeScene.findAllMateriasWithComponent(Components.UIEventTrigger, canvasMateria);
+
+        for (const triggerMateria of triggers) {
+            if (!triggerMateria.isActive) continue;
+            const trigger = triggerMateria.getComponent(Components.UIEventTrigger);
+            if (!trigger.interactable) continue;
+
+            const screenRect = UITransformUtils.getScreenRect(triggerMateria, canvas);
+            const isHovered = mousePos.x >= screenRect.x && mousePos.x <= screenRect.x + screenRect.width &&
+                            mousePos.y >= screenRect.y && mousePos.y <= screenRect.y + screenRect.height;
+
+            if (isHovered) {
+                currentHoveredTriggers.add(trigger);
+            }
+        }
+    }
+
+    const eventData = {
+        position: mousePos,
+        delta: mouseDelta,
+        duration: 0,
+        localScroll: { x: 0, y: 0 } // Potential future use
+    };
+
+    // Enter events
+    for (const trigger of currentHoveredTriggers) {
+        if (!hoveredTriggers.has(trigger)) {
+            dispatchUIEvent(trigger, 'onPointerEnter', eventData);
+        }
+    }
+
+    // Exit events
+    for (const trigger of hoveredTriggers) {
+        if (!currentHoveredTriggers.has(trigger)) {
+            dispatchUIEvent(trigger, 'onPointerExit', eventData);
+        }
+    }
+
+    hoveredTriggers = currentHoveredTriggers;
+
+    // Down events
+    if (Input.getMouseButtonDown(0)) {
+        for (const trigger of hoveredTriggers) {
+            pressedTriggers.add(trigger);
+            dispatchUIEvent(trigger, 'onPointerDown', eventData);
+        }
+    }
+
+    // Drag and Hold events
+    if (Input.getMouseButton(0)) {
+        eventData.duration = Input.getMouseButtonDuration(0);
+        for (const trigger of pressedTriggers) {
+            // Drag
+            if (mouseDelta.x !== 0 || mouseDelta.y !== 0) {
+                dispatchUIEvent(trigger, 'onPointerDrag', eventData);
+            }
+            // Hold
+            if (eventData.duration > 0.5) {
+                 dispatchUIEvent(trigger, 'onPointerHold', eventData);
+            }
+        }
+    }
+
+    // Up and Click events
+    if (Input.getMouseButtonUp(0)) {
+        for (const trigger of pressedTriggers) {
+            dispatchUIEvent(trigger, 'onPointerUp', eventData);
+            if (hoveredTriggers.has(trigger)) {
+                dispatchUIEvent(trigger, 'onPointerClick', eventData);
+            }
+        }
+        pressedTriggers.clear();
+    }
+}
+
+function dispatchUIEvent(trigger, eventName, eventData = {}) {
+    if (!trigger || !trigger.events) return;
+
+    // Calculate local position relative to the trigger's center if possible
+    const triggerMateria = trigger.materia;
+    const canvasMateria = triggerMateria.findAncestorWithComponent(Components.Canvas);
+    if (canvasMateria) {
+        const canvas = canvasMateria.getComponent(Components.Canvas);
+        const screenRect = UITransformUtils.getScreenRect(triggerMateria, canvas);
+        if (screenRect) {
+            eventData.localHoldPosition = {
+                x: eventData.position.x - (screenRect.x + screenRect.width / 2),
+                y: eventData.position.y - (screenRect.y + screenRect.height / 2)
+            };
+            // Normalized position (-1 to 1)
+            eventData.normalizedPosition = {
+                x: eventData.localHoldPosition.x / (screenRect.width / 2),
+                y: eventData.localHoldPosition.y / (screenRect.height / 2)
+            };
+        }
+    }
+
+    const eventList = trigger.events[eventName];
+    if (eventList && eventList.length > 0) {
+        for (const event of eventList) {
+            executeUIEvent(event, eventData);
+        }
+    }
+
+    // Also try to call method on scripts directly if they exist
+    const scripts = trigger.materia.getComponents(Components.CreativeScript);
+    for (const script of scripts) {
+        if (script.instance) {
+            // Check for English name
+            if (typeof script.instance[eventName] === 'function') {
+                script.instance[eventName](eventData);
+            }
+            // Check for Spanish name
+            const spanishName = eventNameAliases[eventName];
+            if (spanishName && typeof script.instance[spanishName] === 'function') {
+                script.instance[spanishName](eventData);
+            }
+        }
+    }
+}
+
+const eventNameAliases = {
+    'onPointerDown': 'alPresionar',
+    'onPointerUp': 'alSoltar',
+    'onPointerEnter': 'alEntrar',
+    'onPointerExit': 'alSalir',
+    'onPointerClick': 'alHacerClick',
+    'onPointerDrag': 'alDeslizar',
+    'onPointerHold': 'alMantener'
+};
+
+function executeUIEvent(event, eventData) {
+    if (!event.targetMateriaId || !event.functionName) return;
+    const targetMateria = activeScene.findMateriaById(event.targetMateriaId);
+    if (!targetMateria) return;
+    const scripts = targetMateria.getComponents(Components.CreativeScript);
+    if (scripts.length === 0) return;
+    const targetScript = scripts.find(s => s.scriptName === event.scriptName) || scripts[0];
+    const scriptInstance = targetScript.instance;
+    if (scriptInstance && typeof scriptInstance[event.functionName] === 'function') {
+        scriptInstance[event.functionName](eventData);
+    }
+}
+
 function checkForClicks() {
     if (!Input.getMouseButtonDown(0) || !hoveredButton) {
         return;
@@ -127,16 +286,7 @@ function checkForClicks() {
     // --- Execute onClick Events ---
     if (button.onClick && button.onClick.length > 0) {
         for (const event of button.onClick) {
-            if (!event.targetMateriaId || !event.functionName) continue;
-            const targetMateria = activeScene.findMateriaById(event.targetMateriaId);
-            if (!targetMateria) continue;
-            const scripts = targetMateria.getComponents(Components.CreativeScript);
-            if (scripts.length === 0) continue;
-            const targetScript = scripts.find(s => s.scriptName === event.scriptName) || scripts[0];
-            const scriptInstance = targetScript.instance;
-            if (scriptInstance && typeof scriptInstance[event.functionName] === 'function') {
-                scriptInstance[event.functionName]();
-            }
+            executeUIEvent(event);
         }
     }
 }

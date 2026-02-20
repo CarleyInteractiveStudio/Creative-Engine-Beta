@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -595,6 +595,18 @@ export class Renderer {
             // Drawing Logic for the current element
             const uiImage = element.getComponent(UIImage);
             const uiText = element.getComponent(UIText);
+            const uiEventTrigger = element.getComponent(UIEventTrigger);
+
+            if (this.isEditor && uiEventTrigger && uiEventTrigger.showGizmo) {
+                this.ctx.save();
+                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(x, y, width, height);
+                this.ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+                this.ctx.fillRect(x, y, width, height);
+                this.ctx.restore();
+            }
             const textureRender = element.getComponent(TextureRender);
 
             if (uiImage) {
