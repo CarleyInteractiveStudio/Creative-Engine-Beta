@@ -1735,7 +1735,11 @@ document.addEventListener('DOMContentLoaded', () => {
         AmbienteControlWindow.update(deltaTime, isGameRunning);
         EngineAPI.CEEngine.update(deltaTime);
         if (uiSystem) {
-            uiSystem.update(deltaTime);
+            try {
+                uiSystem.update(deltaTime);
+            } catch (e) {
+                console.error("[UISystem] Error during update:", e);
+            }
         }
 
         if (isGameRunning) {

@@ -44,7 +44,7 @@ function handleButtonStates() {
                 if (button.transition === 'Color Tint' && image) image.color = button.colors.disabledColor;
                 else if (button.transition === 'Sprite Swap' && image && button.spriteSwap.disabledSprite) {
                     image.source = button.spriteSwap.disabledSprite;
-                    image.loadSprite(SceneManager.projectsDirHandle);
+                    image.loadSprite(window.projectsDirHandle);
                 } else if (button.transition === 'Animation' && animator && button.animationTriggers.disabledTrigger) {
                     animator.play(button.animationTriggers.disabledTrigger);
                 }
@@ -59,7 +59,7 @@ function handleButtonStates() {
                 currentHoveredButton = button;
                 if (button.transition === 'Sprite Swap' && image && button.spriteSwap.highlightedSprite) {
                     image.source = button.spriteSwap.highlightedSprite;
-                    image.loadSprite(SceneManager.projectsDirHandle);
+                    image.loadSprite(window.projectsDirHandle);
                 } else if (button.transition === 'Animation' && animator && button.animationTriggers.highlightedTrigger) {
                     animator.play(button.animationTriggers.highlightedTrigger);
                 }
@@ -67,8 +67,11 @@ function handleButtonStates() {
             } else {
                 if (button.transition === 'Color Tint' && image) image.color = button.colors.normalColor;
                 else if (button.transition === 'Sprite Swap' && image) {
-                    image.source = originalSpriteCache.get(button);
-                    image.loadSprite(SceneManager.projectsDirHandle);
+                    const originalSprite = originalSpriteCache.get(button);
+                    if (image.source !== originalSprite) {
+                        image.source = originalSprite;
+                        image.loadSprite(window.projectsDirHandle);
+                    }
                 }
             }
         }
@@ -82,8 +85,11 @@ function handleButtonStates() {
         if (hoveredButton.interactable) {
             if (hoveredButton.transition === 'Color Tint' && image) image.color = hoveredButton.colors.normalColor;
             else if (hoveredButton.transition === 'Sprite Swap' && image) {
-                image.source = originalSpriteCache.get(hoveredButton);
-                image.loadSprite(SceneManager.projectsDirHandle);
+                const originalSprite = originalSpriteCache.get(hoveredButton);
+                if (image.source !== originalSprite) {
+                    image.source = originalSprite;
+                    image.loadSprite(window.projectsDirHandle);
+                }
             } else if (hoveredButton.transition === 'Animation' && animator && hoveredButton.animationTriggers.highlightedTrigger) {
                 // Typically you'd have a "Normal" trigger, but for now, we do nothing to revert
             }
@@ -107,11 +113,11 @@ function checkForClicks() {
         setTimeout(() => { if (button.interactable) image.color = button.colors.normalColor; }, 150);
     } else if (button.transition === 'Sprite Swap' && image && button.spriteSwap.pressedSprite) {
         image.source = button.spriteSwap.pressedSprite;
-        image.loadSprite(SceneManager.projectsDirHandle);
+        image.loadSprite(window.projectsDirHandle);
         setTimeout(() => {
             if (button.interactable && hoveredButton === button && button.spriteSwap.highlightedSprite) {
                 image.source = button.spriteSwap.highlightedSprite;
-                image.loadSprite(SceneManager.projectsDirHandle);
+                image.loadSprite(window.projectsDirHandle);
             }
         }, 150);
     } else if (button.transition === 'Animation' && animator && button.animationTriggers.pressedTrigger) {

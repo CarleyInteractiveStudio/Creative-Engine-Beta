@@ -93,6 +93,11 @@ export class Scene {
         return this.getAllMaterias().filter(m => m.getComponent(Camera));
     }
 
+    findAllMateriasWithComponent(componentClass, rootMateria = null) {
+        const materias = rootMateria ? this.getMateriasRecursive(rootMateria) : this.getAllMaterias();
+        return materias.filter(m => m.getComponent(componentClass));
+    }
+
     getAllMaterias() {
         let all = [];
         for (const root of this.getRootMaterias()) {
