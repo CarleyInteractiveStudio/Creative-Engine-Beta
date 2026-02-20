@@ -1592,7 +1592,54 @@ export function drawOverlay() {
     drawCanvasGizmos();
     drawUIGizmos(renderer, getSelectedMateria());
 
+    drawRaycastGizmos();
+
     drawTerrainBrushGizmo();
+}
+
+function drawRaycastGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const raycastSource = selectedMateria.getComponent(Components.RaycastSource);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!raycastSource || !transform) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    ctx.lineWidth = 1.5 / zoom;
+
+    raycastSource.rays.forEach(ray => {
+        const startX = ray.offset?.x || 0;
+        const startY = ray.offset?.y || 0;
+        const dirX = ray.direction?.x ?? 0;
+        const dirY = ray.direction?.y ?? 0;
+        const length = ray.length ?? 0;
+
+        const endX = startX + dirX * length;
+        const endY = startY + dirY * length;
+
+        // Draw ray line
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.6)'; // Cyan
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        // Draw ray head (small dot at the end)
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.9)';
+        const dotSize = 4 / zoom;
+        ctx.beginPath();
+        ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
 }
 
 function drawTerrainBrushGizmo() {

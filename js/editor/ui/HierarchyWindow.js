@@ -47,6 +47,9 @@ export function updateHierarchy() {
         if (!materia.isActive) {
             item.classList.add('disabled');
         }
+        if (materia.prefabPath) {
+            item.classList.add('prefab');
+        }
         item.dataset.id = materia.id;
         item.draggable = true;
         item.style.marginLeft = `${depth * 18}px`;

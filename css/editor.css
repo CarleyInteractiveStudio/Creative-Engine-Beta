@@ -2577,6 +2577,14 @@ body {
     font-weight: 600;
 }
 
+.hierarchy-item.prefab {
+    color: #3498db;
+}
+
+.hierarchy-item.prefab.active {
+    color: white;
+}
+
 .hierarchy-item.disabled {
     color: var(--text-secondary);
 }

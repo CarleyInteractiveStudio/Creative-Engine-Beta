@@ -35,7 +35,7 @@ const availableComponents = {
     'CAT_CAMARA': [Components.Camera],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -48,7 +48,9 @@ const componentIcons = {
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
     'ParticleSystem': 'sparkles',
-    'Gyzmo': 'target'
+    'Gyzmo': 'target',
+    'RaycastSource': 'route',
+    'BasicAI': 'bot'
 };
 
 const fileIcons = {
@@ -70,13 +72,23 @@ const getIconHTML = (iconName) => {
 
 const typeExtensionMap = {
     'Sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
+    'sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
     'Audio': ['.mp3', '.wav'],
+    'audio': ['.mp3', '.wav'],
     'Prefab': ['.ceprefab'],
+    'prefab': ['.ceprefab'],
     'Scene': ['.ceScene'],
+    'escena': ['.ceScene'],
     'Font': ['.ttf', '.otf', '.woff', '.woff2'],
     'Animation': ['.ceanimclip', '.cea'],
+    'animacion': ['.ceanimclip', '.cea'],
     'AnimatorController': ['.ceanim'],
-    'CreativeScript': ['.ces', '.chc']
+    'controlador': ['.ceanim'],
+    'CreativeScript': ['.ces', '.chc'],
+    'script': ['.ces', '.chc'],
+    'UI': ['.ceui'],
+    'ui': ['.ceui'],
+    'UIImage': ['.png', '.jpg', '.jpeg', '.ceSprite']
 };
 
 // --- Initialization ---
@@ -162,14 +174,62 @@ async function handleInspectorDrop(e) {
         if (expectedType === 'Materia' || expectedType === 'any') {
             valueToAssign = droppedMateriaId;
             isValid = true;
-        } else if (componentIcons[expectedType]) {
-            // Check if dropped Materia has the required component
-            const component = droppedMateria.getComponent(Components[expectedType]);
-            if (component) {
-                valueToAssign = droppedMateriaId;
-                isValid = true;
-            } else {
-                window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente ${expectedType}.`);
+        } else if (expectedType === 'Tag' || expectedType === 'tag') {
+            valueToAssign = droppedMateria.tag;
+            isValid = true;
+        } else if (expectedType === 'Layer' || expectedType === 'layer') {
+            valueToAssign = droppedMateria.layer;
+            isValid = true;
+        } else {
+            // --- Smart Component Search ---
+            const typeToSearch = {
+                'Sprite': Components.SpriteRenderer,
+                'sprite': Components.SpriteRenderer,
+                'Audio': Components.AudioSource,
+                'audio': Components.AudioSource,
+                'Animation': Components.Animator,
+                'animacion': Components.Animator,
+                'AnimatorController': Components.AnimatorController,
+                'controlador': Components.AnimatorController,
+                'UI': Components.UITransform,
+                'ui': Components.UITransform,
+                'UIImage': Components.UIImage,
+                'imagen': Components.UIImage,
+                'CreativeScript': Components.CreativeScript,
+                'script': Components.CreativeScript,
+                'Rigidbody2D': Components.Rigidbody2D,
+                'fisica': Components.Rigidbody2D,
+                'Camera': Components.Camera,
+                'camara': Components.Camera,
+                'RaycastSource': Components.RaycastSource,
+                'rallo': Components.RaycastSource,
+                'BasicAI': Components.BasicAI,
+                'iaBasica': Components.BasicAI
+            }[expectedType] || Components[expectedType];
+
+            if (typeToSearch) {
+                const component = droppedMateria.getComponent(typeToSearch);
+                if (component) {
+                    valueToAssign = droppedMateriaId;
+                    isValid = true;
+                } else {
+                    // Si no encuentra el componente exacto, buscamos si tiene alguno que empiece por el nombre (para alias)
+                    const found = droppedMateria.leyes.find(l => l.constructor.name === expectedType || l.constructor.name.toLowerCase() === expectedType.toLowerCase());
+                    if (found) {
+                        valueToAssign = droppedMateriaId;
+                        isValid = true;
+                    } else {
+                        window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente compatible con '${expectedType}'.`);
+                    }
+                }
+            } else if (componentIcons[expectedType]) {
+                const component = droppedMateria.getComponent(Components[expectedType]);
+                if (component) {
+                    valueToAssign = droppedMateriaId;
+                    isValid = true;
+                } else {
+                    window.Dialogs.showNotification('Componente Faltante', `El objeto '${droppedMateria.name}' no tiene un componente ${expectedType}.`);
+                }
             }
         }
     } else if (data.type === 'Asset') {
@@ -652,6 +712,26 @@ function handleInspectorClick(e) {
         if (tilemap) {
             tilemap.addLayer();
             updateInspector();
+        }
+    }
+
+    // --- RaycastSource (Rallo) Management ---
+    if (e.target.matches('[data-action="rallo-add-ray"]')) {
+        const rallo = selectedMateria.getComponent(Components.RaycastSource);
+        if (rallo) {
+            rallo.rays.push({ angle: 0, length: 200 });
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.matches('[data-action="rallo-remove-ray"]')) {
+        const rallo = selectedMateria.getComponent(Components.RaycastSource);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (rallo && !isNaN(index)) {
+            rallo.rays.splice(index, 1);
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
         }
     }
 
@@ -1148,11 +1228,36 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                     <input type="number" class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.y"`)} value="${currentValue?.y || 0}" title="Y">
                 </div>
             `;
+        case 'Tag':
+            {
+                const config = getCurrentProjectConfig();
+                const tags = config.tags || ['Untagged'];
+                return `
+                    <select ${commonAttrs}>
+                        ${tags.map(t => `<option value="${t}" ${currentValue === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                `;
+            }
+        case 'Layer':
+            {
+                const config = getCurrentProjectConfig();
+                const layers = config.layers?.sortingLayers || ['Default'];
+                return `
+                    <select ${commonAttrs}>
+                        ${layers.map((l, i) => l ? `<option value="${i}" ${currentValue == i ? 'selected' : ''}>${i}: ${l}</option>` : '').join('')}
+                    </select>
+                `;
+            }
         case 'Sprite':
         case 'Audio':
         case 'Prefab':
         case 'Scene':
         case 'Materia':
+        case 'Animation':
+        case 'AnimatorController':
+        case 'UI':
+        case 'UIImage':
+        case 'CreativeScript':
             return renderPropertyDropper(variable.type, currentValue, commonAttrs);
         default:
             // Check if it's a component type
@@ -2611,6 +2716,78 @@ async function updateInspectorForMateria(selectedMateria) {
                                 </div>
                             `).join('')}
                         </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.RaycastSource) {
+            componentHTML = `
+                ${renderComponentHeader("Raycast Source (Rallo)", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="RaycastSource" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
+                        <label>Mostrar Rayos</label>
+                    </div>
+                    <div class="inspector-section-header">
+                        <span>Rayos</span>
+                        <button class="layer-btn add" data-action="rallo-add-ray">+</button>
+                    </div>
+                    <div class="layer-list">
+                        ${ley.rays.map((ray, rIdx) => `
+                            <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Rayo ${rIdx}</span>
+                                    <button class="layer-btn remove" data-action="rallo-remove-ray" data-index="${rIdx}">-</button>
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>Ángulo</label>
+                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>Longitud</label>
+                                    <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.BasicAI) {
+            componentHTML = `
+                ${renderComponentHeader("IA Básica", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label>Objetivo</label>
+                        ${renderPropertyDropper('Materia', ley.target, 'data-component="BasicAI" data-prop="target"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Comportamiento</label>
+                        <select class="prop-input" data-component="BasicAI" data-prop="behavior">
+                            <option value="Follow" ${ley.behavior === 'Follow' ? 'selected' : ''}>Seguir</option>
+                            <option value="Escape" ${ley.behavior === 'Escape' ? 'selected' : ''}>Escapar</option>
+                            <option value="Wander" ${ley.behavior === 'Wander' ? 'selected' : ''}>Vagar</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Velocidad</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
+                        <label>Esquivar Obstáculos</label>
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>Detección y Funciones</span></div>
+                    <div class="prop-row-multi">
+                        <label>Distancia Detección</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
+                    </div>
+                    <div class="inspector-row">
+                        <label>Ejecutar en</label>
+                        ${renderPropertyDropper('Materia', ley.scriptTarget, 'data-component="BasicAI" data-prop="scriptTarget"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Nombre Función</label>
+                        <input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName}" placeholder="ej: alDetectarEnemigo">
                     </div>
                 </div>
             `;

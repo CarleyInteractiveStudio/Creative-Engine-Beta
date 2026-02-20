@@ -17,6 +17,7 @@ export class Materia {
         this.leyes = [];
         this.parent = null;
         this.children = [];
+        this.prefabPath = null;
     }
 
     setFlag(key, value) {
@@ -271,6 +272,7 @@ export class Materia {
         newMateria.isActive = this.isActive;
         newMateria.isCollapsed = this.isCollapsed;
         newMateria.layer = this.layer;
+        newMateria.prefabPath = this.prefabPath;
         newMateria.tag = this.tag;
         newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy
 
