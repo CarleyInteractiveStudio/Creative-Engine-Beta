@@ -573,16 +573,16 @@ export class SpriteRenderer extends Leyes {
         this.spriteSheet = null; // Holds the loaded .ceSprite data
     }
 
-    setSourcePath(path, projectsDirHandle) {
+    async setSourcePath(path, projectsDirHandle) {
         if (path.endsWith('.ceSprite')) {
             this.spriteAssetPath = path;
-            this.loadSpriteSheet(projectsDirHandle);
+            return await this.loadSpriteSheet(projectsDirHandle);
         } else {
             this.source = path;
             this.spriteAssetPath = '';
             this.spriteSheet = null;
             this.spriteName = '';
-            this.loadSprite(projectsDirHandle);
+            return await this.loadSprite(projectsDirHandle);
         }
     }
 
@@ -664,9 +664,11 @@ export class Animator extends Leyes {
         this.frameTimer = 0;
         this.isPlaying = false;
         this.spriteRenderer = null;
+        this.projectsDirHandle = null;
     }
 
     async loadAnimationClip(projectsDirHandle) {
+        this.projectsDirHandle = projectsDirHandle;
         if (!this.animationClipPath) return;
 
         this.spriteRenderer = this.materia.getComponent(SpriteRenderer);
@@ -740,7 +742,19 @@ export class Animator extends Leyes {
             this.currentFrame = Math.max(this.startFrame || 0, Math.min(this.currentFrame, endFrame));
 
             // Update the SpriteRenderer
-            const spriteName = clip.frames[this.currentFrame];
+            const frameData = clip.frames[this.currentFrame];
+            let spriteName = '';
+
+            if (typeof frameData === 'string') {
+                spriteName = frameData;
+            } else if (frameData && typeof frameData === 'object') {
+                spriteName = frameData.spriteName;
+                // If the frame points to a different sprite asset, load it
+                if (frameData.spriteAssetPath && this.spriteRenderer.spriteAssetPath !== frameData.spriteAssetPath) {
+                    this.spriteRenderer.setSourcePath(frameData.spriteAssetPath, this.projectsDirHandle);
+                }
+            }
+
             if (this.spriteRenderer.spriteName !== spriteName) {
                 this.spriteRenderer.spriteName = spriteName;
             }
@@ -965,6 +979,8 @@ export class AnimatorController extends Leyes {
     constructor(materia) {
         super(materia);
         this.controllerPath = ''; // Path to the .ceanim asset
+        this.smartMode = false;
+        this.movementMapping = {}; // Maps directions to state names
 
         // Internal state
         this.controller = null; // The loaded controller data
@@ -983,6 +999,11 @@ export class AnimatorController extends Leyes {
             return;
         }
         await this.loadController(projectsDirHandle);
+
+        // Start with the entry state if defined
+        if (this.controller && this.controller.entryState) {
+            this.play(this.controller.entryState);
+        }
     }
 
     async loadController(projectsDirHandle) {
@@ -1007,9 +1028,37 @@ export class AnimatorController extends Leyes {
         }
     }
 
+    update(deltaTime) {
+        if (!this.smartMode || !this.animator || !this.controller) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (!rb) return;
+
+        const vel = rb.velocity;
+        const threshold = 0.01;
+
+        let dirX = 0; // -1 (left), 0, 1 (right)
+        let dirY = 0; // -1 (up), 0, 1 (down)
+
+        if (vel.x < -threshold) dirX = -1;
+        else if (vel.x > threshold) dirX = 1;
+
+        if (vel.y < -threshold) dirY = -1;
+        else if (vel.y > threshold) dirY = 1;
+
+        // Construct key for mapping: "x,y" where x,y are in range [-1, 1]
+        // Shifted to [0, 2] for 3x3 grid representation if needed, but let's use [-1, 1]
+        const mappingKey = `${dirX},${dirY}`;
+        const targetState = this.movementMapping[mappingKey];
+
+        if (targetState && this.states.has(targetState)) {
+            this.play(targetState);
+        }
+    }
+
     play(stateName) {
         // Do not restart the animation if it's already playing
-        if (!this.animator || !this.states.has(stateName) || this.currentStateName === stateName) {
+        if (!this.animator || !this.states.has(stateName) || (this.currentStateName === stateName && this.animator.isPlaying)) {
             return;
         }
 

@@ -18,6 +18,7 @@ let currentControllerData = null;
 let graphView = null;
 let isDraggingNode = false;
 let dragNodeInfo = {};
+let selectedStateName = null;
 
 // This function is exported and called from other modules (like the asset browser)
 // to open a controller asset in this window.
@@ -58,6 +59,7 @@ function renderAnimatorGraph() {
     currentControllerData.states.forEach(state => {
         const node = document.createElement('div');
         node.className = 'graph-node';
+        if (state.name === selectedStateName) node.classList.add('selected');
         node.textContent = state.name;
         node.style.left = `${state.position.x}px`;
         node.style.top = `${state.position.y}px`;
@@ -67,9 +69,151 @@ function renderAnimatorGraph() {
             node.classList.add('entry-state');
         }
 
+        node.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            selectState(state.name);
+
+            isDraggingNode = true;
+            dragNodeInfo = {
+                state: state,
+                startX: e.clientX,
+                startY: e.clientY,
+                origX: state.position.x,
+                origY: state.position.y
+            };
+
+            const onMouseMove = (moveEvent) => {
+                if (!isDraggingNode) return;
+                const dx = moveEvent.clientX - dragNodeInfo.startX;
+                const dy = moveEvent.clientY - dragNodeInfo.startY;
+                state.position.x = dragNodeInfo.origX + dx;
+                state.position.y = dragNodeInfo.origY + dy;
+                node.style.left = `${state.position.x}px`;
+                node.style.top = `${state.position.y}px`;
+                updateGraphData();
+            };
+
+            const onMouseUp = () => {
+                isDraggingNode = false;
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+
         graphView.appendChild(node);
     });
     updateGraphData();
+}
+
+function selectState(stateName) {
+    selectedStateName = stateName;
+    document.querySelectorAll('.graph-node').forEach(node => {
+        node.classList.toggle('selected', node.dataset.name === stateName);
+    });
+    updateStateInspector();
+}
+
+function updateStateInspector() {
+    const inspector = dom.animatorControllerPanel.querySelector('#animator-state-inspector');
+    if (!inspector) return;
+
+    if (!selectedStateName) {
+        inspector.innerHTML = '<p class="placeholder">Selecciona un estado</p>';
+        return;
+    }
+
+    const state = currentControllerData.states.find(s => s.name === selectedStateName);
+    if (!state) return;
+
+    inspector.innerHTML = `
+        <div class="inspector-header">Estado: ${state.name}</div>
+        <div class="inspector-field">
+            <label>Animación (.cea)</label>
+            <div class="asset-dropper" data-type=".cea" data-prop="animationClip">${state.animationClip || 'Ninguna'}</div>
+        </div>
+        <div class="inspector-field">
+            <label>Velocidad</label>
+            <input type="number" step="0.1" value="${state.speed}" class="state-speed-input">
+        </div>
+        <div class="inspector-field">
+            <label>Bucle</label>
+            <input type="checkbox" ${state.loop !== false ? 'checked' : ''} class="state-loop-input">
+        </div>
+        <hr>
+        <div class="smart-mode-section">
+            <label><input type="checkbox" ${currentControllerData.smartMode ? 'checked' : ''} class="smart-mode-toggle"> Smart Mode (Direcciones)</label>
+            <div class="direction-grid">
+                ${renderDirectionGrid(currentControllerData.movementMapping)}
+            </div>
+        </div>
+    `;
+
+    // Add listeners
+    inspector.querySelector('.state-speed-input').oninput = (e) => {
+        state.speed = parseFloat(e.target.value);
+        updateGraphData();
+    };
+    inspector.querySelector('.state-loop-input').onchange = (e) => {
+        state.loop = e.target.checked;
+        updateGraphData();
+    };
+    inspector.querySelector('.smart-mode-toggle').onchange = (e) => {
+        currentControllerData.smartMode = e.target.checked;
+        updateGraphData();
+    };
+
+    inspector.querySelectorAll('.dir-slot').forEach(slot => {
+        slot.onclick = () => {
+            currentControllerData.movementMapping[slot.dataset.dir] = state.name;
+            updateStateInspector();
+            updateGraphData();
+        };
+    });
+
+    // Asset dropper logic for animations
+    const dropper = inspector.querySelector('.asset-dropper');
+    if (dropper) {
+        dropper.ondragover = (e) => {
+            e.preventDefault();
+            dropper.classList.add('drag-over');
+        };
+        dropper.ondragleave = () => {
+            dropper.classList.remove('drag-over');
+        };
+        dropper.ondrop = (e) => {
+            e.preventDefault();
+            dropper.classList.remove('drag-over');
+            try {
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                if (data.name.endsWith('.cea')) {
+                    state.animationClip = data.path;
+                    updateStateInspector();
+                    updateGraphData();
+                } else {
+                    window.Dialogs.showNotification('Asset Inválido', 'Solo se pueden asignar archivos de animación (.cea)');
+                }
+            } catch (err) {
+                console.error("Error al soltar asset en el controlador:", err);
+            }
+        };
+    }
+}
+
+function renderDirectionGrid(mapping = {}) {
+    const directions = [
+        ['-1,-1', '↖️'], ['0,-1', '⬆️'], ['1,-1', '↗️'],
+        ['-1,0', '⬅️'], ['0,0', '⏺️'], ['1,0', '➡️'],
+        ['-1,1', '↙️'], ['0,1', '⬇️'], ['1,1', '↘️']
+    ];
+
+    return directions.map(([dir, icon]) => {
+        const mappedState = mapping[dir] || '';
+        const isActive = mappedState === selectedStateName;
+        return `<div class="dir-slot ${isActive ? 'active' : ''}" data-dir="${dir}" title="${mappedState || 'Sin asignar'}">${icon}</div>`;
+    }).join('');
 }
 
 function updateGraphData() {
@@ -106,9 +250,11 @@ async function createNewAnimatorController() {
     const defaultContent = {
         name: controllerName,
         entryState: "Idle",
+        smartMode: false,
+        movementMapping: {},
         states: [{
             name: "Idle",
-            animationAsset: "",
+            animationClip: "",
             speed: 1.0,
             position: { x: 100, y: 100 }
         }],
@@ -178,13 +324,82 @@ export function initialize(dependencies) {
     console.log("Initializing Animator Controller Window...");
 
     if (dom.animatorControllerPanel) {
-        graphView = dom.animatorControllerPanel.querySelector('.graph-view');
+        graphView = dom.animatorControllerPanel.querySelector('#animator-graph-view');
     }
 
     setupEventListeners();
 }
 
+async function showGraphContextMenu(clientX, clientY) {
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.display = 'block';
+    menu.style.left = `${clientX}px`;
+    menu.style.top = `${clientY}px`;
+    menu.style.zIndex = '3000';
+
+    const createBtn = document.createElement('div');
+    createBtn.className = 'menu-item';
+    createBtn.textContent = 'Crear Estado';
+    createBtn.onclick = () => {
+        const rect = graphView.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+
+        window.Dialogs.showPrompt('Nuevo Estado', 'Nombre del estado:', (name) => {
+            if (!name) return;
+            if (currentControllerData.states.some(s => s.name === name)) {
+                window.Dialogs.showNotification('Error', 'Ya existe un estado con ese nombre.');
+                return;
+            }
+
+            const newState = {
+                name: name,
+                animationClip: "",
+                speed: 1.0,
+                position: { x: localX, y: localY }
+            };
+            currentControllerData.states.push(newState);
+            renderAnimatorGraph();
+            updateGraphData();
+        });
+        menu.remove();
+    };
+
+    const setEntryBtn = document.createElement('div');
+    setEntryBtn.className = 'menu-item';
+    setEntryBtn.textContent = 'Establecer como Entrada';
+    setEntryBtn.onclick = () => {
+        // This button only appears if clicking on a node, but for now let's keep it simple
+        menu.remove();
+    };
+
+    menu.appendChild(createBtn);
+    document.body.appendChild(menu);
+
+    const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('mousedown', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('mousedown', closeMenu), 10);
+}
+
 function setupEventListeners() {
+    if (graphView) {
+        graphView.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showGraphContextMenu(e.clientX, e.clientY);
+        });
+
+        graphView.addEventListener('mousedown', (e) => {
+            if (e.target === graphView) {
+                selectState(null);
+            }
+        });
+    }
+
     // Window Menu listener
     const menuButton = document.getElementById('menu-window-animator');
     if (menuButton) {

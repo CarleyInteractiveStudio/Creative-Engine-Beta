@@ -3525,3 +3525,65 @@ body.game-mode #scene-content,
 body.game-mode #loading-overlay {
     display: none !important;
 }
+
+/* --- Animator State Inspector --- */
+#animator-state-inspector {
+    width: 250px;
+    background-color: var(--bg-primary);
+    border-left: 1px solid var(--border-color);
+    padding: 10px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+#animator-state-inspector .inspector-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+#animator-state-inspector .inspector-field {
+    margin-bottom: 10px;
+}
+
+#animator-state-inspector label {
+    display: block;
+    font-size: 0.85em;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+}
+
+.direction-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 120px;
+    margin: 10px auto;
+}
+
+.dir-slot {
+    aspect-ratio: 1;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.2em;
+    border-radius: 4px;
+}
+
+.dir-slot:hover {
+    background-color: var(--bg-secondary);
+}
+
+.dir-slot.active {
+    background-color: var(--accent-color);
+    border-color: white;
+}
+
+.graph-node.selected {
+    border: 2px solid white;
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}

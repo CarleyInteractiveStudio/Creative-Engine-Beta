@@ -38,7 +38,7 @@ import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
+// import * as GameFloatingWindow from './editor/GameFloatingWindow.js';
 
 // --- Editor Logic ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -771,8 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const component = selectedMateria.getComponent(ComponentClass);
                     if (component) {
-                        component.setSourcePath(imgPath);
-                        await component.loadSprite(projectsDirHandle);
+                        await component.setSourcePath(imgPath, projectsDirHandle);
                         updateInspector();
                         updateScene(renderer, false);
                     }
@@ -2617,7 +2616,7 @@ public star() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool, projectsDirHandle });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");
@@ -2707,13 +2706,15 @@ public star() {
                 updateGameControlsUI();
             });
             dom.btnStop.addEventListener('click', stopGame);
-            dom.btnFloatingGame.addEventListener('click', async () => {
-                if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
-                    await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
-                } else {
-                    GameFloatingWindow.closeFloatingGameWindow();
-                }
-            });
+            if (dom.btnFloatingGame) {
+                dom.btnFloatingGame.addEventListener('click', async () => {
+                    // if (!GameFloatingWindow.isFloatingGameWindowOpen()) {
+                    //     await GameFloatingWindow.openFloatingGameWindow(SceneManager, physicsSystem, uiSystem);
+                    // } else {
+                    //     GameFloatingWindow.closeFloatingGameWindow();
+                    // }
+                });
+            }
 
 
             originalStartGame = startGame;

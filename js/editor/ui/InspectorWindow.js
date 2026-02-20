@@ -369,6 +369,17 @@ function handleInspectorClick(e) {
                         } else {
                             const propName = dropper.dataset.prop;
                             component[propName] = data.path;
+
+                            // Trigger loading for components that need it
+                            if (component instanceof Components.Animator) {
+                                await component.loadAnimationClip(projectsDirHandle);
+                            } else if (component instanceof Components.AnimatorController) {
+                                await component.loadController(projectsDirHandle);
+                            } else if (component instanceof Components.UIImage) {
+                                await component.loadSprite(projectsDirHandle);
+                            } else if (component instanceof Components.UIText && propName === 'fontAssetPath') {
+                                await component.loadFont(projectsDirHandle);
+                            }
                         }
 
                         // If it's a tilemap, trigger the palette reload
@@ -1175,6 +1186,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="asset-dropper" data-component="AnimatorController" data-prop="controllerPath" data-asset-type=".ceanim" title="Arrastra un asset .ceanim aquí">
                             <span class="asset-dropper-text">${ley.controllerPath || 'None'}</span>
                         </div>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
+                        <label>Smart Mode (Movimiento)</label>
                     </div>
                     <div class="inspector-field-group">
                         <label>States</label>

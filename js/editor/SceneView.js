@@ -177,6 +177,7 @@ let SceneManager;
 let getPreferences;
 let getSelectedTile;
 let setPaletteActiveTool = null;
+let projectsDirHandle = null;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser'
@@ -543,6 +544,7 @@ export function initialize(dependencies) {
     getPreferences = dependencies.getPreferences;
     getSelectedTile = dependencies.getSelectedTile;
     setPaletteActiveTool = dependencies.setPaletteActiveTool;
+    projectsDirHandle = dependencies.projectsDirHandle;
 
     // --- Gizmo Drag Handlers (defined at a higher scope) ---
     const onGizmoDrag = (moveEvent) => {
@@ -741,7 +743,7 @@ export function initialize(dependencies) {
         dom.sceneCanvas.classList.remove('drag-over-scene');
     });
 
-    dom.sceneCanvas.addEventListener('drop', (e) => {
+    dom.sceneCanvas.addEventListener('drop', async (e) => {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
@@ -761,7 +763,7 @@ export function initialize(dependencies) {
 
                 // Add and configure the SpriteRenderer
                 const spriteRenderer = new Components.SpriteRenderer(newMateria);
-                spriteRenderer.setSourcePath(data.assetPath); // This will load the .ceSprite
+                await spriteRenderer.setSourcePath(data.assetPath, projectsDirHandle); // This will load the .ceSprite
                 spriteRenderer.spriteName = data.spriteName; // Set the specific sprite to render
                 newMateria.addComponent(spriteRenderer);
 
