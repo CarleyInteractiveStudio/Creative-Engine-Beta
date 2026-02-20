@@ -26,7 +26,7 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 ### 📜 Scripting Potente (CES)
 - **Transpilador Integrado:** Escribe código en `.ces` con una sintaxis simplificada y bilingüe (ej: `posicion.x` o `transform.x`).
 - **Variables Públicas Inteligentes:** Soporte para tipos de datos avanzados con asignación automática:
-  - `audio`, `sprite`, `ui`, `prefab`, `script`, `tag`, `layer`, `animacion`, `escena`.
+  - `audio`, `sprite`, `ui`, `prefab`, `script`, `tag`, `layer`, `animacion`, `escena`, `accion`.
 - **Asignación Inteligente Pro:** Al arrastrar un objeto de la escena a una variable pública, el motor analiza sus componentes para encontrar la coincidencia correcta (ej: un `SpriteRenderer` para el tipo `sprite`, o un `AudioSource` para `audio`). También admite asignación de `Tags` y `Layers` mediante arrastre.
 
 ### 🎨 Gráficos y Sonido

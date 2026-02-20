@@ -1201,6 +1201,44 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
     `;
 }
 
+function renderActionInput(variable, currentValue, componentType, identifier) {
+    const L = window.Localization;
+    const val = currentValue || { targetId: null, functionName: '' };
+
+    let commonAttrs = `data-prop="${variable.name}"`;
+    if (componentType === 'CreativeScript') {
+        commonAttrs += ` data-component="CreativeScript" data-script-name="${identifier}"`;
+    } else if (componentType === 'CustomComponent') {
+        commonAttrs += ` data-component="CustomComponent" data-component-id="${identifier}"`;
+    }
+
+    let functionsDropdown = `<option value="">-- ${L.get('SIN_FUNCION', 'Sin Función')} --</option>`;
+
+    if (val.targetId) {
+        const targetMateria = window.SceneManager.currentScene.findMateriaById(val.targetId);
+        if (targetMateria) {
+            const scripts = targetMateria.getComponents(Components.CreativeScript);
+            let allFunctions = [];
+            scripts.forEach(s => {
+                const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                if (metadata && metadata.publicFunctions) {
+                    allFunctions = allFunctions.concat(metadata.publicFunctions);
+                }
+            });
+            functionsDropdown += allFunctions.map(f => `<option value="${f}" ${val.functionName === f ? 'selected' : ''}>${f}</option>`).join('');
+        }
+    }
+
+    return `
+        <div class="action-input-group" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+            ${renderPropertyDropper('Materia', val.targetId, `class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.targetId"`)}`)}
+            <select class="prop-input" ${commonAttrs.replace(`data-prop="${variable.name}"`, `data-prop="${variable.name}.functionName"`)}>
+                ${functionsDropdown}
+            </select>
+        </div>
+    `;
+}
+
 function renderPublicVarInput(variable, currentValue, componentType, identifier) {
     let commonAttrs = `class="prop-input" data-prop="${variable.name}"`;
     if (componentType === 'CreativeScript') {
@@ -1259,6 +1297,8 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
         case 'UIImage':
         case 'CreativeScript':
             return renderPropertyDropper(variable.type, currentValue, commonAttrs);
+        case 'Action':
+            return renderActionInput(variable, currentValue, componentType, identifier);
         default:
             // Check if it's a component type
             if (componentIcons[variable.type]) {
@@ -2752,6 +2792,31 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.BasicAI) {
+            let functionsDropdownHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName || ''}" placeholder="ej: alDetectarEnemigo">`;
+
+            if (ley.scriptTarget) {
+                const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
+                if (targetMateria) {
+                    const scripts = targetMateria.getComponents(Components.CreativeScript);
+                    let allFunctions = [];
+                    scripts.forEach(s => {
+                        const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                        if (metadata && metadata.publicFunctions) {
+                            allFunctions = allFunctions.concat(metadata.publicFunctions);
+                        }
+                    });
+
+                    if (allFunctions.length > 0) {
+                        functionsDropdownHTML = `
+                            <select class="prop-input" data-component="BasicAI" data-prop="functionName">
+                                <option value="">-- Seleccionar Función --</option>
+                                ${allFunctions.map(f => `<option value="${f}" ${ley.functionName === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </select>
+                        `;
+                    }
+                }
+            }
+
             componentHTML = `
                 ${renderComponentHeader("IA Básica", icon, index)}
                 <div class="component-content">
@@ -2772,6 +2837,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
+                        <label>Rotación Automática</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
                         <label>Esquivar Obstáculos</label>
                     </div>
@@ -2786,8 +2855,8 @@ async function updateInspectorForMateria(selectedMateria) {
                         ${renderPropertyDropper('Materia', ley.scriptTarget, 'data-component="BasicAI" data-prop="scriptTarget"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Nombre Función</label>
-                        <input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName}" placeholder="ej: alDetectarEnemigo">
+                        <label>Función</label>
+                        ${functionsDropdownHTML}
                     </div>
                 </div>
             `;

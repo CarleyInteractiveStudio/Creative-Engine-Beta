@@ -318,6 +318,25 @@ export class CreativeScriptBehavior {
     async create(ruta, x, y) { return await this.crear(ruta, x, y); }
 
     /**
+     * Ejecuta una acción (objeto con targetId y functionName).
+     * @param {object} accion - La acción a ejecutar.
+     * @param {...any} args - Argumentos adicionales.
+     */
+    ejecutarAccion(accion, ...args) {
+        if (!accion || !accion.targetId || !accion.functionName) return;
+        const target = this.materia.scene ? this.materia.scene.findMateriaById(accion.targetId) : null;
+        if (!target) return;
+        target.getComponents(CreativeScript).forEach(s => {
+            if (s.instance && typeof s.instance[accion.functionName] === 'function') {
+                s._safeInvoke(accion.functionName, ...args);
+            }
+        });
+    }
+
+    /** Alias en inglés */
+    executeAction(action, ...args) { this.ejecutarAccion(action, ...args); }
+
+    /**
      * Busca un objeto en la escena por su nombre.
      */
     buscar(nombre) {

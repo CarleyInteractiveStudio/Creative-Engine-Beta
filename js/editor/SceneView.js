@@ -1603,7 +1603,7 @@ function drawRaycastGizmos() {
 
     const raycastSource = selectedMateria.getComponent(Components.RaycastSource);
     const transform = selectedMateria.getComponent(Components.Transform);
-    if (!raycastSource || !transform) return;
+    if (!raycastSource || !transform || !raycastSource.showGizmo) return;
 
     const { ctx, camera } = renderer;
     const zoom = camera.effectiveZoom;
@@ -1617,8 +1617,9 @@ function drawRaycastGizmos() {
     raycastSource.rays.forEach(ray => {
         const startX = ray.offset?.x || 0;
         const startY = ray.offset?.y || 0;
-        const dirX = ray.direction?.x ?? 0;
-        const dirY = ray.direction?.y ?? 0;
+        const rad = (ray.angle || 0) * Math.PI / 180;
+        const dirX = Math.cos(rad);
+        const dirY = Math.sin(rad);
         const length = ray.length ?? 0;
 
         const endX = startX + dirX * length;

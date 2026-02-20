@@ -38,6 +38,8 @@ const typeMap = {
     'script': 'CreativeScript',
     'animacion': 'Animation',
     'animacionCtr': 'AnimatorController',
+    'accion': 'Action',
+    'evento': 'Action',
     // Engine Components
     'Transform': 'Transform',
     'UITransform': 'UITransform',
@@ -112,6 +114,7 @@ const componentShortcuts = [
     'crear', 'create', 'estaActivado', 'activo',
     'reproducir', 'play', 'voltearH', 'voltearV', 'flipX', 'flipY',
     'tieneTag', 'hasTag', 'lanzarRayo', 'raycast', 'danar', 'damage', 'curar', 'heal',
+    'ejecutarAccion', 'executeAction',
     'alEntrarEnColision', 'getCollisionEnter', 'alPermanecerEnColision', 'getCollisionStay', 'alSalirDeColision', 'getCollisionExit',
     'estaTocandoTag', 'isTouchingTag',
     'difundir', 'broadcast', 'alRecibir', 'onReceive',
@@ -137,6 +140,7 @@ function getDefaultValueForType(canonicalType) {
         case 'Scene': return null;
         case 'Vector2': return { x: 0, y: 0 };
         case 'Color': return { r: 255, g: 255, b: 255, a: 1 };
+        case 'Action': return { targetId: null, functionName: '' };
         default: return null;
     }
 }
