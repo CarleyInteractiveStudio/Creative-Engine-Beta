@@ -93,7 +93,23 @@ export class Renderer {
             }
         }
         
-        console.log(`%c[resize ${rendererType}] canvas="${this.canvas.id}", clientSize=(${this.canvas.clientWidth}x${this.canvas.clientHeight}), canvasSize=(${this.canvas.width}x${this.canvas.height}), containerDisplay="${containerDisplay}", visible=${containerVisible}`, `color: ${this.isEditor ? '#FF6600' : '#00FF00'};`);
+        // Removed noisy resize log
+    }
+
+    getViewBox() {
+        const aspect = this.canvas.width / this.canvas.height;
+        if (this.isEditor && this.camera) {
+            const zoom = this.camera.effectiveZoom || this.camera.zoom || 1.0;
+            const halfHeight = (this.canvas.height / (zoom * 2));
+            const halfWidth = halfHeight * aspect;
+            return [
+                { x: this.camera.x - halfWidth, y: this.camera.y - halfHeight },
+                { x: this.camera.x + halfWidth, y: this.camera.y - halfHeight },
+                { x: this.camera.x + halfWidth, y: this.camera.y + halfHeight },
+                { x: this.camera.x - halfWidth, y: this.camera.y + halfHeight }
+            ];
+        }
+        return null;
     }
 
     clear(cameraComponent) {

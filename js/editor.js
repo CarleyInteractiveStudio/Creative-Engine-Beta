@@ -1327,15 +1327,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)))
-            .sort((a, b) => {
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.Terreno2D);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.Terreno2D);
-                const orderA = rendererA.orderInLayer || 0;
-                const orderB = rendererB.orderInLayer || 0;
-                if (orderA !== orderB) return orderA - orderB;
-                return a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y;
-            });
+            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)));
+            // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer))
@@ -1358,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
+            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : (rendererInstance.isEditor ? rendererInstance.getViewBox() : null);
             const camTransform = cameraForCulling ? cameraForCulling.getComponent(Components.Transform) : null;
             const viewport = cameraViewBox ? MathUtils.getBoundsFromCorners(cameraViewBox) : null;
 
@@ -1382,7 +1375,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
 
-                // 4. Y position (Isometric/Depth)
+                // 4. Parallax priority (Force backdrop if on same orderInLayer)
+                const isParallaxA = !!a.getComponent(Components.Parallax);
+                const isParallaxB = !!b.getComponent(Components.Parallax);
+                if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
+
+                // 5. Y position (Isometric/Depth)
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
@@ -1485,20 +1483,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         let mirrorY = parallax ? parallax.mirroring.y : 0;
 
                         if (parallax) {
-                            if (parallax.repeatX && mirrorX === 0) mirrorX = dWidth;
-                            if (parallax.repeatY && mirrorY === 0) mirrorY = dHeight;
+                            if (parallax.repeatX && mirrorX <= 0) mirrorX = dWidth;
+                            if (parallax.repeatY && mirrorY <= 0) mirrorY = dHeight;
                         }
 
                         if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                            const stepX = mirrorX;
-                            const stepY = mirrorY;
+                            const stepX = Math.max(1, mirrorX);
+                            const stepY = Math.max(1, mirrorY);
                             const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
                             const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
                             const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;
                             const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y - dy) / stepY) * stepY + stepY : dHeight;
 
-                            for (let tx = startX; tx < endX; tx += stepX) {
-                                for (let ty = startY; ty < endY; ty += stepY) {
+                            // Safety break to prevent infinite loops if step is too small
+                            const maxTiles = 100;
+                            let countX = 0;
+
+                            for (let tx = startX; tx < endX && countX < maxTiles; tx += stepX) {
+                                countX++;
+                                let countY = 0;
+                                for (let ty = startY; ty < endY && countY < maxTiles; ty += stepY) {
+                                    countY++;
                                     ctx.save();
                                     ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
                                     ctx.rotate(worldRotation * Math.PI / 180);
@@ -1507,9 +1512,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                         ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                                     }
                                     ctx.restore();
-                                    if (mirrorY === 0) break;
+                                    if (mirrorY <= 0) break;
                                 }
-                                if (mirrorX === 0) break;
+                                if (mirrorX <= 0) break;
                             }
                         } else {
                             ctx.translate(worldPosition.x, worldPosition.y);
