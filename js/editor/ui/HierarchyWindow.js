@@ -128,6 +128,23 @@ export function duplicateSelectedMateria() {
     } else {
         SceneManager.currentScene.addMateria(newMateria);
     }
+
+    // Initialize and start if game is running
+    if (window.isGameRunning || window.CE_Standalone_Scripts) {
+        (async () => {
+            for (const ley of newMateria.leyes) {
+                if (ley instanceof Components.AnimatorController) {
+                    await ley.initialize(window.projectsDirHandle);
+                } else if (ley instanceof Components.CreativeScript) {
+                    await ley.initializeInstance();
+                }
+                if (typeof ley.start === 'function') {
+                    await ley.start();
+                }
+            }
+        })();
+    }
+
     updateHierarchy();
     selectMateriaCallback(newMateria.id); // Select the new clone
 }
@@ -337,6 +354,23 @@ export function handleContextMenuAction(action) {
                 } else {
                     SceneManager.currentScene.addMateria(newDuplicatedMateria);
                 }
+
+                // Initialize and start if game is running
+                if (window.isGameRunning || window.CE_Standalone_Scripts) {
+                    (async () => {
+                        for (const ley of newDuplicatedMateria.leyes) {
+                            if (ley instanceof Components.AnimatorController) {
+                                await ley.initialize(window.projectsDirHandle);
+                            } else if (ley instanceof Components.CreativeScript) {
+                                await ley.initializeInstance();
+                            }
+                            if (typeof ley.start === 'function') {
+                                await ley.start();
+                            }
+                        }
+                    })();
+                }
+
                 // Set as the newMateria so it gets selected after creation
                 newMateria = newDuplicatedMateria;
             }

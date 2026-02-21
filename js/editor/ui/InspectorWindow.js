@@ -394,6 +394,11 @@ function handleInspectorInput(e) {
         return; // Early return to avoid nested property logic
     }
 
+    if (componentName === 'BasicAI' && propPath === 'detectionTagsString') {
+        component.detectionTags = value.split(',').map(s => s.trim()).filter(s => s !== '');
+        return;
+    }
+
     // Handle nested properties like scale.x
     const props = propPath.split('.');
     let current = component;
@@ -2761,29 +2766,29 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.RaycastSource) {
             componentHTML = `
-                ${renderComponentHeader("Raycast Source (Rallo)", icon, index)}
+                ${renderComponentHeader(L.get('RAYCAST_SOURCE', "Raycast Source (Rallo)"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="RaycastSource" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
-                        <label>Mostrar Rayos</label>
+                        <label data-i18n="SHOW_RAYS">${L.get('SHOW_RAYS', 'Mostrar Rayos')}</label>
                     </div>
                     <div class="inspector-section-header">
-                        <span>Rayos</span>
+                        <span data-i18n="RAYS">${L.get('RAYS', 'Rayos')}</span>
                         <button class="layer-btn add" data-action="rallo-add-ray">+</button>
                     </div>
                     <div class="layer-list">
                         ${ley.rays.map((ray, rIdx) => `
                             <div class="layer-item" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Rayo ${rIdx}</span>
+                                    <span>${L.get('RAY', 'Rayo')} ${rIdx}</span>
                                     <button class="layer-btn remove" data-action="rallo-remove-ray" data-index="${rIdx}">-</button>
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>Ángulo</label>
+                                    <label data-i18n="ANGLE">${L.get('ANGLE', 'Ángulo')}</label>
                                     <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.angle" value="${ray.angle}">
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>Longitud</label>
+                                    <label data-i18n="LENGTH">${L.get('LENGTH', 'Longitud')}</label>
                                     <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
                                 </div>
                             </div>
@@ -2809,7 +2814,7 @@ async function updateInspectorForMateria(selectedMateria) {
                     if (allFunctions.length > 0) {
                         functionsDropdownHTML = `
                             <select class="prop-input" data-component="BasicAI" data-prop="functionName">
-                                <option value="">-- Seleccionar Función --</option>
+                                <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
                                 ${allFunctions.map(f => `<option value="${f}" ${ley.functionName === f ? 'selected' : ''}>${f}</option>`).join('')}
                             </select>
                         `;
@@ -2818,44 +2823,55 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                ${renderComponentHeader("IA Básica", icon, index)}
+                ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>Objetivo</label>
+                        <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
                         ${renderPropertyDropper('Materia', ley.target, 'data-component="BasicAI" data-prop="target"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Comportamiento</label>
+                        <label data-i18n="BEHAVIOR">${L.get('BEHAVIOR', 'Comportamiento')}</label>
                         <select class="prop-input" data-component="BasicAI" data-prop="behavior">
-                            <option value="Follow" ${ley.behavior === 'Follow' ? 'selected' : ''}>Seguir</option>
-                            <option value="Escape" ${ley.behavior === 'Escape' ? 'selected' : ''}>Escapar</option>
-                            <option value="Wander" ${ley.behavior === 'Wander' ? 'selected' : ''}>Vagar</option>
+                            <option value="Follow" ${ley.behavior === 'Follow' ? 'selected' : ''} data-i18n="FOLLOW">${L.get('FOLLOW', 'Seguir')}</option>
+                            <option value="Escape" ${ley.behavior === 'Escape' ? 'selected' : ''} data-i18n="ESCAPE">${L.get('ESCAPE', 'Escapar')}</option>
+                            <option value="Wander" ${ley.behavior === 'Wander' ? 'selected' : ''} data-i18n="WANDER">${L.get('WANDER', 'Vagar')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
-                        <label>Velocidad</label>
+                        <label data-i18n="MOVEMENT_TYPE">${L.get('MOVEMENT_TYPE', 'Tipo Movimiento')}</label>
+                        <select class="prop-input" data-component="BasicAI" data-prop="movementType">
+                            <option value="Top-Down" ${ley.movementType === 'Top-Down' ? 'selected' : ''} data-i18n="TOP_DOWN">Top-Down</option>
+                            <option value="Platformer" ${ley.movementType === 'Platformer' ? 'selected' : ''} data-i18n="PLATFORMER">${L.get('PLATFORMER', 'Plataformas')}</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
-                        <label>Rotación Automática</label>
+                        <label data-i18n="AUTO_ROTATE">${L.get('AUTO_ROTATE', 'Rotación Automática')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
-                        <label>Esquivar Obstáculos</label>
+                        <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
                     </div>
                     <hr>
-                    <div class="inspector-section-header"><span>Detección y Funciones</span></div>
+                    <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Detección y Funciones')}</span></div>
                     <div class="prop-row-multi">
-                        <label>Distancia Detección</label>
+                        <label data-i18n="DETECTION_DISTANCE">${L.get('DETECTION_DISTANCE', 'Distancia Detección')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="detectionDistance" value="${ley.detectionDistance}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DETECTION_TAGS">${L.get('DETECTION_TAGS', 'Tags de Detección')}</label>
+                        <input type="text" class="prop-input" data-component="BasicAI" data-prop="detectionTagsString" value="${(ley.detectionTags || []).join(', ')}" placeholder="Player, Enemy...">
+                    </div>
                     <div class="inspector-row">
-                        <label>Ejecutar en</label>
+                        <label data-i18n="EXECUTE_ON">${L.get('EXECUTE_ON', 'Ejecutar en')}</label>
                         ${renderPropertyDropper('Materia', ley.scriptTarget, 'data-component="BasicAI" data-prop="scriptTarget"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>Función</label>
+                        <label data-i18n="FUNCTION">${L.get('FUNCTION', 'Función')}</label>
                         ${functionsDropdownHTML}
                     </div>
                 </div>

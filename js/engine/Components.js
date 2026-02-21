@@ -1038,7 +1038,9 @@ export class Rigidbody2D extends Leyes {
         newRb.sleepingMode = this.sleepingMode;
         newRb.interpolate = this.interpolate;
         newRb.constraints = { ...this.constraints };
-        newRb.velocity = { ...this.velocity };
+        // Reset velocity to zero for clones created in editor (duplication)
+        newRb.velocity = { x: 0, y: 0 };
+        newRb.angularVelocity = 0;
         return newRb;
     }
 }
@@ -1049,7 +1051,7 @@ export class BoxCollider2D extends Leyes {
         this.usedByComposite = false;
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
-        this.size = { x: 1.0, y: 1.0 };
+        this.size = { x: 50.0, y: 50.0 };
         this.edgeRadius = 0.0;
     }
     clone() {
@@ -1089,7 +1091,7 @@ export class CapsuleCollider2D extends Leyes {
         super(materia);
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
-        this.size = { x: 1.0, y: 1.0 };
+        this.size = { x: 50.0, y: 50.0 };
         this.direction = 'Vertical'; // 'Vertical' or 'Horizontal'
     }
     clone() {
@@ -2549,6 +2551,12 @@ export class AnimatorController extends Leyes {
     clone() {
         const newController = new AnimatorController(null);
         newController.controllerPath = this.controllerPath;
+        newController.smartMode = this.smartMode;
+        newController.deadZone = this.deadZone;
+        newController.startDelay = this.startDelay;
+        newController.stopDelay = this.stopDelay;
+        newController.directionDelay = this.directionDelay;
+        newController.stopBuffer = this.stopBuffer;
         return newController;
     }
 }
@@ -4235,6 +4243,7 @@ export class BasicAI extends Leyes {
         super(materia);
         this.target = null; // ID de la materia objetivo
         this.behavior = 'Follow'; // 'Follow', 'Escape', 'Wander'
+        this.movementType = 'Top-Down'; // 'Top-Down' or 'Platformer'
         this.speed = 100;
         this.autoRotate = true;
         this.rotationSpeed = 0.1;
@@ -4273,14 +4282,14 @@ export class BasicAI extends Leyes {
 
         if (this.behavior === 'Follow' && targetObj) {
             const dx = targetObj.getComponent(Transform).x - transform.x;
-            const dy = targetObj.getComponent(Transform).y - transform.y;
+            const dy = (this.movementType === 'Platformer') ? 0 : (targetObj.getComponent(Transform).y - transform.y);
             const dist = Math.hypot(dx, dy);
             if (dist > 10) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
         } else if (this.behavior === 'Escape' && targetObj) {
             const dx = transform.x - targetObj.getComponent(Transform).x;
-            const dy = transform.y - targetObj.getComponent(Transform).y;
+            const dy = (this.movementType === 'Platformer') ? 0 : (transform.y - targetObj.getComponent(Transform).y);
             const dist = Math.hypot(dx, dy);
             if (dist < 500) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
@@ -4321,10 +4330,15 @@ export class BasicAI extends Leyes {
         const rb = this.materia.getComponent(Rigidbody2D);
         if (rb && rb.bodyType === 'Dynamic') {
             rb.velocity.x = desiredVelocity.x / 100;
-            rb.velocity.y = desiredVelocity.y / 100;
+            // En modo Plataformas, no sobreescribimos la velocidad Y para dejar que la gravedad actúe
+            if (this.movementType !== 'Platformer') {
+                rb.velocity.y = desiredVelocity.y / 100;
+            }
         } else {
             transform.x += desiredVelocity.x * deltaTime;
-            transform.y += desiredVelocity.y * deltaTime;
+            if (this.movementType !== 'Platformer') {
+                transform.y += desiredVelocity.y * deltaTime;
+            }
         }
 
         // --- 5. Rotación automática ---
@@ -4386,7 +4400,10 @@ export class BasicAI extends Leyes {
         const copy = new BasicAI(null);
         copy.target = this.target;
         copy.behavior = this.behavior;
+        copy.movementType = this.movementType;
         copy.speed = this.speed;
+        copy.autoRotate = this.autoRotate;
+        copy.rotationSpeed = this.rotationSpeed;
         copy.obstacleAvoidance = this.obstacleAvoidance;
         copy.detectionTags = [...this.detectionTags];
         copy.detectionDistance = this.detectionDistance;

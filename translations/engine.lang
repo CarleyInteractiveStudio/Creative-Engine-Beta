@@ -238,6 +238,30 @@ MATERIA: Materia
 LEYES_LABEL: Leyes
 GRID: Rejilla
 CLON: Clon
+BASIC_AI: IA Básica
+RAYCAST_SOURCE: Rallo (Raycast)
+TARGET: Objetivo
+BEHAVIOR: Comportamiento
+FOLLOW: Seguir
+ESCAPE: Escapar
+WANDER: Vagar
+MOVEMENT_TYPE: Tipo Movimiento
+TOP_DOWN: Top-Down
+PLATFORMER: Plataformas
+SPEED: Velocidad
+AUTO_ROTATE: Rotación Automática
+OBSTACLE_AVOIDANCE: Esquivar Obstáculos
+DETECTION_AND_FUNCTIONS: Detección y Funciones
+DETECTION_DISTANCE: Distancia Detección
+EXECUTE_ON: Ejecutar en
+FUNCTION: Función
+SELECT_FUNCTION: -- Seleccionar Función --
+SHOW_RAYS: Mostrar Rayos
+RAYS: Rayos
+ANGLE: Ángulo
+LENGTH: Longitud
+RAY: Rayo
+DETECTION_TAGS: Tags de Detección
 
 # Directions
 NW: Noroeste
@@ -1051,6 +1075,30 @@ MATERIA: Matter
 LEYES_LABEL: Laws
 GRID: Grid
 CLON: Clone
+BASIC_AI: Basic AI
+RAYCAST_SOURCE: Raycast Source (Rallo)
+TARGET: Target
+BEHAVIOR: Behavior
+FOLLOW: Follow
+ESCAPE: Escape
+WANDER: Wander
+MOVEMENT_TYPE: Movement Type
+TOP_DOWN: Top-Down
+PLATFORMER: Platformer
+SPEED: Speed
+AUTO_ROTATE: Auto Rotate
+OBSTACLE_AVOIDANCE: Obstacle Avoidance
+DETECTION_AND_FUNCTIONS: Detection and Functions
+DETECTION_DISTANCE: Detection Distance
+EXECUTE_ON: Execute on
+FUNCTION: Function
+SELECT_FUNCTION: -- Select Function --
+SHOW_RAYS: Show Rays
+RAYS: Rays
+ANGLE: Angle
+LENGTH: Length
+RAY: Ray
+DETECTION_TAGS: Detection Tags
 
 # Directions
 NW: Northwest
