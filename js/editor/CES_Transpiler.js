@@ -111,6 +111,7 @@ const componentShortcuts = [
     'parallax',
     'movement', 'movimiento',
     'particleSystem', 'sistemaDeParticulas', 'particula', 'particulas',
+    'audio', 'sonido',
     'cameraFollow', 'seguimientoDeCamara',
     'drawingOrder', 'ordenDeDibujo',
     'materia', 'mtr', 'nombre', 'tag', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',

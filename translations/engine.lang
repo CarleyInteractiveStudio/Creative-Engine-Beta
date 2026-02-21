@@ -216,6 +216,7 @@ LAYER: Layer
 ADD_TAG_ELLIPSIS: Añadir Tag...
 EDIT_LAYERS_ELLIPSIS: Editar Layers...
 AÑADIR_LEY_TITULO: Añadir Ley (Componente)
+CAT_AUDIO: Audio
 CAT_RENDERIZADO: Renderizado
 CAT_MAPA: Mapa
 CAT_ILUMINACION: Iluminación
@@ -261,7 +262,19 @@ RAYS: Rayos
 ANGLE: Ángulo
 LENGTH: Longitud
 RAY: Rayo
+AUDIO_SOURCE: Audio Source
 DETECTION_TAGS: Tags de Detección
+AUDIO_CLIP: Audio Clip
+VOLUMEN: Volumen
+BUCLE_LOOP: Bucle (Loop)
+REPRODUCIR_AL_EMPEZAR: Reproducir al Empezar
+AUDIO_ESPACIAL: Audio Espacial
+ACTIVAR_AUDIO_ESPACIAL: Activar Audio Espacial
+DISTANCIA_MINIMA: Distancia Mínima
+DISTANCIA_MAXIMA: Distancia Máxima
+RANGO_REPRODUCCION: Rango de Reproducción
+INICIO_SEG: Inicio (seg)
+FIN_SEG: Fin (seg, 0=fin)
 
 # Directions
 NW: Noroeste
@@ -1053,6 +1066,7 @@ LAYER: Layer
 ADD_TAG_ELLIPSIS: Add Tag...
 EDIT_LAYERS_ELLIPSIS: Edit Layers...
 AÑADIR_LEY_TITULO: Add Law (Component)
+CAT_AUDIO: Audio
 CAT_RENDERIZADO: Rendering
 CAT_MAPA: Map
 CAT_ILUMINACION: Lighting
@@ -1098,7 +1112,19 @@ RAYS: Rays
 ANGLE: Angle
 LENGTH: Length
 RAY: Ray
+AUDIO_SOURCE: Audio Source
 DETECTION_TAGS: Detection Tags
+AUDIO_CLIP: Audio Clip
+VOLUMEN: Volume
+BUCLE_LOOP: Loop
+REPRODUCIR_AL_EMPEZAR: Play On Awake
+AUDIO_ESPACIAL: Spatial Audio
+ACTIVAR_AUDIO_ESPACIAL: Enable Spatial Audio
+DISTANCIA_MINIMA: Minimum Distance
+DISTANCIA_MAXIMA: Maximum Distance
+RANGO_REPRODUCCION: Playback Range
+INICIO_SEG: Start (sec)
+FIN_SEG: End (sec, 0=end)
 
 # Directions
 NW: Northwest

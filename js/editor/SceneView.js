@@ -181,6 +181,7 @@ let setPaletteActiveTool = null;
 
 // Module State
 let activeTool = 'move'; // 'move', 'rotate', 'scale', 'pan', 'tile-brush', 'tile-eraser', 'terrain-brush'
+let showGizmoIcons = true;
 let isAddingLayer = false;
 let isDragging = false;
 let lastSelectedId = -1;
@@ -957,6 +958,15 @@ export function initialize(dependencies) {
     // Setup event listeners
     dom.sceneCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
+    const toggleGizmosBtn = document.getElementById('btn-toggle-gizmos');
+    if (toggleGizmosBtn) {
+        toggleGizmosBtn.addEventListener('click', () => {
+            showGizmoIcons = !showGizmoIcons;
+            toggleGizmosBtn.classList.toggle('active', showGizmoIcons);
+            updateScene();
+        });
+    }
+
     // --- Drag and Drop Sprite Creation ---
     dom.sceneCanvas.addEventListener('dragover', (e) => {
         e.preventDefault(); // Necessary to allow a drop
@@ -1573,6 +1583,11 @@ export function drawOverlay() {
     // Draw gizmos for all cameras in the scene
     drawCameraGizmos(renderer);
 
+    // Draw Icons (Audio, Camera, etc)
+    if (showGizmoIcons) {
+        drawGizmoIcons();
+    }
+
     // Draw tile painting cursor
     drawTileCursor();
 
@@ -1595,6 +1610,49 @@ export function drawOverlay() {
     drawRaycastGizmos();
 
     drawTerrainBrushGizmo();
+}
+
+const iconCache = new Map();
+function getCachedIcon(path) {
+    if (iconCache.has(path)) return iconCache.get(path);
+    const img = new Image();
+    img.src = path;
+    iconCache.set(path, img);
+    return img;
+}
+
+function drawGizmoIcons() {
+    if (!SceneManager || !renderer || !SceneManager.currentScene) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+    const allMaterias = SceneManager.currentScene.getAllMaterias();
+
+    const ICON_SIZE = 32 / zoom;
+
+    allMaterias.forEach(materia => {
+        if (!materia.isActive) return;
+
+        const transform = materia.getComponent(Components.Transform);
+        if (!transform) return;
+
+        let iconPath = null;
+        if (materia.getComponent(Components.AudioSource)) {
+            iconPath = 'icons/music.svg';
+        } else if (materia.getComponent(Components.Camera)) {
+            iconPath = 'icons/camera.svg';
+        }
+
+        if (iconPath) {
+            const iconImg = getCachedIcon(iconPath);
+            if (iconImg.complete && iconImg.naturalWidth > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.8;
+                ctx.drawImage(iconImg, transform.x - ICON_SIZE / 2, transform.y - ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);
+                ctx.restore();
+            }
+        }
+    });
 }
 
 function drawRaycastGizmos() {

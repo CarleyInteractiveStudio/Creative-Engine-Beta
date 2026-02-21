@@ -57,6 +57,14 @@ export function createImageObject(parent) {
     return newMateria;
 }
 
+export function createAudioObject(parent = null) {
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('AUDIO', 'Audio'));
+    const newMateria = createBaseMateria(name, parent);
+    newMateria.addComponent(new Components.AudioSource(newMateria));
+    return newMateria;
+}
+
 export function createTerrenoObject(parent = null) {
     console.log("[MateriaFactory] Creando objeto de terreno...");
     const L = window.Localization;

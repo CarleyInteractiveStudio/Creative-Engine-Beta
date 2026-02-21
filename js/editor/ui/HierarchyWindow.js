@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -184,8 +184,7 @@ export function handleContextMenuAction(action) {
             newMateria = createBaseMateria(generateUniqueName(L.get('MATERIA_VACIA', 'Materia Vacía')), selectedMateria);
             break;
         case 'create-audio':
-            newMateria = createBaseMateria(generateUniqueName(L.get('AUDIO', 'Audio')), selectedMateria);
-            newMateria.addComponent(new Components.AudioSource(newMateria));
+            newMateria = createAudioObject(selectedMateria);
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);

@@ -273,6 +273,9 @@ export class CreativeScriptBehavior {
     get particulas() { return this.particula; }
     get sistemaDeParticulas() { return this.particula; }
 
+    get audio() { return this.materia.getComponent(AudioSource); }
+    get sonido() { return this.audio; }
+
     get texto() { return this.materia.getComponent(UIText); }
     get boton() { return this.materia.getComponent(Button); }
     get imagen() { return this.materia.getComponent(UIImage); }
@@ -1857,8 +1860,19 @@ export class AudioSource extends Leyes {
         this.volume = 1.0;
         this.loop = false;
         this.playOnAwake = true;
+
+        // Spatial Audio Properties
+        this.spatial = false;
+        this.minDistance = 100;
+        this.maxDistance = 1000;
+
+        // Playback Range (cutting)
+        this.playbackStart = 0; // seconds
+        this.playbackEnd = 0;   // seconds, 0 means play until the end
+
         this._audio = null;
         this._isLoaded = false;
+        this._currentVolume = 1.0;
     }
 
     async start() {
@@ -1867,7 +1881,54 @@ export class AudioSource extends Leyes {
         }
     }
 
-    async play() {
+    update(deltaTime) {
+        if (!this._audio || !this.isPlaying) return;
+
+        // --- Handle Playback End (Cut) ---
+        if (this.playbackEnd > 0 && this._audio.currentTime >= this.playbackEnd) {
+            if (this.loop) {
+                this._audio.currentTime = this.playbackStart;
+            } else {
+                this.stop();
+                return;
+            }
+        }
+
+        // --- Spatial Audio Logic ---
+        if (this.spatial && this.materia && this.materia.scene) {
+            const camera = this.materia.scene.findFirstCamera();
+            if (camera) {
+                const camTrans = camera.getComponent(Transform);
+                const myTrans = this.materia.getComponent(Transform);
+                if (camTrans && myTrans) {
+                    const dist = Math.hypot(camTrans.x - myTrans.x, camTrans.y - myTrans.y);
+                    let spatialFactor = 1.0;
+
+                    if (dist <= this.minDistance) {
+                        spatialFactor = 1.0;
+                    } else if (dist >= this.maxDistance) {
+                        spatialFactor = 0.0;
+                    } else {
+                        // Linear falloff
+                        spatialFactor = 1.0 - (dist - this.minDistance) / (this.maxDistance - this.minDistance);
+                    }
+
+                    this._currentVolume = this.volume * spatialFactor;
+                    if (this._audio) this._audio.volume = this._currentVolume;
+                }
+            }
+        } else {
+            if (this._audio && this._audio.volume !== this.volume) {
+                this._audio.volume = this.volume;
+            }
+        }
+    }
+
+    get isPlaying() {
+        return this._audio && !this._audio.paused && !this._audio.ended;
+    }
+
+    async play(startTime = null) {
         if (!this.source) return;
 
         try {
@@ -1878,8 +1939,15 @@ export class AudioSource extends Leyes {
                 this._audio.oncanplaythrough = () => this._isLoaded = true;
             }
 
-            this._audio.volume = this.volume;
+            this._audio.volume = this.spatial ? this._currentVolume : this.volume;
             this._audio.loop = this.loop;
+
+            if (startTime !== null) {
+                this._audio.currentTime = startTime;
+            } else if (this._audio.currentTime < this.playbackStart) {
+                this._audio.currentTime = this.playbackStart;
+            }
+
             await this._audio.play();
         } catch (e) {
             console.warn(`[AudioSource] No se pudo reproducir audio: ${this.source}.`, e);
@@ -1889,7 +1957,7 @@ export class AudioSource extends Leyes {
     stop() {
         if (this._audio) {
             this._audio.pause();
-            this._audio.currentTime = 0;
+            this._audio.currentTime = this.playbackStart;
         }
     }
 
@@ -1900,14 +1968,26 @@ export class AudioSource extends Leyes {
     }
 
     // --- Spanish Aliases ---
-    reproducir() { this.play(); }
+    reproducir(tiempoInicio) { this.play(tiempoInicio); }
     detener() { this.stop(); }
     pausar() { this.pause(); }
 
     get volumen() { return this.volume; }
-    set volumen(v) { this.volume = v; if (this._audio) this._audio.volume = v; }
+    set volumen(v) { this.volume = v; if (this._audio && !this.spatial) this._audio.volume = v; }
     get bucle() { return this.loop; }
     set bucle(l) { this.loop = l; if (this._audio) this._audio.loop = l; }
+
+    get espacial() { return this.spatial; }
+    set espacial(v) { this.spatial = v; }
+    get distanciaMinima() { return this.minDistance; }
+    set distanciaMinima(v) { this.minDistance = v; }
+    get distanciaMaxima() { return this.maxDistance; }
+    set distanciaMaxima(v) { this.maxDistance = v; }
+
+    get inicioReproduccion() { return this.playbackStart; }
+    set inicioReproduccion(v) { this.playbackStart = v; }
+    get finReproduccion() { return this.playbackEnd; }
+    set finReproduccion(v) { this.playbackEnd = v; }
 
     onDestroy() {
         this.stop();
@@ -1920,6 +2000,11 @@ export class AudioSource extends Leyes {
         newAudio.volume = this.volume;
         newAudio.loop = this.loop;
         newAudio.playOnAwake = this.playOnAwake;
+        newAudio.spatial = this.spatial;
+        newAudio.minDistance = this.minDistance;
+        newAudio.maxDistance = this.maxDistance;
+        newAudio.playbackStart = this.playbackStart;
+        newAudio.playbackEnd = this.playbackEnd;
         return newAudio;
     }
 }
