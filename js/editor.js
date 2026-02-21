@@ -3711,7 +3711,12 @@ public start() {
                     menuItem.textContent = win.nombre;
                     menuItem.addEventListener('click', (e) => {
                         e.preventDefault();
-                        const panel = LibraryAPI.crearPanel({ titulo: win.nombre });
+                        const panel = LibraryAPI.crearPanel({
+                            titulo: win.nombre,
+                            estilo: win.estilo,
+                            ancho: win.ancho,
+                            alto: win.alto
+                        });
                         win.alAbrir(panel);
                     });
                     windowMenu.appendChild(menuItem);

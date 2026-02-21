@@ -231,98 +231,66 @@
 })();</code></pre>
 
                         <h4>Registrar una Ventana</h4>
-                        <p>Para que tu librería aparezca en el menú "Ventana", debes registrarla. Esto se hace llamando a <code>registrarVentana</code>.</p>
+                        <p>Para que tu librería aparezca en el menú "Ventana", debes registrarla. Puedes personalizar el estilo y tamaño inicial.</p>
                         <pre><code>CreativeEngine.API.registrarVentana({
-    nombre: "Mi Primera Librería",
+    nombre: "Mi Herramienta Pro",
+    estilo: "carl", // Opciones: "carl" (cristal), "moderno" (limpio)
+    ancho: 500,
+    alto: 400,
     alAbrir: function(panel) {
-        // Esta función se ejecuta cuando el usuario abre tu ventana.
-        // El objeto 'panel' es tu lienzo para construir la UI.
-        panel.agregarTexto("¡Hola, mundo!");
+        panel.texto("¡Bienvenido a la nueva API!");
+        panel.boton("OK", () => console.log("Clic!"));
     }
 });</code></pre>
 
                         <hr>
-                        <h3>API de Componentes de UI</h3>
-                        <p>Dentro de la función <code>alAbrir</code>, puedes usar el objeto <code>panel</code> para añadir elementos de interfaz.</p>
+                        <h3>API de UI Simplificada</h3>
+                        <p>Usa estas palabras clave cortas para construir tu interfaz rápidamente dentro de <code>alAbrir</code>.</p>
 
-                        <h4><code>panel.agregarTexto(texto, opciones)</code></h4>
-                        <p>Muestra un texto simple. Opcionalmente puedes pasarle un objeto de opciones para darle un tamaño de fuente específico, como <code>{ tamaño: 'grande' }</code>.</p>
-                        <pre><code>panel.agregarTexto("Este es un texto normal.");
-panel.agregarTexto("Este es un título.", { tamaño: 'grande' });</code></pre>
+                        <h4><code>panel.texto(contenido, opciones)</code></h4>
+                        <p>Añade texto simple. Opciones: <code>{ color, negrita, tamano }</code>.</p>
 
-                        <h4><code>panel.agregarBoton(texto, alHacerClic)</code></h4>
-                        <p>Crea un botón. La función <code>alHacerClic</code> se ejecuta cuando el usuario presiona el botón.</p>
-                        <pre><code>panel.agregarBoton("Haz clic aquí", function() {
-    // Es mejor usar los diálogos del motor
-    window.Dialogs.showNotification("Aviso", "¡Botón presionado!");
-});</code></pre>
+                        <h4><code>panel.boton(etiqueta, clic, opciones)</code></h4>
+                        <p>Crea un botón. Opciones: <code>{ ancho, alto, color }</code>.</p>
+                        <pre><code>panel.boton("Botón Grande", () => {}, { ancho: '100%', alto: '50px' });</code></pre>
 
-                        <h4><code>panel.agregarInputTexto(etiqueta, opciones)</code></h4>
-                        <p>Crea un campo de texto con una etiqueta. Puedes especificar un callback <code>alCambiar</code> para reaccionar a la entrada del usuario.</p>
-                        <pre><code>panel.agregarInputTexto("Nombre:", {
-    placeholder: "Escribe tu nombre...",
-    alCambiar: function(valor) {
-        console.log("El nuevo nombre es:", valor);
-    }
-});</code></pre>
+                        <h4><code>panel.input(etiqueta, opciones)</code></h4>
+                        <p>Campo de texto. Opciones: <code>{ inicial, placeholder, alCambiar }</code>.</p>
 
-                        <h4><code>panel.agregarSlider(etiqueta, opciones)</code></h4>
-                        <p>Crea un slider deslizable. Puedes definir <code>min</code>, <code>max</code>, <code>step</code> (incremento) y un valor inicial <code>valor</code>.</p>
-                        <pre><code>panel.agregarSlider("Velocidad:", {
-    min: 0,
-    max: 100,
-    step: 1,
-    valor: 50,
-    alCambiar: function(valor) {
-        console.log("Nueva velocidad:", valor);
-    }
-});</code></pre>
+                        <h4><code>panel.numero(etiqueta, opciones)</code></h4>
+                        <p>Campo numérico. Opciones: <code>{ inicial, min, max, paso, alCambiar }</code>.</p>
 
-                        <h4><code>panel.agregarCheckbox(etiqueta, opciones)</code></h4>
-                        <p>Crea una casilla de verificación. Puedes definir si está marcada por defecto con <code>marcado: true</code>.</p>
-                        <pre><code>panel.agregarCheckbox("Activar Modo Turbo", {
-    marcado: true,
-    alCambiar: function(estaMarcado) {
-        console.log("Modo Turbo activado:", estaMarcado);
-    }
-});</code></pre>
+                        <h4><code>panel.desplegable(etiqueta, items, opciones)</code></h4>
+                        <p>Menú de selección. Opciones: <code>{ inicial, alCambiar }</code>.</p>
 
-                        <h4><code>panel.agregarDropdown(etiqueta, items, opciones)</code></h4>
-                        <p>Crea un menú desplegable. <code>items</code> debe ser un array de strings.</p>
-                        <pre><code>panel.agregarDropdown("Dificultad:", ["Fácil", "Normal", "Difícil"], {
-    alCambiar: function(opcionSeleccionada) {
-        console.log("Dificultad elegida:", opcionSeleccionada);
-    }
-});</code></pre>
+                        <h4><code>panel.checkbox(etiqueta, inicial, alCambiar)</code></h4>
+                        <p>Casilla de verificación.</p>
 
-                        <h4><code>panel.agregarImagen(url, opciones)</code></h4>
-                        <p>Muestra una imagen. Puedes pasarle <code>ancho</code> y <code>alto</code> en las opciones.</p>
-                        <pre><code>panel.agregarImagen("https://via.placeholder.com/150", {
-    ancho: "150px",
-    alto: "150px"
-});</code></pre>
-
-                        <h4><code>panel.agregarVideo(url, opciones)</code></h4>
-                        <p>Incrusta un video. Funciona mejor con URLs de video directas o plataformas como YouTube.</p>
-                        <pre><code>// Nota: Puede que necesites una URL 'embed' para algunas plataformas.
-panel.agregarVideo("https://www.youtube.com/embed/dQw4w9WgXcQ");</code></pre>
+                        <h4><code>panel.slider(etiqueta, opciones)</code></h4>
+                        <p>Barra deslizable. Opciones: <code>{ inicial, min, max, paso, alCambiar }</code>.</p>
 
                         <hr>
-                        <h3>API de Layout</h3>
+                        <h3>Layout y Organización</h3>
+                        <p>Divide tu ventana fácilmente usando filas, columnas y áreas de scroll con callbacks.</p>
 
-                        <h4><code>panel.agregarContenedor(opciones)</code></h4>
-                        <p>Crea un contenedor para agrupar otros elementos. Puedes anidarlos y definir su dirección (<code>'vertical'</code> u <code>'horizontal'</code>).</p>
-                        <pre><code>const contenedorHorizontal = panel.agregarContenedor({ direccion: 'horizontal' });
-// Los elementos añadidos a 'contenedorHorizontal' se alinearán uno al lado del otro.
-contenedorHorizontal.agregarBoton("Botón 1", () => {});
-contenedorHorizontal.agregarBoton("Botón 2", () => {});</code></pre>
+                        <h4><code>panel.fila(opciones, callback)</code></h4>
+                        <p>Organiza elementos horizontalmente.</p>
+                        <pre><code>panel.fila({ gap: '20px' }, (f) => {
+    f.boton("Izquierda", () => {});
+    f.boton("Derecha", () => {});
+});</code></pre>
 
-                        <h4><code>panel.agregarAreaScroll(opciones)</code></h4>
-                        <p>Crea un área con scroll. Todos los elementos que añadas a esta área estarán dentro de un contenedor desplazable.</p>
-                        <pre><code>const areaScroll = panel.agregarAreaScroll({ alto: '200px' });
-for (let i = 0; i < 20; i++) {
-    areaScroll.agregarTexto(`Elemento número ${i + 1}`);
-}</code></pre>
+                        <h4><code>panel.columna(opciones, callback)</code></h4>
+                        <p>Organiza elementos verticalmente (comportamiento por defecto).</p>
+
+                        <h4><code>panel.scroll(opciones, callback)</code></h4>
+                        <p>Crea un área con scroll infinito. Opciones: <code>{ alto }</code>.</p>
+                        <pre><code>panel.scroll({ alto: '150px' }, (s) => {
+    for(let i=0; i<50; i++) s.texto("Línea " + i);
+});</code></pre>
+
+                        <h4><code>panel.separador()</code></h4>
+                        <p>Añade una línea divisoria horizontal.</p>
 
                         <hr>
                         <h3>API de Runtime (Acceso desde Scripts .ces)</h3>

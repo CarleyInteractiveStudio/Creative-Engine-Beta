@@ -4652,3 +4652,57 @@ body.game-mode #loading-overlay {
 #animator-assets-list, #animator-states-list {
     min-height: 150px;
 }
+
+
+/* --- Improved Window Styles for Libraries --- */
+
+/* Style: Carl (Glassmorphism) */
+.floating-panel.ce-window-carl {
+    background: rgba(30, 30, 35, 0.7) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ce-window-carl .panel-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.ce-window-carl .panel-content {
+    background: transparent !important;
+}
+
+/* Style: Modern (Clean & Attractive) */
+.floating-panel.ce-window-modern {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--accent-color) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ce-window-modern .panel-header {
+    background-color: var(--bg-tertiary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.ce-window-modern .panel-content {
+    padding: 15px !important;
+}
+
+/* General Library UI Helpers */
+.lib-button-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+}
+
+.lib-button-custom:active {
+    transform: scale(0.95);
+}
