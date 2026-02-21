@@ -399,6 +399,34 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.folder-toggle {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.folder-toggle.has-children {
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary);
+    transition: transform 0.15s ease-in-out;
+}
+
+.folder-toggle.has-children.open {
+    transform: rotate(90deg);
+}
+
+.folder-children {
+    display: flex;
+    flex-direction: column;
 }
 .sprite-preview {
     width: 64px;
@@ -1978,14 +2006,20 @@ body {
     text-align: center;
     gap: 8px;
     padding: 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .grid-item:hover {
-    background-color: var(--bg-tertiary);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color);
+    transform: translateY(-2px);
 }
 .grid-item.active {
-    background-color: var(--accent-color);
+    background-color: rgba(14, 99, 156, 0.35);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     color: white;
 }
 .grid-item .icon {
@@ -2467,12 +2501,46 @@ body {
   overflow-y: auto;
 }
 
+.category-header {
+    margin-top: 10px;
+    margin-bottom: 0;
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    user-select: none;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.category-header:hover {
+    background-color: var(--accent-color);
+}
+
+.category-toggle {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid var(--text-secondary);
+    margin-right: 10px;
+    transition: transform 0.2s;
+}
+
+.category-toggle.open {
+    transform: rotate(90deg);
+}
+
+.category-content {
+    padding: 5px 0 10px 15px;
+}
+
 #component-list h4 {
-    margin-top: 15px;
-    margin-bottom: 5px;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 5px;
+    margin: 0;
 }
 
 #component-list .component-item {

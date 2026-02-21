@@ -1087,6 +1087,10 @@ export function refreshInspectorValues() {
 
 export async function updateInspector() {
     if (!dom.inspectorContent) return;
+
+    // Guardar la posición del scroll antes de limpiar
+    const savedScrollTop = dom.inspectorContent.scrollTop;
+
     dom.inspectorContent.innerHTML = '';
 
     const selectedMateria = getSelectedMateria();
@@ -1099,6 +1103,9 @@ export async function updateInspector() {
     } else {
         dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
+
+    // Restaurar la posición del scroll
+    dom.inspectorContent.scrollTop = savedScrollTop;
 }
 
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
@@ -3613,9 +3620,22 @@ export async function showAddComponentModal() {
     const L = window.Localization;
     for (const category in availableComponents) {
         if (category === 'CAT_SCRIPTING') continue;
+
+        const categoryWrapper = document.createElement('div');
+        categoryWrapper.className = 'component-category-wrapper';
+
         const categoryHeader = document.createElement('h4');
-        categoryHeader.textContent = L.get(category, category);
-        dom.componentList.appendChild(categoryHeader);
+        categoryHeader.className = 'category-header';
+        categoryHeader.innerHTML = `<span class="category-toggle open"></span>${L.get(category, category)}`;
+
+        const categoryContent = document.createElement('div');
+        categoryContent.className = 'category-content';
+
+        categoryHeader.addEventListener('click', () => {
+            const isOpen = categoryContent.style.display !== 'none';
+            categoryContent.style.display = isOpen ? 'none' : 'block';
+            categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
+        });
 
         availableComponents[category].forEach(ComponentClass => {
             const isPresent = existingComponents.has(ComponentClass);
@@ -3655,16 +3675,32 @@ export async function showAddComponentModal() {
                 dom.addComponentModal.classList.remove('is-open');
                 updateInspector();
             });
-            dom.componentList.appendChild(componentItem);
+            categoryContent.appendChild(componentItem);
         });
+
+        categoryWrapper.appendChild(categoryHeader);
+        categoryWrapper.appendChild(categoryContent);
+        dom.componentList.appendChild(categoryWrapper);
     }
 
     // --- 2. Render Custom Components ---
     const customComponentDefinitions = getCustomComponentDefinitions();
     if (customComponentDefinitions.size > 0) {
-        const customHeader = document.createElement('h4');
-        customHeader.textContent = L.get('COMPONENTES_PERSONALIZADOS', 'Componentes Personalizados');
-        dom.componentList.appendChild(customHeader);
+        const categoryWrapper = document.createElement('div');
+        categoryWrapper.className = 'component-category-wrapper';
+
+        const categoryHeader = document.createElement('h4');
+        categoryHeader.className = 'category-header';
+        categoryHeader.innerHTML = `<span class="category-toggle open"></span>${L.get('COMPONENTES_PERSONALIZADOS', 'Componentes Personalizados')}`;
+
+        const categoryContent = document.createElement('div');
+        categoryContent.className = 'category-content';
+
+        categoryHeader.addEventListener('click', () => {
+            const isOpen = categoryContent.style.display !== 'none';
+            categoryContent.style.display = isOpen ? 'none' : 'block';
+            categoryHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
+        });
 
         for (const [name, definition] of customComponentDefinitions.entries()) {
             const isPresent = existingCustomComponents.has(name);
@@ -3685,8 +3721,11 @@ export async function showAddComponentModal() {
                 dom.addComponentModal.classList.remove('is-open');
                 updateInspector();
             });
-            dom.componentList.appendChild(componentItem);
+            categoryContent.appendChild(componentItem);
         }
+        categoryWrapper.appendChild(categoryHeader);
+        categoryWrapper.appendChild(categoryContent);
+        dom.componentList.appendChild(categoryWrapper);
     }
 
 
@@ -3694,13 +3733,29 @@ export async function showAddComponentModal() {
     dom.addComponentModal.classList.add('is-open');
 
     // --- 3. Find and Render Custom Scripts Asynchronously ---
-    const scriptsCategoryHeader = document.createElement('h4');
-    scriptsCategoryHeader.textContent = L.get('SCRIPTS', 'Scripts');
-    dom.componentList.appendChild(scriptsCategoryHeader);
+    const scriptsCategoryWrapper = document.createElement('div');
+    scriptsCategoryWrapper.className = 'component-category-wrapper';
+
+    const scriptsHeader = document.createElement('h4');
+    scriptsHeader.className = 'category-header';
+    scriptsHeader.innerHTML = `<span class="category-toggle open"></span>${L.get('SCRIPTS', 'Scripts')}`;
+
+    const scriptsContent = document.createElement('div');
+    scriptsContent.className = 'category-content';
+
+    scriptsHeader.addEventListener('click', () => {
+        const isOpen = scriptsContent.style.display !== 'none';
+        scriptsContent.style.display = isOpen ? 'none' : 'block';
+        scriptsHeader.querySelector('.category-toggle').classList.toggle('open', !isOpen);
+    });
+
+    scriptsCategoryWrapper.appendChild(scriptsHeader);
+    scriptsCategoryWrapper.appendChild(scriptsContent);
+    dom.componentList.appendChild(scriptsCategoryWrapper);
 
     const placeholder = document.createElement('p');
     placeholder.className = 'script-scan-status';
-    dom.componentList.appendChild(placeholder);
+    scriptsContent.appendChild(placeholder);
 
     if (!projectsDirHandle) {
         placeholder.textContent = "No se ha seleccionado un directorio de proyecto.";
@@ -3738,7 +3793,7 @@ export async function showAddComponentModal() {
         placeholder.remove();
 
         if (scriptFiles.length === 0) {
-            dom.componentList.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
+            scriptsContent.appendChild(Object.assign(document.createElement('p'), { textContent: L.get('SIN_SCRIPTS_HINT', "No se encontraron scripts (.ces) en la carpeta Assets.") }));
         } else {
             scriptFiles.forEach(fileHandle => {
                 const isPresent = existingScripts.has(fileHandle.name);
@@ -3761,7 +3816,7 @@ export async function showAddComponentModal() {
                     dom.addComponentModal.classList.remove('is-open');
                     updateInspector();
                 });
-                dom.componentList.appendChild(componentItem);
+                scriptsContent.appendChild(componentItem);
             });
         }
     } catch (error) {

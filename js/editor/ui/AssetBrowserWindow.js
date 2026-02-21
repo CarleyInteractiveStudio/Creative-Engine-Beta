@@ -10,6 +10,7 @@ let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
+let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -60,10 +61,15 @@ export function initialize(dependencies) {
 }
 
 function handleExternalFileDragEnter(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter++;
-    dom.assetsContent.classList.add('drag-over-fs');
+    // Solo mostrar el highlight si se arrastran archivos externos
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        if (dragCounter === 1) {
+            dom.assetsContent.classList.add('drag-over-fs');
+        }
+    }
 }
 
 export async function handleContextMenuAction(action) {
@@ -683,9 +689,44 @@ export async function updateAssetBrowser() {
     async function populateFolderTree(dirHandle, currentPath, container, depth = 0) {
         const folderItem = document.createElement('div');
         folderItem.className = 'folder-item';
-        folderItem.textContent = dirHandle.name;
         folderItem.style.paddingLeft = `${depth * 15 + 5}px`;
         folderItem.dataset.path = currentPath;
+
+        const isCollapsed = collapsedFolders.has(currentPath);
+
+        // Crear el toggle (triangulito)
+        const toggle = document.createElement('span');
+        toggle.className = 'folder-toggle';
+
+        // Verificar si tiene subcarpetas para mostrar el toggle
+        let hasSubfolders = false;
+        try {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'directory') {
+                    hasSubfolders = true;
+                    break;
+                }
+            }
+        } catch(e) {}
+
+        if (hasSubfolders) {
+            toggle.classList.add('has-children');
+            if (!isCollapsed) toggle.classList.add('open');
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (collapsedFolders.has(currentPath)) {
+                    collapsedFolders.delete(currentPath);
+                } else {
+                    collapsedFolders.add(currentPath);
+                }
+                updateAssetBrowser(); // Refrescar el árbol
+            });
+        }
+        folderItem.appendChild(toggle);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = dirHandle.name;
+        folderItem.appendChild(nameSpan);
 
         if (dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
             folderItem.classList.add('active');
@@ -694,7 +735,7 @@ export async function updateAssetBrowser() {
         folderItem.addEventListener('click', (e) => {
             e.stopPropagation();
             currentDirectoryHandle = { handle: dirHandle, path: currentPath };
-            updateAssetBrowserCallback();
+            updateAssetBrowser();
         });
 
         folderItem.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; folderItem.classList.add('drag-over'); });
@@ -719,18 +760,20 @@ export async function updateAssetBrowser() {
 
         container.appendChild(folderItem);
 
-        const childrenContainer = document.createElement('div');
-        childrenContainer.className = 'folder-children';
-        folderItem.appendChild(childrenContainer);
+        if (!isCollapsed) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-children';
+            container.appendChild(childrenContainer);
 
-        try {
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'directory') {
-                    await populateFolderTree(entry, `${currentPath}/${entry.name}`, childrenContainer, depth + 1);
+            try {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'directory') {
+                        await populateFolderTree(entry, `${currentPath}/${entry.name}`, childrenContainer, depth + 1);
+                    }
                 }
+            } catch(e) {
+                console.warn(`Could not iterate directory ${dirHandle.name}. Permissions issue?`, e);
             }
-        } catch(e) {
-            console.warn(`Could not iterate directory ${dirHandle.name}. Permissions issue?`, e);
         }
     }
 
@@ -839,19 +882,23 @@ function handleGridDragStart(e) {
 }
 
 function handleExternalFileDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    // Ensure it stays visible during hover
-    dom.assetsContent.classList.add('drag-over-fs');
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Garantizar que se vea durante el hover
+        dom.assetsContent.classList.add('drag-over-fs');
+    }
 }
 
 function handleExternalFileDragLeave(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter--;
-    if (dragCounter <= 0) {
-        dragCounter = 0;
-        dom.assetsContent.classList.remove('drag-over-fs');
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            dom.assetsContent.classList.remove('drag-over-fs');
+        }
     }
 }
 

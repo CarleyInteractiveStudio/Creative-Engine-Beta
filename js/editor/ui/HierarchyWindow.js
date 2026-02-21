@@ -41,13 +41,16 @@ export function updateHierarchy() {
 
     const selectedId = selectedMateria ? selectedMateria.id : null;
 
-    function renderNode(materia, container, depth) {
+    function renderNode(materia, container, depth, isInsidePrefab = false) {
         const item = document.createElement('div');
         item.className = 'hierarchy-item';
+
+        const prefabStatus = isInsidePrefab || !!materia.prefabPath;
+
         if (!materia.isActive) {
             item.classList.add('disabled');
         }
-        if (materia.prefabPath) {
+        if (prefabStatus) {
             item.classList.add('prefab');
         }
         item.dataset.id = materia.id;
@@ -77,7 +80,7 @@ export function updateHierarchy() {
         // Only render children if the parent is not collapsed
         if (!materia.isCollapsed && materia.children && materia.children.length > 0) {
             materia.children.forEach(child => {
-                renderNode(child, container, depth + 1);
+                renderNode(child, container, depth + 1, prefabStatus);
             });
         }
     }
