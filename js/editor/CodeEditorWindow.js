@@ -4,7 +4,8 @@ import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
 import { undo, redo } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
 import { transpile } from './CES_Transpiler.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
@@ -16,21 +17,131 @@ let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
 let showConsoleCallback = () => {}; // Placeholder for the callback
 let hotReloadCallback = () => {}; // Placeholder for hot reload
+
 const cesKeywords = [
-    { label: "public", type: "keyword" },
-    { label: "private", type: "keyword" },
-    { label: "sprite", type: "type" },
-    { label: "SpriteAnimacion", type: "type" },
-    { label: "crear", type: "function" },
-    { label: "destruir", type: "function" },
-    { label: "reproducir", type: "function" },
-    { label: "obtener", type: "function" },
+    // Spanish Keywords
     { label: "si", type: "keyword" },
     { label: "sino", type: "keyword" },
-    { label: "para", type: "keyword" },
     { label: "mientras", type: "keyword" },
+    { label: "para", type: "keyword" },
+    { label: "cada", type: "keyword" },
+    { label: "esperar", type: "keyword" },
+    { label: "retornar", type: "keyword" },
+    { label: "nuevo", type: "keyword" },
+    { label: "funcion", type: "keyword" },
+    { label: "variable", type: "keyword" },
+    { label: "constante", type: "keyword" },
+    { label: "verdadero", type: "keyword" },
+    { label: "falso", type: "keyword" },
+    { label: "materia", type: "type" },
+    { label: "mtr", type: "type" },
+    { label: "publico", type: "keyword" },
+    { label: "privado", type: "keyword" },
+    { label: "ve", type: "keyword" },
+    { label: "go", type: "keyword" },
+    { label: "imprimir", type: "function" },
+    { label: "log", type: "function" },
+
+    // English Keywords
+    { label: "public", type: "keyword" },
+    { label: "private", type: "keyword" },
+    { label: "async", type: "keyword" },
+    { label: "await", type: "keyword" },
+
+    // Types
+    { label: "number", type: "type" },
+    { label: "numero", type: "type" },
+    { label: "text", type: "type" },
+    { label: "texto", type: "type" },
+    { label: "boolean", type: "type" },
+    { label: "booleano", type: "type" },
+    { label: "Vector2", type: "type" },
+    { label: "Color", type: "type" },
+    { label: "Materia", type: "type" },
+    { label: "Prefab", type: "type" },
+    { label: "Scene", type: "type" },
+    { label: "Audio", type: "type" },
+    { label: "Sprite", type: "type" },
+
+    // Component Shortcuts & Functions
+    { label: "transform", type: "property" },
+    { label: "transformacion", type: "property" },
+    { label: "posicion", type: "property" },
+    { label: "rigidbody2D", type: "property" },
+    { label: "fisica", type: "property" },
+    { label: "animatorController", type: "property" },
+    { label: "controladorAnimacion", type: "property" },
+    { label: "spriteRenderer", type: "property" },
+    { label: "renderizadorDeSprite", type: "property" },
+    { label: "audioSource", type: "property" },
+    { label: "fuenteDeAudio", type: "property" },
+    { label: "boxCollider2D", type: "property" },
+    { label: "colisionadorCaja2D", type: "property" },
+    { label: "capsuleCollider2D", type: "property" },
+    { label: "colisionadorCapsula2D", type: "property" },
+    { label: "camera", type: "property" },
+    { label: "camara", type: "property" },
+    { label: "animator", type: "property" },
+    { label: "animador", type: "property" },
+    { label: "pointLight2D", type: "property" },
+    { label: "spotLight2D", type: "property" },
+    { label: "freeformLight2D", type: "property" },
+    { label: "spriteLight2D", type: "property" },
+    { label: "tilemap", type: "property" },
+    { label: "grid", type: "property" },
+    { label: "rejilla", type: "property" },
+    { label: "raycastSource", type: "property" },
+    { label: "rallo", type: "property" },
+    { label: "basicAI", type: "property" },
+    { label: "iaBasica", type: "property" },
+    { label: "canvas", type: "property" },
+    { label: "lienzo", type: "property" },
+    { label: "ui", type: "property" },
+    { label: "boton", type: "property" },
+    { label: "imagen", type: "property" },
+    { label: "textoUI", type: "property" },
+
+    // Lifecycle
+    { label: "iniciar", type: "function" },
+    { label: "alEmpezar", type: "function" },
     { label: "start", type: "function" },
-    { label: "update", type: "function" }
+    { label: "actualizar", type: "function" },
+    { label: "alActualizar", type: "function" },
+    { label: "update", type: "function" },
+
+    // Actions
+    { label: "reproducir", type: "function" },
+    { label: "play", type: "function" },
+    { label: "detener", type: "function" },
+    { label: "stop", type: "function" },
+    { label: "crear", type: "function" },
+    { label: "create", type: "function" },
+    { label: "destruir", type: "function" },
+    { label: "destroy", type: "function" },
+    { label: "instanciar", type: "function" },
+    { label: "instantiate", type: "function" },
+    { label: "buscar", type: "function" },
+    { label: "find", type: "function" },
+    { label: "obtenerScript", type: "function" },
+    { label: "getScript", type: "function" },
+    { label: "obtenerComponente", type: "function" },
+    { label: "getComponent", type: "function" },
+
+    // Physics & Collisions
+    { label: "alEntrarEnColision", type: "function" },
+    { label: "getCollisionEnter", type: "function" },
+    { label: "estaTocandoTag", type: "function" },
+    { label: "isTouchingTag", type: "function" },
+
+    // Utils
+    { label: "azar", type: "function" },
+    { label: "random", type: "function" },
+    { label: "distancia", type: "function" },
+    { label: "distance", type: "function" },
+    { label: "redondear", type: "function" },
+    { label: "round", type: "function" },
+    { label: "limitar", type: "function" },
+    { label: "clamp", type: "function" }
 ];
 
 function cesCompletions(context) {
@@ -74,7 +185,8 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     basicSetup,
                     javascript(),
                     oneDark,
-                    autocompletion({ override: [cesCompletions] })
+                    autocompletion({ override: [cesCompletions] }),
+                    keymap.of([{ key: "Tab", run: acceptCompletion }])
                 ],
                 parent: dom.codemirrorContainer
             });
@@ -84,7 +196,17 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             });
         }
 
+        // Fix: Ensure the editor is visible and focused to avoid the typing bug
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
+
+        setTimeout(() => {
+            if (codeEditor) {
+                codeEditor.focus();
+                // Scroll to top
+                codeEditor.dispatch({ effects: EditorView.scrollIntoView(0) });
+            }
+        }, 50);
+
         console.log(`Abierto ${fileName} en el editor.`);
     } catch (error) {
         console.error(`Error al abrir el script '${fileName}':`, error);
