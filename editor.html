@@ -222,7 +222,7 @@
                     <div id="library-api-docs-content" class="panel-content" style="text-align: left; max-height: 60vh; overflow-y: auto; padding: 15px;">
 
                         <h3>Conceptos Básicos</h3>
-                        <p>Las librerías te permiten extender la funcionalidad del editor y del motor. Todo comienza con un único archivo JavaScript.</p>
+                        <p>Las librerías te permiten extender la funcionalidad del editor y del motor. Los archivos se guardan en la carpeta <code>/lib</code> de tu proyecto, donde encontrarás un <code>README.md</code> con más información.</p>
 
                         <h4>Estructura del Script</h4>
                         <p>Tu script debe ser una función autoejecutable (IIFE) que interactúa con la API global <code>CreativeEngine.API</code>.</p>
@@ -252,7 +252,9 @@
 
                         <h4><code>panel.boton(etiqueta, clic, opciones)</code></h4>
                         <p>Crea un botón. Opciones: <code>{ ancho, alto, color }</code>.</p>
-                        <pre><code>panel.boton("Botón Grande", () => {}, { ancho: '100%', alto: '50px' });</code></pre>
+                        <pre><code>panel.boton("Ejecutar Acción", () => {
+    window.Dialogs.showNotification("Aviso", "¡Acción ejecutada!");
+}, { ancho: '100%', alto: '40px', color: '#2ecc71' });</code></pre>
 
                         <h4><code>panel.input(etiqueta, opciones)</code></h4>
                         <p>Campo de texto. Opciones: <code>{ inicial, placeholder, alCambiar }</code>.</p>

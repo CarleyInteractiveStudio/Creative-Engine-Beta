@@ -320,7 +320,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Crear el directorio del proyecto y las carpetas necesarias
             const projectDirHandle = await dirHandle.getDirectoryHandle(projectName, { create: true });
-            const assetsDirHandle = await projectDirHandle.getDirectoryHandle('assets', { create: true });
+            const assetsDirHandle = await projectDirHandle.getDirectoryHandle('Assets', { create: true });
+            const libDirHandle = await projectDirHandle.getDirectoryHandle('lib', { create: true });
             const tutorialDirHandle = await assetsDirHandle.getDirectoryHandle('tutorial', { create: true });
 
             // Crear el archivo de escena por defecto
@@ -331,6 +332,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Cargar y escribir los archivos de documentación
             try {
+                // README de Librerías
+                const libReadmeContent = `# Carpeta de Librerías (/lib)
+
+Esta carpeta está destinada a tus librerías personalizadas (.celib).
+Las librerías te permiten extender la funcionalidad del editor y del motor.
+
+## Cómo usar la nueva API Simplificada
+
+Dentro de tu script JavaScript (IIFE), puedes usar estas funciones para crear interfaces increíbles:
+
+\`\`\`javascript
+CreativeEngine.API.registrarVentana({
+    nombre: "Mi Herramienta",
+    estilo: "carl", // "carl" o "moderno"
+    alAbrir: (panel) => {
+        panel.texto("¡Hola Mundo!");
+        panel.boton("Ejecutar", () => {
+            window.Dialogs.showNotification("Aviso", "Acción ejecutada");
+        });
+    }
+});
+\`\`\`
+
+Para más detalles, consulta la sección "Ayuda" del editor.`;
+
+                const libReadmeHandle = await libDirHandle.getFileHandle('README.md', { create: true });
+                writable = await libReadmeHandle.createWritable();
+                await writable.write(libReadmeContent);
+                await writable.close();
+
                 // Tutorial
                 const tutResponse = await fetch('ces-transpiler/template/TUTORIAL.md');
                 if (tutResponse.ok) {

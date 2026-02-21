@@ -12,7 +12,6 @@ const runtimeAPIs = {};
 
 /**
  * Registra una nueva ventana de librería en el menú principal "Ventana > Librerías".
- * @param {object} options - Opciones de configuración para la ventana.
  */
 function registrarVentana(options) {
     if (!options || !options.nombre || typeof options.alAbrir !== 'function') {
@@ -25,7 +24,6 @@ function registrarVentana(options) {
 
 /**
  * Crea y devuelve un nuevo panel flotante.
- * @param {object} options - Opciones para el panel.
  */
 function crearPanel(options) {
     const panelId = `library-panel-${Math.random().toString(36).substr(2, 9)}`;
@@ -84,7 +82,7 @@ function createApiForContainer(container) {
             return btn;
         },
 
-        input: (etiqueta, opciones = {}) => {
+        input: (etiqueta, opcionesOrCallback = {}) => {
             const wrapper = document.createElement('div');
             wrapper.style.display = 'flex';
             wrapper.style.flexDirection = 'column';
@@ -97,11 +95,15 @@ function createApiForContainer(container) {
 
             const input = document.createElement('input');
             input.type = 'text';
-            input.placeholder = opciones.placeholder || '';
-            input.value = opciones.valor || opciones.inicial || '';
 
-            if (opciones.alCambiar) {
-                input.addEventListener('input', (e) => opciones.alCambiar(e.target.value));
+            let options = typeof opcionesOrCallback === 'object' ? opcionesOrCallback : { alCambiar: opcionesOrCallback };
+
+            input.placeholder = options.placeholder || '';
+            input.value = options.valor || options.inicial || '';
+
+            const cb = options.alCambiar || options.onChange;
+            if (cb) {
+                input.addEventListener('input', (e) => cb(e.target.value));
             }
 
             wrapper.appendChild(label);
@@ -110,7 +112,7 @@ function createApiForContainer(container) {
             return input;
         },
 
-        numero: (etiqueta, opciones = {}) => {
+        numero: (etiqueta, opcionesOrCallback = {}) => {
             const wrapper = document.createElement('div');
             wrapper.style.display = 'flex';
             wrapper.style.flexDirection = 'column';
@@ -123,13 +125,17 @@ function createApiForContainer(container) {
 
             const input = document.createElement('input');
             input.type = 'number';
-            input.min = opciones.min ?? '';
-            input.max = opciones.max ?? '';
-            input.step = opciones.paso || opciones.step || '1';
-            input.value = opciones.valor || opciones.inicial || 0;
 
-            if (opciones.alCambiar) {
-                input.addEventListener('input', (e) => opciones.alCambiar(parseFloat(e.target.value)));
+            let options = typeof opcionesOrCallback === 'object' ? opcionesOrCallback : { alCambiar: opcionesOrCallback };
+
+            input.min = options.min ?? '';
+            input.max = options.max ?? '';
+            input.step = options.paso || options.step || '1';
+            input.value = options.valor || options.inicial || 0;
+
+            const cb = options.alCambiar || options.onChange;
+            if (cb) {
+                input.addEventListener('input', (e) => cb(parseFloat(e.target.value)));
             }
 
             wrapper.appendChild(label);
@@ -138,17 +144,20 @@ function createApiForContainer(container) {
             return input;
         },
 
-        checkbox: (etiqueta, inicial = false, alCambiar) => {
+        checkbox: (etiqueta, inicialOrOpciones = false, alCambiar) => {
             const label = document.createElement('label');
             label.className = 'checkbox-field';
             label.style.cursor = 'pointer';
 
+            let options = typeof inicialOrOpciones === 'object' ? inicialOrOpciones : { inicial: inicialOrOpciones, alCambiar: alCambiar };
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = inicial;
+            checkbox.checked = options.inicial ?? options.valor ?? false;
 
-            if (alCambiar) {
-                checkbox.addEventListener('change', (e) => alCambiar(e.target.checked));
+            const cb = options.alCambiar || options.onChange;
+            if (cb) {
+                checkbox.addEventListener('change', (e) => cb(e.target.checked));
             }
 
             const span = document.createElement('span');
@@ -160,7 +169,7 @@ function createApiForContainer(container) {
             return checkbox;
         },
 
-        slider: (etiqueta, opciones = {}) => {
+        slider: (etiqueta, opcionesOrCallback = {}) => {
             const wrapper = document.createElement('div');
             wrapper.style.display = 'flex';
             wrapper.style.flexDirection = 'column';
@@ -171,13 +180,17 @@ function createApiForContainer(container) {
 
             const slider = document.createElement('input');
             slider.type = 'range';
-            slider.min = opciones.min || 0;
-            slider.max = opciones.max || 100;
-            slider.step = opciones.paso || opciones.step || 1;
-            slider.value = opciones.valor || opciones.inicial || 50;
 
-            if (opciones.alCambiar) {
-                slider.addEventListener('input', (e) => opciones.alCambiar(parseFloat(e.target.value)));
+            let options = typeof opcionesOrCallback === 'object' ? opcionesOrCallback : { alCambiar: opcionesOrCallback };
+
+            slider.min = options.min || 0;
+            slider.max = options.max || 100;
+            slider.step = options.paso || options.step || 1;
+            slider.value = options.valor || options.inicial || 50;
+
+            const cb = options.alCambiar || options.onChange;
+            if (cb) {
+                slider.addEventListener('input', (e) => cb(parseFloat(e.target.value)));
             }
 
             wrapper.appendChild(label);
@@ -186,19 +199,24 @@ function createApiForContainer(container) {
             return slider;
         },
 
-        desplegable: (etiqueta, items, opciones = {}) => {
+        desplegable: (etiqueta, items, opcionesOrCallback = {}) => {
             const label = document.createElement('label');
             label.textContent = etiqueta;
             const select = document.createElement('select');
+
+            let options = typeof opcionesOrCallback === 'object' ? opcionesOrCallback : { alCambiar: opcionesOrCallback };
+
             items.forEach(item => {
                 const option = document.createElement('option');
                 option.value = typeof item === 'object' ? item.value : item;
                 option.textContent = typeof item === 'object' ? item.texto || item.text : item;
-                if (opciones.inicial === option.value) option.selected = true;
+                if (options.inicial === option.value) option.selected = true;
                 select.appendChild(option);
             });
-            if (opciones.alCambiar) {
-                select.addEventListener('change', (e) => opciones.alCambiar(e.target.value));
+
+            const cb = options.alCambiar || options.onChange;
+            if (cb) {
+                select.addEventListener('change', (e) => cb(e.target.value));
             }
             container.appendChild(label);
             container.appendChild(select);
