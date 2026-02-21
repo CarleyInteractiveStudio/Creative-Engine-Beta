@@ -3,7 +3,7 @@
 import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
-import { undo, redo } from "https://esm.sh/@codemirror/commands@6.3.3";
+import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
 import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
 import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
 import { transpile } from './CES_Transpiler.js';
@@ -58,10 +58,16 @@ const cesKeywords = [
     { label: "Vector2", type: "type" },
     { label: "Color", type: "type" },
     { label: "Materia", type: "type" },
+    { label: "materia", type: "type" },
+    { label: "mtr", type: "type" },
     { label: "Prefab", type: "type" },
+    { label: "prefab", type: "type" },
     { label: "Scene", type: "type" },
+    { label: "escena", type: "type" },
     { label: "Audio", type: "type" },
+    { label: "audio", type: "type" },
     { label: "Sprite", type: "type" },
+    { label: "sprite", type: "type" },
 
     // Component Shortcuts & Functions
     { label: "transform", type: "property" },
@@ -186,7 +192,10 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     javascript(),
                     oneDark,
                     autocompletion({ override: [cesCompletions] }),
-                    keymap.of([{ key: "Tab", run: acceptCompletion }])
+                    keymap.of([
+                        { key: "Tab", run: acceptCompletion },
+                        indentWithTab
+                    ])
                 ],
                 parent: dom.codemirrorContainer
             });
@@ -301,52 +310,61 @@ async function runChc() {
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
 
 REGLAS TÉCNICAS (Sintaxis CES):
-0. IMPORTACIONES: Pon 've motor;' al inicio para habilitar atajos. Usa 've motor.ui;' para UI.
-1. ESTRUCTURA: Usa 'publico numero velocidad = 5;' o 'publico mtr jugador;'.
-2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr).
-3. ACCESO (Sin 'this.'): nombre, tag, posicion, fisica, animador, camara, colisionador2d (genérico), particulas, ui.texto, ui.boton.
-4. EVENTOS: 'alEmpezar()', 'alActualizar(delta)', 'alEntrarEnColision(otro)', 'alRecibir(mensaje, datos)'.
-5. TIEMPO: 'esperar(segundos)', 'cada(segundos) { ... }'.
-6. APIs:
-   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre).
-   - crear miPrefab; (instanciar prefab).
-   - destruir(materia), difundir(msg, datos).
-   - entrada.tecla("nombre").
-7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones ni markdown.
+1. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
+2. ESTRUCTURA DE VARIABLES:
+   - 'publico numero velocidad = 5;'
+   - 'publico texto nombre = "Héroe";'
+   - 'publico mtr objetivo;'
+   - 'publico Sprite icono;'
+   - 'publico Audio sonido;'
+   - 'publico Prefab enemigo;'
+   - 'publico Scene siguienteNivel;'
+3. ACCESO (¡IMPORTANTE! No uses 'this.'):
+   - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, mapaDeAzulejos, iaBasica, lienzo.
+   - Atajos: reproducir.Estado(), voltearH, voltearV.
+4. EVENTOS: 'iniciar()', 'actualizar(delta)', 'alEntrarEnColision(otro)', 'alPermanecerEnColision(otro)', 'alRecibir(mensaje, datos)', 'alHacerClick()'.
+5. TIEMPO Y FLUJO:
+   - 'esperar(segundos)' (usa await internamente, pero el usuario escribe esperar(1)).
+   - 'cada(segundos) { ... }' (Timers simplificados).
+6. ACCIONES COMUNES:
+   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre), find(nombre).
+   - crear miPrefab; o instanciar(miPrefab, posicion);
+   - destruir(materia), destroy(materia).
+   - difundir("mensaje", datos), broadcast("mensaje", datos).
+   - entrada.teclaPresionada("W"), entrada.ratonBajo(0).
+7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones, sin markdown, sin bloques de código.
 
-EJEMPLOS DE TRADUCCIÓN:
-
-ENTRADA: "Si presiono W sube. Si presiono D a la derecha."
+EJEMPLO 1 (Movimiento):
+ENTRADA: "Mover a la derecha con D y saltar con Espacio."
 SALIDA:
-ve motor;
 publico numero velocidad = 5;
-alActualizar(delta) {
-    si (entrada.tecla("w")) {
-        posicion.y -= velocidad;
-    }
-    si (entrada.tecla("d")) {
+publico numero salto = 10;
+actualizar(delta) {
+    si (entrada.teclaPresionada("d")) {
         posicion.x += velocidad;
     }
-}
-
-ENTRADA: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
-SALIDA:
-ve motor;
-alEmpezar() {
-    cada(2) {
-        variable hit = lanzarRayo(posicion, {x: 0, y: 1}, 100);
-        si (hit && hit.mtr.tieneTag("suelo")) {
-            imprimir("suelo");
-        }
+    si (entrada.teclaBaja("Space")) {
+        fisica.applyImpulse(nuevo Vector2(0, -salto));
     }
 }
 
-ENTRADA: "Al chocar con el enemigo, espera 1 segundo y destruye este objeto."
+EJEMPLO 2 (Combate):
+ENTRADA: "Al chocar con tag 'Enemigo', imprimir 'Auch' y esperar 2 segundos para destruir este objeto."
 SALIDA:
 alEntrarEnColision(otro) {
-    si (otro.tieneTag("enemigo")) {
-        esperar(1);
+    si (otro.tieneTag("Enemigo")) {
+        imprimir("Auch");
+        esperar(2);
         destruir(materia);
+    }
+}
+
+EJEMPLO 3 (Loop):
+ENTRADA: "Cada 3 segundos cambiar color a rojo."
+SALIDA:
+iniciar() {
+    cada(3) {
+        renderizadorDeSprite.color = "#ff0000";
     }
 }
 

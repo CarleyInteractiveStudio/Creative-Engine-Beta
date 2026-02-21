@@ -1171,7 +1171,16 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             const materia = window.SceneManager.currentScene.findMateriaById(value);
             displayName = materia ? materia.name : `Objeto #${value}`;
             // If type is a specific component, use its icon, otherwise use generic Materia icon
-            icon = componentIcons[type] || 'move';
+            icon = componentIcons[type] || componentIcons[type.charAt(0).toUpperCase() + type.slice(1)] || 'move';
+
+            // Overrides for common types if icon not found in map
+            if (icon === 'move' || icon === 'help-circle') {
+                const lowerType = type.toLowerCase();
+                if (lowerType === 'sprite') icon = 'image';
+                else if (lowerType === 'audio') icon = 'music';
+                else if (lowerType === 'prefab') icon = 'box';
+                else if (lowerType === 'scene' || lowerType === 'escena') icon = 'clapperboard';
+            }
         } else if (typeof value === 'string') {
             // Assume Asset Path
             displayName = currentValue.split('/').pop();
@@ -1179,17 +1188,21 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             icon = fileIcons[ext] || 'file';
 
             // Check if it's a reference to a Materia by name (old system)
-            if (type === 'Materia' && !currentValue.includes('/')) {
+            if ((type === 'Materia' || type === 'materia' || type === 'mtr') && !currentValue.includes('/')) {
                 icon = 'move';
             }
         }
     } else {
+        const lowerType = type.toLowerCase();
         displayName = `Ninguno (${type})`;
-        icon = componentIcons[type] || 'help-circle';
-        if (type === 'Sprite') icon = 'image';
-        if (type === 'Audio') icon = 'music';
-        if (type === 'Prefab') icon = 'box';
-        if (type === 'Scene') icon = 'clapperboard';
+
+        icon = componentIcons[type] || componentIcons[type.charAt(0).toUpperCase() + type.slice(1)] || 'help-circle';
+
+        if (lowerType === 'sprite') icon = 'image';
+        else if (lowerType === 'audio') icon = 'music';
+        else if (lowerType === 'prefab') icon = 'box';
+        else if (lowerType === 'scene' || lowerType === 'escena') icon = 'clapperboard';
+        else if (lowerType === 'materia' || lowerType === 'mtr') icon = 'move';
     }
 
     const iconHTML = getIconHTML(icon);
@@ -1299,15 +1312,27 @@ function renderPublicVarInput(variable, currentValue, componentType, identifier)
                 `;
             }
         case 'Sprite':
+        case 'sprite':
         case 'Audio':
+        case 'audio':
         case 'Prefab':
+        case 'prefab':
         case 'Scene':
+        case 'scene':
+        case 'escena':
         case 'Materia':
+        case 'materia':
+        case 'mtr':
         case 'Animation':
+        case 'animacion':
         case 'AnimatorController':
+        case 'controlador':
         case 'UI':
+        case 'ui':
         case 'UIImage':
+        case 'imagen':
         case 'CreativeScript':
+        case 'script':
             return renderPropertyDropper(variable.type, currentValue, commonAttrs);
         case 'Action':
             return renderActionInput(variable, currentValue, componentType, identifier);

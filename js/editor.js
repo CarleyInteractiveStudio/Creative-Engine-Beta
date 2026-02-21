@@ -157,6 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lastLogElement = msgEl;
     }
 
+    window.logToUIConsole = logToUIConsole;
+
     function clearUIConsole() {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
         if (consoleMessages) consoleMessages.innerHTML = '';
@@ -2398,6 +2400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let show = false;
                         if (filter === 'all') show = true;
                         else if (filter === 'system') show = msg.dataset.category === 'system';
+                        else if (filter === 'script') show = msg.dataset.category === 'user';
                         else if (filter === 'warn') show = msg.classList.contains('log-warn');
                         else if (filter === 'error') show = msg.classList.contains('log-error');
 
