@@ -50,8 +50,10 @@ export function updateHierarchy() {
         if (!materia.isActive) {
             item.classList.add('disabled');
         }
-        if (prefabStatus) {
+        if (materia.prefabPath) {
             item.classList.add('prefab');
+        } else if (isInsidePrefab) {
+            item.classList.add('prefab-descendant');
         }
         item.dataset.id = materia.id;
         item.draggable = true;

@@ -728,7 +728,7 @@ export async function updateAssetBrowser() {
         nameSpan.textContent = dirHandle.name;
         folderItem.appendChild(nameSpan);
 
-        if (dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
+        if (currentDirectoryHandle.handle && await dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
             folderItem.classList.add('active');
         }
 
