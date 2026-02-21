@@ -1351,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const drawObjects = (ctx, cameraForCulling, objectsToRender, tilemapsToDraw, canvasesToDraw) => {
             const aspect = rendererInstance.canvas.width / rendererInstance.canvas.height;
-            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : (rendererInstance.isEditor ? rendererInstance.getViewBox() : null);
+            const cameraViewBox = cameraForCulling ? MathUtils.getCameraViewBox(cameraForCulling, aspect) : null;
             const camTransform = cameraForCulling ? cameraForCulling.getComponent(Components.Transform) : null;
             const viewport = cameraViewBox ? MathUtils.getBoundsFromCorners(cameraViewBox) : null;
 
@@ -1479,55 +1479,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
-                        let mirrorX = parallax ? parallax.mirroring.x : 0;
-                        let mirrorY = parallax ? parallax.mirroring.y : 0;
+                        ctx.translate(worldPosition.x, worldPosition.y);
+                        ctx.rotate(worldRotation * Math.PI / 180);
+                        ctx.scale(worldScale.x, worldScale.y);
 
-                        if (parallax) {
-                            if (parallax.repeatX && mirrorX <= 0) mirrorX = dWidth;
-                            if (parallax.repeatY && mirrorY <= 0) mirrorY = dHeight;
-                        }
+                        const drawX = -sWidth * pivotX;
+                        const drawY = -sHeight * pivotY;
 
-                        if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                            const stepX = Math.max(1, mirrorX);
-                            const stepY = Math.max(1, mirrorY);
-                            const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
-                            const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
-                            const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;
-                            const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y - dy) / stepY) * stepY + stepY : dHeight;
-
-                            // Safety break to prevent infinite loops if step is too small
-                            const maxTiles = 100;
-                            let countX = 0;
-
-                            for (let tx = startX; tx < endX && countX < maxTiles; tx += stepX) {
-                                countX++;
-                                let countY = 0;
-                                for (let ty = startY; ty < endY && countY < maxTiles; ty += stepY) {
-                                    countY++;
-                                    ctx.save();
-                                    ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
-                                    ctx.rotate(worldRotation * Math.PI / 180);
-                                    ctx.scale(worldScale.x, worldScale.y);
-                                    if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
-                                    }
-                                    ctx.restore();
-                                    if (mirrorY <= 0) break;
-                                }
-                                if (mirrorX <= 0) break;
-                            }
-                        } else {
-                            ctx.translate(worldPosition.x, worldPosition.y);
-                            ctx.rotate(worldRotation * Math.PI / 180);
-                            ctx.scale(worldScale.x, worldScale.y);
-
-                            const drawX = -sWidth * pivotX;
-                            const drawY = -sHeight * pivotY;
-
-                            // Absolute safety check to prevent InvalidStateError
-                            if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
-                            }
+                        // Absolute safety check to prevent InvalidStateError
+                        if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
+                            ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
                         }
                         ctx.restore();
                     } else {

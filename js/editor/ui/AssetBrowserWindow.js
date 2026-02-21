@@ -630,13 +630,15 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
                 iconContainer.innerHTML = `<img src="icons/type.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ces')) {
-                iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="image/Script.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (entry.name.endsWith('.chc')) {
-                iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/sparkles.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.cea')) {
-                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="image/cea.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (entry.name.endsWith('.ceanim')) {
-                iconContainer.innerHTML = `<img src="icons/gamepad.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/route.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            } else if (entry.name.endsWith('.cepalette')) {
+                iconContainer.innerHTML = `<img src="icons/grid.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceSprite')) {
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                 getURLForAssetPath(fullPath, currentDirHandle).then(url => {
@@ -652,10 +654,11 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.cmel')) {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceScene')) {
-                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.celib')) {
+                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
                     try {
@@ -667,14 +670,12 @@ export async function updateAssetBrowser() {
                             iconContainer.appendChild(imgIcon);
                         } else {
                             // Fallback icon if no custom one is provided
-                            imgIcon.src = 'image/Paquete.png';
-                            iconContainer.appendChild(imgIcon);
+                            iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                         }
                     } catch (e) {
                         console.error(`Error reading .celib file for icon: ${entry.name}`, e);
                         // Fallback icon on error
-                        imgIcon.src = 'image/Paquete.png';
-                        iconContainer.appendChild(imgIcon);
+                        iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 })();
             } else {
