@@ -122,6 +122,8 @@ const componentShortcuts = [
     'onPointerEnter', 'alEntrar', 'onPointerExit', 'alSalir',
     'onPointerClick', 'alHacerClick', 'onPointerDrag', 'alDeslizar',
     'onPointerHold', 'alMantener',
+    'buscar', 'find', 'reproducirAnimacion', 'playAnimation', 'detenerAnimacion', 'stopAnimation',
+    'obtenerComponente', 'getComponent', 'obtenerComponentes', 'getComponents',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
     'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color'
@@ -184,7 +186,7 @@ export function getScriptMetadata(scriptName) {
 /**
  * Internal helper to transpile a block of code (expression or method body).
  */
-function transpileBlock(block, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) {
+function transpileBlock(block, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions = []) {
     let body = block;
 
     // 2.0: Handle 'cada' blocks (Simplified Timers)
@@ -299,6 +301,12 @@ function transpileBlock(block, componentShortcuts, publicVars, privateVars, impo
         body = body.replace(regex, `this.${pv.name}`);
     });
 
+    // 2.g: Auto-prefix custom script functions
+    customFunctions.forEach(fn => {
+        const regex = new RegExp(`(?<![.\\w])\\b${fn}\\b`, 'g');
+        body = body.replace(regex, `this.${fn}`);
+    });
+
     // --- Protected Block Restoration ---
     body = body.replace(/__CES_PROT_(\d+)__/g, (match, index) => {
         return protectedBlocks[parseInt(index)];
@@ -337,9 +345,68 @@ export function transpile(code, scriptName) {
 
     let unprocessedCode = code;
 
+    // 1.0: Parse and extract root-level 'cada' blocks (Simplified Timers)
+    // These will be moved to the 'start' method
+    const rootCadaRegex = /\bcada\s*\(([^)]+)\)\s*{/g;
+    let rootCadaMatch;
+    let rootCadaCode = '';
+
+    while ((rootCadaMatch = rootCadaRegex.exec(unprocessedCode)) !== null) {
+        const startIdx = rootCadaMatch.index;
+        const contentStartIdx = rootCadaMatch.index + rootCadaMatch[0].length;
+        let braceCount = 1;
+        let endIdx = -1;
+
+        for (let i = contentStartIdx; i < unprocessedCode.length; i++) {
+            const char = unprocessedCode[i];
+            const nextChar = unprocessedCode[i + 1];
+
+            if (char === '"' || char === "'" || char === '`') {
+                const quote = char;
+                i++;
+                while (i < unprocessedCode.length && unprocessedCode[i] !== quote) {
+                    if (unprocessedCode[i] === '\\') i++;
+                    i++;
+                }
+                continue;
+            }
+            if (char === '/' && nextChar === '/') {
+                i += 2;
+                while (i < unprocessedCode.length && unprocessedCode[i] !== '\n') i++;
+                continue;
+            }
+            if (char === '/' && nextChar === '*') {
+                i += 2;
+                while (i < unprocessedCode.length && !(unprocessedCode[i] === '*' && unprocessedCode[i + 1] === '/')) i++;
+                i++;
+                continue;
+            }
+
+            if (char === '{') braceCount++;
+            else if (char === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                    endIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (endIdx !== -1) {
+            const interval = rootCadaMatch[1];
+            const cadaBody = unprocessedCode.substring(contentStartIdx, endIdx);
+            rootCadaCode += `cada(${interval}) {${cadaBody}}\n`;
+
+            // Remove the block from unprocessedCode
+            const fullMatch = unprocessedCode.substring(startIdx, endIdx + 1);
+            unprocessedCode = unprocessedCode.replace(fullMatch, '');
+            rootCadaRegex.lastIndex = 0; // Restart search
+        }
+    }
+
     // 1.a: Parse and extract methods (bilingual)
     // Scope (public/private) is now optional, defaults to public
-    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:(function|funcion)\s+)?(?!(?:si|sino|mientras|para|cada|go|ve)\b)(\w+)\s*\(([^)]*)\)\s*{/gm;
+    const methodHeaderRegex = /^\s*(?:(public|publico)\s+)?(?:async\s+)?(?:(function|funcion)\s+)?(?!(?:si|sino|mientras|para|cada|go|ve)\b)(\w+)\s*\(([^)]*)\)\s*{/gm;
     const methodMatches = []; // Store matches to process later
     let tempCode = unprocessedCode;
     let methodMatch;
@@ -460,18 +527,25 @@ export function transpile(code, scriptName) {
     scriptMetadataMap.set(scriptName, metadata);
 
 
+    const customFunctions = methodMatches.map(m => m.name);
+
+    // Transpile the rootCadaCode block
+    if (rootCadaCode) {
+        rootCadaCode = transpileBlock(rootCadaCode, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions);
+    }
+
     // --- Phase 2: Transpile method bodies ---
     for (const match of methodMatches) {
         let { name, args, body } = match;
 
-        body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager);
+        body = transpileBlock(body, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions);
 
         // 2.g: Map Spanish lifecycle methods to their English counterparts
         if (name === 'iniciar' || name === 'alEmpezar') name = 'start';
         if (name === 'actualizar' || name === 'alActualizar') name = 'update';
 
         if (name === 'start') {
-            startMethod = body;
+            startMethod = body + '\n' + (rootCadaCode || '');
             startArgs = args;
         } else if (name === 'update') {
             updateMethod = body;
@@ -480,6 +554,11 @@ export function transpile(code, scriptName) {
 
         match.name = name;
         match.body = body;
+    }
+
+    // If we have rootCadaCode but no start method was found, create an empty one to house it
+    if (rootCadaCode && !startMethod) {
+        startMethod = rootCadaCode;
     }
 
     // 1.d: Final check for leftover code
@@ -500,13 +579,13 @@ export function transpile(code, scriptName) {
     jsCode += `    class ${className} extends CreativeScriptBehavior {\n`;
     jsCode += `        constructor(materia) {\n            super(materia);\n`;
     publicVars.forEach(pv => {
-        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) : JSON.stringify(pv.defaultValue);
+        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : JSON.stringify(pv.defaultValue);
         // Replace Spanish booleans in default values (fallback for non-transpiled parts)
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val}; // Type: ${pv.type}\n`;
     });
     privateVars.forEach(pv => {
-        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager) : 'null';
+        let val = pv.value ? transpileBlock(pv.value, componentShortcuts, publicVars, privateVars, importedLibs, RuntimeAPIManager, customFunctions) : 'null';
         val = val.replace(/\bverdadero\b/g, 'true').replace(/\bfalso\b/g, 'false');
         jsCode += `            this.${pv.name} = ${val};\n`;
     });
