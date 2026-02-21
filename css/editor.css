@@ -445,19 +445,7 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.folder-toggle.has-children::before {
-    content: '';
-    width: 0;
-    height: 0;
-    border-top: 4px solid transparent;
-    border-bottom: 4px solid transparent;
-    border-left: 6px solid var(--text-secondary);
-    transition: transform 0.15s ease;
-}
-
-.folder-toggle.open::before {
-    transform: rotate(90deg);
-}
+/* folder-toggle ::before content removed in favor of SVG icons */
 
 .folder-children {
     display: flex;
@@ -2679,12 +2667,12 @@ body {
 }
 
 .hierarchy-item.prefab {
-    color: #3498db;
+    color: #3b82f6 !important;
+    font-weight: 600;
 }
 
 .hierarchy-item.prefab-descendant {
-    color: #3498db;
-    opacity: 0.9;
+    color: #60a5fa !important;
 }
 
 .hierarchy-item.prefab.active,

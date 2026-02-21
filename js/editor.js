@@ -148,6 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         consoleMessages.appendChild(msgEl);
 
+        // Apply current filter visibility immediately
+        const activeFilterBtn = document.querySelector('.console-filters .filter-btn.active');
+        if (activeFilterBtn) {
+            const filter = activeFilterBtn.dataset.filter;
+            let show = false;
+            if (filter === 'all') show = true;
+            else if (filter === 'system') show = isSystem;
+            else if (filter === 'script') show = !isSystem;
+            else if (filter === 'warn') show = type === 'warn';
+            else if (filter === 'error') show = type === 'error';
+            msgEl.style.display = show ? 'block' : 'none';
+        }
+
         // Auto-scroll only if we are at the bottom
         const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
         if (isAtBottom) {

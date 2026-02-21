@@ -57,6 +57,13 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
+    // Global dragover to prevent default blue state stuck
+    window.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer.types.includes('Files')) {
+            dom.assetsContent.classList.remove('drag-over-fs');
+        }
+    });
+
     // The event listener is now centralized in editor.js
 }
 
@@ -66,9 +73,7 @@ function handleExternalFileDragEnter(e) {
         e.preventDefault();
         e.stopPropagation();
         dragCounter++;
-        if (dragCounter === 1) {
-            dom.assetsContent.classList.add('drag-over-fs');
-        }
+        dom.assetsContent.classList.add('drag-over-fs');
     }
 }
 
@@ -711,7 +716,8 @@ export async function updateAssetBrowser() {
 
         if (hasSubfolders) {
             toggle.classList.add('has-children');
-            if (!isCollapsed) toggle.classList.add('open');
+            toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${!isCollapsed ? 'transform: rotate(90deg);' : ''}">`;
+
             toggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (collapsedFolders.has(currentPath)) {
@@ -736,6 +742,18 @@ export async function updateAssetBrowser() {
             e.stopPropagation();
             currentDirectoryHandle = { handle: dirHandle, path: currentPath };
             updateAssetBrowser();
+        });
+
+        folderItem.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            if (hasSubfolders) {
+                if (collapsedFolders.has(currentPath)) {
+                    collapsedFolders.delete(currentPath);
+                } else {
+                    collapsedFolders.add(currentPath);
+                }
+                updateAssetBrowser();
+            }
         });
 
         folderItem.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; folderItem.classList.add('drag-over'); });
@@ -885,6 +903,7 @@ function handleExternalFileDragOver(e) {
     if (e.dataTransfer.types.includes('Files')) {
         e.preventDefault();
         e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
         // Garantizar que se vea durante el hover
         dom.assetsContent.classList.add('drag-over-fs');
     }
@@ -895,10 +914,14 @@ function handleExternalFileDragLeave(e) {
         e.preventDefault();
         e.stopPropagation();
         dragCounter--;
-        if (dragCounter <= 0) {
-            dragCounter = 0;
-            dom.assetsContent.classList.remove('drag-over-fs');
-        }
+
+        // Timeout logic to prevent flickering when moving between child elements
+        setTimeout(() => {
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                dom.assetsContent.classList.remove('drag-over-fs');
+            }
+        }, 50);
     }
 }
 

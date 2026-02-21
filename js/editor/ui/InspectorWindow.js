@@ -1104,8 +1104,16 @@ export async function updateInspector() {
         dom.inspectorContent.innerHTML = `<p class="inspector-placeholder" data-i18n="NADA_SELECCIONADO">${window.Localization.get('NADA_SELECCIONADO', 'Nada seleccionado')}</p>`;
     }
 
-    // Restaurar la posición del scroll
-    dom.inspectorContent.scrollTop = savedScrollTop;
+    // Restaurar la posición del scroll con un pequeño retraso para asegurar que el DOM se haya renderizado
+    requestAnimationFrame(() => {
+        if (dom.inspectorContent) dom.inspectorContent.scrollTop = savedScrollTop;
+        // Doble verificación para casos asíncronos pesados
+        setTimeout(() => {
+            if (dom.inspectorContent && dom.inspectorContent.scrollTop !== savedScrollTop) {
+                dom.inspectorContent.scrollTop = savedScrollTop;
+            }
+        }, 50);
+    });
 }
 
 function renderComponentHeader(title, icon, leyIndex, canRemove = true) {
