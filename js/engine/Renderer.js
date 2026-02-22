@@ -142,6 +142,8 @@ export class Renderer {
             return;
         }
 
+        this.camera = activeCamera;
+
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
@@ -273,20 +275,29 @@ export class Renderer {
         }
 
         bCtx.save();
-        bCtx.fillStyle = water.color;
+        // Force color to be more opaque in the buffer for the contrast filter to work well
+        let particleColor = water.color;
+        if (typeof particleColor === 'string' && particleColor.startsWith('rgba')) {
+            particleColor = particleColor.replace(/,?\s*[\d\.]+\)$/, ", 1.0)");
+        }
+        bCtx.fillStyle = particleColor;
+
         // Blur only the particles
-        bCtx.filter = 'blur(5px)';
+        bCtx.filter = 'blur(8px)';
         for (const p of water.particles) {
             bCtx.beginPath();
-            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 10, 0, Math.PI * 2);
+            // Larger radius in buffer to ensure they merge
+            const r = (water._particleRadius || 8) * 1.5;
+            bCtx.arc(p.x + w / 2, p.y + h / 2, r, 0, Math.PI * 2);
             bCtx.fill();
         }
         bCtx.restore();
 
-        // Draw the buffer with contrast to create the liquid effect
+        // Draw the buffer with high contrast to create the liquid effect
         ctx.save();
-        // Use a more standard contrast value for liquid
-        ctx.filter = 'contrast(10)';
+        ctx.filter = 'contrast(20) brightness(1.2)';
+        // We apply transparency here instead of per-particle
+        ctx.globalAlpha = 0.7;
         ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
         ctx.restore();
 
