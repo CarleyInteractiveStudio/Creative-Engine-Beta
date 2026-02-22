@@ -57,7 +57,9 @@ const componentAliases = {
     'Gyzmo': 'gyzmo',
     'RaycastSource': 'rallo',
     'BasicAI': 'iaBasica',
-    'VideoPlayer': 'reproductorDeVideo'
+    'VideoPlayer': 'reproductorDeVideo',
+    'Water': 'agua',
+    'LineCollider2D': 'colisionadorDeLineas2D'
 };
 
 
@@ -279,6 +281,9 @@ export class CreativeScriptBehavior {
 
     get video() { return this.materia.getComponent(VideoPlayer); }
     get pelicula() { return this.video; }
+
+    get agua() { return this.materia.getComponent(Water); }
+    get water() { return this.agua; }
 
     get texto() { return this.materia.getComponent(UIText); }
     get boton() { return this.materia.getComponent(Button); }
@@ -971,6 +976,9 @@ export class Rigidbody2D extends Leyes {
             freezePositionY: false,
             freezeRotation: false
         };
+        this.buoyancyWeight = 1.0; // Peso del objeto para flotación
+        this.sinkThreshold = 1.5; // Densidad a la que empieza a hundirse (buoyancy density)
+
         // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
         this.angularVelocity = 0;
@@ -2964,6 +2972,9 @@ export class Parallax extends Leyes {
         this._autoOffset = { x: 0, y: 0 };
     }
     update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
         if (this.autoscroll.x !== 0 || this.autoscroll.y !== 0) {
             this._autoOffset.x += this.autoscroll.x * deltaTime;
             this._autoOffset.y += this.autoscroll.y * deltaTime;
@@ -4481,6 +4492,168 @@ registerComponent('RaycastSource', RaycastSource);
 /**
  * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
  */
+/**
+ * Componente Water (Agua): Simulación de fluidos basada en partículas.
+ */
+export class Water extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 400;
+        this.height = 200;
+        this.color = '#3498db'; // Azul por defecto
+        this.texturePath = '';
+        this.density = 1.0;
+        this.viscosity = 0.2;
+        this.isDirty = true;
+
+        // Mareas
+        this.showTides = false;
+        this.tideAmplitude = 10;
+        this.tideSpeed = 1.0;
+        this.tidePhase = 0;
+
+        // Simulación interna
+        this.particles = []; // {x, y, vx, vy, prevX, prevY}
+        this._particleRadius = 8;
+        this._restDensity = 4;
+        this._stiffness = 0.1;
+        this._spacing = 12;
+    }
+
+    start() {
+        this.generateParticles();
+    }
+
+    generateParticles() {
+        this.particles = [];
+        const cols = Math.floor(this.width / this._spacing);
+        const rows = Math.floor(this.height / this._spacing);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                this.particles.push({
+                    x: (c * this._spacing) - (this.width / 2),
+                    y: (r * this._spacing) - (this.height / 2),
+                    vx: 0,
+                    vy: 0,
+                    prevX: 0,
+                    prevY: 0
+                });
+            }
+        }
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const gravity = { x: 0, y: 9.8 * 100 }; // Escala de gravedad
+
+        // --- 1. Mareas ---
+        if (this.showTides) {
+            this.tidePhase += deltaTime * this.tideSpeed;
+            // El desplazamiento de marea se aplica visualmente o en el transform
+        }
+
+        // --- 2. Simulación de Partículas (PBD simplificado) ---
+        const h = this._particleRadius * 2;
+        const hSq = h * h;
+
+        for (const p of this.particles) {
+            // Gravedad y Viscosidad
+            p.vx *= (1 - this.viscosity * deltaTime);
+            p.vy *= (1 - this.viscosity * deltaTime);
+            p.vy += gravity.y * deltaTime;
+
+            p.prevX = p.x;
+            p.prevY = p.y;
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+        }
+
+        // Resolución de Densidad (Relajación de Incompresibilidad)
+        for (let iter = 0; iter < 2; iter++) {
+            for (let i = 0; i < this.particles.length; i++) {
+                const pi = this.particles[i];
+                let rho = 0;
+                const neighbors = [];
+
+                for (let j = 0; j < this.particles.length; j++) {
+                    if (i === j) continue;
+                    const pj = this.particles[j];
+                    const dx = pi.x - pj.x;
+                    const dy = pi.y - pj.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < hSq) {
+                        const dist = Math.sqrt(distSq);
+                        const weight = 1 - dist / h;
+                        rho += weight * weight;
+                        neighbors.push({pj, weight, dx, dy, dist});
+                    }
+                }
+
+                const pressure = (rho - this._restDensity) * this._stiffness;
+                if (pressure > 0) {
+                    for (const {pj, weight, dx, dy, dist} of neighbors) {
+                        if (dist > 0) {
+                            const displacement = pressure * weight * (1 / dist);
+                            const moveX = dx * displacement * 0.5;
+                            const moveY = dy * displacement * 0.5;
+                            pi.x += moveX;
+                            pi.y += moveY;
+                            pj.x -= moveX;
+                            pj.y -= moveY;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 3. Restricciones y Colisiones ---
+        for (const p of this.particles) {
+            p.vx = (p.x - p.prevX) / deltaTime;
+            p.vy = (p.y - p.prevY) / deltaTime;
+        }
+    }
+
+    clone() {
+        const copy = new Water(null);
+        copy.width = this.width;
+        copy.height = this.height;
+        copy.color = this.color;
+        copy.texturePath = this.texturePath;
+        copy.density = this.density;
+        copy.viscosity = this.viscosity;
+        copy.showTides = this.showTides;
+        copy.tideAmplitude = this.tideAmplitude;
+        copy.tideSpeed = this.tideSpeed;
+        return copy;
+    }
+}
+
+/**
+ * LineCollider2D: Colisionador compuesto por múltiples líneas (cadenas).
+ */
+export class LineCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.points = [{x: -50, y: 0}, {x: 50, y: 0}];
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+    }
+
+    clone() {
+        const copy = new LineCollider2D(null);
+        copy.points = this.points.map(p => ({...p}));
+        copy.isTrigger = this.isTrigger;
+        copy.offset = {...this.offset};
+        return copy;
+    }
+}
+
 export class BasicAI extends Leyes {
     constructor(materia) {
         super(materia);
@@ -4656,6 +4829,8 @@ export class BasicAI extends Leyes {
     }
 }
 registerComponent('BasicAI', BasicAI);
+registerComponent('Water', Water);
+registerComponent('LineCollider2D', LineCollider2D);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

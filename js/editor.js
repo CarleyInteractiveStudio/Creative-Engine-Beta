@@ -954,8 +954,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showEngineLogo: true,
                 keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                 layers: {
-                    sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
-                    collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Water', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
+                    sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
+                    collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
                 }
             };
             // Automatically save the default config file if it doesn't exist
@@ -973,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Ensure tags config exists for older projects
         if (!currentProjectConfig.tags) {
-            currentProjectConfig.tags = ['Untagged'];
+            currentProjectConfig.tags = ['Untagged', 'Agua'];
         }
 
         if (!currentProjectConfig.ramLimit) {
@@ -1392,6 +1392,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const textureRender = materia.getComponent(Components.TextureRender);
                 const terreno2D = materia.getComponent(Components.Terreno2D);
+                const water = materia.getComponent(Components.Water);
+                const lineCollider = materia.getComponent(Components.LineCollider2D);
                 const videoPlayer = materia.getComponent(Components.VideoPlayer);
                 const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
@@ -1598,6 +1600,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (terreno2D) {
                     rendererInstance.drawTerreno2D(terreno2D);
+                } else if (water) {
+                    rendererInstance.drawWater(water);
+                } else if (lineCollider) {
+                    rendererInstance.drawLineCollider(lineCollider);
                 } else if (gyzmo) {
                     rendererInstance.drawGyzmo(gyzmo);
                 }
@@ -3641,8 +3647,8 @@ public start() {
                     keystore: { path: '', pass: '', alias: '', aliasPass: '' },
                     iconPath: '',
                     splashLogos: [],
-                    layers: { sortingLayers: ['Default'], collisionLayers: ['Default'] },
-                    tags: ['Untagged']
+                    layers: { sortingLayers: ['Default', 'Agua'], collisionLayers: ['Default', 'Agua'] },
+                    tags: ['Untagged', 'Agua']
                 };
                 currentProjectConfig = defaultConfig;
                 window.currentProjectConfig = currentProjectConfig;

@@ -72,6 +72,10 @@ const typeMap = {
     'disparadorDeEventosUI': 'UIEventTrigger',
     'Parallax': 'Parallax',
     'Movement': 'Movement',
+    'Water': 'Water',
+    'agua': 'Water',
+    'LineCollider2D': 'LineCollider2D',
+    'colisionadorLinea2D': 'LineCollider2D',
     'ParticleSystem': 'ParticleSystem',
     'DrawingOrder': 'DrawingOrder',
     'CameraFollow': 'CameraFollow',
@@ -112,6 +116,8 @@ const componentShortcuts = [
     'customComponent', 'componentePersonalizado',
     'parallax',
     'movement', 'movimiento',
+    'water', 'agua',
+    'lineCollider2D', 'colisionadorLinea2D',
     'particleSystem', 'sistemaDeParticulas', 'particula', 'particulas',
     'audio', 'sonido',
     'cameraFollow', 'seguimientoDeCamara',
@@ -135,7 +141,8 @@ const componentShortcuts = [
     'obtenerComponente', 'getComponent', 'obtenerComponentes', 'getComponents',
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
-    'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color'
+    'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
+    'tono', 'pitch'
 ];
 
 function getDefaultValueForType(canonicalType) {

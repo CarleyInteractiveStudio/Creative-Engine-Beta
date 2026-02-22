@@ -12,7 +12,7 @@
 import { Materia } from '../../engine/Materia.js';
 import * as Components from '../../engine/Components.js';
 import { showConfirmation } from './DialogWindow.js';
-import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject } from '../MateriaFactory.js';
+import { createBaseMateria, generateUniqueName, createPanelObject, createTextObject, createButtonObject, createTerrenoObject, createAudioObject, createVideoObject, createWaterObject, createLineColliderObject } from '../MateriaFactory.js';
 
 // Module-level state and dependencies
 let dom = {};
@@ -188,6 +188,12 @@ export function handleContextMenuAction(action) {
             break;
         case 'create-video':
             newMateria = createVideoObject(selectedMateria);
+            break;
+        case 'create-water':
+            newMateria = createWaterObject(selectedMateria);
+            break;
+        case 'create-line-collider':
+            newMateria = createLineColliderObject(selectedMateria);
             break;
         case 'create-camera':
             newMateria = createCameraObject(selectedMateria);

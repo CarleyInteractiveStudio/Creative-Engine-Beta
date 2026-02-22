@@ -33,8 +33,8 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
     'CAT_SCRIPTING': [Components.CreativeScript]
@@ -48,6 +48,7 @@ const componentIcons = {
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
+    Water: 'droplet', LineCollider2D: 'route',
     'ParticleSystem': 'sparkles',
     'Gyzmo': 'target',
     'RaycastSource': 'route',
@@ -57,6 +58,7 @@ const componentIcons = {
 const fileIcons = {
     png: 'image', jpg: 'image', jpeg: 'image',
     mp3: 'music', wav: 'music',
+    mp4: 'video', webm: 'video', ogv: 'video',
     ceprefab: 'box',
     ceScene: 'clapperboard',
     ces: 'scroll',
@@ -725,6 +727,27 @@ function handleInspectorClick(e) {
         }
     }
 
+    // --- LineCollider2D Management ---
+    if (e.target.matches('[data-action="line-add-point"]')) {
+        const ley = selectedMateria.getComponent(Components.LineCollider2D);
+        if (ley) {
+            const last = ley.points[ley.points.length - 1] || { x: 0, y: 0 };
+            ley.points.push({ x: last.x + 20, y: last.y });
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.matches('[data-action="line-remove-point"]')) {
+        const ley = selectedMateria.getComponent(Components.LineCollider2D);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (ley && !isNaN(index) && ley.points.length > 2) {
+            ley.points.splice(index, 1);
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
     // --- RaycastSource (Rallo) Management ---
     if (e.target.matches('[data-action="rallo-add-ray"]')) {
         const rallo = selectedMateria.getComponent(Components.RaycastSource);
@@ -1191,6 +1214,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
                 const lowerType = type.toLowerCase();
                 if (lowerType === 'sprite') icon = 'image';
                 else if (lowerType === 'audio') icon = 'music';
+                else if (lowerType === 'video') icon = 'video';
                 else if (lowerType === 'prefab') icon = 'box';
                 else if (lowerType === 'scene' || lowerType === 'escena') icon = 'clapperboard';
             }
@@ -2873,6 +2897,67 @@ async function updateInspectorForMateria(selectedMateria) {
                                     <label data-i18n="LENGTH">${L.get('LENGTH', 'Longitud')}</label>
                                     <input type="number" class="prop-input" data-component="RaycastSource" data-prop="rays.${rIdx}.length" value="${ray.length}">
                                 </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.Water) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Water" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" class="prop-input" data-component="Water" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
+                        <input type="color" class="prop-input" data-component="Water" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_WATER_DENSITY">${L.get('PROP_WATER_DENSITY', 'Density')}</label>
+                        <input type="number" class="prop-input" data-component="Water" data-prop="density" value="${ley.density}" step="0.1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_VISCOSITY">${L.get('PROP_VISCOSITY', 'Viscosity')}</label>
+                        <input type="range" class="prop-input" data-component="Water" data-prop="viscosity" value="${ley.viscosity}" min="0" max="1" step="0.01">
+                    </div>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Water" data-prop="showTides" ${ley.showTides ? 'checked' : ''}>
+                        <label data-i18n="PROP_SHOW_MAREAS">${L.get('PROP_SHOW_MAREAS', 'Simular Mareas')}</label>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${ley.showTides ? 'flex' : 'none'};">
+                        <label data-i18n="PROP_TIDE_AMPLITUDE">${L.get('PROP_TIDE_AMPLITUDE', 'Amplitud')}</label>
+                        <input type="number" class="prop-input" data-component="Water" data-prop="tideAmplitude" value="${ley.tideAmplitude}">
+                    </div>
+                    <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
+                </div>
+            `;
+        } else if (ley instanceof Components.LineCollider2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="LineCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="PROP_IS_TRIGGER">${L.get('PROP_IS_TRIGGER', 'Is Trigger')}</label>
+                    </div>
+                    <div class="inspector-section-header">
+                        <span data-i18n="PROP_POINTS">${L.get('PROP_POINTS', 'Puntos')}</span>
+                        <button class="layer-btn add" data-action="line-add-point" data-i18n="PROP_ADD_POINT" title="${L.get('PROP_ADD_POINT', 'Añadir Punto')}">+</button>
+                    </div>
+                    <div class="layer-list" style="max-height: 200px; overflow-y: auto;">
+                        ${ley.points.map((p, pIdx) => `
+                            <div class="layer-item" style="gap: 5px; padding: 5px;">
+                                <span style="min-width: 20px;">${pIdx}:</span>
+                                <div class="prop-inputs">
+                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.x" value="${p.x}" title="X">
+                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.y" value="${p.y}" title="Y">
+                                </div>
+                                <button class="layer-btn remove" data-action="line-remove-point" data-index="${pIdx}" title="${L.get('BORRAR_PUNTO', 'Borrar punto')}">&times;</button>
                             </div>
                         `).join('')}
                     </div>

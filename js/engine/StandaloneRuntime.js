@@ -180,7 +180,9 @@ export class StandaloneRuntime {
                 m.getComponent(Components.SpriteRenderer) ||
                 m.getComponent(Components.TextureRender) ||
                 m.getComponent(Components.TilemapRenderer) ||
-                m.getComponent(Components.VideoPlayer)
+                m.getComponent(Components.VideoPlayer) ||
+                m.getComponent(Components.Water) ||
+                m.getComponent(Components.LineCollider2D)
             ))
             .sort((a, b) => {
                 const drawingOrderA = a.getComponent(Components.DrawingOrder);
@@ -228,6 +230,8 @@ export class StandaloneRuntime {
                 const tr = materia.getComponent(Components.TextureRender);
                 const tmr = materia.getComponent(Components.TilemapRenderer);
                 const vp = materia.getComponent(Components.VideoPlayer);
+                const water = materia.getComponent(Components.Water);
+                const lineCollider = materia.getComponent(Components.LineCollider2D);
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
@@ -341,6 +345,10 @@ export class StandaloneRuntime {
                     }
                 } else if (tmr) {
                     this.renderer.drawTilemap(tmr);
+                } else if (water) {
+                    this.renderer.drawWater(water);
+                } else if (lineCollider) {
+                    this.renderer.drawLineCollider(lineCollider);
                 }
             }
 

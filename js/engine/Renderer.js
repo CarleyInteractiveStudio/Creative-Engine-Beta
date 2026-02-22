@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -239,6 +239,88 @@ export class Renderer {
 
         this.ctx.restore();
         this.ctx.globalAlpha = 1.0;
+    }
+
+    drawWater(water) {
+        const transform = water.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const { ctx } = this;
+        ctx.save();
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
+
+        if (!this._waterBuffer) {
+            this._waterBuffer = document.createElement('canvas');
+            this._waterBufferCtx = this._waterBuffer.getContext('2d');
+        }
+
+        const pad = 40;
+        const w = water.width + pad * 2;
+        const h = water.height + pad * 2;
+
+        if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
+            this._waterBuffer.width = w;
+            this._waterBuffer.height = h;
+        }
+
+        const bCtx = this._waterBufferCtx;
+        bCtx.clearRect(0, 0, w, h);
+        bCtx.fillStyle = water.color;
+        bCtx.filter = 'blur(6px)';
+
+        for (const p of water.particles) {
+            bCtx.beginPath();
+            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
+            bCtx.fill();
+        }
+
+        ctx.filter = 'contrast(15) brightness(1.0)';
+        ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
+        ctx.filter = 'none';
+
+        if (this.isEditor) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+        }
+
+        ctx.restore();
+    }
+
+    drawLineCollider(collider) {
+        const transform = collider.materia.getComponent(Transform);
+        if (!transform || !collider.points || collider.points.length < 2) return;
+
+        const { ctx, camera } = this;
+        const zoom = camera.effectiveZoom;
+
+        ctx.save();
+        ctx.translate(transform.x, transform.y);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
+
+        ctx.beginPath();
+        ctx.moveTo(collider.points[0].x, collider.points[0].y);
+        for (let i = 1; i < collider.points.length; i++) {
+            ctx.lineTo(collider.points[i].x, collider.points[i].y);
+        }
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+
+        // Draw handles in editor
+        if (this.isEditor) {
+            ctx.fillStyle = '#ffffff';
+            const s = 6 / zoom;
+            for (const p of collider.points) {
+                ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+            }
+        }
+
+        ctx.restore();
     }
 
     drawTerreno2D(terreno) {

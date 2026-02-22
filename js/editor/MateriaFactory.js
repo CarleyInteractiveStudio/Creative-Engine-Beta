@@ -73,6 +73,24 @@ export function createVideoObject(parent = null) {
     return newMateria;
 }
 
+export function createWaterObject(parent = null) {
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('WATER', 'Agua'));
+    const newMateria = createBaseMateria(name, parent);
+    newMateria.tag = 'Agua';
+    newMateria.layer = 4; // Capa Agua (según config por defecto)
+    newMateria.addComponent(new Components.Water(newMateria));
+    return newMateria;
+}
+
+export function createLineColliderObject(parent = null) {
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('LINE_COLLIDER', 'Colisionador de Líneas'));
+    const newMateria = createBaseMateria(name, parent);
+    newMateria.addComponent(new Components.LineCollider2D(newMateria));
+    return newMateria;
+}
+
 export function createTerrenoObject(parent = null) {
     console.log("[MateriaFactory] Creando objeto de terreno...");
     const L = window.Localization;
