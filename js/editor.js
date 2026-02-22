@@ -2072,6 +2072,15 @@ document.addEventListener('DOMContentLoaded', () => {
             top = windowHeight - menuHeight - 5; // Subtract 5 for some padding
         }
 
+        // Final safety check: ensure top is not negative (menu taller than window)
+        if (top < 5) {
+            top = 5;
+            menu.style.maxHeight = `${windowHeight - 10}px`;
+            menu.style.overflowY = 'auto';
+        } else {
+            menu.style.maxHeight = ''; // Reset if it fits
+        }
+
         menu.style.left = `${left}px`;
         menu.style.top = `${top}px`;
     }
@@ -2079,6 +2088,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideContextMenus() {
         document.querySelectorAll('.context-menu').forEach(menu => {
             menu.style.display = 'none';
+            menu.style.maxHeight = '';
+            menu.style.overflowY = '';
         });
     }
 
@@ -2312,13 +2323,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!submenu) return;
 
                 const parentRect = e.currentTarget.getBoundingClientRect();
-                const submenuHeight = submenu.scrollHeight; // Get height even if hidden
+                const submenuHeight = submenu.scrollHeight;
 
-                // Check if it would go off-screen
-                if (parentRect.bottom + submenuHeight > window.innerHeight) {
+                // 1. Vertical Positioning (Flip up if no space)
+                if (parentRect.top + submenuHeight > window.innerHeight) {
                     submenu.classList.add('submenu-up');
+
+                    // Extra check: if even flipped up it exceeds screen, add internal scroll
+                    const availableSpace = Math.max(parentRect.bottom, window.innerHeight - parentRect.top);
+                    if (submenuHeight > availableSpace - 10) {
+                        submenu.style.maxHeight = `${availableSpace - 20}px`;
+                        submenu.style.overflowY = 'auto';
+                    }
                 } else {
                     submenu.classList.remove('submenu-up');
+                    submenu.style.maxHeight = '';
+                }
+
+                // 2. Horizontal Positioning (Flip left if no space on right)
+                // We use a fixed width estimate if offsetWidth is 0
+                const submenuWidth = submenu.offsetWidth || 180;
+                if (parentRect.right + submenuWidth > window.innerWidth) {
+                    submenu.style.left = 'auto';
+                    submenu.style.right = '100%';
+                } else {
+                    submenu.style.left = '100%';
+                    submenu.style.right = 'auto';
                 }
             });
         });
