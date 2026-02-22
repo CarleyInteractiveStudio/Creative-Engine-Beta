@@ -261,13 +261,14 @@ export class Renderer {
             this._waterBufferCtx = this._waterBuffer.getContext('2d');
         }
 
-        const pad = 40;
-        const w = water.width + pad * 2;
-        const h = water.height + pad * 2;
+        const pad = 60; // Aumentado para evitar cortes en mareas altas
+        const w = Math.ceil(water.width + pad * 2);
+        const h = Math.ceil(water.height + pad * 2);
 
         if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
             this._waterBuffer.width = w;
             this._waterBuffer.height = h;
+            this._waterBufferCtx = this._waterBuffer.getContext('2d');
         }
 
         const bCtx = this._waterBufferCtx;
@@ -277,33 +278,47 @@ export class Renderer {
             water.generateParticles();
         }
 
+        const canUseFilter = typeof bCtx.filter === 'string';
+
         bCtx.save();
         bCtx.fillStyle = water.color;
-        // The blur is essential for the metaball effect
-        bCtx.filter = 'blur(6px)';
+
+        if (canUseFilter) {
+            bCtx.filter = 'blur(8px)';
+        }
 
         for (const p of water.particles) {
             bCtx.beginPath();
-            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
+            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 10, 0, Math.PI * 2);
             bCtx.fill();
         }
         bCtx.restore();
 
         // Draw the buffer with high contrast to create the liquid effect (metaballs)
         ctx.save();
-        // Contrast of 15-20 creates sharp edges on blurred shapes
-        ctx.filter = 'contrast(15) brightness(1.0)';
+        if (canUseFilter) {
+            // Contrast of 20-30 creates sharp edges on blurred shapes
+            ctx.filter = 'contrast(25) brightness(1.1)';
+        } else {
+            ctx.globalAlpha = 0.6; // Fallback alpha
+        }
+
         ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
         ctx.restore();
 
         if (this.isEditor) {
-            // Semi-transparent background to ensure visibility
-            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
-            ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.setLineDash([5, 5]);
+            // Marco visual en el editor para ver los límites reales del componente
+            ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)';
+            ctx.lineWidth = 2 / (this.camera?.effectiveZoom || 1);
+            ctx.setLineDash([10, 5]);
             ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+            ctx.setLineDash([]);
+
+            // Texto indicador
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.8)';
+            ctx.font = `${12 / (this.camera?.effectiveZoom || 1)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText("Water (Agua)", 0, -water.height / 2 - 10);
         }
 
         ctx.restore();

@@ -4514,11 +4514,27 @@ export class Water extends Leyes {
 
         // Simulación interna
         this.particles = []; // {x, y, vx, vy, prevX, prevY}
-        this._particleRadius = 8;
-        this._restDensity = 4;
-        this._stiffness = 0.1;
-        this._spacing = 12;
+        this._particleRadius = 12; // Aumentado ligeramente para mejor efecto metabola
+        this._restDensity = 3.5;
+        this._stiffness = 0.05;
+        this._spacing = 15;
     }
+
+    // --- Spanish Aliases ---
+    get ancho() { return this.width; }
+    set ancho(v) { this.width = v; this.generateParticles(); }
+    get alto() { return this.height; }
+    set alto(v) { this.height = v; this.generateParticles(); }
+    get densidad() { return this.density; }
+    set densidad(v) { this.density = v; }
+    get viscosidad() { return this.viscosity; }
+    set viscosidad(v) { this.viscosity = v; }
+    get mostrarMareas() { return this.showTides; }
+    set mostrarMareas(v) { this.showTides = v; }
+    get amplitudMarea() { return this.tideAmplitude; }
+    set amplitudMarea(v) { this.tideAmplitude = v; }
+    get velocidadMarea() { return this.tideSpeed; }
+    set velocidadMarea(v) { this.tideSpeed = v; }
 
     start() {
         this.generateParticles();
@@ -4532,8 +4548,8 @@ export class Water extends Leyes {
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 this.particles.push({
-                    x: (c * this._spacing) - (this.width / 2),
-                    y: (r * this._spacing) - (this.height / 2),
+                    x: (c * this._spacing) - (this.width / 2) + (this._spacing / 2),
+                    y: (r * this._spacing) - (this.height / 2) + (this._spacing / 2),
                     vx: 0,
                     vy: 0,
                     prevX: 0,
@@ -4546,27 +4562,62 @@ export class Water extends Leyes {
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
         if (!isGame) return;
+        if (deltaTime <= 0) return;
 
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
-        const gravity = { x: 0, y: 9.8 * 100 }; // Escala de gravedad
+        const scene = this.materia.scene;
+        // Obtener Rigidbodies dinámicos para interacción
+        const rigidbodies = scene ? scene.getAllMaterias()
+            .filter(m => m.isActive && m !== this.materia)
+            .map(m => ({ rb: m.getComponent(Rigidbody2D), trans: m.getComponent(Transform) }))
+            .filter(item => item.rb && item.rb.bodyType === 'Dynamic' && item.rb.simulated) : [];
+
+        const gravity = { x: 0, y: 9.8 * 100 };
 
         // --- 1. Mareas ---
         if (this.showTides) {
             this.tidePhase += deltaTime * this.tideSpeed;
-            // El desplazamiento de marea se aplica visualmente o en el transform
         }
 
         // --- 2. Simulación de Partículas (PBD simplificado) ---
-        const h = this._particleRadius * 2;
+        const h = this._spacing * 1.5;
         const hSq = h * h;
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
 
         for (const p of this.particles) {
+            // Aplicar Mareas (solo a las que están en la parte superior)
+            if (this.showTides && p.y < -halfH + 30) {
+                const tideEffect = Math.sin(this.tidePhase + p.x * 0.03) * this.tideAmplitude;
+                p.vy += tideEffect * 10 * deltaTime;
+            }
+
             // Gravedad y Viscosidad
             p.vx *= (1 - this.viscosity * deltaTime);
             p.vy *= (1 - this.viscosity * deltaTime);
             p.vy += gravity.y * deltaTime;
+
+            // Interacción con Objetos (Empuje físico de los objetos a las partículas)
+            for (const {rb, trans} of rigidbodies) {
+                const dx = (p.x + transform.x) - trans.x;
+                const dy = (p.y + transform.y) - trans.y;
+                const distSq = dx * dx + dy * dy;
+
+                // Radio de influencia basado en el tamaño aproximado del objeto
+                const pushRadius = 60;
+                if (distSq < pushRadius * pushRadius) {
+                    const dist = Math.sqrt(distSq);
+                    const pushForce = (1 - dist / pushRadius) * 400;
+                    p.vx += (dx / dist) * pushForce * deltaTime;
+                    p.vy += (dy / dist) * pushForce * deltaTime;
+
+                    // Añadir un poco de la velocidad del objeto para crear estelas
+                    p.vx += rb.velocity.x * 20 * deltaTime;
+                    p.vy += rb.velocity.y * 20 * deltaTime;
+                }
+            }
 
             p.prevX = p.x;
             p.prevY = p.y;
@@ -4612,8 +4663,14 @@ export class Water extends Leyes {
             }
         }
 
-        // --- 3. Restricciones y Colisiones ---
+        // --- 3. Restricciones y Colisiones (Contenedor) ---
         for (const p of this.particles) {
+            if (p.x < -halfW) { p.x = -halfW; p.vx *= -0.1; }
+            if (p.x > halfW) { p.x = halfW; p.vx *= -0.1; }
+            if (p.y < -halfH) { p.y = -halfH; p.vy *= -0.1; }
+            if (p.y > halfH) { p.y = halfH; p.vy *= -0.1; }
+
+            // Recalcular velocidad basada en el cambio de posición (PBD)
             p.vx = (p.x - p.prevX) / deltaTime;
             p.vy = (p.y - p.prevY) / deltaTime;
         }

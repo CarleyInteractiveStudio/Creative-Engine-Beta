@@ -3,7 +3,7 @@
  * Includes vector operations, matrix transformations, and collision detection algorithms.
  */
 
-import { Transform, SpriteRenderer, Camera } from './Components.js';
+import { Transform, SpriteRenderer, Camera, Water } from './Components.js';
 
 // Vector operations can be added here if needed.
 
@@ -15,28 +15,37 @@ import { Transform, SpriteRenderer, Camera } from './Components.js';
  */
 export function getOOB(materia, explicitPosition = null) {
     const transform = materia.getComponent(Transform);
-    const spriteRenderer = materia.getComponent(SpriteRenderer);
+    if (!transform) return null;
 
-    if (!transform || !spriteRenderer || !spriteRenderer.sprite || (!spriteRenderer.sprite.naturalWidth && !spriteRenderer.sprite.width)) {
+    const spriteRenderer = materia.getComponent(SpriteRenderer);
+    const water = materia.getComponent(Water);
+
+    let w, h, pivotX = 0.5, pivotY = 0.5;
+
+    if (spriteRenderer && spriteRenderer.sprite && (spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width)) {
+        w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
+        h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
+        pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
+        pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
+
+        // If using a sprite sheet, use the sprite's rect dimensions and pivot
+        if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
+            const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
+            if (spriteData.rect) {
+                w = spriteData.rect.width;
+                h = spriteData.rect.height;
+                pivotX = spriteData.pivot.x;
+                pivotY = spriteData.pivot.y;
+            }
+        }
+    } else if (water) {
+        w = water.width;
+        h = water.height;
+        pivotX = 0.5;
+        pivotY = 0.5;
+    } else {
         return null;
     }
-
-    let w = spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width;
-    let h = spriteRenderer.sprite.naturalHeight || spriteRenderer.sprite.height;
-    let pivotX = spriteRenderer.pivot ? spriteRenderer.pivot.x : 0.5;
-    let pivotY = spriteRenderer.pivot ? spriteRenderer.pivot.y : 0.5;
-
-    // If using a sprite sheet, use the sprite's rect dimensions and pivot
-    if (spriteRenderer.spriteSheet && spriteRenderer.spriteName && spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName]) {
-        const spriteData = spriteRenderer.spriteSheet.sprites[spriteRenderer.spriteName];
-        if (spriteData.rect) {
-            w = spriteData.rect.width;
-            h = spriteData.rect.height;
-            pivotX = spriteData.pivot.x;
-            pivotY = spriteData.pivot.y;
-        }
-    }
-
     const sx = transform.scale.x;
     const sy = transform.scale.y;
 

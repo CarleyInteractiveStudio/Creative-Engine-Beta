@@ -126,25 +126,35 @@ export class PhysicsSystem {
                     const dx = transform.x - waterTransform.x;
                     const dy = transform.y - waterTransform.y;
 
-                    if (Math.abs(dx) < water.width / 2 && Math.abs(dy) < water.height / 2) {
-                        const depth = (waterTransform.y + water.height / 2) - transform.y;
-                        const immersion = Math.max(0, Math.min(1.0, depth / 50)); // immersion factor
+                    const halfWaterW = (water.width * waterTransform.scale.x) / 2;
+                    const halfWaterH = (water.height * waterTransform.scale.y) / 2;
+
+                    if (Math.abs(dx) < halfWaterW && Math.abs(dy) < halfWaterH) {
+                        const collider = this.getCollider(materia);
+                        const objHeight = (collider && collider.size) ? collider.size.y * transform.scale.y : 50;
+
+                        // En sistema Y-down, el tope del agua es (y - halfHeight)
+                        const waterSurfaceY = waterTransform.y - halfWaterH;
+                        // Cuánto del objeto está por debajo de la superficie
+                        const submergedDepth = (transform.y + objHeight / 2) - waterSurfaceY;
+                        const immersion = Math.max(0, Math.min(1.0, submergedDepth / objHeight));
 
                         if (immersion > 0) {
-                            const buoyancyForce = immersion * water.density * 15.0 * rigidbody.buoyancyWeight;
+                            const buoyancyForce = immersion * water.density * 25.0; // Fuerza base
 
                             if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
-                                // Se hunde
-                                rigidbody.velocity.y -= buoyancyForce * 0.3 * deltaTime;
+                                // Objeto pesado: se hunde, pero más lento que en aire
+                                rigidbody.velocity.y -= buoyancyForce * 0.4 * deltaTime;
                             } else {
-                                // Flota
-                                rigidbody.velocity.y -= buoyancyForce * deltaTime;
+                                // Objeto ligero: flota contra la gravedad
+                                const lift = buoyancyForce * (2.0 - rigidbody.buoyancyWeight) * deltaTime;
+                                rigidbody.velocity.y -= lift;
                             }
 
-                            // Water drag
-                            const dragFactor = Math.pow(0.6, deltaTime * immersion * 10);
-                            rigidbody.velocity.x *= dragFactor;
-                            rigidbody.velocity.y *= dragFactor;
+                            // Fricción del agua (Drag)
+                            const dragAmount = 1.0 - (0.1 * water.viscosity * immersion);
+                            rigidbody.velocity.x *= Math.pow(dragAmount, deltaTime * 60);
+                            rigidbody.velocity.y *= Math.pow(dragAmount, deltaTime * 60);
                         }
                     }
                 }
