@@ -267,18 +267,28 @@ export class Renderer {
 
         const bCtx = this._waterBufferCtx;
         bCtx.clearRect(0, 0, w, h);
-        bCtx.fillStyle = water.color;
-        bCtx.filter = 'blur(6px)';
 
-        for (const p of water.particles) {
-            bCtx.beginPath();
-            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
-            bCtx.fill();
+        if (water.particles.length === 0) {
+            water.generateParticles();
         }
 
-        ctx.filter = 'contrast(15) brightness(1.0)';
+        bCtx.save();
+        bCtx.fillStyle = water.color;
+        // Blur only the particles
+        bCtx.filter = 'blur(5px)';
+        for (const p of water.particles) {
+            bCtx.beginPath();
+            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 10, 0, Math.PI * 2);
+            bCtx.fill();
+        }
+        bCtx.restore();
+
+        // Draw the buffer with contrast to create the liquid effect
+        ctx.save();
+        // Use a more standard contrast value for liquid
+        ctx.filter = 'contrast(10)';
         ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
-        ctx.filter = 'none';
+        ctx.restore();
 
         if (this.isEditor) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
