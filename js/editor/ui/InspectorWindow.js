@@ -33,7 +33,7 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.Water],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
@@ -417,6 +417,11 @@ function handleInspectorInput(e) {
     // After updating the property, trigger a scene update to reflect changes visually.
     if (updateSceneCallback) {
         updateSceneCallback();
+    }
+
+    // Special handling for Water component: regenerate particles when size changes
+    if (componentName === 'Water' && (propPath === 'width' || propPath === 'height')) {
+        component.generateParticles();
     }
 
     // Synchronize color inputs if one was changed
