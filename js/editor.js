@@ -2054,6 +2054,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         menu.style.display = 'block';
 
+        // Reset dynamic styles
+        menu.style.maxHeight = '';
+        menu.style.overflowY = '';
+
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
         const windowWidth = window.innerWidth;
@@ -2064,21 +2068,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Adjust horizontal position
         if (left + menuWidth > windowWidth) {
-            left = windowWidth - menuWidth - 5; // Subtract 5 for some padding
+            left = windowWidth - menuWidth - 5;
         }
 
         // Adjust vertical position
         if (top + menuHeight > windowHeight) {
-            top = windowHeight - menuHeight - 5; // Subtract 5 for some padding
+            top = windowHeight - menuHeight - 5;
         }
 
-        // Final safety check: ensure top is not negative (menu taller than window)
-        if (top < 5) {
+        // If the menu is still taller than the window, we only use scroll if it has NO submenus
+        // Clipping submenus is worse than having some items off-screen.
+        if (menuHeight > windowHeight - 10) {
             top = 5;
-            menu.style.maxHeight = `${windowHeight - 10}px`;
-            menu.style.overflowY = 'auto';
-        } else {
-            menu.style.maxHeight = ''; // Reset if it fits
+            const hasSubmenus = menu.querySelector('.has-submenu');
+            if (!hasSubmenus) {
+                menu.style.maxHeight = `${windowHeight - 10}px`;
+                menu.style.overflowY = 'auto';
+                menu.style.overflowX = 'hidden';
+            }
+        } else if (top < 5) {
+            top = 5;
         }
 
         menu.style.left = `${left}px`;
@@ -2328,16 +2337,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 1. Vertical Positioning (Flip up if no space)
                 if (parentRect.top + submenuHeight > window.innerHeight) {
                     submenu.classList.add('submenu-up');
-
-                    // Extra check: if even flipped up it exceeds screen, add internal scroll
-                    const availableSpace = Math.max(parentRect.bottom, window.innerHeight - parentRect.top);
-                    if (submenuHeight > availableSpace - 10) {
-                        submenu.style.maxHeight = `${availableSpace - 20}px`;
-                        submenu.style.overflowY = 'auto';
-                    }
                 } else {
                     submenu.classList.remove('submenu-up');
-                    submenu.style.maxHeight = '';
                 }
 
                 // 2. Horizontal Positioning (Flip left if no space on right)

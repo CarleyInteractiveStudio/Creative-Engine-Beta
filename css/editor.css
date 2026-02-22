@@ -2432,9 +2432,6 @@ body {
     list-style: none;
     min-width: 150px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    max-height: 70vh;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 .context-menu .submenu.submenu-up {
@@ -3473,9 +3470,6 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     padding: 5px 0;
     z-index: 2000;
-    max-height: 80vh;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 .context-menu ul {
