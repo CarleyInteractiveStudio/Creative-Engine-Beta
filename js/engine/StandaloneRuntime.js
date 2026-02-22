@@ -346,9 +346,9 @@ export class StandaloneRuntime {
                 } else if (tmr) {
                     this.renderer.drawTilemap(tmr);
                 } else if (water) {
-                    this.renderer.drawWater(water);
+                    this.renderer.drawWater(water, worldPosition.x, worldPosition.y);
                 } else if (lineCollider) {
-                    this.renderer.drawLineCollider(lineCollider);
+                    this.renderer.drawLineCollider(lineCollider, worldPosition.x, worldPosition.y);
                 }
             }
 

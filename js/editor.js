@@ -966,14 +966,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure layers config exists for older projects
         if (!currentProjectConfig.layers) {
             currentProjectConfig.layers = {
-                sortingLayers: ['Default', 'UI'],
-                collisionLayers: ['Default', 'Player', 'Enemy', 'Ground']
+                sortingLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Background', 'Midground', 'Foreground', 'Player', 'Enemy', 'Items', 'VFX'],
+                collisionLayers: ['Default', 'TransparentFX', 'Ignore Raycast', '', 'Agua', 'UI', 'Ground', 'Player', 'Enemy', 'NPC', 'Items', 'VFX', 'Trigger']
             };
+        } else {
+            // Ensure 'Agua' layer exists at index 4 for existing projects to support the new component
+            if (currentProjectConfig.layers.sortingLayers.length <= 4) {
+                while(currentProjectConfig.layers.sortingLayers.length < 4) currentProjectConfig.layers.sortingLayers.push('');
+                currentProjectConfig.layers.sortingLayers[4] = 'Agua';
+            }
+            if (currentProjectConfig.layers.collisionLayers.length <= 4) {
+                while(currentProjectConfig.layers.collisionLayers.length < 4) currentProjectConfig.layers.collisionLayers.push('');
+                currentProjectConfig.layers.collisionLayers[4] = 'Agua';
+            }
         }
 
         // Ensure tags config exists for older projects
         if (!currentProjectConfig.tags) {
             currentProjectConfig.tags = ['Untagged', 'Agua'];
+        } else if (!currentProjectConfig.tags.includes('Agua')) {
+            currentProjectConfig.tags.push('Agua');
         }
 
         if (!currentProjectConfig.ramLimit) {
@@ -1601,9 +1613,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (terreno2D) {
                     rendererInstance.drawTerreno2D(terreno2D);
                 } else if (water) {
-                    rendererInstance.drawWater(water);
+                    rendererInstance.drawWater(water, worldPosition.x, worldPosition.y);
                 } else if (lineCollider) {
-                    rendererInstance.drawLineCollider(lineCollider);
+                    rendererInstance.drawLineCollider(lineCollider, worldPosition.x, worldPosition.y);
                 } else if (gyzmo) {
                     rendererInstance.drawGyzmo(gyzmo);
                 }

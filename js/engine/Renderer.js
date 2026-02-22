@@ -243,13 +243,16 @@ export class Renderer {
         this.ctx.globalAlpha = 1.0;
     }
 
-    drawWater(water) {
+    drawWater(water, x = null, y = null) {
         const transform = water.materia.getComponent(Transform);
         if (!transform) return;
 
+        const drawX = x !== null ? x : transform.x;
+        const drawY = y !== null ? y : transform.y;
+
         const { ctx } = this;
         ctx.save();
-        ctx.translate(transform.x, transform.y);
+        ctx.translate(drawX, drawY);
         ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
@@ -275,34 +278,30 @@ export class Renderer {
         }
 
         bCtx.save();
-        // Force color to be more opaque in the buffer for the contrast filter to work well
-        let particleColor = water.color;
-        if (typeof particleColor === 'string' && particleColor.startsWith('rgba')) {
-            particleColor = particleColor.replace(/,?\s*[\d\.]+\)$/, ", 1.0)");
-        }
-        bCtx.fillStyle = particleColor;
+        bCtx.fillStyle = water.color;
+        // The blur is essential for the metaball effect
+        bCtx.filter = 'blur(6px)';
 
-        // Blur only the particles
-        bCtx.filter = 'blur(8px)';
         for (const p of water.particles) {
             bCtx.beginPath();
-            // Larger radius in buffer to ensure they merge
-            const r = (water._particleRadius || 8) * 1.5;
-            bCtx.arc(p.x + w / 2, p.y + h / 2, r, 0, Math.PI * 2);
+            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
             bCtx.fill();
         }
         bCtx.restore();
 
-        // Draw the buffer with high contrast to create the liquid effect
+        // Draw the buffer with high contrast to create the liquid effect (metaballs)
         ctx.save();
-        ctx.filter = 'contrast(20) brightness(1.2)';
-        // We apply transparency here instead of per-particle
-        ctx.globalAlpha = 0.7;
+        // Contrast of 15-20 creates sharp edges on blurred shapes
+        ctx.filter = 'contrast(15) brightness(1.0)';
         ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
         ctx.restore();
 
         if (this.isEditor) {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            // Semi-transparent background to ensure visibility
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+            ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.setLineDash([5, 5]);
             ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
         }
@@ -310,15 +309,18 @@ export class Renderer {
         ctx.restore();
     }
 
-    drawLineCollider(collider) {
+    drawLineCollider(collider, x = null, y = null) {
         const transform = collider.materia.getComponent(Transform);
         if (!transform || !collider.points || collider.points.length < 2) return;
 
+        const drawX = x !== null ? x : transform.x;
+        const drawY = y !== null ? y : transform.y;
+
         const { ctx, camera } = this;
-        const zoom = camera.effectiveZoom;
+        const zoom = camera ? camera.effectiveZoom : 1.0;
 
         ctx.save();
-        ctx.translate(transform.x, transform.y);
+        ctx.translate(drawX, drawY);
         ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
