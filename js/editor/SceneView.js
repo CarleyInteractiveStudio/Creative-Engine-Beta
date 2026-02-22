@@ -1641,6 +1641,8 @@ function drawGizmoIcons() {
             iconPath = 'icons/music.svg';
         } else if (materia.getComponent(Components.Camera)) {
             iconPath = 'icons/camera.svg';
+        } else if (materia.getComponent(Components.VideoPlayer)) {
+            iconPath = 'icons/video.svg';
         }
 
         if (iconPath) {

@@ -65,6 +65,14 @@ export function createAudioObject(parent = null) {
     return newMateria;
 }
 
+export function createVideoObject(parent = null) {
+    const L = window.Localization;
+    const name = generateUniqueName(L.get('VIDEO', 'Video'));
+    const newMateria = createBaseMateria(name, parent);
+    newMateria.addComponent(new Components.VideoPlayer(newMateria));
+    return newMateria;
+}
+
 export function createTerrenoObject(parent = null) {
     console.log("[MateriaFactory] Creando objeto de terreno...");
     const L = window.Localization;

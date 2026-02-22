@@ -179,7 +179,8 @@ export class StandaloneRuntime {
             .filter(m => m.getComponent(Components.Transform) && (
                 m.getComponent(Components.SpriteRenderer) ||
                 m.getComponent(Components.TextureRender) ||
-                m.getComponent(Components.TilemapRenderer)
+                m.getComponent(Components.TilemapRenderer) ||
+                m.getComponent(Components.VideoPlayer)
             ))
             .sort((a, b) => {
                 const drawingOrderA = a.getComponent(Components.DrawingOrder);
@@ -226,6 +227,7 @@ export class StandaloneRuntime {
                 const sr = materia.getComponent(Components.SpriteRenderer);
                 const tr = materia.getComponent(Components.TextureRender);
                 const tmr = materia.getComponent(Components.TilemapRenderer);
+                const vp = materia.getComponent(Components.VideoPlayer);
 
                 // --- Parallax Displacement ---
                 let worldPosition = transform.position;
@@ -247,7 +249,20 @@ export class StandaloneRuntime {
                     if ((cameraComponent.cullingMask & (1 << materia.layer)) === 0) continue;
                 }
 
-                if (sr && sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
+                if (vp) {
+                    const video = vp._video;
+                    const w = (video && video.videoWidth > 0) ? video.videoWidth : 100;
+                    const h = (video && video.videoHeight > 0) ? video.videoHeight : 100;
+                    const worldScale = transform.scale;
+                    const dWidth = w * Math.abs(worldScale.x);
+                    const dHeight = h * Math.abs(worldScale.y);
+
+                    ctx.save();
+                    ctx.translate(worldPosition.x, worldPosition.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    this.renderer.drawVideoPlayer(vp, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                    ctx.restore();
+                } else if (sr && sr.sprite && sr.sprite.complete && sr.sprite.naturalWidth > 0) {
                     const img = sr.sprite;
                     let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
                     let pivotX = sr.pivot?.x ?? 0.5, pivotY = sr.pivot?.y ?? 0.5;

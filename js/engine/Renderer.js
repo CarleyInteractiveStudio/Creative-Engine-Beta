@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -574,6 +574,67 @@ export class Renderer {
         }
     }
 
+    drawVideoPlayer(videoPlayer, x, y, width, height) {
+        const video = videoPlayer._video;
+        if (!video) return;
+
+        // Si estamos en el editor y no está reproduciendo, intentamos mostrar el primer frame
+        if (this.isEditor && video.paused && video.currentTime === 0) {
+            // Se asume que video.load() ya se llamó
+        }
+
+        this.ctx.save();
+
+        let drawX = x;
+        let drawY = y;
+        let drawWidth = width;
+        let drawHeight = height;
+
+        // Implementación de Scaling Modes
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            const aspect = video.videoWidth / video.videoHeight;
+            const targetAspect = width / height;
+
+            if (videoPlayer.scalingMode === 'Fit') {
+                if (targetAspect > aspect) {
+                    drawWidth = height * aspect;
+                    drawX = x + (width - drawWidth) / 2;
+                } else {
+                    drawHeight = width / aspect;
+                    drawY = y + (height - drawHeight) / 2;
+                }
+            } else if (videoPlayer.scalingMode === 'Fill') {
+                this.ctx.beginPath();
+                this.ctx.rect(x, y, width, height);
+                this.ctx.clip();
+                if (targetAspect > aspect) {
+                    drawHeight = width / aspect;
+                    drawY = y + (height - drawHeight) / 2;
+                } else {
+                    drawWidth = height * aspect;
+                    drawX = x + (width - drawWidth) / 2;
+                }
+            }
+            // 'Stretch' es el default (usar width/height directamente)
+        }
+
+        try {
+            this.ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+        } catch (e) {
+            // El video puede no estar listo para drawImage
+            if (this.isEditor) {
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillRect(x, y, width, height);
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Video Loading...', x + width / 2, y + height / 2);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
     _drawUIElementAndChildren(element, rectCache, scaleX = 1, scaleY = 1, scaleChildren = true) {
         if (!element.isActive) return;
 
@@ -596,6 +657,7 @@ export class Renderer {
             // Drawing Logic for the current element
             const uiImage = element.getComponent(UIImage);
             const uiText = element.getComponent(UIText);
+            const videoPlayer = element.getComponent(VideoPlayer);
             const uiEventTrigger = element.getComponent(UIEventTrigger);
 
             if (this.isEditor && uiEventTrigger && uiEventTrigger.showGizmo) {
@@ -610,7 +672,9 @@ export class Renderer {
             }
             const textureRender = element.getComponent(TextureRender);
 
-            if (uiImage) {
+            if (videoPlayer) {
+                this.drawVideoPlayer(videoPlayer, x, y, width, height);
+            } else if (uiImage) {
                 this.ctx.fillStyle = uiImage.color;
                 this.ctx.fillRect(x, y, width, height);
                 if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {

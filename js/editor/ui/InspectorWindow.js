@@ -32,7 +32,7 @@ const availableComponents = {
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
-    'CAT_AUDIO': [Components.AudioSource],
+    'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
     'CAT_CAMARA': [Components.Camera],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
@@ -42,7 +42,7 @@ const availableComponents = {
 
 const componentIcons = {
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
-    Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', Camera: 'camera', CreativeScript: 'scroll',
+    Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
@@ -76,6 +76,8 @@ const typeExtensionMap = {
     'sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
     'Audio': ['.mp3', '.wav'],
     'audio': ['.mp3', '.wav'],
+    'Video': ['.mp4', '.webm', '.ogv'],
+    'video': ['.mp4', '.webm', '.ogv'],
     'Prefab': ['.ceprefab'],
     'prefab': ['.ceprefab'],
     'Scene': ['.ceScene'],
@@ -205,7 +207,9 @@ async function handleInspectorDrop(e) {
                 'RaycastSource': Components.RaycastSource,
                 'rallo': Components.RaycastSource,
                 'BasicAI': Components.BasicAI,
-                'iaBasica': Components.BasicAI
+                'iaBasica': Components.BasicAI,
+                'VideoPlayer': Components.VideoPlayer,
+                'video': Components.VideoPlayer
             }[expectedType] || Components[expectedType];
 
             if (typeToSearch) {
@@ -1491,6 +1495,43 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.VideoPlayer) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="VIDEO_SOURCE">${L.get('VIDEO_SOURCE', 'Video Source')}</label>
+                        ${renderPropertyDropper('Video', ley.source, 'data-component="VideoPlayer" data-prop="source"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="VOLUMEN">${L.get('VOLUMEN', 'Volumen')}</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" data-component="VideoPlayer" data-prop="volume" value="${ley.volume}" min="0" max="1" step="0.01" style="flex-grow: 1;">
+                            <span style="min-width: 30px; text-align: right;">${Math.round(ley.volume * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                         <label data-i18n="PLAYBACK_RATE">${L.get('PLAYBACK_RATE', 'Velocidad')}</label>
+                         <input type="number" class="prop-input" data-component="VideoPlayer" data-prop="playbackRate" value="${ley.playbackRate}" step="0.1" min="0.1">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label data-i18n="BUCLE_LOOP">${L.get('BUCLE_LOOP', 'Bucle (Loop)')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Reproducir al Empezar')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SCALING_MODE">${L.get('SCALING_MODE', 'Escalado')}</label>
+                        <select class="prop-input" data-component="VideoPlayer" data-prop="scalingMode">
+                            <option value="Fit" ${ley.scalingMode === 'Fit' ? 'selected' : ''}>Fit</option>
+                            <option value="Stretch" ${ley.scalingMode === 'Stretch' ? 'selected' : ''}>Stretch</option>
+                            <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''}>Fill</option>
+                        </select>
                     </div>
                 </div>
             `;
@@ -3679,6 +3720,8 @@ async function updateInspectorForAsset(assetName, assetPath) {
             await renderCeSpriteInspector(content, dirHandle, assetPath);
         } else if (assetName.endsWith('.mp3') || assetName.endsWith('.wav')) {
             await renderAudioInspector(assetName, assetPath);
+        } else if (assetName.endsWith('.mp4') || assetName.endsWith('.webm') || assetName.endsWith('.ogv')) {
+            await renderVideoInspector(assetName, assetPath);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
@@ -4159,6 +4202,50 @@ async function renderAudioInspector(assetName, assetPath) {
     const durationDisplay = document.getElementById('audio-duration-display');
 
     player.onloadedmetadata = () => {
+        const mins = Math.floor(player.duration / 60);
+        const secs = Math.floor(player.duration % 60);
+        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+}
+
+async function renderVideoInspector(assetName, assetPath) {
+    const url = await getURLForAssetPath(assetPath, projectsDirHandle);
+    if (!url) {
+        dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo obtener la URL del video.</p>`;
+        return;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'video-inspector';
+    container.innerHTML = `
+        <div class="inspector-section bubble-style">
+            <legend>Video Preview</legend>
+            <div class="video-preview-bubble" style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px;">
+                <video id="inspector-video-player" controls style="width: 100%; border-radius: 4px; background: #000;">
+                    <source src="${url}" type="video/${assetName.split('.').pop()}">
+                    Tu navegador no soporta el elemento de video.
+                </video>
+                <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
+                    <p>Formato: ${assetName.split('.').pop().toUpperCase()}</p>
+                    <p id="video-res-display">Resolución: Cargando...</p>
+                    <p id="video-duration-display">Duración: Cargando...</p>
+                </div>
+            </div>
+        </div>
+        <div class="inspector-section">
+            <label>Acciones</label>
+            <p class="field-description">Puedes arrastrar este archivo a un componente Video Player para usarlo.</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    const player = document.getElementById('inspector-video-player');
+    const resDisplay = document.getElementById('video-res-display');
+    const durationDisplay = document.getElementById('video-duration-display');
+
+    player.onloadedmetadata = () => {
+        resDisplay.textContent = `Resolución: ${player.videoWidth}x${player.videoHeight}`;
         const mins = Math.floor(player.duration / 60);
         const secs = Math.floor(player.duration % 60);
         durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;

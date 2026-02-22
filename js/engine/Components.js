@@ -56,7 +56,8 @@ const componentAliases = {
     'PolygonCollider2D': 'colisionadorPoligono2D',
     'Gyzmo': 'gyzmo',
     'RaycastSource': 'rallo',
-    'BasicAI': 'iaBasica'
+    'BasicAI': 'iaBasica',
+    'VideoPlayer': 'reproductorDeVideo'
 };
 
 
@@ -275,6 +276,9 @@ export class CreativeScriptBehavior {
 
     get audio() { return this.materia.getComponent(AudioSource); }
     get sonido() { return this.audio; }
+
+    get video() { return this.materia.getComponent(VideoPlayer); }
+    get pelicula() { return this.video; }
 
     get texto() { return this.materia.getComponent(UIText); }
     get boton() { return this.materia.getComponent(Button); }
@@ -2009,6 +2013,148 @@ export class AudioSource extends Leyes {
     }
 }
 
+export class VideoPlayer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = '';
+        this.volume = 1.0;
+        this.loop = false;
+        this.playOnAwake = true;
+        this.playbackRate = 1.0;
+        this.scalingMode = 'Fit'; // 'Stretch', 'Fit', 'Fill'
+
+        this._video = null;
+        this._isLoaded = false;
+        this._lastLoadedSource = '';
+    }
+
+    async start() {
+        if (this.playOnAwake) {
+            this.play();
+        }
+    }
+
+    update(deltaTime) {
+        // Auto-load if source is set but not yet loaded
+        if (this.source && this.source !== this._lastLoadedSource && !this._video) {
+            this.load();
+        }
+
+        if (!this._video) return;
+
+        // Sincronizar volumen con AudioSource si existe en la misma Materia
+        const audioSource = this.materia.getComponent(AudioSource);
+        if (audioSource) {
+            this._video.volume = audioSource.spatial ? audioSource._currentVolume : audioSource.volume;
+            this._video.muted = false;
+        } else {
+            this._video.volume = this.volume;
+        }
+
+        this._video.loop = this.loop;
+        this._video.playbackRate = this.playbackRate;
+    }
+
+    get isPlaying() {
+        return this._video && !this._video.paused && !this._video.ended;
+    }
+
+    async load() {
+        if (!this.source) return;
+
+        try {
+            const url = await getURLForAssetPath(this.source, window.projectsDirHandle);
+            if (!url) return;
+
+            if (!this._video) {
+                this._video = document.createElement('video');
+                this._video.crossOrigin = 'anonymous';
+                this._video.playsInline = true;
+                this._video.muted = true; // Empieza muteado para auto-play policies
+            }
+
+            if (this._video.src !== url) {
+                this._video.src = url;
+                this._lastLoadedSource = this.source;
+
+                await new Promise((resolve) => {
+                    this._video.oncanplay = resolve;
+                    this._video.load();
+                });
+                this._isLoaded = true;
+            }
+        } catch (e) {
+            console.warn(`[VideoPlayer] Error al cargar video: ${this.source}.`, e);
+        }
+    }
+
+    async play() {
+        if (!this._isLoaded || this.source !== this._lastLoadedSource) {
+            await this.load();
+        }
+
+        if (this._video) {
+            try {
+                await this._video.play();
+            } catch (e) {
+                console.warn(`[VideoPlayer] No se pudo reproducir: ${e.message}`);
+            }
+        }
+    }
+
+    pause() {
+        if (this._video) this._video.pause();
+    }
+
+    stop() {
+        if (this._video) {
+            this._video.pause();
+            this._video.currentTime = 0;
+        }
+    }
+
+    seek(time) {
+        if (this._video) this._video.currentTime = time;
+    }
+
+    // --- Spanish Aliases ---
+    reproducir() { this.play(); }
+    pausar() { this.pause(); }
+    detener() { this.stop(); }
+    buscarTiempo(t) { this.seek(t); }
+
+    get fuente() { return this.source; }
+    set fuente(v) { this.source = v; }
+    get volumen() { return this.volume; }
+    set volumen(v) { this.volume = v; }
+    get bucle() { return this.loop; }
+    set bucle(v) { this.loop = v; }
+    get velocidad() { return this.playbackRate; }
+    set velocidad(v) { this.playbackRate = v; }
+    get modoEscalado() { return this.scalingMode; }
+    set modoEscalado(v) { this.scalingMode = v; }
+
+    onDestroy() {
+        this.stop();
+        if (this._video) {
+            this._video.src = "";
+            this._video.load();
+            this._video = null;
+        }
+    }
+
+    clone() {
+        const copy = new VideoPlayer(null);
+        copy.source = this.source;
+        copy.volume = this.volume;
+        copy.loop = this.loop;
+        copy.playOnAwake = this.playOnAwake;
+        copy.playbackRate = this.playbackRate;
+        copy.scalingMode = this.scalingMode;
+        return copy;
+    }
+}
+
 // --- Component Registration ---
 
 export class TextureRender extends Leyes {
@@ -2789,6 +2935,7 @@ registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
+registerComponent('VideoPlayer', VideoPlayer);
 
 export class DrawingOrder extends Leyes {
     constructor(materia) {

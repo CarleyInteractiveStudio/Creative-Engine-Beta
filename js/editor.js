@@ -1392,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const spriteRenderer = materia.getComponent(Components.SpriteRenderer);
                 const textureRender = materia.getComponent(Components.TextureRender);
                 const terreno2D = materia.getComponent(Components.Terreno2D);
+                const videoPlayer = materia.getComponent(Components.VideoPlayer);
                 const gyzmo = materia.getComponent(Components.Gyzmo);
                 const tilemapRenderer = materia.getComponent(Components.TilemapRenderer);
                 const transform = materia.getComponent(Components.Transform);
@@ -1426,7 +1427,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                if (spriteRenderer) {
+                if (videoPlayer) {
+                    const video = videoPlayer._video;
+                    const w = (video && video.videoWidth > 0) ? video.videoWidth : 100;
+                    const h = (video && video.videoHeight > 0) ? video.videoHeight : 100;
+
+                    const worldScale = transform.scale;
+                    const dWidth = w * Math.abs(worldScale.x);
+                    const dHeight = h * Math.abs(worldScale.y);
+
+                    ctx.save();
+                    ctx.translate(worldPosition.x, worldPosition.y);
+                    ctx.rotate(transform.rotation * Math.PI / 180);
+                    rendererInstance.drawVideoPlayer(videoPlayer, -dWidth / 2, -dHeight / 2, dWidth, dHeight);
+                    ctx.restore();
+                } else if (spriteRenderer) {
                     // Optimized check: only draw if the image has valid dimensions
                     const img = spriteRenderer.sprite;
                     if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
