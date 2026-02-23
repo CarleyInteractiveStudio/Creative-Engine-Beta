@@ -635,8 +635,30 @@ export function initialize(editorDom, handle, exportFunc, openAssetSelectorCallb
             selectedLibraryForContextMenu = card.dataset.fileName;
             const menu = document.getElementById('library-context-menu');
             menu.style.display = 'block';
-            menu.style.left = `${e.clientX}px`;
-            menu.style.top = `${e.clientY}px`;
+            menu.style.position = 'fixed';
+            menu.style.zIndex = '3000';
+            menu.style.maxHeight = '';
+            menu.style.overflowY = '';
+
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            let left = e.clientX;
+            let top = e.clientY;
+
+            if (left + menuWidth > windowWidth) left = windowWidth - menuWidth - 5;
+            if (top + menuHeight > windowHeight) top = windowHeight - menuHeight - 5;
+
+            if (top < 5 || menuHeight > windowHeight - 10) {
+                if (top < 5) top = 5;
+                menu.style.maxHeight = `${windowHeight - (top + 10)}px`;
+                menu.style.overflowY = 'auto';
+            }
+
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
         }
     });
 

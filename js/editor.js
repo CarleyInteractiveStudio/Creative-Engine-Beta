@@ -1339,7 +1339,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)));
+            .filter(m => m.getComponent(Components.Transform) && (
+                m.getComponent(Components.SpriteRenderer) ||
+                m.getComponent(Components.TextureRender) ||
+                m.getComponent(Components.Terreno2D) ||
+                m.getComponent(Components.Water) ||
+                m.getComponent(Components.LineCollider2D) ||
+                m.getComponent(Components.Gyzmo)
+            ));
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
@@ -1381,8 +1388,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (b.isAncestorOf(a)) return 1;  // b is parent, draw first (behind)
 
                 // 3. Renderer orderInLayer
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Gyzmo);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Gyzmo);
+                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.TilemapRenderer) || a.getComponent(Components.Terreno2D) || a.getComponent(Components.Gyzmo) || a.getComponent(Components.Water) || a.getComponent(Components.LineCollider2D);
+                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.TilemapRenderer) || b.getComponent(Components.Terreno2D) || b.getComponent(Components.Gyzmo) || b.getComponent(Components.Water) || b.getComponent(Components.LineCollider2D);
                 const orderA = rendererA ? (rendererA.orderInLayer || 0) : 0;
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
