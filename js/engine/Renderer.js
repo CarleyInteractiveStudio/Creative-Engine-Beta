@@ -256,53 +256,82 @@ export class Renderer {
         ctx.rotate(transform.rotation * Math.PI / 180);
         ctx.scale(transform.scale.x, transform.scale.y);
 
-        if (!this._waterBuffer) {
-            this._waterBuffer = document.createElement('canvas');
-            this._waterBufferCtx = this._waterBuffer.getContext('2d');
-        }
-
-        const pad = 60; // Aumentado para evitar cortes en mareas altas
+        const pad = 60;
         const w = Math.ceil(water.width + pad * 2);
         const h = Math.ceil(water.height + pad * 2);
 
-        if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
-            this._waterBuffer.width = w;
-            this._waterBuffer.height = h;
+        // 1. Inicializar buffers lazily
+        if (!this._waterBuffer) {
+            this._waterBuffer = document.createElement('canvas');
             this._waterBufferCtx = this._waterBuffer.getContext('2d');
+            this._particleBuffer = document.createElement('canvas');
+            this._particleBufferCtx = this._particleBuffer.getContext('2d');
+        }
+
+        if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
+            this._waterBuffer.width = this._particleBuffer.width = w;
+            this._waterBuffer.height = this._particleBuffer.height = h;
+            this._waterBufferCtx = this._waterBuffer.getContext('2d');
+            this._particleBufferCtx = this._particleBuffer.getContext('2d');
+        }
+
+        if (!this._waterParticleSprite) {
+            this._waterParticleSprite = document.createElement('canvas');
+            this._waterParticleSprite.width = 32;
+            this._waterParticleSprite.height = 32;
+            const pCtx = this._waterParticleSprite.getContext('2d');
+            pCtx.fillStyle = 'white';
+            pCtx.beginPath();
+            pCtx.arc(16, 16, 14, 0, Math.PI * 2);
+            pCtx.fill();
         }
 
         const bCtx = this._waterBufferCtx;
+        const pCtx = this._particleBufferCtx;
+
+        pCtx.clearRect(0, 0, w, h);
         bCtx.clearRect(0, 0, w, h);
 
         if (water.particles.length === 0) {
             water.generateParticles();
         }
 
+        // 2. Dibujar partículas RÁPIDO (sin filtros por draw call)
+        const pr = water._particleRadius || 10;
+        const pSize = pr * 2.2;
+        const pOffset = pSize / 2;
+        const centerX = w / 2;
+        const centerY = h / 2;
+
+        pCtx.fillStyle = 'white';
+        for (let i = 0; i < water.particles.length; i++) {
+            const p = water.particles[i];
+            pCtx.drawImage(this._waterParticleSprite, p.x + centerX - pOffset, p.y + centerY - pOffset, pSize, pSize);
+        }
+
+        // 3. Aplicar Blur una sola vez al buffer de partículas
         const canUseFilter = typeof bCtx.filter === 'string';
-
         bCtx.save();
-        bCtx.fillStyle = water.color;
-
         if (canUseFilter) {
             bCtx.filter = 'blur(8px)';
         }
-
-        for (const p of water.particles) {
-            bCtx.beginPath();
-            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 10, 0, Math.PI * 2);
-            bCtx.fill();
-        }
+        bCtx.drawImage(this._particleBuffer, 0, 0);
         bCtx.restore();
 
-        // Draw the buffer with high contrast to create the liquid effect (metaballs)
+        // 4. Colorear el agua
+        bCtx.save();
+        bCtx.globalCompositeOperation = 'source-in';
+        bCtx.fillStyle = water.color;
+        bCtx.fillRect(0, 0, w, h);
+        bCtx.restore();
+
+        // 5. Dibujar el buffer final con Contraste
         ctx.save();
         if (canUseFilter) {
-            // Contrast of 20-30 creates sharp edges on blurred shapes
             ctx.filter = 'contrast(25) brightness(1.1)';
         } else {
-            ctx.globalAlpha = 0.6; // Fallback alpha
+            ctx.globalAlpha = 0.6;
         }
-
         ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
         ctx.restore();
 

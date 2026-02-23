@@ -4568,26 +4568,42 @@ export class Water extends Leyes {
         if (!transform) return;
 
         const scene = this.materia.scene;
-        // Obtener Rigidbodies dinámicos para interacción
+        const halfW = this.width / 2;
+        const halfH = this.height / 2;
+
+        // --- 1. Optimización: Filtrado de Rigidbodies por proximidad ---
+        const waterWorldX = transform.x;
+        const waterWorldY = transform.y;
+        const waterBoundRadius = Math.max(halfW, halfH) + 100;
+        const waterBoundRadiusSq = waterBoundRadius * waterBoundRadius;
+
         const rigidbodies = scene ? scene.getAllMaterias()
-            .filter(m => m.isActive && m !== this.materia)
+            .filter(m => {
+                if (!m.isActive || m === this.materia) return false;
+                const t = m.getComponent(Transform);
+                if (!t) return false;
+                const dx = t.x - waterWorldX;
+                const dy = t.y - waterWorldY;
+                return (dx*dx + dy*dy) < waterBoundRadiusSq;
+            })
             .map(m => ({ rb: m.getComponent(Rigidbody2D), trans: m.getComponent(Transform) }))
             .filter(item => item.rb && item.rb.bodyType === 'Dynamic' && item.rb.simulated) : [];
 
-        const gravity = { x: 0, y: 9.8 * 100 };
+        const gravityY = 9.8 * 100;
 
-        // --- 1. Mareas ---
+        // --- 2. Mareas ---
         if (this.showTides) {
             this.tidePhase += deltaTime * this.tideSpeed;
         }
 
-        // --- 2. Simulación de Partículas (PBD simplificado) ---
+        // --- 3. Simulación de Partículas (Pre-paso) ---
         const h = this._spacing * 1.5;
         const hSq = h * h;
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
+        const invH = 1 / h;
 
-        for (const p of this.particles) {
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+
             // Aplicar Mareas (solo a las que están en la parte superior)
             if (this.showTides && p.y < -halfH + 30) {
                 const tideEffect = Math.sin(this.tidePhase + p.x * 0.03) * this.tideAmplitude;
@@ -4597,23 +4613,21 @@ export class Water extends Leyes {
             // Gravedad y Viscosidad
             p.vx *= (1 - this.viscosity * deltaTime);
             p.vy *= (1 - this.viscosity * deltaTime);
-            p.vy += gravity.y * deltaTime;
+            p.vy += gravityY * deltaTime;
 
-            // Interacción con Objetos (Empuje físico de los objetos a las partículas)
-            for (const {rb, trans} of rigidbodies) {
+            // Interacción con Objetos (Empuje físico)
+            for (let rIdx = 0; rIdx < rigidbodies.length; rIdx++) {
+                const {rb, trans} = rigidbodies[rIdx];
                 const dx = (p.x + transform.x) - trans.x;
                 const dy = (p.y + transform.y) - trans.y;
-                const distSq = dx * dx + dy * dy;
-
-                // Radio de influencia basado en el tamaño aproximado del objeto
+                const dSq = dx * dx + dy * dy;
                 const pushRadius = 60;
-                if (distSq < pushRadius * pushRadius) {
-                    const dist = Math.sqrt(distSq);
+                if (dSq < pushRadius * pushRadius) {
+                    const dist = Math.sqrt(dSq);
                     const pushForce = (1 - dist / pushRadius) * 400;
-                    p.vx += (dx / dist) * pushForce * deltaTime;
-                    p.vy += (dy / dist) * pushForce * deltaTime;
-
-                    // Añadir un poco de la velocidad del objeto para crear estelas
+                    const invDist = 1 / (dist || 1);
+                    p.vx += (dx * invDist) * pushForce * deltaTime;
+                    p.vy += (dy * invDist) * pushForce * deltaTime;
                     p.vx += rb.velocity.x * 20 * deltaTime;
                     p.vy += rb.velocity.y * 20 * deltaTime;
                 }
@@ -4625,54 +4639,83 @@ export class Water extends Leyes {
             p.y += p.vy * deltaTime;
         }
 
-        // Resolución de Densidad (Relajación de Incompresibilidad)
-        for (let iter = 0; iter < 2; iter++) {
+        // --- 4. Spatial Grid para búsqueda de vecinos ---
+        const cellSize = h;
+        const gridCols = Math.ceil(this.width / cellSize);
+        const gridRows = Math.ceil(this.height / cellSize);
+        const grid = new Array(gridCols * gridRows);
+
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            const gx = Math.max(0, Math.min(gridCols - 1, Math.floor((p.x + halfW) / cellSize)));
+            const gy = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y + halfH) / cellSize)));
+            const idx = gy * gridCols + gx;
+            if (!grid[idx]) grid[idx] = [];
+            grid[idx].push(i);
+        }
+
+        // --- 5. Resolución de Densidad (PBD) ---
+        // Reducido a 1 iteración para máximo rendimiento
+        for (let iter = 0; iter < 1; iter++) {
             for (let i = 0; i < this.particles.length; i++) {
                 const pi = this.particles[i];
                 let rho = 0;
-                const neighbors = [];
 
-                for (let j = 0; j < this.particles.length; j++) {
-                    if (i === j) continue;
-                    const pj = this.particles[j];
-                    const dx = pi.x - pj.x;
-                    const dy = pi.y - pj.y;
-                    const distSq = dx * dx + dy * dy;
-                    if (distSq < hSq) {
-                        const dist = Math.sqrt(distSq);
-                        const weight = 1 - dist / h;
-                        rho += weight * weight;
-                        neighbors.push({pj, weight, dx, dy, dist});
-                    }
-                }
+                const gx = Math.floor((pi.x + halfW) / cellSize);
+                const gy = Math.floor((pi.y + halfH) / cellSize);
 
-                const pressure = (rho - this._restDensity) * this._stiffness;
-                if (pressure > 0) {
-                    for (const {pj, weight, dx, dy, dist} of neighbors) {
-                        if (dist > 0) {
-                            const displacement = pressure * weight * (1 / dist);
-                            const moveX = dx * displacement * 0.5;
-                            const moveY = dy * displacement * 0.5;
-                            pi.x += moveX;
-                            pi.y += moveY;
-                            pj.x -= moveX;
-                            pj.y -= moveY;
+                // Vecinos en 9 celdas
+                for (let ox = -1; ox <= 1; ox++) {
+                    const nx = gx + ox;
+                    if (nx < 0 || nx >= gridCols) continue;
+                    for (let oy = -1; oy <= 1; oy++) {
+                        const ny = gy + oy;
+                        if (ny < 0 || ny >= gridRows) continue;
+
+                        const cell = grid[ny * gridCols + nx];
+                        if (!cell) continue;
+
+                        for (let cIdx = 0; cIdx < cell.length; cIdx++) {
+                            const j = cell[cIdx];
+                            if (i === j) continue;
+                            const pj = this.particles[j];
+                            const dx = pi.x - pj.x;
+                            const dy = pi.y - pj.y;
+                            const dSq = dx * dx + dy * dy;
+                            if (dSq < hSq) {
+                                const dist = Math.sqrt(dSq);
+                                const weight = 1 - dist * invH;
+                                rho += weight * weight;
+
+                                // Resolución inmediata de presión (Gauss-Seidel style)
+                                const pressure = (rho - this._restDensity) * this._stiffness;
+                                if (pressure > 0 && dist > 0) {
+                                    const displacement = pressure * weight * (0.5 / dist);
+                                    const moveX = dx * displacement;
+                                    const moveY = dy * displacement;
+                                    pi.x += moveX;
+                                    pi.y += moveY;
+                                    pj.x -= moveX;
+                                    pj.y -= moveY;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        // --- 3. Restricciones y Colisiones (Contenedor) ---
-        for (const p of this.particles) {
+        // --- 6. Restricciones y Recálculo de Velocidad ---
+        const invDt = 1 / deltaTime;
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
             if (p.x < -halfW) { p.x = -halfW; p.vx *= -0.1; }
-            if (p.x > halfW) { p.x = halfW; p.vx *= -0.1; }
+            else if (p.x > halfW) { p.x = halfW; p.vx *= -0.1; }
             if (p.y < -halfH) { p.y = -halfH; p.vy *= -0.1; }
-            if (p.y > halfH) { p.y = halfH; p.vy *= -0.1; }
+            else if (p.y > halfH) { p.y = halfH; p.vy *= -0.1; }
 
-            // Recalcular velocidad basada en el cambio de posición (PBD)
-            p.vx = (p.x - p.prevX) / deltaTime;
-            p.vy = (p.y - p.prevY) / deltaTime;
+            p.vx = (p.x - p.prevX) * invDt;
+            p.vy = (p.y - p.prevY) * invDt;
         }
     }
 
