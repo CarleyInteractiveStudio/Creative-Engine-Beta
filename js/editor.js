@@ -2054,10 +2054,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         menu.style.display = 'block';
 
-        // Reset dynamic styles
-        menu.style.maxHeight = '';
-        menu.style.overflowY = '';
-
         const menuWidth = menu.offsetWidth;
         const menuHeight = menu.offsetHeight;
         const windowWidth = window.innerWidth;
@@ -2076,18 +2072,14 @@ document.addEventListener('DOMContentLoaded', () => {
             top = windowHeight - menuHeight - 5;
         }
 
-        // If the menu is still taller than the window, we only use scroll if it has NO submenus
-        // Clipping submenus is worse than having some items off-screen.
-        if (menuHeight > windowHeight - 10) {
-            top = 5;
-            const hasSubmenus = menu.querySelector('.has-submenu');
-            if (!hasSubmenus) {
-                menu.style.maxHeight = `${windowHeight - 10}px`;
-                menu.style.overflowY = 'auto';
-                menu.style.overflowX = 'hidden';
-            }
-        } else if (top < 5) {
-            top = 5;
+        // Final safety check: ensure top is not negative (menu taller than window)
+        if (top < 5 || menuHeight > windowHeight - 10) {
+            if (top < 5) top = 5;
+            menu.style.maxHeight = `${windowHeight - (top + 10)}px`;
+            menu.style.overflowY = 'auto';
+        } else {
+            menu.style.maxHeight = ''; // Reset if it fits
+            menu.style.overflowY = '';
         }
 
         menu.style.left = `${left}px`;
@@ -2325,32 +2317,50 @@ document.addEventListener('DOMContentLoaded', () => {
             allMenuContents.forEach(mc => mc.classList.remove('visible'));
         });
 
-        // --- Submenu dynamic positioning ---
+        // --- Submenu dynamic positioning (using fixed to prevent clipping) ---
         document.querySelectorAll('.context-menu .has-submenu').forEach(item => {
             item.addEventListener('mouseenter', e => {
                 const submenu = e.currentTarget.querySelector('.submenu');
                 if (!submenu) return;
 
+                // Set initial fixed style
+                submenu.style.position = 'fixed';
+                submenu.style.maxHeight = ''; // Reset to calculate scrollHeight
+                submenu.style.overflowY = '';
+
                 const parentRect = e.currentTarget.getBoundingClientRect();
                 const submenuHeight = submenu.scrollHeight;
-
-                // 1. Vertical Positioning (Flip up if no space)
-                if (parentRect.top + submenuHeight > window.innerHeight) {
-                    submenu.classList.add('submenu-up');
-                } else {
-                    submenu.classList.remove('submenu-up');
-                }
-
-                // 2. Horizontal Positioning (Flip left if no space on right)
-                // We use a fixed width estimate if offsetWidth is 0
                 const submenuWidth = submenu.offsetWidth || 180;
-                if (parentRect.right + submenuWidth > window.innerWidth) {
-                    submenu.style.left = 'auto';
-                    submenu.style.right = '100%';
-                } else {
-                    submenu.style.left = '100%';
-                    submenu.style.right = 'auto';
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+
+                let left = parentRect.right;
+                let top = parentRect.top;
+
+                // 1. Horizontal Positioning (Flip left if no space on right)
+                if (left + submenuWidth > windowWidth) {
+                    left = parentRect.left - submenuWidth;
+                    // Ensure it doesn't go off-screen to the left
+                    if (left < 5) left = 5;
                 }
+
+                // 2. Vertical Positioning (Adjust if it exceeds bottom)
+                if (top + submenuHeight > windowHeight - 10) {
+                    top = windowHeight - submenuHeight - 10;
+
+                    // If still too tall, use scrolling
+                    if (top < 5) {
+                        top = 5;
+                        submenu.style.maxHeight = `${windowHeight - 20}px`;
+                        submenu.style.overflowY = 'auto';
+                        submenu.style.overflowX = 'hidden';
+                    }
+                } else if (top < 5) {
+                    top = 5;
+                }
+
+                submenu.style.left = `${left}px`;
+                submenu.style.top = `${top}px`;
             });
         });
 

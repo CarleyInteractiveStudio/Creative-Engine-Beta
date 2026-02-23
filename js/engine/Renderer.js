@@ -308,6 +308,9 @@ export class Renderer {
 
         if (this.isEditor) {
             // Marco visual en el editor para ver los límites reales del componente
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+            ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+
             ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)';
             ctx.lineWidth = 2 / (this.camera?.effectiveZoom || 1);
             ctx.setLineDash([10, 5]);
