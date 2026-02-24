@@ -2148,9 +2148,15 @@ function paintTile(event) {
         return;
     }
 
-    const grid = selectedMateria.parent?.getComponent(Components.Grid);
+    let grid = tilemapMateria.getComponent(Components.Grid);
+    if (!grid && tilemapMateria.parent) {
+        grid = (typeof tilemapMateria.parent.getComponent === 'function')
+            ? tilemapMateria.parent.getComponent(Components.Grid)
+            : SceneManager.currentScene.findMateriaById(tilemapMateria.parent)?.getComponent(Components.Grid);
+    }
+
     if (!grid) {
-        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto padre del Tilemap no tiene un componente Grid."));
+        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto seleccionado o su padre no tienen un componente Grid."));
         return;
     }
 
@@ -2164,7 +2170,8 @@ function paintTile(event) {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
-    for (const layer of tilemap.layers) {
+    const layer = tilemap.layers[tilemap.activeLayerIndex];
+    if (layer) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
         const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
@@ -2217,7 +2224,20 @@ function paintTile(event) {
                     VerificationSystem.updateStatus(tileToPaint, true, L.get('STATUS_AREA_RELLENADA', "¡Área Rellenada!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 }
             } else if (activeTool === 'tile-eraser') {
-                layer.tileData.delete(key);
+                // Borrar de todas las capas en esa posición, calculando las coordenadas para cada una
+                tilemap.layers.forEach(l => {
+                    const lOffsetX = l.position.x * layerWidth;
+                    const lOffsetY = l.position.y * layerHeight;
+                    const lTopLeftX = tilemapCenterX + lOffsetX - layerWidth / 2;
+                    const lTopLeftY = tilemapCenterY + lOffsetY - layerHeight / 2;
+                    const mInLX = worldMouse.x - lTopLeftX;
+                    const mInLY = worldMouse.y - lTopLeftY;
+                    const c = Math.floor(mInLX / cellSize.x);
+                    const r = Math.floor(mInLY / cellSize.y);
+                    if (c >= 0 && c < width && r >= 0 && r < height) {
+                        l.tileData.delete(`${c},${r}`);
+                    }
+                });
                 VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
             }
 

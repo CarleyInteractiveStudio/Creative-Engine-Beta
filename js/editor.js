@@ -819,6 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'g':
                     setActiveTool('tile-bucket');
                     break;
+                case 'n':
+                    setActiveTool('tile-eraser');
+                    break;
                 case 'delete':
                 case 'backspace':
                     if (selectedMateria) {
