@@ -45,10 +45,26 @@ export class StandaloneRuntime {
 
         // 3. Load Main Scene
         try {
-            // Determine which scene to load (default to first one if not specified)
-            const sceneToLoad = this.config.startScene || 'default.ceScene';
-            const sceneResp = await fetch(`Assets/${sceneToLoad}`);
-            if (!sceneResp.ok) throw new Error(`Could not find start scene: ${sceneToLoad}`);
+            // Determine which scene to load
+            let sceneToLoad = this.config.startScene || 'default.ceScene';
+            let sceneResp = await fetch(`Assets/${sceneToLoad}`);
+
+            if (!sceneResp.ok) {
+                console.warn(`Could not find configured start scene: ${sceneToLoad}. Trying fallbacks...`);
+                // Try from the allScenes list if available
+                if (this.config.allScenes && this.config.allScenes.length > 0) {
+                    for (const fallback of this.config.allScenes) {
+                        if (fallback === sceneToLoad) continue;
+                        sceneResp = await fetch(`Assets/${fallback}`);
+                        if (sceneResp.ok) {
+                            sceneToLoad = fallback;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!sceneResp.ok) throw new Error(`Could not find any playable scene. (Configured: ${sceneToLoad})`);
 
             const sceneData = await sceneResp.json();
             const scene = await SceneManager.deserializeScene(sceneData, null);

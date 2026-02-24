@@ -47,12 +47,18 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         if (!options.includeUnusedAssets) {
             usedAssets = await collectUsedAssets(projectHandle);
-            // Add scenes anyway as they are needed to load levels
-            for await (const entry of assetsHandle.values()) {
-                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                    usedAssets.add(`Assets/${entry.name}`);
+            // Add all scenes anyway as they are needed to load levels
+            async function addAllScenes(handle, path) {
+                for await (const entry of handle.values()) {
+                    const entryPath = `${path}/${entry.name}`;
+                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                        usedAssets.add(entryPath);
+                    } else if (entry.kind === 'directory') {
+                        await addAllScenes(entry, entryPath);
+                    }
                 }
             }
+            await addAllScenes(assetsHandle, 'Assets');
         }
 
         // 4. Export project assets
@@ -92,6 +98,54 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         // 7. Project Configuration (with library list)
         const buildConfig = { ...currentProjectConfig };
+
+        // Collect all scenes for fallback
+        const allScenes = [];
+        async function collectAllScenes(handle, path = '') {
+            for await (const entry of handle.values()) {
+                const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                    allScenes.push(entryPath);
+                } else if (entry.kind === 'directory') {
+                    await collectAllScenes(entry, entryPath);
+                }
+            }
+        }
+        await collectAllScenes(assetsHandle);
+        buildConfig.allScenes = allScenes;
+
+        // Set default start scene if not defined
+        if (!buildConfig.startScene) {
+            const currentHandle = window.SceneManager?.currentSceneFileHandle;
+            if (currentHandle) {
+                try {
+                    const pathParts = await assetsHandle.resolve(currentHandle);
+                    if (pathParts) {
+                        buildConfig.startScene = pathParts.join('/');
+                    } else {
+                        buildConfig.startScene = currentHandle.name;
+                    }
+                } catch (e) {
+                    buildConfig.startScene = currentHandle.name;
+                }
+            } else {
+                // Try to find the first available scene recursively
+                async function findFirstScene(handle, path = '') {
+                    for await (const entry of handle.values()) {
+                        const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                            return entryPath;
+                        } else if (entry.kind === 'directory') {
+                            const found = await findFirstScene(entry, entryPath);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                }
+                buildConfig.startScene = await findFirstScene(assetsHandle) || 'default.ceScene';
+            }
+        }
+
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
             const libNames = [];
