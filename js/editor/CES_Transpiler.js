@@ -79,6 +79,12 @@ const typeMap = {
     'ParticleSystem': 'ParticleSystem',
     'DrawingOrder': 'DrawingOrder',
     'CameraFollow': 'CameraFollow',
+    'VerticalLayoutGroup': 'VerticalLayoutGroup',
+    'HorizontalLayoutGroup': 'HorizontalLayoutGroup',
+    'GridLayoutGroup': 'GridLayoutGroup',
+    'autoDisposicionVertical': 'VerticalLayoutGroup',
+    'autoDisposicionHorizontal': 'HorizontalLayoutGroup',
+    'autoDisposicionRejilla': 'GridLayoutGroup',
     'variable': 'any',
     'any': 'any'
 };
@@ -122,6 +128,9 @@ const componentShortcuts = [
     'audio', 'sonido',
     'cameraFollow', 'seguimientoDeCamara',
     'drawingOrder', 'ordenDeDibujo',
+    'verticalLayoutGroup', 'autoDisposicionVertical',
+    'horizontalLayoutGroup', 'autoDisposicionHorizontal',
+    'gridLayoutGroup', 'autoDisposicionRejilla',
     'videoPlayer', 'reproductorDeVideo', 'video', 'pelicula',
     'materia', 'mtr', 'nombre', 'tag', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'ui', 'texto', 'boton', 'imagen', 'lienzo',

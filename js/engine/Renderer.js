@@ -586,6 +586,10 @@ export class Renderer {
 
                 if (image && image.complete && image.naturalWidth > 0) {
                     const [x, y] = coord.split(',').map(Number);
+
+                    // Comprobar límites: los azulejos fuera del ancho/alto del Tilemap no se dibujan
+                    if (x < 0 || x >= tilemap.width || y < 0 || y >= tilemap.height) continue;
+
                     const dx = layerOffsetX + (x * grid.cellSize.x) - (mapTotalWidth / 2);
                     const dy = layerOffsetY + (y * grid.cellSize.y) - (mapTotalHeight / 2);
                     // Add 0.5px to width and height to prevent gaps between tiles

@@ -59,7 +59,10 @@ const componentAliases = {
     'BasicAI': 'iaBasica',
     'VideoPlayer': 'reproductorDeVideo',
     'Water': 'agua',
-    'LineCollider2D': 'colisionadorDeLineas2D'
+    'LineCollider2D': 'colisionadorDeLineas2D',
+    'VerticalLayoutGroup': 'autoDisposicionVertical',
+    'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
+    'GridLayoutGroup': 'autoDisposicionRejilla',
 };
 
 
@@ -5053,6 +5056,9 @@ export class BasicAI extends Leyes {
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);
+registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
+registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
+registerComponent('GridLayoutGroup', GridLayoutGroup);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
@@ -5170,5 +5176,113 @@ export class CustomComponent extends Leyes {
         // Deep copy public vars to avoid shared state
         newCustom.publicVars = JSON.parse(JSON.stringify(this.publicVars));
         return newCustom;
+    }
+}
+
+export class VerticalLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = 5;
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        let nextY = this.padding.top;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 1; // Top Center
+                childUI.position.x = 0;
+                childUI.position.y = nextY + (childUI.size.height / 2);
+                nextY += childUI.size.height + this.spacing;
+            }
+        }
+    }
+
+    clone() {
+        const c = new VerticalLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = this.spacing;
+        return c;
+    }
+}
+
+export class HorizontalLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = 5;
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        let nextX = this.padding.left;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 3; // Middle Left
+                childUI.position.x = nextX + (childUI.size.width / 2);
+                childUI.position.y = 0;
+                nextX += childUI.size.width + this.spacing;
+            }
+        }
+    }
+
+    clone() {
+        const c = new HorizontalLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = this.spacing;
+        return c;
+    }
+}
+
+export class GridLayoutGroup extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.padding = { left: 0, right: 0, top: 0, bottom: 0 };
+        this.spacing = { x: 5, y: 5 };
+        this.cellSize = { width: 50, height: 50 };
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        let nextX = this.padding.left;
+        let nextY = this.padding.top;
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                childUI.anchorPoint = 0; // Top Left
+                childUI.size = { ...this.cellSize };
+                childUI.position.x = nextX + (childUI.size.width / 2);
+                childUI.position.y = nextY + (childUI.size.height / 2);
+
+                nextX += this.cellSize.width + this.spacing.x;
+                if (nextX + this.cellSize.width > uiTransform.size.width - this.padding.right) {
+                    nextX = this.padding.left;
+                    nextY += this.cellSize.height + this.spacing.y;
+                }
+            }
+        }
+    }
+
+    clone() {
+        const c = new GridLayoutGroup(null);
+        c.padding = { ...this.padding };
+        c.spacing = { ...this.spacing };
+        c.cellSize = { ...this.cellSize };
+        return c;
     }
 }
