@@ -1339,14 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (
-                m.getComponent(Components.SpriteRenderer) ||
-                m.getComponent(Components.TextureRender) ||
-                m.getComponent(Components.Terreno2D) ||
-                m.getComponent(Components.Water) ||
-                m.getComponent(Components.LineCollider2D) ||
-                m.getComponent(Components.Gyzmo)
-            ));
+            .filter(m => m.getComponent(Components.Transform));
             // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
@@ -1796,6 +1789,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sr) sr.update(deltaTime);
                 const ui = materia.getComponent(Components.UIImage);
                 if (ui) ui.update(deltaTime);
+
+                const water = materia.getComponent(Components.Water);
+                if (water) water.update(deltaTime);
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.

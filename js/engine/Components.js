@@ -4504,6 +4504,7 @@ export class Water extends Leyes {
         this.texturePath = '';
         this.density = 1.0;
         this.viscosity = 0.2;
+        this.orderInLayer = 5; // Draw on top of default objects
         this.isDirty = true;
         this.bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 

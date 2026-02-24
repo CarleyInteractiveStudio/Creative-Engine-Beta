@@ -335,9 +335,9 @@ export class Renderer {
 
         // 5. Dibujar buffer final con Contraste (Metaball effect)
         ctx.save();
-        // Reducido contraste significativamente (de 25 a 12) para asegurar visibilidad
-        // En el editor, usamos un contraste más bajo aún para ver las partículas individuales si es necesario
-        const contrastVal = this.isEditor ? 5 : 12;
+        // El efecto metabola requiere un contraste alto (20-40) para "unir" las partículas
+        // Si el contraste es muy bajo, se ven como blobs difusos e individuales
+        const contrastVal = this.isEditor ? 25 : 35;
         if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1)`;
         else ctx.globalAlpha = 0.8;
 
