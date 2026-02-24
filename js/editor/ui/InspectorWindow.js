@@ -35,7 +35,7 @@ const availableComponents = {
     'CAT_AUDIO': [Components.AudioSource],
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup],
+    'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
@@ -47,7 +47,7 @@ const componentIcons = {
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
-    VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid',
+    VerticalLayoutGroup: 'layers', HorizontalLayoutGroup: 'layers', GridLayoutGroup: 'grid', ContentSizeFitter: 'maximize',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
     Water: 'bucket', LineCollider2D: 'route',
     'ParticleSystem': 'sparkles',
@@ -1592,6 +1592,26 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <span>X</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.x" value="${ley.spacing.x}">
                         <span>Y</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.y" value="${ley.spacing.y}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.ContentSizeFitter) {
+             componentHTML = `
+                ${renderComponentHeader(L.get('CONTENT_SIZE_FITTER', "Content Size Fitter"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label>Horizontal Fit</label>
+                        <select class="prop-input" data-component="ContentSizeFitter" data-prop="horizontalFit">
+                            <option value="Unconstrained" ${ley.horizontalFit === 'Unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                            <option value="Preferred Size" ${ley.horizontalFit === 'Preferred Size' ? 'selected' : ''}>Preferred Size</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Vertical Fit</label>
+                        <select class="prop-input" data-component="ContentSizeFitter" data-prop="verticalFit">
+                            <option value="Unconstrained" ${ley.verticalFit === 'Unconstrained' ? 'selected' : ''}>Unconstrained</option>
+                            <option value="Preferred Size" ${ley.verticalFit === 'Preferred Size' ? 'selected' : ''}>Preferred Size</option>
+                        </select>
                     </div>
                 </div>
             `;

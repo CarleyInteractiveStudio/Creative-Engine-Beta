@@ -285,6 +285,7 @@ SCALING_MODE: Modo de Escalado
 VERTICAL_LAYOUT_GROUP: Grupo de Disposición Vertical
 HORIZONTAL_LAYOUT_GROUP: Grupo de Disposición Horizontal
 GRID_LAYOUT_GROUP: Grupo de Disposición en Rejilla
+CONTENT_SIZE_FITTER: Ajustador de Tamaño de Contenido
 PADDING: Padding
 SPACING: Espaciado
 CELL_SIZE: Tamaño de Celda
@@ -1161,6 +1162,7 @@ SCALING_MODE: Scaling Mode
 VERTICAL_LAYOUT_GROUP: Vertical Layout Group
 HORIZONTAL_LAYOUT_GROUP: Horizontal Layout Group
 GRID_LAYOUT_GROUP: Grid Layout Group
+CONTENT_SIZE_FITTER: Content Size Fitter
 PADDING: Padding
 SPACING: Spacing
 CELL_SIZE: Cell Size

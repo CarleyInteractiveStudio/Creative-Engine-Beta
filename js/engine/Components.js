@@ -5186,7 +5186,8 @@ export class VerticalLayoutGroup extends Leyes {
     update() {
         if (!this.isActive) return;
         const uiTransform = this.materia.getComponent(UITransform);
-        if (!uiTransform) return;
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
 
         let nextY = this.padding.top;
         for (const child of this.materia.children) {
@@ -5219,7 +5220,8 @@ export class HorizontalLayoutGroup extends Leyes {
     update() {
         if (!this.isActive) return;
         const uiTransform = this.materia.getComponent(UITransform);
-        if (!uiTransform) return;
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
 
         let nextX = this.padding.left;
         for (const child of this.materia.children) {
@@ -5241,6 +5243,7 @@ export class HorizontalLayoutGroup extends Leyes {
         return c;
     }
 }
+
 export class GridLayoutGroup extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5252,7 +5255,10 @@ export class GridLayoutGroup extends Leyes {
     update() {
         if (!this.isActive) return;
         const uiTransform = this.materia.getComponent(UITransform);
-        if (!uiTransform) return;
+        const canvas = this.materia.getComponent(Canvas);
+        if (!uiTransform && !canvas) return;
+
+        const parentWidth = uiTransform ? uiTransform.size.width : (canvas.referenceResolution?.width || 800);
 
         let nextX = this.padding.left;
         let nextY = this.padding.top;
@@ -5266,7 +5272,7 @@ export class GridLayoutGroup extends Leyes {
                 childUI.position.y = nextY + (childUI.size.height / 2);
 
                 nextX += this.cellSize.width + this.spacing.x;
-                if (nextX + this.cellSize.width > uiTransform.size.width - this.padding.right) {
+                if (nextX + this.cellSize.width > parentWidth - this.padding.right) {
                     nextX = this.padding.left;
                     nextY += this.cellSize.height + this.spacing.y;
                 }
@@ -5282,6 +5288,54 @@ export class GridLayoutGroup extends Leyes {
         return c;
     }
 }
+
+export class ContentSizeFitter extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.horizontalFit = 'Unconstrained'; // 'Unconstrained', 'Preferred Size'
+        this.verticalFit = 'Unconstrained';
+    }
+
+    update() {
+        if (!this.isActive) return;
+        const uiTransform = this.materia.getComponent(UITransform);
+        if (!uiTransform) return;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        let hasChildren = false;
+
+        for (const child of this.materia.children) {
+            if (!child.isActive) continue;
+            const childUI = child.getComponent(UITransform);
+            if (childUI) {
+                const halfW = childUI.size.width / 2;
+                const halfH = childUI.size.height / 2;
+                minX = Math.min(minX, childUI.position.x - halfW);
+                maxX = Math.max(maxX, childUI.position.x + halfW);
+                minY = Math.min(minY, childUI.position.y - halfH);
+                maxY = Math.max(maxY, childUI.position.y + halfH);
+                hasChildren = true;
+            }
+        }
+
+        if (hasChildren) {
+            if (this.horizontalFit === 'Preferred Size') {
+                uiTransform.size.width = maxX - minX;
+            }
+            if (this.verticalFit === 'Preferred Size') {
+                uiTransform.size.height = maxY - minY;
+            }
+        }
+    }
+
+    clone() {
+        const c = new ContentSizeFitter(null);
+        c.horizontalFit = this.horizontalFit;
+        c.verticalFit = this.verticalFit;
+        return c;
+    }
+}
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);
+registerComponent('ContentSizeFitter', ContentSizeFitter);

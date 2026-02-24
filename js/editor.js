@@ -1277,30 +1277,23 @@ document.addEventListener('DOMContentLoaded', () => {
     runLayoutUpdate = function() {
         if (!SceneManager.currentScene) return;
 
-        // const layoutGroups = [];
-        // // First, find all layout groups
-        // for (const materia of SceneManager.currentScene.materias) {
-        //     const hg = materia.getComponent(HorizontalLayoutGroup);
-        //     if (hg) layoutGroups.push(hg);
+        // Find and update all layout-related components in the entire scene
+        for (const materia of SceneManager.currentScene.getAllMaterias()) {
+            if (!materia.isActive) continue;
 
-        //     const vg = materia.getComponent(VerticalLayoutGroup);
-        //     if (vg) layoutGroups.push(vg);
+            const vg = materia.getComponent(Components.VerticalLayoutGroup);
+            if (vg) vg.update();
 
-        //     const gg = materia.getComponent(GridLayoutGroup);
-        //     if (gg) layoutGroups.push(gg);
+            const hg = materia.getComponent(Components.HorizontalLayoutGroup);
+            if (hg) hg.update();
 
-        //     const csf = materia.getComponent(ContentSizeFitter);
-        //     if (csf) layoutGroups.push(csf);
+            const gg = materia.getComponent(Components.GridLayoutGroup);
+            if (gg) gg.update();
 
-        //     const arf = materia.getComponent(AspectRatioFitter);
-        //     if (arf) layoutGroups.push(arf);
-        // }
-
-        // // Now, update them. A single pass is sufficient for now.
-        // // A more robust system might need multiple passes or a top-down/bottom-up approach.
-        // for (const layout of layoutGroups) {
-        //     layout.update();
-        // }
+            // Note: ContentSizeFitter should probably be updated after children are arranged
+            const csf = materia.getComponent(Components.ContentSizeFitter);
+            if (csf) csf.update();
+        }
     };
 
     runGameLoop = function() {

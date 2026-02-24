@@ -82,9 +82,11 @@ const typeMap = {
     'VerticalLayoutGroup': 'VerticalLayoutGroup',
     'HorizontalLayoutGroup': 'HorizontalLayoutGroup',
     'GridLayoutGroup': 'GridLayoutGroup',
+    'ContentSizeFitter': 'ContentSizeFitter',
     'autoDisposicionVertical': 'VerticalLayoutGroup',
     'autoDisposicionHorizontal': 'HorizontalLayoutGroup',
     'autoDisposicionRejilla': 'GridLayoutGroup',
+    'ajustadorDeTamanoDeContenido': 'ContentSizeFitter',
     'variable': 'any',
     'any': 'any'
 };
@@ -131,6 +133,7 @@ const componentShortcuts = [
     'verticalLayoutGroup', 'autoDisposicionVertical',
     'horizontalLayoutGroup', 'autoDisposicionHorizontal',
     'gridLayoutGroup', 'autoDisposicionRejilla',
+    'contentSizeFitter', 'ajustadorDeTamanoDeContenido',
     'videoPlayer', 'reproductorDeVideo', 'video', 'pelicula',
     'materia', 'mtr', 'nombre', 'tag', 'scene', 'escena', 'input', 'entrada', 'motor', 'engine',
     'ui', 'texto', 'boton', 'imagen', 'lienzo',
