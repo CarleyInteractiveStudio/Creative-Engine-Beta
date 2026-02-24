@@ -4505,12 +4505,15 @@ export class Water extends Leyes {
         this.density = 1.0;
         this.viscosity = 0.2;
         this.isDirty = true;
+        this.bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
         // Mareas
         this.showTides = false;
         this.tideAmplitude = 10;
         this.tideSpeed = 1.0;
         this.tidePhase = 0;
+
+        this._initializedWorldSpace = false;
 
         // Simulación interna
         this.particles = []; // {x, y, vx, vy, prevX, prevY}
@@ -4545,15 +4548,28 @@ export class Water extends Leyes {
         const cols = Math.floor(this.width / this._spacing);
         const rows = Math.floor(this.height / this._spacing);
 
+        const transform = this.materia?.getComponent(Transform);
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
+                let px = (c * this._spacing) - (this.width / 2) + (this._spacing / 2);
+                let py = (r * this._spacing) - (this.height / 2) + (this._spacing / 2);
+
+                // Si estamos en juego, spawnear directamente en espacio mundial
+                if (isGame && transform) {
+                    px += transform.x;
+                    py += transform.y;
+                    this._initializedWorldSpace = true;
+                }
+
                 this.particles.push({
-                    x: (c * this._spacing) - (this.width / 2) + (this._spacing / 2),
-                    y: (r * this._spacing) - (this.height / 2) + (this._spacing / 2),
+                    x: px,
+                    y: py,
                     vx: 0,
                     vy: 0,
-                    prevX: 0,
-                    prevY: 0
+                    prevX: px,
+                    prevY: py
                 });
             }
         }
@@ -4568,35 +4584,34 @@ export class Water extends Leyes {
         if (!transform) return;
 
         const scene = this.materia.scene;
-        const halfW = this.width / 2;
-        const halfH = this.height / 2;
+        const rbWater = this.materia.getComponent(Rigidbody2D);
 
-        // --- 1. Optimización: Filtrado de Rigidbodies por proximidad ---
-        const waterWorldX = transform.x;
-        const waterWorldY = transform.y;
-        const waterBoundRadius = Math.max(halfW, halfH) + 100;
-        const waterBoundRadiusSq = waterBoundRadius * waterBoundRadius;
-
-        const rigidbodies = scene ? scene.getAllMaterias()
-            .filter(m => {
-                if (!m.isActive || m === this.materia) return false;
-                const t = m.getComponent(Transform);
-                if (!t) return false;
-                const dx = t.x - waterWorldX;
-                const dy = t.y - waterWorldY;
-                return (dx*dx + dy*dy) < waterBoundRadiusSq;
-            })
-            .map(m => ({ rb: m.getComponent(Rigidbody2D), trans: m.getComponent(Transform) }))
-            .filter(item => item.rb && item.rb.bodyType === 'Dynamic' && item.rb.simulated) : [];
-
-        const gravityY = 9.8 * 100;
+        // --- 1. Inicialización de Partículas en Espacio Mundial (si es la primera vez) ---
+        if (this.particles.length > 0 && !this._initializedWorldSpace) {
+            for (const p of this.particles) {
+                p.x += transform.x;
+                p.y += transform.y;
+            }
+            this._initializedWorldSpace = true;
+        }
 
         // --- 2. Mareas ---
         if (this.showTides) {
             this.tidePhase += deltaTime * this.tideSpeed;
         }
 
-        // --- 3. Simulación de Partículas (Pre-paso) ---
+        // --- 3. Obtener Colisionadores del Mundo ---
+        const colliders = scene ? scene.getAllMaterias()
+            .filter(m => m.isActive && m !== this.materia && !m.tag.includes('NoWater')) // Soporte básico para ignorar por tag
+            .map(m => {
+                const col = m.getComponent(BoxCollider2D) || m.getComponent(CapsuleCollider2D) || m.getComponent(PolygonCollider2D) || m.getComponent(TilemapCollider2D);
+                return col ? { col, trans: m.getComponent(Transform), rb: m.getComponent(Rigidbody2D) } : null;
+            })
+            .filter(c => c !== null) : [];
+
+        const gravityY = 9.8 * 100;
+
+        // --- 4. Simulación de Partículas (Pre-paso) ---
         const h = this._spacing * 1.5;
         const hSq = h * h;
         const invH = 1 / h;
@@ -4604,22 +4619,24 @@ export class Water extends Leyes {
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
 
-            // Aplicar Mareas (solo a las que están en la parte superior)
-            if (this.showTides && p.y < -halfH + 30) {
-                const tideEffect = Math.sin(this.tidePhase + p.x * 0.03) * this.tideAmplitude;
-                p.vy += tideEffect * 10 * deltaTime;
+            // Gravedad del Rigidbody de la fuente de agua (Opcional, si existe)
+            if (rbWater && rbWater.bodyType === 'Dynamic') {
+                p.vx += rbWater.velocity.x * deltaTime * 10;
+                p.vy += rbWater.velocity.y * deltaTime * 10;
             }
 
-            // Gravedad y Viscosidad
+            // Gravedad y Viscosidad Global
             p.vx *= (1 - this.viscosity * deltaTime);
             p.vy *= (1 - this.viscosity * deltaTime);
             p.vy += gravityY * deltaTime;
 
-            // Interacción con Objetos (Empuje físico)
-            for (let rIdx = 0; rIdx < rigidbodies.length; rIdx++) {
-                const {rb, trans} = rigidbodies[rIdx];
-                const dx = (p.x + transform.x) - trans.x;
-                const dy = (p.y + transform.y) - trans.y;
+            // Interacción con Objetos Dinámicos
+            for (let cIdx = 0; cIdx < colliders.length; cIdx++) {
+                const {col, trans, rb} = colliders[cIdx];
+                if (!rb || rb.bodyType !== 'Dynamic') continue;
+
+                const dx = p.x - trans.x;
+                const dy = p.y - trans.y;
                 const dSq = dx * dx + dy * dy;
                 const pushRadius = 60;
                 if (dSq < pushRadius * pushRadius) {
@@ -4637,44 +4654,73 @@ export class Water extends Leyes {
             p.prevY = p.y;
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
+
+            // --- 4.1 Colisión con el Mundo (Suelo y Paredes) ---
+            for (let cIdx = 0; cIdx < colliders.length; cIdx++) {
+                const {col, trans} = colliders[cIdx];
+
+                if (col instanceof BoxCollider2D) {
+                    const bw = col.size.x * trans.scale.x;
+                    const bh = col.size.y * trans.scale.y;
+                    this._resolveParticleVsRect(p, trans.x, trans.y, bw, bh);
+                } else if (col instanceof TilemapCollider2D) {
+                    for (const rect of col.generatedColliders) {
+                        // Los rectángulos del tilemap están centrados en trans.x + rect.x
+                        const rw = rect.width;
+                        const rh = rect.height;
+                        this._resolveParticleVsRect(p, trans.x + rect.x, trans.y + rect.y, rw, rh);
+                    }
+                }
+            }
         }
 
-        // --- 4. Spatial Grid para búsqueda de vecinos ---
-        const cellSize = h;
-        const gridCols = Math.ceil(this.width / cellSize);
-        const gridRows = Math.ceil(this.height / cellSize);
+        // --- 5. Spatial Grid (Usando coordenadas de mundo) ---
+        // Buscamos los límites actuales de las partículas para el grid
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        if (this.particles.length === 0) {
+             minX = minY = maxX = maxY = 0;
+        } else {
+            for (const p of this.particles) {
+                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+            }
+        }
+        minX -= h; minY -= h; maxX += h; maxY += h;
+        this.bounds = { minX, minY, maxX, maxY };
+
+        const gridW = maxX - minX;
+        const gridH = maxY - minY;
+        const gridCols = Math.ceil(gridW / h);
+        const gridRows = Math.ceil(gridH / h);
         const grid = new Array(gridCols * gridRows);
 
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            const gx = Math.max(0, Math.min(gridCols - 1, Math.floor((p.x + halfW) / cellSize)));
-            const gy = Math.max(0, Math.min(gridRows - 1, Math.floor((p.y + halfH) / cellSize)));
+            const gx = Math.floor((p.x - minX) / h);
+            const gy = Math.floor((p.y - minY) / h);
             const idx = gy * gridCols + gx;
-            if (!grid[idx]) grid[idx] = [];
-            grid[idx].push(i);
+            if (idx >= 0 && idx < grid.length) {
+                if (!grid[idx]) grid[idx] = [];
+                grid[idx].push(i);
+            }
         }
 
-        // --- 5. Resolución de Densidad (PBD) ---
-        // Reducido a 1 iteración para máximo rendimiento
+        // --- 6. Resolución de Densidad (PBD) ---
         for (let iter = 0; iter < 1; iter++) {
             for (let i = 0; i < this.particles.length; i++) {
                 const pi = this.particles[i];
                 let rho = 0;
+                const gx = Math.floor((pi.x - minX) / h);
+                const gy = Math.floor((pi.y - minY) / h);
 
-                const gx = Math.floor((pi.x + halfW) / cellSize);
-                const gy = Math.floor((pi.y + halfH) / cellSize);
-
-                // Vecinos en 9 celdas
                 for (let ox = -1; ox <= 1; ox++) {
                     const nx = gx + ox;
                     if (nx < 0 || nx >= gridCols) continue;
                     for (let oy = -1; oy <= 1; oy++) {
                         const ny = gy + oy;
                         if (ny < 0 || ny >= gridRows) continue;
-
                         const cell = grid[ny * gridCols + nx];
                         if (!cell) continue;
-
                         for (let cIdx = 0; cIdx < cell.length; cIdx++) {
                             const j = cell[cIdx];
                             if (i === j) continue;
@@ -4686,17 +4732,13 @@ export class Water extends Leyes {
                                 const dist = Math.sqrt(dSq);
                                 const weight = 1 - dist * invH;
                                 rho += weight * weight;
-
-                                // Resolución inmediata de presión (Gauss-Seidel style)
                                 const pressure = (rho - this._restDensity) * this._stiffness;
                                 if (pressure > 0 && dist > 0) {
                                     const displacement = pressure * weight * (0.5 / dist);
-                                    const moveX = dx * displacement;
-                                    const moveY = dy * displacement;
-                                    pi.x += moveX;
-                                    pi.y += moveY;
-                                    pj.x -= moveX;
-                                    pj.y -= moveY;
+                                    pi.x += dx * displacement;
+                                    pi.y += dy * displacement;
+                                    pj.x -= dx * displacement;
+                                    pj.y -= dy * displacement;
                                 }
                             }
                         }
@@ -4705,17 +4747,29 @@ export class Water extends Leyes {
             }
         }
 
-        // --- 6. Restricciones y Recálculo de Velocidad ---
+        // --- 7. Recálculo de Velocidad y Limpieza ---
         const invDt = 1 / deltaTime;
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            if (p.x < -halfW) { p.x = -halfW; p.vx *= -0.1; }
-            else if (p.x > halfW) { p.x = halfW; p.vx *= -0.1; }
-            if (p.y < -halfH) { p.y = -halfH; p.vy *= -0.1; }
-            else if (p.y > halfH) { p.y = halfH; p.vy *= -0.1; }
-
             p.vx = (p.x - p.prevX) * invDt;
             p.vy = (p.y - p.prevY) * invDt;
+        }
+    }
+
+    _resolveParticleVsRect(p, cx, cy, w, h) {
+        const hw = w / 2;
+        const hh = h / 2;
+        if (p.x > cx - hw && p.x < cx + hw && p.y > cy - hh && p.y < cy + hh) {
+            const overlapTop = p.y - (cy - hh);
+            const overlapBottom = (cy + hh) - p.y;
+            const overlapLeft = p.x - (cx - hw);
+            const overlapRight = (cx + hw) - p.x;
+            const minOverlap = Math.min(overlapTop, overlapBottom, overlapLeft, overlapRight);
+
+            if (minOverlap === overlapTop) { p.y = cy - hh; p.vy *= -0.1; }
+            else if (minOverlap === overlapBottom) { p.y = cy + hh; p.vy *= -0.1; }
+            else if (minOverlap === overlapLeft) { p.x = cx - hw; p.vx *= -0.1; }
+            else if (minOverlap === overlapRight) { p.x = cx + hw; p.vx *= -0.1; }
         }
     }
 

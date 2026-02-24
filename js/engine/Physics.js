@@ -117,45 +117,54 @@ export class PhysicsSystem {
                 // Apply gravity
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
 
-                // --- Apply buoyancy if in water ---
+                // --- Apply buoyancy if in water (PARTICLE-BASED) ---
                 const waterMaterias = this.scene.findAllMateriasWithComponent(Components.Water);
                 for (const wm of waterMaterias) {
                     const water = wm.getComponent(Components.Water);
-                    const waterTransform = wm.getComponent(Components.Transform);
+                    if (!water.particles || water.particles.length === 0) continue;
 
-                    const dx = transform.x - waterTransform.x;
-                    const dy = transform.y - waterTransform.y;
+                    const collider = this.getCollider(materia);
+                    const objRadius = (collider && collider.size) ? (Math.max(collider.size.x * transform.scale.x, collider.size.y * transform.scale.y) / 2) : 25;
+                    const influenceRadius = objRadius + 40;
+                    const influenceRadiusSq = influenceRadius * influenceRadius;
 
-                    const halfWaterW = (water.width * waterTransform.scale.x) / 2;
-                    const halfWaterH = (water.height * waterTransform.scale.y) / 2;
+                    let nearbyParticles = 0;
+                    let avgY = 0;
 
-                    if (Math.abs(dx) < halfWaterW && Math.abs(dy) < halfWaterH) {
-                        const collider = this.getCollider(materia);
-                        const objHeight = (collider && collider.size) ? collider.size.y * transform.scale.y : 50;
+                    // Optimization: only check particles if they are roughly near the object
+                    for (let pIdx = 0; pIdx < water.particles.length; pIdx++) {
+                        const p = water.particles[pIdx];
+                        const dx = p.x - transform.x;
+                        const dy = p.y - transform.y;
+                        const distSq = dx * dx + dy * dy;
 
-                        // En sistema Y-down, el tope del agua es (y - halfHeight)
-                        const waterSurfaceY = waterTransform.y - halfWaterH;
-                        // Cuánto del objeto está por debajo de la superficie
-                        const submergedDepth = (transform.y + objHeight / 2) - waterSurfaceY;
-                        const immersion = Math.max(0, Math.min(1.0, submergedDepth / objHeight));
-
-                        if (immersion > 0) {
-                            const buoyancyForce = immersion * water.density * 25.0; // Fuerza base
-
-                            if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
-                                // Objeto pesado: se hunde, pero más lento que en aire
-                                rigidbody.velocity.y -= buoyancyForce * 0.4 * deltaTime;
-                            } else {
-                                // Objeto ligero: flota contra la gravedad
-                                const lift = buoyancyForce * (2.0 - rigidbody.buoyancyWeight) * deltaTime;
-                                rigidbody.velocity.y -= lift;
-                            }
-
-                            // Fricción del agua (Drag)
-                            const dragAmount = 1.0 - (0.1 * water.viscosity * immersion);
-                            rigidbody.velocity.x *= Math.pow(dragAmount, deltaTime * 60);
-                            rigidbody.velocity.y *= Math.pow(dragAmount, deltaTime * 60);
+                        if (distSq < influenceRadiusSq) {
+                            nearbyParticles++;
+                            avgY += p.y;
                         }
+                    }
+
+                    if (nearbyParticles > 2) {
+                        avgY /= nearbyParticles;
+                        const immersion = Math.min(1.0, nearbyParticles / 15); // Adjust density threshold
+                        const buoyancyForce = immersion * water.density * 30.0;
+
+                        if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
+                            rigidbody.velocity.y -= buoyancyForce * 0.3 * deltaTime;
+                        } else {
+                            // Lift towards the surface (avgY of particles)
+                            const lift = buoyancyForce * (2.0 - rigidbody.buoyancyWeight);
+                            rigidbody.velocity.y -= lift * deltaTime;
+
+                            // Stabilization: if above particles, don't lift as much
+                            if (transform.y < avgY - 10) {
+                                rigidbody.velocity.y += 5.0 * deltaTime;
+                            }
+                        }
+
+                        const dragAmount = 1.0 - (0.15 * water.viscosity * immersion);
+                        rigidbody.velocity.x *= Math.pow(dragAmount, deltaTime * 60);
+                        rigidbody.velocity.y *= Math.pow(dragAmount, deltaTime * 60);
                     }
                 }
 
