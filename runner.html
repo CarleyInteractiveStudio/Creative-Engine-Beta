@@ -42,9 +42,14 @@
 
                 window.addEventListener('message', async (event) => {
                     if (event.data && event.data.type === 'CE_START_STANDALONE_PREVIEW') {
-                        const { projectData, projectsDirHandle, projectName } = event.data;
-                        // Inject handles into window
+                        const { projectData, projectsDirHandle, projectName, scripts, metadata, customComponents } = event.data;
+
+                        // Inject handles and script data into window
                         window.projectsDirHandle = projectsDirHandle;
+                        window.CE_Standalone_Scripts = scripts;
+                        window.CE_Script_Metadata = metadata;
+                        window.CE_Custom_Components = customComponents;
+
                         // Adjust URL to include project name for AssetUtils
                         const newUrl = new URL(window.location.href);
                         newUrl.searchParams.set('project', projectName);

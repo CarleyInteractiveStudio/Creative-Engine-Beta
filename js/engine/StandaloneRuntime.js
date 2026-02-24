@@ -8,7 +8,7 @@ import * as EngineAPI from './EngineAPI.js';
 import * as MathUtils from './MathUtils.js';
 import * as RuntimeAPIManager from './RuntimeAPIManager.js';
 import * as Components from './Components.js';
-import { setStandaloneMode } from './AssetUtils.js';
+import { setStandaloneMode, getURLForAssetPath } from './AssetUtils.js';
 
 export class StandaloneRuntime {
     constructor(canvasId) {
@@ -47,7 +47,11 @@ export class StandaloneRuntime {
         try {
             // Determine which scene to load
             let sceneToLoad = this.config.startScene || 'default.ceScene';
-            let sceneResp = await fetch(`Assets/${sceneToLoad}`);
+
+            // Resolve scene URL using AssetUtils to support handles in preview mode
+            let scenePath = sceneToLoad.startsWith('Assets/') ? sceneToLoad : `Assets/${sceneToLoad}`;
+            let sceneUrl = await getURLForAssetPath(scenePath);
+            let sceneResp = await fetch(sceneUrl);
 
             if (!sceneResp.ok) {
                 console.warn(`Could not find configured start scene: ${sceneToLoad}. Trying fallbacks...`);
@@ -55,7 +59,9 @@ export class StandaloneRuntime {
                 if (this.config.allScenes && this.config.allScenes.length > 0) {
                     for (const fallback of this.config.allScenes) {
                         if (fallback === sceneToLoad) continue;
-                        sceneResp = await fetch(`Assets/${fallback}`);
+                        scenePath = fallback.startsWith('Assets/') ? fallback : `Assets/${fallback}`;
+                        sceneUrl = await getURLForAssetPath(scenePath);
+                        sceneResp = await fetch(sceneUrl);
                         if (sceneResp.ok) {
                             sceneToLoad = fallback;
                             break;
@@ -157,7 +163,9 @@ export class StandaloneRuntime {
             if (this.config.libraries && Array.isArray(this.config.libraries)) {
                 for (const libName of this.config.libraries) {
                     try {
-                        const response = await fetch(`lib/${libName}.celib`);
+                        const libPath = `lib/${libName}.celib`;
+                        const libUrl = await getURLForAssetPath(libPath);
+                        const response = await fetch(libUrl);
                         if (response.ok) {
                             const libData = await response.json();
                             if (libData.api_access && libData.api_access.runtime_accessible) {

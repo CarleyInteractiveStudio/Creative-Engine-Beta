@@ -8,6 +8,83 @@ import * as CES_Transpiler from './CES_Transpiler.js';
  * @param {object} currentProjectConfig
  * @param {object} options { includeUnusedAssets: boolean, runAfterBuild: boolean }
  */
+/**
+ * Prepares the final project configuration for build or preview.
+ * @param {FileSystemDirectoryHandle} projectHandle
+ * @param {object} currentConfig
+ * @returns {Promise<object>}
+ */
+async function prepareBuildConfig(projectHandle, currentConfig) {
+    const buildConfig = { ...currentConfig };
+    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+    // Collect all scenes for fallback
+    const allScenes = [];
+    async function collectAllScenes(handle, path = '') {
+        for await (const entry of handle.values()) {
+            const entryPath = path ? `${path}/${entry.name}` : entry.name;
+            if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                allScenes.push(entryPath);
+            } else if (entry.kind === 'directory') {
+                await collectAllScenes(entry, entryPath);
+            }
+        }
+    }
+    await collectAllScenes(assetsHandle);
+    buildConfig.allScenes = allScenes;
+
+    // Normalize startScene path (should be relative to Assets/)
+    if (buildConfig.startScene && buildConfig.startScene.startsWith('Assets/')) {
+        buildConfig.startScene = buildConfig.startScene.substring(7);
+    }
+
+    // Set default start scene if not defined or not found in current project
+    if (!buildConfig.startScene) {
+        const currentHandle = window.SceneManager?.currentSceneFileHandle;
+        if (currentHandle) {
+            try {
+                const pathParts = await assetsHandle.resolve(currentHandle);
+                if (pathParts) {
+                    buildConfig.startScene = pathParts.join('/');
+                } else {
+                    buildConfig.startScene = currentHandle.name;
+                }
+            } catch (e) {
+                buildConfig.startScene = currentHandle.name;
+            }
+        } else {
+            // Try to find the first available scene recursively
+            async function findFirstScene(handle, path = '') {
+                for await (const entry of handle.values()) {
+                    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                        return entryPath;
+                    } else if (entry.kind === 'directory') {
+                        const found = await findFirstScene(entry, entryPath);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            }
+            buildConfig.startScene = await findFirstScene(assetsHandle) || 'default.ceScene';
+        }
+    }
+
+    // Collect libraries
+    try {
+        const libHandle = await projectHandle.getDirectoryHandle('lib');
+        const libNames = [];
+        for await (const entry of libHandle.values()) {
+            if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
+                libNames.push(entry.name.replace('.celib', ''));
+            }
+        }
+        buildConfig.libraries = libNames;
+    } catch (e) {}
+
+    return buildConfig;
+}
+
 export async function buildProject(projectsDirHandle, currentProjectConfig, options = { includeUnusedAssets: false, runAfterBuild: false }) {
     if (!projectsDirHandle) {
         showNotification(
@@ -96,66 +173,8 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             canvas { max-width: 100%; max-height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #000; }
         `);
 
-        // 7. Project Configuration (with library list)
-        const buildConfig = { ...currentProjectConfig };
-
-        // Collect all scenes for fallback
-        const allScenes = [];
-        async function collectAllScenes(handle, path = '') {
-            for await (const entry of handle.values()) {
-                const entryPath = path ? `${path}/${entry.name}` : entry.name;
-                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                    allScenes.push(entryPath);
-                } else if (entry.kind === 'directory') {
-                    await collectAllScenes(entry, entryPath);
-                }
-            }
-        }
-        await collectAllScenes(assetsHandle);
-        buildConfig.allScenes = allScenes;
-
-        // Set default start scene if not defined
-        if (!buildConfig.startScene) {
-            const currentHandle = window.SceneManager?.currentSceneFileHandle;
-            if (currentHandle) {
-                try {
-                    const pathParts = await assetsHandle.resolve(currentHandle);
-                    if (pathParts) {
-                        buildConfig.startScene = pathParts.join('/');
-                    } else {
-                        buildConfig.startScene = currentHandle.name;
-                    }
-                } catch (e) {
-                    buildConfig.startScene = currentHandle.name;
-                }
-            } else {
-                // Try to find the first available scene recursively
-                async function findFirstScene(handle, path = '') {
-                    for await (const entry of handle.values()) {
-                        const entryPath = path ? `${path}/${entry.name}` : entry.name;
-                        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                            return entryPath;
-                        } else if (entry.kind === 'directory') {
-                            const found = await findFirstScene(entry, entryPath);
-                            if (found) return found;
-                        }
-                    }
-                    return null;
-                }
-                buildConfig.startScene = await findFirstScene(assetsHandle) || 'default.ceScene';
-            }
-        }
-
-        try {
-            const libHandle = await projectHandle.getDirectoryHandle('lib');
-            const libNames = [];
-            for await (const entry of libHandle.values()) {
-                if (entry.kind === 'file' && entry.name.endsWith('.celib')) {
-                    libNames.push(entry.name.replace('.celib', ''));
-                }
-            }
-            buildConfig.libraries = libNames;
-        } catch (e) {}
+        // 7. Final Project Configuration
+        const buildConfig = await prepareBuildConfig(projectHandle, currentProjectConfig);
 
         zip.file('project.json', JSON.stringify(buildConfig, null, 2));
 
@@ -168,7 +187,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         // 8. Run after build if requested
         if (options.runAfterBuild) {
-            runStandalonePreview(currentProjectConfig);
+            runStandalonePreview(buildConfig);
         }
 
     } catch (error) {
@@ -312,11 +331,24 @@ async function collectUsedAssets(projectHandle) {
  * Opens a new window that runs the game using the StandaloneRuntime logic
  * but reading from the local project handles.
  */
-export function runStandalonePreview(config) {
+export async function runStandalonePreview(config) {
     const previewWindow = window.open('runner.html?standalone=true&preview=true', 'CreativeEngineStandalonePreview', 'width=800,height=600');
     if (!previewWindow) {
         showNotification('Error', 'No se pudo abrir la ventana de previsualización. Comprueba el bloqueador de popups.');
         return;
+    }
+
+    // Prepare scripts and metadata
+    const scriptData = CES_Transpiler.getAllTranspiledCode();
+    const metadata = CES_Transpiler.getAllMetadata();
+    const customComponents = {};
+    try {
+        const { getCustomComponentDefinitions } = await import('./EngineAPIExtension.js');
+        getCustomComponentDefinitions().forEach((def, name) => {
+            customComponents[name] = def;
+        });
+    } catch (e) {
+        console.warn("Could not load custom components for preview:", e);
     }
 
     // Pass necessary data to the preview window once it's loaded
@@ -326,7 +358,10 @@ export function runStandalonePreview(config) {
                 type: 'CE_START_STANDALONE_PREVIEW',
                 projectData: config,
                 projectsDirHandle: window.projectsDirHandle,
-                projectName: new URLSearchParams(window.location.search).get('project')
+                projectName: new URLSearchParams(window.location.search).get('project'),
+                scripts: scriptData,
+                metadata: metadata,
+                customComponents: customComponents
             }, '*');
             window.removeEventListener('message', listener);
         }
