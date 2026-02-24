@@ -2170,6 +2170,46 @@ function paintTile(event) {
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
+    // --- Logic for Eraser ---
+    if (activeTool === 'tile-eraser') {
+        let erasedSomething = false;
+        let lastCoord = null;
+
+        tilemap.layers.forEach(l => {
+            const lOffsetX = l.position.x * layerWidth;
+            const lOffsetY = l.position.y * layerHeight;
+            const lTopLeftX = tilemapCenterX + lOffsetX - layerWidth / 2;
+            const lTopLeftY = tilemapCenterY + lOffsetY - layerHeight / 2;
+            const mInLX = worldMouse.x - lTopLeftX;
+            const mInLY = worldMouse.y - lTopLeftY;
+            const c = Math.floor(mInLX / cellSize.x);
+            const r = Math.floor(mInLY / cellSize.y);
+
+            if (c >= 0 && c < width && r >= 0 && r < height) {
+                const key = `${c},${r}`;
+                if (l.tileData.has(key)) {
+                    l.tileData.delete(key);
+                    erasedSomething = true;
+                }
+                lastCoord = { col: c, row: r };
+            }
+        });
+
+        if (lastCoord) {
+            if (lastCoord.col === lastPaintedCoords.col && lastCoord.row === lastPaintedCoords.row && !erasedSomething) return;
+            lastPaintedCoords = lastCoord;
+        }
+
+        if (erasedSomething) {
+            tilemapRenderer.setDirty();
+            const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
+            if (collider) collider.generateMesh();
+            VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"));
+        }
+        return;
+    }
+
+    // --- Logic for Painting (Brush/Bucket) ---
     const layer = tilemap.layers[tilemap.activeLayerIndex];
     if (layer) {
         const layerOffsetX = layer.position.x * layerWidth;
@@ -2223,22 +2263,6 @@ function paintTile(event) {
 
                     VerificationSystem.updateStatus(tileToPaint, true, L.get('STATUS_AREA_RELLENADA', "¡Área Rellenada!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 }
-            } else if (activeTool === 'tile-eraser') {
-                // Borrar de todas las capas en esa posición, calculando las coordenadas para cada una
-                tilemap.layers.forEach(l => {
-                    const lOffsetX = l.position.x * layerWidth;
-                    const lOffsetY = l.position.y * layerHeight;
-                    const lTopLeftX = tilemapCenterX + lOffsetX - layerWidth / 2;
-                    const lTopLeftY = tilemapCenterY + lOffsetY - layerHeight / 2;
-                    const mInLX = worldMouse.x - lTopLeftX;
-                    const mInLY = worldMouse.y - lTopLeftY;
-                    const c = Math.floor(mInLX / cellSize.x);
-                    const r = Math.floor(mInLY / cellSize.y);
-                    if (c >= 0 && c < width && r >= 0 && r < height) {
-                        l.tileData.delete(`${c},${r}`);
-                    }
-                });
-                VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
             }
 
             lastPaintedCoords = { col, row };
