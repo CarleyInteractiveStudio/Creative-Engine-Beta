@@ -187,7 +187,29 @@ export function handleContextMenuAction(action) {
             newMateria = createAudioObject(selectedMateria);
             break;
         case 'create-video':
-            newMateria = createVideoObject(selectedMateria);
+            {
+                let parentForNewVideo = selectedMateria;
+                let parentCanvasMateria = null;
+
+                if (parentForNewVideo) {
+                    if (parentForNewVideo.getComponent(Components.Canvas)) {
+                        parentCanvasMateria = parentForNewVideo;
+                    } else if (parentForNewVideo.getComponent(Components.UITransform)) {
+                        parentCanvasMateria = parentForNewVideo.findAncestorWithComponent(Components.Canvas);
+                    }
+                }
+
+                // If created under a Canvas/UI element, use UITransform
+                if (parentCanvasMateria) {
+                    newMateria = createBaseMateria(generateUniqueName(L.get('VIDEO', 'Video')), parentForNewVideo);
+                    newMateria.removeComponent(Components.Transform);
+                    newMateria.addComponent(new Components.UITransform(newMateria));
+                    newMateria.addComponent(new Components.VideoPlayer(newMateria));
+                } else {
+                    // Otherwise create as a world-space object
+                    newMateria = createVideoObject(selectedMateria);
+                }
+            }
             break;
         case 'create-water':
             newMateria = createWaterObject(selectedMateria);

@@ -25,10 +25,49 @@
 </head>
 <body>
     <canvas id="game-canvas"></canvas>
-    <script>
-        // Signal to opener that we are ready
-        if (window.opener) {
-            window.opener.postMessage({ type: 'CE_RUNNER_READY' }, '*');
+    <script type="module">
+        // Check if we should run in standalone mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const isStandalone = urlParams.get('standalone') === 'true';
+
+        if (isStandalone) {
+            console.log("Runner: Standalone mode detected.");
+            const isPreview = urlParams.get('preview') === 'true';
+
+            if (isPreview) {
+                // Signal readiness for preview data
+                if (window.opener) {
+                    window.opener.postMessage('CE_RUNNER_READY', '*');
+                }
+
+                window.addEventListener('message', async (event) => {
+                    if (event.data && event.data.type === 'CE_START_STANDALONE_PREVIEW') {
+                        const { projectData, projectsDirHandle, projectName } = event.data;
+                        // Inject handles into window
+                        window.projectsDirHandle = projectsDirHandle;
+                        // Adjust URL to include project name for AssetUtils
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('project', projectName);
+                        window.history.replaceState({}, '', newUrl.toString());
+
+                        const { StandaloneRuntime } = await import('./js/engine/StandaloneRuntime.js');
+                        const runtime = new StandaloneRuntime('game-canvas');
+                        // Override project data
+                        runtime.config = projectData;
+                        runtime.start();
+                    }
+                });
+            } else {
+                import('./js/engine/StandaloneRuntime.js').then(({ StandaloneRuntime }) => {
+                    const runtime = new StandaloneRuntime('game-canvas');
+                    runtime.start();
+                });
+            }
+        } else {
+            // Signal to opener that we are ready for integrated mode
+            if (window.opener) {
+                window.opener.postMessage({ type: 'CE_RUNNER_READY' }, '*');
+            }
         }
     </script>
 </body>

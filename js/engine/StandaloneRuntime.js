@@ -28,13 +28,15 @@ export class StandaloneRuntime {
         console.log("Standalone Runtime Starting...");
         setStandaloneMode(true);
 
-        // 1. Load config
-        try {
-            const configResp = await fetch('project.ceconfig');
-            this.config = await configResp.json();
-        } catch (e) {
-            console.error("Failed to load project.ceconfig", e);
-            this.config = {};
+        // 1. Load config (if not already provided by preview)
+        if (!this.config) {
+            try {
+                const configResp = await fetch('project.json');
+                this.config = await configResp.json();
+            } catch (e) {
+                console.error("Failed to load project.json", e);
+                this.config = {};
+            }
         }
 
         // 2. Initialize subsystems

@@ -104,6 +104,94 @@ export function showNotification(title, message) {
 }
 
 /**
+ * Shows a dialog after a successful build with sharing options.
+ */
+export function showBuildSuccessDialog(projectName, zipBlob) {
+    const L = window.Localization;
+    const content = `
+        <div class="build-success-content">
+            <p style="color: #4caf50; font-weight: bold; font-size: 1.1em;">✨ ¡Tu juego está listo para ser compartido!</p>
+            <p>Se ha generado el archivo <strong>${projectName}_Build.zip</strong>.</p>
+
+            <div class="sharing-options" style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                <h4 style="margin-top: 0;">¿Cómo comparto mi juego?</h4>
+                <ul style="padding-left: 20px; font-size: 0.9em; line-height: 1.4;">
+                    <li><strong>itch.io:</strong> Sube el archivo ZIP y selecciona "This file will be played in the browser".</li>
+                    <li><strong>GitHub Pages:</strong> Descomprime el ZIP en un repositorio y activa las Pages.</li>
+                    <li><strong>Hosting Estático:</strong> Puedes usar Netlify, Vercel o Firebase Hosting simplemente arrastrando la carpeta.</li>
+                </ul>
+            </div>
+
+            <p style="font-size: 0.85em; margin-top: 15px; color: #aaa;">Nota: Para que otros jueguen, los archivos deben estar en un servidor web (CORS/Módulos ES).</p>
+        </div>
+    `;
+
+    const dialog = new DialogWindow(L.get('BUILD_COMPLETADO', 'Build Completado'), content, [
+        {
+            text: 'Descargar de nuevo',
+            callback: () => {
+                const url = URL.createObjectURL(zipBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${projectName}_Build.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        },
+        {
+            text: L.get('ACEPTAR', 'Aceptar')
+        }
+    ]);
+
+    dialog.show();
+}
+
+/**
+ * Displays a dialog for build configuration.
+ * @param {function} onConfirm Callback with { includeUnusedAssets: boolean, runAfterBuild: boolean }
+ */
+export function showBuildDialog(onConfirm) {
+    const L = window.Localization;
+    const content = `
+        <div class="build-dialog-options">
+            <div class="dialog-row">
+                <label>${L.get('NECESSARY_FILES', 'Solo archivos necesarios')}</label>
+                <input type="radio" name="build-mode" value="necessary" checked>
+            </div>
+            <div class="dialog-row">
+                <label>${L.get('ALL_FILES', 'Todos los archivos del proyecto')}</label>
+                <input type="radio" name="build-mode" value="all">
+            </div>
+            <hr>
+            <div class="dialog-row">
+                <label>${L.get('RUN_AFTER_BUILD', 'Ejecutar tras construir')}</label>
+                <input type="checkbox" id="run-after-build" checked>
+            </div>
+        </div>
+    `;
+
+    const dialog = new DialogWindow(L.get('BUILD_CONFIG', 'Configuración de Build'), content, [
+        {
+            text: L.get('ACEPTAR', 'Aceptar'),
+            callback: () => {
+                const mode = dialog.dialogElement.querySelector('input[name="build-mode"]:checked').value;
+                const runAfterBuild = dialog.dialogElement.querySelector('#run-after-build').checked;
+                if (onConfirm) {
+                    onConfirm({
+                        includeUnusedAssets: mode === 'all',
+                        runAfterBuild: runAfterBuild
+                    });
+                }
+            }
+        },
+        { text: L.get('CANCELAR', 'Cancelar') }
+    ]);
+
+    dialog.show();
+}
+
+/**
  * Displays a confirmation dialog with "Aceptar" and "Cancelar" buttons.
  * @param {string} title The title of the dialog.
  * @param {string} message The message to display.
@@ -207,5 +295,7 @@ window.Dialogs = {
     showNotification,
     showConfirmation,
     showPrompt,
-    showSelection
+    showSelection,
+    showBuildDialog,
+    showBuildSuccessDialog
 };

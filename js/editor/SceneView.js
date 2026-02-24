@@ -1376,9 +1376,12 @@ function drawTileCursor() {
     const mousePos = InputManager.getMousePositionInCanvas();
     const worldMouse = screenToWorld(mousePos.x, mousePos.y);
 
-    // World position of the tilemap's center
-    const tilemapCenterX = transform.x;
-    const tilemapCenterY = transform.y;
+    // Transform world mouse to tilemap local space (accounting for rotation)
+    const relX = worldMouse.x - transform.x;
+    const relY = worldMouse.y - transform.y;
+    const rad = -transform.rotation * Math.PI / 180;
+    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
+    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
 
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
@@ -1387,17 +1390,19 @@ function drawTileCursor() {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
 
-        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
-        const mouseInLayerX = worldMouse.x - layerTopLeftX;
-        const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const mouseInLayerX = localMouseX - layerTopLeftX;
+        const mouseInLayerY = localMouseY - layerTopLeftY;
 
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 
         if (col >= 0 && col < width && row >= 0 && row < height) {
             ctx.save();
+            ctx.translate(transform.x, transform.y);
+            ctx.rotate(transform.rotation * Math.PI / 180);
             ctx.lineWidth = 2 / renderer.camera.effectiveZoom;
 
             if (activeTool === 'tile-brush' || activeTool === 'tile-rectangle-fill') {
@@ -2165,8 +2170,14 @@ function paintTile(event) {
     const rect = dom.sceneCanvas.getBoundingClientRect();
     const canvasPos = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
-    const tilemapCenterX = transform.x;
-    const tilemapCenterY = transform.y;
+
+    // Transform world mouse to tilemap local space (accounting for rotation)
+    const relX = worldMouse.x - transform.x;
+    const relY = worldMouse.y - transform.y;
+    const rad = -transform.rotation * Math.PI / 180;
+    const localMouseX = relX * Math.cos(rad) - relY * Math.sin(rad);
+    const localMouseY = relX * Math.sin(rad) + relY * Math.cos(rad);
+
     const layerWidth = width * cellSize.x;
     const layerHeight = height * cellSize.y;
 
@@ -2178,10 +2189,10 @@ function paintTile(event) {
         tilemap.layers.forEach(l => {
             const lOffsetX = l.position.x * layerWidth;
             const lOffsetY = l.position.y * layerHeight;
-            const lTopLeftX = tilemapCenterX + lOffsetX - layerWidth / 2;
-            const lTopLeftY = tilemapCenterY + lOffsetY - layerHeight / 2;
-            const mInLX = worldMouse.x - lTopLeftX;
-            const mInLY = worldMouse.y - lTopLeftY;
+            const lTopLeftX = lOffsetX - layerWidth / 2;
+            const lTopLeftY = lOffsetY - layerHeight / 2;
+            const mInLX = localMouseX - lTopLeftX;
+            const mInLY = localMouseY - lTopLeftY;
             const c = Math.floor(mInLX / cellSize.x);
             const r = Math.floor(mInLY / cellSize.y);
 
@@ -2214,10 +2225,10 @@ function paintTile(event) {
     if (layer) {
         const layerOffsetX = layer.position.x * layerWidth;
         const layerOffsetY = layer.position.y * layerHeight;
-        const layerTopLeftX = tilemapCenterX + layerOffsetX - layerWidth / 2;
-        const layerTopLeftY = tilemapCenterY + layerOffsetY - layerHeight / 2;
-        const mouseInLayerX = worldMouse.x - layerTopLeftX;
-        const mouseInLayerY = worldMouse.y - layerTopLeftY;
+        const layerTopLeftX = layerOffsetX - layerWidth / 2;
+        const layerTopLeftY = layerOffsetY - layerHeight / 2;
+        const mouseInLayerX = localMouseX - layerTopLeftX;
+        const mouseInLayerY = localMouseY - layerTopLeftY;
         const col = Math.floor(mouseInLayerX / cellSize.x);
         const row = Math.floor(mouseInLayerY / cellSize.y);
 

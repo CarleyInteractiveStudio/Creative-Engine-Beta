@@ -4281,10 +4281,6 @@ export class Patrol extends Leyes {
     set tiempoPausa(v) { this.pauseTime = v; }
 }
 
-registerComponent('ProjectileLauncher', ProjectileLauncher);
-registerComponent('AutoDestroy', AutoDestroy);
-registerComponent('Health', Health);
-registerComponent('Patrol', Patrol);
 
 /**
  * Componente que emite prefabs como partículas con optimización de pooling.
@@ -4434,7 +4430,6 @@ export class ParticleSystem extends Leyes {
         return newPs;
     }
 }
-registerComponent('ParticleSystem', ParticleSystem);
 
 /**
  * Componente RaycastSource (Rallo): Lanza múltiples rayos para detección.
@@ -4490,7 +4485,6 @@ export class RaycastSource extends Leyes {
     get rallo() { return this; }
     get rayos() { return this.rays; }
 }
-registerComponent('RaycastSource', RaycastSource);
 
 /**
  * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
@@ -5053,9 +5047,6 @@ export class BasicAI extends Leyes {
         return copy;
     }
 }
-registerComponent('BasicAI', BasicAI);
-registerComponent('Water', Water);
-registerComponent('LineCollider2D', LineCollider2D);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
@@ -5335,6 +5326,15 @@ export class ContentSizeFitter extends Leyes {
         return c;
     }
 }
+registerComponent('ProjectileLauncher', ProjectileLauncher);
+registerComponent('AutoDestroy', AutoDestroy);
+registerComponent('Health', Health);
+registerComponent('Patrol', Patrol);
+registerComponent('ParticleSystem', ParticleSystem);
+registerComponent('RaycastSource', RaycastSource);
+registerComponent('BasicAI', BasicAI);
+registerComponent('Water', Water);
+registerComponent('LineCollider2D', LineCollider2D);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);

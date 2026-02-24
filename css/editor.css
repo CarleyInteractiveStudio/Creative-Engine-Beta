@@ -4702,3 +4702,36 @@ body.game-mode #loading-overlay {
 .lib-button-custom:active {
     transform: scale(0.95);
 }
+
+/* --- Build Dialog Styles --- */
+.build-dialog-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.build-dialog-options .dialog-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.build-dialog-options hr {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 8px 0;
+}
+
+.build-dialog-options label {
+    cursor: pointer;
+    flex: 1;
+}
+
+.build-dialog-options input[type="radio"],
+.build-dialog-options input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}

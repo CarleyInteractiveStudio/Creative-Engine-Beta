@@ -32,7 +32,6 @@ import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
-import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog } from './editor/ui/DialogWindow.js';
 import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
@@ -40,7 +39,8 @@ import * as EngineAPI from './engine/EngineAPI.js';
 import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
-import { buildProject } from './editor/BuildSystem.js';
+import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
+import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog, showBuildDialog } from './editor/ui/DialogWindow.js';
 import { Localization } from './engine/Localization.js';
 
 // Debug configuration
@@ -2548,7 +2548,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();
-            buildProject(projectsDirHandle, currentProjectConfig);
+            showBuildDialog((options) => {
+                buildProject(projectsDirHandle, currentProjectConfig, options);
+            });
         });
 
         dom.menuOpenScene.addEventListener('click', (e) => {

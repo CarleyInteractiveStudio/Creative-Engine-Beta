@@ -1,11 +1,14 @@
 // js/editor/BuildSystem.js
-import { showNotification } from './ui/DialogWindow.js';
+import { showNotification, showBuildSuccessDialog } from './ui/DialogWindow.js';
 import * as CES_Transpiler from './CES_Transpiler.js';
 
 /**
  * Handles the game build process, exporting a functional standalone version of the project.
+ * @param {FileSystemDirectoryHandle} projectsDirHandle
+ * @param {object} currentProjectConfig
+ * @param {object} options { includeUnusedAssets: boolean, runAfterBuild: boolean }
  */
-export async function buildProject(projectsDirHandle, currentProjectConfig) {
+export async function buildProject(projectsDirHandle, currentProjectConfig, options = { includeUnusedAssets: false, runAfterBuild: false }) {
     if (!projectsDirHandle) {
         showNotification(
             window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
@@ -38,18 +41,21 @@ export async function buildProject(projectsDirHandle, currentProjectConfig) {
         // 2. Export engine and runtime
         await addEngineFilesToZip(zip);
 
-        // 3. Collect used assets
+        // 3. Collect used assets (if requested)
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
-        const usedAssets = await collectUsedAssets(assetsHandle);
+        let usedAssets = null;
 
-        // Add scenes anyway as they are needed to load levels
-        for await (const entry of assetsHandle.values()) {
-            if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                usedAssets.add(`Assets/${entry.name}`);
+        if (!options.includeUnusedAssets) {
+            usedAssets = await collectUsedAssets(projectHandle);
+            // Add scenes anyway as they are needed to load levels
+            for await (const entry of assetsHandle.values()) {
+                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                    usedAssets.add(`Assets/${entry.name}`);
+                }
             }
         }
 
-        // 4. Export only used project assets
+        // 4. Export project assets
         await addAssetsToZip(zip, assetsHandle, 'Assets', usedAssets);
 
         // 5. Export project libraries
@@ -97,16 +103,19 @@ export async function buildProject(projectsDirHandle, currentProjectConfig) {
             buildConfig.libraries = libNames;
         } catch (e) {}
 
-        zip.file('project.ceconfig', JSON.stringify(buildConfig, null, 2));
+        zip.file('project.json', JSON.stringify(buildConfig, null, 2));
 
         // 7. Finalize and Download
         const blob = await zip.generateAsync({ type: 'blob' });
         downloadBlob(blob, `${projectName}_Build.zip`);
 
-        showNotification(
-            window.Localization?.get('BUILD_COMPLETADO') || 'Build Completado',
-            window.Localization?.get('BUILD_EXITO_ZIP') || '¡Tu juego está listo! El archivo ZIP se ha generado.'
-        );
+        // Show success dialog with sharing info
+        showBuildSuccessDialog(projectName, blob);
+
+        // 8. Run after build if requested
+        if (options.runAfterBuild) {
+            runStandalonePreview(currentProjectConfig);
+        }
 
     } catch (error) {
         console.error('Build Error:', error);
@@ -181,20 +190,30 @@ async function addEngineFilesToZip(zip) {
     }
 }
 
-async function collectUsedAssets(assetsHandle) {
+async function collectUsedAssets(projectHandle) {
     const usedAssets = new Set();
+    const assetRegex = /Assets\/[a-zA-Z0-9_\-\/]+\.[a-z0-9]+/g;
 
     async function scanDirectory(handle, path) {
         for await (const entry of handle.values()) {
-            const entryPath = `${path}/${entry.name}`;
-            if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                const file = await entry.getFile();
-                const content = await file.text();
-                try {
-                    const sceneData = JSON.parse(content);
-                    extractAssetsFromScene(sceneData, usedAssets);
-                } catch (e) {
-                    console.error(`Error parsing scene ${entry.name}:`, e);
+            const entryPath = path ? `${path}/${entry.name}` : entry.name;
+            if (entry.kind === 'file') {
+                if (entry.name.endsWith('.ceScene')) {
+                    const file = await entry.getFile();
+                    const content = await file.text();
+                    try {
+                        const sceneData = JSON.parse(content);
+                        extractAssetsFromScene(sceneData, usedAssets);
+                    } catch (e) {
+                        console.error(`Error parsing scene ${entry.name}:`, e);
+                    }
+                } else if (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.js')) {
+                    const file = await entry.getFile();
+                    const content = await file.text();
+                    let match;
+                    while ((match = assetRegex.exec(content)) !== null) {
+                        usedAssets.add(match[0]);
+                    }
                 }
             } else if (entry.kind === 'directory') {
                 await scanDirectory(entry, entryPath);
@@ -205,25 +224,59 @@ async function collectUsedAssets(assetsHandle) {
     function extractAssetsFromScene(sceneData, assetSet) {
         if (!sceneData.materias) return;
 
-        sceneData.materias.forEach(m => {
-            if (!m.leyes) return;
-            m.leyes.forEach(ley => {
-                if (ley.properties) {
-                    // Check common asset properties
-                    const props = ley.properties;
-                    if (props.source) assetSet.add(props.source);
-                    if (props.spriteAssetPath) assetSet.add(props.spriteAssetPath);
-                    if (props.animationClipPath) assetSet.add(props.animationClipPath);
-                    if (props.controllerPath) assetSet.add(props.controllerPath);
-                    if (props.fontAssetPath) assetSet.add(props.fontAssetPath);
-                    if (props.texturePath) assetSet.add(props.texturePath);
-                }
-            });
-        });
+        function scanMateria(m) {
+            if (m.leyes) {
+                m.leyes.forEach(ley => {
+                    if (ley.properties) {
+                        const props = ley.properties;
+                        function findAssets(obj) {
+                            for (const key in obj) {
+                                const val = obj[key];
+                                if (typeof val === 'string' && val.startsWith('Assets/')) {
+                                    assetSet.add(val);
+                                } else if (val && typeof val === 'object' && !val.__materiaId) {
+                                    findAssets(val);
+                                }
+                            }
+                        }
+                        findAssets(props);
+                    }
+                });
+            }
+            if (m.children) {
+                m.children.forEach(scanMateria);
+            }
+        }
+        sceneData.materias.forEach(scanMateria);
     }
 
-    await scanDirectory(assetsHandle, 'Assets');
+    await scanDirectory(projectHandle, '');
     return usedAssets;
+}
+
+/**
+ * Opens a new window that runs the game using the StandaloneRuntime logic
+ * but reading from the local project handles.
+ */
+export function runStandalonePreview(config) {
+    const previewWindow = window.open('runner.html?standalone=true&preview=true', 'CreativeEngineStandalonePreview', 'width=800,height=600');
+    if (!previewWindow) {
+        showNotification('Error', 'No se pudo abrir la ventana de previsualización. Comprueba el bloqueador de popups.');
+        return;
+    }
+
+    // Pass necessary data to the preview window once it's loaded
+    window.addEventListener('message', function listener(event) {
+        if (event.source === previewWindow && event.data === 'CE_RUNNER_READY') {
+            previewWindow.postMessage({
+                type: 'CE_START_STANDALONE_PREVIEW',
+                projectData: config,
+                projectsDirHandle: window.projectsDirHandle,
+                projectName: new URLSearchParams(window.location.search).get('project')
+            }, '*');
+            window.removeEventListener('message', listener);
+        }
+    });
 }
 
 async function addAssetsToZip(zip, dirHandle, path, usedAssets = null) {
