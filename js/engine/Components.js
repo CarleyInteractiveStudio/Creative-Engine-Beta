@@ -5056,9 +5056,6 @@ export class BasicAI extends Leyes {
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);
-registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
-registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
-registerComponent('GridLayoutGroup', GridLayoutGroup);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {
@@ -5244,7 +5241,6 @@ export class HorizontalLayoutGroup extends Leyes {
         return c;
     }
 }
-
 export class GridLayoutGroup extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5286,3 +5282,6 @@ export class GridLayoutGroup extends Leyes {
         return c;
     }
 }
+registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
+registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
+registerComponent('GridLayoutGroup', GridLayoutGroup);
