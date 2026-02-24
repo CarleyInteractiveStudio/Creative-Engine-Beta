@@ -131,16 +131,42 @@ export class PhysicsSystem {
                     let nearbyParticles = 0;
                     let avgY = 0;
 
-                    // Optimization: only check particles if they are roughly near the object
-                    for (let pIdx = 0; pIdx < water.particles.length; pIdx++) {
-                        const p = water.particles[pIdx];
-                        const dx = p.x - transform.x;
-                        const dy = p.y - transform.y;
-                        const distSq = dx * dx + dy * dy;
+                    // Optimized: Use spatial grid from the Water component if available
+                    if (water._spatialGrid && water.bounds) {
+                        const h = 15 * 1.5; // cellSize from Water component
+                        const gx = Math.floor((transform.x - water.bounds.minX) / h);
+                        const gy = Math.floor((transform.y - water.bounds.minY) / h);
+                        const range = Math.ceil(influenceRadius / h);
 
-                        if (distSq < influenceRadiusSq) {
-                            nearbyParticles++;
-                            avgY += p.y;
+                        for (let ox = -range; ox <= range; ox++) {
+                            for (let oy = -range; oy <= range; oy++) {
+                                const key = `${gx + ox},${gy + oy}`;
+                                const cell = water._spatialGrid.get(key);
+                                if (!cell) continue;
+                                for (let cIdx = 0; cIdx < cell.length; cIdx++) {
+                                    const pIdx = cell[cIdx];
+                                    const p = water.particles[pIdx];
+                                    const dx = p.x - transform.x;
+                                    const dy = p.y - transform.y;
+                                    const distSq = dx * dx + dy * dy;
+                                    if (distSq < influenceRadiusSq) {
+                                        nearbyParticles++;
+                                        avgY += p.y;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Fallback to brute force
+                        for (let pIdx = 0; pIdx < water.particles.length; pIdx++) {
+                            const p = water.particles[pIdx];
+                            const dx = p.x - transform.x;
+                            const dy = p.y - transform.y;
+                            const distSq = dx * dx + dy * dy;
+                            if (distSq < influenceRadiusSq) {
+                                nearbyParticles++;
+                                avgY += p.y;
+                            }
                         }
                     }
 

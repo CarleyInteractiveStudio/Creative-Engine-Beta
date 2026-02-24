@@ -22,6 +22,17 @@ export function getOOB(materia, explicitPosition = null) {
     const lineCollider = materia.getComponent(LineCollider2D);
     const gyzmo = materia.getComponent(Gyzmo);
 
+    // Special case for World-Space Water
+    if (water && water._initializedWorldSpace) {
+        const b = water.bounds;
+        return [
+            { x: b.minX, y: b.minY },
+            { x: b.maxX, y: b.minY },
+            { x: b.maxX, y: b.maxY },
+            { x: b.minX, y: b.maxY }
+        ];
+    }
+
     let w, h, pivotX = 0.5, pivotY = 0.5;
 
     if (spriteRenderer && spriteRenderer.sprite && (spriteRenderer.sprite.naturalWidth || spriteRenderer.sprite.width)) {

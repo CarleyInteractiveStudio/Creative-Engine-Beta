@@ -4577,7 +4577,16 @@ export class Water extends Leyes {
 
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        if (!isGame) return;
+
+        if (this.particles.length === 0) {
+            this.generateParticles();
+        }
+
+        if (!isGame) {
+            this._updateBounds();
+            return;
+        }
+
         if (deltaTime <= 0) return;
 
         const transform = this.materia.getComponent(Transform);
@@ -4596,8 +4605,10 @@ export class Water extends Leyes {
         }
 
         // --- 2. Mareas ---
+        let tideOffset = 0;
         if (this.showTides) {
             this.tidePhase += deltaTime * this.tideSpeed;
+            tideOffset = Math.sin(this.tidePhase) * this.tideAmplitude;
         }
 
         // --- 3. Obtener Colisionadores del Mundo ---
@@ -4655,6 +4666,12 @@ export class Water extends Leyes {
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
 
+            // Aplicar Marea: Desplazamiento sinusoidal vertical en la superficie
+            if (this.showTides && this.bounds) {
+                const depthFactor = Math.max(0, 1 - (p.y - this.bounds.minY) / 80);
+                p.y += tideOffset * depthFactor * 0.2;
+            }
+
             // --- 4.1 Colisión con el Mundo (Suelo y Paredes) ---
             for (let cIdx = 0; cIdx < colliders.length; cIdx++) {
                 const {col, trans} = colliders[cIdx];
@@ -4675,34 +4692,21 @@ export class Water extends Leyes {
         }
 
         // --- 5. Spatial Grid (Usando coordenadas de mundo) ---
-        // Buscamos los límites actuales de las partículas para el grid
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        if (this.particles.length === 0) {
-             minX = minY = maxX = maxY = 0;
-        } else {
-            for (const p of this.particles) {
-                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
-                if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
-            }
-        }
-        minX -= h; minY -= h; maxX += h; maxY += h;
-        this.bounds = { minX, minY, maxX, maxY };
+        this._updateBounds();
+        const { minX, minY } = this.bounds;
 
-        const gridW = maxX - minX;
-        const gridH = maxY - minY;
-        const gridCols = Math.ceil(gridW / h);
-        const gridRows = Math.ceil(gridH / h);
-        const grid = new Array(gridCols * gridRows);
+        // Grid persistente para reducir GC
+        if (!this._spatialGrid) this._spatialGrid = new Map();
+        else this._spatialGrid.clear();
 
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
             const gx = Math.floor((p.x - minX) / h);
             const gy = Math.floor((p.y - minY) / h);
-            const idx = gy * gridCols + gx;
-            if (idx >= 0 && idx < grid.length) {
-                if (!grid[idx]) grid[idx] = [];
-                grid[idx].push(i);
-            }
+            const key = `${gx},${gy}`;
+
+            if (!this._spatialGrid.has(key)) this._spatialGrid.set(key, []);
+            this._spatialGrid.get(key).push(i);
         }
 
         // --- 6. Resolución de Densidad (PBD) ---
@@ -4714,12 +4718,9 @@ export class Water extends Leyes {
                 const gy = Math.floor((pi.y - minY) / h);
 
                 for (let ox = -1; ox <= 1; ox++) {
-                    const nx = gx + ox;
-                    if (nx < 0 || nx >= gridCols) continue;
                     for (let oy = -1; oy <= 1; oy++) {
-                        const ny = gy + oy;
-                        if (ny < 0 || ny >= gridRows) continue;
-                        const cell = grid[ny * gridCols + nx];
+                        const key = `${gx + ox},${gy + oy}`;
+                        const cell = this._spatialGrid.get(key);
                         if (!cell) continue;
                         for (let cIdx = 0; cIdx < cell.length; cIdx++) {
                             const j = cell[cIdx];
@@ -4754,6 +4755,30 @@ export class Water extends Leyes {
             p.vx = (p.x - p.prevX) * invDt;
             p.vy = (p.y - p.prevY) * invDt;
         }
+    }
+
+    _updateBounds() {
+        const h = this._spacing * 1.5;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        if (this.particles.length === 0) {
+            minX = minY = maxX = maxY = 0;
+        } else {
+            for (let i = 0; i < this.particles.length; i++) {
+                const p = this.particles[i];
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            }
+        }
+
+        this.bounds = {
+            minX: minX - h,
+            minY: minY - h,
+            maxX: maxX + h,
+            maxY: maxY + h
+        };
     }
 
     _resolveParticleVsRect(p, cx, cy, w, h) {

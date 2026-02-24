@@ -249,7 +249,15 @@ export class Renderer {
 
         const { ctx } = this;
         ctx.save();
-        // NOTA: No traducimos al transform.x porque las partículas ya están en espacio mundial
+
+        const isWorld = water._initializedWorldSpace;
+        if (!isWorld) {
+            const drawX = x !== null ? x : transform.x;
+            const drawY = y !== null ? y : transform.y;
+            ctx.translate(drawX, drawY);
+            ctx.rotate(transform.rotation * Math.PI / 180);
+            ctx.scale(transform.scale.x, transform.scale.y);
+        }
 
         const bounds = water.bounds;
         const w = Math.ceil(bounds.maxX - bounds.minX);
@@ -310,42 +318,68 @@ export class Renderer {
             }
         }
 
-        // 3. Aplicar Blur
+        // 3. Aplicar Blur (Metaball pre-pass)
         const canUseFilter = typeof bCtx.filter === 'string';
         bCtx.save();
-        if (canUseFilter) bCtx.filter = 'blur(8px)';
+        // Reducido blur para que las partículas pequeñas no desaparezcan
+        if (canUseFilter) bCtx.filter = 'blur(6px)';
         bCtx.drawImage(this._particleBuffer, 0, 0);
         bCtx.restore();
 
         // 4. Colorear
         bCtx.save();
         bCtx.globalCompositeOperation = 'source-in';
-        bCtx.fillStyle = water.color;
+        bCtx.fillStyle = water.color || 'rgba(52, 152, 219, 0.8)';
         bCtx.fillRect(0, 0, bufferW, bufferH);
         bCtx.restore();
 
-        // 5. Dibujar buffer final
+        // 5. Dibujar buffer final con Contraste (Metaball effect)
         ctx.save();
-        if (canUseFilter) ctx.filter = 'contrast(25) brightness(1.1)';
-        else ctx.globalAlpha = 0.6;
+        // Reducido contraste significativamente (de 25 a 12) para asegurar visibilidad
+        // En el editor, usamos un contraste más bajo aún para ver las partículas individuales si es necesario
+        const contrastVal = this.isEditor ? 5 : 12;
+        if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1)`;
+        else ctx.globalAlpha = 0.8;
 
-        ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+        if (isWorld) {
+            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+        } else {
+            // Local space draw
+            ctx.drawImage(this._waterBuffer, bounds.minX, bounds.minY, bufferW, bufferH);
+        }
         ctx.restore();
 
         if (this.isEditor) {
             const zoom = this.camera?.effectiveZoom || 1;
+
+            // Feedback visual del área (siempre visible en el editor)
+            ctx.save();
+            if (isWorld) {
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+                ctx.fillRect(bounds.minX, bounds.minY, bufferW, bufferH);
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.8)'; // Increased visibility
+                ctx.lineWidth = 1 / zoom;
+                ctx.strokeRect(bounds.minX, bounds.minY, bufferW, bufferH);
+            } else {
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.3)'; // Increased visibility
+                ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+                ctx.strokeStyle = '#3498db'; // Solid blue border
+                ctx.lineWidth = 2 / zoom;
+                ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+            }
+            ctx.restore();
+
             // Dibujar el punto de origen de la materia de agua
             ctx.fillStyle = '#3498db';
             ctx.beginPath();
-            ctx.arc(transform.x, transform.y, 5 / zoom, 0, Math.PI * 2);
+            const dotX = isWorld ? transform.x : 0;
+            const dotY = isWorld ? transform.y : 0;
+            ctx.arc(dotX, dotY, 5 / zoom, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)';
-            ctx.lineWidth = 1 / zoom;
-            ctx.strokeRect(bounds.minX, bounds.minY, bufferW, bufferH);
-
             ctx.font = `${10 / zoom}px sans-serif`;
-            ctx.fillText("Water Source", transform.x, transform.y - 10 / zoom);
+            ctx.textAlign = 'center';
+            ctx.fillText("Water Source", dotX, dotY - 10 / zoom);
         }
 
         ctx.restore();
