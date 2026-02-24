@@ -4517,11 +4517,11 @@ export class Water extends Leyes {
         this._initializedWorldSpace = false;
 
         // Simulación interna
-        this.particles = []; // {x, y, vx, vy, prevX, prevY}
-        this._particleRadius = 12; // Aumentado ligeramente para mejor efecto metabola
-        this._restDensity = 3.5;
-        this._stiffness = 0.05;
-        this._spacing = 15;
+        this.particles = []; // {x, y, vx, vy, prevX, prevY, rho}
+        this._particleRadius = 14; // Un poco más grandes para volumen visual
+        this._restDensity = 1.2; // Reducido para evitar sobre-compresión
+        this._stiffness = 0.15;  // Aumentado para mayor estabilidad y empuje
+        this._spacing = 18;      // Mayor espacio inicial
     }
 
     // --- Spanish Aliases ---
@@ -4612,30 +4612,45 @@ export class Water extends Leyes {
             tideOffset = Math.sin(this.tidePhase) * this.tideAmplitude;
         }
 
-        // --- 3. Obtener Colisionadores del Mundo ---
-        const colliders = scene ? scene.getAllMaterias()
-            .filter(m => m.isActive && m !== this.materia && !m.tag.includes('NoWater')) // Soporte básico para ignorar por tag
-            .map(m => {
-                const col = m.getComponent(BoxCollider2D) || m.getComponent(CapsuleCollider2D) || m.getComponent(PolygonCollider2D) || m.getComponent(TilemapCollider2D);
-                return col ? { col, trans: m.getComponent(Transform), rb: m.getComponent(Rigidbody2D) } : null;
-            })
-            .filter(c => c !== null) : [];
+        // --- 3. Obtener Colisionadores del Mundo (Optimizado: con filtrado por cercanía) ---
+        const colliders = [];
+        const dynamicBodies = [];
+        if (scene) {
+            const materias = scene.getAllMaterias();
+            const waterBounds = this.bounds;
+            const margin = 500; // Aumentado para mayor seguridad con objetos grandes
+
+            for (let i = 0; i < materias.length; i++) {
+                const m = materias[i];
+                if (!m.isActive || m === this.materia || m.tag.includes('NoWater')) continue;
+
+                const trans = m.getComponent(Transform);
+                if (!trans) continue;
+
+                // Culling: solo considerar colisionadores cerca de la masa de agua
+                if (trans.x < waterBounds.minX - margin || trans.x > waterBounds.maxX + margin ||
+                    trans.y < waterBounds.minY - margin || trans.y > waterBounds.maxY + margin) {
+                    if (!(m.getComponentByName('TilemapCollider2D'))) continue;
+                }
+
+                const col = m.getComponentByName('BoxCollider2D') || m.getComponentByName('CapsuleCollider2D') || m.getComponentByName('PolygonCollider2D') || m.getComponentByName('TilemapCollider2D');
+                if (col) {
+                    const rb = m.getComponentByName('Rigidbody2D');
+                    const colData = { col, trans, rb };
+                    colliders.push(colData);
+                    if (rb && rb.bodyType === 'Dynamic') dynamicBodies.push(colData);
+                }
+            }
+        }
 
         const gravityY = 9.8 * 100;
-
-        // --- 4. Simulación de Partículas (Pre-paso) ---
         const h = this._spacing * 1.5;
         const hSq = h * h;
         const invH = 1 / h;
 
+        // --- 4. Simulación de Partículas (Pre-paso) ---
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-
-            // Gravedad del Rigidbody de la fuente de agua (Opcional, si existe)
-            if (rbWater && rbWater.bodyType === 'Dynamic') {
-                p.vx += rbWater.velocity.x * deltaTime * 10;
-                p.vy += rbWater.velocity.y * deltaTime * 10;
-            }
 
             // Gravedad y Viscosidad Global
             p.vx *= (1 - this.viscosity * deltaTime);
@@ -4643,10 +4658,8 @@ export class Water extends Leyes {
             p.vy += gravityY * deltaTime;
 
             // Interacción con Objetos Dinámicos
-            for (let cIdx = 0; cIdx < colliders.length; cIdx++) {
-                const {col, trans, rb} = colliders[cIdx];
-                if (!rb || rb.bodyType !== 'Dynamic') continue;
-
+            for (let j = 0; j < dynamicBodies.length; j++) {
+                const {trans, rb} = dynamicBodies[j];
                 const dx = p.x - trans.x;
                 const dy = p.y - trans.y;
                 const dSq = dx * dx + dy * dy;
@@ -4667,84 +4680,113 @@ export class Water extends Leyes {
             p.x += p.vx * deltaTime;
             p.y += p.vy * deltaTime;
 
-            // Aplicar Marea: Desplazamiento sinusoidal vertical en la superficie
-            if (this.showTides && this.bounds) {
-                const depthFactor = Math.max(0, 1 - (p.y - this.bounds.minY) / 80);
-                p.y += tideOffset * depthFactor * 0.2;
-            }
-
             // --- 4.1 Colisión con el Mundo (Suelo y Paredes) ---
-            for (let cIdx = 0; cIdx < colliders.length; cIdx++) {
-                const {col, trans} = colliders[cIdx];
-
-                if (col instanceof BoxCollider2D) {
-                    const bw = col.size.x * trans.scale.x;
-                    const bh = col.size.y * trans.scale.y;
-                    this._resolveParticleVsRect(p, trans.x, trans.y, bw, bh);
-                } else if (col instanceof TilemapCollider2D) {
-                    for (const rect of col.generatedColliders) {
-                        // Los rectángulos del tilemap están centrados en trans.x + rect.x
-                        const rw = rect.width;
-                        const rh = rect.height;
-                        this._resolveParticleVsRect(p, trans.x + rect.x, trans.y + rect.y, rw, rh);
+            for (let j = 0; j < colliders.length; j++) {
+                const {col, trans} = colliders[j];
+                const colType = col.constructor.name;
+                if (colType === 'BoxCollider2D') {
+                    this._resolveParticleVsRect(p, trans.x, trans.y, col.size.x * trans.scale.x, col.size.y * trans.scale.y);
+                } else if (colType === 'TilemapCollider2D') {
+                    for (let r = 0; r < col.generatedColliders.length; r++) {
+                        const rect = col.generatedColliders[r];
+                        this._resolveParticleVsRect(p, trans.x + rect.x, trans.y + rect.y, rect.width, rect.height);
                     }
                 }
             }
         }
 
-        // --- 5. Spatial Grid (Usando coordenadas de mundo) ---
+        // --- 5. Spatial Grid (Optimizado para evitar Garbage Collection) ---
         this._updateBounds();
         const { minX, minY } = this.bounds;
 
-        // Grid persistente para reducir GC
         if (!this._spatialGrid) this._spatialGrid = new Map();
         else this._spatialGrid.clear();
 
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            const gx = Math.floor((p.x - minX) / h);
-            const gy = Math.floor((p.y - minY) / h);
-            const key = `${gx},${gy}`;
+            const gx = Math.floor((p.x - minX) * invH);
+            const gy = Math.floor((p.y - minY) * invH);
+            const key = (gx & 0xFFFF) | ((gy & 0xFFFF) << 16); // Integer key is much faster than string
 
-            if (!this._spatialGrid.has(key)) this._spatialGrid.set(key, []);
-            this._spatialGrid.get(key).push(i);
+            let cell = this._spatialGrid.get(key);
+            if (!cell) {
+                cell = [];
+                this._spatialGrid.set(key, cell);
+            }
+            cell.push(i);
         }
 
-        // --- 6. Resolución de Densidad (PBD) ---
-        for (let iter = 0; iter < 1; iter++) {
-            for (let i = 0; i < this.particles.length; i++) {
-                const pi = this.particles[i];
-                let rho = 0;
-                const gx = Math.floor((pi.x - minX) / h);
-                const gy = Math.floor((pi.y - minY) / h);
+        // --- 6. Resolución de Densidad (Paso 1: Calcular Densidades) ---
+        for (let i = 0; i < this.particles.length; i++) {
+            const pi = this.particles[i];
+            pi.rho = 0;
+            const gx = Math.floor((pi.x - minX) * invH);
+            const gy = Math.floor((pi.y - minY) * invH);
 
-                for (let ox = -1; ox <= 1; ox++) {
-                    for (let oy = -1; oy <= 1; oy++) {
-                        const key = `${gx + ox},${gy + oy}`;
-                        const cell = this._spatialGrid.get(key);
-                        if (!cell) continue;
-                        for (let cIdx = 0; cIdx < cell.length; cIdx++) {
-                            const j = cell[cIdx];
-                            if (i === j) continue;
-                            const pj = this.particles[j];
-                            const dx = pi.x - pj.x;
-                            const dy = pi.y - pj.y;
-                            const dSq = dx * dx + dy * dy;
-                            if (dSq < hSq) {
-                                const dist = Math.sqrt(dSq);
-                                const weight = 1 - dist * invH;
-                                rho += weight * weight;
-                                const pressure = (rho - this._restDensity) * this._stiffness;
-                                if (pressure > 0 && dist > 0) {
-                                    const displacement = pressure * weight * (0.5 / dist);
-                                    pi.x += dx * displacement;
-                                    pi.y += dy * displacement;
-                                    pj.x -= dx * displacement;
-                                    pj.y -= dy * displacement;
-                                }
-                            }
+            for (let ox = -1; ox <= 1; ox++) {
+                for (let oy = -1; oy <= 1; oy++) {
+                    const key = ((gx + ox) & 0xFFFF) | (((gy + oy) & 0xFFFF) << 16);
+                    const cell = this._spatialGrid.get(key);
+                    if (!cell) continue;
+                    for (let cIdx = 0; cIdx < cell.length; cIdx++) {
+                        const j = cell[cIdx];
+                        const pj = this.particles[j];
+                        const dx = pi.x - pj.x;
+                        const dy = pi.y - pj.y;
+                        const dSq = dx * dx + dy * dy;
+                        if (dSq < hSq) {
+                            const weight = 1 - Math.sqrt(dSq) * invH;
+                            pi.rho += weight * weight;
                         }
                     }
+                }
+            }
+        }
+
+        // --- 6.1 Resolución de Presión (Paso 2: Aplicar Desplazamientos) ---
+        for (let i = 0; i < this.particles.length; i++) {
+            const pi = this.particles[i];
+            const pressure = (pi.rho - this._restDensity) * this._stiffness;
+            if (pressure <= 0) continue;
+
+            const gx = Math.floor((pi.x - minX) * invH);
+            const gy = Math.floor((pi.y - minY) * invH);
+
+            for (let ox = -1; ox <= 1; ox++) {
+                for (let oy = -1; oy <= 1; oy++) {
+                    const key = ((gx + ox) & 0xFFFF) | (((gy + oy) & 0xFFFF) << 16);
+                    const cell = this._spatialGrid.get(key);
+                    if (!cell) continue;
+                    for (let cIdx = 0; cIdx < cell.length; cIdx++) {
+                        const j = cell[cIdx];
+                        if (i === j) continue;
+                        const pj = this.particles[j];
+                        const dx = pi.x - pj.x;
+                        const dy = pi.y - pj.y;
+                        const dSq = dx * dx + dy * dy;
+                        if (dSq < hSq && dSq > 0.0001) {
+                            const dist = Math.sqrt(dSq);
+                            const weight = 1 - dist * invH;
+                            // Presión compartida para estabilidad
+                            const sharedPressure = (pressure + (pj.rho - this._restDensity) * this._stiffness) / 2;
+                            const displacement = sharedPressure * weight * (0.5 / dist);
+                            pi.x += dx * displacement;
+                            pi.y += dy * displacement;
+                            pj.x -= dx * displacement;
+                            pj.y -= dy * displacement;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 6.2 Mareas (Solo superficie) ---
+        if (this.showTides) {
+            for (let i = 0; i < this.particles.length; i++) {
+                const pi = this.particles[i];
+                if (pi.rho < this._restDensity * 0.8) {
+                    const depthFactor = Math.max(0, 1 - (pi.y - this.bounds.minY) / 100);
+                    pi.y += tideOffset * depthFactor * 0.5;
                 }
             }
         }

@@ -247,6 +247,22 @@ export class Renderer {
         const transform = water.materia.getComponent(Transform);
         if (!transform) return;
 
+        // Culling: Si el agua está fuera de la cámara, no procesar renderizado
+        if (this.camera && water.bounds) {
+            const b = water.bounds;
+            const cam = this.camera;
+            const aspect = this.canvas.width / (this.canvas.height || 1);
+            const ez = cam.effectiveZoom || 1.0;
+            const viewH = (this.canvas.height / ez);
+            const viewW = viewH * aspect;
+
+            // Check if bounds overlap with camera viewport
+            if (b.maxX < cam.x - viewW/2 || b.minX > cam.x + viewW/2 ||
+                b.maxY < cam.y - viewH/2 || b.minY > cam.y + viewH/2) {
+                return;
+            }
+        }
+
         const { ctx } = this;
         ctx.save();
 
@@ -265,35 +281,34 @@ export class Renderer {
 
         if (w <= 0 || h <= 0) { ctx.restore(); return; }
 
-        // 1. Inicializar buffers lazily
+        // 1. Inicializar buffers lazily (Aumentado para acomodar mareas y evitar re-escalado)
+        const margin = 60;
+        const bufferW = Math.ceil(w + margin);
+        const bufferH = Math.ceil(h + margin);
+
         if (!this._waterBuffer) {
             this._waterBuffer = document.createElement('canvas');
-            this._waterBufferCtx = this._waterBuffer.getContext('2d');
             this._particleBuffer = document.createElement('canvas');
-            this._particleBufferCtx = this._particleBuffer.getContext('2d');
         }
 
-        // Limitar tamaño máximo del buffer para evitar cuelgues si el agua se expande demasiado
-        const maxBufferSize = 2048;
-        const bufferW = Math.min(maxBufferSize, w);
-        const bufferH = Math.min(maxBufferSize, h);
-
-        if (this._waterBuffer.width !== bufferW || this._waterBuffer.height !== bufferH) {
-            this._waterBuffer.width = this._particleBuffer.width = bufferW;
-            this._waterBuffer.height = this._particleBuffer.height = bufferH;
+        // Solo re-escalar si es significativamente diferente para ahorrar performance
+        if (!this._waterBufferCtx || Math.abs(this._waterBuffer.width - bufferW) > 100 || Math.abs(this._waterBuffer.height - bufferH) > 100 || this._waterBuffer.width < bufferW || this._waterBuffer.height < bufferH) {
+            this._waterBuffer.width = this._particleBuffer.width = Math.min(2048, bufferW);
+            this._waterBuffer.height = this._particleBuffer.height = Math.min(2048, bufferH);
             this._waterBufferCtx = this._waterBuffer.getContext('2d');
             this._particleBufferCtx = this._particleBuffer.getContext('2d');
         }
 
         if (!this._waterParticleSprite) {
             this._waterParticleSprite = document.createElement('canvas');
-            this._waterParticleSprite.width = 32;
-            this._waterParticleSprite.height = 32;
+            this._waterParticleSprite.width = 64;
+            this._waterParticleSprite.height = 64;
             const pCtx = this._waterParticleSprite.getContext('2d');
-            pCtx.fillStyle = 'white';
-            pCtx.beginPath();
-            pCtx.arc(16, 16, 14, 0, Math.PI * 2);
-            pCtx.fill();
+            const grad = pCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'white');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            pCtx.fillStyle = grad;
+            pCtx.fillRect(0, 0, 64, 64);
         }
 
         const bCtx = this._waterBufferCtx;
@@ -303,8 +318,8 @@ export class Renderer {
         bCtx.clearRect(0, 0, bufferW, bufferH);
 
         // 2. Dibujar partículas RÁPIDO
-        const pr = water._particleRadius || 10;
-        const pSize = pr * 2.2;
+        const pr = water._particleRadius || 14;
+        const pSize = pr * 3.5; // Dibujar un poco más grande para mejor solapamiento
         const pOffset = pSize / 2;
 
         pCtx.fillStyle = 'white';
@@ -321,7 +336,7 @@ export class Renderer {
         // 3. Aplicar Blur (Metaball pre-pass)
         const canUseFilter = typeof bCtx.filter === 'string';
         bCtx.save();
-        // Reducido blur para que las partículas pequeñas no desaparezcan
+        // Blur moderado combinado con el degradado radial de la partícula
         if (canUseFilter) bCtx.filter = 'blur(6px)';
         bCtx.drawImage(this._particleBuffer, 0, 0);
         bCtx.restore();
@@ -330,15 +345,15 @@ export class Renderer {
         bCtx.save();
         bCtx.globalCompositeOperation = 'source-in';
         bCtx.fillStyle = water.color || 'rgba(52, 152, 219, 0.8)';
-        bCtx.fillRect(0, 0, bufferW, bufferH);
+        bCtx.fillRect(0, 0, this._waterBuffer.width, this._waterBuffer.height);
         bCtx.restore();
 
         // 5. Dibujar buffer final con Contraste (Metaball effect)
         ctx.save();
-        // El efecto metabola requiere un contraste alto (20-40) para "unir" las partículas
-        // Si el contraste es muy bajo, se ven como blobs difusos e individuales
+        // Contraste alto para crear bordes sólidos y fusionar partículas
+        // Ajustado para que el agua se vea más "gruesa" y no se encoja tanto
         const contrastVal = this.isEditor ? 25 : 35;
-        if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1)`;
+        if (canUseFilter) ctx.filter = `contrast(${contrastVal}) brightness(1.1) saturate(1.2)`;
         else ctx.globalAlpha = 0.8;
 
         if (isWorld) {
