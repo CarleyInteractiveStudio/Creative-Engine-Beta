@@ -1902,6 +1902,11 @@ export class AudioSource extends Leyes {
         }
     }
 
+    async setSourcePath(path) {
+        this.source = path;
+        await this.load();
+    }
+
     update(deltaTime) {
         if (!this._audio || !this.isPlaying) return;
 
@@ -2049,6 +2054,11 @@ export class VideoPlayer extends Leyes {
         if (this.playOnAwake) {
             this.play();
         }
+    }
+
+    async setSourcePath(path) {
+        this.source = path;
+        await this.load();
     }
 
     update(deltaTime) {

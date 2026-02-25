@@ -627,6 +627,8 @@ export async function updateAssetBrowser() {
                 });
             } else if (entry.name.endsWith('.mp3') || entry.name.endsWith('.wav')) {
                 iconContainer.innerHTML = `<img src="icons/music.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            } else if (entry.name.endsWith('.mp4') || entry.name.endsWith('.webm') || entry.name.endsWith('.ogv')) {
+                iconContainer.innerHTML = `<img src="icons/video.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
                 iconContainer.innerHTML = `<img src="icons/type.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ces')) {

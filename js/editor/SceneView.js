@@ -1007,6 +1007,18 @@ export function initialize(dependencies) {
                 SceneManager.currentScene.addMateria(newMateria);
             } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                 newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+            } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
+                newMateria = new Materia(data.name);
+                newMateria.addComponent(new Components.Transform(newMateria));
+                const transform = newMateria.getComponent(Components.Transform);
+                transform.x = worldPos.x;
+                transform.y = worldPos.y;
+
+                const videoPlayer = new Components.VideoPlayer(newMateria);
+                await videoPlayer.setSourcePath(data.path);
+                newMateria.addComponent(videoPlayer);
+
+                SceneManager.currentScene.addMateria(newMateria);
             }
 
             if (newMateria) {

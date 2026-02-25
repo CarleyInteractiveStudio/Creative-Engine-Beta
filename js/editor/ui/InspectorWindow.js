@@ -291,7 +291,7 @@ async function handleInspectorDrop(e) {
             const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
             if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                 targetComponent.publicVars[propName] = valueToAssign;
-            } else if ((targetComponent instanceof Components.SpriteRenderer || targetComponent instanceof Components.UIImage || targetComponent instanceof Components.SpriteLight2D) && propName === 'source') {
+            } else if ((targetComponent instanceof Components.SpriteRenderer || targetComponent instanceof Components.UIImage || targetComponent instanceof Components.SpriteLight2D || targetComponent instanceof Components.AudioSource || targetComponent instanceof Components.VideoPlayer) && propName === 'source') {
                 const hadSource = !!(targetComponent.source || (targetComponent.spriteAssetPath && targetComponent.spriteAssetPath !== ''));
                 await targetComponent.setSourcePath(valueToAssign, currentDirHandle);
 
