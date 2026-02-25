@@ -1693,6 +1693,11 @@ export class UIImage extends Leyes {
         this._lastLoadedSource = '';
     }
 
+    async setSourcePath(path, projectsDirHandle) {
+        this.source = path;
+        await this.loadSprite(projectsDirHandle);
+    }
+
     update(deltaTime) {
         // Auto-load if source is set but not yet loaded
         if (this.source && this.source !== this._lastLoadedSource && !this.isLoading && !this.isError) {
@@ -1844,8 +1849,9 @@ export class SpriteLight2D extends Leyes {
         this.filtroOpacidad = 1.0;
     }
 
-    setSourcePath(path) {
+    async setSourcePath(path, projectsDirHandle) {
         this.source = path;
+        await this.loadSprite(projectsDirHandle);
     }
 
     async loadSprite(projectsDirHandle) {

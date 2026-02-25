@@ -291,13 +291,13 @@ async function handleInspectorDrop(e) {
             const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
             if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
                 targetComponent.publicVars[propName] = valueToAssign;
-            } else if (targetComponent instanceof Components.SpriteRenderer && propName === 'source') {
-                const hadSource = !!(targetComponent.source || targetComponent.spriteAssetPath);
+            } else if ((targetComponent instanceof Components.SpriteRenderer || targetComponent instanceof Components.UIImage || targetComponent instanceof Components.SpriteLight2D) && propName === 'source') {
+                const hadSource = !!(targetComponent.source || (targetComponent.spriteAssetPath && targetComponent.spriteAssetPath !== ''));
                 await targetComponent.setSourcePath(valueToAssign, currentDirHandle);
 
                 // If this is a new assignment or replacing a blank one, reset scale to 1:1
                 // to avoid confusion with the 50x50 placeholder size
-                if (!hadSource) {
+                if (!hadSource && targetComponent instanceof Components.SpriteRenderer) {
                     const transform = selectedMateria.getComponent(Components.Transform);
                     if (transform) {
                         transform.localScale = { x: 1, y: 1 };
@@ -1794,10 +1794,12 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.UIImage) {
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `${renderComponentHeader("UI Image", icon, index)}
             <div class="component-content">
-                <div class="prop-row-multi"><label>Source</label><div class="sprite-dropper"><div class="sprite-preview">${previewImg}</div><button class="sprite-select-btn" data-component="UIImage">${getIconHTML('target')}</button></div></div>
+                <div class="inspector-row">
+                    <label>Source</label>
+                    ${renderPropertyDropper('Sprite', ley.source, 'data-component="UIImage" data-prop="source"')}
+                </div>
                 <div class="prop-row-multi">
                     <label>Color</label>
                     <div class="prop-inputs">
@@ -2476,18 +2478,13 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpriteLight2D) {
-            console.log('  - Is SpriteLight2D component.');
-            const previewImg = ley.sprite.src ? `<img src="${ley.sprite.src}" alt="Preview">` : 'None';
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader("Sprite Light 2D", icon, index)}
                 <div class="component-content">
-                     <div class="prop-row-multi">
+                    <div class="inspector-row">
                         <label>Sprite</label>
-                        <div class="sprite-dropper">
-                            <div class="sprite-preview">${previewImg}</div>
-                            <button class="sprite-select-btn" data-component="SpriteLight2D">${getIconHTML('target')}</button>
-                        </div>
+                        ${renderPropertyDropper('Sprite', ley.source, 'data-component="SpriteLight2D" data-prop="source"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>Color</label>

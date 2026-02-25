@@ -495,9 +495,21 @@ export function transpile(code, scriptName) {
         const body = tempCode.substring(bodyStartIndex, bodyEndIndex);
         const fullMethodText = tempCode.substring(methodMatch.index, bodyEndIndex + 1);
 
-        if (isFunction) {
+        // Add to public functions if it's not a known internal/lifecycle method
+        // In this engine, public methods don't necessarily need the 'funcion' keyword
+        const internalMethods = [
+            'start', 'update', 'iniciar', 'alEmpezar', 'actualizar', 'alActualizar',
+            'fixedUpdate', 'actualizarFijo', 'onEnable', 'onDisable', 'onDestroy',
+            'alEntrarEnColision', 'OnCollisionEnter', 'alPermanecerEnColision', 'OnCollisionStay', 'alSalirDeColision', 'OnCollisionExit',
+            'alEntrarEnTrigger', 'OnTriggerEnter', 'alPermanecerEnTrigger', 'OnTriggerStay', 'alSalirDeTrigger', 'OnTriggerExit',
+            'alFinalizarAnimacion', 'OnAnimationEnd', 'onPointerDown', 'alPresionar', 'onPointerUp', 'alSoltar',
+            'onPointerEnter', 'alEntrar', 'onPointerExit', 'alSalir', 'onPointerClick', 'alHacerClick',
+            'onPointerDrag', 'alDeslizar', 'onPointerHold', 'alMantener', 'alHabilitar', 'activar', 'alDeshabilitar', 'desactivar', 'alDestruir'
+        ];
+        if (!internalMethods.includes(name)) {
             publicFunctions.push(name);
         }
+
         methodMatches.push({ name, args, body });
 
         // Blank out the matched method to prevent it from being processed again

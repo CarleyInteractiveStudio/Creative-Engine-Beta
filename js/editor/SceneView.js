@@ -988,9 +988,11 @@ export function initialize(dependencies) {
             const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
             const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
 
+            let newMateria = null;
+
             if (data.type === 'sprite') {
                 // Create a new Materia at the drop position
-                const newMateria = new Materia(data.spriteName);
+                newMateria = new Materia(data.spriteName);
                 newMateria.addComponent(new Components.Transform(newMateria));
                 const transform = newMateria.getComponent(Components.Transform);
                 transform.x = worldPos.x;
@@ -1003,16 +1005,47 @@ export function initialize(dependencies) {
                 newMateria.addComponent(spriteRenderer);
 
                 SceneManager.currentScene.addMateria(newMateria);
+            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
+                newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
+            }
+
+            if (newMateria) {
+                // Si el juego está en marcha, inicializar scripts inmediatamente
+                if (window.isGameRunning) {
+                    console.log(`[SceneView] Inicializando scripts para nuevo objeto '${newMateria.name}' en tiempo de ejecución.`);
+                    const initScriptsRecursive = async (mtr) => {
+                        for (const ley of mtr.leyes) {
+                            if (ley instanceof Components.CreativeScript) {
+                                await ley.initializeInstance();
+                                if (ley.isInitialized) {
+                                    try { ley.start(); } catch(e) {}
+                                    try { ley.onEnable(); } catch(e) {}
+                                }
+                            } else if (ley instanceof Components.AnimatorController) {
+                                await ley.initialize(window.projectsDirHandle);
+                            } else if (ley instanceof Components.Animator) {
+                                if (!mtr.getComponent(Components.AnimatorController)) {
+                                    await ley.loadAnimationClip(window.projectsDirHandle);
+                                    if (ley.playOnAwake) ley.play();
+                                }
+                            } else if (ley instanceof Components.Terreno2D) {
+                                await ley.loadTextures(window.projectsDirHandle);
+                            }
+
+                            if (!(ley instanceof Components.CreativeScript) && typeof ley.start === 'function') {
+                                try { await ley.start(); } catch(e) {}
+                            }
+                        }
+                        for (const child of mtr.children) {
+                            await initScriptsRecursive(child);
+                        }
+                    };
+                    await initScriptsRecursive(newMateria);
+                }
 
                 // Refresh UI
                 selectMateria(newMateria);
                 updateInspector();
-            } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
-                const newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
-                if (newMateria) {
-                    selectMateria(newMateria);
-                    updateInspector();
-                }
             }
         } catch (error) {
             console.error("Error al soltar el sprite:", error);
