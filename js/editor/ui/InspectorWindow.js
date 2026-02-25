@@ -725,13 +725,6 @@ function handleInspectorClick(e) {
     }
 
     // --- Tilemap Layer Management ---
-    if (e.target.matches('[data-action="add-layer"]')) {
-        const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        if (tilemap) {
-            tilemap.addLayer();
-            updateInspector();
-        }
-    }
 
     // --- LineCollider2D Management ---
     if (e.target.matches('[data-action="line-add-point"]')) {
@@ -788,9 +781,10 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="select-layer"]')) {
+    if (e.target.closest('[data-action="select-layer"]')) {
+        const item = e.target.closest('[data-action="select-layer"]');
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        const index = parseInt(e.target.dataset.index, 10);
+        const index = parseInt(item.dataset.index, 10);
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
             updateInspector();
@@ -858,9 +852,10 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="select-layer"]')) {
+    if (e.target.closest('[data-action="select-layer"]')) {
+        const item = e.target.closest('[data-action="select-layer"]');
         const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        const index = parseInt(e.target.dataset.index, 10);
+        const index = parseInt(item.dataset.index, 10);
         if (tilemap && !isNaN(index)) {
             tilemap.activeLayerIndex = index;
             updateInspector();
@@ -2359,7 +2354,17 @@ async function updateInspectorForMateria(selectedMateria) {
                             <div class="layer-list">
                                 ${ley.layers.map((layer, index) => `
                                     <div class="layer-item ${index === ley.activeLayerIndex ? 'active' : ''}" data-action="select-layer" data-index="${index}">
-                                        <span>Capa ${index} (X: ${layer.position ? layer.position.x : 'N/A'}, Y: ${layer.position ? layer.position.y : 'N/A'})</span>
+                                        <div class="layer-item-main">
+                                            <span>Capa ${index}</span>
+                                            ${index === ley.activeLayerIndex ? `
+                                                <div class="layer-pos-inputs">
+                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.x" value="${layer.position.x}" title="Layer Offset X">
+                                                    <input type="number" class="prop-input small" step="1" data-component="Tilemap" data-prop="layers.${index}.position.y" value="${layer.position.y}" title="Layer Offset Y">
+                                                </div>
+                                            ` : `
+                                                <span class="layer-info">(X: ${layer.position.x}, Y: ${layer.position.y})</span>
+                                            `}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>

@@ -449,6 +449,7 @@ export async function updateAssetBrowser() {
     const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
     const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
+    // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
     if (!currentDirectoryHandle.handle) {
          currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
     }
@@ -939,7 +940,14 @@ async function handleExternalFileDrop(e) {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        console.log(`Importando ${e.dataTransfer.files.length} archivo(s)...`);
+
+        if (!currentDirectoryHandle.handle) {
+            console.error("[AssetBrowser] No directory handle available for import.");
+            showNotification(L.get('ERROR'), L.get('SELECCIONAR_CARPETA_IMPORTAR', 'Selecciona una carpeta para importar.'));
+            return;
+        }
+
+        console.log(`Importando ${e.dataTransfer.files.length} archivo(s) a ${currentDirectoryHandle.path}...`);
         let filesImported = 0;
         let librariesImported = 0;
 

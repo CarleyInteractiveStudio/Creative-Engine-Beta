@@ -2571,8 +2571,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.menuImportAsset.addEventListener('click', async (e) => {
             e.preventDefault();
             const L = window.Localization;
-            const currentDir = getCurrentDirectoryHandle();
-            if (!currentDir || !currentDir.handle) {
+            const currentDirHandle = getCurrentDirectoryHandle();
+            if (!currentDirHandle) {
                 showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
                 return;
             }
@@ -2586,7 +2586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     for (const fileHandle of files) {
                         const file = await fileHandle.getFile();
-                        const targetFileHandle = await currentDir.handle.getFileHandle(file.name, { create: true });
+                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
                         const writable = await targetFileHandle.createWritable();
                         await writable.write(file);
                         await writable.close();
@@ -2599,7 +2599,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.multiple = true;
                     input.onchange = async () => {
                         for (const file of input.files) {
-                            const targetFileHandle = await currentDir.handle.getFileHandle(file.name, { create: true });
+                            const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
                             const writable = await targetFileHandle.createWritable();
                             await writable.write(file);
                             await writable.close();
@@ -3755,7 +3755,7 @@ public start() {
                 }
             });
             DebugPanel.initialize({ dom, InputManager, SceneManager, getActiveTool, getSelectedMateria, getIsGameRunning, getDeltaTime });
-            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
+            SceneView.initialize({ dom, renderer, InputManager, getSelectedMateria, selectMateria, updateInspectorCallback: updateInspector, updateAssetBrowserCallback: updateAssetBrowser, Components, updateScene, SceneManager, getPreferences, getSelectedTile: TilePalette.getSelectedTile, setPaletteActiveTool: TilePalette.setActiveTool });
             Terminal.initialize(dom, projectsDirHandle);
 
             updateLoadingProgress(60, "Aplicando preferencias...");

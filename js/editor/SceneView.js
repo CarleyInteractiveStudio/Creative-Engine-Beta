@@ -171,6 +171,7 @@ let InputManager;
 let getSelectedMateria;
 let selectMateria;
 let updateInspector;
+let updateAssetBrowser;
 let Components;
 let updateScene;
 let getActiveView;
@@ -704,6 +705,7 @@ export function initialize(dependencies) {
     getSelectedMateria = dependencies.getSelectedMateria;
     selectMateria = dependencies.selectMateria;
     updateInspector = dependencies.updateInspectorCallback;
+    updateAssetBrowser = dependencies.updateAssetBrowserCallback;
     Components = dependencies.Components;
     updateScene = dependencies.updateScene;
     getActiveView = dependencies.getActiveView;
@@ -980,6 +982,26 @@ export function initialize(dependencies) {
     dom.sceneCanvas.addEventListener('drop', async (e) => {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
+
+        // Handle external files from OS
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const currentDirHandle = getCurrentDirectoryHandle();
+            if (currentDirHandle) {
+                for (const file of e.dataTransfer.files) {
+                    try {
+                        const targetFileHandle = await currentDirHandle.getFileHandle(file.name, { create: true });
+                        const writable = await targetFileHandle.createWritable();
+                        await writable.write(file);
+                        await writable.close();
+                    } catch (err) {
+                        console.error("Error al importar archivo desde OS:", err);
+                    }
+                }
+                if (updateAssetBrowser) await updateAssetBrowser();
+                console.log("Archivos importados con éxito.");
+            }
+            return;
+        }
 
         try {
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));

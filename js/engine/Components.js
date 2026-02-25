@@ -3196,7 +3196,7 @@ export class Tilemap extends Leyes {
         this.activeLayerIndex = 0;
     }
 
-    addLayer(x, y) {
+    addLayer(x = 0, y = 0) {
         this.layers.push({
             position: { x, y },
             tileData: new Map()
