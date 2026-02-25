@@ -2057,14 +2057,13 @@ body {
     height: 70vh; /* Initial height */
     min-width: 400px; /* Prevent it from being too small */
     min-height: 300px; /* Prevent it from being too small */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 100px;
+    left: 100px;
     z-index: 1500;
     box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     display: flex;
     flex-direction: column;
-    transition: all 0.2s ease-in-out;
+    box-sizing: border-box;
 }
 
 .floating-panel.maximized {
