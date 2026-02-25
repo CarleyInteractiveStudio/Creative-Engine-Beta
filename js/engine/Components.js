@@ -2044,6 +2044,8 @@ export class VideoPlayer extends Leyes {
         this.playOnAwake = true;
         this.playbackRate = 1.0;
         this.scalingMode = 'Fit'; // 'Stretch', 'Fit', 'Fill'
+        this.muted = false;
+        this.preload = 'auto'; // 'auto', 'metadata', 'none'
 
         this._video = null;
         this._isLoaded = false;
@@ -2081,6 +2083,7 @@ export class VideoPlayer extends Leyes {
 
         this._video.loop = this.loop;
         this._video.playbackRate = this.playbackRate;
+        this._video.muted = this.muted;
     }
 
     get isPlaying() {
@@ -2102,7 +2105,8 @@ export class VideoPlayer extends Leyes {
                 this._video = document.createElement('video');
                 this._video.crossOrigin = 'anonymous';
                 this._video.playsInline = true;
-                this._video.muted = true; // Empieza muteado para auto-play policies
+                this._video.muted = this.muted;
+                this._video.preload = this.preload;
             }
 
             if (this._video.src !== url) {

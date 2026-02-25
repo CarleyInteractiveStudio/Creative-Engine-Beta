@@ -1637,6 +1637,18 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
                         <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Reproducir al Empezar')}</label>
                     </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="muted" ${ley.muted ? 'checked' : ''}>
+                        <label data-i18n="SILENCIAR">${L.get('SILENCIAR', 'Silenciado')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PRELOAD">${L.get('PRELOAD', 'Precarga')}</label>
+                        <select class="prop-input" data-component="VideoPlayer" data-prop="preload">
+                            <option value="auto" ${ley.preload === 'auto' ? 'selected' : ''}>Auto</option>
+                            <option value="metadata" ${ley.preload === 'metadata' ? 'selected' : ''}>Metadata</option>
+                            <option value="none" ${ley.preload === 'none' ? 'selected' : ''}>None</option>
+                        </select>
+                    </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SCALING_MODE">${L.get('SCALING_MODE', 'Escalado')}</label>
                         <select class="prop-input" data-component="VideoPlayer" data-prop="scalingMode">
@@ -4400,17 +4412,40 @@ async function renderVideoInspector(assetName, assetPath) {
     container.innerHTML = `
         <div class="inspector-section bubble-style">
             <legend>Video Preview</legend>
-            <div class="video-preview-bubble" style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px;">
-                <video id="inspector-video-player" controls style="width: 100%; border-radius: 4px; background: #000;">
+            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center;">
+                <video id="inspector-video-player" controls controlsList="nodownload nofullscreen noremoteplayback" style="max-width: 100%; border-radius: 4px; background: #000; outline: none;">
                     <source src="${url}" type="video/${assetName.split('.').pop()}">
                     Tu navegador no soporta el elemento de video.
                 </video>
-                <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
-                    <p>Formato: ${assetName.split('.').pop().toUpperCase()}</p>
-                    <p id="video-res-display">Resolución: Cargando...</p>
-                    <p id="video-duration-display">Duración: Cargando...</p>
+                <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; width: 100%;">
+                    <p style="margin: 2px 0;"><b>Formato:</b> ${assetName.split('.').pop().toUpperCase()}</p>
+                    <p id="video-res-display" style="margin: 2px 0;">Resolución: Cargando...</p>
+                    <p id="video-duration-display" style="margin: 2px 0;">Duración: Cargando...</p>
                 </div>
             </div>
+        </div>
+        <div class="inspector-section bubble-style">
+            <legend>Optimization & Quality</legend>
+            <div class="inspector-row">
+                <label>Calidad</label>
+                <select class="prop-input" style="flex-grow: 1;">
+                    <option value="original">Original</option>
+                    <option value="high">Alta (1080p)</option>
+                    <option value="medium">Media (720p)</option>
+                    <option value="low">Baja (480p)</option>
+                </select>
+            </div>
+            <div class="inspector-row">
+                <label>Formato</label>
+                <select class="prop-input" style="flex-grow: 1;">
+                    <option value="auto">Automático</option>
+                    <option value="mp4">H.264 (MP4)</option>
+                    <option value="webm">VP9 (WebM)</option>
+                </select>
+            </div>
+            <p class="field-description" style="font-size: 0.8em; opacity: 0.6; margin-top: 8px;">
+                * Las opciones de optimización se aplican al compilar el proyecto para reducir el tamaño final.
+            </p>
         </div>
         <div class="inspector-section">
             <label>Acciones</label>

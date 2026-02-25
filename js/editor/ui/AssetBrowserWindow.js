@@ -553,6 +553,12 @@ export async function updateAssetBrowser() {
             // Cleanup parent blue state if drop handled here
             dom.assetsContent.classList.remove('drag-over-fs');
 
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                currentDirectoryHandle = { handle: dirHandle, path: dirPath };
+                await handleExternalFileDrop(e);
+                return;
+            }
+
             try {
                 const dataText = e.dataTransfer.getData('text/plain');
                 if (dataText) {
@@ -606,6 +612,13 @@ export async function updateAssetBrowser() {
                     e.stopPropagation();
                     // Cleanup parent blue state
                     dom.assetsContent.classList.remove('drag-over-fs');
+
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
+                        currentDirectoryHandle = { handle: targetFolderHandle, path: `${dirPath}/${entry.name}` };
+                        await handleExternalFileDrop(e);
+                        return;
+                    }
 
                     try {
                         const dataText = e.dataTransfer.getData('text/plain');
@@ -770,6 +783,12 @@ export async function updateAssetBrowser() {
             folderItem.classList.remove('drag-over');
             // Cleanup parent blue state
             dom.assetsContent.classList.remove('drag-over-fs');
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                currentDirectoryHandle = { handle: dirHandle, path: currentPath };
+                await handleExternalFileDrop(e);
+                return;
+            }
 
             try {
                 const dataText = e.dataTransfer.getData('text/plain');
