@@ -190,7 +190,6 @@ function onExportPackage(assetName) {
 }
 
 function setupEventListeners() {
-    document.getElementById('menu-import-asset').addEventListener('click', () => handleImport());
     document.getElementById('menu-import-project').addEventListener('click', () => handleImport());
 
     document.getElementById('menu-export-project').addEventListener('click', () => {

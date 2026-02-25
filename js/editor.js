@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'btn-play', 'btn-pause', 'btn-stop', 'btn-exit-prefab', 'btn-save-prefab',
             'tool-tile-brush', 'tool-tile-bucket', 'tool-tile-rectangle-fill', 'tool-tile-eraser',
             // Menubar scene options
-            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build',
+            'menu-new-scene', 'menu-open-scene', 'menu-save-scene', 'menu-build', 'menu-import-asset',
             // Asset Selector Bubble Elements
             'asset-selector-bubble', 'asset-selector-title', 'asset-selector-breadcrumbs', 'asset-selector-grid-view',
             'asset-selector-toolbar', 'asset-selector-view-modes', 'asset-selector-search',
@@ -2566,6 +2566,53 @@ document.addEventListener('DOMContentLoaded', () => {
             showBuildDialog(currentProjectConfig, (options) => {
                 buildProject(projectsDirHandle, currentProjectConfig, options);
             });
+        });
+
+        dom.menuImportAsset.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const L = window.Localization;
+            const currentDir = getCurrentDirectoryHandle();
+            if (!currentDir || !currentDir.handle) {
+                showNotificationDialog(L?.get('AVISO') || "Aviso", L?.get('SELECCIONAR_CARPETA_IMPORTAR') || "Selecciona primero una carpeta en el navegador de assets para importar archivos.");
+                return;
+            }
+
+            try {
+                // Try modern File System Access API
+                if (window.showOpenFilePicker) {
+                    const files = await window.showOpenFilePicker({
+                        multiple: true
+                    });
+
+                    for (const fileHandle of files) {
+                        const file = await fileHandle.getFile();
+                        const targetFileHandle = await currentDir.handle.getFileHandle(file.name, { create: true });
+                        const writable = await targetFileHandle.createWritable();
+                        await writable.write(file);
+                        await writable.close();
+                    }
+                    updateAssetBrowser();
+                } else {
+                    // Fallback using hidden input
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.multiple = true;
+                    input.onchange = async () => {
+                        for (const file of input.files) {
+                            const targetFileHandle = await currentDir.handle.getFileHandle(file.name, { create: true });
+                            const writable = await targetFileHandle.createWritable();
+                            await writable.write(file);
+                            await writable.close();
+                        }
+                        updateAssetBrowser();
+                    };
+                    input.click();
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error("Error al importar asset:", err);
+                }
+            }
         });
 
         dom.menuOpenScene.addEventListener('click', (e) => {
