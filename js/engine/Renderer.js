@@ -875,11 +875,13 @@ export class Renderer {
             if (videoPlayer) {
                 this.drawVideoPlayer(videoPlayer, x, y, width, height);
             } else if (uiImage) {
-                this.ctx.fillStyle = uiImage.color;
-                this.ctx.fillRect(x, y, width, height);
                 if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {
                      this.ctx.drawImage(uiImage.sprite, x, y, width, height);
-                } else if (uiImage.isError) {
+                } else {
+                    this.ctx.fillStyle = uiImage.color;
+                    this.ctx.fillRect(x, y, width, height);
+                }
+                if (uiImage.isError) {
                     this.ctx.strokeStyle = 'red';
                     this.ctx.lineWidth = 2;
                     this.ctx.strokeRect(x, y, width, height);
