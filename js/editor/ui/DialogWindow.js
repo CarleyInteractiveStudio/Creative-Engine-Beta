@@ -291,7 +291,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                         <input type="radio" name="export-target" value="zip" checked style="margin-right:10px;">
                         <label>${L.get('DOWNLOAD_ZIP', 'Descargar paquete comprimido (.zip)')}</label>
                     </div>
-                    <div class="dialog-row" style="margin-top:10px;">
+                    <div class="dialog-row" style="margin-top:10px; ${window.showDirectoryPicker ? '' : 'display:none;'}">
                         <input type="radio" name="export-target" value="folder" style="margin-right:10px;">
                         <label>${L.get('SAVE_FOLDER', 'Guardar directamente en una carpeta local')}</label>
                     </div>

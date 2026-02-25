@@ -315,7 +315,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 3. IndexedDB Logic ---
     const dbName = 'CreativeEngineDB'; let db; function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
-    function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
+    async function getDirHandle() {
+        if (!db) return null;
+        const storedHandle = await new Promise((resolve) => {
+            const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle');
+            request.onsuccess = () => resolve(request.result ? request.result.handle : null);
+            request.onerror = () => resolve(null);
+        });
+
+        if (storedHandle) return storedHandle;
+
+        // Fallback to Sandbox (OPFS) if no handle is stored and we are on mobile/no picker support
+        if (!window.showDirectoryPicker && navigator.storage && navigator.storage.getDirectory) {
+            try {
+                return await navigator.storage.getDirectory();
+            } catch (e) {
+                console.error("Error accessing OPFS:", e);
+            }
+        }
+        return null;
+    }
 
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
@@ -3244,6 +3263,16 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
             window.projectsDirHandle = projectsDirHandle;
+
+            // Handle permissions for picked directory handles (OPFS doesn't need this)
+            if (projectsDirHandle && projectsDirHandle.queryPermission) {
+                if (await projectsDirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
+                    if (await projectsDirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+                         console.error("Permission not granted for projects directory.");
+                         // We don't block here because AssetUtils might handle it or it might be in limited mode
+                    }
+                }
+            }
             if (!projectsDirHandle) {
                 console.warn("No directory handle found. Entering test/limited mode.");
                 // This allows the editor to initialize for Playwright tests

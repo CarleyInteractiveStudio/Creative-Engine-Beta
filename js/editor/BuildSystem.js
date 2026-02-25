@@ -119,6 +119,9 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         let zip = null;
 
         if (options.exportTarget === 'folder') {
+            if (!window.showDirectoryPicker) {
+                throw new Error("Su navegador no soporta la exportación a carpetas locales. Por favor, use la opción ZIP.");
+            }
             outputHandle = await window.showDirectoryPicker();
         } else {
             zip = new JSZip();

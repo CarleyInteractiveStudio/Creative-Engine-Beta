@@ -857,6 +857,11 @@ BUILD_EXITO_ZIP: ¡Tu juego está listo! El archivo ZIP se ha generado.
 BUILD_CONFIG: Configuración de Build
 HECHO_CON_ENGINE: Hecho con Creative Engine
 DURACION: Duración
+HINT_SELECCIONAR_CARPETA: Elige una carpeta para tus proyectos al crear el primero.
+PERMISOS_REQUERIDOS: Permisos Requeridos
+ERROR_PERMISOS_CARPETA: No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar.
+ERROR_COMPATIBILIDAD: Error de Compatibilidad
+ERROR_FS_NO_SOPORTADO: Tu navegador no es compatible con ninguna API de Acceso al Sistema de Archivos (Local o Sandbox).
 NECESSARY_FILES: Solo archivos necesarios
 ALL_FILES: Todos los archivos del proyecto
 RUN_AFTER_BUILD: Ejecutar tras construir
@@ -1762,6 +1767,11 @@ BUILD_EXITO_ZIP: Your game is ready! The ZIP file has been generated.
 BUILD_CONFIG: Build Configuration
 HECHO_CON_ENGINE: Made with Creative Engine
 DURACION: Duration
+HINT_SELECCIONAR_CARPETA: Choose a folder for your projects when creating the first one.
+PERMISOS_REQUERIDOS: Permissions Required
+ERROR_PERMISOS_CARPETA: Could not obtain permission to read the projects folder. Please grant permission to continue.
+ERROR_COMPATIBILIDAD: Compatibility Error
+ERROR_FS_NO_SOPORTADO: Your browser does not support any File System Access API (Local or Sandbox).
 NECESSARY_FILES: Necessary files only
 ALL_FILES: All project files
 RUN_AFTER_BUILD: Run after build
