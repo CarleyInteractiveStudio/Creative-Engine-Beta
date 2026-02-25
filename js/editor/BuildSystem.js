@@ -178,16 +178,6 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         zip.file('project.json', JSON.stringify(buildConfig, null, 2));
 
-        // 8. Add simplified README
-        zip.file('README.md', `# Creative Engine Build: ${currentProjectConfig.appName || projectName}
-
-Para jugar este juego:
-1. Sube estos archivos a un servidor web (GitHub Pages, itch.io, etc.).
-2. Si lo pruebas localmente, usa un servidor local (ej: Live Server de VS Code).
-
-Nota: Abrir el archivo 'index.html' directamente en el navegador puede no funcionar debido a restricciones de seguridad (CORS).
-`);
-
         // 9. Finalize and Download
         const blob = await zip.generateAsync({ type: 'blob' });
         downloadBlob(blob, `${projectName}_Build.zip`);
@@ -221,8 +211,8 @@ function generateIndexHtml(config) {
         #cors-warning {
             display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); color: white;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.95); color: white;
+            flex-direction: column; align-items: center; justify-content: center;
             text-align: center; padding: 20px; font-family: sans-serif; z-index: 9999;
         }
         #cors-warning h1 { color: #ff4444; }
@@ -278,6 +268,7 @@ async function addEngineFilesToZip(zip) {
         'js/engine/Leyes.js',
         'js/engine/Materia.js',
         'js/engine/MathUtils.js',
+        'js/engine/Messaging.js',
         'js/engine/Physics.js',
         'js/engine/Renderer.js',
         'js/engine/RuntimeAPIManager.js',
