@@ -178,7 +178,17 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         zip.file('project.json', JSON.stringify(buildConfig, null, 2));
 
-        // 7. Finalize and Download
+        // 8. Add simplified README
+        zip.file('README.md', `# Creative Engine Build: ${currentProjectConfig.appName || projectName}
+
+Para jugar este juego:
+1. Sube estos archivos a un servidor web (GitHub Pages, itch.io, etc.).
+2. Si lo pruebas localmente, usa un servidor local (ej: Live Server de VS Code).
+
+Nota: Abrir el archivo 'index.html' directamente en el navegador puede no funcionar debido a restricciones de seguridad (CORS).
+`);
+
+        // 9. Finalize and Download
         const blob = await zip.generateAsync({ type: 'blob' });
         downloadBlob(blob, `${projectName}_Build.zip`);
 
@@ -207,11 +217,39 @@ function generateIndexHtml(config) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${config.appName || 'Creative Engine Game'}</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        #cors-warning {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 20px; font-family: sans-serif; z-index: 9999;
+        }
+        #cors-warning h1 { color: #ff4444; }
+        #cors-warning p { max-width: 600px; line-height: 1.6; }
+    </style>
 </head>
 <body>
+    <div id="cors-warning">
+        <h1>⚠️ Acción Requerida</h1>
+        <p>Parece que estás intentando abrir el juego directamente desde tus archivos.</p>
+        <p>Por razones de seguridad, los navegadores modernos bloquean la carga de scripts del motor cuando se abren de esta manera.</p>
+        <p><strong>Para jugar:</strong> Sube estos archivos a un servidor (GitHub Pages, Itch.io) o usa un servidor local (ej. Live Server).</p>
+        <button onclick="document.getElementById('cors-warning').style.display='none'" style="padding: 10px 20px; cursor: pointer; border: none; background: #444; color: white; border-radius: 5px;">Intentar de todas formas</button>
+    </div>
+
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
     </div>
+
+    <script>
+        // Check for file protocol
+        if (window.location.protocol === 'file:') {
+            document.getElementById('cors-warning').style.display = 'flex';
+        } else {
+            document.getElementById('cors-warning').style.display = 'none';
+        }
+    </script>
 
     <!-- Load pre-transpiled scripts -->
     <script src="js/scripts.js"></script>
