@@ -502,6 +502,26 @@ EULA_LAW_TEXT: Este acuerdo se regirá por las leyes de República Dominicana. C
 EULA_ACCEPT: Al descargar, instalar o usar el software, el Licenciatario acepta íntegramente los términos de este acuerdo.
 
 # Additional Editor Keys
+BUILD_GENERAL: General
+BUILD_SCENES: Escenas
+BUILD_SPLASH: Splash
+BUILD_EXPORT: Exportar
+GAME_NAME: Nombre del Juego:
+ICON_FAVICON: Icono (Favicon):
+BUILD_METHOD: Método de Build:
+SELECT_SCENES_HINT: Selecciona las escenas a incluir y marca la principal:
+PRINCIPAL: Principal:
+ENABLE_SPLASH: Activar Pantallas de Splash
+SHOW_ENGINE_LOGO: Mostrar Logo del Motor (10s)
+CUSTOM_LOGOS: Logos Personalizados:
+CONSTRUIR_JUEGO: Construir Juego
+SELECCIONAR_ICONO: Seleccionar Icono
+AÑADIR_SPLASH: Añadir Logo de Splash
+BUILD_DESTINATION: Destino del Build:
+DOWNLOAD_ZIP: Descargar paquete comprimido (.zip)
+SAVE_FOLDER: Guardar directamente en una carpeta local
+INCLUDE_ALL_ASSETS: Incluir todos los archivos (ignorar optimización)
+RUN_AFTER_BUILD_CHECK: Probar juego tras construir
 SELECCIONAR_SPRITE: Seleccionar Sprite
 AÑADIR_LEY_TITULO: Añadir Ley (Componente)
 ESCENA_PRINCIPAL: Escena Principal
@@ -1385,6 +1405,26 @@ EULA_LAW_TEXT: This agreement shall be governed by the laws of Dominican Republi
 EULA_ACCEPT: By downloading, installing or using the software, Licensee fully accepts the terms of this agreement.
 
 # Additional Editor Keys
+BUILD_GENERAL: General
+BUILD_SCENES: Scenes
+BUILD_SPLASH: Splash
+BUILD_EXPORT: Export
+GAME_NAME: Game Name:
+ICON_FAVICON: Icon (Favicon):
+BUILD_METHOD: Build Method:
+SELECT_SCENES_HINT: Select scenes to include and mark the main one:
+PRINCIPAL: Main:
+ENABLE_SPLASH: Enable Splash Screens
+SHOW_ENGINE_LOGO: Show Engine Logo (10s)
+CUSTOM_LOGOS: Custom Logos:
+CONSTRUIR_JUEGO: Build Game
+SELECCIONAR_ICONO: Select Icon
+AÑADIR_SPLASH: Add Splash Logo
+BUILD_DESTINATION: Build Destination:
+DOWNLOAD_ZIP: Download compressed package (.zip)
+SAVE_FOLDER: Save directly to a local folder
+INCLUDE_ALL_ASSETS: Include all files (ignore optimization)
+RUN_AFTER_BUILD_CHECK: Test game after build
 SELECCIONAR_SPRITE: Select Sprite
 AÑADIR_LEY_TITULO: Add Law (Component)
 ESCENA_PRINCIPAL: Main Scene

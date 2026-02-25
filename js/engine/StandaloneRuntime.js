@@ -225,8 +225,8 @@ export class StandaloneRuntime {
             if (this.config.splashScreens.showEngineLogo) {
                 splashes.unshift({
                     path: 'engine/Logo_C.png',
-                    duration: 3,
-                    sound: 'engine/splash.mp3'
+                    duration: 10,
+                    sound: 'engine/startup.wav'
                 });
             }
 
@@ -244,7 +244,14 @@ export class StandaloneRuntime {
                 // Sound
                 if (splash.sound) {
                     try {
-                        let soundUrl = splash.sound === 'engine/splash.mp3' ? 'musica/splash.mp3' : await getURLForAssetPath(splash.sound);
+                        let soundUrl;
+                        if (splash.sound === 'engine/startup.wav') {
+                            soundUrl = 'musica/startup.wav';
+                        } else if (splash.sound === 'engine/splash.mp3') {
+                            soundUrl = 'musica/splash.mp3';
+                        } else {
+                            soundUrl = await getURLForAssetPath(splash.sound);
+                        }
                         const audio = new Audio(soundUrl);
                         audio.play().catch(e => console.warn("Splash sound failed to play", e));
                     } catch(e) {}

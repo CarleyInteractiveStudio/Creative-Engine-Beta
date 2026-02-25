@@ -193,8 +193,15 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             try {
                 const logoResp = await fetch('image/Logo_C.png');
                 if (logoResp.ok) await writeFile('image/Logo_C.png', await logoResp.blob());
-                const soundResp = await fetch('musica/splash.mp3');
-                if (soundResp.ok) await writeFile('musica/splash.mp3', await soundResp.blob());
+
+                // Try startup.wav first (from user request), then fallback to splash.mp3
+                let soundResp = await fetch('startup.wav');
+                if (soundResp.ok) {
+                    await writeFile('musica/startup.wav', await soundResp.blob());
+                } else {
+                    soundResp = await fetch('musica/splash.mp3');
+                    if (soundResp.ok) await writeFile('musica/splash.mp3', await soundResp.blob());
+                }
             } catch(e) {}
         }
 
