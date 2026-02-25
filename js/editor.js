@@ -2548,7 +2548,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();
-            showBuildDialog((options) => {
+            showBuildDialog(currentProjectConfig, (options) => {
                 buildProject(projectsDirHandle, currentProjectConfig, options);
             });
         });

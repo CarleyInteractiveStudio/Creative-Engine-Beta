@@ -39,9 +39,26 @@ export class StandaloneRuntime {
             }
         }
 
+        // Apply App Name and Icon to document
+        if (this.config.appName) document.title = this.config.appName;
+        if (this.config.appIcon) {
+            let favicon = document.querySelector('link[rel="icon"]');
+            if (!favicon) {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                document.head.appendChild(favicon);
+            }
+            favicon.href = await getURLForAssetPath(this.config.appIcon);
+        }
+
         // 2. Initialize subsystems
         this.renderer = new Renderer(this.canvas, false, true);
         InputManager.initialize(this.canvas, this.canvas);
+
+        // --- Splash Screen Phase ---
+        if (this.config.splashScreens && this.config.splashScreens.show) {
+            await this.playSplashScreens();
+        }
 
         // 3. Load Main Scene
         try {
@@ -189,6 +206,68 @@ export class StandaloneRuntime {
         } catch (e) {
             console.error("Error loading standalone libraries:", e);
         }
+    }
+
+    async playSplashScreens() {
+        return new Promise(async (resolve) => {
+            const container = document.createElement('div');
+            container.id = 'splash-container';
+            container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:black; display:flex; align-items:center; justify-content:center; z-index:10000; transition: opacity 0.5s;';
+            document.body.appendChild(container);
+
+            const img = document.createElement('img');
+            img.style.cssText = 'max-width:80%; max-height:80%; opacity:0; transition: opacity 0.8s; object-fit: contain;';
+            container.appendChild(img);
+
+            const splashes = this.config.splashScreens.list || [];
+
+            // Default Engine Splash if requested
+            if (this.config.splashScreens.showEngineLogo) {
+                splashes.unshift({
+                    path: 'engine/Logo_C.png',
+                    duration: 3,
+                    sound: 'engine/splash.mp3'
+                });
+            }
+
+            for (const splash of splashes) {
+                // Determine URL
+                let url;
+                if (splash.path === 'engine/Logo_C.png') {
+                    url = 'image/Logo_C.png'; // In standalone build we should ensure this exists
+                } else {
+                    url = await getURLForAssetPath(splash.path);
+                }
+
+                img.src = url;
+
+                // Sound
+                if (splash.sound) {
+                    try {
+                        let soundUrl = splash.sound === 'engine/splash.mp3' ? 'musica/splash.mp3' : await getURLForAssetPath(splash.sound);
+                        const audio = new Audio(soundUrl);
+                        audio.play().catch(e => console.warn("Splash sound failed to play", e));
+                    } catch(e) {}
+                }
+
+                // Fade In
+                await new Promise(r => setTimeout(r, 100));
+                img.style.opacity = '1';
+
+                // Wait duration
+                await new Promise(r => setTimeout(r, (splash.duration || 3) * 1000));
+
+                // Fade Out
+                img.style.opacity = '0';
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            container.style.opacity = '0';
+            setTimeout(() => {
+                container.remove();
+                resolve();
+            }, 500);
+        });
     }
 
     drawScene(cameraMateria) {

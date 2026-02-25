@@ -31,7 +31,13 @@ async function prepareBuildConfig(projectHandle, currentConfig) {
         }
     }
     await collectAllScenes(assetsHandle);
-    buildConfig.allScenes = allScenes;
+
+    // Filter allScenes if user specified includedScenes
+    if (currentConfig.includedScenes && currentConfig.includedScenes.length > 0) {
+        buildConfig.allScenes = allScenes.filter(s => currentConfig.includedScenes.includes(s));
+    } else {
+        buildConfig.allScenes = allScenes;
+    }
 
     // Normalize startScene path (should be relative to Assets/)
     if (buildConfig.startScene && buildConfig.startScene.startsWith('Assets/')) {
@@ -85,7 +91,7 @@ async function prepareBuildConfig(projectHandle, currentConfig) {
     return buildConfig;
 }
 
-export async function buildProject(projectsDirHandle, currentProjectConfig, options = { includeUnusedAssets: false, runAfterBuild: false }) {
+export async function buildProject(projectsDirHandle, currentProjectConfig, options = {}) {
     if (!projectsDirHandle) {
         showNotification(
             window.Localization?.get('ERROR_DE_BUILD') || 'Error de Build',
@@ -103,20 +109,49 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
     }
 
     try {
-        const zip = new JSZip();
         const projectName = new URLSearchParams(window.location.search).get('project');
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+
+        // Merge options with project config for final build config
+        const mergedConfig = { ...currentProjectConfig, ...options };
+
+        let outputHandle = null;
+        let zip = null;
+
+        if (options.exportTarget === 'folder') {
+            outputHandle = await window.showDirectoryPicker();
+        } else {
+            zip = new JSZip();
+        }
 
         showNotification(
             window.Localization?.get('BUILD_EN_PROGRESO') || 'Build en Progreso',
             window.Localization?.get('BUILD_GENERANDO_独立') || 'Generando paquete de juego independiente...'
         );
 
+        // helper to write file to zip or folder
+        const writeFile = async (path, content) => {
+            if (zip) {
+                zip.file(path, content);
+            } else {
+                const parts = path.split('/');
+                const fileName = parts.pop();
+                let current = outputHandle;
+                for (const part of parts) {
+                    current = await current.getDirectoryHandle(part, { create: true });
+                }
+                const fileHandle = await current.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+            }
+        };
+
         // 1. Export index.html
-        zip.file('index.html', generateIndexHtml(currentProjectConfig));
+        await writeFile('index.html', generateIndexHtml(mergedConfig));
 
         // 2. Export engine and runtime
-        await addEngineFilesToZip(zip);
+        await addEngineFilesToZip(zip || outputHandle);
 
         // 3. Collect used assets (if requested)
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
@@ -125,31 +160,45 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         if (!options.includeUnusedAssets) {
             usedAssets = await collectUsedAssets(projectHandle);
             // Add all scenes anyway as they are needed to load levels
-            async function addAllScenes(handle, path) {
-                for await (const entry of handle.values()) {
-                    const entryPath = `${path}/${entry.name}`;
-                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                        usedAssets.add(entryPath);
-                    } else if (entry.kind === 'directory') {
-                        await addAllScenes(entry, entryPath);
+            if (options.includedScenes && options.includedScenes.length > 0) {
+                options.includedScenes.forEach(s => usedAssets.add(s.startsWith('Assets/') ? s : `Assets/${s}`));
+            } else {
+                async function addAllScenes(handle, path) {
+                    for await (const entry of handle.values()) {
+                        const entryPath = `${path}/${entry.name}`;
+                        if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                            usedAssets.add(entryPath);
+                        } else if (entry.kind === 'directory') {
+                            await addAllScenes(entry, entryPath);
+                        }
                     }
                 }
+                await addAllScenes(assetsHandle, 'Assets');
             }
-            await addAllScenes(assetsHandle, 'Assets');
         }
 
         // 4. Export project assets
-        await addAssetsToZip(zip, assetsHandle, 'Assets', usedAssets);
+        await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets);
 
         // 5. Export project libraries
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
-            await addAssetsToZip(zip, libHandle, 'lib'); // Add all .celib files
+            await addAssetsToZip(zip || outputHandle, libHandle, 'lib'); // Add all .celib files
         } catch (e) {
             console.log("No lib folder found in project, skipping libraries.");
         }
 
-        // 6. Export transpiled scripts and custom components
+        // 6. Special Case: Engine Splash Logo and sound
+        if (mergedConfig.splashScreens?.showEngineLogo) {
+            try {
+                const logoResp = await fetch('image/Logo_C.png');
+                if (logoResp.ok) await writeFile('image/Logo_C.png', await logoResp.blob());
+                const soundResp = await fetch('musica/splash.mp3');
+                if (soundResp.ok) await writeFile('musica/splash.mp3', await soundResp.blob());
+            } catch(e) {}
+        }
+
+        // 7. Export transpiled scripts and custom components
         const scriptData = CES_Transpiler.getAllTranspiledCode();
         const metadata = CES_Transpiler.getAllMetadata();
 
@@ -160,32 +209,34 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             customComponents[name] = def;
         });
 
-        zip.file('js/scripts.js', `
+        await writeFile('js/scripts.js', `
             window.CE_Standalone_Scripts = ${JSON.stringify(scriptData)};
             window.CE_Script_Metadata = ${JSON.stringify(metadata)};
             window.CE_Custom_Components = ${JSON.stringify(customComponents)};
         `);
 
-        // 5. CSS
-        zip.file('style.css', `
+        // 8. CSS
+        await writeFile('style.css', `
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
             #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
             canvas { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #000; }
         `);
 
-        // 7. Final Project Configuration
-        const buildConfig = await prepareBuildConfig(projectHandle, currentProjectConfig);
+        // 9. Final Project Configuration
+        const buildConfig = await prepareBuildConfig(projectHandle, mergedConfig);
 
-        zip.file('project.json', JSON.stringify(buildConfig, null, 2));
+        await writeFile('project.json', JSON.stringify(buildConfig, null, 2));
 
-        // 9. Finalize and Download
-        const blob = await zip.generateAsync({ type: 'blob' });
-        downloadBlob(blob, `${projectName}_Build.zip`);
+        // 10. Finalize and Download or Notify
+        if (zip) {
+            const blob = await zip.generateAsync({ type: 'blob' });
+            downloadBlob(blob, `${projectName}_Build.zip`);
+            showBuildSuccessDialog(projectName, blob);
+        } else {
+            showNotification("Build Completado", `Tu juego ha sido exportado exitosamente a la carpeta seleccionada.`);
+        }
 
-        // Show success dialog with sharing info
-        showBuildSuccessDialog(projectName, blob);
-
-        // 8. Run after build if requested
+        // 11. Run after build if requested
         if (options.runAfterBuild) {
             runStandalonePreview(buildConfig);
         }
@@ -206,6 +257,7 @@ function generateIndexHtml(config) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${config.appName || 'Creative Engine Game'}</title>
+    <link rel="icon" type="image/png" href="${config.appIcon || 'image/Logo_C.png'}">
     <link rel="stylesheet" href="style.css">
     <style>
         #cors-warning {
@@ -256,7 +308,7 @@ function generateIndexHtml(config) {
 </html>`;
 }
 
-async function addEngineFilesToZip(zip) {
+async function addEngineFilesToZip(zipOrHandle) {
     const engineFiles = [
         'js/engine/AssetUtils.js',
         'js/engine/CEEngine.js',
@@ -284,7 +336,21 @@ async function addEngineFilesToZip(zip) {
         try {
             const response = await fetch(file);
             if (response.ok) {
-                zip.file(file, await response.text());
+                const content = await response.text();
+                if (zipOrHandle.file) {
+                    zipOrHandle.file(file, content);
+                } else {
+                    const parts = file.split('/');
+                    const fileName = parts.pop();
+                    let current = zipOrHandle;
+                    for (const part of parts) {
+                        current = await current.getDirectoryHandle(part, { create: true });
+                    }
+                    const fileHandle = await current.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                }
             }
         } catch (e) {
             console.error(`Failed to add engine file: ${file}`, e);
@@ -397,17 +463,30 @@ export async function runStandalonePreview(config) {
     });
 }
 
-async function addAssetsToZip(zip, dirHandle, path, usedAssets = null) {
+async function addAssetsToZip(zipOrHandle, dirHandle, path, usedAssets = null) {
     for await (const entry of dirHandle.values()) {
         const entryPath = `${path}/${entry.name}`;
         if (entry.kind === 'file') {
             if (!usedAssets || usedAssets.has(entryPath)) {
                 const file = await entry.getFile();
-                zip.file(entryPath, file);
+                if (zipOrHandle.file) {
+                    zipOrHandle.file(entryPath, file);
+                } else {
+                    const parts = entryPath.split('/');
+                    const fileName = parts.pop();
+                    let current = zipOrHandle;
+                    for (const part of parts) {
+                        current = await current.getDirectoryHandle(part, { create: true });
+                    }
+                    const fileHandle = await current.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+                }
                 console.log(`Added asset: ${entryPath}`);
             }
         } else if (entry.kind === 'directory') {
-            await addAssetsToZip(zip, entry, entryPath, usedAssets);
+            await addAssetsToZip(zipOrHandle, entry, entryPath, usedAssets);
         }
     }
 }
