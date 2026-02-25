@@ -97,6 +97,35 @@ class DialogWindow {
  * @param {string} title The title of the dialog.
  * @param {string} message The message to display.
  */
+/**
+ * Displays a dialog with a progress bar.
+ * @param {string} title The title of the dialog.
+ * @param {string} message The message to display above the progress bar.
+ * @returns {object} An object with update(percent, message) and close() methods.
+ */
+export function showProgressDialog(title, message) {
+    const content = `
+        <p id="progress-message" style="margin-bottom:15px;">${message}</p>
+        <div style="width:100%; height:12px; background:#222; border-radius:6px; overflow:hidden; border:1px solid #444;">
+            <div id="progress-bar-fill" style="width:0%; height:100%; background:var(--accent-color, #3498db); transition: width 0.2s ease-out;"></div>
+        </div>
+    `;
+    const dialog = new DialogWindow(title, content, []);
+    dialog.show();
+
+    return {
+        update: (percent, newMessage) => {
+            const fill = dialog.dialogElement.querySelector('#progress-bar-fill');
+            if (fill) fill.style.width = `${percent}%`;
+            if (newMessage) {
+                const msg = dialog.dialogElement.querySelector('#progress-message');
+                if (msg) msg.textContent = newMessage;
+            }
+        },
+        close: () => dialog.hide()
+    };
+}
+
 export function showNotification(title, message) {
     const L = window.Localization;
     const dialog = new DialogWindow(title, message, [{ text: L.get('ACEPTAR', 'Aceptar') }]);
@@ -235,7 +264,11 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                 <div id="splash-settings" style="${projectConfig.splashScreens?.show !== false ? '' : 'display:none;'}">
                     <div class="dialog-row" style="display:flex; align-items:center; margin-bottom:10px;">
                         <input type="checkbox" id="show-engine-logo" ${projectConfig.splashScreens?.showEngineLogo !== false ? 'checked' : ''} style="margin-right:10px;">
-                        <label>${L.get('SHOW_ENGINE_LOGO', 'Mostrar Logo del Motor (3s)')}</label>
+                        <label>${L.get('SHOW_ENGINE_LOGO', 'Mostrar Logo del Motor')}</label>
+                        <div style="flex:1; text-align:right;">
+                            <label style="font-size:0.8em; margin-right:5px;">${L.get('DURACION', 'Duración')}:</label>
+                            <input type="number" id="engine-logo-duration" value="${projectConfig.splashScreens?.engineLogoDuration || 10}" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
+                        </div>
                     </div>
                     <p style="font-size:0.85em; color:#aaa; margin-bottom:5px;">${L.get('CUSTOM_LOGOS', 'Logos Personalizados:')}</p>
                     <div id="custom-splash-list" style="background:#222; border:1px solid #444; border-radius:4px; min-height:50px; margin-bottom:10px;">
@@ -292,6 +325,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     splashScreens: {
                         show: dialog.dialogElement.querySelector('#show-splash').checked,
                         showEngineLogo: dialog.dialogElement.querySelector('#show-engine-logo').checked,
+                        engineLogoDuration: parseFloat(dialog.dialogElement.querySelector('#engine-logo-duration').value) || 3,
                         list: Array.from(dialog.dialogElement.querySelectorAll('.splash-item')).map(item => ({
                             path: item.querySelector('.splash-path').value,
                             duration: parseFloat(item.querySelector('.splash-duration').value) || 3
@@ -465,5 +499,6 @@ window.Dialogs = {
     showPrompt,
     showSelection,
     showBuildDialog,
-    showBuildSuccessDialog
+    showBuildSuccessDialog,
+    showProgressDialog
 };

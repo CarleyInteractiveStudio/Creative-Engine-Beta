@@ -1,5 +1,5 @@
 // js/editor/BuildSystem.js
-import { showNotification, showBuildSuccessDialog } from './ui/DialogWindow.js';
+import { showNotification, showBuildSuccessDialog, showProgressDialog } from './ui/DialogWindow.js';
 import * as CES_Transpiler from './CES_Transpiler.js';
 
 /**
@@ -124,10 +124,17 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
             zip = new JSZip();
         }
 
-        showNotification(
+        const progress = showProgressDialog(
             window.Localization?.get('BUILD_EN_PROGRESO') || 'Build en Progreso',
             window.Localization?.get('BUILD_GENERANDO_独立') || 'Generando paquete de juego independiente...'
         );
+        let currentStep = 0;
+        const totalSteps = 10;
+        const updateProgress = (msg) => {
+            currentStep++;
+            const percent = Math.min(95, (currentStep / totalSteps) * 100);
+            progress.update(percent, msg);
+        };
 
         // helper to write file to zip or folder
         const writeFile = async (path, content) => {
@@ -148,12 +155,15 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         };
 
         // 1. Export index.html
+        updateProgress("Generando index.html...");
         await writeFile('index.html', generateIndexHtml(mergedConfig));
 
         // 2. Export engine and runtime
+        updateProgress("Copiando archivos del motor...");
         await addEngineFilesToZip(zip || outputHandle);
 
         // 3. Collect used assets (if requested)
+        updateProgress("Analizando dependencias de assets...");
         const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
         let usedAssets = null;
 
@@ -178,9 +188,11 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         }
 
         // 4. Export project assets
+        updateProgress("Exportando assets del proyecto...");
         await addAssetsToZip(zip || outputHandle, assetsHandle, 'Assets', usedAssets);
 
         // 5. Export project libraries
+        updateProgress("Exportando librerías...");
         try {
             const libHandle = await projectHandle.getDirectoryHandle('lib');
             await addAssetsToZip(zip || outputHandle, libHandle, 'lib'); // Add all .celib files
@@ -189,6 +201,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         }
 
         // 6. Special Case: Engine Splash Logo and sound
+        updateProgress("Configurando pantallas de splash...");
         if (mergedConfig.splashScreens?.showEngineLogo) {
             try {
                 const logoResp = await fetch('image/Logo_C.png');
@@ -206,6 +219,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         }
 
         // 7. Export transpiled scripts and custom components
+        updateProgress("Compilando scripts...");
         const scriptData = CES_Transpiler.getAllTranspiledCode();
         const metadata = CES_Transpiler.getAllMetadata();
 
@@ -223,6 +237,7 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         `);
 
         // 8. CSS
+        updateProgress("Generando estilos...");
         await writeFile('style.css', `
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
             #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -230,16 +245,22 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         `);
 
         // 9. Final Project Configuration
+        updateProgress("Finalizando configuración...");
         const buildConfig = await prepareBuildConfig(projectHandle, mergedConfig);
 
         await writeFile('project.json', JSON.stringify(buildConfig, null, 2));
 
         // 10. Finalize and Download or Notify
+        updateProgress("Empaquetando...");
         if (zip) {
-            const blob = await zip.generateAsync({ type: 'blob' });
+            const blob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+                progress.update(95 + (metadata.percent * 0.05), `Comprimiendo: ${Math.round(metadata.percent)}%`);
+            });
+            progress.close();
             downloadBlob(blob, `${projectName}_Build.zip`);
             showBuildSuccessDialog(projectName, blob);
         } else {
+            progress.close();
             showNotification("Build Completado", `Tu juego ha sido exportado exitosamente a la carpeta seleccionada.`);
         }
 

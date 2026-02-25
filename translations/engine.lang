@@ -855,6 +855,8 @@ BUILD_GENERANDO_独立: Generando paquete de juego independiente...
 BUILD_COMPLETADO: Build Completado
 BUILD_EXITO_ZIP: ¡Tu juego está listo! El archivo ZIP se ha generado.
 BUILD_CONFIG: Configuración de Build
+HECHO_CON_ENGINE: Hecho con Creative Engine
+DURACION: Duración
 NECESSARY_FILES: Solo archivos necesarios
 ALL_FILES: Todos los archivos del proyecto
 RUN_AFTER_BUILD: Ejecutar tras construir
@@ -1758,6 +1760,8 @@ BUILD_GENERANDO_独立: Generating standalone game package...
 BUILD_COMPLETADO: Build Completed
 BUILD_EXITO_ZIP: Your game is ready! The ZIP file has been generated.
 BUILD_CONFIG: Build Configuration
+HECHO_CON_ENGINE: Made with Creative Engine
+DURACION: Duration
 NECESSARY_FILES: Necessary files only
 ALL_FILES: All project files
 RUN_AFTER_BUILD: Run after build
