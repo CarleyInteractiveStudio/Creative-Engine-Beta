@@ -1000,3 +1000,7 @@ async function handleExternalFileDrop(e) {
 export function getCurrentDirectoryHandle() {
     return currentDirectoryHandle.handle;
 }
+
+export function getCurrentDirectoryPath() {
+    return currentDirectoryHandle.path;
+}

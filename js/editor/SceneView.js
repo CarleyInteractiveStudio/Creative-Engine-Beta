@@ -163,6 +163,9 @@ function drawUIGizmos(renderer, materia) {
 import * as VerificationSystem from './ui/VerificationSystem.js';
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
 import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
+import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
+import * as MateriaFactory from './MateriaFactory.js';
+import { Materia } from '../engine/Materia.js';
 
 // Dependencies from editor.js
 let dom;
@@ -983,9 +986,27 @@ export function initialize(dependencies) {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
+        const rect = dom.sceneCanvas.getBoundingClientRect();
+        const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+
         // Handle external files from OS
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const currentDirHandle = getCurrentDirectoryHandle();
+            let currentDirHandle = getCurrentDirectoryHandle();
+            let currentPath = getCurrentDirectoryPath() || 'Assets';
+
+            // Fallback to root Assets if no directory is selected
+            if (!currentDirHandle) {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project');
+                    const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                    currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+                    currentPath = 'Assets';
+                } catch (err) {
+                    console.error("[SceneView] Error al obtener el directorio raíz de Assets:", err);
+                }
+            }
+
             if (currentDirHandle) {
                 for (const file of e.dataTransfer.files) {
                     try {
@@ -993,6 +1014,25 @@ export function initialize(dependencies) {
                         const writable = await targetFileHandle.createWritable();
                         await writable.write(file);
                         await writable.close();
+
+                        // Instantiate in scene if it's a video or image
+                        const lowerName = file.name.toLowerCase();
+                        const assetPath = currentPath + '/' + file.name;
+
+                        if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
+                            const newMateria = MateriaFactory.createVideoObject();
+                            newMateria.name = file.name;
+                            const transform = newMateria.getComponent(Components.Transform);
+                            if (transform) {
+                                transform.x = worldPos.x;
+                                transform.y = worldPos.y;
+                            }
+
+                            const videoPlayer = newMateria.getComponent(Components.VideoPlayer);
+                            if (videoPlayer) {
+                                await videoPlayer.setSourcePath(assetPath);
+                            }
+                        }
                     } catch (err) {
                         console.error("Error al importar archivo desde OS:", err);
                     }
@@ -1004,11 +1044,9 @@ export function initialize(dependencies) {
         }
 
         try {
-            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-
-            const rect = dom.sceneCanvas.getBoundingClientRect();
-            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-            const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+            const dataText = e.dataTransfer.getData('text/plain');
+            if (!dataText) return;
+            const data = JSON.parse(dataText);
 
             let newMateria = null;
 

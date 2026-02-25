@@ -196,19 +196,22 @@ export function handleContextMenuAction(action) {
                         parentCanvasMateria = parentForNewVideo;
                     } else if (parentForNewVideo.getComponent(Components.UITransform)) {
                         parentCanvasMateria = parentForNewVideo.findAncestorWithComponent(Components.Canvas);
+                    } else {
+                        parentForNewVideo = null;
                     }
                 }
 
-                // If created under a Canvas/UI element, use UITransform
-                if (parentCanvasMateria) {
-                    newMateria = createBaseMateria(generateUniqueName(L.get('VIDEO', 'Video')), parentForNewVideo);
-                    newMateria.removeComponent(Components.Transform);
-                    newMateria.addComponent(new Components.UITransform(newMateria));
-                    newMateria.addComponent(new Components.VideoPlayer(newMateria));
-                } else {
-                    // Otherwise create as a world-space object
-                    newMateria = createVideoObject(selectedMateria);
+                // If we don't have a canvas, create a new one at the root.
+                if (!parentCanvasMateria) {
+                    parentCanvasMateria = createBaseMateria(generateUniqueName(L.get('CANVAS', 'Canvas')), null);
+                    parentCanvasMateria.addComponent(new Components.Canvas(parentCanvasMateria));
+                    parentForNewVideo = parentCanvasMateria;
                 }
+
+                newMateria = createBaseMateria(generateUniqueName(L.get('VIDEO', 'Video')), parentForNewVideo);
+                newMateria.removeComponent(Components.Transform); // UI elements use UITransform
+                newMateria.addComponent(new Components.UITransform(newMateria));
+                newMateria.addComponent(new Components.VideoPlayer(newMateria));
             }
             break;
         case 'create-water':
