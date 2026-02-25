@@ -2089,6 +2089,22 @@ export class VideoPlayer extends Leyes {
         return this._video && !this._video.paused && !this._video.ended;
     }
 
+    get videoWidth() {
+        return this._video ? this._video.videoWidth : 0;
+    }
+
+    get videoHeight() {
+        return this._video ? this._video.videoHeight : 0;
+    }
+
+    syncSizeToUITransform() {
+        const uiTransform = this.materia.getComponent(Components.UITransform);
+        if (uiTransform && this.videoWidth > 0 && this.videoHeight > 0) {
+            uiTransform.size.width = this.videoWidth;
+            uiTransform.size.height = this.videoHeight;
+        }
+    }
+
     async load() {
         if (!this.source || this.isLoading) return;
 

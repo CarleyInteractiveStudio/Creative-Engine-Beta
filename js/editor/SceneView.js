@@ -165,7 +165,6 @@ import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../en
 import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
 import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
 import * as MateriaFactory from './MateriaFactory.js';
-import { Materia } from '../engine/Materia.js';
 
 // Dependencies from editor.js
 let dom;
@@ -1020,17 +1019,25 @@ export function initialize(dependencies) {
                         const assetPath = currentPath + '/' + file.name;
 
                         if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
-                            const newMateria = MateriaFactory.createVideoObject();
-                            newMateria.name = file.name;
-                            const transform = newMateria.getComponent(Components.Transform);
-                            if (transform) {
-                                transform.x = worldPos.x;
-                                transform.y = worldPos.y;
+                            // Find existing Canvas or create one
+                            let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                            if (!parentCanvas) {
+                                parentCanvas = MateriaFactory.createCanvasObject();
                             }
 
-                            const videoPlayer = newMateria.getComponent(Components.VideoPlayer);
-                            if (videoPlayer) {
-                                await videoPlayer.setSourcePath(assetPath);
+                            const newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(file.name), parentCanvas);
+                            newMateria.removeComponent(Components.Transform);
+                            const uiTransform = new Components.UITransform(newMateria);
+                            uiTransform.position = { x: worldPos.x, y: worldPos.y }; // Placeholder position
+                            newMateria.addComponent(uiTransform);
+
+                            const videoPlayer = new Components.VideoPlayer(newMateria);
+                            await videoPlayer.setSourcePath(assetPath);
+                            newMateria.addComponent(videoPlayer);
+
+                            // Initialize size if possible
+                            if (videoPlayer.videoWidth > 0) {
+                                videoPlayer.syncSizeToUITransform();
                             }
                         }
                     } catch (err) {
@@ -1068,17 +1075,26 @@ export function initialize(dependencies) {
             } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                 newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
             } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
-                newMateria = new Materia(data.name);
-                newMateria.addComponent(new Components.Transform(newMateria));
-                const transform = newMateria.getComponent(Components.Transform);
-                transform.x = worldPos.x;
-                transform.y = worldPos.y;
+                // Find existing Canvas or create one
+                let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                if (!parentCanvas) {
+                    parentCanvas = MateriaFactory.createCanvasObject();
+                }
+
+                newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(data.name), parentCanvas);
+                newMateria.removeComponent(Components.Transform);
+                const uiTransform = new Components.UITransform(newMateria);
+                uiTransform.position = { x: worldPos.x, y: worldPos.y };
+                newMateria.addComponent(uiTransform);
 
                 const videoPlayer = new Components.VideoPlayer(newMateria);
                 await videoPlayer.setSourcePath(data.path);
                 newMateria.addComponent(videoPlayer);
 
-                SceneManager.currentScene.addMateria(newMateria);
+                // Initialize size if possible
+                if (videoPlayer.videoWidth > 0) {
+                    videoPlayer.syncSizeToUITransform();
+                }
             }
 
             if (newMateria) {

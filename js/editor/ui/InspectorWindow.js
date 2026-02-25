@@ -643,6 +643,17 @@ function handleInspectorClick(e) {
         }
     }
 
+    if (e.target.closest('[data-action="sync-video-size"]')) {
+        const selectedMateria = getSelectedMateria();
+        const leyIndex = parseInt(e.target.closest('[data-action="sync-video-size"]').dataset.leyIndex, 10);
+        const videoPlayer = selectedMateria.leyes[leyIndex];
+        if (videoPlayer instanceof Components.VideoPlayer) {
+            videoPlayer.syncSizeToUITransform();
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
     if (e.target.closest('[data-action="auto-pivot-ui"]')) {
         const selectedMateria = getSelectedMateria();
         const uiTrans = selectedMateria.getComponent(Components.UITransform);
@@ -1657,6 +1668,7 @@ async function updateInspectorForMateria(selectedMateria) {
                             <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''}>Fill</option>
                         </select>
                     </div>
+                    <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="Ajusta el tamaño del objeto UI para que coincida con la resolución nativa del video.">Ajustar Tamaño al Video</button>
                 </div>
             `;
         } else if (ley instanceof Components.Health) {
@@ -4412,14 +4424,14 @@ async function renderVideoInspector(assetName, assetPath) {
     container.innerHTML = `
         <div class="inspector-section bubble-style">
             <legend>Video Preview</legend>
-            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; overflow: hidden;">
-                <video id="inspector-video-player" style="width: 100%; max-height: 200px; border-radius: 4px; background: #000; outline: none; aspect-ratio: 16/9; object-fit: contain;">
+            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; overflow: hidden; width: calc(100% - 20px); box-sizing: border-box;">
+                <video id="inspector-video-player" style="max-width: 100%; max-height: 250px; border-radius: 4px; outline: none; object-fit: contain; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
                     <source src="${url}" type="video/${assetName.split('.').pop()}">
                     Tu navegador no soporta el elemento de video.
                 </video>
 
                 <!-- Custom Controls -->
-                <div class="video-custom-controls" style="width: 100%; display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 4px;">
+                <div class="video-custom-controls" style="width: 100%; display: flex; align-items: center; gap: 5px; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px 8px; border-radius: 4px; box-sizing: border-box;">
                     <button id="v-btn-rewind" title="Retroceder 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-back')}</button>
                     <button id="v-btn-play-pause" title="Reproducir/Pausa" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('play')}</button>
                     <button id="v-btn-forward" title="Adelantar 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-forward')}</button>
@@ -4444,16 +4456,16 @@ async function renderVideoInspector(assetName, assetPath) {
             <div class="inspector-row">
                 <label>Calidad</label>
                 <select id="video-quality-select" class="prop-input" style="flex-grow: 1;">
-                    <option value="original">Original</option>
+                    <option value="original">Original (Sin cambios)</option>
                     <option value="high">Alta (1080p)</option>
                     <option value="medium">Media (720p)</option>
                     <option value="low">Baja (480p)</option>
                 </select>
             </div>
             <p class="field-description" style="font-size: 0.8em; opacity: 0.6; margin-top: 8px;">
-                * Las opciones de optimización se aplican al compilar el proyecto para reducir el tamaño final.
+                * Las opciones de calidad se aplicarán al exportar el juego para optimizar el rendimiento y espacio.
             </p>
-            <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 30px;">Aplicar Cambios</button>
+            <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 32px; font-weight: bold; border-radius: 4px;">Aplicar Configuración</button>
         </div>
         <div class="inspector-section">
             <label>Acciones</label>
