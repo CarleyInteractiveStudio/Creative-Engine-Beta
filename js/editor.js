@@ -2817,12 +2817,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Panel Resizing Logic ---
         function initResizer(resizer, direction) {
-            resizer.addEventListener('mousedown', (e) => {
+            resizer.style.touchAction = 'none';
+            resizer.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
+                resizer.setPointerCapture(e.pointerId);
                 document.body.style.cursor = direction === 'col' ? 'col-resize' : 'row-resize';
                 document.body.style.userSelect = 'none';
 
-                const onMouseMove = (moveEvent) => {
+                const onPointerMove = (moveEvent) => {
                     const mainContent = dom.editorMainContent;
                     const rect = mainContent.getBoundingClientRect();
 
@@ -2869,15 +2871,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (gameRenderer) gameRenderer.resize();
                 };
 
-                const onMouseUp = () => {
+                const onPointerUp = (upEvent) => {
+                    resizer.releasePointerCapture(upEvent.pointerId);
                     document.body.style.cursor = '';
                     document.body.style.userSelect = '';
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
+                    resizer.removeEventListener('pointermove', onPointerMove);
+                    resizer.removeEventListener('pointerup', onPointerUp);
+                    resizer.removeEventListener('pointercancel', onPointerUp);
                 };
 
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
+                resizer.addEventListener('pointermove', onPointerMove);
+                resizer.addEventListener('pointerup', onPointerUp);
+                resizer.addEventListener('pointercancel', onPointerUp);
             });
         }
 
@@ -3212,6 +3217,53 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        // --- Mobile Long-Press Support ---
+        let longPressTimeout;
+        let startPos = { x: 0, y: 0 };
+        const LONG_PRESS_DURATION = 700;
+        const TOLERANCE = 15;
+
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse') return;
+            startPos = { x: e.clientX, y: e.clientY };
+            clearTimeout(longPressTimeout);
+            longPressTimeout = setTimeout(() => {
+                const contextMenuEvent = new MouseEvent('contextmenu', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    button: 2,
+                    buttons: 0,
+                    clientX: e.clientX,
+                    clientY: e.clientY
+                });
+                e.target.dispatchEvent(contextMenuEvent);
+                longPressTimeout = null;
+            }, LONG_PRESS_DURATION);
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            if (!longPressTimeout) return;
+            const dist = Math.hypot(e.clientX - startPos.x, e.clientY - startPos.y);
+            if (dist > TOLERANCE) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+        });
+
+        document.addEventListener('pointerup', () => {
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+        });
+
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            document.body.classList.add('mobile-mode');
+        }
+
         // Initialize localization
         await Localization.init();
         Localization.updateUI();

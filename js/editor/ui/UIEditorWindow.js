@@ -120,46 +120,55 @@ function initUIEditorResizers() {
 
     let startX, startWidth;
 
-    function onMouseMoveLeft(e) {
+    function onPointerMoveLeft(e) {
         const newWidth = startWidth + e.clientX - startX;
         if (newWidth > 150 && newWidth < 500) { // Add some constraints
             hierarchyPanel.style.width = `${newWidth}px`;
         }
     }
 
-    function onMouseMoveRight(e) {
+    function onPointerMoveRight(e) {
         const newWidth = startWidth - (e.clientX - startX);
         if (newWidth > 150 && newWidth < 500) { // Add some constraints
             inspectorPanel.style.width = `${newWidth}px`;
         }
     }
 
-    const onMouseUp = () => {
-        window.removeEventListener('mousemove', onMouseMoveLeft);
-        window.removeEventListener('mousemove', onMouseMoveRight);
-        window.removeEventListener('mouseup', onMouseUp);
+    const onPointerUp = (e) => {
+        resizerLeft.releasePointerCapture(e.pointerId);
+        resizerRight.releasePointerCapture(e.pointerId);
+        resizerLeft.removeEventListener('pointermove', onPointerMoveLeft);
+        resizerRight.removeEventListener('pointermove', onPointerMoveRight);
+        window.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointercancel', onPointerUp);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
     };
 
-    resizerLeft.addEventListener('mousedown', (e) => {
+    resizerLeft.style.touchAction = 'none';
+    resizerLeft.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        resizerLeft.setPointerCapture(e.pointerId);
         startX = e.clientX;
         startWidth = hierarchyPanel.offsetWidth;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-        window.addEventListener('mousemove', onMouseMoveLeft);
-        window.addEventListener('mouseup', onMouseUp);
+        resizerLeft.addEventListener('pointermove', onPointerMoveLeft);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
     });
 
-     resizerRight.addEventListener('mousedown', (e) => {
+    resizerRight.style.touchAction = 'none';
+    resizerRight.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        resizerRight.setPointerCapture(e.pointerId);
         startX = e.clientX;
         startWidth = inspectorPanel.offsetWidth;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
-        window.addEventListener('mousemove', onMouseMoveRight);
-        window.addEventListener('mouseup', onMouseUp);
+        resizerRight.addEventListener('pointermove', onPointerMoveRight);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
     });
     uiResizersInitialized = true;
 }

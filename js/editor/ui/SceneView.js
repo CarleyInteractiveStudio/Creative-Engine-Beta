@@ -28,9 +28,10 @@ export function initialize(dependencies) {
     getSelectedMateria = dependencies.getSelectedMateria;
     updateInspectorCallback = dependencies.updateInspectorCallback;
 
-    dom.sceneCanvas.addEventListener('mousedown', handleMouseDown);
-    dom.sceneCanvas.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    dom.sceneCanvas.style.touchAction = 'none';
+    dom.sceneCanvas.addEventListener('pointerdown', handleMouseDown);
+    dom.sceneCanvas.addEventListener('pointermove', handleMouseMove);
+    window.addEventListener('pointerup', handleMouseUp);
     dom.sceneCanvas.addEventListener('wheel', handleMouseWheel, { passive: false });
     dom.sceneCanvas.addEventListener('mouseleave', handleMouseLeave); // Stop painting if mouse leaves
 }

@@ -18,7 +18,8 @@ function initializePanel(panel) {
 
     // Dragging logic
     if (header) {
-        header.addEventListener('mousedown', (e) => {
+        header.style.touchAction = 'none';
+        header.addEventListener('pointerdown', (e) => {
             // Ignore clicks on buttons inside the header
             if (e.target.closest('button, input, select, .resize-handle')) return;
 
@@ -26,26 +27,30 @@ function initializePanel(panel) {
             if (panel.classList.contains('maximized')) return;
 
             isDragging = true;
+            header.setPointerCapture(e.pointerId);
             offsetX = e.clientX - panel.offsetLeft;
             offsetY = e.clientY - panel.offsetTop;
             document.body.style.userSelect = 'none'; // Prevent text selection
 
-            const onMouseMove = (moveEvent) => {
+            const onPointerMove = (moveEvent) => {
                 if (isDragging) {
                     panel.style.left = `${moveEvent.clientX - offsetX}px`;
                     panel.style.top = `${moveEvent.clientY - offsetY}px`;
                 }
             };
 
-            const onMouseUp = () => {
+            const onPointerUp = (upEvent) => {
                 isDragging = false;
+                header.releasePointerCapture(upEvent.pointerId);
                 document.body.style.userSelect = '';
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
+                header.removeEventListener('pointermove', onPointerMove);
+                header.removeEventListener('pointerup', onPointerUp);
+                header.removeEventListener('pointercancel', onPointerUp);
             };
 
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
+            header.addEventListener('pointermove', onPointerMove);
+            header.addEventListener('pointerup', onPointerUp);
+            header.addEventListener('pointercancel', onPointerUp);
         });
     }
 
@@ -61,9 +66,11 @@ function initializePanel(panel) {
 
     // Resizing logic
     panel.querySelectorAll('.resize-handle').forEach(handle => {
-        handle.addEventListener('mousedown', (e) => {
+        handle.style.touchAction = 'none';
+        handle.addEventListener('pointerdown', (e) => {
             e.stopPropagation(); // Important to avoid triggering drag
             isResizing = true;
+            handle.setPointerCapture(e.pointerId);
             const direction = handle.dataset.direction;
             const startX = e.clientX;
             const startY = e.clientY;
@@ -74,7 +81,7 @@ function initializePanel(panel) {
 
             document.body.style.userSelect = 'none';
 
-            function onMouseMove(moveEvent) {
+            function onPointerMove(moveEvent) {
                 if (!isResizing) return;
 
                 const dx = moveEvent.clientX - startX;
@@ -99,15 +106,18 @@ function initializePanel(panel) {
                 panel.dispatchEvent(new CustomEvent('panel-resize'));
             }
 
-            function onMouseUp() {
+            function onPointerUp(upEvent) {
                 isResizing = false;
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
+                handle.releasePointerCapture(upEvent.pointerId);
+                handle.removeEventListener('pointermove', onPointerMove);
+                handle.removeEventListener('pointerup', onPointerUp);
+                handle.removeEventListener('pointercancel', onPointerUp);
                 document.body.style.userSelect = '';
             }
 
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
+            handle.addEventListener('pointermove', onPointerMove);
+            handle.addEventListener('pointerup', onPointerUp);
+            handle.addEventListener('pointercancel', onPointerUp);
         });
     });
 }

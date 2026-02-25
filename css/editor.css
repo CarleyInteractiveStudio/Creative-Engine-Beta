@@ -67,6 +67,16 @@ body.is-dragging-panel {
     justify-content: flex-end;
 }
 
+body.mobile-mode #menubar {
+    padding: 10px 5px;
+    gap: 5px;
+}
+
+body.mobile-mode .menu-btn {
+    padding: 8px 12px;
+    font-size: 1.1em;
+}
+
 .menu-btn {
     background: none;
     border: none;
@@ -514,6 +524,7 @@ body {
     cursor: col-resize;
     background: rgba(0, 0, 0, 0.1);
     transition: background 0.2s;
+    touch-action: none;
 }
 
 .resizer-h {
@@ -521,6 +532,7 @@ body {
     cursor: row-resize;
     background: rgba(0, 0, 0, 0.1);
     transition: background 0.2s;
+    touch-action: none;
 }
 
 .resizer-v:hover, .resizer-h:hover {
@@ -2673,6 +2685,16 @@ body {
 
 .hierarchy-item:hover {
     background-color: var(--bg-tertiary);
+}
+
+body.mobile-mode .hierarchy-item {
+    padding: 10px 5px;
+    font-size: 1.1em;
+}
+
+body.mobile-mode .grid-item {
+    width: 90px;
+    height: 100px;
 }
 
 .hierarchy-item.active {
