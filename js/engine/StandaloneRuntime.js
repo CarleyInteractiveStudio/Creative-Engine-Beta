@@ -116,7 +116,10 @@ export class StandaloneRuntime {
             console.error("Failed to load scene", e);
         }
 
-        // 4. Start Loop
+        // 4. Initial Resize
+        if (this.renderer) this.renderer.resize();
+
+        // 5. Start Loop
         this.lastTime = performance.now();
         requestAnimationFrame(this.loop.bind(this));
     }

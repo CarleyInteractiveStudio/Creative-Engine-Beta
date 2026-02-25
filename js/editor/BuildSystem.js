@@ -169,8 +169,8 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
         // 5. CSS
         zip.file('style.css', `
             body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
-            #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
-            canvas { max-width: 100%; max-height: 100%; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #000; }
+            #game-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+            canvas { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #000; }
         `);
 
         // 7. Final Project Configuration
@@ -309,7 +309,7 @@ async function collectUsedAssets(projectHandle) {
                     } catch (e) {
                         console.error(`Error parsing scene ${entry.name}:`, e);
                     }
-                } else if (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.js')) {
+                } else if (entry.name.endsWith('.ces') || entry.name.endsWith('.chc') || entry.name.endsWith('.js') || entry.name.endsWith('.ceanim')) {
                     const file = await entry.getFile();
                     const content = await file.text();
                     let match;
