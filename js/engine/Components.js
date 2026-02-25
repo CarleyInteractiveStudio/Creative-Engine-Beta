@@ -2076,7 +2076,6 @@ export class VideoPlayer extends Leyes {
         const audioSource = this.materia.getComponent(AudioSource);
         if (audioSource) {
             this._video.volume = audioSource.spatial ? audioSource._currentVolume : audioSource.volume;
-            this._video.muted = false;
         } else {
             this._video.volume = this.volume;
         }

@@ -4412,11 +4412,26 @@ async function renderVideoInspector(assetName, assetPath) {
     container.innerHTML = `
         <div class="inspector-section bubble-style">
             <legend>Video Preview</legend>
-            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center;">
-                <video id="inspector-video-player" controls controlsList="nodownload nofullscreen noremoteplayback" style="max-width: 100%; border-radius: 4px; background: #000; outline: none;">
+            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; overflow: hidden;">
+                <video id="inspector-video-player" style="width: 100%; max-height: 200px; border-radius: 4px; background: #000; outline: none; aspect-ratio: 16/9; object-fit: contain;">
                     <source src="${url}" type="video/${assetName.split('.').pop()}">
                     Tu navegador no soporta el elemento de video.
                 </video>
+
+                <!-- Custom Controls -->
+                <div class="video-custom-controls" style="width: 100%; display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 4px;">
+                    <button id="v-btn-rewind" title="Retroceder 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-back')}</button>
+                    <button id="v-btn-play-pause" title="Reproducir/Pausa" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('play')}</button>
+                    <button id="v-btn-forward" title="Adelantar 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-forward')}</button>
+
+                    <div style="flex-grow: 1;"></div>
+
+                    <div class="volume-control" style="display: flex; align-items: center; gap: 5px;">
+                        <span id="v-icon-volume" style="display:flex;">${getIconHTML('volume-2')}</span>
+                        <input type="range" id="v-input-volume" min="0" max="1" step="0.1" value="1" style="width: 50px; height: 4px; cursor: pointer;">
+                    </div>
+                </div>
+
                 <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; width: 100%;">
                     <p style="margin: 2px 0;"><b>Formato:</b> ${assetName.split('.').pop().toUpperCase()}</p>
                     <p id="video-res-display" style="margin: 2px 0;">Resolución: Cargando...</p>
@@ -4428,24 +4443,17 @@ async function renderVideoInspector(assetName, assetPath) {
             <legend>Optimization & Quality</legend>
             <div class="inspector-row">
                 <label>Calidad</label>
-                <select class="prop-input" style="flex-grow: 1;">
+                <select id="video-quality-select" class="prop-input" style="flex-grow: 1;">
                     <option value="original">Original</option>
                     <option value="high">Alta (1080p)</option>
                     <option value="medium">Media (720p)</option>
                     <option value="low">Baja (480p)</option>
                 </select>
             </div>
-            <div class="inspector-row">
-                <label>Formato</label>
-                <select class="prop-input" style="flex-grow: 1;">
-                    <option value="auto">Automático</option>
-                    <option value="mp4">H.264 (MP4)</option>
-                    <option value="webm">VP9 (WebM)</option>
-                </select>
-            </div>
             <p class="field-description" style="font-size: 0.8em; opacity: 0.6; margin-top: 8px;">
                 * Las opciones de optimización se aplican al compilar el proyecto para reducir el tamaño final.
             </p>
+            <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 30px;">Aplicar Cambios</button>
         </div>
         <div class="inspector-section">
             <label>Acciones</label>
@@ -4459,11 +4467,63 @@ async function renderVideoInspector(assetName, assetPath) {
     const resDisplay = document.getElementById('video-res-display');
     const durationDisplay = document.getElementById('video-duration-display');
 
+    // Controls logic
+    const btnPlayPause = document.getElementById('v-btn-play-pause');
+    const btnRewind = document.getElementById('v-btn-rewind');
+    const btnForward = document.getElementById('v-btn-forward');
+    const inputVolume = document.getElementById('v-input-volume');
+    const iconVolume = document.getElementById('v-icon-volume');
+
+    [btnPlayPause, btnRewind, btnForward].forEach(btn => {
+        btn.onmouseenter = () => btn.style.opacity = '1';
+        btn.onmouseleave = () => btn.style.opacity = '0.8';
+    });
+
+    btnPlayPause.onclick = () => {
+        if (player.paused) {
+            player.play();
+            btnPlayPause.innerHTML = getIconHTML('pause');
+        } else {
+            player.pause();
+            btnPlayPause.innerHTML = getIconHTML('play');
+        }
+    };
+
+    btnRewind.onclick = () => { player.currentTime = Math.max(0, player.currentTime - 5); };
+    btnForward.onclick = () => { player.currentTime = Math.min(player.duration, player.currentTime + 5); };
+
+    inputVolume.oninput = (e) => {
+        const vol = parseFloat(e.target.value);
+        player.volume = vol;
+        player.muted = vol === 0;
+        iconVolume.innerHTML = getIconHTML(vol === 0 ? 'volume-x' : 'volume-2');
+    };
+
+    player.onended = () => {
+        btnPlayPause.innerHTML = getIconHTML('play');
+    };
+
     player.onloadedmetadata = () => {
         resDisplay.textContent = `Resolución: ${player.videoWidth}x${player.videoHeight}`;
         const mins = Math.floor(player.duration / 60);
         const secs = Math.floor(player.duration % 60);
         durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // Load existing metadata
+    const dirHandle = currentDirectoryHandle();
+    try {
+        const metaFileHandle = await dirHandle.getFileHandle(assetName + '.meta');
+        const metaFile = await metaFileHandle.getFile();
+        const meta = JSON.parse(await metaFile.text());
+        if (meta.quality) document.getElementById('video-quality-select').value = meta.quality;
+    } catch(e) {}
+
+    document.getElementById('btn-apply-video-meta').onclick = async () => {
+        const quality = document.getElementById('video-quality-select').value;
+        const meta = { quality };
+        await saveAssetMetaCallback(assetName, meta, dirHandle);
+        showNotification(window.Localization.get('EXITO', 'Éxito'), "Cambios aplicados correctamente.");
     };
 }
 
