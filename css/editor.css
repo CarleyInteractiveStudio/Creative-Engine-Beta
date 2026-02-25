@@ -488,46 +488,57 @@ body {
 #editor-main-content {
     display: grid;
     height: calc(100vh - 44px); /* 100% viewport height minus menubar */
-    grid-template-columns: 220px 1fr 320px; /* Hierarchy | Scene | Inspector */
-    grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); /* Scene / Assets */
+    grid-template-columns: 220px 6px 1fr 6px 320px; /* Hierarchy | Resizer | Center | Resizer | Inspector */
+    grid-template-rows: 1.5fr 6px 1fr; /* Top (Scene) | Resizer | Bottom (Assets) */
     grid-template-areas:
-        "hierarchy scene inspector"
-        "hierarchy assets inspector"; /* Hierarchy and Inspector span both rows */
-    gap: 6px;
+        "hierarchy resizer-left scene resizer-right inspector"
+        "hierarchy resizer-left resizer-bottom resizer-right inspector"
+        "hierarchy resizer-left assets resizer-right inspector";
+    gap: 0;
     padding: 6px;
+    box-sizing: border-box;
 }
 
 /* --- Panel Assignments & Styles --- */
 #hierarchy-panel { grid-area: hierarchy; }
 #scene-panel { grid-area: scene; }
 #inspector-panel { grid-area: inspector; }
-#assets-panel {
-    grid-area: assets;
+#assets-panel { grid-area: assets; }
+
+#resizer-left { grid-area: resizer-left; z-index: 10; }
+#resizer-right { grid-area: resizer-right; z-index: 10; }
+#resizer-bottom { grid-area: resizer-bottom; z-index: 10; }
+
+.resizer-v {
+    width: 6px;
+    cursor: col-resize;
+    background: rgba(0, 0, 0, 0.1);
+    transition: background 0.2s;
+}
+
+.resizer-h {
+    height: 6px;
+    cursor: row-resize;
+    background: rgba(0, 0, 0, 0.1);
+    transition: background 0.2s;
+}
+
+.resizer-v:hover, .resizer-h:hover {
+    background: var(--accent-color);
 }
 
 /* --- Dynamic Layout States --- */
 #editor-main-content.no-hierarchy {
-    grid-template-columns: 1fr 320px;
-    grid-template-areas:
-        "scene inspector"
-        "assets inspector";
+    grid-template-columns: 0px 0px 1fr 6px 320px;
 }
 #editor-main-content.no-inspector {
-    grid-template-columns: 260px 1fr;
-    grid-template-areas:
-        "hierarchy scene"
-        "hierarchy assets";
+    grid-template-columns: 220px 6px 1fr 0px 0px;
 }
 #editor-main-content.no-assets {
-    grid-template-rows: 1fr;
-    grid-template-areas:
-        "hierarchy scene inspector";
+    grid-template-rows: 1fr 0px 0px;
 }
 #editor-main-content.no-hierarchy.no-inspector {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-        "scene"
-        "assets";
+    grid-template-columns: 0px 0px 1fr 0px 0px;
 }
 /* Add other combinations as needed */
 

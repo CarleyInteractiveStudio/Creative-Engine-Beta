@@ -22,7 +22,7 @@ import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
-import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
+import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
@@ -708,11 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         titleEl.textContent = titleText;
         selectorPanel.classList.remove('hidden');
-
-        // Ensure the selector bubble appears on top of other floating panels
-        const highestZ = Array.from(document.querySelectorAll('.floating-panel'))
-            .reduce((maxZ, p) => Math.max(maxZ, parseInt(p.style.zIndex || '1500')), 1500);
-        selectorPanel.style.zIndex = highestZ + 1;
+        bringToFront(selectorPanel);
 
 
         await populateSelector();

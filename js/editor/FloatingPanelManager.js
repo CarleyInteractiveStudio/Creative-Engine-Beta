@@ -1,7 +1,12 @@
 // js/editor/FloatingPanelManager.js
 // --- Module for managing floating panels (drag, resize, and z-index) ---
 
-let highestZ = 1500; // Start above the default docked panels
+let highestZ = 20000; // Start well above dialogs to ensure they can be brought to front
+
+export function bringToFront(panel) {
+    highestZ += 1;
+    panel.style.zIndex = highestZ;
+}
 
 function initializePanel(panel) {
     const header = panel.querySelector('.panel-header');
@@ -9,10 +14,7 @@ function initializePanel(panel) {
     let isResizing = false;
 
     // Bring panel to front on any mousedown
-    panel.addEventListener('mousedown', () => {
-        highestZ += 1;
-        panel.style.zIndex = highestZ;
-    });
+    panel.addEventListener('mousedown', () => bringToFront(panel));
 
     // Dragging logic
     if (header) {
