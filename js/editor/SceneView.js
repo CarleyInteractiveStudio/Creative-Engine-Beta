@@ -1221,6 +1221,7 @@ export function initialize(dependencies) {
                     }
                     if (closestSnap) {
                         tilemap.addLayer(closestSnap.x, closestSnap.y);
+                        tilemap.activeLayerIndex = tilemap.layers.length - 1;
                         updateInspector();
                     }
                 }
@@ -2212,7 +2213,7 @@ function drawTilemapColliders() {
     ctx.restore();
 }
 
-function bucketFill(layer, col, row, replacementTile) {
+function bucketFill(layer, col, row, replacementTile, width, height) {
     const targetTile = layer.tileData.get(`${col},${row}`);
     if (isSameTile(targetTile, replacementTile)) return;
 
@@ -2226,6 +2227,8 @@ function bucketFill(layer, col, row, replacementTile) {
 
         if (visited.has(key)) continue;
         visited.add(key);
+
+        if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
 
         const currentTile = layer.tileData.get(key);
         if (isSameTile(currentTile, targetTile)) {
@@ -2342,18 +2345,52 @@ function paintTile(event) {
     }
 
     // --- Logic for Painting (Brush/Bucket) ---
-    const layer = tilemap.layers[tilemap.activeLayerIndex];
-    if (layer) {
-        const layerOffsetX = layer.position.x * layerWidth;
-        const layerOffsetY = layer.position.y * layerHeight;
+    let layer = null;
+    let col = -1;
+    let row = -1;
+
+    // Helper to calculate coords in a specific layer
+    const getCoordsInLayer = (l) => {
+        const layerOffsetX = l.position.x * layerWidth;
+        const layerOffsetY = l.position.y * layerHeight;
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
-        const mouseInLayerX = localMouseX - layerTopLeftX;
-        const mouseInLayerY = localMouseY - layerTopLeftY;
-        const col = Math.floor(mouseInLayerX / cellSize.x);
-        const row = Math.floor(mouseInLayerY / cellSize.y);
+        return {
+            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
+            row: Math.floor((localMouseY - layerTopLeftY) / cellSize.y)
+        };
+    };
 
-        if (col >= 0 && col < width && row >= 0 && row < height) {
+    // 1. Try active layer first
+    const activeL = tilemap.layers[tilemap.activeLayerIndex];
+    if (activeL) {
+        const coords = getCoordsInLayer(activeL);
+        if (coords.col >= 0 && coords.col < width && coords.row >= 0 && coords.row < height) {
+            layer = activeL;
+            col = coords.col;
+            row = coords.row;
+        }
+    }
+
+    // 2. If not over active layer, find which layer the mouse is over
+    if (!layer) {
+        for (let i = 0; i < tilemap.layers.length; i++) {
+            if (i === tilemap.activeLayerIndex) continue;
+            const l = tilemap.layers[i];
+            const coords = getCoordsInLayer(l);
+            if (coords.col >= 0 && coords.col < width && coords.row >= 0 && coords.row < height) {
+                layer = l;
+                col = coords.col;
+                row = coords.row;
+                // Switch active layer automatically for better feedback
+                tilemap.activeLayerIndex = i;
+                if (updateInspector) updateInspector();
+                break;
+            }
+        }
+    }
+
+    if (layer) {
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const key = `${col},${row}`;
@@ -2386,7 +2423,7 @@ function paintTile(event) {
                 const selectedTiles = getSelectedTile();
                 if (selectedTiles && selectedTiles.length > 0) {
                     const tileToPaint = selectedTiles[0];
-                    bucketFill(layer, col, row, tileToPaint);
+                    bucketFill(layer, col, row, tileToPaint, width, height);
 
                     if (tileToPaint.type === 'animation' && !tilemapMateria.getComponent(Components.Animator)) {
                         tilemapMateria.addComponent(new Components.Animator(tilemapMateria));

@@ -778,30 +778,6 @@ function handleInspectorClick(e) {
         }
     }
 
-    if (e.target.matches('[data-action="remove-layer"]')) {
-        const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        if (tilemap) {
-            if (tilemap.layers.length > 1) {
-                tilemap.removeLayer(tilemap.activeLayerIndex);
-                const collider = selectedMateria.getComponent(Components.TilemapCollider2D);
-                if (collider) collider.generateMesh();
-                updateInspector();
-            } else {
-                window.Dialogs.showNotification('Acción no permitida', 'No se puede eliminar la última capa.');
-            }
-        }
-    }
-
-    if (e.target.closest('[data-action="select-layer"]')) {
-        const item = e.target.closest('[data-action="select-layer"]');
-        const tilemap = selectedMateria.getComponent(Components.Tilemap);
-        const index = parseInt(item.dataset.index, 10);
-        if (tilemap && !isNaN(index)) {
-            tilemap.activeLayerIndex = index;
-            updateInspector();
-        }
-    }
-
     if (e.target.matches('[data-action="generate-colliders"]')) {
         const collider = selectedMateria.getComponent(Components.TilemapCollider2D) || selectedMateria.getComponent(Components.TerrenoCollider2D);
         if (collider) {
