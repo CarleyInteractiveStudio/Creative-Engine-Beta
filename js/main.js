@@ -92,15 +92,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         store.put({ id: 'projectsDirHandle', handle: handle });
     }
 
-    function getDirHandle() {
-        if (!db) return Promise.resolve(null);
-        return new Promise((resolve) => {
+    async function getDirHandle() {
+        if (!db) return null;
+        const storedHandle = await new Promise((resolve) => {
             const transaction = db.transaction(['settings'], 'readonly');
             const store = transaction.objectStore('settings');
             const request = store.get('projectsDirHandle');
             request.onsuccess = () => resolve(request.result ? request.result.handle : null);
             request.onerror = () => resolve(null);
         });
+
+        if (storedHandle) return storedHandle;
+
+        // Fallback to Sandbox (OPFS) if no handle is stored and we are on mobile/no picker support
+        if (!window.showDirectoryPicker && navigator.storage && navigator.storage.getDirectory) {
+            try {
+                return await navigator.storage.getDirectory();
+            } catch (e) {
+                console.error("Error accessing OPFS:", e);
+            }
+        }
+        return null;
     }
 
     // --- Project Loading Logic ---
@@ -127,14 +139,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadProjects() {
         const dirHandle = await getDirHandle();
         if (!dirHandle) {
-            projectList.innerHTML = '<p class="no-projects-message">Elige una carpeta para tus proyectos al crear el primero.</p>';
+            projectList.innerHTML = `<p class="no-projects-message">${Localization.get('HINT_SELECCIONAR_CARPETA', 'Elige una carpeta para tus proyectos al crear el primero.')}</p>`;
             return;
         }
         try {
-            if (await dirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
-                if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
-                    await showCustomAlert("Permisos Requeridos", "No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar.");
-                    return;
+            // Permission check only for picked handles (OPFS handles don't have queryPermission or always return granted)
+            if (dirHandle.queryPermission) {
+                if (await dirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
+                    if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+                        await showCustomAlert(Localization.get('PERMISOS_REQUERIDOS', 'Permisos Requeridos'), Localization.get('ERROR_PERMISOS_CARPETA', "No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar."));
+                        return;
+                    }
                 }
             }
             projectList.innerHTML = '';
@@ -290,10 +305,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if(createProjectForm) createProjectForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!window.showDirectoryPicker) {
-            await showCustomAlert('Error de Compatibilidad', 'Tu navegador no es compatible con la API de Acceso al Sistema de Archivos.');
+
+        const hasPicker = !!window.showDirectoryPicker;
+        const hasSandbox = !!(navigator.storage && navigator.storage.getDirectory);
+
+        if (!hasPicker && !hasSandbox) {
+            await showCustomAlert(Localization.get('ERROR_COMPATIBILIDAD', 'Error de Compatibilidad'), Localization.get('ERROR_FS_NO_SOPORTADO', 'Tu navegador no es compatible con ninguna API de Acceso al Sistema de Archivos.'));
             return;
         }
+
         const projectNameInput = document.getElementById('project-name');
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
 

@@ -97,6 +97,35 @@ class DialogWindow {
  * @param {string} title The title of the dialog.
  * @param {string} message The message to display.
  */
+/**
+ * Displays a dialog with a progress bar.
+ * @param {string} title The title of the dialog.
+ * @param {string} message The message to display above the progress bar.
+ * @returns {object} An object with update(percent, message) and close() methods.
+ */
+export function showProgressDialog(title, message) {
+    const content = `
+        <p id="progress-message" style="margin-bottom:15px;">${message}</p>
+        <div style="width:100%; height:12px; background:#222; border-radius:6px; overflow:hidden; border:1px solid #444;">
+            <div id="progress-bar-fill" style="width:0%; height:100%; background:var(--accent-color, #3498db); transition: width 0.2s ease-out;"></div>
+        </div>
+    `;
+    const dialog = new DialogWindow(title, content, []);
+    dialog.show();
+
+    return {
+        update: (percent, newMessage) => {
+            const fill = dialog.dialogElement.querySelector('#progress-bar-fill');
+            if (fill) fill.style.width = `${percent}%`;
+            if (newMessage) {
+                const msg = dialog.dialogElement.querySelector('#progress-message');
+                if (msg) msg.textContent = newMessage;
+            }
+        },
+        close: () => dialog.hide()
+    };
+}
+
 export function showNotification(title, message) {
     const L = window.Localization;
     const dialog = new DialogWindow(title, message, [{ text: L.get('ACEPTAR', 'Aceptar') }]);
@@ -159,45 +188,49 @@ export async function showBuildDialog(projectConfig, onConfirm) {
     // Get all scenes to let user choose
     const allScenes = [];
     try {
-        const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        if (window.projectsDirHandle && projectName) {
+            const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+            const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
 
-        async function scanScenes(handle, path = '') {
-            for await (const entry of handle.values()) {
-                const entryPath = path ? `${path}/${entry.name}` : entry.name;
-                if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
-                    allScenes.push(entryPath);
-                } else if (entry.kind === 'directory') {
-                    await scanScenes(entry, entryPath);
+            async function scanScenes(handle, path = '') {
+                for await (const entry of handle.values()) {
+                    const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                    if (entry.kind === 'file' && entry.name.endsWith('.ceScene')) {
+                        allScenes.push(entryPath);
+                    } else if (entry.kind === 'directory') {
+                        await scanScenes(entry, entryPath);
+                    }
                 }
             }
+            await scanScenes(assetsHandle);
+        } else {
+            console.warn("[BuildDialog] No hay handle de proyectos o nombre de proyecto.");
         }
-        await scanScenes(assetsHandle);
     } catch (e) { console.error(e); }
 
     const content = `
         <div class="advanced-build-dialog" style="min-width: 500px; max-height: 70vh; overflow-y: auto;">
             <div class="build-tabs" style="display:flex; border-bottom: 1px solid #444; margin-bottom: 15px;">
-                <button class="build-tab-btn active" data-tab="tab-general" style="flex:1; padding: 10px; background:none; border:none; color:white; border-bottom: 2px solid #3498db; cursor:pointer;">General</button>
-                <button class="build-tab-btn" data-tab="tab-scenes" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">Escenas</button>
-                <button class="build-tab-btn" data-tab="tab-splash" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">Splash</button>
-                <button class="build-tab-btn" data-tab="tab-export" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">Exportar</button>
+                <button class="build-tab-btn active" data-tab="tab-general" style="flex:1; padding: 10px; background:none; border:none; color:white; border-bottom: 2px solid #3498db; cursor:pointer;">${L.get('BUILD_GENERAL', 'General')}</button>
+                <button class="build-tab-btn" data-tab="tab-scenes" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">${L.get('BUILD_SCENES', 'Escenas')}</button>
+                <button class="build-tab-btn" data-tab="tab-splash" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">${L.get('BUILD_SPLASH', 'Splash')}</button>
+                <button class="build-tab-btn" data-tab="tab-export" style="flex:1; padding: 10px; background:none; border:none; color:#aaa; cursor:pointer;">${L.get('BUILD_EXPORT', 'Exportar')}</button>
             </div>
 
             <div id="tab-general" class="build-tab-content">
                 <div class="dialog-row" style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px;">Nombre del Juego:</label>
+                    <label style="display:block; margin-bottom:5px;">${L.get('GAME_NAME', 'Nombre del Juego:')}</label>
                     <input type="text" id="build-app-name" value="${projectConfig.appName || projectName}" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
                 </div>
                 <div class="dialog-row" style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px;">Icono (Favicon):</label>
+                    <label style="display:block; margin-bottom:5px;">${L.get('ICON_FAVICON', 'Icono (Favicon):')}</label>
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="build-app-icon" value="${projectConfig.appIcon || 'image/Logo_C.png'}" style="flex:1; padding:8px; background:#222; border:1px solid #444; color:white;" readonly>
-                        <button id="btn-select-icon" class="dialog-button" style="padding:0 15px;">Seleccionar</button>
+                        <button id="btn-select-icon" class="dialog-button" style="padding:0 15px;">${L.get('SELECCIONAR', 'Seleccionar')}</button>
                     </div>
                 </div>
                 <div class="dialog-row" style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px;">Método de Build:</label>
+                    <label style="display:block; margin-bottom:5px;">${L.get('BUILD_METHOD', 'Método de Build:')}</label>
                     <select id="build-method" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
                         <option value="web">Web (HTML/JS/CSS)</option>
                         <option value="cgame" disabled>.Cgame (Creative Game) - Próximamente</option>
@@ -210,13 +243,13 @@ export async function showBuildDialog(projectConfig, onConfirm) {
             </div>
 
             <div id="tab-scenes" class="build-tab-content" style="display:none;">
-                <p style="font-size:0.9em; color:#aaa; margin-bottom:10px;">Selecciona las escenas a incluir y marca la principal:</p>
+                <p style="font-size:0.9em; color:#aaa; margin-bottom:10px;">${L.get('SELECT_SCENES_HINT', 'Selecciona las escenas a incluir y marca la principal:')}</p>
                 <div id="build-scenes-list" style="background:#222; border:1px solid #444; border-radius:4px; max-height:200px; overflow-y:auto;">
                     ${allScenes.map(scene => `
                         <div class="scene-item" style="padding:8px; border-bottom:1px solid #333; display:flex; align-items:center;">
                             <input type="checkbox" class="include-scene" data-path="${scene}" checked style="margin-right:10px;">
                             <span style="flex:1; font-size:0.9em;">${scene}</span>
-                            <label style="font-size:0.8em; margin-right:5px;">Principal:</label>
+                            <label style="font-size:0.8em; margin-right:5px;">${L.get('PRINCIPAL', 'Principal:')}</label>
                             <input type="radio" name="start-scene" value="${scene}" ${scene === projectConfig.startScene ? 'checked' : (allScenes[0] === scene ? 'checked' : '')}>
                         </div>
                     `).join('')}
@@ -226,14 +259,18 @@ export async function showBuildDialog(projectConfig, onConfirm) {
             <div id="tab-splash" class="build-tab-content" style="display:none;">
                 <div class="dialog-row" style="display:flex; align-items:center; margin-bottom:15px;">
                     <input type="checkbox" id="show-splash" ${projectConfig.splashScreens?.show !== false ? 'checked' : ''} style="margin-right:10px;">
-                    <label>Activar Pantallas de Splash</label>
+                    <label>${L.get('ENABLE_SPLASH', 'Activar Pantallas de Splash')}</label>
                 </div>
                 <div id="splash-settings" style="${projectConfig.splashScreens?.show !== false ? '' : 'display:none;'}">
                     <div class="dialog-row" style="display:flex; align-items:center; margin-bottom:10px;">
                         <input type="checkbox" id="show-engine-logo" ${projectConfig.splashScreens?.showEngineLogo !== false ? 'checked' : ''} style="margin-right:10px;">
-                        <label>Mostrar Logo del Motor (3s)</label>
+                        <label>${L.get('SHOW_ENGINE_LOGO', 'Mostrar Logo del Motor')}</label>
+                        <div style="flex:1; text-align:right;">
+                            <label style="font-size:0.8em; margin-right:5px;">${L.get('DURACION', 'Duración')}:</label>
+                            <input type="number" id="engine-logo-duration" value="${projectConfig.splashScreens?.engineLogoDuration || 10}" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
+                        </div>
                     </div>
-                    <p style="font-size:0.85em; color:#aaa; margin-bottom:5px;">Logos Personalizados:</p>
+                    <p style="font-size:0.85em; color:#aaa; margin-bottom:5px;">${L.get('CUSTOM_LOGOS', 'Logos Personalizados:')}</p>
                     <div id="custom-splash-list" style="background:#222; border:1px solid #444; border-radius:4px; min-height:50px; margin-bottom:10px;">
                         ${(projectConfig.splashScreens?.list || []).map((s, i) => `
                             <div class="splash-item" style="padding:5px; border-bottom:1px solid #333; display:flex; align-items:center; gap:5px;">
@@ -243,30 +280,30 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                             </div>
                         `).join('')}
                     </div>
-                    <button id="btn-add-splash" class="dialog-button" style="width:100%; font-size:0.8em;">+ Añadir Logo</button>
+                    <button id="btn-add-splash" class="dialog-button" style="width:100%; font-size:0.8em;">${L.get('AÑADIR_LOGO', '+ Añadir Logo')}</button>
                 </div>
             </div>
 
             <div id="tab-export" class="build-tab-content" style="display:none;">
                 <div class="dialog-row" style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:10px;">Destino del Build:</label>
+                    <label style="display:block; margin-bottom:10px;">${L.get('BUILD_DESTINATION', 'Destino del Build:')}</label>
                     <div class="dialog-row">
                         <input type="radio" name="export-target" value="zip" checked style="margin-right:10px;">
-                        <label>Descargar paquete comprimido (.zip)</label>
+                        <label>${L.get('DOWNLOAD_ZIP', 'Descargar paquete comprimido (.zip)')}</label>
                     </div>
-                    <div class="dialog-row" style="margin-top:10px;">
+                    <div class="dialog-row" style="margin-top:10px; ${window.showDirectoryPicker ? '' : 'display:none;'}">
                         <input type="radio" name="export-target" value="folder" style="margin-right:10px;">
-                        <label>Guardar directamente en una carpeta local</label>
+                        <label>${L.get('SAVE_FOLDER', 'Guardar directamente en una carpeta local')}</label>
                     </div>
                 </div>
                 <hr style="border:0; border-top:1px solid #444;">
                 <div class="dialog-row">
                     <input type="checkbox" id="include-unused" ${projectConfig.includeUnusedAssets ? 'checked' : ''} style="margin-right:10px;">
-                    <label>Incluir todos los archivos (ignorar optimización)</label>
+                    <label>${L.get('INCLUDE_ALL_ASSETS', 'Incluir todos los archivos (ignorar optimización)')}</label>
                 </div>
                 <div class="dialog-row" style="margin-top:10px;">
                     <input type="checkbox" id="run-after" checked style="margin-right:10px;">
-                    <label>Probar juego tras construir</label>
+                    <label>${L.get('RUN_AFTER_BUILD_CHECK', 'Probar juego tras construir')}</label>
                 </div>
             </div>
         </div>
@@ -274,7 +311,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
 
     const dialog = new DialogWindow(L.get('BUILD_CONFIG', 'Configuración Avanzada de Build'), content, [
         {
-            text: 'Construir Juego',
+            text: L.get('CONSTRUIR_JUEGO', 'Construir Juego'),
             callback: async () => {
                 const options = {
                     appName: dialog.dialogElement.querySelector('#build-app-name').value,
@@ -288,6 +325,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     splashScreens: {
                         show: dialog.dialogElement.querySelector('#show-splash').checked,
                         showEngineLogo: dialog.dialogElement.querySelector('#show-engine-logo').checked,
+                        engineLogoDuration: parseFloat(dialog.dialogElement.querySelector('#engine-logo-duration').value) || 3,
                         list: Array.from(dialog.dialogElement.querySelectorAll('.splash-item')).map(item => ({
                             path: item.querySelector('.splash-path').value,
                             duration: parseFloat(item.querySelector('.splash-duration').value) || 3
@@ -321,26 +359,30 @@ export async function showBuildDialog(projectConfig, onConfirm) {
 
     // Handle Icon Selection
     dialog.dialogElement.querySelector('#btn-select-icon').onclick = () => {
-        window.AssetBrowser?.openSelection('Sprite', (path) => {
-            dialog.dialogElement.querySelector('#build-app-icon').value = path;
-        });
+        if (window.openAssetSelector) {
+            window.openAssetSelector((handle, path) => {
+                dialog.dialogElement.querySelector('#build-app-icon').value = path;
+            }, { filter: ['.png', '.jpg', '.jpeg', '.ceSprite'], title: L.get('SELECCIONAR_ICONO', 'Seleccionar Icono') });
+        }
     };
 
     // Handle Add Splash
     dialog.dialogElement.querySelector('#btn-add-splash').onclick = () => {
-        window.AssetBrowser?.openSelection('Sprite', (path) => {
-            const list = dialog.dialogElement.querySelector('#custom-splash-list');
-            const item = document.createElement('div');
-            item.className = 'splash-item';
-            item.style.cssText = 'padding:5px; border-bottom:1px solid #333; display:flex; align-items:center; gap:5px;';
-            item.innerHTML = `
-                <input type="text" class="splash-path" value="${path}" style="flex:1; font-size:0.8em; background:#111; border:1px solid #333; color:white;" readonly>
-                <input type="number" class="splash-duration" value="3" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
-                <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;">×</button>
-            `;
-            item.querySelector('.btn-remove-splash').onclick = () => item.remove();
-            list.appendChild(item);
-        });
+        if (window.openAssetSelector) {
+            window.openAssetSelector((handle, path) => {
+                const list = dialog.dialogElement.querySelector('#custom-splash-list');
+                const item = document.createElement('div');
+                item.className = 'splash-item';
+                item.style.cssText = 'padding:5px; border-bottom:1px solid #333; display:flex; align-items:center; gap:5px;';
+                item.innerHTML = `
+                    <input type="text" class="splash-path" value="${path}" style="flex:1; font-size:0.8em; background:#111; border:1px solid #333; color:white;" readonly>
+                    <input type="number" class="splash-duration" value="3" style="width:40px; font-size:0.8em; background:#111; border:1px solid #333; color:white;">s
+                    <button class="btn-remove-splash" style="background:none; border:none; color:#ff4444; cursor:pointer;">×</button>
+                `;
+                item.querySelector('.btn-remove-splash').onclick = () => item.remove();
+                list.appendChild(item);
+            }, { filter: ['.png', '.jpg', '.jpeg', '.ceSprite'], title: L.get('AÑADIR_SPLASH', 'Añadir Logo de Splash') });
+        }
     };
 
     // Handle Remove existing splashes
@@ -457,5 +499,6 @@ window.Dialogs = {
     showPrompt,
     showSelection,
     showBuildDialog,
-    showBuildSuccessDialog
+    showBuildSuccessDialog,
+    showProgressDialog
 };

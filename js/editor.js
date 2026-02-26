@@ -22,7 +22,7 @@ import * as SceneView from './editor/SceneView.js';
 import * as MathUtils from './engine/MathUtils.js';
 import { setActiveTool } from './editor/SceneView.js';
 import * as CodeEditor from './editor/CodeEditorWindow.js';
-import { initializeFloatingPanels } from './editor/FloatingPanelManager.js';
+import { initializeFloatingPanels, bringToFront } from './editor/FloatingPanelManager.js';
 import * as DebugPanel from './editor/ui/DebugPanel.js';
 import * as AIHandler from './editor/AIHandler.js';
 import * as Terminal from './editor/Terminal.js';
@@ -315,7 +315,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 3. IndexedDB Logic ---
     const dbName = 'CreativeEngineDB'; let db; function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open(dbName, 1); request.onerror = () => reject('Error opening DB'); request.onsuccess = (e) => { db = e.target.result; resolve(db); }; request.onupgradeneeded = (e) => { e.target.result.createObjectStore('settings', { keyPath: 'id' }); }; }); }
-    function getDirHandle() { if (!db) return Promise.resolve(null); return new Promise((resolve) => { const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle'); request.onsuccess = () => resolve(request.result ? request.result.handle : null); request.onerror = () => resolve(null); }); }
+    async function getDirHandle() {
+        if (!db) return null;
+        const storedHandle = await new Promise((resolve) => {
+            const request = db.transaction(['settings'], 'readonly').objectStore('settings').get('projectsDirHandle');
+            request.onsuccess = () => resolve(request.result ? request.result.handle : null);
+            request.onerror = () => resolve(null);
+        });
+
+        if (storedHandle) return storedHandle;
+
+        // Fallback to Sandbox (OPFS) if no handle is stored and we are on mobile/no picker support
+        if (!window.showDirectoryPicker && navigator.storage && navigator.storage.getDirectory) {
+            try {
+                return await navigator.storage.getDirectory();
+            } catch (e) {
+                console.error("Error accessing OPFS:", e);
+            }
+        }
+        return null;
+    }
 
     // --- 5. Core Editor Functions ---
     var createScriptFile, updateScene, selectMateria, startGame, runGameLoop, stopGame, openAnimationAsset, addFrameFromCanvas, loadScene, saveScene, serializeScene, deserializeScene, openSpriteSelector, saveAssetMeta, createAsset, runChecksAndPlay, originalStartGame, loadProjectConfig, saveProjectConfig, runLayoutUpdate, updateWindowMenuUI, handleKeyboardShortcuts, updateGameControlsUI, loadRuntimeApis, openAssetSelector, enterAddTilemapLayerMode, openMarkdownViewerCallback, saveAssetContentCallback, hotReloadScript, scanAndTranspileAllScripts;
@@ -708,11 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         titleEl.textContent = titleText;
         selectorPanel.classList.remove('hidden');
-
-        // Ensure the selector bubble appears on top of other floating panels
-        const highestZ = Array.from(document.querySelectorAll('.floating-panel'))
-            .reduce((maxZ, p) => Math.max(maxZ, parseInt(p.style.zIndex || '1500')), 1500);
-        selectorPanel.style.zIndex = highestZ + 1;
+        bringToFront(selectorPanel);
 
 
         await populateSelector();
@@ -2802,12 +2817,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Panel Resizing Logic ---
         function initResizer(resizer, direction) {
-            resizer.addEventListener('mousedown', (e) => {
+            resizer.style.touchAction = 'none';
+            resizer.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
+                resizer.setPointerCapture(e.pointerId);
                 document.body.style.cursor = direction === 'col' ? 'col-resize' : 'row-resize';
                 document.body.style.userSelect = 'none';
 
-                const onMouseMove = (moveEvent) => {
+                const onPointerMove = (moveEvent) => {
                     const mainContent = dom.editorMainContent;
                     const rect = mainContent.getBoundingClientRect();
 
@@ -2854,15 +2871,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (gameRenderer) gameRenderer.resize();
                 };
 
-                const onMouseUp = () => {
+                const onPointerUp = (upEvent) => {
+                    resizer.releasePointerCapture(upEvent.pointerId);
                     document.body.style.cursor = '';
                     document.body.style.userSelect = '';
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
+                    resizer.removeEventListener('pointermove', onPointerMove);
+                    resizer.removeEventListener('pointerup', onPointerUp);
+                    resizer.removeEventListener('pointercancel', onPointerUp);
                 };
 
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
+                resizer.addEventListener('pointermove', onPointerMove);
+                resizer.addEventListener('pointerup', onPointerUp);
+                resizer.addEventListener('pointercancel', onPointerUp);
             });
         }
 
@@ -3197,6 +3217,53 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
     // --- 7. Initial Setup ---
     async function initializeEditor() {
+        // --- Mobile Long-Press Support ---
+        let longPressTimeout;
+        let startPos = { x: 0, y: 0 };
+        const LONG_PRESS_DURATION = 700;
+        const TOLERANCE = 15;
+
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse') return;
+            startPos = { x: e.clientX, y: e.clientY };
+            clearTimeout(longPressTimeout);
+            longPressTimeout = setTimeout(() => {
+                const contextMenuEvent = new MouseEvent('contextmenu', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    button: 2,
+                    buttons: 0,
+                    clientX: e.clientX,
+                    clientY: e.clientY
+                });
+                e.target.dispatchEvent(contextMenuEvent);
+                longPressTimeout = null;
+            }, LONG_PRESS_DURATION);
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            if (!longPressTimeout) return;
+            const dist = Math.hypot(e.clientX - startPos.x, e.clientY - startPos.y);
+            if (dist > TOLERANCE) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+        });
+
+        document.addEventListener('pointerup', () => {
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+        });
+
+        // Detect mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            document.body.classList.add('mobile-mode');
+        }
+
         // Initialize localization
         await Localization.init();
         Localization.updateUI();
@@ -3248,6 +3315,16 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
             updateLoadingProgress(10, "Accediendo al directorio de proyectos...");
             projectsDirHandle = await getDirHandle();
             window.projectsDirHandle = projectsDirHandle;
+
+            // Handle permissions for picked directory handles (OPFS doesn't need this)
+            if (projectsDirHandle && projectsDirHandle.queryPermission) {
+                if (await projectsDirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
+                    if (await projectsDirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
+                         console.error("Permission not granted for projects directory.");
+                         // We don't block here because AssetUtils might handle it or it might be in limited mode
+                    }
+                }
+            }
             if (!projectsDirHandle) {
                 console.warn("No directory handle found. Entering test/limited mode.");
                 // This allows the editor to initialize for Playwright tests

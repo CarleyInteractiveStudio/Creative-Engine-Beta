@@ -101,17 +101,20 @@ function renderAnimatorGraph() {
         }
 
         // State interactions
-        node.addEventListener('mousedown', (e) => {
+        node.style.touchAction = 'none';
+        node.addEventListener('pointerdown', (e) => {
             if (e.button === 0 && !isConnecting) {
                 selectState(state);
                 isDraggingNode = true;
+                node.setPointerCapture(e.pointerId);
                 dragNodeInfo = {
                     node: node,
                     state: state,
                     startX: e.clientX,
                     startY: e.clientY,
                     origX: state.position.x,
-                    origY: state.position.y
+                    origY: state.position.y,
+                    pointerId: e.pointerId
                 };
                 e.stopPropagation();
             }
@@ -702,8 +705,10 @@ function setupEventListeners() {
 
     function initAnimResizer(resizer, type) {
         if (!resizer) return;
-        resizer.addEventListener('mousedown', (e) => {
+        resizer.style.touchAction = 'none';
+        resizer.addEventListener('pointerdown', (e) => {
             e.preventDefault();
+            resizer.setPointerCapture(e.pointerId);
             const startX = e.clientX;
             const startY = e.clientY;
             const assetsPanel = dom.animatorControllerPanel.querySelector('#animator-assets-list');
@@ -714,7 +719,7 @@ function setupEventListeners() {
             const startWidthRight = rightSidebar.offsetWidth;
             const startHeightTop = statesList.offsetHeight;
 
-            const onMouseMove = (moveEvent) => {
+            const onPointerMove = (moveEvent) => {
                 if (type === 'left') {
                     const newWidth = startWidthLeft + (moveEvent.clientX - startX);
                     assetsPanel.style.width = `${Math.max(100, newWidth)}px`;
@@ -728,13 +733,16 @@ function setupEventListeners() {
                 }
             };
 
-            const onMouseUp = () => {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
+            const onPointerUp = (upEvent) => {
+                resizer.releasePointerCapture(upEvent.pointerId);
+                resizer.removeEventListener('pointermove', onPointerMove);
+                resizer.removeEventListener('pointerup', onPointerUp);
+                resizer.removeEventListener('pointercancel', onPointerUp);
             };
 
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
+            resizer.addEventListener('pointermove', onPointerMove);
+            resizer.addEventListener('pointerup', onPointerUp);
+            resizer.addEventListener('pointercancel', onPointerUp);
         });
     }
 
@@ -759,16 +767,18 @@ function setupEventListeners() {
     }
 
     // Graph interactions
-    graphView.addEventListener('mousedown', (e) => {
-        if ((e.button === 1 || (e.button === 0 && e.altKey)) && !isConnecting) {
+    graphView.style.touchAction = 'none';
+    graphView.addEventListener('pointerdown', (e) => {
+        if (((e.button === 1 || e.pointerType === 'touch') || (e.button === 0 && e.altKey)) && !isConnecting) {
             isPanning = true;
+            graphView.setPointerCapture(e.pointerId);
             lastPanPos = { x: e.clientX, y: e.clientY };
             graphView.style.cursor = 'grabbing';
             e.preventDefault();
         }
     });
 
-    window.addEventListener('mousemove', (e) => {
+    window.addEventListener('pointermove', (e) => {
         if (isPanning) {
             const dx = e.clientX - lastPanPos.x;
             const dy = e.clientY - lastPanPos.y;
@@ -808,10 +818,14 @@ function setupEventListeners() {
         }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('pointerup', (e) => {
+        if (isDraggingNode && dragNodeInfo.node) {
+            dragNodeInfo.node.releasePointerCapture(dragNodeInfo.pointerId);
+        }
         isDraggingNode = false;
         if (isPanning) {
             isPanning = false;
+            graphView.releasePointerCapture(e.pointerId);
             graphView.style.cursor = '';
         }
     });

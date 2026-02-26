@@ -1,6 +1,12 @@
+// js/editor/FloatingPanelManager.js
 // --- Module for managing floating panels (drag, resize, and z-index) ---
 
-let highestZ = 1500; // Start above the default docked panels
+let highestZ = 20000; // Start well above dialogs to ensure they can be brought to front
+
+export function bringToFront(panel) {
+    highestZ += 1;
+    panel.style.zIndex = highestZ;
+}
 
 function initializePanel(panel) {
     const header = panel.querySelector('.panel-header');
@@ -8,14 +14,12 @@ function initializePanel(panel) {
     let isResizing = false;
 
     // Bring panel to front on any mousedown
-    panel.addEventListener('mousedown', () => {
-        highestZ += 1;
-        panel.style.zIndex = highestZ;
-    });
+    panel.addEventListener('mousedown', () => bringToFront(panel));
 
     // Dragging logic
     if (header) {
-        header.addEventListener('mousedown', (e) => {
+        header.style.touchAction = 'none';
+        header.addEventListener('pointerdown', (e) => {
             // Ignore clicks on buttons inside the header
             if (e.target.closest('button, input, select, .resize-handle')) return;
 
@@ -23,87 +27,99 @@ function initializePanel(panel) {
             if (panel.classList.contains('maximized')) return;
 
             isDragging = true;
+            header.setPointerCapture(e.pointerId);
             offsetX = e.clientX - panel.offsetLeft;
             offsetY = e.clientY - panel.offsetTop;
             document.body.style.userSelect = 'none'; // Prevent text selection
+
+            const onPointerMove = (moveEvent) => {
+                if (isDragging) {
+                    panel.style.left = `${moveEvent.clientX - offsetX}px`;
+                    panel.style.top = `${moveEvent.clientY - offsetY}px`;
+                }
+            };
+
+            const onPointerUp = (upEvent) => {
+                isDragging = false;
+                header.releasePointerCapture(upEvent.pointerId);
+                document.body.style.userSelect = '';
+                header.removeEventListener('pointermove', onPointerMove);
+                header.removeEventListener('pointerup', onPointerUp);
+                header.removeEventListener('pointercancel', onPointerUp);
+            };
+
+            header.addEventListener('pointermove', onPointerMove);
+            header.addEventListener('pointerup', onPointerUp);
+            header.addEventListener('pointercancel', onPointerUp);
         });
     }
 
-        // Maximize button logic
-        const maximizeBtn = panel.querySelector('.maximize-btn');
-        if (maximizeBtn) {
-            maximizeBtn.addEventListener('click', () => {
-                panel.classList.toggle('maximized');
-                // Optional: a function to notify other parts of the app a resize happened
-                // For example, to resize a canvas inside the panel
-                window.dispatchEvent(new Event('resize'));
-            });
-        }
-
-        // Resizing logic
-        panel.querySelectorAll('.resize-handle').forEach(handle => {
-            handle.addEventListener('mousedown', (e) => {
-                isResizing = true;
-                const direction = handle.dataset.direction;
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const startWidth = panel.offsetWidth;
-                const startHeight = panel.offsetHeight;
-                const startLeft = panel.offsetLeft;
-                const startTop = panel.offsetTop;
-
-                document.body.style.userSelect = 'none';
-
-                function onMouseMove(moveEvent) {
-                    if (!isResizing) return;
-
-                    const dx = moveEvent.clientX - startX;
-                    const dy = moveEvent.clientY - startY;
-
-                    if (direction.includes('e')) {
-                        panel.style.width = `${startWidth + dx}px`;
-                    }
-                    if (direction.includes('w')) {
-                        panel.style.width = `${startWidth - dx}px`;
-                        panel.style.left = `${startLeft + dx}px`;
-                    }
-                    if (direction.includes('s')) {
-                        panel.style.height = `${startHeight + dy}px`;
-                    }
-                    if (direction.includes('n')) {
-                        panel.style.height = `${startHeight - dy}px`;
-                        panel.style.top = `${startTop + dy}px`;
-                    }
-                }
-
-                function onMouseUp() {
-                    isResizing = false;
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
-                        document.body.style.userSelect = '';
-                }
-
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-            });
+    // Maximize button logic
+    const maximizeBtn = panel.querySelector('.maximize-btn');
+    if (maximizeBtn) {
+        maximizeBtn.addEventListener('click', () => {
+            panel.classList.toggle('maximized');
+            // Optional: a function to notify other parts of the app a resize happened
+            window.dispatchEvent(new Event('resize'));
         });
+    }
 
+    // Resizing logic
+    panel.querySelectorAll('.resize-handle').forEach(handle => {
+        handle.style.touchAction = 'none';
+        handle.addEventListener('pointerdown', (e) => {
+            e.stopPropagation(); // Important to avoid triggering drag
+            isResizing = true;
+            handle.setPointerCapture(e.pointerId);
+            const direction = handle.dataset.direction;
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = panel.offsetWidth;
+            const startHeight = panel.offsetHeight;
+            const startLeft = panel.offsetLeft;
+            const startTop = panel.offsetTop;
 
-        // Global mouse move for dragging
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                panel.style.left = `${e.clientX - offsetX}px`;
-                panel.style.top = `${e.clientY - offsetY}px`;
+            document.body.style.userSelect = 'none';
+
+            function onPointerMove(moveEvent) {
+                if (!isResizing) return;
+
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+
+                if (direction.includes('e')) {
+                    panel.style.width = `${startWidth + dx}px`;
+                }
+                if (direction.includes('w')) {
+                    panel.style.width = `${startWidth - dx}px`;
+                    panel.style.left = `${startLeft + dx}px`;
+                }
+                if (direction.includes('s')) {
+                    panel.style.height = `${startHeight + dy}px`;
+                }
+                if (direction.includes('n')) {
+                    panel.style.height = `${startHeight - dy}px`;
+                    panel.style.top = `${startTop + dy}px`;
+                }
+
+                // Trigger a local event for components inside that need to react to resize
+                panel.dispatchEvent(new CustomEvent('panel-resize'));
             }
-        });
 
-        // Global mouse up to stop dragging
-        window.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
+            function onPointerUp(upEvent) {
+                isResizing = false;
+                handle.releasePointerCapture(upEvent.pointerId);
+                handle.removeEventListener('pointermove', onPointerMove);
+                handle.removeEventListener('pointerup', onPointerUp);
+                handle.removeEventListener('pointercancel', onPointerUp);
                 document.body.style.userSelect = '';
             }
+
+            handle.addEventListener('pointermove', onPointerMove);
+            handle.addEventListener('pointerup', onPointerUp);
+            handle.addEventListener('pointercancel', onPointerUp);
         });
+    });
 }
 
 export function initializeFloatingPanels() {

@@ -215,9 +215,15 @@ export class StandaloneRuntime {
             container.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:black; display:flex; align-items:center; justify-content:center; z-index:10000; transition: opacity 0.5s;';
             document.body.appendChild(container);
 
+            container.style.flexDirection = 'column';
+
             const img = document.createElement('img');
-            img.style.cssText = 'max-width:80%; max-height:80%; opacity:0; transition: opacity 0.8s; object-fit: contain;';
+            img.style.cssText = 'max-width:80%; max-height:70%; opacity:0; transition: opacity 0.8s; object-fit: contain;';
             container.appendChild(img);
+
+            const splashText = document.createElement('div');
+            splashText.style.cssText = 'color: white; font-size: 1.5rem; margin-top: 30px; opacity: 0; transition: opacity 0.8s; font-family: sans-serif; text-align: center;';
+            container.appendChild(splashText);
 
             const splashes = this.config.splashScreens.list || [];
 
@@ -225,8 +231,9 @@ export class StandaloneRuntime {
             if (this.config.splashScreens.showEngineLogo) {
                 splashes.unshift({
                     path: 'engine/Logo_C.png',
-                    duration: 3,
-                    sound: 'engine/splash.mp3'
+                    duration: this.config.splashScreens.engineLogoDuration || 10,
+                    sound: 'engine/startup.wav',
+                    isEngineLogo: true
                 });
             }
 
@@ -241,10 +248,25 @@ export class StandaloneRuntime {
 
                 img.src = url;
 
+                if (splash.isEngineLogo) {
+                    splashText.textContent = (window.navigator.language.startsWith('es') || this.config.language === 'es')
+                        ? 'Hecho con Creative Engine'
+                        : 'Made with Creative Engine';
+                } else {
+                    splashText.textContent = '';
+                }
+
                 // Sound
                 if (splash.sound) {
                     try {
-                        let soundUrl = splash.sound === 'engine/splash.mp3' ? 'musica/splash.mp3' : await getURLForAssetPath(splash.sound);
+                        let soundUrl;
+                        if (splash.sound === 'engine/startup.wav') {
+                            soundUrl = 'musica/startup.wav';
+                        } else if (splash.sound === 'engine/splash.mp3') {
+                            soundUrl = 'musica/splash.mp3';
+                        } else {
+                            soundUrl = await getURLForAssetPath(splash.sound);
+                        }
                         const audio = new Audio(soundUrl);
                         audio.play().catch(e => console.warn("Splash sound failed to play", e));
                     } catch(e) {}
@@ -253,12 +275,14 @@ export class StandaloneRuntime {
                 // Fade In
                 await new Promise(r => setTimeout(r, 100));
                 img.style.opacity = '1';
+                splashText.style.opacity = '1';
 
                 // Wait duration
                 await new Promise(r => setTimeout(r, (splash.duration || 3) * 1000));
 
                 // Fade Out
                 img.style.opacity = '0';
+                splashText.style.opacity = '0';
                 await new Promise(r => setTimeout(r, 800));
             }
 
