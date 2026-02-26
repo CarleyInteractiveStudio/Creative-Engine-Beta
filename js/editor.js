@@ -3382,13 +3382,16 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
 
             if (projectsDirHandle) {
                 // Ensure the 'lib' directory exists for the current project
-                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+                const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName, { create: true });
 
-                updateLoadingProgress(12, "Compilando scripts del proyecto...");
+                updateLoadingProgress(12, "Preparando archivos del proyecto...");
+                await projectHandle.getDirectoryHandle('Assets', { create: true });
+                const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
+
+                updateLoadingProgress(15, "Compilando scripts del proyecto...");
                 await scanAndTranspileAllScripts(projectHandle);
 
                 try {
-                    const libDirHandle = await projectHandle.getDirectoryHandle('lib', { create: true });
                     console.log("Directorio 'lib' asegurado. Verificando README...");
 
                     // --- Create README.md in /lib if it doesn't exist ---

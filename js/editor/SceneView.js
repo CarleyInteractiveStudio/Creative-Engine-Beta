@@ -997,8 +997,11 @@ export function initialize(dependencies) {
             // Fallback to root Assets if no directory is selected
             if (!currentDirHandle) {
                 try {
-                    const projectName = new URLSearchParams(window.location.search).get('project');
-                    const projectHandle = await window.projectsDirHandle.getDirectoryHandle(projectName);
+                    const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+                    const projectsDir = window.projectsDirHandle || projectsDirHandle;
+                    if (!projectsDir) throw new Error("No projects directory handle available.");
+
+                    const projectHandle = await projectsDir.getDirectoryHandle(projectName, { create: true });
                     currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
                     currentPath = 'Assets';
                 } catch (err) {

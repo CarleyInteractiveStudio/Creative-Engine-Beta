@@ -6,7 +6,9 @@ import * as SceneManager from '../../engine/SceneManager.js';
 // --- Module State ---
 let dom;
 let projectsDirHandle;
+let projectHandle, assetsHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
+let lastProjectName = null;
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
@@ -443,27 +445,28 @@ export async function updateAssetBrowser() {
 
     const folderTreeContainer = dom.assetFolderTree;
     const gridViewContainer = dom.assetGridView;
-    folderTreeContainer.innerHTML = '';
 
-    const projectName = new URLSearchParams(window.location.search).get('project');
-    if (!projectName) {
-        console.warn("[AssetBrowser] No project name found in URL.");
-        return;
-    }
+    const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+    console.log(`[AssetBrowser] Actualizando para el proyecto: ${projectName}`);
 
     try {
-        const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
-        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        projectHandle = await currentDirHandle.getDirectoryHandle(projectName, { create: true });
+        assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
 
-        // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
-        if (!currentDirectoryHandle.handle) {
+        // If project changed or we have no handle, reset to Assets root
+        if (projectName !== lastProjectName || !currentDirectoryHandle.handle) {
              currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
+             lastProjectName = projectName;
+             console.log(`[AssetBrowser] Navegación reseteada a /Assets para el proyecto '${projectName}'`);
         }
     } catch (err) {
-        console.error("[AssetBrowser] Error accessing project or Assets folder:", err);
+        console.error(`[AssetBrowser] Error al acceder a la carpeta del proyecto '${projectName}':`, err);
+        folderTreeContainer.innerHTML = '';
         gridViewContainer.innerHTML = `<p class="error-message">${L.get('ERROR_CARGA_ASSETS', 'Error al cargar los assets del proyecto.')}</p>`;
         return;
     }
+
+    folderTreeContainer.innerHTML = '';
 
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
         if (!targetFolderHandle) return;
