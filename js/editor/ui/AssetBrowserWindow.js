@@ -10,6 +10,7 @@ let currentDirectoryHandle = { handle: null, path: '' };
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
+let collapsedFolders = new Set(); // Conjunto de rutas de carpetas contraídas
 
 // Callbacks to other modules/editor.js
 let onAssetSelected;
@@ -56,14 +57,24 @@ export function initialize(dependencies) {
     dom.assetsContent.addEventListener('dragleave', handleExternalFileDragLeave);
     dom.assetsContent.addEventListener('drop', handleExternalFileDrop);
 
+    // Global dragover to prevent default blue state stuck
+    window.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer.types.includes('Files')) {
+            dom.assetsContent.classList.remove('drag-over-fs');
+        }
+    });
+
     // The event listener is now centralized in editor.js
 }
 
 function handleExternalFileDragEnter(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter++;
-    dom.assetsContent.classList.add('drag-over-fs');
+    // Solo mostrar el highlight si se arrastran archivos externos
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        dom.assetsContent.classList.add('drag-over-fs');
+    }
 }
 
 export async function handleContextMenuAction(action) {
@@ -619,13 +630,15 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.ttf') || entry.name.endsWith('.otf') || entry.name.endsWith('.woff') || entry.name.endsWith('.woff2')) {
                 iconContainer.innerHTML = `<img src="icons/type.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ces')) {
-                iconContainer.innerHTML = `<img src="icons/scroll.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="image/Script.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (entry.name.endsWith('.chc')) {
-                iconContainer.innerHTML = `<img src="icons/bot.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/sparkles.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.cea')) {
-                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="image/cea.png" style="width: 32px; height: 32px; object-fit: contain;">`;
             } else if (entry.name.endsWith('.ceanim')) {
-                iconContainer.innerHTML = `<img src="icons/gamepad.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/route.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+            } else if (entry.name.endsWith('.cepalette')) {
+                iconContainer.innerHTML = `<img src="icons/grid.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceSprite')) {
                 const currentDirHandle = window.projectsDirHandle || projectsDirHandle;
                 getURLForAssetPath(fullPath, currentDirHandle).then(url => {
@@ -641,10 +654,11 @@ export async function updateAssetBrowser() {
             } else if (entry.name.endsWith('.cmel')) {
                 iconContainer.innerHTML = `<img src="icons/image.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceScene')) {
-                iconContainer.innerHTML = `<img src="icons/clapperboard.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
+                iconContainer.innerHTML = `<img src="icons/map.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.ceprefab')) {
                 iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
             } else if (entry.name.endsWith('.celib')) {
+                iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                 // Asynchronously read the library file to get the custom icon
                 (async () => {
                     try {
@@ -656,14 +670,12 @@ export async function updateAssetBrowser() {
                             iconContainer.appendChild(imgIcon);
                         } else {
                             // Fallback icon if no custom one is provided
-                            imgIcon.src = 'image/Paquete.png';
-                            iconContainer.appendChild(imgIcon);
+                            iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                         }
                     } catch (e) {
                         console.error(`Error reading .celib file for icon: ${entry.name}`, e);
                         // Fallback icon on error
-                        imgIcon.src = 'image/Paquete.png';
-                        iconContainer.appendChild(imgIcon);
+                        iconContainer.innerHTML = `<img src="icons/box.svg" class="ce-icon" style="width: 32px; height: 32px;">`;
                     }
                 })();
             } else {
@@ -683,18 +695,66 @@ export async function updateAssetBrowser() {
     async function populateFolderTree(dirHandle, currentPath, container, depth = 0) {
         const folderItem = document.createElement('div');
         folderItem.className = 'folder-item';
-        folderItem.textContent = dirHandle.name;
         folderItem.style.paddingLeft = `${depth * 15 + 5}px`;
         folderItem.dataset.path = currentPath;
 
-        if (dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
+        const isCollapsed = collapsedFolders.has(currentPath);
+
+        // Crear el toggle (triangulito)
+        const toggle = document.createElement('span');
+        toggle.className = 'folder-toggle';
+
+        // Verificar si tiene subcarpetas para mostrar el toggle
+        let hasSubfolders = false;
+        try {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'directory') {
+                    hasSubfolders = true;
+                    break;
+                }
+            }
+        } catch(e) {}
+
+        if (hasSubfolders) {
+            toggle.classList.add('has-children');
+            toggle.innerHTML = `<img src="icons/arrow-right.svg" class="ce-icon" style="width: 10px; height: 10px; transition: transform 0.2s; ${!isCollapsed ? 'transform: rotate(90deg);' : ''}">`;
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (collapsedFolders.has(currentPath)) {
+                    collapsedFolders.delete(currentPath);
+                } else {
+                    collapsedFolders.add(currentPath);
+                }
+                updateAssetBrowser(); // Refrescar el árbol
+            });
+        }
+        folderItem.appendChild(toggle);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = dirHandle.name;
+        folderItem.appendChild(nameSpan);
+
+        if (currentDirectoryHandle.handle && await dirHandle.isSameEntry(currentDirectoryHandle.handle)) {
             folderItem.classList.add('active');
         }
 
         folderItem.addEventListener('click', (e) => {
             e.stopPropagation();
             currentDirectoryHandle = { handle: dirHandle, path: currentPath };
-            updateAssetBrowserCallback();
+            updateAssetBrowser();
+        });
+
+        folderItem.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            if (hasSubfolders) {
+                if (collapsedFolders.has(currentPath)) {
+                    collapsedFolders.delete(currentPath);
+                } else {
+                    collapsedFolders.add(currentPath);
+                }
+                updateAssetBrowser();
+            }
         });
 
         folderItem.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; folderItem.classList.add('drag-over'); });
@@ -719,18 +779,20 @@ export async function updateAssetBrowser() {
 
         container.appendChild(folderItem);
 
-        const childrenContainer = document.createElement('div');
-        childrenContainer.className = 'folder-children';
-        folderItem.appendChild(childrenContainer);
+        if (!isCollapsed) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-children';
+            container.appendChild(childrenContainer);
 
-        try {
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'directory') {
-                    await populateFolderTree(entry, `${currentPath}/${entry.name}`, childrenContainer, depth + 1);
+            try {
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'directory') {
+                        await populateFolderTree(entry, `${currentPath}/${entry.name}`, childrenContainer, depth + 1);
+                    }
                 }
+            } catch(e) {
+                console.warn(`Could not iterate directory ${dirHandle.name}. Permissions issue?`, e);
             }
-        } catch(e) {
-            console.warn(`Could not iterate directory ${dirHandle.name}. Permissions issue?`, e);
         }
     }
 
@@ -839,19 +901,28 @@ function handleGridDragStart(e) {
 }
 
 function handleExternalFileDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    // Ensure it stays visible during hover
-    dom.assetsContent.classList.add('drag-over-fs');
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+        // Garantizar que se vea durante el hover
+        dom.assetsContent.classList.add('drag-over-fs');
+    }
 }
 
 function handleExternalFileDragLeave(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter--;
-    if (dragCounter <= 0) {
-        dragCounter = 0;
-        dom.assetsContent.classList.remove('drag-over-fs');
+    if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+
+        // Timeout logic to prevent flickering when moving between child elements
+        setTimeout(() => {
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                dom.assetsContent.classList.remove('drag-over-fs');
+            }
+        }, 50);
     }
 }
 

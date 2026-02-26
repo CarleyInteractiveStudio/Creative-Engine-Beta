@@ -1,0 +1,106 @@
+// SuperProbadorV2.ces
+// Un script completo que no utiliza la palabra 'this'.
+
+publico numero velocidadSalto = 12;
+publico numero fuerzaEmpuje = 500;
+publico texto mensajeBienvenida = "¡Scripting Activo sin 'this'!";
+publico booleano modoInvencible = falso;
+publico Materia objetivoSeguimiento;
+publico Prefab proyectilPrefab;
+publico Color colorAlChocar = nuevo Color(255, 0, 0);
+publico accion alMorir;
+
+privado numero contadorSegundos = 0;
+privado booleano estaEnElAire = falso;
+
+publico iniciar() {
+    imprimir(mensajeBienvenida);
+
+    // Acceso directo a componentes sin 'this'
+    si (renderizadorDeSprite) {
+        renderizadorDeSprite.color = "#ffffff";
+    }
+
+    ejecutarSecuencia();
+}
+
+publico actualizar(deltaTime) {
+    variable movX = 0;
+    si (entrada.teclaPresionada("D")) movX = 1;
+    sino si (entrada.teclaPresionada("A")) movX = -1;
+
+    // Acceso directo a física
+    si (fisica) {
+        fisica.velocity.x = movX * 5;
+
+        si (entrada.teclaBaja("Space") && !estaEnElAire) {
+            fisica.applyImpulse(nuevo Vector2(0, -velocidadSalto));
+            estaEnElAire = verdadero;
+            imprimir("¡Saltando!");
+            reproducir.Salto();
+        }
+    }
+
+    si (objetivoSeguimiento) {
+        variable dist = distancia(posicion, objetivoSeguimiento.posicion);
+        si (dist < 100) {
+            imprimir("Objetivo cerca: " + redondear(dist));
+        }
+    }
+
+    si (entrada.ratonBajo(0)) {
+        lanzarProyectil();
+    }
+}
+
+// Llamada a función local sin 'this'
+funcion lanzarProyectil() {
+    si (proyectilPrefab) {
+        variable bala = instanciar(proyectilPrefab, posicion);
+        imprimir("Disparando proyectil...");
+    }
+}
+
+async funcion ejecutarSecuencia() {
+    imprimir("Iniciando secuencia...");
+    esperar(2);
+
+    voltearH = verdadero;
+    imprimir("Mirando a la izquierda...");
+
+    esperar(1.5);
+    voltearH = falso;
+    imprimir("Mirando a la derecha...");
+
+    cada(5) {
+        imprimir("Check de sistema...");
+    }
+}
+
+publico alEntrarEnColision(objetoChocado) {
+    imprimir("¡Chocado con: " + objetoChocado.name);
+
+    si (objetoChocado.tieneTag("Enemigo")) {
+        si (!modoInvencible) {
+            imprimir("¡DAÑO!");
+            renderizadorDeSprite.color = colorAlChocar;
+            ejecutarAccion(alMorir);
+        }
+    }
+
+    // Asumimos que el suelo tiene layer 3
+    si (objetoChocado.layer == 3) {
+        estaEnElAire = falso;
+        reproducir.Idle();
+    }
+}
+
+publico alHacerClick() {
+    imprimir("¡Clic directo!");
+    transform.localScale.x = azar(1, 3);
+    transform.localScale.y = transform.localScale.x;
+}
+
+cada(1) {
+    contadorSegundos = contadorSegundos + 1;
+}

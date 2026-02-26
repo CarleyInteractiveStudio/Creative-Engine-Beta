@@ -148,6 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         consoleMessages.appendChild(msgEl);
 
+        // Apply current filter visibility immediately
+        const activeFilterBtn = document.querySelector('.console-filters .filter-btn.active');
+        if (activeFilterBtn) {
+            const filter = activeFilterBtn.dataset.filter;
+            let show = false;
+            if (filter === 'all') show = true;
+            else if (filter === 'system') show = isSystem;
+            else if (filter === 'script') show = !isSystem;
+            else if (filter === 'warn') show = type === 'warn';
+            else if (filter === 'error') show = type === 'error';
+            msgEl.style.display = show ? 'block' : 'none';
+        }
+
         // Auto-scroll only if we are at the bottom
         const isAtBottom = consoleMessages.scrollHeight - consoleMessages.scrollTop <= consoleMessages.clientHeight + 50;
         if (isAtBottom) {
@@ -156,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lastLogElement = msgEl;
     }
+
+    window.logToUIConsole = logToUIConsole;
 
     function clearUIConsole() {
         const consoleMessages = dom.consoleMessages || document.getElementById('console-messages');
@@ -1312,15 +1327,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Pass 1: Draw Scene Geometry ---
         const materiasToRender = SceneManager.currentScene.getAllMaterias()
-            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)))
-            .sort((a, b) => {
-                const rendererA = a.getComponent(Components.SpriteRenderer) || a.getComponent(Components.TextureRender) || a.getComponent(Components.Terreno2D);
-                const rendererB = b.getComponent(Components.SpriteRenderer) || b.getComponent(Components.TextureRender) || b.getComponent(Components.Terreno2D);
-                const orderA = rendererA.orderInLayer || 0;
-                const orderB = rendererB.orderInLayer || 0;
-                if (orderA !== orderB) return orderA - orderB;
-                return a.getComponent(Components.Transform).y - b.getComponent(Components.Transform).y;
-            });
+            .filter(m => m.getComponent(Components.Transform) && (m.getComponent(Components.SpriteRenderer) || m.getComponent(Components.TextureRender) || m.getComponent(Components.Terreno2D)));
+            // Sorting is now centralized in drawObjects' allInLayer sort
 
         const tilemapsToRender = SceneManager.currentScene.getAllMaterias()
             .filter(m => m.getComponent(Components.Transform) && m.getComponent(Components.TilemapRenderer))
@@ -1367,7 +1375,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
 
-                // 4. Y position (Isometric/Depth)
+                // 4. Parallax priority (Force backdrop if on same orderInLayer)
+                const isParallaxA = !!a.getComponent(Components.Parallax);
+                const isParallaxB = !!b.getComponent(Components.Parallax);
+                if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
+
+                // 5. Y position (Isometric/Depth)
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
@@ -1466,48 +1479,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         const dx = -dWidth * pivotX;
                         const dy = -dHeight * pivotY;
 
-                        let mirrorX = parallax ? parallax.mirroring.x : 0;
-                        let mirrorY = parallax ? parallax.mirroring.y : 0;
+                        ctx.translate(worldPosition.x, worldPosition.y);
+                        ctx.rotate(worldRotation * Math.PI / 180);
+                        ctx.scale(worldScale.x, worldScale.y);
 
-                        if (parallax) {
-                            if (parallax.repeatX && mirrorX === 0) mirrorX = dWidth;
-                            if (parallax.repeatY && mirrorY === 0) mirrorY = dHeight;
-                        }
+                        const drawX = -sWidth * pivotX;
+                        const drawY = -sHeight * pivotY;
 
-                        if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                            const stepX = mirrorX;
-                            const stepY = mirrorY;
-                            const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
-                            const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
-                            const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;
-                            const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y - dy) / stepY) * stepY + stepY : dHeight;
-
-                            for (let tx = startX; tx < endX; tx += stepX) {
-                                for (let ty = startY; ty < endY; ty += stepY) {
-                                    ctx.save();
-                                    ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
-                                    ctx.rotate(worldRotation * Math.PI / 180);
-                                    ctx.scale(worldScale.x, worldScale.y);
-                                    if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
-                                    }
-                                    ctx.restore();
-                                    if (mirrorY === 0) break;
-                                }
-                                if (mirrorX === 0) break;
-                            }
-                        } else {
-                            ctx.translate(worldPosition.x, worldPosition.y);
-                            ctx.rotate(worldRotation * Math.PI / 180);
-                            ctx.scale(worldScale.x, worldScale.y);
-
-                            const drawX = -sWidth * pivotX;
-                            const drawY = -sHeight * pivotY;
-
-                            // Absolute safety check to prevent InvalidStateError
-                            if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
-                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
-                            }
+                        // Absolute safety check to prevent InvalidStateError
+                        if (sourceImg && (sourceImg.width > 0 || sourceImg.naturalWidth > 0)) {
+                            ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, drawX, drawY, sWidth, sHeight);
                         }
                         ctx.restore();
                     } else {
@@ -2398,6 +2379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let show = false;
                         if (filter === 'all') show = true;
                         else if (filter === 'system') show = msg.dataset.category === 'system';
+                        else if (filter === 'script') show = msg.dataset.category === 'user';
                         else if (filter === 'warn') show = msg.classList.contains('log-warn');
                         else if (filter === 'error') show = msg.classList.contains('log-error');
 
@@ -3711,7 +3693,12 @@ public start() {
                     menuItem.textContent = win.nombre;
                     menuItem.addEventListener('click', (e) => {
                         e.preventDefault();
-                        const panel = LibraryAPI.crearPanel({ titulo: win.nombre });
+                        const panel = LibraryAPI.crearPanel({
+                            titulo: win.nombre,
+                            estilo: win.estilo,
+                            ancho: win.ancho,
+                            alto: win.alto
+                        });
                         win.alAbrir(panel);
                     });
                     windowMenu.appendChild(menuItem);

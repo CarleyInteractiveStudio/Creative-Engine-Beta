@@ -3,8 +3,9 @@
 import { EditorView, basicSetup } from "https://esm.sh/codemirror@6.0.1";
 import { javascript } from "https://esm.sh/@codemirror/lang-javascript@6.2.2";
 import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
-import { undo, redo } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { autocompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { undo, redo, indentWithTab } from "https://esm.sh/@codemirror/commands@6.3.3";
+import { autocompletion, acceptCompletion } from "https://esm.sh/@codemirror/autocomplete@6.16.0";
+import { keymap } from "https://esm.sh/@codemirror/view@6.26.3";
 import { transpile } from './CES_Transpiler.js';
 import * as AIHandler from './AIHandler.js';
 import { getPreferences } from './ui/PreferencesWindow.js';
@@ -16,21 +17,137 @@ let currentlyOpenFileHandle = null;
 let currentlyOpenDirHandle = null;
 let showConsoleCallback = () => {}; // Placeholder for the callback
 let hotReloadCallback = () => {}; // Placeholder for hot reload
+
 const cesKeywords = [
-    { label: "public", type: "keyword" },
-    { label: "private", type: "keyword" },
-    { label: "sprite", type: "type" },
-    { label: "SpriteAnimacion", type: "type" },
-    { label: "crear", type: "function" },
-    { label: "destruir", type: "function" },
-    { label: "reproducir", type: "function" },
-    { label: "obtener", type: "function" },
+    // Spanish Keywords
     { label: "si", type: "keyword" },
     { label: "sino", type: "keyword" },
-    { label: "para", type: "keyword" },
     { label: "mientras", type: "keyword" },
+    { label: "para", type: "keyword" },
+    { label: "cada", type: "keyword" },
+    { label: "esperar", type: "keyword" },
+    { label: "retornar", type: "keyword" },
+    { label: "nuevo", type: "keyword" },
+    { label: "funcion", type: "keyword" },
+    { label: "variable", type: "keyword" },
+    { label: "constante", type: "keyword" },
+    { label: "verdadero", type: "keyword" },
+    { label: "falso", type: "keyword" },
+    { label: "materia", type: "type" },
+    { label: "mtr", type: "type" },
+    { label: "publico", type: "keyword" },
+    { label: "privado", type: "keyword" },
+    { label: "ve", type: "keyword" },
+    { label: "go", type: "keyword" },
+    { label: "imprimir", type: "function" },
+    { label: "log", type: "function" },
+
+    // English Keywords
+    { label: "public", type: "keyword" },
+    { label: "private", type: "keyword" },
+    { label: "async", type: "keyword" },
+    { label: "await", type: "keyword" },
+
+    // Types
+    { label: "number", type: "type" },
+    { label: "numero", type: "type" },
+    { label: "text", type: "type" },
+    { label: "texto", type: "type" },
+    { label: "boolean", type: "type" },
+    { label: "booleano", type: "type" },
+    { label: "Vector2", type: "type" },
+    { label: "Color", type: "type" },
+    { label: "Materia", type: "type" },
+    { label: "materia", type: "type" },
+    { label: "mtr", type: "type" },
+    { label: "Prefab", type: "type" },
+    { label: "prefab", type: "type" },
+    { label: "Scene", type: "type" },
+    { label: "escena", type: "type" },
+    { label: "Audio", type: "type" },
+    { label: "audio", type: "type" },
+    { label: "Sprite", type: "type" },
+    { label: "sprite", type: "type" },
+
+    // Component Shortcuts & Functions
+    { label: "transform", type: "property" },
+    { label: "transformacion", type: "property" },
+    { label: "posicion", type: "property" },
+    { label: "rigidbody2D", type: "property" },
+    { label: "fisica", type: "property" },
+    { label: "animatorController", type: "property" },
+    { label: "controladorAnimacion", type: "property" },
+    { label: "spriteRenderer", type: "property" },
+    { label: "renderizadorDeSprite", type: "property" },
+    { label: "audioSource", type: "property" },
+    { label: "fuenteDeAudio", type: "property" },
+    { label: "boxCollider2D", type: "property" },
+    { label: "colisionadorCaja2D", type: "property" },
+    { label: "capsuleCollider2D", type: "property" },
+    { label: "colisionadorCapsula2D", type: "property" },
+    { label: "camera", type: "property" },
+    { label: "camara", type: "property" },
+    { label: "animator", type: "property" },
+    { label: "animador", type: "property" },
+    { label: "pointLight2D", type: "property" },
+    { label: "spotLight2D", type: "property" },
+    { label: "freeformLight2D", type: "property" },
+    { label: "spriteLight2D", type: "property" },
+    { label: "tilemap", type: "property" },
+    { label: "grid", type: "property" },
+    { label: "rejilla", type: "property" },
+    { label: "raycastSource", type: "property" },
+    { label: "rallo", type: "property" },
+    { label: "basicAI", type: "property" },
+    { label: "iaBasica", type: "property" },
+    { label: "canvas", type: "property" },
+    { label: "lienzo", type: "property" },
+    { label: "ui", type: "property" },
+    { label: "boton", type: "property" },
+    { label: "imagen", type: "property" },
+    { label: "textoUI", type: "property" },
+
+    // Lifecycle
+    { label: "iniciar", type: "function" },
+    { label: "alEmpezar", type: "function" },
     { label: "start", type: "function" },
-    { label: "update", type: "function" }
+    { label: "actualizar", type: "function" },
+    { label: "alActualizar", type: "function" },
+    { label: "update", type: "function" },
+
+    // Actions
+    { label: "reproducir", type: "function" },
+    { label: "play", type: "function" },
+    { label: "detener", type: "function" },
+    { label: "stop", type: "function" },
+    { label: "crear", type: "function" },
+    { label: "create", type: "function" },
+    { label: "destruir", type: "function" },
+    { label: "destroy", type: "function" },
+    { label: "instanciar", type: "function" },
+    { label: "instantiate", type: "function" },
+    { label: "buscar", type: "function" },
+    { label: "find", type: "function" },
+    { label: "obtenerScript", type: "function" },
+    { label: "getScript", type: "function" },
+    { label: "obtenerComponente", type: "function" },
+    { label: "getComponent", type: "function" },
+
+    // Physics & Collisions
+    { label: "alEntrarEnColision", type: "function" },
+    { label: "getCollisionEnter", type: "function" },
+    { label: "estaTocandoTag", type: "function" },
+    { label: "isTouchingTag", type: "function" },
+
+    // Utils
+    { label: "azar", type: "function" },
+    { label: "random", type: "function" },
+    { label: "distancia", type: "function" },
+    { label: "distance", type: "function" },
+    { label: "redondear", type: "function" },
+    { label: "round", type: "function" },
+    { label: "limitar", type: "function" },
+    { label: "clamp", type: "function" }
 ];
 
 function cesCompletions(context) {
@@ -74,7 +191,11 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
                     basicSetup,
                     javascript(),
                     oneDark,
-                    autocompletion({ override: [cesCompletions] })
+                    autocompletion({ override: [cesCompletions] }),
+                    keymap.of([
+                        { key: "Tab", run: acceptCompletion },
+                        indentWithTab
+                    ])
                 ],
                 parent: dom.codemirrorContainer
             });
@@ -84,7 +205,17 @@ export async function openScriptInEditor(fileName, dirHandle, scenePanel) {
             });
         }
 
+        // Fix: Ensure the editor is visible and focused to avoid the typing bug
         scenePanel.querySelector('.view-toggle-btn[data-view="code-editor-content"]').click();
+
+        setTimeout(() => {
+            if (codeEditor) {
+                codeEditor.focus();
+                // Scroll to top
+                codeEditor.dispatch({ effects: EditorView.scrollIntoView(0) });
+            }
+        }, 50);
+
         console.log(`Abierto ${fileName} en el editor.`);
     } catch (error) {
         console.error(`Error al abrir el script '${fileName}':`, error);
@@ -179,52 +310,61 @@ async function runChc() {
 Tu tarea es traducir la descripción humana del comportamiento de un objeto en un script válido de Creative Engine (.ces).
 
 REGLAS TÉCNICAS (Sintaxis CES):
-0. IMPORTACIONES: Pon 've motor;' al inicio para habilitar atajos. Usa 've motor.ui;' para UI.
-1. ESTRUCTURA: Usa 'publico numero velocidad = 5;' o 'publico mtr jugador;'.
-2. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr).
-3. ACCESO (Sin 'this.'): nombre, tag, posicion, fisica, animador, camara, colisionador2d (genérico), particulas, ui.texto, ui.boton.
-4. EVENTOS: 'alEmpezar()', 'alActualizar(delta)', 'alEntrarEnColision(otro)', 'alRecibir(mensaje, datos)'.
-5. TIEMPO: 'esperar(segundos)', 'cada(segundos) { ... }'.
-6. APIs:
-   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre).
-   - crear miPrefab; (instanciar prefab).
-   - destruir(materia), difundir(msg, datos).
-   - entrada.tecla("nombre").
-7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones ni markdown.
+1. IDIOMA: ¡Usa SIEMPRE el español! (si, sino, mientras, para, retornar, verdadero, falso, variable, constante, materia, mtr, numero, texto, booleano).
+2. ESTRUCTURA DE VARIABLES:
+   - 'publico numero velocidad = 5;'
+   - 'publico texto nombre = "Héroe";'
+   - 'publico mtr objetivo;'
+   - 'publico Sprite icono;'
+   - 'publico Audio sonido;'
+   - 'publico Prefab enemigo;'
+   - 'publico Scene siguienteNivel;'
+3. ACCESO (¡IMPORTANTE! No uses 'this.'):
+   - nombre, tag, posicion, fisica, renderizadorDeSprite, controladorAnimacion, fuenteDeAudio, camara, rejilla, mapaDeAzulejos, iaBasica, lienzo.
+   - Atajos: reproducir.Estado(), voltearH, voltearV.
+4. EVENTOS: 'iniciar()', 'actualizar(delta)', 'alEntrarEnColision(otro)', 'alPermanecerEnColision(otro)', 'alRecibir(mensaje, datos)', 'alHacerClick()'.
+5. TIEMPO Y FLUJO:
+   - 'esperar(segundos)' (usa await internamente, pero el usuario escribe esperar(1)).
+   - 'cada(segundos) { ... }' (Timers simplificados).
+6. ACCIONES COMUNES:
+   - lanzarRayo(origen, direccion, dist, tag), buscar(nombre), find(nombre).
+   - crear miPrefab; o instanciar(miPrefab, posicion);
+   - destruir(materia), destroy(materia).
+   - difundir("mensaje", datos), broadcast("mensaje", datos).
+   - entrada.teclaPresionada("W"), entrada.ratonBajo(0).
+7. REGLA DE ORO: Devuelve ÚNICAMENTE el código .ces. Sin explicaciones, sin markdown, sin bloques de código.
 
-EJEMPLOS DE TRADUCCIÓN:
-
-ENTRADA: "Si presiono W sube. Si presiono D a la derecha."
+EJEMPLO 1 (Movimiento):
+ENTRADA: "Mover a la derecha con D y saltar con Espacio."
 SALIDA:
-ve motor;
 publico numero velocidad = 5;
-alActualizar(delta) {
-    si (entrada.tecla("w")) {
-        posicion.y -= velocidad;
-    }
-    si (entrada.tecla("d")) {
+publico numero salto = 10;
+actualizar(delta) {
+    si (entrada.teclaPresionada("d")) {
         posicion.x += velocidad;
     }
-}
-
-ENTRADA: "Cada 2 segundos lanza un rayo hacia abajo. Si golpea algo con tag 'suelo', imprime 'suelo'."
-SALIDA:
-ve motor;
-alEmpezar() {
-    cada(2) {
-        variable hit = lanzarRayo(posicion, {x: 0, y: 1}, 100);
-        si (hit && hit.mtr.tieneTag("suelo")) {
-            imprimir("suelo");
-        }
+    si (entrada.teclaBaja("Space")) {
+        fisica.applyImpulse(nuevo Vector2(0, -salto));
     }
 }
 
-ENTRADA: "Al chocar con el enemigo, espera 1 segundo y destruye este objeto."
+EJEMPLO 2 (Combate):
+ENTRADA: "Al chocar con tag 'Enemigo', imprimir 'Auch' y esperar 2 segundos para destruir este objeto."
 SALIDA:
 alEntrarEnColision(otro) {
-    si (otro.tieneTag("enemigo")) {
-        esperar(1);
+    si (otro.tieneTag("Enemigo")) {
+        imprimir("Auch");
+        esperar(2);
         destruir(materia);
+    }
+}
+
+EJEMPLO 3 (Loop):
+ENTRADA: "Cada 3 segundos cambiar color a rojo."
+SALIDA:
+iniciar() {
+    cada(3) {
+        renderizadorDeSprite.color = "#ff0000";
     }
 }
 

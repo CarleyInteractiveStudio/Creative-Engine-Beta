@@ -66,9 +66,27 @@ export class CreativeScriptBehavior {
         this.materia = materia;
         this._messageSubscriptions = [];
 
+        // --- Standard Constructors for Scripts ---
+        const self = this;
+
+        /** @constructor */
+        this.Vector2 = function(x = 0, y = 0) {
+            const res = { x: x, y: y };
+            if (!(this instanceof self.Vector2)) return res;
+            this.x = x;
+            this.y = y;
+        };
+
+        /** @constructor */
+        this.Color = function(r = 255, g = 255, b = 255, a = 1) {
+            const res = (typeof r === 'string' && r.startsWith('#')) ? r : `rgba(${r},${g},${b},${a})`;
+            if (!(this instanceof self.Color)) return res;
+            // If called with 'new', we must return a non-primitive to override the instance
+            return new String(res);
+        };
+
         // --- Component Shortcuts ---
         this._initializeComponentShortcuts();
-
     }
 
     /**
@@ -467,13 +485,6 @@ export class CreativeScriptBehavior {
         return Math.hypot(x1 - x2, y1 - y2);
     }
     distancia(x1, y1, x2, y2) { return this.distance(x1, y1, x2, y2); }
-
-    Vector2(x = 0, y = 0) { return { x, y }; }
-    Color(r = 255, g = 255, b = 255, a = 1) {
-        // Support for hex string constructor
-        if (typeof r === 'string' && r.startsWith('#')) return r;
-        return `rgba(${r},${g},${b},${a})`;
-    }
 
     /**
      * Reproduce una animación específica en esta materia.

@@ -197,6 +197,11 @@ export class StandaloneRuntime {
                 const orderB = rendererB ? (rendererB.orderInLayer || 0) : 0;
                 if (orderA !== orderB) return orderA - orderB;
 
+                // Parallax priority (Force backdrop if on same orderInLayer)
+                const isParallaxA = !!a.getComponent(Components.Parallax);
+                const isParallaxB = !!b.getComponent(Components.Parallax);
+                if (isParallaxA !== isParallaxB) return isParallaxA ? -1 : 1;
+
                 const transformA = a.getComponent(Components.Transform);
                 const transformB = b.getComponent(Components.Transform);
                 return (transformA ? transformA.y : 0) - (transformB ? transformB.y : 0);
@@ -259,13 +264,6 @@ export class StandaloneRuntime {
                     const dHeight = sHeight * Math.abs(worldScale.y);
                     const dx = -dWidth * pivotX, dy = -dHeight * pivotY;
 
-                    let mirrorX = parallax ? parallax.mirroring.x : 0;
-                    let mirrorY = parallax ? parallax.mirroring.y : 0;
-                    if (parallax) {
-                        if (parallax.repeatX && mirrorX === 0) mirrorX = dWidth;
-                        if (parallax.repeatY && mirrorY === 0) mirrorY = dHeight;
-                    }
-
                     const opacity = typeof sr.opacity === 'number' ? sr.opacity : parseFloat(sr.opacity || 1);
                     const color = sr.color || '#ffffff';
                     const isWhite = color.toLowerCase() === '#ffffff' || color.toLowerCase() === '#fff';
@@ -284,31 +282,10 @@ export class StandaloneRuntime {
 
                     ctx.save();
                     ctx.globalAlpha = isNaN(opacity) ? 1.0 : opacity;
-                    if ((mirrorX > 0 || mirrorY > 0) && viewport) {
-                        const stepX = mirrorX || dWidth, stepY = mirrorY || dHeight;
-                        const startX = mirrorX > 0 ? Math.floor((viewport.left - worldPosition.x - dx) / stepX) * stepX : 0;
-                        const endX = mirrorX > 0 ? Math.ceil((viewport.right - worldPosition.x - dx) / stepX) * stepX + stepX : dWidth;
-                        const startY = mirrorY > 0 ? Math.floor((viewport.top - worldPosition.y - dy) / stepY) * stepY : 0;
-                        const endY = mirrorY > 0 ? Math.ceil((viewport.bottom - worldPosition.y - dy) / stepY) * stepY + stepY : dHeight;
-
-                        for (let tx = startX; tx < endX; tx += stepX) {
-                            for (let ty = startY; ty < endY; ty += stepY) {
-                                ctx.save();
-                                ctx.translate(worldPosition.x + tx, worldPosition.y + ty);
-                                ctx.rotate(worldRotation * Math.PI / 180);
-                                ctx.scale(worldScale.x, worldScale.y);
-                                ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
-                                ctx.restore();
-                                if (mirrorY === 0) break;
-                            }
-                            if (mirrorX === 0) break;
-                        }
-                    } else {
-                        ctx.translate(worldPosition.x, worldPosition.y);
-                        ctx.rotate(worldRotation * Math.PI / 180);
-                        ctx.scale(worldScale.x, worldScale.y);
-                        ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
-                    }
+                    ctx.translate(worldPosition.x, worldPosition.y);
+                    ctx.rotate(worldRotation * Math.PI / 180);
+                    ctx.scale(worldScale.x, worldScale.y);
+                    ctx.drawImage(sourceImg, sourceSX, sourceSY, sourceSW, sourceSH, -sWidth * pivotX, -sHeight * pivotY, sWidth, sHeight);
                     ctx.restore();
                 } else if (tr) {
                     const worldScale = transform.scale, worldRotation = transform.rotation;

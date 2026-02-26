@@ -93,8 +93,9 @@ export class Renderer {
             }
         }
         
-        console.log(`%c[resize ${rendererType}] canvas="${this.canvas.id}", clientSize=(${this.canvas.clientWidth}x${this.canvas.clientHeight}), canvasSize=(${this.canvas.width}x${this.canvas.height}), containerDisplay="${containerDisplay}", visible=${containerVisible}`, `color: ${this.isEditor ? '#FF6600' : '#00FF00'};`);
+        // Removed noisy resize log
     }
+
 
     clear(cameraComponent) {
         if (cameraComponent && cameraComponent.clearFlags === 'DontClear') {

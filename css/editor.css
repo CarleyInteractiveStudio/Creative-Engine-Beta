@@ -399,6 +399,57 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.folder-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 1px 0;
+    transition: background-color 0.15s;
+}
+
+.folder-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.folder-item.active {
+    background-color: rgba(14, 99, 156, 0.3) !important;
+    border-left: 3px solid var(--accent-color);
+    color: #fff;
+    font-weight: 600;
+}
+
+.folder-item.drag-over {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.folder-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.folder-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* folder-toggle ::before content removed in favor of SVG icons */
+
+.folder-children {
+    display: flex;
+    flex-direction: column;
 }
 .sprite-preview {
     width: 64px;
@@ -1957,19 +2008,6 @@ body {
     padding: 5px;
 }
 
-.folder-item {
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.folder-item:hover {
-    background-color: var(--bg-tertiary);
-}
-.folder-item.active, .folder-item.drag-over {
-    background-color: var(--accent-color);
-    color: white;
-    font-weight: bold;
-}
 
 .grid-item {
     display: flex;
@@ -1978,14 +2016,20 @@ body {
     text-align: center;
     gap: 8px;
     padding: 10px;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .grid-item:hover {
-    background-color: var(--bg-tertiary);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-color);
+    transform: translateY(-2px);
 }
 .grid-item.active {
-    background-color: var(--accent-color);
+    background-color: rgba(14, 99, 156, 0.35);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     color: white;
 }
 .grid-item .icon {
@@ -2467,40 +2511,85 @@ body {
   overflow-y: auto;
 }
 
-#component-list h4 {
-    margin-top: 15px;
-    margin-bottom: 5px;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 5px;
+.component-category-wrapper {
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
 }
 
-#component-list .component-item {
-  padding: 6px 10px;
-  background-color: var(--bg-primary);
-  margin-bottom: 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s ease;
+.category-header {
+    background-color: var(--bg-tertiary);
+    padding: 8px 12px;
+    margin: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+    font-weight: 600;
+    user-select: none;
+    transition: background-color 0.2s;
 }
 
-.component-item-indicator {
-    color: #44ff44;
-    font-weight: bold;
-    font-size: 1.1em;
+.category-header:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.category-toggle {
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 6px solid var(--text-secondary);
+    margin-right: 10px;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.category-toggle.open {
+    transform: rotate(90deg);
+}
+
+.category-content {
+    background-color: var(--bg-primary);
+    padding: 6px;
+    transition: all 0.3s ease;
+}
+
+.component-item {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: var(--bg-secondary);
+    border: 1px solid transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.component-item:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-color);
+    transform: translateX(4px);
 }
 
 .component-item.already-added {
-    border-left: 3px solid #44ff44;
+    opacity: 0.6;
+    border-left: 3px solid #2ecc71;
 }
 
-#component-list .component-item:hover {
-  background-color: var(--accent-color);
-  color: white;
+.component-item-indicator {
+    color: #2ecc71;
+}
+
+.script-scan-status {
+    padding: 10px;
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 0.85em;
 }
 
 #add-component-btn {
@@ -2578,10 +2667,16 @@ body {
 }
 
 .hierarchy-item.prefab {
-    color: #3498db;
+    color: #3b82f6 !important;
+    font-weight: 600;
 }
 
-.hierarchy-item.prefab.active {
+.hierarchy-item.prefab-descendant {
+    color: #60a5fa !important;
+}
+
+.hierarchy-item.prefab.active,
+.hierarchy-item.prefab-descendant.active {
     color: white;
 }
 
@@ -4544,4 +4639,58 @@ body.game-mode #loading-overlay {
 
 #animator-assets-list, #animator-states-list {
     min-height: 150px;
+}
+
+
+/* --- Improved Window Styles for Libraries --- */
+
+/* Style: Carl (Glassmorphism) */
+.floating-panel.ce-window-carl {
+    background: rgba(30, 30, 35, 0.7) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ce-window-carl .panel-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+}
+
+.ce-window-carl .panel-content {
+    background: transparent !important;
+}
+
+/* Style: Modern (Clean & Attractive) */
+.floating-panel.ce-window-modern {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--accent-color) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ce-window-modern .panel-header {
+    background-color: var(--bg-tertiary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.ce-window-modern .panel-content {
+    padding: 15px !important;
+}
+
+/* General Library UI Helpers */
+.lib-button-custom {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s;
+}
+
+.lib-button-custom:active {
+    transform: scale(0.95);
 }

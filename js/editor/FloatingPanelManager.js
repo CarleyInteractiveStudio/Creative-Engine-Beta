@@ -112,11 +112,11 @@ export function initializeFloatingPanels() {
 }
 
 export function createFloatingPanel(id, options = {}) {
-    const { title = 'Panel Flotante', content = '', width = 400, height = 300, top = 100, left = 100 } = options;
+    const { title = 'Panel Flotante', content = '', width = 400, height = 300, top = 100, left = 100, className = '' } = options;
 
     const panel = document.createElement('div');
     panel.id = id;
-    panel.className = 'editor-panel floating-panel';
+    panel.className = `editor-panel floating-panel ${className}`;
     panel.style.width = `${width}px`;
     panel.style.height = `${height}px`;
     panel.style.top = `${top}px`;
