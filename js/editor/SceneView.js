@@ -163,6 +163,8 @@ function drawUIGizmos(renderer, materia) {
 import * as VerificationSystem from './ui/VerificationSystem.js';
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
 import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
+import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
+import * as MateriaFactory from './MateriaFactory.js';
 
 // Dependencies from editor.js
 let dom;
@@ -983,9 +985,30 @@ export function initialize(dependencies) {
         e.preventDefault();
         dom.sceneCanvas.classList.remove('drag-over-scene');
 
+        const rect = dom.sceneCanvas.getBoundingClientRect();
+        const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+
         // Handle external files from OS
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const currentDirHandle = getCurrentDirectoryHandle();
+            let currentDirHandle = getCurrentDirectoryHandle();
+            let currentPath = getCurrentDirectoryPath() || 'Assets';
+
+            // Fallback to root Assets if no directory is selected
+            if (!currentDirHandle) {
+                try {
+                    const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+                    const projectsDir = window.projectsDirHandle || projectsDirHandle;
+                    if (!projectsDir) throw new Error("No projects directory handle available.");
+
+                    const projectHandle = await projectsDir.getDirectoryHandle(projectName, { create: true });
+                    currentDirHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+                    currentPath = 'Assets';
+                } catch (err) {
+                    console.error("[SceneView] Error al obtener el directorio raíz de Assets:", err);
+                }
+            }
+
             if (currentDirHandle) {
                 for (const file of e.dataTransfer.files) {
                     try {
@@ -993,6 +1016,33 @@ export function initialize(dependencies) {
                         const writable = await targetFileHandle.createWritable();
                         await writable.write(file);
                         await writable.close();
+
+                        // Instantiate in scene if it's a video or image
+                        const lowerName = file.name.toLowerCase();
+                        const assetPath = currentPath + '/' + file.name;
+
+                        if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.ogv')) {
+                            // Find existing Canvas or create one
+                            let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                            if (!parentCanvas) {
+                                parentCanvas = MateriaFactory.createCanvasObject();
+                            }
+
+                            const newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(file.name), parentCanvas);
+                            newMateria.removeComponent(Components.Transform);
+                            const uiTransform = new Components.UITransform(newMateria);
+                            uiTransform.position = { x: worldPos.x, y: worldPos.y }; // Placeholder position
+                            newMateria.addComponent(uiTransform);
+
+                            const videoPlayer = new Components.VideoPlayer(newMateria);
+                            await videoPlayer.setSourcePath(assetPath);
+                            newMateria.addComponent(videoPlayer);
+
+                            // Initialize size if possible
+                            if (videoPlayer.videoWidth > 0) {
+                                videoPlayer.syncSizeToUITransform();
+                            }
+                        }
                     } catch (err) {
                         console.error("Error al importar archivo desde OS:", err);
                     }
@@ -1004,11 +1054,9 @@ export function initialize(dependencies) {
         }
 
         try {
-            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-
-            const rect = dom.sceneCanvas.getBoundingClientRect();
-            const canvasPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-            const worldPos = screenToWorld(canvasPos.x, canvasPos.y);
+            const dataText = e.dataTransfer.getData('text/plain');
+            if (!dataText) return;
+            const data = JSON.parse(dataText);
 
             let newMateria = null;
 
@@ -1030,17 +1078,26 @@ export function initialize(dependencies) {
             } else if (data.type === 'Asset' && data.name.endsWith('.ceprefab')) {
                 newMateria = await SceneManager.instantiatePrefabFromPath(data.path, worldPos.x, worldPos.y);
             } else if (data.type === 'Asset' && (data.name.endsWith('.mp4') || data.name.endsWith('.webm') || data.name.endsWith('.ogv'))) {
-                newMateria = new Materia(data.name);
-                newMateria.addComponent(new Components.Transform(newMateria));
-                const transform = newMateria.getComponent(Components.Transform);
-                transform.x = worldPos.x;
-                transform.y = worldPos.y;
+                // Find existing Canvas or create one
+                let parentCanvas = SceneManager.currentScene.getAllMaterias().find(m => m.getComponent(Components.Canvas));
+                if (!parentCanvas) {
+                    parentCanvas = MateriaFactory.createCanvasObject();
+                }
+
+                newMateria = MateriaFactory.createBaseMateria(MateriaFactory.generateUniqueName(data.name), parentCanvas);
+                newMateria.removeComponent(Components.Transform);
+                const uiTransform = new Components.UITransform(newMateria);
+                uiTransform.position = { x: worldPos.x, y: worldPos.y };
+                newMateria.addComponent(uiTransform);
 
                 const videoPlayer = new Components.VideoPlayer(newMateria);
                 await videoPlayer.setSourcePath(data.path);
                 newMateria.addComponent(videoPlayer);
 
-                SceneManager.currentScene.addMateria(newMateria);
+                // Initialize size if possible
+                if (videoPlayer.videoWidth > 0) {
+                    videoPlayer.syncSizeToUITransform();
+                }
             }
 
             if (newMateria) {
@@ -1167,6 +1224,7 @@ export function initialize(dependencies) {
                     }
                     if (closestSnap) {
                         tilemap.addLayer(closestSnap.x, closestSnap.y);
+                        tilemap.activeLayerIndex = tilemap.layers.length - 1;
                         updateInspector();
                     }
                 }
@@ -2158,7 +2216,7 @@ function drawTilemapColliders() {
     ctx.restore();
 }
 
-function bucketFill(layer, col, row, replacementTile) {
+function bucketFill(layer, col, row, replacementTile, width, height) {
     const targetTile = layer.tileData.get(`${col},${row}`);
     if (isSameTile(targetTile, replacementTile)) return;
 
@@ -2172,6 +2230,8 @@ function bucketFill(layer, col, row, replacementTile) {
 
         if (visited.has(key)) continue;
         visited.add(key);
+
+        if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
 
         const currentTile = layer.tileData.get(key);
         if (isSameTile(currentTile, targetTile)) {
@@ -2288,18 +2348,52 @@ function paintTile(event) {
     }
 
     // --- Logic for Painting (Brush/Bucket) ---
-    const layer = tilemap.layers[tilemap.activeLayerIndex];
-    if (layer) {
-        const layerOffsetX = layer.position.x * layerWidth;
-        const layerOffsetY = layer.position.y * layerHeight;
+    let layer = null;
+    let col = -1;
+    let row = -1;
+
+    // Helper to calculate coords in a specific layer
+    const getCoordsInLayer = (l) => {
+        const layerOffsetX = l.position.x * layerWidth;
+        const layerOffsetY = l.position.y * layerHeight;
         const layerTopLeftX = layerOffsetX - layerWidth / 2;
         const layerTopLeftY = layerOffsetY - layerHeight / 2;
-        const mouseInLayerX = localMouseX - layerTopLeftX;
-        const mouseInLayerY = localMouseY - layerTopLeftY;
-        const col = Math.floor(mouseInLayerX / cellSize.x);
-        const row = Math.floor(mouseInLayerY / cellSize.y);
+        return {
+            col: Math.floor((localMouseX - layerTopLeftX) / cellSize.x),
+            row: Math.floor((localMouseY - layerTopLeftY) / cellSize.y)
+        };
+    };
 
-        if (col >= 0 && col < width && row >= 0 && row < height) {
+    // 1. Try active layer first
+    const activeL = tilemap.layers[tilemap.activeLayerIndex];
+    if (activeL) {
+        const coords = getCoordsInLayer(activeL);
+        if (coords.col >= 0 && coords.col < width && coords.row >= 0 && coords.row < height) {
+            layer = activeL;
+            col = coords.col;
+            row = coords.row;
+        }
+    }
+
+    // 2. If not over active layer, find which layer the mouse is over
+    if (!layer) {
+        for (let i = 0; i < tilemap.layers.length; i++) {
+            if (i === tilemap.activeLayerIndex) continue;
+            const l = tilemap.layers[i];
+            const coords = getCoordsInLayer(l);
+            if (coords.col >= 0 && coords.col < width && coords.row >= 0 && coords.row < height) {
+                layer = l;
+                col = coords.col;
+                row = coords.row;
+                // Switch active layer automatically for better feedback
+                tilemap.activeLayerIndex = i;
+                if (updateInspector) updateInspector();
+                break;
+            }
+        }
+    }
+
+    if (layer) {
             if (col === lastPaintedCoords.col && row === lastPaintedCoords.row) return;
 
             const key = `${col},${row}`;
@@ -2332,7 +2426,7 @@ function paintTile(event) {
                 const selectedTiles = getSelectedTile();
                 if (selectedTiles && selectedTiles.length > 0) {
                     const tileToPaint = selectedTiles[0];
-                    bucketFill(layer, col, row, tileToPaint);
+                    bucketFill(layer, col, row, tileToPaint, width, height);
 
                     if (tileToPaint.type === 'animation' && !tilemapMateria.getComponent(Components.Animator)) {
                         tilemapMateria.addComponent(new Components.Animator(tilemapMateria));
@@ -2354,7 +2448,6 @@ function paintTile(event) {
 
             return;
         }
-    }
     VerificationSystem.updateStatus(null, false, L.get('INFO_CLICK_FUERA_TILEMAP', "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap."));
 }
 

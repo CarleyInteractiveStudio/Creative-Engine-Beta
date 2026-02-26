@@ -6,7 +6,9 @@ import * as SceneManager from '../../engine/SceneManager.js';
 // --- Module State ---
 let dom;
 let projectsDirHandle;
+let projectHandle, assetsHandle;
 let currentDirectoryHandle = { handle: null, path: '' };
+let lastProjectName = null;
 let exportContext;
 let contextAsset = null; // Asset under the right-click context menu
 let dragCounter = 0; // For robust drag-over UI
@@ -443,16 +445,28 @@ export async function updateAssetBrowser() {
 
     const folderTreeContainer = dom.assetFolderTree;
     const gridViewContainer = dom.assetGridView;
-    folderTreeContainer.innerHTML = '';
 
-    const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
-    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+    const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
+    console.log(`[AssetBrowser] Actualizando para el proyecto: ${projectName}`);
 
-    // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
-    if (!currentDirectoryHandle.handle) {
-         currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
+    try {
+        projectHandle = await currentDirHandle.getDirectoryHandle(projectName, { create: true });
+        assetsHandle = await projectHandle.getDirectoryHandle('Assets', { create: true });
+
+        // If project changed or we have no handle, reset to Assets root
+        if (projectName !== lastProjectName || !currentDirectoryHandle.handle) {
+             currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
+             lastProjectName = projectName;
+             console.log(`[AssetBrowser] Navegación reseteada a /Assets para el proyecto '${projectName}'`);
+        }
+    } catch (err) {
+        console.error(`[AssetBrowser] Error al acceder a la carpeta del proyecto '${projectName}':`, err);
+        folderTreeContainer.innerHTML = '';
+        gridViewContainer.innerHTML = `<p class="error-message">${L.get('ERROR_CARGA_ASSETS', 'Error al cargar los assets del proyecto.')}</p>`;
+        return;
     }
+
+    folderTreeContainer.innerHTML = '';
 
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {
         if (!targetFolderHandle) return;
@@ -553,6 +567,12 @@ export async function updateAssetBrowser() {
             // Cleanup parent blue state if drop handled here
             dom.assetsContent.classList.remove('drag-over-fs');
 
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                currentDirectoryHandle = { handle: dirHandle, path: dirPath };
+                await handleExternalFileDrop(e);
+                return;
+            }
+
             try {
                 const dataText = e.dataTransfer.getData('text/plain');
                 if (dataText) {
@@ -606,6 +626,13 @@ export async function updateAssetBrowser() {
                     e.stopPropagation();
                     // Cleanup parent blue state
                     dom.assetsContent.classList.remove('drag-over-fs');
+
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const targetFolderHandle = await dirHandle.getDirectoryHandle(entry.name);
+                        currentDirectoryHandle = { handle: targetFolderHandle, path: `${dirPath}/${entry.name}` };
+                        await handleExternalFileDrop(e);
+                        return;
+                    }
 
                     try {
                         const dataText = e.dataTransfer.getData('text/plain');
@@ -770,6 +797,12 @@ export async function updateAssetBrowser() {
             folderItem.classList.remove('drag-over');
             // Cleanup parent blue state
             dom.assetsContent.classList.remove('drag-over-fs');
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                currentDirectoryHandle = { handle: dirHandle, path: currentPath };
+                await handleExternalFileDrop(e);
+                return;
+            }
 
             try {
                 const dataText = e.dataTransfer.getData('text/plain');
@@ -999,4 +1032,8 @@ async function handleExternalFileDrop(e) {
 
 export function getCurrentDirectoryHandle() {
     return currentDirectoryHandle.handle;
+}
+
+export function getCurrentDirectoryPath() {
+    return currentDirectoryHandle.path;
 }

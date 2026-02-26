@@ -2044,6 +2044,8 @@ export class VideoPlayer extends Leyes {
         this.playOnAwake = true;
         this.playbackRate = 1.0;
         this.scalingMode = 'Fit'; // 'Stretch', 'Fit', 'Fill'
+        this.muted = false;
+        this.preload = 'auto'; // 'auto', 'metadata', 'none'
 
         this._video = null;
         this._isLoaded = false;
@@ -2074,17 +2076,33 @@ export class VideoPlayer extends Leyes {
         const audioSource = this.materia.getComponent(AudioSource);
         if (audioSource) {
             this._video.volume = audioSource.spatial ? audioSource._currentVolume : audioSource.volume;
-            this._video.muted = false;
         } else {
             this._video.volume = this.volume;
         }
 
         this._video.loop = this.loop;
         this._video.playbackRate = this.playbackRate;
+        this._video.muted = this.muted;
     }
 
     get isPlaying() {
         return this._video && !this._video.paused && !this._video.ended;
+    }
+
+    get videoWidth() {
+        return this._video ? this._video.videoWidth : 0;
+    }
+
+    get videoHeight() {
+        return this._video ? this._video.videoHeight : 0;
+    }
+
+    syncSizeToUITransform() {
+        const uiTransform = this.materia.getComponent(Components.UITransform);
+        if (uiTransform && this.videoWidth > 0 && this.videoHeight > 0) {
+            uiTransform.size.width = this.videoWidth;
+            uiTransform.size.height = this.videoHeight;
+        }
     }
 
     async load() {
@@ -2102,7 +2120,8 @@ export class VideoPlayer extends Leyes {
                 this._video = document.createElement('video');
                 this._video.crossOrigin = 'anonymous';
                 this._video.playsInline = true;
-                this._video.muted = true; // Empieza muteado para auto-play policies
+                this._video.muted = this.muted;
+                this._video.preload = this.preload;
             }
 
             if (this._video.src !== url) {
