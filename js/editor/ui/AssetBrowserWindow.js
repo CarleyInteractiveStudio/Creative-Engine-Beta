@@ -446,12 +446,23 @@ export async function updateAssetBrowser() {
     folderTreeContainer.innerHTML = '';
 
     const projectName = new URLSearchParams(window.location.search).get('project');
-    const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
-    const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+    if (!projectName) {
+        console.warn("[AssetBrowser] No project name found in URL.");
+        return;
+    }
 
-    // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
-    if (!currentDirectoryHandle.handle) {
-         currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
+    try {
+        const projectHandle = await currentDirHandle.getDirectoryHandle(projectName);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+
+        // Default to 'Assets' root if no handle is set or if the current handle is no longer valid
+        if (!currentDirectoryHandle.handle) {
+             currentDirectoryHandle = { handle: assetsHandle, path: 'Assets' };
+        }
+    } catch (err) {
+        console.error("[AssetBrowser] Error accessing project or Assets folder:", err);
+        gridViewContainer.innerHTML = `<p class="error-message">${L.get('ERROR_CARGA_ASSETS', 'Error al cargar los assets del proyecto.')}</p>`;
+        return;
     }
 
     async function handleDropOnFolder(targetFolderHandle, targetPath, droppedData) {

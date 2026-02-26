@@ -2445,7 +2445,6 @@ function paintTile(event) {
 
             return;
         }
-    }
     VerificationSystem.updateStatus(null, false, L.get('INFO_CLICK_FUERA_TILEMAP', "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap."));
 }
 
