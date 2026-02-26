@@ -3483,7 +3483,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
                 </div>
 
                 <div id="animation-sheet-settings-container" class="${metaData.textureType !== 'Animation Sheet' ? 'hidden' : ''}">
-                    <fieldset class="inspector-section bubble-style">
+                    <fieldset class="inspector-section">
                         <legend>Animation Preview</legend>
                         <div class="anim-preview-bubble">
                             <canvas id="anim-preview-canvas" width="128" height="128"></canvas>
@@ -4379,18 +4379,18 @@ async function renderAudioInspector(assetName, assetPath) {
     }
 
     const container = document.createElement('div');
-    container.className = 'audio-inspector';
+    container.className = 'asset-settings';
     container.innerHTML = `
-        <div class="inspector-section bubble-style">
-            <legend>Audio Preview</legend>
-            <div class="audio-preview-bubble" style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px;">
+        <div class="inspector-section">
+            <label>Audio Preview</label>
+            <div class="audio-preview-bubble" style="padding: 15px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 10px;">
                 <audio id="inspector-audio-player" controls style="width: 100%;">
                     <source src="${url}" type="audio/${assetName.split('.').pop()}">
                     Tu navegador no soporta el elemento de audio.
                 </audio>
-                <div class="audio-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
-                    <p>Formato: ${assetName.split('.').pop().toUpperCase()}</p>
-                    <p id="audio-duration-display">Duración: Cargando...</p>
+                <div class="audio-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; display: flex; justify-content: space-between;">
+                    <span><b>Formato:</b> ${assetName.split('.').pop().toUpperCase()}</span>
+                    <span id="audio-duration-display">Duración: Cargando...</span>
                 </div>
             </div>
         </div>
@@ -4420,40 +4420,11 @@ async function renderVideoInspector(assetName, assetPath) {
     }
 
     const container = document.createElement('div');
-    container.className = 'video-inspector';
+    container.className = 'asset-settings';
     container.innerHTML = `
-        <div class="inspector-section bubble-style" style="display: flex; flex-direction: column; align-items: center;">
-            <legend>Video Preview</legend>
-            <div class="video-preview-bubble" style="padding: 10px; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; align-items: center; overflow: hidden; width: fit-content; max-width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1);">
-                <video id="inspector-video-player" style="max-width: 100%; max-height: 250px; border-radius: 4px; outline: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: block; background: transparent;">
-                    <source src="${url}" type="video/${assetName.split('.').pop()}">
-                    Tu navegador no soporta el elemento de video.
-                </video>
-
-                <!-- Custom Controls -->
-                <div class="video-custom-controls" style="width: 100%; min-width: 220px; display: flex; align-items: center; gap: 8px; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 4px; box-sizing: border-box;">
-                    <button id="v-btn-rewind" title="Retroceder 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-back')}</button>
-                    <button id="v-btn-play-pause" title="Reproducir/Pausa" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('play')}</button>
-                    <button id="v-btn-forward" title="Adelantar 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8;">${getIconHTML('skip-forward')}</button>
-
-                    <div style="flex-grow: 1;"></div>
-
-                    <div class="volume-control" style="display: flex; align-items: center; gap: 5px;">
-                        <span id="v-icon-volume" style="display:flex;">${getIconHTML('volume-2')}</span>
-                        <input type="range" id="v-input-volume" min="0" max="1" step="0.1" value="1" style="width: 60px; height: 4px; cursor: pointer; accent-color: var(--color-primary, #007bff);">
-                    </div>
-                </div>
-
-                <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8; width: 100%; text-align: left; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
-                    <p style="margin: 2px 0;"><b>Formato:</b> ${assetName.split('.').pop().toUpperCase()}</p>
-                    <p id="video-res-display" style="margin: 2px 0;">Resolución: Cargando...</p>
-                    <p id="video-duration-display" style="margin: 2px 0;">Duración: Cargando...</p>
-                </div>
-            </div>
-        </div>
-        <div class="inspector-section bubble-style">
-            <legend>Optimization & Quality</legend>
-            <div class="inspector-row">
+        <div class="inspector-section">
+            <label>Optimization & Quality</label>
+            <div class="inspector-row" style="margin-top: 8px;">
                 <label>Calidad</label>
                 <select id="video-quality-select" class="prop-input" style="flex-grow: 1;">
                     <option value="original">Original (Sin cambios)</option>
@@ -4467,9 +4438,41 @@ async function renderVideoInspector(assetName, assetPath) {
             </p>
             <button id="btn-apply-video-meta" class="primary-btn" style="width: 100%; margin-top: 10px; height: 32px; font-weight: bold; border-radius: 4px;">Aplicar Configuración</button>
         </div>
+
         <div class="inspector-section">
             <label>Acciones</label>
             <p class="field-description">Puedes arrastrar este archivo a un componente Video Player para usarlo.</p>
+        </div>
+
+        <hr style="border:none; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+        <div class="preview-container" style="padding: 0; background: var(--bg-primary); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color); margin-top: 10px; width: 100%; box-sizing: border-box;">
+            <div style="width: 100%; background: #000; display: flex; justify-content: center; align-items: center; min-height: 150px; position: relative; overflow: hidden;">
+                <video id="inspector-video-player" style="max-width: 100%; max-height: 250px; display: block; background: #000;">
+                    <source src="${url}" type="video/${assetName.split('.').pop()}">
+                    Tu navegador no soporta el elemento de video.
+                </video>
+            </div>
+
+            <!-- Custom Controls -->
+            <div class="video-custom-controls" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 15px; background: var(--bg-tertiary); border-top: 1px solid var(--border-color); box-sizing: border-box;">
+                <button id="v-btn-rewind" title="Retroceder 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8; color: var(--text-primary);">${getIconHTML('skip-back')}</button>
+                <button id="v-btn-play-pause" title="Reproducir/Pausa" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8; color: var(--text-primary);">${getIconHTML('play')}</button>
+                <button id="v-btn-forward" title="Adelantar 5s" style="background:none; border:none; cursor:pointer; padding:4px; display:flex; opacity: 0.8; color: var(--text-primary);">${getIconHTML('skip-forward')}</button>
+
+                <div style="flex-grow: 1;"></div>
+
+                <div class="volume-control" style="display: flex; align-items: center; gap: 8px;">
+                    <span id="v-icon-volume" style="display:flex; opacity: 0.7;">${getIconHTML('volume-2')}</span>
+                    <input type="range" id="v-input-volume" min="0" max="1" step="0.1" value="1" style="width: 60px; height: 4px; cursor: pointer; accent-color: var(--accent-color);">
+                </div>
+            </div>
+
+            <div class="video-info" style="width: 100%; padding: 8px 15px; background: var(--bg-secondary); font-size: 0.8em; opacity: 0.7; display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); box-sizing: border-box; color: var(--text-secondary);">
+                <span id="video-res-display">Resolución: ...</span>
+                <span id="video-duration-display">Duración: ...</span>
+                <span>${assetName.split('.').pop().toUpperCase()}</span>
+            </div>
         </div>
     `;
 
