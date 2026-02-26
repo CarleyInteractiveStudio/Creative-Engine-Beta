@@ -1,5 +1,5 @@
 import * as SceneManager from './SceneManager.js';
-import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger } from './Components.js';
+import { Camera, Transform, PointLight2D, SpotLight2D, FreeformLight2D, SpriteLight2D, Tilemap, Grid, Canvas, SpriteRenderer, TilemapRenderer, TextureRender, UITransform, UIImage, UIText, DrawingOrder, Terreno2D, Gyzmo, Animator, UIEventTrigger, VideoPlayer, Water, LineCollider2D } from './Components.js';
 import { getAbsoluteRect, calculateLetterbox } from './UITransformUtils.js';
 export class Renderer {
     constructor(canvas, isEditor = false, isGameView = false) {
@@ -142,6 +142,8 @@ export class Renderer {
             return;
         }
 
+        this.camera = activeCamera;
+
         this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.scale(activeCamera.effectiveZoom, activeCamera.effectiveZoom);
         const rotationInRadians = (transform.rotation || 0) * Math.PI / 180;
@@ -239,6 +241,109 @@ export class Renderer {
 
         this.ctx.restore();
         this.ctx.globalAlpha = 1.0;
+    }
+
+    drawWater(water, x = null, y = null) {
+        const transform = water.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const drawX = x !== null ? x : transform.x;
+        const drawY = y !== null ? y : transform.y;
+
+        const { ctx } = this;
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
+
+        if (!this._waterBuffer) {
+            this._waterBuffer = document.createElement('canvas');
+            this._waterBufferCtx = this._waterBuffer.getContext('2d');
+        }
+
+        const pad = 40;
+        const w = water.width + pad * 2;
+        const h = water.height + pad * 2;
+
+        if (this._waterBuffer.width !== w || this._waterBuffer.height !== h) {
+            this._waterBuffer.width = w;
+            this._waterBuffer.height = h;
+        }
+
+        const bCtx = this._waterBufferCtx;
+        bCtx.clearRect(0, 0, w, h);
+
+        if (water.particles.length === 0) {
+            water.generateParticles();
+        }
+
+        bCtx.save();
+        bCtx.fillStyle = water.color;
+        // The blur is essential for the metaball effect
+        bCtx.filter = 'blur(6px)';
+
+        for (const p of water.particles) {
+            bCtx.beginPath();
+            bCtx.arc(p.x + w / 2, p.y + h / 2, water._particleRadius || 8, 0, Math.PI * 2);
+            bCtx.fill();
+        }
+        bCtx.restore();
+
+        // Draw the buffer with high contrast to create the liquid effect (metaballs)
+        ctx.save();
+        // Contrast of 15-20 creates sharp edges on blurred shapes
+        ctx.filter = 'contrast(15) brightness(1.0)';
+        ctx.drawImage(this._waterBuffer, -w / 2, -h / 2, w, h);
+        ctx.restore();
+
+        if (this.isEditor) {
+            // Semi-transparent background to ensure visibility
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.2)';
+            ctx.fillRect(-water.width / 2, -water.height / 2, water.width, water.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(-water.width / 2, -water.height / 2, water.width, water.height);
+        }
+
+        ctx.restore();
+    }
+
+    drawLineCollider(collider, x = null, y = null) {
+        const transform = collider.materia.getComponent(Transform);
+        if (!transform || !collider.points || collider.points.length < 2) return;
+
+        const drawX = x !== null ? x : transform.x;
+        const drawY = y !== null ? y : transform.y;
+
+        const { ctx, camera } = this;
+        const zoom = camera ? camera.effectiveZoom : 1.0;
+
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+        ctx.scale(transform.scale.x, transform.scale.y);
+
+        ctx.beginPath();
+        ctx.moveTo(collider.points[0].x, collider.points[0].y);
+        for (let i = 1; i < collider.points.length; i++) {
+            ctx.lineTo(collider.points[i].x, collider.points[i].y);
+        }
+
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+
+        // Draw handles in editor
+        if (this.isEditor) {
+            ctx.fillStyle = '#ffffff';
+            const s = 6 / zoom;
+            for (const p of collider.points) {
+                ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+            }
+        }
+
+        ctx.restore();
     }
 
     drawTerreno2D(terreno) {
@@ -574,6 +679,67 @@ export class Renderer {
         }
     }
 
+    drawVideoPlayer(videoPlayer, x, y, width, height) {
+        const video = videoPlayer._video;
+        if (!video) return;
+
+        // Si estamos en el editor y no está reproduciendo, intentamos mostrar el primer frame
+        if (this.isEditor && video.paused && video.currentTime === 0) {
+            // Se asume que video.load() ya se llamó
+        }
+
+        this.ctx.save();
+
+        let drawX = x;
+        let drawY = y;
+        let drawWidth = width;
+        let drawHeight = height;
+
+        // Implementación de Scaling Modes
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            const aspect = video.videoWidth / video.videoHeight;
+            const targetAspect = width / height;
+
+            if (videoPlayer.scalingMode === 'Fit') {
+                if (targetAspect > aspect) {
+                    drawWidth = height * aspect;
+                    drawX = x + (width - drawWidth) / 2;
+                } else {
+                    drawHeight = width / aspect;
+                    drawY = y + (height - drawHeight) / 2;
+                }
+            } else if (videoPlayer.scalingMode === 'Fill') {
+                this.ctx.beginPath();
+                this.ctx.rect(x, y, width, height);
+                this.ctx.clip();
+                if (targetAspect > aspect) {
+                    drawHeight = width / aspect;
+                    drawY = y + (height - drawHeight) / 2;
+                } else {
+                    drawWidth = height * aspect;
+                    drawX = x + (width - drawWidth) / 2;
+                }
+            }
+            // 'Stretch' es el default (usar width/height directamente)
+        }
+
+        try {
+            this.ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+        } catch (e) {
+            // El video puede no estar listo para drawImage
+            if (this.isEditor) {
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillRect(x, y, width, height);
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Video Loading...', x + width / 2, y + height / 2);
+            }
+        }
+
+        this.ctx.restore();
+    }
+
     _drawUIElementAndChildren(element, rectCache, scaleX = 1, scaleY = 1, scaleChildren = true) {
         if (!element.isActive) return;
 
@@ -596,6 +762,7 @@ export class Renderer {
             // Drawing Logic for the current element
             const uiImage = element.getComponent(UIImage);
             const uiText = element.getComponent(UIText);
+            const videoPlayer = element.getComponent(VideoPlayer);
             const uiEventTrigger = element.getComponent(UIEventTrigger);
 
             if (this.isEditor && uiEventTrigger && uiEventTrigger.showGizmo) {
@@ -610,7 +777,9 @@ export class Renderer {
             }
             const textureRender = element.getComponent(TextureRender);
 
-            if (uiImage) {
+            if (videoPlayer) {
+                this.drawVideoPlayer(videoPlayer, x, y, width, height);
+            } else if (uiImage) {
                 this.ctx.fillStyle = uiImage.color;
                 this.ctx.fillRect(x, y, width, height);
                 if (uiImage.sprite && uiImage.sprite.complete && uiImage.sprite.naturalWidth > 0) {

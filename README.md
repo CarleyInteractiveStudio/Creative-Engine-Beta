@@ -9,6 +9,13 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
 - **Flujo de Trabajo Optimizado:** Ventanas acoplables para Jerarquía, Inspector, Biblioteca de Activos y Consola.
 - **Multilenguaje:** Soporte completo para **Español** e **Inglés**, adaptándose a creadores de todo el mundo.
 
+### 💧 Simulación de Fluidos y Física Avanzada
+- **Agua (Water):** Simulación de fluidos basada en partículas (PBD) que permite deformaciones realistas.
+  - **Empuje (Buoyancy):** Los objetos con física dinámica flotarán o se hundirán según la densidad del agua y la masa del objeto.
+  - **Propiedades Físicas:** Configura la densidad, viscosidad y mareas (amplitud y velocidad) para crear diferentes tipos de líquidos.
+  - **Efecto Visual:** Renderizado de metabolas para una apariencia líquida suave y cohesiva.
+- **Colisionador de Líneas (LineCollider2D):** Permite crear límites de colisión complejos definiendo una lista de puntos, ideal para terrenos irregulares o plataformas personalizadas.
+
 ### 🧠 Inteligencia Artificial y Detección
 - **IA Básica (IA Básica):** Componente listo para usar con comportamientos de:
   - **Seguir:** Persigue a un objetivo específico.
@@ -29,11 +36,16 @@ Creative Engine es un motor de videojuegos 2D profesional y ligero, diseñado pa
   - `audio`, `sprite`, `ui`, `prefab`, `script`, `tag`, `layer`, `animacion`, `escena`, `accion`.
 - **Asignación Inteligente Pro:** Al arrastrar un objeto de la escena a una variable pública, el motor analiza sus componentes para encontrar la coincidencia correcta (ej: un `SpriteRenderer` para el tipo `sprite`, o un `AudioSource` para `audio`). También admite asignación de `Tags` y `Layers` mediante arrastre.
 
-### 🎨 Gráficos y Sonido
+### 🎨 Gráficos, Video y Sonido
 - **SpriteRenderer:** Soporte para hojas de sprites (SpriteSheets) y animaciones.
 - **Tilemaps:** Editor de niveles basado en rejilla con soporte para múltiples capas y colisiones automáticas.
+- **VideoPlayer:** Reproducción de video integrada con soporte para:
+  - **Modos de Escalado:** Ajustar (Fit), Estirar (Stretch) y Rellenar (Fill).
+  - **Espacios:** Renderizado tanto en el mundo 2D como en la interfaz de usuario (UI).
 - **Parallax:** Crea fondos con profundidad infinita de forma sencilla.
-- **Sistema de Audio:** Gestión de efectos de sonido y música de fondo.
+- **Sistema de Audio Pro:** Gestión avanzada de sonido con:
+  - **Audio Espacial:** Atenuación de volumen basada en la distancia a la cámara.
+  - **Recorte de Rango:** Define exactamente qué parte del archivo de audio reproducir.
 
 ## 🚀 Cómo Empezar
 

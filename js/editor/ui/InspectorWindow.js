@@ -32,8 +32,9 @@ const availableComponents = {
     'CAT_ILUMINACION': [Components.PointLight2D, Components.SpotLight2D, Components.FreeformLight2D, Components.SpriteLight2D],
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
+    'CAT_AUDIO': [Components.AudioSource, Components.VideoPlayer],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
     'CAT_SCRIPTING': [Components.CreativeScript]
@@ -41,12 +42,13 @@ const availableComponents = {
 
 const componentIcons = {
     Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
-    Animator: 'run', AnimatorController: 'gamepad', Camera: 'camera', CreativeScript: 'scroll',
+    Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
     Terreno2D: 'mountain', TerrenoCollider2D: 'mountain',
     Button: 'mouse-pointer', UIText: 'type', Canvas: 'image',
     Movement: 'run', CameraFollow: 'video', Parallax: 'mountain-snow', DrawingOrder: 'layers', ProjectileLauncher: 'rocket', AutoDestroy: 'timer', Health: 'heart', Patrol: 'route',
+    Water: 'droplet', LineCollider2D: 'route',
     'ParticleSystem': 'sparkles',
     'Gyzmo': 'target',
     'RaycastSource': 'route',
@@ -56,6 +58,7 @@ const componentIcons = {
 const fileIcons = {
     png: 'image', jpg: 'image', jpeg: 'image',
     mp3: 'music', wav: 'music',
+    mp4: 'video', webm: 'video', ogv: 'video',
     ceprefab: 'box',
     ceScene: 'clapperboard',
     ces: 'scroll',
@@ -75,6 +78,8 @@ const typeExtensionMap = {
     'sprite': ['.png', '.jpg', '.jpeg', '.ceSprite'],
     'Audio': ['.mp3', '.wav'],
     'audio': ['.mp3', '.wav'],
+    'Video': ['.mp4', '.webm', '.ogv'],
+    'video': ['.mp4', '.webm', '.ogv'],
     'Prefab': ['.ceprefab'],
     'prefab': ['.ceprefab'],
     'Scene': ['.ceScene'],
@@ -204,7 +209,9 @@ async function handleInspectorDrop(e) {
                 'RaycastSource': Components.RaycastSource,
                 'rallo': Components.RaycastSource,
                 'BasicAI': Components.BasicAI,
-                'iaBasica': Components.BasicAI
+                'iaBasica': Components.BasicAI,
+                'VideoPlayer': Components.VideoPlayer,
+                'video': Components.VideoPlayer
             }[expectedType] || Components[expectedType];
 
             if (typeToSearch) {
@@ -720,6 +727,27 @@ function handleInspectorClick(e) {
         }
     }
 
+    // --- LineCollider2D Management ---
+    if (e.target.matches('[data-action="line-add-point"]')) {
+        const ley = selectedMateria.getComponent(Components.LineCollider2D);
+        if (ley) {
+            const last = ley.points[ley.points.length - 1] || { x: 0, y: 0 };
+            ley.points.push({ x: last.x + 20, y: last.y });
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
+    if (e.target.matches('[data-action="line-remove-point"]')) {
+        const ley = selectedMateria.getComponent(Components.LineCollider2D);
+        const index = parseInt(e.target.dataset.index, 10);
+        if (ley && !isNaN(index) && ley.points.length > 2) {
+            ley.points.splice(index, 1);
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
     // --- RaycastSource (Rallo) Management ---
     if (e.target.matches('[data-action="rallo-add-ray"]')) {
         const rallo = selectedMateria.getComponent(Components.RaycastSource);
@@ -1186,6 +1214,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
                 const lowerType = type.toLowerCase();
                 if (lowerType === 'sprite') icon = 'image';
                 else if (lowerType === 'audio') icon = 'music';
+                else if (lowerType === 'video') icon = 'video';
                 else if (lowerType === 'prefab') icon = 'box';
                 else if (lowerType === 'scene' || lowerType === 'escena') icon = 'clapperboard';
             }
@@ -1490,6 +1519,43 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TextureRender" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.VideoPlayer) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('VIDEO_PLAYER', "Video Player"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="VIDEO_SOURCE">${L.get('VIDEO_SOURCE', 'Video Source')}</label>
+                        ${renderPropertyDropper('Video', ley.source, 'data-component="VideoPlayer" data-prop="source"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="VOLUMEN">${L.get('VOLUMEN', 'Volumen')}</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" data-component="VideoPlayer" data-prop="volume" value="${ley.volume}" min="0" max="1" step="0.01" style="flex-grow: 1;">
+                            <span style="min-width: 30px; text-align: right;">${Math.round(ley.volume * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                         <label data-i18n="PLAYBACK_RATE">${L.get('PLAYBACK_RATE', 'Velocidad')}</label>
+                         <input type="number" class="prop-input" data-component="VideoPlayer" data-prop="playbackRate" value="${ley.playbackRate}" step="0.1" min="0.1">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label data-i18n="BUCLE_LOOP">${L.get('BUCLE_LOOP', 'Bucle (Loop)')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VideoPlayer" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Reproducir al Empezar')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="SCALING_MODE">${L.get('SCALING_MODE', 'Escalado')}</label>
+                        <select class="prop-input" data-component="VideoPlayer" data-prop="scalingMode">
+                            <option value="Fit" ${ley.scalingMode === 'Fit' ? 'selected' : ''}>Fit</option>
+                            <option value="Stretch" ${ley.scalingMode === 'Stretch' ? 'selected' : ''}>Stretch</option>
+                            <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''}>Fill</option>
+                        </select>
                     </div>
                 </div>
             `;
@@ -2836,6 +2902,116 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.Water) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('WATER', "Water (Agua)"), icon, index)}
+                <div class="component-content">
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Dimensions')}</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" data-component="Water" data-prop="width" value="${ley.width}" title="${L.get('PROP_WIDTH', 'Width')}">
+                            <input type="number" class="prop-input" data-component="Water" data-prop="height" value="${ley.height}" title="${L.get('PROP_HEIGHT', 'Height')}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
+                        <input type="color" class="prop-input" data-component="Water" data-prop="color" value="${ley.color}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_WATER_DENSITY">${L.get('PROP_WATER_DENSITY', 'Density')}</label>
+                        <input type="number" class="prop-input" data-component="Water" data-prop="density" value="${ley.density}" step="0.1">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="PROP_VISCOSITY">${L.get('PROP_VISCOSITY', 'Viscosity')}</label>
+                        <input type="range" class="prop-input" data-component="Water" data-prop="viscosity" value="${ley.viscosity}" min="0" max="1" step="0.01">
+                    </div>
+                    <hr>
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Water" data-prop="showTides" ${ley.showTides ? 'checked' : ''}>
+                        <label data-i18n="PROP_SHOW_MAREAS">${L.get('PROP_SHOW_MAREAS', 'Simular Mareas')}</label>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${ley.showTides ? 'flex' : 'none'};">
+                        <label data-i18n="PROP_TIDE_AMPLITUDE">${L.get('PROP_TIDE_AMPLITUDE', 'Amplitud')}</label>
+                        <input type="number" class="prop-input" data-component="Water" data-prop="tideAmplitude" value="${ley.tideAmplitude}">
+                    </div>
+                    <button class="primary-btn" onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Water); w.generateParticles(); window.updateScene();" style="width: 100%; margin-top: 10px;" data-i18n="REGENERAR_PARTICULAS">${L.get('REGENERAR_PARTICULAS', 'Regenerar Partículas')}</button>
+                </div>
+            `;
+        } else if (ley instanceof Components.LineCollider2D) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('LINE_COLLIDER', "Line Collider 2D"), icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="LineCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label data-i18n="PROP_IS_TRIGGER">${L.get('PROP_IS_TRIGGER', 'Is Trigger')}</label>
+                    </div>
+                    <div class="inspector-section-header">
+                        <span data-i18n="PROP_POINTS">${L.get('PROP_POINTS', 'Puntos')}</span>
+                        <button class="layer-btn add" data-action="line-add-point" data-i18n="PROP_ADD_POINT" title="${L.get('PROP_ADD_POINT', 'Añadir Punto')}">+</button>
+                    </div>
+                    <div class="layer-list" style="max-height: 200px; overflow-y: auto;">
+                        ${ley.points.map((p, pIdx) => `
+                            <div class="layer-item" style="gap: 5px; padding: 5px;">
+                                <span style="min-width: 20px;">${pIdx}:</span>
+                                <div class="prop-inputs">
+                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.x" value="${p.x}" title="X">
+                                    <input type="number" class="prop-input" data-component="LineCollider2D" data-prop="points.${pIdx}.y" value="${p.y}" title="Y">
+                                </div>
+                                <button class="layer-btn remove" data-action="line-remove-point" data-index="${pIdx}" title="${L.get('BORRAR_PUNTO', 'Borrar punto')}">&times;</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.AudioSource) {
+            componentHTML = `
+                ${renderComponentHeader(L.get('AUDIO_SOURCE', "Audio Source"), icon, index)}
+                <div class="component-content">
+                    <div class="inspector-row">
+                        <label data-i18n="AUDIO_CLIP">${L.get('AUDIO_CLIP', 'Audio Clip')}</label>
+                        ${renderPropertyDropper('Audio', ley.source, 'data-component="AudioSource" data-prop="source"')}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="VOLUMEN">${L.get('VOLUMEN', 'Volumen')}</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" data-component="AudioSource" data-prop="volume" value="${ley.volume}" min="0" max="1" step="0.01" style="flex-grow: 1;">
+                            <span style="min-width: 30px; text-align: right;">${Math.round(ley.volume * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AudioSource" data-prop="loop" ${ley.loop ? 'checked' : ''}>
+                        <label data-i18n="BUCLE_LOOP">${L.get('BUCLE_LOOP', 'Bucle (Loop)')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AudioSource" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
+                        <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Reproducir al Empezar')}</label>
+                    </div>
+
+                    <div class="inspector-section-header"><span data-i18n="AUDIO_ESPACIAL">${L.get('AUDIO_ESPACIAL', 'Audio Espacial')}</span></div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="AudioSource" data-prop="spatial" ${ley.spatial ? 'checked' : ''}>
+                        <label data-i18n="ACTIVAR_AUDIO_ESPACIAL">${L.get('ACTIVAR_AUDIO_ESPACIAL', 'Activar Audio Espacial')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DISTANCIA_MINIMA">${L.get('DISTANCIA_MINIMA', 'Distancia Mínima')}</label>
+                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="minDistance" value="${ley.minDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="DISTANCIA_MAXIMA">${L.get('DISTANCIA_MAXIMA', 'Distancia Máxima')}</label>
+                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="maxDistance" value="${ley.maxDistance}">
+                    </div>
+
+                    <div class="inspector-section-header"><span data-i18n="RANGO_REPRODUCCION">${L.get('RANGO_REPRODUCCION', 'Rango de Reproducción')}</span></div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="INICIO_SEG">${L.get('INICIO_SEG', 'Inicio (seg)')}</label>
+                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="playbackStart" value="${ley.playbackStart}" step="0.1" min="0">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label data-i18n="FIN_SEG">${L.get('FIN_SEG', 'Fin (seg, 0=fin)')}</label>
+                        <input type="number" class="prop-input" data-component="AudioSource" data-prop="playbackEnd" value="${ley.playbackEnd}" step="0.1" min="0">
+                    </div>
+                </div>
+            `;
         } else if (ley instanceof Components.BasicAI) {
             let functionsDropdownHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName || ''}" placeholder="ej: alDetectarEnemigo">`;
 
@@ -3627,6 +3803,10 @@ async function updateInspectorForAsset(assetName, assetPath) {
             dom.inspectorContent.appendChild(previewContainer);
         } else if (assetName.endsWith('.ceSprite')) {
             await renderCeSpriteInspector(content, dirHandle, assetPath);
+        } else if (assetName.endsWith('.mp3') || assetName.endsWith('.wav')) {
+            await renderAudioInspector(assetName, assetPath);
+        } else if (assetName.endsWith('.mp4') || assetName.endsWith('.webm') || assetName.endsWith('.ogv')) {
+            await renderVideoInspector(assetName, assetPath);
         } else {
              dom.inspectorContent.innerHTML += `<p>No hay vista previa disponible para este tipo de archivo.</p>`;
         }
@@ -4070,6 +4250,91 @@ async function saveProjectConfig() {
         console.error("Error al guardar la configuración del proyecto desde el Inspector:", error);
         showNotification('Error', 'No se pudo guardar la configuración del proyecto.');
     }
+}
+
+async function renderAudioInspector(assetName, assetPath) {
+    const url = await getURLForAssetPath(assetPath, projectsDirHandle);
+    if (!url) {
+        dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo obtener la URL del audio.</p>`;
+        return;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'audio-inspector';
+    container.innerHTML = `
+        <div class="inspector-section bubble-style">
+            <legend>Audio Preview</legend>
+            <div class="audio-preview-bubble" style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px;">
+                <audio id="inspector-audio-player" controls style="width: 100%;">
+                    <source src="${url}" type="audio/${assetName.split('.').pop()}">
+                    Tu navegador no soporta el elemento de audio.
+                </audio>
+                <div class="audio-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
+                    <p>Formato: ${assetName.split('.').pop().toUpperCase()}</p>
+                    <p id="audio-duration-display">Duración: Cargando...</p>
+                </div>
+            </div>
+        </div>
+        <div class="inspector-section">
+            <label>Acciones</label>
+            <p class="field-description">Puedes arrastrar este archivo a un componente Audio Source para usarlo.</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    const player = document.getElementById('inspector-audio-player');
+    const durationDisplay = document.getElementById('audio-duration-display');
+
+    player.onloadedmetadata = () => {
+        const mins = Math.floor(player.duration / 60);
+        const secs = Math.floor(player.duration % 60);
+        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+}
+
+async function renderVideoInspector(assetName, assetPath) {
+    const url = await getURLForAssetPath(assetPath, projectsDirHandle);
+    if (!url) {
+        dom.inspectorContent.innerHTML += `<p class="error-message">No se pudo obtener la URL del video.</p>`;
+        return;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'video-inspector';
+    container.innerHTML = `
+        <div class="inspector-section bubble-style">
+            <legend>Video Preview</legend>
+            <div class="video-preview-bubble" style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-top: 10px;">
+                <video id="inspector-video-player" controls style="width: 100%; border-radius: 4px; background: #000;">
+                    <source src="${url}" type="video/${assetName.split('.').pop()}">
+                    Tu navegador no soporta el elemento de video.
+                </video>
+                <div class="video-info" style="margin-top: 10px; font-size: 0.85em; opacity: 0.8;">
+                    <p>Formato: ${assetName.split('.').pop().toUpperCase()}</p>
+                    <p id="video-res-display">Resolución: Cargando...</p>
+                    <p id="video-duration-display">Duración: Cargando...</p>
+                </div>
+            </div>
+        </div>
+        <div class="inspector-section">
+            <label>Acciones</label>
+            <p class="field-description">Puedes arrastrar este archivo a un componente Video Player para usarlo.</p>
+        </div>
+    `;
+
+    dom.inspectorContent.appendChild(container);
+
+    const player = document.getElementById('inspector-video-player');
+    const resDisplay = document.getElementById('video-res-display');
+    const durationDisplay = document.getElementById('video-duration-display');
+
+    player.onloadedmetadata = () => {
+        resDisplay.textContent = `Resolución: ${player.videoWidth}x${player.videoHeight}`;
+        const mins = Math.floor(player.duration / 60);
+        const secs = Math.floor(player.duration % 60);
+        durationDisplay.textContent = `Duración: ${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 }
 
 /**

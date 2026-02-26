@@ -196,6 +196,9 @@ LUZ_FORMA_LIBRE: Freeform Light
 LUZ_SPRITE: Sprite Light
 CAMARA: Cámara
 AUDIO: Audio
+VIDEO: Video
+WATER: Agua
+LINE_COLLIDER: Colisionador de Líneas
 ESCENA_VACIA: La escena está vacía.<br>Click derecho para crear un objeto.
 RENOMBRAR: Renombrar
 DUPLICAR: Duplicar
@@ -216,6 +219,7 @@ LAYER: Layer
 ADD_TAG_ELLIPSIS: Añadir Tag...
 EDIT_LAYERS_ELLIPSIS: Editar Layers...
 AÑADIR_LEY_TITULO: Añadir Ley (Componente)
+CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Renderizado
 CAT_MAPA: Mapa
 CAT_ILUMINACION: Iluminación
@@ -261,7 +265,36 @@ RAYS: Rayos
 ANGLE: Ángulo
 LENGTH: Longitud
 RAY: Rayo
+AUDIO_SOURCE: Audio Source
 DETECTION_TAGS: Tags de Detección
+AUDIO_CLIP: Audio Clip
+VOLUMEN: Volumen
+BUCLE_LOOP: Bucle (Loop)
+REPRODUCIR_AL_EMPEZAR: Reproducir al Empezar
+AUDIO_ESPACIAL: Audio Espacial
+ACTIVAR_AUDIO_ESPACIAL: Activar Audio Espacial
+DISTANCIA_MINIMA: Distancia Mínima
+DISTANCIA_MAXIMA: Distancia Máxima
+RANGO_REPRODUCCION: Rango de Reproducción
+INICIO_SEG: Inicio (seg)
+FIN_SEG: Fin (seg, 0=fin)
+VIDEO_PLAYER: Video Player
+VIDEO_SOURCE: Video Source
+PLAYBACK_RATE: Velocidad Reproducción
+SCALING_MODE: Modo de Escalado
+
+# Water Component
+PROP_WATER_DENSITY: Densidad del Agua
+PROP_VISCOSITY: Viscosidad
+PROP_SHOW_MAREAS: Simular Mareas
+PROP_TIDE_AMPLITUDE: Amplitud de Marea
+REGENERAR_PARTICULAS: Regenerar Partículas
+
+# LineCollider2D
+PROP_POINTS: Puntos
+PROP_ADD_POINT: Añadir Punto
+BORRAR_PUNTO: Borrar punto
+PROP_IS_TRIGGER: Es disparador (Trigger)
 
 # Directions
 NW: Noroeste
@@ -1033,6 +1066,9 @@ LUZ_FORMA_LIBRE: Freeform Light
 LUZ_SPRITE: Sprite Light
 CAMARA: Camera
 AUDIO: Audio
+VIDEO: Video
+WATER: Water
+LINE_COLLIDER: Line Collider
 ESCENA_VACIA: The scene is empty.<br>Right-click to create an object.
 RENOMBRAR: Rename
 DUPLICAR: Duplicate
@@ -1053,6 +1089,7 @@ LAYER: Layer
 ADD_TAG_ELLIPSIS: Add Tag...
 EDIT_LAYERS_ELLIPSIS: Edit Layers...
 AÑADIR_LEY_TITULO: Add Law (Component)
+CAT_AUDIO: Audio/Video
 CAT_RENDERIZADO: Rendering
 CAT_MAPA: Map
 CAT_ILUMINACION: Lighting
@@ -1098,7 +1135,36 @@ RAYS: Rays
 ANGLE: Angle
 LENGTH: Length
 RAY: Ray
+AUDIO_SOURCE: Audio Source
 DETECTION_TAGS: Detection Tags
+AUDIO_CLIP: Audio Clip
+VOLUMEN: Volume
+BUCLE_LOOP: Loop
+REPRODUCIR_AL_EMPEZAR: Play On Awake
+AUDIO_ESPACIAL: Spatial Audio
+ACTIVAR_AUDIO_ESPACIAL: Enable Spatial Audio
+DISTANCIA_MINIMA: Minimum Distance
+DISTANCIA_MAXIMA: Maximum Distance
+RANGO_REPRODUCCION: Playback Range
+INICIO_SEG: Start (sec)
+FIN_SEG: End (sec, 0=end)
+VIDEO_PLAYER: Video Player
+VIDEO_SOURCE: Video Source
+PLAYBACK_RATE: Playback Rate
+SCALING_MODE: Scaling Mode
+
+# Water Component
+PROP_WATER_DENSITY: Water Density
+PROP_VISCOSITY: Viscosity
+PROP_SHOW_MAREAS: Show Tides
+PROP_TIDE_AMPLITUDE: Tide Amplitude
+REGENERAR_PARTICULAS: Regenerate Particles
+
+# LineCollider2D
+PROP_POINTS: Points
+PROP_ADD_POINT: Add Point
+BORRAR_PUNTO: Delete point
+PROP_IS_TRIGGER: Is Trigger
 
 # Directions
 NW: Northwest

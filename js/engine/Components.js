@@ -56,7 +56,10 @@ const componentAliases = {
     'PolygonCollider2D': 'colisionadorPoligono2D',
     'Gyzmo': 'gyzmo',
     'RaycastSource': 'rallo',
-    'BasicAI': 'iaBasica'
+    'BasicAI': 'iaBasica',
+    'VideoPlayer': 'reproductorDeVideo',
+    'Water': 'agua',
+    'LineCollider2D': 'colisionadorDeLineas2D'
 };
 
 
@@ -272,6 +275,15 @@ export class CreativeScriptBehavior {
     get particula() { return this.materia.getComponent(ParticleSystem); }
     get particulas() { return this.particula; }
     get sistemaDeParticulas() { return this.particula; }
+
+    get audio() { return this.materia.getComponent(AudioSource); }
+    get sonido() { return this.audio; }
+
+    get video() { return this.materia.getComponent(VideoPlayer); }
+    get pelicula() { return this.video; }
+
+    get agua() { return this.materia.getComponent(Water); }
+    get water() { return this.agua; }
 
     get texto() { return this.materia.getComponent(UIText); }
     get boton() { return this.materia.getComponent(Button); }
@@ -964,6 +976,9 @@ export class Rigidbody2D extends Leyes {
             freezePositionY: false,
             freezeRotation: false
         };
+        this.buoyancyWeight = 1.0; // Peso del objeto para flotación
+        this.sinkThreshold = 1.5; // Densidad a la que empieza a hundirse (buoyancy density)
+
         // Internal state, not exposed in inspector
         this.velocity = { x: 0, y: 0 };
         this.angularVelocity = 0;
@@ -1857,8 +1872,19 @@ export class AudioSource extends Leyes {
         this.volume = 1.0;
         this.loop = false;
         this.playOnAwake = true;
+
+        // Spatial Audio Properties
+        this.spatial = false;
+        this.minDistance = 100;
+        this.maxDistance = 1000;
+
+        // Playback Range (cutting)
+        this.playbackStart = 0; // seconds
+        this.playbackEnd = 0;   // seconds, 0 means play until the end
+
         this._audio = null;
         this._isLoaded = false;
+        this._currentVolume = 1.0;
     }
 
     async start() {
@@ -1867,7 +1893,54 @@ export class AudioSource extends Leyes {
         }
     }
 
-    async play() {
+    update(deltaTime) {
+        if (!this._audio || !this.isPlaying) return;
+
+        // --- Handle Playback End (Cut) ---
+        if (this.playbackEnd > 0 && this._audio.currentTime >= this.playbackEnd) {
+            if (this.loop) {
+                this._audio.currentTime = this.playbackStart;
+            } else {
+                this.stop();
+                return;
+            }
+        }
+
+        // --- Spatial Audio Logic ---
+        if (this.spatial && this.materia && this.materia.scene) {
+            const camera = this.materia.scene.findFirstCamera();
+            if (camera) {
+                const camTrans = camera.getComponent(Transform);
+                const myTrans = this.materia.getComponent(Transform);
+                if (camTrans && myTrans) {
+                    const dist = Math.hypot(camTrans.x - myTrans.x, camTrans.y - myTrans.y);
+                    let spatialFactor = 1.0;
+
+                    if (dist <= this.minDistance) {
+                        spatialFactor = 1.0;
+                    } else if (dist >= this.maxDistance) {
+                        spatialFactor = 0.0;
+                    } else {
+                        // Linear falloff
+                        spatialFactor = 1.0 - (dist - this.minDistance) / (this.maxDistance - this.minDistance);
+                    }
+
+                    this._currentVolume = this.volume * spatialFactor;
+                    if (this._audio) this._audio.volume = this._currentVolume;
+                }
+            }
+        } else {
+            if (this._audio && this._audio.volume !== this.volume) {
+                this._audio.volume = this.volume;
+            }
+        }
+    }
+
+    get isPlaying() {
+        return this._audio && !this._audio.paused && !this._audio.ended;
+    }
+
+    async play(startTime = null) {
         if (!this.source) return;
 
         try {
@@ -1878,8 +1951,15 @@ export class AudioSource extends Leyes {
                 this._audio.oncanplaythrough = () => this._isLoaded = true;
             }
 
-            this._audio.volume = this.volume;
+            this._audio.volume = this.spatial ? this._currentVolume : this.volume;
             this._audio.loop = this.loop;
+
+            if (startTime !== null) {
+                this._audio.currentTime = startTime;
+            } else if (this._audio.currentTime < this.playbackStart) {
+                this._audio.currentTime = this.playbackStart;
+            }
+
             await this._audio.play();
         } catch (e) {
             console.warn(`[AudioSource] No se pudo reproducir audio: ${this.source}.`, e);
@@ -1889,7 +1969,7 @@ export class AudioSource extends Leyes {
     stop() {
         if (this._audio) {
             this._audio.pause();
-            this._audio.currentTime = 0;
+            this._audio.currentTime = this.playbackStart;
         }
     }
 
@@ -1900,14 +1980,26 @@ export class AudioSource extends Leyes {
     }
 
     // --- Spanish Aliases ---
-    reproducir() { this.play(); }
+    reproducir(tiempoInicio) { this.play(tiempoInicio); }
     detener() { this.stop(); }
     pausar() { this.pause(); }
 
     get volumen() { return this.volume; }
-    set volumen(v) { this.volume = v; if (this._audio) this._audio.volume = v; }
+    set volumen(v) { this.volume = v; if (this._audio && !this.spatial) this._audio.volume = v; }
     get bucle() { return this.loop; }
     set bucle(l) { this.loop = l; if (this._audio) this._audio.loop = l; }
+
+    get espacial() { return this.spatial; }
+    set espacial(v) { this.spatial = v; }
+    get distanciaMinima() { return this.minDistance; }
+    set distanciaMinima(v) { this.minDistance = v; }
+    get distanciaMaxima() { return this.maxDistance; }
+    set distanciaMaxima(v) { this.maxDistance = v; }
+
+    get inicioReproduccion() { return this.playbackStart; }
+    set inicioReproduccion(v) { this.playbackStart = v; }
+    get finReproduccion() { return this.playbackEnd; }
+    set finReproduccion(v) { this.playbackEnd = v; }
 
     onDestroy() {
         this.stop();
@@ -1920,7 +2012,154 @@ export class AudioSource extends Leyes {
         newAudio.volume = this.volume;
         newAudio.loop = this.loop;
         newAudio.playOnAwake = this.playOnAwake;
+        newAudio.spatial = this.spatial;
+        newAudio.minDistance = this.minDistance;
+        newAudio.maxDistance = this.maxDistance;
+        newAudio.playbackStart = this.playbackStart;
+        newAudio.playbackEnd = this.playbackEnd;
         return newAudio;
+    }
+}
+
+export class VideoPlayer extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.source = '';
+        this.volume = 1.0;
+        this.loop = false;
+        this.playOnAwake = true;
+        this.playbackRate = 1.0;
+        this.scalingMode = 'Fit'; // 'Stretch', 'Fit', 'Fill'
+
+        this._video = null;
+        this._isLoaded = false;
+        this._lastLoadedSource = '';
+    }
+
+    async start() {
+        if (this.playOnAwake) {
+            this.play();
+        }
+    }
+
+    update(deltaTime) {
+        // Auto-load if source is set but not yet loaded
+        if (this.source && this.source !== this._lastLoadedSource && !this._video) {
+            this.load();
+        }
+
+        if (!this._video) return;
+
+        // Sincronizar volumen con AudioSource si existe en la misma Materia
+        const audioSource = this.materia.getComponent(AudioSource);
+        if (audioSource) {
+            this._video.volume = audioSource.spatial ? audioSource._currentVolume : audioSource.volume;
+            this._video.muted = false;
+        } else {
+            this._video.volume = this.volume;
+        }
+
+        this._video.loop = this.loop;
+        this._video.playbackRate = this.playbackRate;
+    }
+
+    get isPlaying() {
+        return this._video && !this._video.paused && !this._video.ended;
+    }
+
+    async load() {
+        if (!this.source) return;
+
+        try {
+            const url = await getURLForAssetPath(this.source, window.projectsDirHandle);
+            if (!url) return;
+
+            if (!this._video) {
+                this._video = document.createElement('video');
+                this._video.crossOrigin = 'anonymous';
+                this._video.playsInline = true;
+                this._video.muted = true; // Empieza muteado para auto-play policies
+            }
+
+            if (this._video.src !== url) {
+                this._video.src = url;
+                this._lastLoadedSource = this.source;
+
+                await new Promise((resolve) => {
+                    this._video.oncanplay = resolve;
+                    this._video.load();
+                });
+                this._isLoaded = true;
+            }
+        } catch (e) {
+            console.warn(`[VideoPlayer] Error al cargar video: ${this.source}.`, e);
+        }
+    }
+
+    async play() {
+        if (!this._isLoaded || this.source !== this._lastLoadedSource) {
+            await this.load();
+        }
+
+        if (this._video) {
+            try {
+                await this._video.play();
+            } catch (e) {
+                console.warn(`[VideoPlayer] No se pudo reproducir: ${e.message}`);
+            }
+        }
+    }
+
+    pause() {
+        if (this._video) this._video.pause();
+    }
+
+    stop() {
+        if (this._video) {
+            this._video.pause();
+            this._video.currentTime = 0;
+        }
+    }
+
+    seek(time) {
+        if (this._video) this._video.currentTime = time;
+    }
+
+    // --- Spanish Aliases ---
+    reproducir() { this.play(); }
+    pausar() { this.pause(); }
+    detener() { this.stop(); }
+    buscarTiempo(t) { this.seek(t); }
+
+    get fuente() { return this.source; }
+    set fuente(v) { this.source = v; }
+    get volumen() { return this.volume; }
+    set volumen(v) { this.volume = v; }
+    get bucle() { return this.loop; }
+    set bucle(v) { this.loop = v; }
+    get velocidad() { return this.playbackRate; }
+    set velocidad(v) { this.playbackRate = v; }
+    get modoEscalado() { return this.scalingMode; }
+    set modoEscalado(v) { this.scalingMode = v; }
+
+    onDestroy() {
+        this.stop();
+        if (this._video) {
+            this._video.src = "";
+            this._video.load();
+            this._video = null;
+        }
+    }
+
+    clone() {
+        const copy = new VideoPlayer(null);
+        copy.source = this.source;
+        copy.volume = this.volume;
+        copy.loop = this.loop;
+        copy.playOnAwake = this.playOnAwake;
+        copy.playbackRate = this.playbackRate;
+        copy.scalingMode = this.scalingMode;
+        return copy;
     }
 }
 
@@ -2704,6 +2943,7 @@ registerComponent('SpotLight2D', SpotLight2D);
 registerComponent('FreeformLight2D', FreeformLight2D);
 registerComponent('SpriteLight2D', SpriteLight2D);
 registerComponent('AudioSource', AudioSource);
+registerComponent('VideoPlayer', VideoPlayer);
 
 export class DrawingOrder extends Leyes {
     constructor(materia) {
@@ -2732,6 +2972,9 @@ export class Parallax extends Leyes {
         this._autoOffset = { x: 0, y: 0 };
     }
     update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
         if (this.autoscroll.x !== 0 || this.autoscroll.y !== 0) {
             this._autoOffset.x += this.autoscroll.x * deltaTime;
             this._autoOffset.y += this.autoscroll.y * deltaTime;
@@ -4249,6 +4492,168 @@ registerComponent('RaycastSource', RaycastSource);
 /**
  * Componente BasicAI (IA Básica): Comportamientos simples de seguimiento y evasión.
  */
+/**
+ * Componente Water (Agua): Simulación de fluidos basada en partículas.
+ */
+export class Water extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.width = 400;
+        this.height = 200;
+        this.color = '#3498db'; // Azul por defecto
+        this.texturePath = '';
+        this.density = 1.0;
+        this.viscosity = 0.2;
+        this.isDirty = true;
+
+        // Mareas
+        this.showTides = false;
+        this.tideAmplitude = 10;
+        this.tideSpeed = 1.0;
+        this.tidePhase = 0;
+
+        // Simulación interna
+        this.particles = []; // {x, y, vx, vy, prevX, prevY}
+        this._particleRadius = 8;
+        this._restDensity = 4;
+        this._stiffness = 0.1;
+        this._spacing = 12;
+    }
+
+    start() {
+        this.generateParticles();
+    }
+
+    generateParticles() {
+        this.particles = [];
+        const cols = Math.floor(this.width / this._spacing);
+        const rows = Math.floor(this.height / this._spacing);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                this.particles.push({
+                    x: (c * this._spacing) - (this.width / 2),
+                    y: (r * this._spacing) - (this.height / 2),
+                    vx: 0,
+                    vy: 0,
+                    prevX: 0,
+                    prevY: 0
+                });
+            }
+        }
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        const gravity = { x: 0, y: 9.8 * 100 }; // Escala de gravedad
+
+        // --- 1. Mareas ---
+        if (this.showTides) {
+            this.tidePhase += deltaTime * this.tideSpeed;
+            // El desplazamiento de marea se aplica visualmente o en el transform
+        }
+
+        // --- 2. Simulación de Partículas (PBD simplificado) ---
+        const h = this._particleRadius * 2;
+        const hSq = h * h;
+
+        for (const p of this.particles) {
+            // Gravedad y Viscosidad
+            p.vx *= (1 - this.viscosity * deltaTime);
+            p.vy *= (1 - this.viscosity * deltaTime);
+            p.vy += gravity.y * deltaTime;
+
+            p.prevX = p.x;
+            p.prevY = p.y;
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+        }
+
+        // Resolución de Densidad (Relajación de Incompresibilidad)
+        for (let iter = 0; iter < 2; iter++) {
+            for (let i = 0; i < this.particles.length; i++) {
+                const pi = this.particles[i];
+                let rho = 0;
+                const neighbors = [];
+
+                for (let j = 0; j < this.particles.length; j++) {
+                    if (i === j) continue;
+                    const pj = this.particles[j];
+                    const dx = pi.x - pj.x;
+                    const dy = pi.y - pj.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < hSq) {
+                        const dist = Math.sqrt(distSq);
+                        const weight = 1 - dist / h;
+                        rho += weight * weight;
+                        neighbors.push({pj, weight, dx, dy, dist});
+                    }
+                }
+
+                const pressure = (rho - this._restDensity) * this._stiffness;
+                if (pressure > 0) {
+                    for (const {pj, weight, dx, dy, dist} of neighbors) {
+                        if (dist > 0) {
+                            const displacement = pressure * weight * (1 / dist);
+                            const moveX = dx * displacement * 0.5;
+                            const moveY = dy * displacement * 0.5;
+                            pi.x += moveX;
+                            pi.y += moveY;
+                            pj.x -= moveX;
+                            pj.y -= moveY;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- 3. Restricciones y Colisiones ---
+        for (const p of this.particles) {
+            p.vx = (p.x - p.prevX) / deltaTime;
+            p.vy = (p.y - p.prevY) / deltaTime;
+        }
+    }
+
+    clone() {
+        const copy = new Water(null);
+        copy.width = this.width;
+        copy.height = this.height;
+        copy.color = this.color;
+        copy.texturePath = this.texturePath;
+        copy.density = this.density;
+        copy.viscosity = this.viscosity;
+        copy.showTides = this.showTides;
+        copy.tideAmplitude = this.tideAmplitude;
+        copy.tideSpeed = this.tideSpeed;
+        return copy;
+    }
+}
+
+/**
+ * LineCollider2D: Colisionador compuesto por múltiples líneas (cadenas).
+ */
+export class LineCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.points = [{x: -50, y: 0}, {x: 50, y: 0}];
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+    }
+
+    clone() {
+        const copy = new LineCollider2D(null);
+        copy.points = this.points.map(p => ({...p}));
+        copy.isTrigger = this.isTrigger;
+        copy.offset = {...this.offset};
+        return copy;
+    }
+}
+
 export class BasicAI extends Leyes {
     constructor(materia) {
         super(materia);
@@ -4424,6 +4829,8 @@ export class BasicAI extends Leyes {
     }
 }
 registerComponent('BasicAI', BasicAI);
+registerComponent('Water', Water);
+registerComponent('LineCollider2D', LineCollider2D);
 
 export class CustomComponent extends Leyes {
     constructor(materia, definitionOrName) {

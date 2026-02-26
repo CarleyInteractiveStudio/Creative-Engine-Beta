@@ -117,6 +117,38 @@ export class PhysicsSystem {
                 // Apply gravity
                 rigidbody.velocity.y += this.gravity.y * rigidbody.gravityScale * deltaTime;
 
+                // --- Apply buoyancy if in water ---
+                const waterMaterias = this.scene.findAllMateriasWithComponent(Components.Water);
+                for (const wm of waterMaterias) {
+                    const water = wm.getComponent(Components.Water);
+                    const waterTransform = wm.getComponent(Components.Transform);
+
+                    const dx = transform.x - waterTransform.x;
+                    const dy = transform.y - waterTransform.y;
+
+                    if (Math.abs(dx) < water.width / 2 && Math.abs(dy) < water.height / 2) {
+                        const depth = (waterTransform.y + water.height / 2) - transform.y;
+                        const immersion = Math.max(0, Math.min(1.0, depth / 50)); // immersion factor
+
+                        if (immersion > 0) {
+                            const buoyancyForce = immersion * water.density * 15.0 * rigidbody.buoyancyWeight;
+
+                            if (rigidbody.buoyancyWeight > rigidbody.sinkThreshold) {
+                                // Se hunde
+                                rigidbody.velocity.y -= buoyancyForce * 0.3 * deltaTime;
+                            } else {
+                                // Flota
+                                rigidbody.velocity.y -= buoyancyForce * deltaTime;
+                            }
+
+                            // Water drag
+                            const dragFactor = Math.pow(0.6, deltaTime * immersion * 10);
+                            rigidbody.velocity.x *= dragFactor;
+                            rigidbody.velocity.y *= dragFactor;
+                        }
+                    }
+                }
+
                 // Update position
                 transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
                 transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
@@ -133,7 +165,7 @@ export class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) || m.getComponent(Components.LineCollider2D))
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -285,6 +317,8 @@ export class PhysicsSystem {
                 collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            } else if (colliderB instanceof Components.LineCollider2D) {
+                collisionInfo = this.isColliderVsLine(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.CapsuleCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
@@ -306,6 +340,8 @@ export class PhysicsSystem {
                 }
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            } else if (colliderB instanceof Components.LineCollider2D) {
+                collisionInfo = this.isColliderVsLine(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.PolygonCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
@@ -316,6 +352,8 @@ export class PhysicsSystem {
                 collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
             } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
                 collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            } else if (colliderB instanceof Components.LineCollider2D) {
+                collisionInfo = this.isColliderVsLine(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.TilemapCollider2D || colliderA instanceof Components.TerrenoCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D || colliderB instanceof Components.PolygonCollider2D) {
@@ -325,6 +363,12 @@ export class PhysicsSystem {
                     collisionInfo = info;
                 }
             }
+        } else if (colliderA instanceof Components.LineCollider2D) {
+             const info = this.isColliderVsLine(materiaB, materiaA);
+             if (info) {
+                 info.x = -info.x; info.y = -info.y;
+                 collisionInfo = info;
+             }
         }
 
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
@@ -453,7 +497,80 @@ export class PhysicsSystem {
                materia.getComponent(Components.CapsuleCollider2D) ||
                materia.getComponent(Components.PolygonCollider2D) ||
                materia.getComponent(Components.TilemapCollider2D) ||
-               materia.getComponent(Components.TerrenoCollider2D);
+               materia.getComponent(Components.TerrenoCollider2D) ||
+               materia.getComponent(Components.LineCollider2D);
+    }
+
+    _getLineVertices(transform, collider) {
+        const angle = transform.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+        const worldOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const worldOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+        const centerX = transform.x + worldOffsetX;
+        const centerY = transform.y + worldOffsetY;
+
+        return collider.points.map(p => ({
+            x: centerX + (p.x * transform.scale.x * cos - p.y * transform.scale.y * sin),
+            y: centerY + (p.x * transform.scale.x * sin + p.y * transform.scale.y * cos)
+        }));
+    }
+
+    isColliderVsLine(colliderMateria, lineMateria) {
+        const collider = this.getCollider(colliderMateria);
+        const lineCollider = lineMateria.getComponent(Components.LineCollider2D);
+        const transformL = lineMateria.getComponent(Components.Transform);
+
+        if (!collider || !lineCollider || !transformL) return null;
+
+        const verticesL = this._getLineVertices(transformL, lineCollider);
+
+        let bestCollision = null;
+        let maxOverlap = -1;
+
+        for (let i = 0; i < verticesL.length - 1; i++) {
+            const p1 = verticesL[i];
+            const p2 = verticesL[i+1];
+
+            // Simplified: treat each segment as a thin polygon/box for now or just check distance
+            const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+
+            if (!this._tempLineMateria) {
+                this._tempLineMateria = new Materia('_physics_line_temp');
+                this._tempLineTransform = new Components.Transform(this._tempLineMateria);
+                this._tempLineBox = new Components.BoxCollider2D(this._tempLineMateria);
+                this._tempLineMateria.getComponent = (t) => {
+                    if (t === Components.Transform) return this._tempLineTransform;
+                    if (t === Components.BoxCollider2D) return this._tempLineBox;
+                    return null;
+                };
+            }
+
+            this._tempLineTransform.position = mid;
+            this._tempLineTransform.rotation = angle;
+            this._tempLineTransform.scale = { x: 1, y: 1 };
+            this._tempLineBox.size = { x: dist, y: 2 }; // Thin box
+
+            let info = null;
+            if (collider instanceof Components.BoxCollider2D) {
+                info = this.isBoxVsBox(colliderMateria, this._tempLineMateria);
+            } else if (collider instanceof Components.CapsuleCollider2D) {
+                info = this.isBoxVsCapsule(this._tempLineMateria, colliderMateria);
+                if (info) { info.x = -info.x; info.y = -info.y; }
+            } else if (collider instanceof Components.PolygonCollider2D) {
+                info = this.isPolygonVsPolygon(colliderMateria, this._tempLineMateria);
+            }
+
+            if (info && info.magnitude > maxOverlap) {
+                maxOverlap = info.magnitude;
+                bestCollision = info;
+            }
+        }
+        return bestCollision;
     }
 
     isColliderVsTilemap(colliderMateria, tilemapMateria) {

@@ -363,6 +363,7 @@ public star() {
                                     <button id="tool-tile-eraser" class="toolbar-btn tilemap-tool" title="Goma de Tiles (N)" data-i18n-title="HERRAMIENTA_GOMA" style="display: none;"><img src="icons/eraser.svg" class="ce-icon"> <span data-i18n="HERRAMIENTA_GOMA">Goma</span></button>
                                 </div>
                             </div>
+                            <button id="btn-toggle-gizmos" class="toolbar-btn active" title="Mostrar/Ocultar Iconos (Audio/Cámara)"><img src="icons/star.svg" class="ce-icon"></button>
                         </div>
                         <div class="view-toggle">
                             <button class="view-toggle-btn active" data-view="scene-content" data-i18n="VISTA_ESCENA">Escena</button>
@@ -805,6 +806,8 @@ public star() {
                 <ul class="submenu">
                     <li data-action="create-empty" data-i18n="MATERIA_VACIA">Materia Vacía</li>
                     <li data-action="create-audio" data-i18n="AUDIO">Audio</li>
+                    <li data-action="create-video" data-i18n="VIDEO">Video</li>
+                    <li data-action="create-water" data-i18n="WATER">Agua</li>
                     <li data-action="create-camera" data-i18n="CAMARA">Cámara</li>
                     <hr>
                     <li class="has-submenu">
@@ -818,6 +821,7 @@ public star() {
                             <li data-action="create-circle" data-i18n="CIRCULO">Círculo</li>
                             <li data-action="create-triangle" data-i18n="TRIANGULO">Triángulo</li>
                             <li data-action="create-capsule" data-i18n="CAPSULA">Cápsula</li>
+                            <li data-action="create-line-collider" data-i18n="LINE_COLLIDER">Colisionador de Líneas</li>
                         </ul>
                     </li>
                     <li class="has-submenu">
