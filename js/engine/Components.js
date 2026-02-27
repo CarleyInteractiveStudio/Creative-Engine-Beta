@@ -5174,7 +5174,17 @@ export class WheelSuspension extends Leyes {
             const hit = engine.raycast({ x: anchorWorldX, y: anchorWorldY }, springDir, wheel.restLength + wheel.wheelRadius, this.gripTags);
 
             let wheelMateria = null;
-            if (wheel.materiaId) wheelMateria = this.materia.scene.findMateriaById(wheel.materiaId);
+            if (wheel.materiaId) {
+                wheelMateria = this.materia.scene.findMateriaById(wheel.materiaId);
+                if (wheelMateria) {
+                    const wheelRb = wheelMateria.getComponent(Rigidbody2D);
+                    // Forzar a Kinematic para que no caiga por gravedad y siga la suspensión
+                    if (wheelRb && wheelRb.bodyType === 'Dynamic') {
+                        wheelRb.bodyType = 'Kinematic';
+                        wheelRb.velocity = { x: 0, y: 0 };
+                    }
+                }
+            }
 
             if (hit) {
                 wheel.isGrounded = true;

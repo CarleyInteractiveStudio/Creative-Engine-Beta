@@ -424,6 +424,11 @@ function handleInspectorInput(e) {
 
     // Handle nested properties like scale.x
     const props = propPath.split('.');
+
+    // Auto-select wheel in SceneView when editing its properties in the Inspector
+    if (componentName === 'WheelSuspension' && props[0] === 'wheels' && !isNaN(parseInt(props[1]))) {
+        component.selectedIndex = parseInt(props[1]);
+    }
     let current = component;
     for (let i = 0; i < props.length - 1; i++) {
         current = current[props[i]];
@@ -3214,49 +3219,12 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.WheelSuspension) {
-            const selectedWheel = ley.wheels[ley.selectedIndex];
-
             componentHTML = `
                 ${renderComponentHeader(L.get('WHEEL_SUSPENSION', "Suspensión de Rueda"), icon, index)}
                 <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>${L.get('WHEEL', 'Rueda')}</label>
-                        <select class="prop-input" data-component="WheelSuspension" data-prop="selectedIndex">
-                            ${ley.wheels.map((w, idx) => `<option value="${idx}" ${ley.selectedIndex === idx ? 'selected' : ''}>Rueda ${idx + 1}</option>`).join('')}
-                        </select>
-                        <button class="panel-tool-btn" data-action="add-wheel" data-component="WheelSuspension"><img src="icons/plus.svg" class="ce-icon"></button>
+                    <div class="inspector-section-header">
+                        <span>General</span>
                     </div>
-                    <hr>
-                    <div class="inspector-section-header"><span>Propiedades Rueda ${ley.selectedIndex + 1}</span></div>
-                    <div class="inspector-row">
-                        <label>${L.get('VISUAL_MATERIA', 'Materia Visual')}</label>
-                        ${renderPropertyDropper('Materia', selectedWheel.materiaId, `data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.materiaId"`)}
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>Offset (X, Y)</label>
-                        <div class="multi-input">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.x" value="${selectedWheel.offset.x}">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.y" value="${selectedWheel.offset.y}">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('STIFFNESS', 'Dureza (K)')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.stiffness" value="${selectedWheel.stiffness}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('DAMPING', 'Amortiguación (D)')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.damping" value="${selectedWheel.damping}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.restLength" value="${selectedWheel.restLength}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.wheelRadius" value="${selectedWheel.wheelRadius}">
-                    </div>
-                    <hr>
-                    <div class="inspector-section-header"><span>General</span></div>
                     <div class="prop-row-multi">
                         <label>${L.get('GRIP', 'Agarre (Grip)')}</label>
                         <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="grip" value="${ley.grip}" step="0.1">
@@ -3275,6 +3243,60 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="WheelSuspension" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
                         <label>${L.get('SHOW_GIZMO', 'Mostrar Gizmo')}</label>
+                    </div>
+
+                    <hr>
+                    <div class="layer-manager-ui">
+                        <div class="layer-list-header">
+                            <h5>${L.get('WHEELS', 'Ruedas')}</h5>
+                            <button class="layer-btn add" data-action="add-wheel" data-component="WheelSuspension" title="${L.get('ADD_WHEEL', 'Añadir Rueda')}">+</button>
+                        </div>
+                        <div class="layer-list">
+                            ${ley.wheels.map((wheel, wIdx) => `
+                                <div class="layer-item ${ley.selectedIndex === wIdx ? 'active' : ''}"
+                                     style="flex-direction: column; align-items: stretch; gap: 8px; padding: 12px;"
+                                     onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.WheelSuspension); w.selectedIndex = ${wIdx}; window.updateInspector();">
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight: bold;">${L.get('WHEEL', 'Rueda')} ${wIdx + 1}</span>
+                                        <button class="layer-btn remove" onclick="event.stopPropagation(); const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.WheelSuspension); w.wheels.splice(${wIdx}, 1); if(w.selectedIndex >= w.wheels.length) w.selectedIndex = Math.max(0, w.wheels.length-1); window.updateInspector();">-</button>
+                                    </div>
+
+                                    <div class="inspector-row">
+                                        <label>${L.get('VISUAL_MATERIA', 'Materia Visual')}</label>
+                                        ${renderPropertyDropper('Materia', wheel.materiaId, `data-component="WheelSuspension" data-prop="wheels.${wIdx}.materiaId"`)}
+                                    </div>
+
+                                    <div class="prop-row-multi">
+                                        <label>Offset (X, Y)</label>
+                                        <div class="multi-input">
+                                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.offset.x" value="${wheel.offset.x}">
+                                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.offset.y" value="${wheel.offset.y}">
+                                        </div>
+                                    </div>
+
+                                    <div class="prop-row-multi">
+                                        <label>${L.get('STIFFNESS', 'Dureza (K)')}</label>
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.stiffness" value="${wheel.stiffness}">
+                                    </div>
+
+                                    <div class="prop-row-multi">
+                                        <label>${L.get('DAMPING', 'Amortiguación (D)')}</label>
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.damping" value="${wheel.damping}">
+                                    </div>
+
+                                    <div class="prop-row-multi">
+                                        <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.restLength" value="${wheel.restLength}">
+                                    </div>
+
+                                    <div class="prop-row-multi">
+                                        <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${wIdx}.wheelRadius" value="${wheel.wheelRadius}">
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             `;
