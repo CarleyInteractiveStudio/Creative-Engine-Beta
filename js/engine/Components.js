@@ -4951,13 +4951,13 @@ export class VehicleController extends Leyes {
         this.brakeKey = 's';
         this.leftKey = 'a';
         this.rightKey = 'd';
-        this.upKey = 'space';    # Para helicópteros
-        this.downKey = 'shift';  # Para helicópteros
+        this.upKey = 'space';    // Para helicópteros
+        this.downKey = 'shift';  // Para helicópteros
 
         // Ajustes realistas
         this.pitchStrength = 5.0; // Cuánto se inclina al acelerar/frenar
-        this.takeoffSpeed = 300;  # Velocidad mínima para que el avión suba (lift)
-        this.heightControlMode = 'Potency'; # 'Potency' or 'Manual' para helicópteros
+        this.takeoffSpeed = 300;  // Velocidad mínima para que el avión suba (lift)
+        this.heightControlMode = 'Potency'; // 'Potency' or 'Manual' para helicópteros
 
         // Estado interno
         this.currentPotency = 0;
