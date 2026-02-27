@@ -416,6 +416,12 @@ function handleInspectorInput(e) {
         return;
     }
 
+    if (componentName === 'WheelSuspension' && propPath.startsWith('constraintAxis.')) {
+        const axis = propPath.split('.')[1];
+        component.constraintAxis[axis] = value;
+        return;
+    }
+
     // Handle nested properties like scale.x
     const props = propPath.split('.');
     let current = component;
@@ -3160,6 +3166,14 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>${L.get('RIGHT', 'Derecha')}</label>
                         <input type="text" class="prop-input" data-component="VehicleController" data-prop="rightKey" value="${ley.rightKey}">
                     </div>
+                    <div class="prop-row-multi">
+                        <label>Fuerza Giro</label>
+                        <input type="number" class="prop-input" data-component="VehicleController" data-prop="turnSpeed" value="${ley.turnSpeed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Inclinación (Pitch)</label>
+                        <input type="number" class="prop-input" data-component="VehicleController" data-prop="pitchStrength" value="${ley.pitchStrength}" step="0.1">
+                    </div>
                     ${ley.vehicleType === 'Helicopter' ? `
                         <div class="prop-row-multi">
                             <label>${L.get('UP', 'Subir')}</label>
@@ -3199,6 +3213,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>${L.get('GRIP_TAGS', 'Tags Suelo')}</label>
                         <input type="text" class="prop-input" data-component="WheelSuspension" data-prop="gripTagsString" value="${(ley.gripTags || []).join(', ')}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Eje (X, Y)</label>
+                        <div class="multi-input">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.x" value="${ley.constraintAxis.x}" step="0.1">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.y" value="${ley.constraintAxis.y}" step="0.1">
+                        </div>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="WheelSuspension" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>

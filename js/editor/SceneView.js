@@ -1,3 +1,44 @@
+function checkWheelSuspensionGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const suspension = selectedMateria.getComponent(Components.WheelSuspension);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!suspension || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    const zoom = renderer.camera.effectiveZoom;
+    const handleHitboxSize = 12 / zoom;
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    const localX = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+    const localY = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+    const axis = suspension.constraintAxis;
+    const mag = Math.hypot(axis.x, axis.y);
+    const dx = mag > 0 ? axis.x / mag : 0;
+    const dy = mag > 0 ? axis.y / mag : 1;
+    const length = suspension.restLength;
+    const radius = suspension.wheelRadius;
+
+    // Hit para largo (restLength)
+    const handleLX = dx * length;
+    const handleLY = dy * length;
+    if (Math.abs(localX - handleLX) < handleHitboxSize / 2 && Math.abs(localY - handleLY) < handleHitboxSize / 2) {
+        return 'suspension-length';
+    }
+
+    // Hit para radio (wheelRadius)
+    const handleRX = dx * length + radius;
+    const handleRY = dy * length;
+    if (Math.abs(localX - handleRX) < handleHitboxSize / 2 && Math.abs(localY - handleRY) < handleHitboxSize / 2) {
+        return 'suspension-radius';
+    }
+
+    return null;
+}
+
 function checkUIGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
@@ -727,6 +768,40 @@ export function initialize(dependencies) {
         const dy = (moveEvent.clientY - lastMousePosition.y) / renderer.camera.effectiveZoom;
 
         switch (dragState.handle) {
+            case 'suspension-length':
+                {
+                    const suspension = dragState.materia.getComponent(Components.WheelSuspension);
+                    const rect = dom.sceneCanvas.getBoundingClientRect();
+                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
+                    const rad = -transform.rotation * Math.PI / 180;
+                    const cos = Math.cos(rad), sin = Math.sin(rad);
+                    const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+                    const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+                    const axis = suspension.constraintAxis;
+                    const mag = Math.hypot(axis.x, axis.y);
+                    const adx = mag > 0 ? axis.x / mag : 0;
+                    const ady = mag > 0 ? axis.y / mag : 1;
+
+                    suspension.restLength = Math.max(5, lx * adx + ly * ady);
+                }
+                break;
+            case 'suspension-radius':
+                {
+                    const suspension = dragState.materia.getComponent(Components.WheelSuspension);
+                    const rect = dom.sceneCanvas.getBoundingClientRect();
+                    const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
+                    const rad = -transform.rotation * Math.PI / 180;
+                    const cos = Math.cos(rad), sin = Math.sin(rad);
+                    const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
+
+                    const axis = suspension.constraintAxis;
+                    const mag = Math.hypot(axis.x, axis.y);
+                    const adx = mag > 0 ? axis.x / mag : 0;
+
+                    suspension.wheelRadius = Math.max(2, Math.abs(lx - (adx * suspension.restLength)));
+                }
+                break;
             case 'camera-move': transform.x += dx; transform.y += dy; break;
             case 'move-x': transform.x += dx; break;
             case 'move-y': transform.y += dy; break;
@@ -1329,7 +1404,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -1853,26 +1928,41 @@ function drawWheelSuspensionGizmos() {
     const axis = suspension.constraintAxis;
     const length = suspension.restLength;
     const radius = suspension.wheelRadius;
+    const handleSize = 8 / zoom;
 
-    // Dibujar línea del resorte (eje)
+    // Normalizar dirección del eje para dibujar bien
+    const mag = Math.hypot(axis.x, axis.y);
+    const dx = mag > 0 ? axis.x / mag : 0;
+    const dy = mag > 0 ? axis.y / mag : 1;
+
+    // 1. Dibujar línea del resorte (eje)
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(axis.x * length, axis.y * length);
+    ctx.lineTo(dx * length, dy * length);
     ctx.strokeStyle = '#ffaa00';
     ctx.lineWidth = 2 / zoom;
     ctx.stroke();
 
-    // Dibujar círculo de la rueda
+    // 2. Dibujar círculo de la rueda al FINAL (posición de reposo)
     ctx.beginPath();
-    ctx.arc(axis.x * length, axis.y * length, radius, 0, Math.PI * 2);
+    ctx.arc(dx * length, dy * length, radius, 0, Math.PI * 2);
     ctx.strokeStyle = '#ffff00';
     ctx.setLineDash([5 / zoom, 5 / zoom]);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Dibujar base del resorte
+    // 3. Dibujar base del resorte (Punto de anclaje)
     ctx.fillStyle = '#ffaa00';
-    ctx.fillRect(-5 / zoom, -1 / zoom, 10 / zoom, 2 / zoom);
+    ctx.beginPath();
+    ctx.arc(0, 0, 4 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Manijas interactivas (Visuales)
+    ctx.fillStyle = '#ffffff';
+    // Manija para el largo (al final del eje)
+    ctx.fillRect(dx * length - handleSize / 2, dy * length - handleSize / 2, handleSize, handleSize);
+    // Manija para el radio (en el borde de la rueda)
+    ctx.fillRect(dx * length + radius - handleSize / 2, dy * length - handleSize / 2, handleSize, handleSize);
 
     ctx.restore();
 }
