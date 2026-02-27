@@ -1405,6 +1405,7 @@ export class PhysicsSystem {
      * @returns {object|null} Información del impacto o null.
      */
     raycast(origin, direction, maxDistance = Infinity, filter = null) {
+        if (!direction || (direction.x === 0 && direction.y === 0)) return null;
         let closestHit = null;
         let minDistance = maxDistance;
 
