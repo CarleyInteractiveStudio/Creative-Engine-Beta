@@ -5068,7 +5068,8 @@ export class VehicleController extends Leyes {
         if (forwardSpeed > this.takeoffSpeed) {
             const liftFactor = Math.min(1.2, (forwardSpeed - this.takeoffSpeed) / 500);
             // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
-            const up = { x: -forward.y, y: forward.x };
+            // En coordenadas Y-Down, el vector "arriba" relativo al frente {x, y} es {y, -x}
+            const up = { x: forward.y, y: -forward.x };
             rb.addForce({ x: up.x * 9.8 * rb.mass * 50 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 50 * liftFactor * deltaTime });
         }
 
@@ -5170,8 +5171,12 @@ export class WheelSuspension extends Leyes {
             const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
             const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
 
-            // 2. Detección
-            const hit = engine.raycast({ x: anchorWorldX, y: anchorWorldY }, springDir, wheel.restLength + wheel.wheelRadius, this.gripTags);
+            // Empezar el rayo un poco "atrás" para no quedar atrapado dentro del suelo si la suspensión está al tope
+            const rayStartX = anchorWorldX - springDir.x * wheel.wheelRadius;
+            const rayStartY = anchorWorldY - springDir.y * wheel.wheelRadius;
+
+            // 2. Detección (ajustamos el largo por el inicio desplazado)
+            const hit = engine.raycast({ x: rayStartX, y: rayStartY }, springDir, wheel.restLength + wheel.wheelRadius * 2, this.gripTags);
 
             let wheelMateria = null;
             if (wheel.materiaId) {
@@ -5188,12 +5193,15 @@ export class WheelSuspension extends Leyes {
 
             if (hit) {
                 wheel.isGrounded = true;
-                const distToWheelCenter = hit.distance - wheel.wheelRadius;
+                // La distancia real desde el anclaje al suelo (restando el desplazamiento inicial del rayo)
+                const distFromAnchorToFloor = hit.distance - wheel.wheelRadius;
+                const distToWheelCenter = distFromAnchorToFloor - wheel.wheelRadius;
+
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física
-                const springForce = (compressionAmount * wheel.stiffness) * 1000;
+                const springForce = (compressionAmount * wheel.stiffness) * 2000; // Multiplicador aumentado para impacto
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
                 const dampingForce = (compressionVelocity * wheel.damping) * 500;
                 const totalForce = springForce + dampingForce;

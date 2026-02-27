@@ -300,6 +300,10 @@ ACCELERATE: Acelerar
 BRAKE: Frenar
 WHEEL_SUSPENSION: Suspensión de Rueda
 WHEEL: Rueda
+WHEELS: Ruedas
+ADD_WHEEL: Añadir Rueda
+WHEEL_SETTINGS: Configuración de Rueda
+NO_WHEEL_SELECTED: Selecciona o añade una rueda
 VISUAL_MATERIA: Materia Visual
 STIFFNESS: Dureza (K)
 DAMPING: Amortiguación (D)
@@ -310,6 +314,7 @@ GRIP_TAGS: Tags Suelo
 SHOW_GIZMO: Mostrar Gizmo
 STOP_DISTANCE: Distancia Parada
 ATTACK_DISTANCE: Distancia Ataque
+EXAMPLE_AI_FUNC: ej: alDetectarEnemigo
 ON_TARGET_SEEN: Al ver Objetivo
 ON_TARGET_LOST: Al perder Objetivo
 ON_TARGET_NEAR: Al estar cerca
@@ -1241,6 +1246,10 @@ ACCELERATE: Accelerate
 BRAKE: Brake
 WHEEL_SUSPENSION: Wheel Suspension
 WHEEL: Wheel
+WHEELS: Wheels
+ADD_WHEEL: Add Wheel
+WHEEL_SETTINGS: Wheel Settings
+NO_WHEEL_SELECTED: Select or add a wheel
 VISUAL_MATERIA: Visual Matter
 STIFFNESS: Stiffness (K)
 DAMPING: Damping (D)
@@ -1251,6 +1260,7 @@ GRIP_TAGS: Floor Tags
 SHOW_GIZMO: Show Gizmo
 STOP_DISTANCE: Stop Distance
 ATTACK_DISTANCE: Attack Distance
+EXAMPLE_AI_FUNC: e.g. onTargetSeen
 ON_TARGET_SEEN: On Target Seen
 ON_TARGET_LOST: On Target Lost
 ON_TARGET_NEAR: On Target Near

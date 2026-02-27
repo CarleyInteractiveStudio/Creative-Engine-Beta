@@ -492,6 +492,10 @@ function checkWheelSuspensionGizmoHit(canvasPos) {
     const adx = mag > 0 ? axis.x / mag : 0;
     const ady = mag > 0 ? axis.y / mag : 1;
 
+    // Perpendicular para el radio
+    const pdx = -ady;
+    const pdy = adx;
+
     for (let i = 0; i < suspension.wheels.length; i++) {
         const wheel = suspension.wheels[i];
         const ox = wheel.offset.x;
@@ -511,8 +515,10 @@ function checkWheelSuspensionGizmoHit(canvasPos) {
             if (Math.abs(localX - (ox + adx * length)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * length)) < handleHitboxSize / 2) {
                 return `suspension-length-${i}`;
             }
-            // Hit para radio
-            if (Math.abs(localX - (ox + adx * length + radius)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * length)) < handleHitboxSize / 2) {
+            // Hit para radio (usando perpendicular)
+            const rx = ox + adx * length + pdx * radius;
+            const ry = oy + ady * length + pdy * radius;
+            if (Math.abs(localX - rx) < handleHitboxSize / 2 && Math.abs(localY - ry) < handleHitboxSize / 2) {
                 return `suspension-radius-${i}`;
             }
         }
@@ -814,13 +820,23 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad), sin = Math.sin(rad);
             const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
-            const ox = suspension.wheels[idx].offset.x;
+            const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
+
+            const wheel = suspension.wheels[idx];
+            const ox = wheel.offset.x;
+            const oy = wheel.offset.y;
 
             const axis = suspension.constraintAxis;
             const mag = Math.hypot(axis.x, axis.y);
             const adx = mag > 0 ? axis.x / mag : 0;
+            const ady = mag > 0 ? axis.y / mag : 1;
 
-            suspension.wheels[idx].wheelRadius = Math.max(2, Math.abs(lx - (ox + adx * suspension.wheels[idx].restLength)));
+            // Centro de la rueda
+            const cx = ox + adx * wheel.restLength;
+            const cy = oy + ady * wheel.restLength;
+
+            // Distancia del mouse al centro de la rueda
+            suspension.wheels[idx].wheelRadius = Math.max(2, Math.hypot(lx - cx, ly - cy));
         }
 
         switch (dragState.handle) {
@@ -1839,6 +1855,8 @@ export function drawOverlay() {
     drawTerrainBrushGizmo();
 
     drawWheelSuspensionGizmos();
+
+    drawBasicAIGizmos();
 }
 
 const iconCache = new Map();
@@ -1953,6 +1971,10 @@ function drawWheelSuspensionGizmos() {
     const adx = mag > 0 ? axis.x / mag : 0;
     const ady = mag > 0 ? axis.y / mag : 1;
 
+    // Perpendicular para manija de radio
+    const pdx = -ady;
+    const pdy = adx;
+
     suspension.wheels.forEach((wheel, index) => {
         const isSelected = suspension.selectedIndex === index;
         const ox = wheel.offset.x;
@@ -1989,10 +2011,62 @@ function drawWheelSuspensionGizmos() {
             ctx.fillRect(ox - handleSize / 2, oy - handleSize / 2, handleSize, handleSize);
             // Manija para el largo (al final del eje)
             ctx.fillRect(ox + adx * length - handleSize / 2, oy + ady * length - handleSize / 2, handleSize, handleSize);
-            // Manija para el radio (en el borde de la rueda)
-            ctx.fillRect(ox + adx * length + radius - handleSize / 2, oy + ady * length - handleSize / 2, handleSize, handleSize);
+            // Manija para el radio (en el borde de la rueda, perpendicular)
+            const rx = ox + adx * length + pdx * radius;
+            const ry = oy + ady * length + pdy * radius;
+            ctx.fillRect(rx - handleSize / 2, ry - handleSize / 2, handleSize, handleSize);
         }
     });
+
+    ctx.restore();
+}
+
+function drawBasicAIGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const ai = selectedMateria.getComponent(Components.BasicAI);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!ai || !transform) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+
+    // Draw detection distance
+    ctx.beginPath();
+    ctx.arc(0, 0, ai.detectionDistance, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.lineWidth = 1 / zoom;
+    ctx.stroke();
+
+    // Draw stop distance
+    ctx.beginPath();
+    ctx.arc(0, 0, ai.stopDistance, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 100, 0, 0.3)';
+    ctx.setLineDash([]);
+    ctx.stroke();
+
+    // Draw steering rays
+    if (ai.obstacleAvoidance) {
+        // En el editor, los rayos salen en la dirección de rotación actual
+        ctx.rotate(transform.rotation * Math.PI / 180);
+        const startAngle = -ai.raySpread / 2;
+        const step = ai.rayCount > 1 ? ai.raySpread / (ai.rayCount - 1) : 0;
+
+        ctx.lineWidth = 1 / zoom;
+        for (let i = 0; i < ai.rayCount; i++) {
+            const angle = (startAngle + step * i) * Math.PI / 180;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(angle) * ai.rayLength, Math.sin(angle) * ai.rayLength);
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+            ctx.stroke();
+        }
+    }
 
     ctx.restore();
 }
