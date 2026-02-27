@@ -3156,16 +3156,16 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>${L.get('VIEW_MODE', 'Modo Vista')}</label>
                         <select class="prop-input" data-component="VehicleController" data-prop="viewMode">
-                            <option value="Side-View" ${ley.viewMode === 'Side-View' ? 'selected' : ''}>Vista Lateral (2D)</option>
-                            <option value="Top-Down" ${ley.viewMode === 'Top-Down' ? 'selected' : ''}>Cenital (Top-Down)</option>
+                            <option value="Side-View" ${ley.viewMode === 'Side-View' ? 'selected' : ''}>${L.get('SIDE_VIEW', 'Vista Lateral (2D)')}</option>
+                            <option value="Top-Down" ${ley.viewMode === 'Top-Down' ? 'selected' : ''}>${L.get('TOP_DOWN', 'Cenital (Top-Down)')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('TYPE', 'Tipo')}</label>
                         <select class="prop-input" data-component="VehicleController" data-prop="vehicleType">
-                            <option value="Car" ${ley.vehicleType === 'Car' ? 'selected' : ''}>Auto</option>
-                            <option value="Plane" ${ley.vehicleType === 'Plane' ? 'selected' : ''}>Avión</option>
-                            <option value="Helicopter" ${ley.vehicleType === 'Helicopter' ? 'selected' : ''}>Helicóptero</option>
+                            <option value="Car" ${ley.vehicleType === 'Car' ? 'selected' : ''}>${L.get('CAR', 'Auto')}</option>
+                            <option value="Plane" ${ley.vehicleType === 'Plane' ? 'selected' : ''}>${L.get('PLANE', 'Avión')}</option>
+                            <option value="Helicopter" ${ley.vehicleType === 'Helicopter' ? 'selected' : ''}>${L.get('HELICOPTER', 'Helicóptero')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
@@ -3199,11 +3199,11 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="text" class="prop-input" data-component="VehicleController" data-prop="rightKey" value="${ley.rightKey}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>Fuerza Giro</label>
+                        <label>${L.get('TURN_SPEED', 'Fuerza Giro')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="turnSpeed" value="${ley.turnSpeed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>Inclinación (Pitch)</label>
+                        <label>${L.get('PITCH_STRENGTH', 'Inclinación (Pitch)')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="pitchStrength" value="${ley.pitchStrength}" step="0.1">
                     </div>
                     ${ley.vehicleType === 'Helicopter' ? `
@@ -3223,7 +3223,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('WHEEL_SUSPENSION', "Suspensión de Rueda"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-section-header">
-                        <span>General</span>
+                        <span>${L.get('GENERAL', 'General')}</span>
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('GRIP', 'Agarre (Grip)')}</label>
@@ -3234,10 +3234,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="text" class="prop-input" data-component="WheelSuspension" data-prop="gripTagsString" value="${(ley.gripTags || []).join(', ')}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>Eje (X, Y)</label>
+                        <label>${L.get('CONSTRAINT_AXIS', 'Eje (X, Y)')}</label>
                         <div class="multi-input">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.x" value="${ley.constraintAxis.x}" step="0.1">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.y" value="${ley.constraintAxis.y}" step="0.1">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.x" value="${ley.constraintAxis.x}" step="0.1" title="X">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.y" value="${ley.constraintAxis.y}" step="0.1" title="Y">
                         </div>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
@@ -3278,10 +3278,10 @@ async function updateInspectorForMateria(selectedMateria) {
                                     ${renderPropertyDropper('Materia', ley.wheels[ley.selectedIndex].materiaId, `data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.materiaId"`)}
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>Offset (X, Y)</label>
+                                    <label>${L.get('OFFSET_XY', 'Offset (X, Y)')}</label>
                                     <div class="multi-input">
-                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.x" value="${ley.wheels[ley.selectedIndex].offset.x}">
-                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.y" value="${ley.wheels[ley.selectedIndex].offset.y}">
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.x" value="${ley.wheels[ley.selectedIndex].offset.x}" title="X">
+                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.y" value="${ley.wheels[ley.selectedIndex].offset.y}" title="Y">
                                     </div>
                                 </div>
                                 <div class="prop-row-multi">
@@ -3359,7 +3359,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <select class="prop-input" data-component="BasicAI" data-prop="movementType">
                             <option value="Top-Down" ${ley.movementType === 'Top-Down' ? 'selected' : ''} data-i18n="TOP_DOWN">Top-Down</option>
                             <option value="Platformer" ${ley.movementType === 'Platformer' ? 'selected' : ''} data-i18n="PLATFORMER">${L.get('PLATFORMER', 'Plataformas')}</option>
-                            <option value="Fighter" ${ley.movementType === 'Fighter' ? 'selected' : ''}>Fighter (Smash)</option>
+                            <option value="Fighter" ${ley.movementType === 'Fighter' ? 'selected' : ''}>${L.get('FIGHTER', 'Fighter (Smash)')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
@@ -3387,13 +3387,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
                     </div>
                     <hr>
-                    <div class="inspector-section-header"><span>Steering (Rayos)</span></div>
+                    <div class="inspector-section-header"><span>${L.get('STEERING_RAYS', 'Steering (Rayos)')}</span></div>
                     <div class="prop-row-multi">
-                        <label>Num Rayos</label>
+                        <label>${L.get('RAY_COUNT', 'Num Rayos')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="rayCount" value="${ley.rayCount}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>Apertura Rayos</label>
+                        <label>${L.get('RAY_SPREAD', 'Apertura Rayos')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
                     </div>
                     <hr>

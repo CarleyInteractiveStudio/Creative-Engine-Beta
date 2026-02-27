@@ -1430,6 +1430,34 @@ export class PhysicsSystem {
                 hit = this._rayVsCapsule(origin, direction, transform, collider);
             } else if (collider instanceof Components.PolygonCollider2D) {
                 hit = this._rayVsPolygon(origin, direction, transform, collider);
+            } else if (collider instanceof Components.LineCollider2D) {
+                hit = this._rayVsLine(origin, direction, transform, collider);
+            } else if (collider instanceof Components.TilemapCollider2D || collider instanceof Components.TerrenoCollider2D) {
+                if (collider.isDirty) collider.generate();
+
+                // Ray vs Multiple Rectangles
+                for (const rect of (collider.generatedColliders || [])) {
+                    // Use the original transform and pass the rectangle's position as an offset
+                    const tempBox = {
+                        size: { x: rect.width, y: rect.height },
+                        offset: { x: rect.x, y: rect.y }
+                    };
+                    const subHit = this._rayVsBox(origin, direction, transform, tempBox);
+                    if (subHit && (!hit || subHit.distance < hit.distance)) {
+                        hit = subHit;
+                    }
+                }
+
+                // Ray vs Multiple Polygons (Terrain mode)
+                if (collider.generatedPolygons) {
+                    for (const poly of collider.generatedPolygons) {
+                        const tempPoly = { vertices: poly.vertices, offset: { x: 0, y: 0 } };
+                        const subHit = this._rayVsPolygon(origin, direction, transform, tempPoly);
+                        if (subHit && (!hit || subHit.distance < hit.distance)) {
+                            hit = subHit;
+                        }
+                    }
+                }
             }
 
             if (hit && hit.distance < minDistance) {
@@ -1557,6 +1585,31 @@ export class PhysicsSystem {
         for (let i = 0; i < vertices.length; i++) {
             const p1 = vertices[i];
             const p2 = vertices[(i + 1) % vertices.length];
+
+            const hit = this._rayVsSegment(origin, direction, p1, p2);
+            if (hit && hit.t < closestT) {
+                closestT = hit.t;
+                closestNormal = hit.normal;
+            }
+        }
+
+        if (closestT === Infinity) return null;
+
+        return {
+            distance: closestT,
+            point: { x: origin.x + direction.x * closestT, y: origin.y + direction.y * closestT },
+            normal: closestNormal
+        };
+    }
+
+    _rayVsLine(origin, direction, transform, collider) {
+        const vertices = this._getLineVertices(transform, collider);
+        let closestT = Infinity;
+        let closestNormal = { x: 0, y: 0 };
+
+        for (let i = 0; i < vertices.length - 1; i++) {
+            const p1 = vertices[i];
+            const p2 = vertices[i + 1];
 
             const hit = this._rayVsSegment(origin, direction, p1, p2);
             if (hit && hit.t < closestT) {

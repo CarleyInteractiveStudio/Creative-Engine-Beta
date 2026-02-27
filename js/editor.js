@@ -1318,12 +1318,14 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const materia of SceneManager.currentScene.getAllMaterias()) {
                 if (!materia.isActive) continue;
 
-                const scripts = materia.getComponents(Components.CreativeScript);
-                for (const script of scripts) {
-                    try {
-                        script.fixedUpdate(FIXED_DELTA);
-                    } catch (e) {
-                        console.error(`Error en fixedUpdate() del script '${script.scriptName}' en el objeto '${materia.name}':`, e);
+                // Call fixedUpdate on ALL components that have it
+                for (const ley of materia.leyes) {
+                    if (ley.isActive && typeof ley.fixedUpdate === 'function') {
+                        try {
+                            ley.fixedUpdate(FIXED_DELTA);
+                        } catch (e) {
+                            console.error(`Error en fixedUpdate() del componente ${ley.constructor.name} en el objeto '${materia.name}':`, e);
+                        }
                     }
                 }
             }

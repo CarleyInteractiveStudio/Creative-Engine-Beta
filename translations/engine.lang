@@ -291,6 +291,11 @@ SPACING: Espaciado
 CELL_SIZE: Tamaño de Celda
 VEHICLE_CONTROLLER: Controlador de Vehículo
 VIEW_MODE: Modo Vista
+TYPE: Tipo
+CAR: Auto
+PLANE: Avión
+HELICOPTER: Helicóptero
+CONTROLS: Controles
 SIDE_VIEW: Vista Lateral (2D)
 TOP_DOWN: Cenital (Top-Down)
 POWER: Potencia
@@ -298,6 +303,8 @@ MAX_SPEED: Velocidad Máxima
 MASS: Peso (Masa)
 ACCELERATE: Acelerar
 BRAKE: Frenar
+TURN_SPEED: Fuerza Giro
+PITCH_STRENGTH: Inclinación (Pitch)
 WHEEL_SUSPENSION: Suspensión de Rueda
 WHEEL: Rueda
 WHEELS: Ruedas
@@ -309,6 +316,10 @@ STIFFNESS: Dureza (K)
 DAMPING: Amortiguación (D)
 REST_LENGTH: Largo Reposo
 WHEEL_RADIUS: Radio Rueda
+CONSTRAINT_AXIS: Eje de Suspensión
+STEERING_RAYS: Steering (Rayos)
+RAY_COUNT: Número de Rayos
+RAY_SPREAD: Apertura de Rayos
 GRIP: Agarre (Grip)
 GRIP_TAGS: Tags Suelo
 SHOW_GIZMO: Mostrar Gizmo
@@ -1198,6 +1209,7 @@ WANDER: Wander
 MOVEMENT_TYPE: Movement Type
 TOP_DOWN: Top-Down
 PLATFORMER: Platformer
+FIGHTER: Fighter (Smash)
 SPEED: Speed
 AUTO_ROTATE: Auto Rotate
 OBSTACLE_AVOIDANCE: Obstacle Avoidance
@@ -1237,6 +1249,11 @@ SPACING: Spacing
 CELL_SIZE: Cell Size
 VEHICLE_CONTROLLER: Vehicle Controller
 VIEW_MODE: View Mode
+TYPE: Type
+CAR: Car
+PLANE: Plane
+HELICOPTER: Helicopter
+CONTROLS: Controls
 SIDE_VIEW: Side View (2D)
 TOP_DOWN: Top-Down
 POWER: Power
@@ -1244,6 +1261,8 @@ MAX_SPEED: Max Speed
 MASS: Mass
 ACCELERATE: Accelerate
 BRAKE: Brake
+TURN_SPEED: Turn Force
+PITCH_STRENGTH: Pitch Strength
 WHEEL_SUSPENSION: Wheel Suspension
 WHEEL: Wheel
 WHEELS: Wheels
@@ -1255,12 +1274,17 @@ STIFFNESS: Stiffness (K)
 DAMPING: Damping (D)
 REST_LENGTH: Rest Length
 WHEEL_RADIUS: Wheel Radius
+CONSTRAINT_AXIS: Suspension Axis
+STEERING_RAYS: Steering (Rays)
+RAY_COUNT: Ray Count
+RAY_SPREAD: Ray Spread
 GRIP: Grip
 GRIP_TAGS: Floor Tags
 SHOW_GIZMO: Show Gizmo
 STOP_DISTANCE: Stop Distance
 ATTACK_DISTANCE: Attack Distance
 EXAMPLE_AI_FUNC: e.g. onTargetSeen
+SELECT_FUNCTION: -- Select Function --
 ON_TARGET_SEEN: On Target Seen
 ON_TARGET_LOST: On Target Lost
 ON_TARGET_NEAR: On Target Near

@@ -4969,7 +4969,7 @@ export class VehicleController extends Leyes {
         this.currentSteer = 0;
     }
 
-    update(deltaTime) {
+    fixedUpdate(deltaTime) {
         if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
 
         const input = RuntimeAPIManager.getAPI('input');
@@ -5030,7 +5030,8 @@ export class VehicleController extends Leyes {
 
         // Aceleración / Freno
         if (moveInput !== 0 && speed < this.maxSpeed / 50) {
-            const forceMag = this.power * 10000 * moveInput * traction;
+            // Torque aumentado para trepar colinas (Hill Climb style)
+            const forceMag = this.power * 25000 * moveInput * traction;
             rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
         }
 
@@ -5070,7 +5071,8 @@ export class VehicleController extends Leyes {
             // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
             // En coordenadas Y-Down, el vector "arriba" relativo al frente {x, y} es {y, -x}
             const up = { x: forward.y, y: -forward.x };
-            rb.addForce({ x: up.x * 9.8 * rb.mass * 50 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 50 * liftFactor * deltaTime });
+            // Aumentamos la fuerza de sustentación para que realmente pueda volar
+            rb.addForce({ x: up.x * 9.8 * rb.mass * 150 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 150 * liftFactor * deltaTime });
         }
 
         // Pitch (Inclinar para subir/bajar)
@@ -5147,7 +5149,7 @@ export class WheelSuspension extends Leyes {
         this.selectedIndex = 0; // Para el editor
     }
 
-    update(deltaTime) {
+    fixedUpdate(deltaTime) {
         if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
 
         const rb = this.materia.getComponent(Rigidbody2D);
@@ -5200,11 +5202,11 @@ export class WheelSuspension extends Leyes {
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
-                // 3. Física
-                const springForce = (compressionAmount * wheel.stiffness) * 2000; // Multiplicador aumentado para impacto
+                // 3. Física (Multiplicadores aumentados para evitar que el chasis toque el suelo)
+                const springForce = (compressionAmount * wheel.stiffness) * 8000;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
-                const dampingForce = (compressionVelocity * wheel.damping) * 500;
-                const totalForce = springForce + dampingForce;
+                const dampingForce = (compressionVelocity * wheel.damping) * 1500;
+                const totalForce = Math.max(0, springForce + dampingForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
 
@@ -5212,20 +5214,22 @@ export class WheelSuspension extends Leyes {
                 if (wheelMateria) {
                     const wheelTransform = wheelMateria.getComponent(Transform);
                     if (wheelTransform) {
-                        const extension = wheel.restLength - compressionAmount;
+                        // Limitar la extensión para que no se vea que la rueda "vuela" debajo del suelo
+                        const extension = Math.min(wheel.restLength, distToWheelCenter);
                         wheelTransform.x = anchorWorldX + springDir.x * extension;
                         wheelTransform.y = anchorWorldY + springDir.y * extension;
 
-                        // Rotación visual
-                        const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
-                        wheelTransform.rotation += (speed * 10) * (rb.velocity.x > 0 ? 1 : -1);
+                        // Rotación visual basada en movimiento relativo al chasis
+                        const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
+                        const rotSpeed = Math.hypot(rb.velocity.x, rb.velocity.y) * 20;
+                        wheelTransform.rotation += rotSpeed * (moveDir >= 0 ? 1 : -1);
                     }
                 }
 
-                // 5. Grip
+                // 5. Grip (Aumentado para Hill Climb)
                 const rightDir = { x: -springDir.y, y: springDir.x };
                 const lateralVel = rb.velocity.x * rightDir.x + rb.velocity.y * rightDir.y;
-                const gripForce = -lateralVel * this.grip * rb.mass * 500;
+                const gripForce = -lateralVel * this.grip * rb.mass * 1500;
                 rb.addForce({ x: rightDir.x * gripForce * deltaTime, y: rightDir.y * gripForce * deltaTime });
 
                 wheel._lastCompression = wheel.currentCompression;
