@@ -4932,6 +4932,253 @@ export class LineCollider2D extends Leyes {
     }
 }
 
+/**
+ * Componente VehicleController (Controlador de Vehículo): Manejo de Autos, Aviones y Helicópteros con física realista.
+ */
+export class VehicleController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.vehicleType = 'Car'; // 'Car', 'Plane', 'Helicopter'
+        this.power = 2000;
+        this.maxSpeed = 1000;
+        this.brakingForce = 1500;
+        this.steeringRange = 30; // Ángulo máximo de giro
+        this.turnSpeed = 100;
+        this.mass = 1200;
+
+        // Controles configurables
+        this.accelerateKey = 'w';
+        this.brakeKey = 's';
+        this.leftKey = 'a';
+        this.rightKey = 'd';
+        this.upKey = 'space';    # Para helicópteros
+        this.downKey = 'shift';  # Para helicópteros
+
+        // Ajustes realistas
+        this.pitchStrength = 5.0; // Cuánto se inclina al acelerar/frenar
+        this.takeoffSpeed = 300;  # Velocidad mínima para que el avión suba (lift)
+        this.heightControlMode = 'Potency'; # 'Potency' or 'Manual' para helicópteros
+
+        // Estado interno
+        this.currentPotency = 0;
+        this.currentSteer = 0;
+    }
+
+    update(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const input = RuntimeAPIManager.getAPI('input');
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        if (!input || !rb || !transform) return;
+
+        // Actualizar masa si cambió
+        if (rb.mass !== this.mass) rb.mass = this.mass;
+
+        let moveInput = 0;
+        if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
+        if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
+
+        let steerInput = 0;
+        if (input.isKeyPressed(this.rightKey)) steerInput += 1;
+        if (input.isKeyPressed(this.leftKey)) steerInput -= 1;
+
+        // --- Lógica según tipo ---
+        if (this.vehicleType === 'Car') {
+            this._handleCarPhysics(rb, transform, moveInput, steerInput, deltaTime);
+        } else if (this.vehicleType === 'Plane') {
+            this._handlePlanePhysics(rb, transform, moveInput, steerInput, deltaTime);
+        } else if (this.vehicleType === 'Helicopter') {
+            const upInput = input.isKeyPressed(this.upKey) ? 1 : (input.isKeyPressed(this.downKey) ? -1 : 0);
+            this._handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime);
+        }
+    }
+
+    _handleCarPhysics(rb, transform, moveInput, steerInput, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
+
+        // Aceleración / Freno
+        if (moveInput > 0 && speed < this.maxSpeed / 50) {
+            rb.applyForce({ x: forward.x * this.power * 10 * moveInput, y: forward.y * this.power * 10 * moveInput });
+        } else if (moveInput < 0) {
+            rb.velocity.x *= 0.95;
+            rb.velocity.y *= 0.95;
+        }
+
+        // Giro
+        if (speed > 1) {
+            const turnDir = steerInput * this.turnSpeed * deltaTime * (moveInput < 0 ? -1 : 1);
+            transform.rotation += turnDir;
+        }
+
+        // Efecto Pitch (trompa sube/baja)
+        const targetPitch = -moveInput * this.pitchStrength;
+        // En 2D el pitch es rotación visual o fuerzas ligeras?
+        // El usuario pidió que "quiera rotar a un lado", simulamos inercia rotacional
+        if (moveInput !== 0) {
+            rb.angularVelocity += moveInput * this.pitchStrength * 0.01;
+        }
+    }
+
+    _handlePlanePhysics(rb, transform, moveInput, steerInput, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const speed = Math.hypot(rb.velocity.x, rb.velocity.y) * 50;
+
+        // Empuje motor
+        if (moveInput > 0) {
+            rb.applyForce({ x: forward.x * this.power * 15, y: forward.y * this.power * 15 });
+        }
+
+        // Sustentación (Lift)
+        if (speed > this.takeoffSpeed) {
+            const liftFactor = Math.min(1.5, (speed - this.takeoffSpeed) / 500);
+            rb.applyForce({ x: 0, y: -9.8 * rb.mass * 50 * liftFactor }); // Contrarrestar gravedad
+        }
+
+        // Giro (Pitch en 2D para subir/bajar)
+        transform.rotation += steerInput * this.turnSpeed * deltaTime;
+    }
+
+    _handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime) {
+        const rad = transform.rotation * Math.PI / 180;
+        const up = { x: Math.sin(rad), y: -Math.cos(rad) };
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+
+        // Rotor Principal (Altura)
+        let liftForce = 9.8 * rb.mass * 50; // Fuerza para flotar
+        if (this.heightControlMode === 'Manual') {
+            liftForce += upInput * this.power * 10;
+        } else {
+            // Basado en potencia (moveInput para inclinar y ganar velocidad, upInput para altura bruta)
+            liftForce += upInput * this.power * 10;
+        }
+        rb.applyForce({ x: up.x * liftForce, y: up.y * liftForce });
+
+        // Giro y Movimiento lateral por inclinación
+        transform.rotation += steerInput * this.turnSpeed * deltaTime;
+
+        // Empuje motor (Pequeño empuje en dirección forward si hay moveInput)
+        if (moveInput !== 0) {
+            rb.applyForce({ x: forward.x * moveInput * this.power * 5, y: forward.y * moveInput * this.power * 5 });
+        }
+    }
+
+    clone() {
+        const copy = new VehicleController(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
+/**
+ * Componente WheelSuspension (Suspensión de Rueda): Amortiguación y Grip realista.
+ */
+export class WheelSuspension extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.stiffness = 500; // Dureza del resorte (k)
+        this.damping = 50;    // Amortiguación (d)
+        this.restLength = 40; // Longitud máxima del resorte (tamaño del gizmo)
+        this.wheelRadius = 15;
+        this.gripTags = ['Ground', 'Road'];
+        this.grip = 1.0;
+        this.showGizmo = true;
+        this.constraintAxis = { x: 0, y: 1 }; // Eje local de movimiento (normalmente Y)
+
+        // Estado
+        this.currentCompression = 0; // 0 (reposo) a restLength (comprimido total)
+        this.isGrounded = false;
+        this._lastCompression = 0;
+        this._localRestPos = { x: 0, y: 0 };
+    }
+
+    start() {
+        // Guardar la posición inicial como la de reposo (máxima extensión)
+        const transform = this.materia.getComponent(Transform);
+        if (transform) {
+            this._localRestPos = { x: transform.x, y: transform.y };
+        }
+    }
+
+    update(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const rb = this.materia.getComponentInParent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!rb || !transform || !engine) return;
+
+        // --- 1. Detección de contacto (Sin Raycast, usando colisión/proximidad) ---
+        // Para simular el contacto "real" que pide el usuario, usamos un pequeño escaneo de colisión
+        // en la posición actual de la rueda más su radio.
+        const rad = transform.rotation * Math.PI / 180;
+        const downDir = {
+            x: this.constraintAxis.x * Math.cos(rad) - this.constraintAxis.y * Math.sin(rad),
+            y: this.constraintAxis.x * Math.sin(rad) + this.constraintAxis.y * Math.cos(rad)
+        };
+
+        // Buscamos el suelo más cercano en la dirección del resorte
+        const hit = engine.raycast(transform.position, downDir, this.restLength + this.wheelRadius, this.gripTags);
+
+        if (hit && hit.distance <= this.restLength + this.wheelRadius) {
+            this.isGrounded = true;
+
+            // Cuánto se ha "metido" el suelo en el área del resorte
+            const distToWheelCenter = hit.distance - this.wheelRadius;
+            const compressionAmount = Math.max(0, this.restLength - distToWheelCenter);
+            this.currentCompression = compressionAmount / this.restLength; // 0 a 1
+
+            // --- 2. Física de Resorte y Amortiguador ---
+            const springForce = (compressionAmount * this.stiffness) * 100;
+            const compressionVelocity = (this.currentCompression - this._lastCompression) / deltaTime;
+            const dampingForce = (compressionVelocity * this.damping) * 100;
+
+            const totalForce = springForce + dampingForce;
+
+            // Aplicar fuerza hacia arriba al chasis (dirección opuesta al resorte)
+            rb.applyForce({ x: -downDir.x * totalForce, y: -downDir.y * totalForce });
+
+            // --- 3. Posicionamiento Visual (La rueda se "mueve" hacia arriba) ---
+            // El usuario quiere ver que la rueda sube al chocar
+            transform.x = this._localRestPos.x - downDir.x * compressionAmount;
+            transform.y = this._localRestPos.y - downDir.y * compressionAmount;
+
+            // --- 4. Grip / Fricción Lateral ---
+            const rightDir = { x: -downDir.y, y: downDir.x };
+            const lateralVel = rb.velocity.x * rightDir.x + rb.velocity.y * rightDir.y;
+            const gripForce = -lateralVel * this.grip * rb.mass * 15;
+            rb.applyForce({ x: rightDir.x * gripForce, y: rightDir.y * gripForce });
+
+            // Rotación visual de la rueda según velocidad
+            const forwardVel = rb.velocity.x * downDir.y - rb.velocity.y * downDir.x;
+            transform.rotation += forwardVel * deltaTime * 500;
+
+            this._lastCompression = this.currentCompression;
+        } else {
+            this.isGrounded = false;
+            this.currentCompression = 0;
+            this._lastCompression = 0;
+            // Volver a posición de reposo suavemente
+            transform.x += (this._localRestPos.x - transform.x) * 0.1;
+            transform.y += (this._localRestPos.y - transform.y) * 0.1;
+        }
+    }
+
+    estaTocandoSuelo() {
+        return this.isGrounded;
+    }
+
+    clone() {
+        const copy = new WheelSuspension(null);
+        Object.assign(copy, this);
+        copy.gripTags = [...this.gripTags];
+        return copy;
+    }
+}
+
 export class BasicAI extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5528,6 +5775,8 @@ registerComponent('Health', Health);
 registerComponent('Patrol', Patrol);
 registerComponent('ParticleSystem', ParticleSystem);
 registerComponent('RaycastSource', RaycastSource);
+registerComponent('VehicleController', VehicleController);
+registerComponent('WheelSuspension', WheelSuspension);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);

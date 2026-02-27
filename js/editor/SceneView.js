@@ -1740,6 +1740,8 @@ export function drawOverlay() {
     drawRaycastGizmos();
 
     drawTerrainBrushGizmo();
+
+    drawWheelSuspensionGizmos();
 }
 
 const iconCache = new Map();
@@ -1829,6 +1831,48 @@ function drawRaycastGizmos() {
         ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
         ctx.fill();
     });
+
+    ctx.restore();
+}
+
+function drawWheelSuspensionGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const suspension = selectedMateria.getComponent(Components.WheelSuspension);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!suspension || !transform || !suspension.showGizmo) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.rotate(transform.rotation * Math.PI / 180);
+
+    const axis = suspension.constraintAxis;
+    const length = suspension.restLength;
+    const radius = suspension.wheelRadius;
+
+    // Dibujar línea del resorte (eje)
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(axis.x * length, axis.y * length);
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 2 / zoom;
+    ctx.stroke();
+
+    // Dibujar círculo de la rueda
+    ctx.beginPath();
+    ctx.arc(axis.x * length, axis.y * length, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffff00';
+    ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dibujar base del resorte
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillRect(-5 / zoom, -1 / zoom, 10 / zoom, 2 / zoom);
 
     ctx.restore();
 }
