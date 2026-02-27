@@ -4943,25 +4943,26 @@ export class VehicleController extends Leyes {
     constructor(materia) {
         super(materia);
         this.vehicleType = 'Car'; // 'Car', 'Plane', 'Helicopter'
+        this.viewMode = 'Side-View'; // 'Top-Down', 'Side-View'
         this.power = 2000;
         this.maxSpeed = 1000;
         this.brakingForce = 1500;
-        this.steeringRange = 30; // Ángulo máximo de giro
+        this.steeringRange = 30;
         this.turnSpeed = 100;
         this.mass = 1200;
 
         // Controles configurables
-        this.accelerateKey = 'w';
-        this.brakeKey = 's';
-        this.leftKey = 'a';
-        this.rightKey = 'd';
-        this.upKey = 'space';    // Para helicópteros
-        this.downKey = 'shift';  // Para helicópteros
+        this.accelerateKey = 'd'; // A la derecha en Side-View
+        this.brakeKey = 'a';      // A la izquierda en Side-View
+        this.pitchUpKey = 'w';
+        this.pitchDownKey = 's';
+        this.upKey = 'space';
+        this.downKey = 'shift';
 
         // Ajustes realistas
-        this.pitchStrength = 5.0; // Cuánto se inclina al acelerar/frenar
-        this.takeoffSpeed = 300;  // Velocidad mínima para que el avión suba (lift)
-        this.heightControlMode = 'Potency'; // 'Potency' or 'Manual' para helicópteros
+        this.pitchStrength = 5.0;
+        this.takeoffSpeed = 300;
+        this.heightControlMode = 'Potency';
 
         // Estado interno
         this.currentPotency = 0;
@@ -4976,82 +4977,105 @@ export class VehicleController extends Leyes {
         const transform = this.materia.getComponent(Transform);
         if (!input || !rb || !transform) return;
 
-        // Actualizar masa si cambió
         if (rb.mass !== this.mass) rb.mass = this.mass;
 
+        // --- Lectura de Input según Modo ---
         let moveInput = 0;
-        if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
-        if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
-
         let steerInput = 0;
-        if (input.isKeyPressed(this.rightKey)) steerInput += 1;
-        if (input.isKeyPressed(this.leftKey)) steerInput -= 1;
+        let pitchInput = 0;
 
-        // Buscar amortiguadores en los hijos
-        const suspensions = this.materia.children
-            .map(child => child.getComponent(WheelSuspension))
-            .filter(s => s !== null);
+        if (this.viewMode === 'Side-View') {
+            // Derecha acelera, Izquierda frena/retrocede
+            if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
+            if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
+
+            // W/S inclinan el auto (Pitch)
+            if (input.isKeyPressed(this.pitchUpKey)) pitchInput -= 1;
+            if (input.isKeyPressed(this.pitchDownKey)) pitchInput += 1;
+        } else {
+            // Top-Down tradicional
+            if (input.isKeyPressed('w')) moveInput += 1;
+            if (input.isKeyPressed('s')) moveInput -= 1;
+            if (input.isKeyPressed('d')) steerInput += 1;
+            if (input.isKeyPressed('a')) steerInput -= 1;
+        }
+
+        // Buscar amortiguadores en el mismo objeto o hijos
+        const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
+            .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
 
         // --- Lógica según tipo ---
         if (this.vehicleType === 'Car') {
-            this._handleCarPhysics(rb, transform, moveInput, steerInput, suspensions, deltaTime);
+            this._handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, suspensions, deltaTime);
         } else if (this.vehicleType === 'Plane') {
-            this._handlePlanePhysics(rb, transform, moveInput, steerInput, deltaTime);
+            this._handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, deltaTime);
         } else if (this.vehicleType === 'Helicopter') {
             const upInput = input.isKeyPressed(this.upKey) ? 1 : (input.isKeyPressed(this.downKey) ? -1 : 0);
             this._handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime);
         }
     }
 
-    _handleCarPhysics(rb, transform, moveInput, steerInput, suspensions, deltaTime) {
+    _handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, suspensions, deltaTime) {
         const rad = transform.rotation * Math.PI / 180;
         const forward = { x: Math.cos(rad), y: Math.sin(rad) };
         const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
 
         // Contar cuántas ruedas están tocando suelo
-        const groundedCount = suspensions.filter(s => s.isGrounded).length;
-        const traction = groundedCount > 0 ? (groundedCount / Math.max(1, suspensions.length)) : 0;
-
-        // Aceleración / Freno (Solo si hay tracción)
-        if (moveInput > 0 && speed < this.maxSpeed / 50) {
-            const force = this.power * 5000 * moveInput * traction;
-            rb.addForce({ x: forward.x * force * deltaTime, y: forward.y * force * deltaTime });
-        } else if (moveInput < 0) {
-            // Frenado suave
-            rb.velocity.x *= 0.98;
-            rb.velocity.y *= 0.98;
+        let groundedCount = 0;
+        if (suspensions.length > 0) {
+            groundedCount = suspensions.reduce((acc, s) => acc + (s.wheels ? s.wheels.filter(w => w.isGrounded).length : (s.isGrounded ? 1 : 0)), 0);
         }
 
-        // Giro (Solo si se mueve y hay tracción parcial)
-        if (speed > 0.5 && groundedCount > 0) {
-            const turnDir = steerInput * this.turnSpeed * deltaTime * (rb.velocity.x * forward.x + rb.velocity.y * forward.y > 0 ? 1 : -1);
-            transform.rotation += turnDir;
+        const traction = groundedCount > 0 ? 1.0 : 0; // Tracción simplificada para 2D
+
+        // Aceleración / Freno
+        if (moveInput !== 0 && speed < this.maxSpeed / 50) {
+            const forceMag = this.power * 10000 * moveInput * traction;
+            rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
         }
 
-        // Efecto Pitch (inercia rotacional al acelerar/frenar)
-        if (moveInput !== 0 && groundedCount > 0) {
-            rb.angularVelocity += moveInput * this.pitchStrength * 0.05 * deltaTime;
+        // Giro o Pitch
+        if (this.viewMode === 'Side-View') {
+            // En el aire o suelo, el Pitch rota el auto
+            if (pitchInput !== 0) {
+                rb.angularVelocity += pitchInput * this.pitchStrength * 0.1 * deltaTime;
+            }
+            // Pitch automático al acelerar (Efecto inercia)
+            if (moveInput !== 0 && groundedCount > 0) {
+                rb.angularVelocity += moveInput * this.pitchStrength * 0.05 * deltaTime;
+            }
+        } else {
+            // Top-Down: Steer rota el auto
+            if (speed > 0.5 && groundedCount > 0) {
+                const turnDir = steerInput * this.turnSpeed * deltaTime * (rb.velocity.x * forward.x + rb.velocity.y * forward.y > 0 ? 1 : -1);
+                transform.rotation += turnDir;
+            }
         }
     }
 
-    _handlePlanePhysics(rb, transform, moveInput, steerInput, deltaTime) {
+    _handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, deltaTime) {
         const rad = transform.rotation * Math.PI / 180;
         const forward = { x: Math.cos(rad), y: Math.sin(rad) };
         const speed = Math.hypot(rb.velocity.x, rb.velocity.y) * 50;
 
-        // Empuje motor
+        // Empuje motor (Acelerar/Frenar)
         if (moveInput > 0) {
-            rb.applyForce({ x: forward.x * this.power * 15, y: forward.y * this.power * 15 });
+            rb.addForce({ x: forward.x * this.power * 100 * deltaTime, y: forward.y * this.power * 100 * deltaTime });
         }
 
-        // Sustentación (Lift)
-        if (speed > this.takeoffSpeed) {
-            const liftFactor = Math.min(1.5, (speed - this.takeoffSpeed) / 500);
-            rb.applyForce({ x: 0, y: -9.8 * rb.mass * 50 * liftFactor }); // Contrarrestar gravedad
+        // Sustentación (Lift) - Solo si hay velocidad hacia adelante
+        const forwardSpeed = (rb.velocity.x * forward.x + rb.velocity.y * forward.y) * 50;
+        if (forwardSpeed > this.takeoffSpeed) {
+            const liftFactor = Math.min(1.2, (forwardSpeed - this.takeoffSpeed) / 500);
+            // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
+            const up = { x: -forward.y, y: forward.x };
+            rb.addForce({ x: up.x * 9.8 * rb.mass * 50 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 50 * liftFactor * deltaTime });
         }
 
-        // Giro (Pitch en 2D para subir/bajar)
-        transform.rotation += steerInput * this.turnSpeed * deltaTime;
+        // Pitch (Inclinar para subir/bajar)
+        let actualPitch = pitchInput;
+        if (this.viewMode === 'Top-Down') actualPitch = steerInput; // Alias para top-down
+        transform.rotation += actualPitch * this.turnSpeed * deltaTime;
     }
 
     _handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, deltaTime) {
@@ -5091,49 +5115,47 @@ export class VehicleController extends Leyes {
 export class WheelSuspension extends Leyes {
     constructor(materia) {
         super(materia);
-        this.stiffness = 1000; // Dureza del resorte (k)
-        this.damping = 100;    // Amortiguación (d)
-        this.restLength = 40; // Longitud máxima del resorte (tamaño del gizmo)
-        this.wheelRadius = 15;
+        this.wheels = [
+            {
+                materiaId: null,
+                offset: { x: -30, y: 30 },
+                restLength: 40,
+                wheelRadius: 15,
+                stiffness: 1000,
+                damping: 100,
+                isGrounded: false,
+                currentCompression: 0,
+                _lastCompression: 0
+            },
+            {
+                materiaId: null,
+                offset: { x: 30, y: 30 },
+                restLength: 40,
+                wheelRadius: 15,
+                stiffness: 1000,
+                damping: 100,
+                isGrounded: false,
+                currentCompression: 0,
+                _lastCompression: 0
+            }
+        ];
         this.gripTags = ['Ground', 'Road'];
         this.grip = 1.0;
         this.showGizmo = true;
-        this.constraintAxis = { x: 0, y: 1 }; // Eje local de movimiento (normalmente Y)
-
-        // Estado
-        this.currentCompression = 0; // 0 (reposo) a 1 (comprimido total)
-        this.isGrounded = false;
-        this._lastCompression = 0;
-        this._anchorLocalPos = null;
+        this.constraintAxis = { x: 0, y: 1 };
+        this.selectedIndex = 0; // Para el editor
     }
 
     update(deltaTime) {
         if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
 
+        const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        // Si no tenemos anclaje, usamos la posición en la que el usuario puso la materia en el editor
-        if (this._anchorLocalPos === null) {
-            this._anchorLocalPos = { x: transform.x, y: transform.y };
-        }
-
-        const chassis = this.materia.parent;
-        if (!chassis) return;
-
-        const rb = (typeof chassis === 'object') ? chassis.getComponent(Rigidbody2D) : this.materia.getComponentInParent(Rigidbody2D);
-        const chassisTransform = (typeof chassis === 'object') ? chassis.getComponent(Transform) : this.materia.getComponentInParent(Transform);
         const engine = RuntimeAPIManager.getAPI('engine');
+        if (!rb || !transform || !engine) return;
 
-        if (!rb || !chassisTransform || !engine) return;
-
-        // --- 1. Calcular punto de anclaje y dirección ---
-        const chassisRad = chassisTransform.rotation * Math.PI / 180;
+        const chassisRad = transform.rotation * Math.PI / 180;
         const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
-
-        // Punto de anclaje en el mundo (donde la rueda "nace")
-        const anchorWorldX = chassisTransform.x + (this._anchorLocalPos.x * cos - this._anchorLocalPos.y * sin);
-        const anchorWorldY = chassisTransform.y + (this._anchorLocalPos.x * sin + this._anchorLocalPos.y * cos);
 
         // Dirección del resorte en el mundo (NORMALIZADA)
         let springDir = {
@@ -5143,61 +5165,79 @@ export class WheelSuspension extends Leyes {
         const mag = Math.hypot(springDir.x, springDir.y);
         if (mag > 0) { springDir.x /= mag; springDir.y /= mag; }
 
-        // Raycast desde el anclaje hacia afuera
-        const hit = engine.raycast({ x: anchorWorldX, y: anchorWorldY }, springDir, this.restLength + this.wheelRadius, this.gripTags);
+        for (const wheel of this.wheels) {
+            // 1. Punto de anclaje
+            const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
+            const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
 
-        if (hit) {
-            this.isGrounded = true;
+            // 2. Detección
+            const hit = engine.raycast({ x: anchorWorldX, y: anchorWorldY }, springDir, wheel.restLength + wheel.wheelRadius, this.gripTags);
 
-            const distToWheelCenter = hit.distance - this.wheelRadius;
-            const compressionAmount = Math.max(0, this.restLength - distToWheelCenter);
-            this.currentCompression = compressionAmount / this.restLength; // 0 a 1
+            let wheelMateria = null;
+            if (wheel.materiaId) wheelMateria = this.materia.scene.findMateriaById(wheel.materiaId);
 
-            // --- 2. Física de Resorte y Amortiguador ---
-            // Escalamiento masivo para que afecte al Rigidbody que suele tener masa alta
-            const springForce = (compressionAmount * this.stiffness) * 1000;
-            const compressionVelocity = (this.currentCompression - this._lastCompression) / deltaTime;
-            const dampingForce = (compressionVelocity * this.damping) * 500;
+            if (hit) {
+                wheel.isGrounded = true;
+                const distToWheelCenter = hit.distance - wheel.wheelRadius;
+                const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
+                wheel.currentCompression = compressionAmount / wheel.restLength;
 
-            const totalForce = springForce + dampingForce;
+                // 3. Física
+                const springForce = (compressionAmount * wheel.stiffness) * 1000;
+                const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
+                const dampingForce = (compressionVelocity * wheel.damping) * 500;
+                const totalForce = springForce + dampingForce;
 
-            // Aplicar fuerza hacia ARRIBA al chasis
-            rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
+                rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
 
-            // --- 3. Posicionamiento Visual de la Rueda ---
-            const extension = this.restLength - compressionAmount;
-            transform.x = anchorWorldX + springDir.x * extension;
-            transform.y = anchorWorldY + springDir.y * extension;
+                // 4. Posicionamiento visual de la materia asignada
+                if (wheelMateria) {
+                    const wheelTransform = wheelMateria.getComponent(Transform);
+                    if (wheelTransform) {
+                        const extension = wheel.restLength - compressionAmount;
+                        wheelTransform.x = anchorWorldX + springDir.x * extension;
+                        wheelTransform.y = anchorWorldY + springDir.y * extension;
 
-            // --- 4. Grip / Fricción Lateral ---
-            const rightDir = { x: -springDir.y, y: springDir.x };
-            const lateralVel = rb.velocity.x * rightDir.x + rb.velocity.y * rightDir.y;
-            const gripForce = -lateralVel * this.grip * rb.mass * 500;
-            rb.addForce({ x: rightDir.x * gripForce * deltaTime, y: rightDir.y * gripForce * deltaTime });
+                        // Rotación visual
+                        const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
+                        wheelTransform.rotation += (speed * 10) * (rb.velocity.x > 0 ? 1 : -1);
+                    }
+                }
 
-            // Rotación visual
-            const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
-            transform.rotation += (speed * 10) * (rb.velocity.x > 0 ? 1 : -1);
+                // 5. Grip
+                const rightDir = { x: -springDir.y, y: springDir.x };
+                const lateralVel = rb.velocity.x * rightDir.x + rb.velocity.y * rightDir.y;
+                const gripForce = -lateralVel * this.grip * rb.mass * 500;
+                rb.addForce({ x: rightDir.x * gripForce * deltaTime, y: rightDir.y * gripForce * deltaTime });
 
-            this._lastCompression = this.currentCompression;
-        } else {
-            this.isGrounded = false;
-            this.currentCompression = 0;
-            this._lastCompression = 0;
-            // Extender totalmente
-            transform.x = anchorWorldX + springDir.x * this.restLength;
-            transform.y = anchorWorldY + springDir.y * this.restLength;
+                wheel._lastCompression = wheel.currentCompression;
+            } else {
+                wheel.isGrounded = false;
+                wheel.currentCompression = 0;
+                wheel._lastCompression = 0;
+
+                if (wheelMateria) {
+                    const wheelTransform = wheelMateria.getComponent(Transform);
+                    if (wheelTransform) {
+                        wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
+                        wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
+                    }
+                }
+            }
         }
     }
 
     estaTocandoSuelo() {
-        return this.isGrounded;
+        return this.wheels.some(w => w.isGrounded);
     }
 
     clone() {
         const copy = new WheelSuspension(null);
-        Object.assign(copy, this);
+        copy.wheels = this.wheels.map(w => ({ ...w, offset: { ...w.offset } }));
         copy.gripTags = [...this.gripTags];
+        copy.grip = this.grip;
+        copy.showGizmo = this.showGizmo;
+        copy.constraintAxis = { ...this.constraintAxis };
         return copy;
     }
 }

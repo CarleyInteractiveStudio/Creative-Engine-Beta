@@ -1401,19 +1401,23 @@ export class PhysicsSystem {
      * @param {{x: number, y: number}} origin - Punto de origen.
      * @param {{x: number, y: number}} direction - Dirección (normalizada).
      * @param {number} maxDistance - Distancia máxima.
-     * @param {string} [tag] - Opcional, filtrar por tag.
+     * @param {string|string[]|number[]} [filter] - Opcional, filtrar por tag o excluir IDs.
      * @returns {object|null} Información del impacto o null.
      */
-    raycast(origin, direction, maxDistance = Infinity, tag = null) {
+    raycast(origin, direction, maxDistance = Infinity, filter = null) {
         let closestHit = null;
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D))
         );
 
+        const excludedIds = Array.isArray(filter) && typeof filter[0] === 'number' ? filter : [];
+        const targetTags = Array.isArray(filter) && typeof filter[0] === 'string' ? filter : (typeof filter === 'string' ? [filter] : []);
+
         for (const materia of collidables) {
-            if (tag && materia.tag !== tag) continue;
+            if (excludedIds.includes(materia.id)) continue;
+            if (targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
 
             const transform = materia.getComponent(Components.Transform);
             const collider = this.getCollider(materia);

@@ -628,6 +628,26 @@ function handleInspectorClick(e) {
         showAddComponentModal();
     }
 
+    if (e.target.closest('[data-action="add-wheel"]')) {
+        const suspension = selectedMateria.getComponent(Components.WheelSuspension);
+        if (suspension) {
+            suspension.wheels.push({
+                materiaId: null,
+                offset: { x: 0, y: 30 },
+                restLength: 40,
+                wheelRadius: 15,
+                stiffness: 1000,
+                damping: 100,
+                isGrounded: false,
+                currentCompression: 0,
+                _lastCompression: 0
+            });
+            suspension.selectedIndex = suspension.wheels.length - 1;
+            updateInspector();
+            if (updateSceneCallback) updateSceneCallback();
+        }
+    }
+
     if (e.target.closest('[data-action="reset-sprite-scale"]')) {
         const selectedMateria = getSelectedMateria();
         const transform = selectedMateria.getComponent(Components.Transform);
@@ -3129,6 +3149,13 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('VEHICLE_CONTROLLER', "Controlador de Vehículo"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
+                        <label>${L.get('VIEW_MODE', 'Modo Vista')}</label>
+                        <select class="prop-input" data-component="VehicleController" data-prop="viewMode">
+                            <option value="Side-View" ${ley.viewMode === 'Side-View' ? 'selected' : ''}>Vista Lateral (2D)</option>
+                            <option value="Top-Down" ${ley.viewMode === 'Top-Down' ? 'selected' : ''}>Cenital (Top-Down)</option>
+                        </select>
+                    </div>
+                    <div class="prop-row-multi">
                         <label>${L.get('TYPE', 'Tipo')}</label>
                         <select class="prop-input" data-component="VehicleController" data-prop="vehicleType">
                             <option value="Car" ${ley.vehicleType === 'Car' ? 'selected' : ''}>Auto</option>
@@ -3187,25 +3214,49 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.WheelSuspension) {
+            const selectedWheel = ley.wheels[ley.selectedIndex];
+
             componentHTML = `
                 ${renderComponentHeader(L.get('WHEEL_SUSPENSION', "Suspensión de Rueda"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
+                        <label>${L.get('WHEEL', 'Rueda')}</label>
+                        <select class="prop-input" data-component="WheelSuspension" data-prop="selectedIndex">
+                            ${ley.wheels.map((w, idx) => `<option value="${idx}" ${ley.selectedIndex === idx ? 'selected' : ''}>Rueda ${idx + 1}</option>`).join('')}
+                        </select>
+                        <button class="panel-tool-btn" data-action="add-wheel" data-component="WheelSuspension"><img src="icons/plus.svg" class="ce-icon"></button>
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>Propiedades Rueda ${ley.selectedIndex + 1}</span></div>
+                    <div class="inspector-row">
+                        <label>${L.get('VISUAL_MATERIA', 'Materia Visual')}</label>
+                        ${renderPropertyDropper('Materia', selectedWheel.materiaId, `data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.materiaId"`)}
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Offset (X, Y)</label>
+                        <div class="multi-input">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.x" value="${selectedWheel.offset.x}">
+                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.y" value="${selectedWheel.offset.y}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
                         <label>${L.get('STIFFNESS', 'Dureza (K)')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="stiffness" value="${ley.stiffness}">
+                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.stiffness" value="${selectedWheel.stiffness}">
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('DAMPING', 'Amortiguación (D)')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="damping" value="${ley.damping}">
+                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.damping" value="${selectedWheel.damping}">
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="restLength" value="${ley.restLength}">
+                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.restLength" value="${selectedWheel.restLength}">
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheelRadius" value="${ley.wheelRadius}">
+                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.wheelRadius" value="${selectedWheel.wheelRadius}">
                     </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>General</span></div>
                     <div class="prop-row-multi">
                         <label>${L.get('GRIP', 'Agarre (Grip)')}</label>
                         <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="grip" value="${ley.grip}" step="0.1">

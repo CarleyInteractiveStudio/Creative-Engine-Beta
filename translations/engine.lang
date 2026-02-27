@@ -289,6 +289,37 @@ CONTENT_SIZE_FITTER: Ajustador de Tamaño de Contenido
 PADDING: Padding
 SPACING: Espaciado
 CELL_SIZE: Tamaño de Celda
+VEHICLE_CONTROLLER: Controlador de Vehículo
+VIEW_MODE: Modo Vista
+SIDE_VIEW: Vista Lateral (2D)
+TOP_DOWN: Cenital (Top-Down)
+POWER: Potencia
+MAX_SPEED: Velocidad Máxima
+MASS: Peso (Masa)
+ACCELERATE: Acelerar
+BRAKE: Frenar
+WHEEL_SUSPENSION: Suspensión de Rueda
+WHEEL: Rueda
+VISUAL_MATERIA: Materia Visual
+STIFFNESS: Dureza (K)
+DAMPING: Amortiguación (D)
+REST_LENGTH: Largo Reposo
+WHEEL_RADIUS: Radio Rueda
+GRIP: Agarre (Grip)
+GRIP_TAGS: Tags Suelo
+SHOW_GIZMO: Mostrar Gizmo
+STOP_DISTANCE: Distancia Parada
+ATTACK_DISTANCE: Distancia Ataque
+ON_TARGET_SEEN: Al ver Objetivo
+ON_TARGET_LOST: Al perder Objetivo
+ON_TARGET_NEAR: Al estar cerca
+ON_ATTACK_RANGE: Rango Ataque
+HEALTH_COMPONENT: Vida (Health)
+MAX_HEALTH: Vida Máxima
+CURRENT_HEALTH: Vida Actual
+DESTROY_ON_DEATH: Destruir al morir
+PATROL_COMPONENT: Patrulla (Patrol)
+PAUSE_TIME: Tiempo Pausa (s)
 
 # Water Component
 PROP_WATER_DENSITY: Densidad del Agua
@@ -1199,6 +1230,37 @@ CONTENT_SIZE_FITTER: Content Size Fitter
 PADDING: Padding
 SPACING: Spacing
 CELL_SIZE: Cell Size
+VEHICLE_CONTROLLER: Vehicle Controller
+VIEW_MODE: View Mode
+SIDE_VIEW: Side View (2D)
+TOP_DOWN: Top-Down
+POWER: Power
+MAX_SPEED: Max Speed
+MASS: Mass
+ACCELERATE: Accelerate
+BRAKE: Brake
+WHEEL_SUSPENSION: Wheel Suspension
+WHEEL: Wheel
+VISUAL_MATERIA: Visual Matter
+STIFFNESS: Stiffness (K)
+DAMPING: Damping (D)
+REST_LENGTH: Rest Length
+WHEEL_RADIUS: Wheel Radius
+GRIP: Grip
+GRIP_TAGS: Floor Tags
+SHOW_GIZMO: Show Gizmo
+STOP_DISTANCE: Stop Distance
+ATTACK_DISTANCE: Attack Distance
+ON_TARGET_SEEN: On Target Seen
+ON_TARGET_LOST: On Target Lost
+ON_TARGET_NEAR: On Target Near
+ON_ATTACK_RANGE: Attack Range
+HEALTH_COMPONENT: Health Component
+MAX_HEALTH: Max Health
+CURRENT_HEALTH: Current Health
+DESTROY_ON_DEATH: Destroy On Death
+PATROL_COMPONENT: Patrol Component
+PAUSE_TIME: Pause Time (s)
 
 # Water Component
 PROP_WATER_DENSITY: Water Density

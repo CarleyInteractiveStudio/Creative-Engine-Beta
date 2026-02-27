@@ -1428,8 +1428,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Get camera position for parallax (either from camera materia or editor camera)
                 const isGame = (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts));
-                const camX = camTransform ? camTransform.x : (rendererInstance.isEditor ? rendererInstance.camera.x : 0);
-                const camY = camTransform ? camTransform.y : (rendererInstance.isEditor ? rendererInstance.camera.y : 0);
+
+                // FIXED: Parallax should only react to Game Camera, not Editor Camera.
+                // In Scene View, we treat camera as (0,0) to show object at its world base position.
+                const camX = isGameView ? (camTransform ? camTransform.x : 0) : 0;
+                const camY = isGameView ? (camTransform ? camTransform.y : 0) : 0;
 
                 if (parallax && (isGame || isGameView)) {
                      worldPosition = {
