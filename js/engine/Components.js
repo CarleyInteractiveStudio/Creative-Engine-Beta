@@ -4937,19 +4937,37 @@ export class BasicAI extends Leyes {
         super(materia);
         this.target = null; // ID de la materia objetivo
         this.behavior = 'Follow'; // 'Follow', 'Escape', 'Wander'
-        this.movementType = 'Top-Down'; // 'Top-Down' or 'Platformer'
+        this.movementType = 'Top-Down'; // 'Top-Down', 'Platformer', 'Fighter'
         this.speed = 100;
+        this.stopDistance = 50;
+        this.attackDistance = 30;
+        this.jumpForce = 400;
         this.autoRotate = true;
         this.rotationSpeed = 0.1;
         this.obstacleAvoidance = true;
         this.detectionTags = ['Player'];
         this.detectionDistance = 400;
-        this.scriptTarget = null; // Materia con el script a ejecutar
-        this.functionName = ''; // Nombre de la función
+
+        // Raycast Steering
+        this.rayCount = 5;
+        this.raySpread = 90;
+        this.rayLength = 100;
+
+        // Script Execution
+        this.scriptTarget = null;
+        this.functionName = ''; // Legacy
+        this.onTargetSeen = '';
+        this.onTargetLost = '';
+        this.onTargetNear = '';
+        this.onAttackRange = '';
 
         this._wanderAngle = Math.random() * 360;
         this._wanderTimer = 0;
         this._velocity = { x: 0, y: 0 };
+        this._isTargetInView = false;
+        this._isTargetNear = false;
+        this._isAttackRange = false;
+        this._jumpCooldown = 0;
     }
 
     update(deltaTime) {
@@ -4969,23 +4987,31 @@ export class BasicAI extends Leyes {
         }
 
         // --- 1. Detección y ejecución de funciones ---
-        this._handleDetection(scene, transform);
+        const bestTarget = this._handleAdvancedDetection(scene, transform, targetObj);
 
-        // --- 2. Lógica de movimiento ---
+        // --- 2. Lógica de movimiento y Steering ---
         let desiredVelocity = { x: 0, y: 0 };
+        let currentTargetPos = null;
 
-        if (this.behavior === 'Follow' && targetObj) {
-            const dx = targetObj.getComponent(Transform).x - transform.x;
-            const dy = (this.movementType === 'Platformer') ? 0 : (targetObj.getComponent(Transform).y - transform.y);
+        if (bestTarget) {
+            const targetTransform = bestTarget.getComponent(Transform);
+            if (targetTransform) currentTargetPos = { x: targetTransform.x, y: targetTransform.y };
+        }
+
+        if (this.behavior === 'Follow' && currentTargetPos) {
+            const dx = currentTargetPos.x - transform.x;
+            const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (currentTargetPos.y - transform.y);
             const dist = Math.hypot(dx, dy);
-            if (dist > 10) {
+
+            if (dist > this.stopDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
-        } else if (this.behavior === 'Escape' && targetObj) {
-            const dx = transform.x - targetObj.getComponent(Transform).x;
-            const dy = (this.movementType === 'Platformer') ? 0 : (transform.y - targetObj.getComponent(Transform).y);
+        } else if (this.behavior === 'Escape' && currentTargetPos) {
+            const dx = transform.x - currentTargetPos.x;
+            const dy = (this.movementType === 'Platformer' || this.movementType === 'Fighter') ? 0 : (transform.y - currentTargetPos.y);
             const dist = Math.hypot(dx, dy);
-            if (dist < 500) {
+
+            if (dist < this.detectionDistance) {
                 desiredVelocity = { x: (dx / dist) * this.speed, y: (dy / dist) * this.speed };
             }
         } else if (this.behavior === 'Wander') {
@@ -4998,96 +5024,197 @@ export class BasicAI extends Leyes {
             desiredVelocity = { x: Math.cos(rad) * this.speed, y: Math.sin(rad) * this.speed };
         }
 
-        // --- 3. Esquivar obstáculos y decisiones por Raycast ---
-        const raySource = this.materia.getComponent(RaycastSource);
-        if (raySource && raySource.lastHits) {
-            raySource.lastHits.forEach((hit, idx) => {
-                if (hit) {
-                    // Evitación de obstáculos
-                    if (this.obstacleAvoidance && hit.distance < 100) {
-                        desiredVelocity.x += hit.normal.x * this.speed * 2;
-                        desiredVelocity.y += hit.normal.y * this.speed * 2;
-                    }
-
-                    // Cambio de comportamiento dinámico según tags detectados por rayos
-                    if (this.detectionTags.includes(hit.materia.tag)) {
-                        if (hit.distance < 150) {
-                            // Si está muy cerca de algo que detecta, prioriza escapar o atacar
-                            if (this.behavior === 'Wander') this.behavior = 'Escape';
-                        }
-                    }
-                }
-            });
+        // --- 3. Obstacle Avoidance & Steering ---
+        if (this.obstacleAvoidance) {
+            desiredVelocity = this._applySteering(desiredVelocity, transform);
         }
 
-        // --- 4. Aplicar movimiento ---
-        const rb = this.materia.getComponent(Rigidbody2D);
-        if (rb && rb.bodyType === 'Dynamic') {
-            rb.velocity.x = desiredVelocity.x / 100;
-            // En modo Plataformas, no sobreescribimos la velocidad Y para dejar que la gravedad actúe
-            if (this.movementType !== 'Platformer') {
-                rb.velocity.y = desiredVelocity.y / 100;
-            }
-        } else {
-            transform.x += desiredVelocity.x * deltaTime;
-            if (this.movementType !== 'Platformer') {
-                transform.y += desiredVelocity.y * deltaTime;
+        // --- 4. Jumping Logic (Platformer/Fighter) ---
+        if ((this.movementType === 'Platformer' || this.movementType === 'Fighter') && this._jumpCooldown <= 0) {
+            if (this._checkShouldJump(transform)) {
+                this._jump();
+                this._jumpCooldown = 1.0;
             }
         }
+        if (this._jumpCooldown > 0) this._jumpCooldown -= deltaTime;
 
-        // --- 5. Rotación automática ---
+        // --- 5. Aplicar movimiento ---
+        this._applyMovement(desiredVelocity, deltaTime, transform);
+
+        // --- 6. Rotación automática ---
         if (this.autoRotate) {
             if (Math.hypot(desiredVelocity.x, desiredVelocity.y) > 1) {
                 const targetRot = Math.atan2(desiredVelocity.y, desiredVelocity.x) * 180 / Math.PI;
-                transform.rotation += (targetRot - transform.rotation) * this.rotationSpeed;
+                let diff = targetRot - transform.rotation;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                transform.rotation += diff * this.rotationSpeed;
             }
         }
     }
 
-    _handleDetection(scene, transform) {
-        if (!this.functionName) return;
+    _applySteering(velocity, transform) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return velocity;
 
-        let scriptTargetObj = null;
-        if (typeof this.scriptTarget === 'number') {
-            scriptTargetObj = scene.findMateriaById(this.scriptTarget);
-        } else if (this.scriptTarget instanceof Materia) {
-            scriptTargetObj = this.scriptTarget;
-        }
-        if (!scriptTargetObj) return;
+        let avoidanceForce = { x: 0, y: 0 };
+        const startAngle = -this.raySpread / 2;
+        const step = this.rayCount > 1 ? this.raySpread / (this.rayCount - 1) : 0;
 
-        // Comprobar si algún objeto con los tags de detección está cerca
-        const raySource = this.materia.getComponent(RaycastSource);
-        let detected = false;
-
-        if (raySource && raySource.lastHits) {
-            detected = raySource.lastHits.some(hit => hit && this.detectionTags.includes(hit.materia.tag));
+        // Base direction for rays: prefer velocity direction, fallback to rotation
+        let baseAngle = transform.rotation;
+        if (Math.hypot(velocity.x, velocity.y) > 0.1) {
+            baseAngle = Math.atan2(velocity.y, velocity.x) * 180 / Math.PI;
         }
 
-        if (!detected) {
-            // Detección por proximidad simple como fallback o complemento
+        let obstacleDetected = false;
+
+        for (let i = 0; i < this.rayCount; i++) {
+            const angle = (baseAngle + startAngle + step * i) * Math.PI / 180;
+            const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+
+            // Usamos un raycast manual si no hay RaycastSource configurado
+            const hit = engine.raycast(transform.position, dir, this.rayLength, [this.materia.id]);
+
+            if (hit && hit.materia) {
+                // Si es algo que no está en detectionTags, es un obstáculo
+                if (!this.detectionTags.includes(hit.materia.tag)) {
+                    const weight = (1.0 - hit.distance / this.rayLength);
+                    avoidanceForce.x += hit.normal.x * weight * this.speed * 2;
+                    avoidanceForce.y += hit.normal.y * weight * this.speed * 2;
+                    obstacleDetected = true;
+                }
+            }
+        }
+
+        if (obstacleDetected) {
+            velocity.x += avoidanceForce.x;
+            velocity.y += avoidanceForce.y;
+
+            // Normalizar de nuevo a la velocidad máxima
+            const mag = Math.hypot(velocity.x, velocity.y);
+            if (mag > 0) {
+                velocity.x = (velocity.x / mag) * this.speed;
+                velocity.y = (velocity.y / mag) * this.speed;
+            }
+        }
+
+        return velocity;
+    }
+
+    _checkShouldJump(transform) {
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!engine) return false;
+
+        // Rayo hacia adelante a la altura de los "pies"
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const hit = engine.raycast(transform.position, forward, 40, [this.materia.id]);
+
+        if (hit && hit.materia && !this.detectionTags.includes(hit.materia.tag)) {
+            // Hay algo al frente, comprobar si hay espacio arriba para saltar
+            const up = { x: 0, y: -1 };
+            const upClear = !engine.raycast(transform.position, up, 60, [this.materia.id]);
+            return upClear;
+        }
+        return false;
+    }
+
+    _jump() {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb) {
+            if (rb.bodyType === 'Dynamic') {
+                rb.applyForce({ x: 0, y: -this.jumpForce * 50 });
+            }
+        }
+    }
+
+    _applyMovement(desiredVelocity, deltaTime, transform) {
+        const rb = this.materia.getComponent(Rigidbody2D);
+        if (rb && rb.bodyType === 'Dynamic') {
+            // Fighter y Platformer solo mueven X directamente o con fuerzas
+            if (this.movementType === 'Platformer' || this.movementType === 'Fighter') {
+                rb.velocity.x = desiredVelocity.x / 50;
+                // Y se deja a la gravedad/salto
+            } else {
+                // Top-Down
+                rb.velocity.x = desiredVelocity.x / 50;
+                rb.velocity.y = desiredVelocity.y / 50;
+            }
+        } else {
+            transform.x += desiredVelocity.x * deltaTime;
+            transform.y += desiredVelocity.y * deltaTime;
+        }
+    }
+
+    _handleAdvancedDetection(scene, transform, targetObj) {
+        let bestTarget = targetObj;
+        let minDist = targetObj ? Math.hypot(targetObj.getComponent(Transform).x - transform.x, targetObj.getComponent(Transform).y - transform.y) : Infinity;
+
+        // Si no hay target fijo, o si queremos buscar otros objetivos por Tag
+        if (this.detectionTags && this.detectionTags.length > 0) {
             const materias = scene.getAllMaterias();
             for (const m of materias) {
+                if (m.id === this.materia.id) continue;
                 if (this.detectionTags.includes(m.tag)) {
                     const mTrans = m.getComponent(Transform);
                     if (mTrans) {
-                        const dist = Math.hypot(mTrans.x - transform.x, mTrans.y - transform.y);
-                        if (dist < this.detectionDistance) {
-                            detected = true;
-                            break;
+                        const d = Math.hypot(mTrans.x - transform.x, mTrans.y - transform.y);
+                        if (d < this.detectionDistance && d < minDist) {
+                            minDist = d;
+                            bestTarget = m;
                         }
                     }
                 }
             }
         }
 
-        if (detected) {
-            // Ejecutar función en los scripts del objetivo
-            scriptTargetObj.getComponents(CreativeScript).forEach(script => {
-                if (script.instance && typeof script.instance[this.functionName] === 'function') {
-                    script._safeInvoke(this.functionName, this.materia);
-                }
-            });
+        const dist = minDist;
+        const previouslyInView = this._isTargetInView;
+        const previouslyNear = this._isTargetNear;
+        const previouslyAttack = this._isAttackRange;
+
+        this._isTargetInView = dist < this.detectionDistance;
+        this._isTargetNear = dist < this.stopDistance * 1.5;
+        this._isAttackRange = dist < this.attackDistance;
+
+        // Si estamos en modo Follow y no tenemos un target fijo, seguir al detectado
+        if (this.behavior === 'Follow' && !this.target && bestTarget) {
+            // No asignamos this.target permanentemente para permitir cambiar de objetivo dinámicamente
+            // Pero usamos bestTarget para las notificaciones y el movimiento de este frame
         }
+
+        // Events
+        if (this._isTargetInView && !previouslyInView) this._invokeAIEvent(this.onTargetSeen, bestTarget);
+        if (!this._isTargetInView && previouslyInView) this._invokeAIEvent(this.onTargetLost, bestTarget);
+        if (this._isTargetNear && !previouslyNear) this._invokeAIEvent(this.onTargetNear, bestTarget);
+        if (this._isAttackRange && !previouslyAttack) this._invokeAIEvent(this.onAttackRange, bestTarget);
+
+        // Legacy
+        if (this._isTargetInView && this.functionName) this._invokeAIEvent(this.functionName, bestTarget);
+
+        return bestTarget;
+    }
+
+    _invokeAIEvent(funcName, target) {
+        if (!funcName) return;
+
+        let scriptTargetObj = null;
+        if (typeof this.scriptTarget === 'number') {
+            scriptTargetObj = this.materia.scene.findMateriaById(this.scriptTarget);
+        } else if (this.scriptTarget instanceof Materia) {
+            scriptTargetObj = this.scriptTarget;
+        } else {
+            scriptTargetObj = this.materia; // Default to self
+        }
+
+        if (!scriptTargetObj) return;
+
+        scriptTargetObj.getComponents(CreativeScript).forEach(script => {
+            if (script.instance && typeof script.instance[funcName] === 'function') {
+                script._safeInvoke(funcName, target, this.materia);
+            }
+        });
     }
 
     clone() {
@@ -5096,13 +5223,23 @@ export class BasicAI extends Leyes {
         copy.behavior = this.behavior;
         copy.movementType = this.movementType;
         copy.speed = this.speed;
+        copy.stopDistance = this.stopDistance;
+        copy.attackDistance = this.attackDistance;
+        copy.jumpForce = this.jumpForce;
         copy.autoRotate = this.autoRotate;
         copy.rotationSpeed = this.rotationSpeed;
         copy.obstacleAvoidance = this.obstacleAvoidance;
         copy.detectionTags = [...this.detectionTags];
         copy.detectionDistance = this.detectionDistance;
+        copy.rayCount = this.rayCount;
+        copy.raySpread = this.raySpread;
+        copy.rayLength = this.rayLength;
         copy.scriptTarget = this.scriptTarget;
         copy.functionName = this.functionName;
+        copy.onTargetSeen = this.onTargetSeen;
+        copy.onTargetLost = this.onTargetLost;
+        copy.onTargetNear = this.onTargetNear;
+        copy.onAttackRange = this.onAttackRange;
         return copy;
     }
 }

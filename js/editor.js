@@ -1427,10 +1427,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 let worldPosition = transform.position;
 
                 // Get camera position for parallax (either from camera materia or editor camera)
+                const isGame = (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts));
                 const camX = camTransform ? camTransform.x : (rendererInstance.isEditor ? rendererInstance.camera.x : 0);
                 const camY = camTransform ? camTransform.y : (rendererInstance.isEditor ? rendererInstance.camera.y : 0);
 
-                if (parallax) {
+                if (parallax && (isGame || isGameView)) {
                      worldPosition = {
                          x: worldPosition.x + (camX * (1 - parallax.scrollFactor.x)) + parallax.offset.x + (parallax._autoOffset ? parallax._autoOffset.x : 0),
                          y: worldPosition.y + (camY * (1 - parallax.scrollFactor.y)) + parallax.offset.y + (parallax._autoOffset ? parallax._autoOffset.y : 0)

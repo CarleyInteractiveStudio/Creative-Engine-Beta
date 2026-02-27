@@ -3111,30 +3111,38 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.BasicAI) {
-            let functionsDropdownHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="functionName" value="${ley.functionName || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
+            const renderAIFuncInput = (propName, label) => {
+                let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
 
-            if (ley.scriptTarget) {
-                const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
-                if (targetMateria) {
-                    const scripts = targetMateria.getComponents(Components.CreativeScript);
-                    let allFunctions = [];
-                    scripts.forEach(s => {
-                        const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
-                        if (metadata && metadata.publicFunctions) {
-                            allFunctions = allFunctions.concat(metadata.publicFunctions);
+                if (ley.scriptTarget) {
+                    const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
+                    if (targetMateria) {
+                        const scripts = targetMateria.getComponents(Components.CreativeScript);
+                        let allFunctions = [];
+                        scripts.forEach(s => {
+                            const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                            if (metadata && metadata.publicFunctions) {
+                                allFunctions = allFunctions.concat(metadata.publicFunctions);
+                            }
+                        });
+
+                        if (allFunctions.length > 0) {
+                            inputHTML = `
+                                <select class="prop-input" data-component="BasicAI" data-prop="${propName}">
+                                    <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
+                                    ${allFunctions.map(f => `<option value="${f}" ${ley[propName] === f ? 'selected' : ''}>${f}</option>`).join('')}
+                                </select>
+                            `;
                         }
-                    });
-
-                    if (allFunctions.length > 0) {
-                        functionsDropdownHTML = `
-                            <select class="prop-input" data-component="BasicAI" data-prop="functionName">
-                                <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
-                                ${allFunctions.map(f => `<option value="${f}" ${ley.functionName === f ? 'selected' : ''}>${f}</option>`).join('')}
-                            </select>
-                        `;
                     }
                 }
-            }
+                return `
+                    <div class="prop-row-multi">
+                        <label>${label}</label>
+                        ${inputHTML}
+                    </div>
+                `;
+            };
 
             componentHTML = `
                 ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
@@ -3156,11 +3164,24 @@ async function updateInspectorForMateria(selectedMateria) {
                         <select class="prop-input" data-component="BasicAI" data-prop="movementType">
                             <option value="Top-Down" ${ley.movementType === 'Top-Down' ? 'selected' : ''} data-i18n="TOP_DOWN">Top-Down</option>
                             <option value="Platformer" ${ley.movementType === 'Platformer' ? 'selected' : ''} data-i18n="PLATFORMER">${L.get('PLATFORMER', 'Plataformas')}</option>
+                            <option value="Fighter" ${ley.movementType === 'Fighter' ? 'selected' : ''}>Fighter (Smash)</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('STOP_DISTANCE', 'Distancia Parada')}</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="stopDistance" value="${ley.stopDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('ATTACK_DISTANCE', 'Distancia Ataque')}</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="attackDistance" value="${ley.attackDistance}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="autoRotate" ${ley.autoRotate ? 'checked' : ''}>
@@ -3169,6 +3190,16 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BasicAI" data-prop="obstacleAvoidance" ${ley.obstacleAvoidance ? 'checked' : ''}>
                         <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
+                    </div>
+                    <hr>
+                    <div class="inspector-section-header"><span>Steering (Rayos)</span></div>
+                    <div class="prop-row-multi">
+                        <label>Num Rayos</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="rayCount" value="${ley.rayCount}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>Apertura Rayos</label>
+                        <input type="number" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
                     </div>
                     <hr>
                     <div class="inspector-section-header"><span data-i18n="DETECTION_AND_FUNCTIONS">${L.get('DETECTION_AND_FUNCTIONS', 'Detección y Funciones')}</span></div>
@@ -3184,10 +3215,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="EXECUTE_ON">${L.get('EXECUTE_ON', 'Ejecutar en')}</label>
                         ${renderPropertyDropper('Materia', ley.scriptTarget, 'data-component="BasicAI" data-prop="scriptTarget"')}
                     </div>
-                    <div class="prop-row-multi">
-                        <label data-i18n="FUNCTION">${L.get('FUNCTION', 'Función')}</label>
-                        ${functionsDropdownHTML}
-                    </div>
+                    ${renderAIFuncInput('onTargetSeen', L.get('ON_TARGET_SEEN', 'Al ver Objetivo'))}
+                    ${renderAIFuncInput('onTargetLost', L.get('ON_TARGET_LOST', 'Al perder Objetivo'))}
+                    ${renderAIFuncInput('onTargetNear', L.get('ON_TARGET_NEAR', 'Al estar cerca'))}
+                    ${renderAIFuncInput('onAttackRange', L.get('ON_ATTACK_RANGE', 'Rango Ataque'))}
                 </div>
             `;
         }
