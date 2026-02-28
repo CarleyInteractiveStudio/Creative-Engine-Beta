@@ -5055,14 +5055,15 @@ export class VehicleController extends Leyes {
 
         // Aceleración / Freno
         if (moveInput !== 0 && speed < this.maxSpeed / 50) {
-            // Torque ajustado para tracción realista
-            const forceMag = this.power * 500 * moveInput * finalTraction;
-            rb.addForce({ x: forward.x * forceMag, y: forward.y * forceMag });
+            // Fuerza motriz ajustada para ser potente pero controlable.
+            // Escalamos por deltaTime y masa para consistencia física.
+            const forceMag = this.power * rb.mass * 0.8 * moveInput * finalTraction;
+            rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
 
             // Efecto de reacción: inclinar el chasis al acelerar (Wheelie effect)
             if (this.viewMode === 'Side-View' && finalTraction > 0) {
-                const reactionTorque = moveInput * this.power * 200;
-                rb.addTorque(-reactionTorque);
+                const reactionTorque = moveInput * this.power * rb.mass * 0.2;
+                rb.addTorque(-reactionTorque * deltaTime);
             }
         }
 
@@ -5206,19 +5207,41 @@ export class WheelSuspension extends Leyes {
 
                         if (isGame) {
                             // --- Sincronización Visual en Juego ---
-                            // Usamos el estado de compresión calculado en fixedUpdate
-                            // distToWheelCenter = restLength - (currentCompression * restLength)
                             const visualExtension = wheel.isGrounded ? (wheel.restLength * (1.0 - wheel.currentCompression)) : wheel.restLength;
 
                             wheelTransform.x = anchorWorldX + springDir.x * visualExtension;
                             wheelTransform.y = anchorWorldY + springDir.y * visualExtension;
 
-                            // Rotación visual basada en movimiento del chasis
+                            // Rotación visual basada en movimiento y tracción
                             const rb = this.materia.getComponent(Rigidbody2D);
+                            const vehicle = this.materia.getComponent(VehicleController);
                             if (rb) {
-                                const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
-                                const rotSpeed = Math.hypot(rb.velocity.x, rb.velocity.y) * 25;
-                                wheelTransform.rotation += rotSpeed * (moveDir >= 0 ? 1 : -1);
+                                const input = RuntimeAPIManager.getAPI('input');
+                                let rotDelta = 0;
+
+                                if (wheel.isGrounded && wheel.currentCompression > 0.01) {
+                                    // En el suelo, la rotación sigue a la velocidad tangencial
+                                    const rollDir = { x: -springDir.y, y: springDir.x };
+                                    const rollVel = rb.velocity.x * rollDir.x + rb.velocity.y * rollDir.y;
+
+                                    const isAccelerating = input && vehicle && (input.isKeyPressed(vehicle.accelerateKey) || input.isKeyPressed(vehicle.brakeKey));
+
+                                    // Umbral de velocidad mayor para evitar rotación por jitter físico
+                                    if (Math.abs(rollVel) > 1.5) {
+                                        rotDelta = rollVel * 30;
+                                    } else if (isAccelerating) {
+                                        // Burnout: rotar si aceleramos incluso si no nos movemos mucho
+                                        rotDelta = input.isKeyPressed(vehicle.accelerateKey) ? 500 : -500;
+                                    }
+                                } else if (input && vehicle) {
+                                    // En el aire, gira solo si el usuario acelera/frena activamente
+                                    if (input.isKeyPressed(vehicle.accelerateKey)) rotDelta = 450;
+                                    else if (input.isKeyPressed(vehicle.brakeKey)) rotDelta = -450;
+                                }
+
+                                if (Math.abs(rotDelta) > 0.1) {
+                                    wheelTransform.rotation += rotDelta * deltaTime;
+                                }
                             }
                         } else {
                             // --- Previsualización en Editor ---
@@ -5291,51 +5314,70 @@ export class WheelSuspension extends Leyes {
 
             if (hit) {
                 wheel.isGrounded = true;
-                // distToWheelCenter es la distancia desde el anclaje real hasta el CENTRO de la rueda física.
-                // circleCast devuelve la distancia recorrida por el centro desde castOrigin.
-                // castOrigin = anclaje - springDir * wheelRadius.
-                // Por lo tanto: distToWheelCenter = hit.distance - wheel.wheelRadius;
                 const distToWheelCenter = hit.distance - wheel.wheelRadius;
-
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
-                // 3. Física (Amortiguación tipo Hill Climb)
-                // Multiplicadores ajustados para que el coche "absorba" el impacto y no rebote como loco
-                const springForce = (compressionAmount * wheel.stiffness) * 2000;
+                // 3. Física de Suspensión (Spring-Damper)
+                // Multiplicadores basados en masa para estabilidad en cualquier objeto.
+                // stiffness ~1000 y damping ~100 recomendados.
+                const springForce = (compressionAmount * wheel.stiffness) * rb.mass * 0.18;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
-                const dampingForce = (compressionVelocity * wheel.damping) * 150;
-                let totalForce = Math.max(0, springForce + dampingForce);
 
-                // Limitar fuerza máxima para estabilidad
-                const maxForce = rb.mass * 300000;
+                // Amortiguación asimétrica: MUCHO más fuerte al comprimir para absorber caídas.
+                const dampingMult = compressionVelocity > 0 ? 0.25 : 0.1;
+                const dampingForce = compressionVelocity * wheel.damping * rb.mass * dampingMult;
+
+                let totalForce = springForce + dampingForce;
+                totalForce = Math.max(0, totalForce);
+
+                // Limitar aceleración máxima (max force / mass) para evitar que salga volando.
+                // 5000 unidades de fuerza por unidad de masa (~5g a escala 100).
+                const maxForce = rb.mass * 8000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
 
-                // --- TOPE RÍGIDO (Impact Absorption) ---
+                // --- TOPE RÍGIDO Y ABSORCIÓN DE IMPACTO ---
                 if (compressionAmount >= wheel.restLength) {
                     const overCompression = (compressionAmount - wheel.restLength);
                     if (overCompression > 0) {
-                        transform.x -= springDir.x * (overCompression + 0.2);
-                        transform.y -= springDir.y * (overCompression + 0.2);
+                        // Empuje mínimo para evitar jitter
+                        transform.x -= springDir.x * (overCompression * 0.05);
+                        transform.y -= springDir.y * (overCompression * 0.05);
                     }
 
-                    // Absorción de impacto: Amortiguar velocidad en el eje de la suspensión
+                    // "Hard Damping" en el tope: Matar gran parte de la velocidad de caída.
                     const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
                     if (velAlongSpring > 0) {
-                        rb.velocity.x -= springDir.x * velAlongSpring * 0.4;
-                        rb.velocity.y -= springDir.y * velAlongSpring * 0.4;
+                        rb.velocity.x -= springDir.x * velAlongSpring * 0.85;
+                        rb.velocity.y -= springDir.y * velAlongSpring * 0.85;
                     }
                 }
 
-                // El posicionamiento visual se ha movido a update() para mayor suavidad
-                // y evitar lag de transformación cuando la rueda es hija del coche.
-
-                // 5. Grip (Simula fricción lateral)
+                // 4. Grip y Fricción (Lateral y Longitudinal)
                 const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
-                const gripForce = -lateralVel * this.grip * rb.mass * 400;
-                rb.addForce({ x: perpDir.x * gripForce * deltaTime, y: perpDir.y * gripForce * deltaTime });
+                const rollDir = { x: -springDir.y, y: springDir.x };
+                const forwardVel = rb.velocity.x * rollDir.x + rb.velocity.y * rollDir.y;
+
+                // Fricción lateral (evita derrapes excesivos)
+                const lateralGrip = -lateralVel * this.grip * rb.mass * 400;
+                rb.addForce({ x: perpDir.x * lateralGrip * deltaTime, y: perpDir.y * lateralGrip * deltaTime });
+
+                // Fricción longitudinal (Resistencia al rodamiento y frenado pasivo)
+                // Evita que el coche se deslice infinitamente en cuestas cuando no se acelera.
+                const vehicle = this.materia.getComponent(VehicleController);
+                const input = RuntimeAPIManager.getAPI('input');
+                let rollingResistance = -forwardVel * 0.1 * rb.mass * 50;
+
+                if (input && vehicle) {
+                    const isAccelerating = input.isKeyPressed(vehicle.accelerateKey) || input.isKeyPressed(vehicle.brakeKey);
+                    if (!isAccelerating) {
+                        // Si no se acelera, aplicamos un poco más de resistencia para "clavar" el auto.
+                        rollingResistance *= 2.0;
+                    }
+                }
+                rb.addForce({ x: rollDir.x * rollingResistance * deltaTime, y: rollDir.y * rollingResistance * deltaTime });
 
                 wheel._lastCompression = wheel.currentCompression;
             } else {
