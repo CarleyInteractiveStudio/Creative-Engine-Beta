@@ -5348,28 +5348,36 @@ export class WheelSuspension extends Leyes {
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física de Suspensión (Spring-Damper)
-                // Calculamos la velocidad de compresión de forma más estable
-                const compressionVelocity = (compressionAmount - prevCompression) / deltaTime;
+                // Usamos una velocidad de compresión basada en la diferencia de posición para mayor estabilidad con el suelo.
+                const currentRelVel = (compressionAmount - (wheel._lastCompression || 0)) / deltaTime;
+                wheel._lastCompression = compressionAmount;
 
-                // Fuerza del muelle (Hooke's Law: F = k * x)
-                // Multiplicador ajustado para máxima estabilidad y permitir hundimiento natural (sag).
-                const springForce = (compressionAmount * wheel.stiffness) * (rb.mass / 10) * 0.06;
+                // --- FUERZA DEL MUELLE (Hooke's Law) ---
+                // Escalamiento sintonizado para permitir hundimiento (sag) realista.
+                const springMultiplier = 0.04 * (rb.mass / 100);
+                const springForce = compressionAmount * wheel.stiffness * springMultiplier;
 
-                // Amortiguación (Damping: F = c * v)
-                // Protección: En el primer frame de impacto, evitamos impulsos violentos.
-                const safeCompVelocity = (wheel.isGrounded && Math.abs(compressionVelocity) < 500) ? compressionVelocity : 0;
+                // --- FUERZA DE AMORTIGUACIÓN (Damping) ---
+                // Amortiguación asimétrica agresiva para absorber el golpe y evitar el salto:
+                // - Compresión (v > 0): Factor medio (0.8) para disipar energía de caída rápidamente.
+                // - Expansión (v < 0): Factor muy alto (6.0) para que el chasis suba muy lento.
+                const dampingFactor = currentRelVel > 0 ? 0.8 : 6.0;
+                let dampingForce = currentRelVel * (wheel.damping * dampingFactor) * (rb.mass / 100);
 
-                // Amortiguación asimétrica para absorber el golpe y evitar el efecto "lanzamiento".
-                const dampingFactor = safeCompVelocity > 0 ? (wheel.damping * 0.02) : (wheel.damping * 0.12);
-                const dampingForce = safeCompVelocity * dampingFactor * rb.mass;
+                // Garantía de estabilidad: la amortiguación no puede generar más energía de la que disipa.
+                const maxDampingImpulse = Math.abs(currentRelVel) * rb.mass * 0.95;
+                if (Math.abs(dampingForce * deltaTime) > maxDampingImpulse) {
+                    dampingForce = (maxDampingImpulse / deltaTime) * Math.sign(dampingForce);
+                }
 
+                // --- FUERZA TOTAL ---
                 let totalForce = springForce + dampingForce;
 
-                // La suspensión solo empuja hacia afuera
+                // Solo permitimos empuje hacia afuera para estabilidad absoluta en el solver.
                 totalForce = Math.max(0, totalForce);
 
-                // Seguridad estricta: Evitar fuerzas absurdas
-                const maxForce = rb.mass * 800;
+                // Seguridad contra explosiones físicas por deltaTime inestable
+                const maxForce = rb.mass * 1800;
                 totalForce = Math.min(totalForce, maxForce);
 
                 // Aplicar la fuerza al chasis en el eje de la suspensión
@@ -5394,16 +5402,17 @@ export class WheelSuspension extends Leyes {
                 if (compressionAmount >= wheel.restLength) {
                     const overCompression = (compressionAmount - wheel.restLength);
                     if (overCompression > 0) {
-                        // Empuje directo de posición MUY suave para evitar clipping sin causar saltos
+                        // Empuje directo de posición muy leve para evitar clipping sin rebotes.
                         transform.x -= springDir.x * overCompression * 0.02;
                         transform.y -= springDir.y * overCompression * 0.02;
                     }
 
                     // Absorción de impacto extrema: Reducir drásticamente la velocidad en el eje del muelle
+                    // Aplicamos una reducción del 95% para disipar la energía del golpe seco.
                     const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
                     if (velAlongSpring > 0) {
-                        rb.velocity.x -= springDir.x * velAlongSpring * 0.95;
-                        rb.velocity.y -= springDir.y * velAlongSpring * 0.95;
+                        rb.velocity.x -= springDir.x * velAlongSpring * 0.98;
+                        rb.velocity.y -= springDir.y * velAlongSpring * 0.98;
                     }
                 }
 
