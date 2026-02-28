@@ -164,6 +164,14 @@ export class Materia {
     isAncestorOf(potentialDescendant) {
         let current = potentialDescendant.parent;
         while (current) {
+            // Resolve numeric ID to object if necessary
+            if (typeof current === 'number') {
+                const scene = this.scene || currentScene;
+                current = scene ? scene.findMateriaById(current) : null;
+            }
+
+            if (!current) break;
+
             if (current.id === this.id) {
                 return true;
             }

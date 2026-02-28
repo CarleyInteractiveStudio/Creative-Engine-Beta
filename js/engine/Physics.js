@@ -101,6 +101,53 @@ export class PhysicsSystem {
         }
     }
 
+    /**
+     * Lanza un círculo en la escena y devuelve información sobre el primer objeto que impacta.
+     * Implementado mediante multirayo (5 rayos) para cubrir todo el ancho del círculo y evitar "caerse" por bordes finos.
+     * @param {{x: number, y: number}} origin - Centro inicial.
+     * @param {{x: number, y: number}} direction - Dirección del barrido (normalizada).
+     * @param {number} radius - Radio del círculo.
+     * @param {number} maxDistance - Distancia máxima del barrido.
+     * @param {string|string[]|number[]|object} [filter] - Opcional, filtrar por tag o excluir IDs/Nodos.
+     */
+    circleCast(origin, direction, radius, maxDistance = Infinity, filter = null) {
+        if (!direction || (direction.x === 0 && direction.y === 0)) return null;
+
+        const perp = { x: -direction.y, y: direction.x };
+        let closestHit = null;
+
+        // Usamos 5 rayos para cubrir el ancho del círculo.
+        // Reducimos el offset a 0.8 para evitar colisiones erróneas con paredes perfectamente verticales
+        const offsets = [-0.8, -0.4, 0, 0.4, 0.8];
+
+        for (const offset of offsets) {
+            const rayOrigin = {
+                x: origin.x + perp.x * radius * offset,
+                y: origin.y + perp.y * radius * offset
+            };
+
+            // Proyectamos el rayo. hit.distance es la distancia desde rayOrigin al suelo.
+            const hit = this.raycast(rayOrigin, direction, maxDistance + radius, filter);
+
+            if (hit) {
+                // El punto del círculo en este offset está a 'baseHeight' por debajo de la línea central.
+                // Usamos Math.abs para el offset para mayor seguridad matemática.
+                const baseHeight = Math.sqrt(radius * radius - (radius * offset) * (radius * offset));
+                // La distancia que recorre el CENTRO del círculo hasta que este punto toca es:
+                const adjustedDist = hit.distance - baseHeight;
+
+                if (adjustedDist <= maxDistance && (!closestHit || adjustedDist < closestHit.distance)) {
+                    closestHit = {
+                        ...hit,
+                        distance: adjustedDist
+                    };
+                }
+            }
+        }
+
+        return closestHit;
+    }
+
     _step(deltaTime) {
         const allMaterias = this.scene.getAllMaterias();
 
@@ -201,6 +248,13 @@ export class PhysicsSystem {
                     }
                 }
 
+                // Apply linear drag
+                if (rigidbody.linearDrag > 0) {
+                    const dragFactor = Math.pow(1.0 - rigidbody.linearDrag, deltaTime);
+                    rigidbody.velocity.x *= dragFactor;
+                    rigidbody.velocity.y *= dragFactor;
+                }
+
                 // Update position
                 transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
                 transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
@@ -217,7 +271,7 @@ export class PhysicsSystem {
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) || m.getComponent(Components.LineCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) || m.getComponent(Components.LineCollider2D))
         );
 
         for (let i = 0; i < collidables.length; i++) {
@@ -225,13 +279,24 @@ export class PhysicsSystem {
                 const materiaA = collidables[i];
                 const materiaB = collidables[j];
 
+                // --- 2.1 Collision Filtering ---
+                // 1. Assembly Filter: Don't collide if they share the same VehicleController.
+                // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
+                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) || (materiaA.getComponent(Components.VehicleController) ? materiaA : null);
+                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) || (materiaB.getComponent(Components.VehicleController) ? materiaB : null);
+                if (vehicleA && vehicleA === vehicleB) continue;
+
+                if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
+                    continue;
+                }
+
                 // Basic check: two static bodies can't collide if neither is a trigger
                 const rbA = materiaA.getComponent(Components.Rigidbody2D);
                 const rbB = materiaB.getComponent(Components.Rigidbody2D);
                 const colliderA = this.getCollider(materiaA);
                 const colliderB = this.getCollider(materiaB);
 
-                if (rbA && rbB && rbA.bodyType === 'Static' && rbB.bodyType === 'Static' && !colliderA.isTrigger && !colliderB.isTrigger) {
+                if (rbA && rbB && rbA.bodyType.toLowerCase() === 'static' && rbB.bodyType.toLowerCase() === 'static' && !colliderA.isTrigger && !colliderB.isTrigger) {
                     continue;
                 }
 
@@ -363,6 +428,9 @@ export class PhysicsSystem {
         if (colliderA instanceof Components.BoxCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(materiaA, materiaB);
+            } else if (colliderB instanceof Components.CircleCollider2D) {
+                collisionInfo = this.isCircleVsBox(materiaB, materiaA);
+                if (collisionInfo) { collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y; }
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isBoxVsCapsule(materiaA, materiaB);
             } else if (colliderB instanceof Components.PolygonCollider2D) {
@@ -372,11 +440,29 @@ export class PhysicsSystem {
             } else if (colliderB instanceof Components.LineCollider2D) {
                 collisionInfo = this.isColliderVsLine(materiaA, materiaB);
             }
+        } else if (colliderA instanceof Components.CircleCollider2D) {
+            if (colliderB instanceof Components.CircleCollider2D) {
+                collisionInfo = this.isCircleVsCircle(materiaA, materiaB);
+            } else if (colliderB instanceof Components.BoxCollider2D) {
+                collisionInfo = this.isCircleVsBox(materiaA, materiaB);
+            } else if (colliderB instanceof Components.CapsuleCollider2D) {
+                collisionInfo = this.isCircleVsCapsule(materiaA, materiaB);
+            } else if (colliderB instanceof Components.PolygonCollider2D) {
+                collisionInfo = this.isCircleVsPolygon(materiaA, materiaB);
+            } else if (colliderB instanceof Components.TilemapCollider2D || colliderB instanceof Components.TerrenoCollider2D) {
+                collisionInfo = this.isColliderVsTilemap(materiaA, materiaB);
+            } else if (colliderB instanceof Components.LineCollider2D) {
+                collisionInfo = this.isColliderVsLine(materiaA, materiaB);
+            }
         } else if (colliderA instanceof Components.CapsuleCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
-                collisionInfo = this.isBoxVsCapsule(materiaB, materiaA); // Invertimos para que devuelva Box -> Capsule? No, queremos Box -> Capsule si A=Capsule?
-                // Mejor: isBoxVsCapsule(B, A) devuelve MTV de A a B. Invertimos el resultado:
                 const info = this.isBoxVsCapsule(materiaB, materiaA);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
+            } else if (colliderB instanceof Components.CircleCollider2D) {
+                const info = this.isCircleVsCapsule(materiaB, materiaA);
                 if (info) {
                     info.x = -info.x; info.y = -info.y;
                     collisionInfo = info;
@@ -384,7 +470,6 @@ export class PhysicsSystem {
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isCapsuleVsCapsule(materiaA, materiaB);
             } else if (colliderB instanceof Components.PolygonCollider2D) {
-                // Queremos Polygon -> Capsule. isPolygonVsCapsule(B, A) devuelve Capsule -> Polygon. Invertimos:
                 const info = this.isPolygonVsCapsule(materiaB, materiaA);
                 if (info) {
                     info.x = -info.x; info.y = -info.y;
@@ -398,6 +483,12 @@ export class PhysicsSystem {
         } else if (colliderA instanceof Components.PolygonCollider2D) {
             if (colliderB instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isPolygonVsPolygon(materiaA, materiaB);
+            } else if (colliderB instanceof Components.CircleCollider2D) {
+                const info = this.isCircleVsPolygon(materiaB, materiaA);
+                if (info) {
+                    info.x = -info.x; info.y = -info.y;
+                    collisionInfo = info;
+                }
             } else if (colliderB instanceof Components.CapsuleCollider2D) {
                 collisionInfo = this.isPolygonVsCapsule(materiaA, materiaB);
             } else if (colliderB instanceof Components.PolygonCollider2D) {
@@ -408,7 +499,7 @@ export class PhysicsSystem {
                 collisionInfo = this.isColliderVsLine(materiaA, materiaB);
             }
         } else if (colliderA instanceof Components.TilemapCollider2D || colliderA instanceof Components.TerrenoCollider2D) {
-            if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CapsuleCollider2D || colliderB instanceof Components.PolygonCollider2D) {
+            if (colliderB instanceof Components.BoxCollider2D || colliderB instanceof Components.CircleCollider2D || colliderB instanceof Components.CapsuleCollider2D || colliderB instanceof Components.PolygonCollider2D) {
                 const info = this.isColliderVsTilemap(materiaB, materiaA);
                 if (info) {
                     info.x = -info.x; info.y = -info.y;
@@ -442,25 +533,22 @@ export class PhysicsSystem {
         const rbA = materiaA.getComponent(Components.Rigidbody2D);
         const rbB = materiaB.getComponent(Components.Rigidbody2D);
 
-        // --- 1. Position Correction ---
-        const isADynamic = rbA && rbA.bodyType === 'Dynamic';
-        const isBDynamic = rbB && rbB.bodyType === 'Dynamic';
+        // --- 1. Position Correction (Penetration Resolution) ---
+        const isADynamic = rbA && rbA.bodyType.toLowerCase() === 'dynamic';
+        const isBDynamic = rbB && rbB.bodyType.toLowerCase() === 'dynamic';
 
-        if (isADynamic && !isBDynamic) { // A is dynamic, B is static/kinematic
-            transformA.x += mtv.x;
-            transformA.y += mtv.y;
-        } else if (!isADynamic && isBDynamic) { // B is dynamic, A is static/kinematic
-            transformB.x -= mtv.x;
-            transformB.y -= mtv.y;
-        } else if (isADynamic && isBDynamic) { // Both are dynamic
-            transformA.x += mtv.x / 2;
-            transformA.y += mtv.y / 2;
-            transformB.x -= mtv.x / 2;
-            transformB.y -= mtv.y / 2;
+        if (isADynamic && !isBDynamic) {
+            transformA.x += mtv.x; transformA.y += mtv.y;
+        } else if (!isADynamic && isBDynamic) {
+            transformB.x -= mtv.x; transformB.y -= mtv.y;
+        } else if (isADynamic && isBDynamic) {
+            transformA.x += mtv.x / 2; transformA.y += mtv.y / 2;
+            transformB.x -= mtv.x / 2; transformB.y -= mtv.y / 2;
         }
 
-        // --- 2. Velocity Correction (Impulse Resolution) ---
+        // --- 2. Impulse Resolution (Bounce) ---
         const normal = this._normalize({ x: mtv.x, y: mtv.y });
+        const tangent = { x: -normal.y, y: normal.x };
 
         const ra = { x: contactPoint.x - transformA.x, y: contactPoint.y - transformA.y };
         const rb = { x: contactPoint.x - transformB.x, y: contactPoint.y - transformB.y };
@@ -481,29 +569,21 @@ export class PhysicsSystem {
         const relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
         const velAlongNormal = this._dot(relativeVelocity, normal);
 
-        // Do not resolve if velocities are separating
         if (velAlongNormal > 0) return;
 
-        // Use the maximum bounciness of the two objects
-        const reboteA = rbA ? (rbA.rebote || 0) : 0;
-        const reboteB = rbB ? (rbB.rebote || 0) : 0;
-        const e = Math.max(reboteA, reboteB);
-
-        // Calculate impulse scalar
+        const e = Math.max(rbA ? rbA.rebote : 0, rbB ? rbB.rebote : 0);
         let invMassA = isADynamic ? 1 / (rbA.mass || 1) : 0;
         let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
 
-        // Better Inertia Calculation based on collider size
         const getInertia = (materia, rb) => {
             if (!rb || rb.constraints.freezeRotation) return 0;
             const collider = this.getCollider(materia);
             const transform = materia.getComponent(Components.Transform);
-            let w = 100, h = 100;
+            let w = 50, h = 50;
             if (collider && collider.size) {
                 w = collider.size.x * (transform ? transform.scale.x : 1);
                 h = collider.size.y * (transform ? transform.scale.y : 1);
             }
-            // I = 1/12 * m * (w^2 + h^2)
             return (1/12) * rb.mass * (w * w + h * h);
         };
 
@@ -514,32 +594,45 @@ export class PhysicsSystem {
 
         const raCrossN = this._cross(ra, normal);
         const rbCrossN = this._cross(rb, normal);
-
         let denominator = invMassA + invMassB + (raCrossN * raCrossN * invInertiaA) + (rbCrossN * rbCrossN * invInertiaB);
 
         let j = -(1 + e) * velAlongNormal;
-        if (denominator > 0) {
-            j /= denominator;
-        } else {
-            return;
-        }
+        if (denominator > 0) j /= denominator;
+        else return;
 
-        // Apply impulse
         const impulse = { x: j * normal.x, y: j * normal.y };
 
+        // --- 3. Friction Resolution ---
+        const velAlongTangent = this._dot(relativeVelocity, tangent);
+        const raCrossT = this._cross(ra, tangent);
+        const rbCrossT = this._cross(rb, tangent);
+        let tangentDenominator = invMassA + invMassB + (raCrossT * raCrossT * invInertiaA) + (rbCrossT * rbCrossT * invInertiaB);
+
+        const mu = 0.4; // Friction coefficient
+        let jt = -velAlongTangent;
+        if (tangentDenominator > 0) jt /= tangentDenominator;
+
+        // Coulomb's Law: jt <= j * mu
+        const maxFriction = Math.abs(j * mu);
+        jt = this._clamp(jt, -maxFriction, maxFriction);
+
+        const frictionImpulse = { x: jt * tangent.x, y: jt * tangent.y };
+
         if (isADynamic) {
-            rbA.velocity.x += impulse.x * invMassA;
-            rbA.velocity.y += impulse.y * invMassA;
+            const totalImpulse = { x: impulse.x + frictionImpulse.x, y: impulse.y + frictionImpulse.y };
+            rbA.velocity.x += totalImpulse.x * invMassA;
+            rbA.velocity.y += totalImpulse.y * invMassA;
             if (!rbA.constraints.freezeRotation) {
-                rbA.angularVelocity += this._cross(ra, impulse) * invInertiaA;
+                rbA.angularVelocity += this._cross(ra, totalImpulse) * invInertiaA;
             }
         }
 
         if (isBDynamic) {
-            rbB.velocity.x -= impulse.x * invMassB;
-            rbB.velocity.y -= impulse.y * invMassB;
+            const totalImpulse = { x: impulse.x + frictionImpulse.x, y: impulse.y + frictionImpulse.y };
+            rbB.velocity.x -= totalImpulse.x * invMassB;
+            rbB.velocity.y -= totalImpulse.y * invMassB;
             if (!rbB.constraints.freezeRotation) {
-                rbB.angularVelocity -= this._cross(rb, impulse) * invInertiaB;
+                rbB.angularVelocity -= this._cross(rb, totalImpulse) * invInertiaB;
             }
         }
     }
@@ -547,6 +640,7 @@ export class PhysicsSystem {
     getCollider(materia) {
         return materia.getComponent(Components.BoxCollider2D) ||
                materia.getComponent(Components.CapsuleCollider2D) ||
+               materia.getComponent(Components.CircleCollider2D) ||
                materia.getComponent(Components.PolygonCollider2D) ||
                materia.getComponent(Components.TilemapCollider2D) ||
                materia.getComponent(Components.TerrenoCollider2D) ||
@@ -610,6 +704,8 @@ export class PhysicsSystem {
             let info = null;
             if (collider instanceof Components.BoxCollider2D) {
                 info = this.isBoxVsBox(colliderMateria, this._tempLineMateria);
+            } else if (collider instanceof Components.CircleCollider2D) {
+                info = this.isCircleVsBox(colliderMateria, this._tempLineMateria);
             } else if (collider instanceof Components.CapsuleCollider2D) {
                 info = this.isBoxVsCapsule(this._tempLineMateria, colliderMateria);
                 if (info) { info.x = -info.x; info.y = -info.y; }
@@ -670,6 +766,8 @@ export class PhysicsSystem {
             let collisionInfo = null;
             if (otherCollider instanceof Components.BoxCollider2D) {
                 collisionInfo = this.isBoxVsBox(colliderMateria, this._tempPartMateria);
+            } else if (otherCollider instanceof Components.CircleCollider2D) {
+                collisionInfo = this.isCircleVsBox(colliderMateria, this._tempPartMateria);
             } else if (otherCollider instanceof Components.CapsuleCollider2D) {
                 // isBoxVsCapsule(A, B) devuelve B -> A.
                 // colliderMateria (Player) es B, terrain es A.
@@ -700,6 +798,8 @@ export class PhysicsSystem {
                 let collisionInfo = null;
                 if (otherCollider instanceof Components.BoxCollider2D) {
                     collisionInfo = this.isPolygonVsPolygon(colliderMateria, this._tempPartMateria);
+                } else if (otherCollider instanceof Components.CircleCollider2D) {
+                    collisionInfo = this.isCircleVsPolygon(otherCollider, this._tempPartMateria);
                 } else if (otherCollider instanceof Components.CapsuleCollider2D) {
                     // isPolygonVsCapsule(A, B) devuelve B -> A. (Capsule -> Poly)
                     // Invertimos para obtener Poly -> Capsule:
@@ -719,6 +819,134 @@ export class PhysicsSystem {
         }
 
         return bestCollision;
+    }
+
+    _getCircleData(materia) {
+        const transform = materia.getComponent(Components.Transform);
+        const collider = materia.getComponent(Components.CircleCollider2D);
+        const angle = transform.rotation * Math.PI / 180;
+
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+        const worldOffsetX = scaledOffsetX * Math.cos(angle) - scaledOffsetY * Math.sin(angle);
+        const worldOffsetY = scaledOffsetX * Math.sin(angle) + scaledOffsetY * Math.cos(angle);
+
+        return {
+            center: { x: transform.x + worldOffsetX, y: transform.y + worldOffsetY },
+            radius: collider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y))
+        };
+    }
+
+    isCircleVsCircle(materiaA, materiaB) {
+        const circleA = this._getCircleData(materiaA);
+        const circleB = this._getCircleData(materiaB);
+
+        const dist = Math.hypot(circleA.center.x - circleB.center.x, circleA.center.y - circleB.center.y);
+        const totalRadius = circleA.radius + circleB.radius;
+
+        if (dist < totalRadius) {
+            const overlap = totalRadius - dist;
+            const normal = dist > 0 ?
+                { x: (circleA.center.x - circleB.center.x) / dist, y: (circleA.center.y - circleB.center.y) / dist } :
+                { x: 1, y: 0 };
+
+            return {
+                x: normal.x * overlap,
+                y: normal.y * overlap,
+                magnitude: overlap,
+                contactPoint: {
+                    x: circleB.center.x + normal.x * circleB.radius,
+                    y: circleB.center.y + normal.y * circleB.radius
+                }
+            };
+        }
+        return null;
+    }
+
+    isCircleVsBox(circleMateria, boxMateria) {
+        const circle = this._getCircleData(circleMateria);
+        const transformB = boxMateria.getComponent(Components.Transform);
+        const colliderB = boxMateria.getComponent(Components.BoxCollider2D);
+
+        const bw = colliderB.size.x * transformB.scale.x;
+        const bh = colliderB.size.y * transformB.scale.y;
+        const angle = transformB.rotation * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        const scaledOffsetX = colliderB.offset.x * transformB.scale.x;
+        const scaledOffsetY = colliderB.offset.y * transformB.scale.y;
+        const worldOffsetX = scaledOffsetX * cos - scaledOffsetY * sin;
+        const worldOffsetY = scaledOffsetX * sin + scaledOffsetY * cos;
+        const boxCenter = { x: transformB.x + worldOffsetX, y: transformB.y + worldOffsetY };
+
+        // Transform circle to local box space
+        const relX = circle.center.x - boxCenter.x;
+        const relY = circle.center.y - boxCenter.y;
+        const localX = relX * cos + relY * sin;
+        const localY = -relX * sin + relY * cos;
+
+        const halfW = bw / 2;
+        const halfH = bh / 2;
+        const clampedX = this._clamp(localX, -halfW, halfW);
+        const clampedY = this._clamp(localY, -halfH, halfH);
+
+        const closestLocal = { x: clampedX, y: clampedY };
+        const dist = Math.hypot(localX - closestLocal.x, localY - closestLocal.y);
+
+        if (dist < circle.radius) {
+            const overlap = circle.radius - dist;
+            const normalLocal = dist > 0 ?
+                { x: (localX - closestLocal.x) / dist, y: (localY - closestLocal.y) / dist } :
+                { x: localX > 0 ? 1 : -1, y: 0 };
+
+            return {
+                x: (normalLocal.x * cos - normalLocal.y * sin) * overlap,
+                y: (normalLocal.x * sin + normalLocal.y * cos) * overlap,
+                magnitude: overlap,
+                contactPoint: {
+                    x: boxCenter.x + (closestLocal.x * cos - closestLocal.y * sin),
+                    y: boxCenter.y + (closestLocal.x * sin + closestLocal.y * cos)
+                }
+            };
+        }
+        return null;
+    }
+
+    isCircleVsCapsule(circleMateria, capsuleMateria) {
+        const circle = this._getCircleData(circleMateria);
+        const cap = this._getCapsulePoints(capsuleMateria);
+
+        const closestOnSegment = this._closestPointOnSegment(circle.center, cap.p1, cap.p2);
+        const dist = Math.hypot(circle.center.x - closestOnSegment.x, circle.center.y - closestOnSegment.y);
+        const totalRadius = circle.radius + cap.radius;
+
+        if (dist < totalRadius) {
+            const overlap = totalRadius - dist;
+            const normal = dist > 0 ?
+                { x: (circle.center.x - closestOnSegment.x) / dist, y: (circle.center.y - closestOnSegment.y) / dist } :
+                { x: 1, y: 0 };
+
+            return {
+                x: normal.x * overlap,
+                y: normal.y * overlap,
+                magnitude: overlap,
+                contactPoint: {
+                    x: closestOnSegment.x + normal.x * cap.radius,
+                    y: closestOnSegment.y + normal.y * cap.radius
+                }
+            };
+        }
+        return null;
+    }
+
+    isCircleVsPolygon(circleMateria, polyMateria) {
+        const circle = this._getCircleData(circleMateria);
+        const transformP = polyMateria.getComponent(Components.Transform);
+        const colliderP = polyMateria.getComponent(Components.PolygonCollider2D);
+        const vertices = this._getPolygonVertices(transformP, colliderP);
+
+        return this._isCircleVsPolygon(circle.center, circle.radius, vertices);
     }
 
     _getCapsulePoints(materia) {
@@ -891,7 +1119,10 @@ export class PhysicsSystem {
         }
 
         // Asegurar que el eje apunta del círculo al polígono (B a A si A es polígono)
-        const polyCenter = vertices.reduce((acc, v) => ({ x: acc.x + v.x / vertices.length, y: acc.y + v.y / vertices.length }), { x: 0, y: 0 });
+        const polyCenter = {
+            x: vertices.reduce((sum, v) => sum + v.x, 0) / vertices.length,
+            y: vertices.reduce((sum, v) => sum + v.y, 0) / vertices.length
+        };
         const direction = { x: polyCenter.x - circleCenter.x, y: polyCenter.y - circleCenter.y };
         if (this._dot(direction, mtvAxis) < 0) {
             mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
@@ -1049,8 +1280,14 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / verticesA.length, y: acc.y + v.y / verticesA.length }), { x: 0, y: 0 });
-        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / verticesB.length, y: acc.y + v.y / verticesB.length }), { x: 0, y: 0 });
+        const centerA = {
+            x: verticesA.reduce((sum, v) => sum + v.x, 0) / verticesA.length,
+            y: verticesA.reduce((sum, v) => sum + v.y, 0) / verticesA.length
+        };
+        const centerB = {
+            x: verticesB.reduce((sum, v) => sum + v.x, 0) / verticesB.length,
+            y: verticesB.reduce((sum, v) => sum + v.y, 0) / verticesB.length
+        };
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {
@@ -1140,8 +1377,14 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
-        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
+        const centerA = {
+            x: verticesA.reduce((sum, v) => sum + v.x, 0) / verticesA.length,
+            y: verticesA.reduce((sum, v) => sum + v.y, 0) / verticesA.length
+        };
+        const centerB = {
+            x: verticesB.reduce((sum, v) => sum + v.x, 0) / verticesB.length,
+            y: verticesB.reduce((sum, v) => sum + v.y, 0) / verticesB.length
+        };
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {
@@ -1410,14 +1653,29 @@ export class PhysicsSystem {
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
         );
 
-        const excludedIds = Array.isArray(filter) && typeof filter[0] === 'number' ? filter : [];
-        const targetTags = Array.isArray(filter) && typeof filter[0] === 'string' ? filter : (typeof filter === 'string' ? [filter] : []);
+        let excludedIds = [];
+        let excludedAncestors = [];
+        let targetTags = [];
+
+        if (filter) {
+            if (Array.isArray(filter)) {
+                if (typeof filter[0] === 'number') excludedIds = filter;
+                else if (typeof filter[0] === 'string') targetTags = filter;
+            } else if (typeof filter === 'string') {
+                targetTags = [filter];
+            } else if (typeof filter === 'object') {
+                if (filter.excludeIds) excludedIds = filter.excludeIds;
+                if (filter.excludeAncestors) excludedAncestors = filter.excludeAncestors;
+                if (filter.tags) targetTags = filter.tags;
+            }
+        }
 
         for (const materia of collidables) {
             if (excludedIds.includes(materia.id)) continue;
+            if (excludedAncestors.some(ancestor => ancestor.id === materia.id || ancestor.isAncestorOf(materia))) continue;
             if (targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
 
             const transform = materia.getComponent(Components.Transform);
@@ -1426,6 +1684,8 @@ export class PhysicsSystem {
             let hit = null;
             if (collider instanceof Components.BoxCollider2D) {
                 hit = this._rayVsBox(origin, direction, transform, collider);
+            } else if (collider instanceof Components.CircleCollider2D) {
+                hit = this._rayVsCircle(origin, direction, transform, collider);
             } else if (collider instanceof Components.CapsuleCollider2D) {
                 hit = this._rayVsCapsule(origin, direction, transform, collider);
             } else if (collider instanceof Components.PolygonCollider2D) {
@@ -1435,14 +1695,24 @@ export class PhysicsSystem {
             } else if (collider instanceof Components.TilemapCollider2D || collider instanceof Components.TerrenoCollider2D) {
                 if (collider.isDirty) collider.generate();
 
+                // Para Tilemaps, creamos un transform temporal con escala 1,1 para evitar doble escalado,
+                // ya que los colliders generados ya incluyen la escala de la rejilla.
+                if (!this._tempIdentityTransform) {
+                    this._tempIdentityTransform = { x: 0, y: 0, rotation: 0, scale: { x: 1, y: 1 } };
+                }
+                const identity = this._tempIdentityTransform;
+                identity.x = transform.x;
+                identity.y = transform.y;
+                identity.rotation = transform.rotation;
+
                 // Ray vs Multiple Rectangles
                 for (const rect of (collider.generatedColliders || [])) {
-                    // Use the original transform and pass the rectangle's position as an offset
                     const tempBox = {
                         size: { x: rect.width, y: rect.height },
                         offset: { x: rect.x, y: rect.y }
                     };
-                    const subHit = this._rayVsBox(origin, direction, transform, tempBox);
+                    // Usamos identity (escala 1) porque los rectángulos ya están escalados a píxeles
+                    const subHit = this._rayVsBox(origin, direction, identity, tempBox);
                     if (subHit && (!hit || subHit.distance < hit.distance)) {
                         hit = subHit;
                     }
@@ -1517,18 +1787,30 @@ export class PhysicsSystem {
         } else if (localOriginY < -halfH || localOriginY > halfH) return null;
 
         if (tmax >= tmin && tmax >= 0) {
-            const t = tmin > 0 ? tmin : tmax;
-            if (t < 0) return null;
+            // Regresamos el primer impacto positivo. Si tmin < 0, estamos dentro, regresamos 0.
+            let t = tmin;
+            let inside = false;
+            if (t < 0) {
+                t = 0;
+                inside = true;
+            }
+            if (t > 1e10) return null;
 
             const hitPointLocal = { x: localOriginX + localDirX * t, y: localOriginY + localDirY * t };
 
             // Calcular normal local
             let normalLocal = { x: 0, y: 0 };
-            const eps = 1e-4;
-            if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
-            else if (Math.abs(hitPointLocal.x + halfW) < eps) normalLocal.x = -1;
-            else if (Math.abs(hitPointLocal.y - halfH) < eps) normalLocal.y = 1;
-            else if (Math.abs(hitPointLocal.y + halfH) < eps) normalLocal.y = -1;
+            if (inside) {
+                // Si estamos dentro, la normal apunta opuesta a la dirección para empujar "hacia afuera"
+                const mag = Math.hypot(localDirX, localDirY);
+                normalLocal = mag > 0 ? { x: -localDirX / mag, y: -localDirY / mag } : { x: 0, y: -1 };
+            } else {
+                const eps = 1e-4;
+                if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
+                else if (Math.abs(hitPointLocal.x + halfW) < eps) normalLocal.x = -1;
+                else if (Math.abs(hitPointLocal.y - halfH) < eps) normalLocal.y = 1;
+                else if (Math.abs(hitPointLocal.y + halfH) < eps) normalLocal.y = -1;
+            }
 
             // Transformar normal y punto de vuelta al espacio mundial
             const worldCos = Math.cos(angle);
@@ -1550,22 +1832,34 @@ export class PhysicsSystem {
         return null;
     }
 
-    _rayVsCapsule(origin, direction, transform, collider) {
-        // Implementación simplificada tratándola como un círculo (mejor que nada)
-        // O mejor, una esfera vs rayo es fácil.
-        const radius = (collider.size.x * transform.scale.x) / 2;
-        const centerX = transform.x + collider.offset.x * transform.scale.x;
-        const centerY = transform.y + collider.offset.y * transform.scale.y;
+    _rayVsCircle(origin, direction, transform, collider) {
+        const radius = collider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y));
+        const angle = transform.rotation * Math.PI / 180;
+        const scaledOffsetX = collider.offset.x * transform.scale.x;
+        const scaledOffsetY = collider.offset.y * transform.scale.y;
+        const worldOffsetX = scaledOffsetX * Math.cos(angle) - scaledOffsetY * Math.sin(angle);
+        const worldOffsetY = scaledOffsetX * Math.sin(angle) + scaledOffsetY * Math.cos(angle);
+        const centerX = transform.x + worldOffsetX;
+        const centerY = transform.y + worldOffsetY;
 
         const oc = { x: origin.x - centerX, y: origin.y - centerY };
         const b = this._dot(oc, direction);
         const c = this._dot(oc, oc) - radius * radius;
         const h = b * b - c;
 
-        if (h < 0) return null; // No impacta
+        if (h < 0) return null;
         const t = -b - Math.sqrt(h);
 
-        if (t < 0) return null;
+        if (t < 0) {
+            const t2 = -b + Math.sqrt(h);
+            if (t2 < 0) return null;
+            // Inside circle
+            return {
+                distance: 0,
+                point: origin,
+                normal: { x: -direction.x, y: -direction.y }
+            };
+        }
 
         const hitPoint = { x: origin.x + direction.x * t, y: origin.y + direction.y * t };
         const normal = this._normalize({ x: hitPoint.x - centerX, y: hitPoint.y - centerY });
@@ -1575,6 +1869,41 @@ export class PhysicsSystem {
             point: hitPoint,
             normal: normal
         };
+    }
+
+    _rayVsCapsule(origin, direction, transform, collider) {
+        const cap = this._getCapsulePoints({ getComponent: (t) => t === Components.Transform ? transform : collider });
+
+        let closestHit = null;
+
+        // Caps vs Ray
+        const h1 = this._rayVsCircle(origin, direction, { x: cap.p1.x, y: cap.p1.y, rotation: 0, scale: { x: 1, y: 1 }, getComponent: (t) => ({ radius: cap.radius, offset: { x: 0, y: 0 } }) }, { radius: cap.radius, offset: { x: 0, y: 0 } });
+        const h2 = this._rayVsCircle(origin, direction, { x: cap.p2.x, y: cap.p2.y, rotation: 0, scale: { x: 1, y: 1 }, getComponent: (t) => ({ radius: cap.radius, offset: { x: 0, y: 0 } }) }, { radius: cap.radius, offset: { x: 0, y: 0 } });
+
+        if (h1) closestHit = h1;
+        if (h2 && (!closestHit || h2.distance < closestHit.distance)) closestHit = h2;
+
+        // Cylinder vs Ray
+        const ab = { x: cap.p2.x - cap.p1.x, y: cap.p2.y - cap.p1.y };
+        const normalAB = this._normalize({ x: -ab.y, y: ab.x });
+
+        // Ray vs Segments (cylinder sides)
+        const s1p1 = { x: cap.p1.x + normalAB.x * cap.radius, y: cap.p1.y + normalAB.y * cap.radius };
+        const s1p2 = { x: cap.p2.x + normalAB.x * cap.radius, y: cap.p2.y + normalAB.y * cap.radius };
+        const s2p1 = { x: cap.p1.x - normalAB.x * cap.radius, y: cap.p1.y - normalAB.y * cap.radius };
+        const s2p2 = { x: cap.p2.x - normalAB.x * cap.radius, y: cap.p2.y - normalAB.y * cap.radius };
+
+        const h3 = this._rayVsSegment(origin, direction, s1p1, s1p2);
+        const h4 = this._rayVsSegment(origin, direction, s2p1, s2p2);
+
+        if (h3 && (!closestHit || h3.t < closestHit.distance)) {
+            closestHit = { distance: h3.t, point: { x: origin.x + direction.x * h3.t, y: origin.y + direction.y * h3.t }, normal: h3.normal };
+        }
+        if (h4 && (!closestHit || h4.t < closestHit.distance)) {
+            closestHit = { distance: h4.t, point: { x: origin.x + direction.x * h4.t, y: origin.y + direction.y * h4.t }, normal: h4.normal };
+        }
+
+        return closestHit;
     }
 
     _rayVsPolygon(origin, direction, transform, collider) {
