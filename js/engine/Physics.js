@@ -282,9 +282,22 @@ export class PhysicsSystem {
                 // --- 2.1 Collision Filtering ---
                 // 1. Assembly Filter: Don't collide if they share the same VehicleController.
                 // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
-                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) || (materiaA.getComponent(Components.VehicleController) ? materiaA : null);
-                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) || (materiaB.getComponent(Components.VehicleController) ? materiaB : null);
+                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) ||
+                                 materiaA.findAncestorWithComponent(Components.WheelSuspension) ||
+                                (materiaA.getComponent(Components.VehicleController) || materiaA.getComponent(Components.WheelSuspension) ? materiaA : null);
+
+                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) ||
+                                 materiaB.findAncestorWithComponent(Components.WheelSuspension) ||
+                                (materiaB.getComponent(Components.VehicleController) || materiaB.getComponent(Components.WheelSuspension) ? materiaB : null);
+
                 if (vehicleA && vehicleA === vehicleB) continue;
+
+                // Also check if one is explicitly registered as a wheel of a suspension on the other
+                const suspA = materiaA.getComponent(Components.WheelSuspension);
+                if (suspA && suspA.wheels.some(w => w.materiaId === materiaB.id)) continue;
+
+                const suspB = materiaB.getComponent(Components.WheelSuspension);
+                if (suspB && suspB.wheels.some(w => w.materiaId === materiaA.id)) continue;
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
                     continue;

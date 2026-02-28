@@ -1033,8 +1033,10 @@ export class Rigidbody2D extends Leyes {
 
     addTorque(torque) {
         const mass = Math.max(0.1, this.mass);
-        // Inertia approximation for a simple object
-        const inertia = mass * 100;
+        // Coherent inertia approximation: (1/12) * mass * (w^2 + h^2)
+        // We use a base size of 50x50 which is common for most objects
+        const w = 50, h = 50;
+        const inertia = (1/12) * mass * (w * w + h * h);
         this.angularVelocity += torque / inertia;
     }
 
@@ -5207,10 +5209,21 @@ export class WheelSuspension extends Leyes {
 
                         if (isGame) {
                             // --- Sincronización Visual en Juego ---
-                            const visualExtension = wheel.isGrounded ? (wheel.restLength * (1.0 - wheel.currentCompression)) : wheel.restLength;
+                            // Aseguramos que visualmente la rueda no baje más allá del restLength ni suba más allá del anclaje
+                            const visualExtension = wheel.isGrounded ?
+                                Math.max(0, Math.min(wheel.restLength, wheel.restLength * (1.0 - wheel.currentCompression))) :
+                                wheel.restLength;
 
                             wheelTransform.x = anchorWorldX + springDir.x * visualExtension;
                             wheelTransform.y = anchorWorldY + springDir.y * visualExtension;
+
+                            // Forzamos a que la rueda visual sea Kinematic para que no tenga físicas propias que la muevan
+                            const wheelRb = wheelMateria.getComponent(Rigidbody2D);
+                            if (wheelRb) {
+                                wheelRb.bodyType = 'Kinematic';
+                                wheelRb.velocity = { x: 0, y: 0 };
+                                wheelRb.angularVelocity = 0;
+                            }
 
                             // Rotación visual basada en movimiento y tracción
                             const rb = this.materia.getComponent(Rigidbody2D);
@@ -5315,46 +5328,64 @@ export class WheelSuspension extends Leyes {
             if (hit) {
                 wheel.isGrounded = true;
                 const distToWheelCenter = hit.distance - wheel.wheelRadius;
+
+                // Aseguramos que el muelle no se estire negativamente (efecto de estiramiento visual)
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
+                const prevCompression = wheel.currentCompression * wheel.restLength;
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física de Suspensión (Spring-Damper)
-                // Multiplicadores ajustados para un comportamiento elástico pero muy controlado (Estilo Hill Climb).
-                // Reducimos la fuerza del muelle aún más para evitar el "lanzamiento".
-                const springForce = (compressionAmount * wheel.stiffness) * rb.mass * 0.035;
-                const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
+                // Calculamos la velocidad de compresión de forma más estable
+                const compressionVelocity = (compressionAmount - prevCompression) / deltaTime;
 
-                // Amortiguación Crítica: Muy fuerte en expansión (cuando el coche sube) para evitar que rebote.
-                // compressionVelocity < 0 significa que la suspensión se está expandiendo (regresando).
-                const dampingMult = compressionVelocity > 0 ? 0.4 : 2.5;
-                const dampingForce = compressionVelocity * wheel.damping * rb.mass * dampingMult;
+                // Fuerza del muelle (Hooke's Law: F = k * x)
+                // Usamos un multiplicador de masa para que stiffness 1-100 sea usable
+                const springForce = compressionAmount * (wheel.stiffness * 5);
+
+                // Amortiguación (Damping: F = c * v)
+                // La amortiguación debe ser fuerte para absorber el impacto y evitar rebotes (Critical Damping)
+                // Si la velocidad es positiva (comprimiendo), frenamos la caída.
+                // Si es negativa (expandiendo), frenamos el rebote para que no salte.
+                const dampingFactor = compressionVelocity > 0 ? (wheel.damping * 2) : (wheel.damping * 5);
+                const dampingForce = compressionVelocity * dampingFactor;
 
                 let totalForce = springForce + dampingForce;
 
-                // La suspensión solo puede empujar HACIA AFUERA (fuerza positiva en el eje del muelle).
-                // Si la amortiguación de expansión es muy fuerte, puede llegar a cancelar el empuje por completo.
+                // La suspensión solo empuja hacia afuera
                 totalForce = Math.max(0, totalForce);
 
-                // Limitamos la fuerza máxima para evitar que el coche "salte" solo por la suspensión.
-                const maxForce = rb.mass * 1500;
-                totalForce = Math.min(totalForce, maxForce);
+                // Aplicar la fuerza al chasis en el eje de la suspensión
+                const worldForce = {
+                    x: -springDir.x * totalForce * deltaTime,
+                    y: -springDir.y * totalForce * deltaTime
+                };
 
-                rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
+                rb.addForce(worldForce);
+
+                // --- APLICACIÓN DE TORQUE (Inclinación del coche) ---
+                // Calculamos el brazo de palanca (vector desde el centro de masa al punto de la rueda)
+                const leverArm = {
+                    x: anchorWorldX - transform.x,
+                    y: anchorWorldY - transform.y
+                };
+                // El torque es el producto cruzado del brazo de palanca y la fuerza
+                const torque = (leverArm.x * worldForce.y - leverArm.y * worldForce.x);
+                rb.addTorque(torque);
 
                 // --- TOPE RÍGIDO Y ABSORCIÓN DE IMPACTO ---
                 if (compressionAmount >= wheel.restLength) {
                     const overCompression = (compressionAmount - wheel.restLength);
                     if (overCompression > 0) {
-                        // Empuje mínimo para evitar jitter
-                        transform.x -= springDir.x * (overCompression * 0.05);
-                        transform.y -= springDir.y * (overCompression * 0.05);
+                        // Empuje directo de posición para evitar clipping profundo
+                        transform.x -= springDir.x * overCompression * 0.1;
+                        transform.y -= springDir.y * overCompression * 0.1;
                     }
 
-                    // "Hard Damping" en el tope: Matar gran parte de la velocidad de caída.
+                    // Absorción de impacto extrema: Reducir drásticamente la velocidad en el eje del muelle
                     const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
                     if (velAlongSpring > 0) {
-                        rb.velocity.x -= springDir.x * velAlongSpring * 0.85;
-                        rb.velocity.y -= springDir.y * velAlongSpring * 0.85;
+                        rb.velocity.x -= springDir.x * velAlongSpring * 0.95;
+                        rb.velocity.y -= springDir.y * velAlongSpring * 0.95;
                     }
                 }
 
@@ -5381,8 +5412,6 @@ export class WheelSuspension extends Leyes {
                     }
                 }
                 rb.addForce({ x: rollDir.x * rollingResistance * deltaTime, y: rollDir.y * rollingResistance * deltaTime });
-
-                wheel._lastCompression = wheel.currentCompression;
             } else {
                 wheel.isGrounded = false;
                 wheel.currentCompression = 0;
