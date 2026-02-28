@@ -5385,27 +5385,26 @@ export class WheelSuspension extends Leyes {
                 // --- LOGICA DE ABSORCIÓN (FRENADO) ---
                 if (velAlongSpring > 0) {
                     // El coche está bajando hacia la goma. Aplicamos fuerza para frenar la caída.
+                    // Dividimos por groundedCount para no triplicar el impulso si caen varias ruedas.
                     const t = Math.max(0.01, wheel.absorptionTime);
-                    totalForce = (velAlongSpring * rb.mass) / t;
+                    totalForce = (velAlongSpring * rb.mass) / (t * groundedCount);
 
-                    // El impulso de frenado no debe exceder lo necesario para detener el coche en este frame (evita rebote)
-                    const forceToStopThisFrame = (velAlongSpring * rb.mass) / deltaTime;
+                    // El impulso de frenado no debe exceder lo necesario para detener el coche en este frame
+                    const forceToStopThisFrame = (velAlongSpring * rb.mass) / (deltaTime * groundedCount);
                     totalForce = Math.min(totalForce, forceToStopThisFrame);
 
                     // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
-                    // Añadimos un pequeño margen de seguridad (+5px) para frenar ANTES de tocar el mapa
                     if (distToAnchor <= wheel.limitDistance + 5) {
-                        // Aplicamos el 100% de la fuerza necesaria para detener la caída instantáneamente
                         totalForce = forceToStopThisFrame;
 
-                        // Si realmente ha pasado el límite, forzamos la posición hacia arriba
                         if (distToAnchor <= wheel.limitDistance) {
                             const overshoot = (wheel.limitDistance - distToAnchor) + 5;
-                            transform.x -= springDir.x * overshoot;
-                            transform.y -= springDir.y * overshoot;
-                            // Anulamos cualquier velocidad remanente en ese eje
-                            rb.velocity.x *= (1.0 - Math.abs(springDir.x));
-                            rb.velocity.y *= (1.0 - Math.abs(springDir.y));
+                            // Dividimos la corrección de posición entre las ruedas apoyadas para evitar saltos violentos
+                            transform.x -= (springDir.x * overshoot) / groundedCount;
+                            transform.y -= (springDir.y * overshoot) / groundedCount;
+                            // Anulamos gradualmente la velocidad remanente
+                            rb.velocity.x *= (1.0 - (Math.abs(springDir.x) / groundedCount));
+                            rb.velocity.y *= (1.0 - (Math.abs(springDir.y) / groundedCount));
                         }
                     }
                 }
@@ -5413,24 +5412,21 @@ export class WheelSuspension extends Leyes {
                 // --- LOGICA DE RECUPERACIÓN (SUBIDA) ---
                 if (distToAnchor < wheel.restDistance) {
                     const diff = wheel.restDistance - distToAnchor;
-                    // Fuerza de recuperación escalada correctamente por masa
-                    // Reducimos el factor base (antes 1/100, ahora 1/200) para evitar lanzamientos violentos
-                    const recoveryForce = diff * (wheel.recoverySpeed || 100) * (rb.mass / 200);
+                    // Fuerza de recuperación escalada correctamente por masa y repartida entre ruedas
+                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 200)) / groundedCount;
 
-                    // Amortiguación de retorno crítica:
-                    // Si estamos subiendo (v < 0), aplicamos una amortiguación muy fuerte para frenar justo en el reposo
-                    const damping = (velAlongSpring < 0) ? Math.abs(velAlongSpring) * rb.mass * 8.0 : 0;
+                    // Amortiguación de retorno: frena el ascenso para que no salte al aire
+                    const damping = (velAlongSpring < 0) ? (Math.abs(velAlongSpring) * rb.mass * 6.0) / groundedCount : 0;
 
-                    // Capar la fuerza de recuperación para que no supere un empuje razonable (1.5x el peso)
-                    const weightSupport = 9.8 * rb.mass / groundedCount;
+                    // Capar la fuerza de recuperación para que no supere un empuje razonable (1.5x el peso total)
+                    const weightSupport = (9.8 * rb.mass) / groundedCount;
                     const finalRecovery = Math.min(recoveryForce, weightSupport * 1.5);
 
                     totalForce += (finalRecovery - damping);
                 }
 
-                // Seguridad: solo empujar hacia afuera.
-                // Aumentamos maxForce drásticamente para manejar impactos de alta velocidad sin "traspasar" el mapa.
-                totalForce = Math.max(0, totalForce);
+                // Seguridad: Permitimos fuerzas negativas moderadas para "sujetar" el coche al suelo durante el rebote
+                totalForce = Math.max(-rb.mass * 100, totalForce);
                 const maxForce = rb.mass * 10000;
                 totalForce = Math.min(totalForce, maxForce);
 
