@@ -5351,8 +5351,9 @@ export class WheelSuspension extends Leyes {
                         x: sTrans.x + (wOffX * sCos - wOffY * sSin),
                         y: sTrans.y + (wOffX * sSin + wOffY * sCos)
                     };
-                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 3), y: wAncW.y - sSpringDir.y * (r * 3) };
-                    const wMaxDist = w.restDistance + r * 3;
+                    // ORIGEN ELEVADO AL MÁXIMO (10 radios) para ver el suelo incluso si estamos enterrados
+                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 10), y: wAncW.y - sSpringDir.y * (r * 10) };
+                    const wMaxDist = w.restDistance + r * 10;
                     const wHit = engine.circleCast(wOrigin, sSpringDir, r, wMaxDist, { tags: s.gripTags, excludeAncestors: [vehicleRoot] });
                     if (wHit && wHit.distance <= wMaxDist) count++;
                 });
@@ -5392,15 +5393,15 @@ export class WheelSuspension extends Leyes {
             }
 
             const castOrigin = {
-                x: anchorWorldX - springDir.x * (actualRadius * 3),
-                y: anchorWorldY - springDir.y * (actualRadius * 3)
+                x: anchorWorldX - springDir.x * (actualRadius * 10),
+                y: anchorWorldY - springDir.y * (actualRadius * 10)
             };
 
             const vehicleRoot = this.materia.parent || this.materia;
             const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
             const filter = { tags: this.gripTags, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
 
-            const maxCastDist = wheel.restDistance + actualRadius * 3;
+            const maxCastDist = wheel.restDistance + actualRadius * 10;
             const hit = engine.circleCast(castOrigin, springDir, actualRadius, maxCastDist, filter);
 
             if (hit && hit.distance <= maxCastDist) {
@@ -5429,7 +5430,7 @@ export class WheelSuspension extends Leyes {
                 const wt = wm?.getComponent(Transform);
                 if (col && wt) actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
 
-                const distToAnchor = (hit.distance - actualRadius * 3);
+                const distToAnchor = (hit.distance - actualRadius * 10);
                 wheel.currentDist = distToAnchor;
 
                 // Velocidad proyectada (usamos la fija para estabilidad)
@@ -5446,22 +5447,25 @@ export class WheelSuspension extends Leyes {
                     totalForce = Math.min(totalForce, forceToStopThisFrame);
 
                     // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
-                    // Si el chasis está por debajo del límite de seguridad (limitDistance)
                     if (distToAnchor <= wheel.limitDistance + 2) {
                         totalForce = forceToStopThisFrame;
 
-                        // Si realmente ha cruzado el límite, aplicamos corrección de posición para expulsarlo.
-                        // Usamos un factor alto (0.8) para garantizar que no atraviese el piso.
                         if (distToAnchor < wheel.limitDistance) {
                             const overshoot = (wheel.limitDistance - distToAnchor);
-                            // NO dividir por gCount la corrección de posición ni de velocidad en el tope.
-                            // Si una rueda llega al límite, debe ser capaz de detener el chasis por sí sola.
-                            transform.x -= (springDir.x * overshoot * 0.9);
-                            transform.y -= (springDir.y * overshoot * 0.9);
 
-                            // Anular la velocidad de caída de forma absoluta en este eje
-                            rb.velocity.x -= (springDir.x * velAlongSpring);
-                            rb.velocity.y -= (springDir.y * velAlongSpring);
+                            // Corrección de posición promediada para evitar saltos violentos
+                            transform.x -= (springDir.x * overshoot * 0.5) / gCount;
+                            transform.y -= (springDir.y * overshoot * 0.5) / gCount;
+
+                            // Comprobamos la velocidad ACTUAL del Rigidbody (que puede haber sido modificada por otra rueda)
+                            const currentVelAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
+
+                            // SOLO anulamos si el coche SIGUE cayendo.
+                            // Esto evita que 4 ruedas sumen sus impulsos y lancen el coche hacia arriba.
+                            if (currentVelAlongSpring > 0) {
+                                rb.velocity.x -= (springDir.x * currentVelAlongSpring);
+                                rb.velocity.y -= (springDir.y * currentVelAlongSpring);
+                            }
                         }
                     }
                 }
