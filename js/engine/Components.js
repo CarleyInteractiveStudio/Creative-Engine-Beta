@@ -66,6 +66,7 @@ const componentAliases = {
     'GridLayoutGroup': 'autoDisposicionRejilla',
     'VehicleController': 'controladorDeVehiculo',
     'WheelSuspension': 'suspensionDeRueda',
+    'AdvancedWheel': 'ruedaAvanzada',
 };
 
 
@@ -4982,6 +4983,7 @@ export class VehicleController extends Leyes {
         this.turnSpeed = 100;
         this.mass = 1200;
         this.autoFlip = false;
+        this.advancedWheelIds = []; // IDs de Materias con componente AdvancedWheel
 
         // Controles configurables
         this.accelerateKey = 'd'; // A la derecha en Side-View
@@ -5037,19 +5039,29 @@ export class VehicleController extends Leyes {
             if (input.isKeyPressed('a')) steerInput -= 1;
         }
 
-        // Buscar amortiguadores en el mismo objeto o hijos para calcular tracción
+        // Buscar amortiguadores clásicos y nuevas ruedas avanzadas para calcular tracción
         const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
             .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
 
+        const advancedWheels = (this.advancedWheelIds || []).map(id => this.materia.scene.findMateriaById(id))
+            .filter(m => m && m.getComponent(AdvancedWheel))
+            .map(m => m.getComponent(AdvancedWheel));
+
         let groundedCount = 0;
         let totalWheels = 0;
-        if (suspensions.length > 0) {
-            suspensions.forEach(s => {
-                if (!s) return;
-                totalWheels += s.wheels.length;
-                groundedCount += s.wheels.filter(w => w && w.isGrounded).length;
-            });
-        }
+
+        // Contar ruedas clásicas
+        suspensions.forEach(s => {
+            if (!s) return;
+            totalWheels += s.wheels.length;
+            groundedCount += s.wheels.filter(w => w && w.isGrounded).length;
+        });
+
+        // Contar ruedas avanzadas
+        advancedWheels.forEach(w => {
+            totalWheels++;
+            if (w.isGrounded) groundedCount++;
+        });
 
         // Tracción: proporcional a ruedas en suelo. Mínimo 1 si no hay suspensión (basado en collider del cuerpo)
         const traction = totalWheels > 0 ? (groundedCount / Math.max(1, totalWheels / 2)) : (this.materia.isActive ? 1.0 : 0);
@@ -5169,6 +5181,133 @@ export class VehicleController extends Leyes {
 /**
  * Componente WheelSuspension (Suspensión de Rueda): Amortiguación y Grip realista.
  */
+/**
+ * AdvancedWheel: Rueda individual modular.
+ * Se encarga de seguir al chasis, detectar el suelo y aplicar fuerzas de empuje.
+ */
+export class AdvancedWheel extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.chassisId = null;
+        this.localAnchor = { x: 0, y: 0 };
+        this.restLength = 40;
+        this.stiffness = 100;
+        this.damping = 10;
+        this.wheelRadius = 15;
+        this.gripTags = ['Ground'];
+
+        // Configuración de restricciones
+        this.travelLimit = 50;
+
+        // Estado interno
+        this.isGrounded = false;
+        this.compression = 0;
+        this.currentDist = 0;
+    }
+
+    fixedUpdate(deltaTime) {
+        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+
+        const scene = this.materia.scene;
+        if (!scene) return;
+
+        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : null;
+        const myTrans = this.materia.getComponent(Transform);
+        const myRb = this.materia.getComponent(Rigidbody2D);
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!myTrans || !engine) return;
+
+        let chassisTrans = null, chassisRb = null;
+        let springDir = { x: 0, y: -1 };
+
+        if (chassis) {
+            chassisTrans = chassis.getComponent(Transform);
+            chassisRb = chassis.getComponent(Rigidbody2D);
+            if (chassisTrans) {
+                const rad = chassisTrans.rotation * Math.PI / 180;
+                // Vector que apunta "arriba" desde la rueda hacia el coche
+                springDir = { x: Math.sin(rad), y: -Math.cos(rad) };
+            }
+        }
+
+        const downDir = { x: -springDir.x, y: -springDir.y };
+
+        if (chassisTrans) {
+            const rad = chassisTrans.rotation * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const anchorWorld = {
+                x: chassisTrans.x + (this.localAnchor.x * cos - this.localAnchor.y * sin),
+                y: chassisTrans.y + (this.localAnchor.x * sin + this.localAnchor.y * cos)
+            };
+
+            // 1. Detección de Suelo
+            const filter = { tags: (this.gripTags && this.gripTags.length > 0) ? this.gripTags : null, excludeIds: [this.materia.id] };
+            if (chassis) filter.excludeIds.push(chassis.id);
+
+            const margin = this.wheelRadius * 0.5;
+            const castOrigin = { x: anchorWorld.x - downDir.x * margin, y: anchorWorld.y - downDir.y * margin };
+            const maxSearch = this.travelLimit + margin;
+            const hit = engine.circleCast(castOrigin, downDir, this.wheelRadius, maxSearch, filter);
+
+            if (hit) {
+                this.isGrounded = true;
+                this.currentDist = Math.max(0, hit.distance - margin);
+            } else {
+                this.isGrounded = false;
+                this.currentDist = this.travelLimit;
+            }
+
+            // 2. Posicionamiento de la rueda (Siempre alineada al eje de suspensión)
+            myTrans.x = anchorWorld.x + downDir.x * this.currentDist;
+            myTrans.y = anchorWorld.y + downDir.y * this.currentDist;
+            myTrans.rotation = chassisTrans.rotation;
+
+            // 3. Lógica de Empuje (Fuerza de Suspensión)
+            // Chequeamos si el anclaje del chasis está dentro del área de influencia de la rueda
+            const relPos = { x: anchorWorld.x - myTrans.x, y: anchorWorld.y - myTrans.y };
+            const distOnAxis = relPos.x * springDir.x + relPos.y * springDir.y;
+            const lateralDist = Math.abs(relPos.x * (-springDir.y) + relPos.y * springDir.x);
+
+            this.compression = Math.max(0, this.restLength - distOnAxis);
+
+            if (this.compression > 0 && lateralDist < this.wheelRadius * 2 && chassisRb) {
+                const velChassis = chassisRb.velocity.x * springDir.x + chassisRb.velocity.y * springDir.y;
+                const velWheel = myRb ? (myRb.velocity.x * springDir.x + myRb.velocity.y * springDir.y) : 0;
+                const relVel = velChassis - velWheel;
+
+                const forceMag = (this.compression * this.stiffness) - (relVel * this.damping);
+                const finalForce = Math.max(0, forceMag * chassisRb.mass * 2.0);
+
+                chassisRb.addForce(springDir.x * finalForce * deltaTime, springDir.y * finalForce * deltaTime);
+
+                const leverArm = { x: anchorWorld.x - chassisTrans.x, y: anchorWorld.y - chassisTrans.y };
+                const torque = (leverArm.x * springDir.y - leverArm.y * springDir.x) * finalForce;
+                chassisRb.addTorque(torque * deltaTime);
+
+                if (myRb) {
+                    myRb.addForce(downDir.x * finalForce * deltaTime, downDir.y * finalForce * deltaTime);
+                    // Mantener la rueda sincronizada lateralmente si tiene Rigidbody
+                    myRb.velocity.x = chassisRb.velocity.x;
+                    myRb.velocity.y = chassisRb.velocity.y;
+                }
+
+                // 4. Rotación Visual
+                const rollDir = { x: springDir.y, y: -springDir.x };
+                const rollVel = chassisRb.velocity.x * rollDir.x + chassisRb.velocity.y * rollDir.y;
+                myTrans.rotation += rollVel * 20 * deltaTime;
+            }
+        }
+    }
+
+    clone() {
+        const copy = new AdvancedWheel(null);
+        Object.assign(copy, this);
+        copy.localAnchor = { ...this.localAnchor };
+        copy.gripTags = [...this.gripTags];
+        return copy;
+    }
+}
+
 export class WheelSuspension extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5496,7 +5635,7 @@ export class WheelSuspension extends Leyes {
 
                 // Grip y Fricción Lateral (Ajustado para estabilidad y tracción)
                 const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
-                const lateralGrip = -lateralVel * this.grip * rb.mass * 15.0;
+        const lateralGrip = -lateralVel * this.grip * rb.mass * 15.0;
                 rb.addForce({ x: perpDir.x * lateralGrip * deltaTime, y: perpDir.y * lateralGrip * deltaTime });
 
                 // Fricción Longitudinal (Ajustado para un rodamiento más natural)
@@ -6145,6 +6284,7 @@ registerComponent('WheelSuspension', WheelSuspension);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);
+registerComponent('AdvancedWheel', AdvancedWheel);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
 registerComponent('GridLayoutGroup', GridLayoutGroup);
