@@ -5351,20 +5351,24 @@ export class WheelSuspension extends Leyes {
                 const compressionVelocity = (compressionAmount - prevCompression) / deltaTime;
 
                 // Fuerza del muelle (Hooke's Law: F = k * x)
-                // Multiplicador constante para que la masa afecte la compresión (sag) de forma realista.
-                // A mayor peso, más se hundirá el vehículo para el mismo valor de stiffness.
-                const springForce = compressionAmount * (wheel.stiffness * 600);
+                // Multiplicador ajustado para que stiffness 1-100 sea equilibrado.
+                // Reducido drásticamente para evitar el efecto de lanzamiento violento.
+                const springForce = compressionAmount * (wheel.stiffness * 40);
 
                 // Amortiguación (Damping: F = c * v)
-                // Escalamos la amortiguación con la masa para mantener la estabilidad en vehículos pesados.
+                // Amortiguación fuerte pero controlada para disipar energía.
                 const dampingBase = wheel.damping * (rb.mass / 10);
-                const dampingFactor = compressionVelocity > 0 ? (dampingBase * 2) : (dampingBase * 5);
+                const dampingFactor = compressionVelocity > 0 ? (dampingBase * 1.5) : (dampingBase * 4);
                 const dampingForce = compressionVelocity * dampingFactor;
 
                 let totalForce = springForce + dampingForce;
 
                 // La suspensión solo empuja hacia afuera
                 totalForce = Math.max(0, totalForce);
+
+                // Seguridad: Limitar la fuerza máxima para evitar explosiones físicas (lanzamientos astronómicos)
+                const maxForce = rb.mass * 2000;
+                totalForce = Math.min(totalForce, maxForce);
 
                 // Aplicar la fuerza al chasis en el eje de la suspensión
                 const worldForce = {
