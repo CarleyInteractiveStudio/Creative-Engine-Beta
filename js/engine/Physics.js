@@ -270,9 +270,17 @@ export class PhysicsSystem {
 
         // 2. Broad-phase collision detection and state update
         const newActiveCollisions = new Map();
-        const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) || m.getComponent(Components.LineCollider2D))
-        );
+        const collidables = this.scene.getAllMaterias().filter(m => {
+            if (!m.isActive) return false;
+            const rb = m.getComponent(Components.Rigidbody2D);
+            // Ignore if the Rigidbody is explicitly marked as non-simulated
+            if (rb && rb.simulated === false) return false;
+
+            return m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) ||
+                   m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) ||
+                   m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) ||
+                   m.getComponent(Components.LineCollider2D);
+        });
 
         for (let i = 0; i < collidables.length; i++) {
             for (let j = i + 1; j < collidables.length; j++) {

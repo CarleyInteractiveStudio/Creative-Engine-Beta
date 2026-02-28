@@ -5239,11 +5239,15 @@ export class WheelSuspension extends Leyes {
                             // La goma solo se queda "pegada" si el coche está lo suficientemente cerca para estar en contacto
                             const distToGround = wheel._groundPoint ? Math.hypot(anchorWorldX - wheel._groundPoint.x, anchorWorldY - wheel._groundPoint.y) : Infinity;
 
-                            if (wheel.isGrounded && wheel._groundPoint && distToGround <= wheel.restDistance + wheel.wheelRadius + 5) {
+                            let actualRadius = wheel.wheelRadius;
+                            const col = wheelMateria.getComponent(CircleCollider2D);
+                            if (col) actualRadius = col.radius * Math.max(Math.abs(wheelTransform.scale.x), Math.abs(wheelTransform.scale.y));
+
+                            if (wheel.isGrounded && wheel._groundPoint && distToGround <= wheel.restDistance + actualRadius + 5) {
                                 // POSICIONAMIENTO CORRECTO: El centro de la rueda debe estar arriba del punto de impacto
                                 // para que la "goma" no atraviese el suelo.
-                                wheelTransform.x = wheel._groundPoint.x - springDir.x * wheel.wheelRadius;
-                                wheelTransform.y = wheel._groundPoint.y - springDir.y * wheel.wheelRadius;
+                                wheelTransform.x = wheel._groundPoint.x - springDir.x * actualRadius;
+                                wheelTransform.y = wheel._groundPoint.y - springDir.y * actualRadius;
                             } else {
                                 // Sigue al coche a la distancia de reposo
                                 wheelTransform.x = anchorWorldX + springDir.x * wheel.restDistance;
@@ -5313,17 +5317,35 @@ export class WheelSuspension extends Leyes {
             const anchorWorldX = transform.x + (scaledOffsetX * cos - scaledOffsetY * sin);
             const anchorWorldY = transform.y + (scaledOffsetX * sin + scaledOffsetY * cos);
 
+            // Obtener el radio real del colisionador si existe para mayor precisión
+            let actualRadius = wheel.wheelRadius;
+            if (wheel.materiaId) {
+                const wm = this.materia.scene.findMateriaById(wheel.materiaId);
+                const col = wm?.getComponent(CircleCollider2D);
+                const wt = wm?.getComponent(Transform);
+                if (col && wt) {
+                    actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
+                }
+
+                // Desactivar simulación de la rueda para que no cause lanzamientos violentos
+                const wrb = wm?.getComponent(Rigidbody2D);
+                if (wrb) {
+                    wrb.bodyType = 'Kinematic';
+                    wrb.simulated = false;
+                }
+            }
+
             const castOrigin = {
-                x: anchorWorldX - springDir.x * (wheel.wheelRadius * 2), // Elevamos más el origen
-                y: anchorWorldY - springDir.y * (wheel.wheelRadius * 2)
+                x: anchorWorldX - springDir.x * (actualRadius * 2),
+                y: anchorWorldY - springDir.y * (actualRadius * 2)
             };
 
             const vehicleRoot = this.materia.parent || this.materia;
             const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
             const filter = { tags: this.gripTags, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
 
-            const maxCastDist = wheel.restDistance + wheel.wheelRadius * 2;
-            const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, maxCastDist, filter);
+            const maxCastDist = wheel.restDistance + actualRadius * 2;
+            const hit = engine.circleCast(castOrigin, springDir, actualRadius, maxCastDist, filter);
 
             if (hit && hit.distance <= maxCastDist) {
                 groundedWheels.push({ wheel, hit, anchorWorld: { x: anchorWorldX, y: anchorWorldY } });
@@ -5343,8 +5365,16 @@ export class WheelSuspension extends Leyes {
             if (hit) {
                 wheel.isGrounded = true;
                 wheel._groundPoint = { ...hit.point };
+
+                // Obtenemos el radio real de nuevo para el cálculo de distancia
+                let actualRadius = wheel.wheelRadius;
+                const wm = this.materia.scene.findMateriaById(wheel.materiaId);
+                const col = wm?.getComponent(CircleCollider2D);
+                const wt = wm?.getComponent(Transform);
+                if (col && wt) actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
+
                 // El impacto se calcula desde el origen elevado (2 radios)
-                const distToAnchor = (hit.distance - wheel.wheelRadius * 2);
+                const distToAnchor = (hit.distance - actualRadius * 2);
                 wheel.currentDist = distToAnchor;
 
                 // Velocidad del chasis proyectada en el eje de suspensión
@@ -5363,12 +5393,20 @@ export class WheelSuspension extends Leyes {
                     totalForce = Math.min(totalForce, forceToStopThisFrame);
 
                     // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
-                    if (distToAnchor <= wheel.limitDistance) {
+                    // Añadimos un pequeño margen de seguridad (+5px) para frenar ANTES de tocar el mapa
+                    if (distToAnchor <= wheel.limitDistance + 5) {
+                        // Aplicamos el 100% de la fuerza necesaria para detener la caída instantáneamente
                         totalForce = forceToStopThisFrame;
-                        // Corrección de posición MUY agresiva (95%) para bloquear el hundimiento
-                        const overshoot = (wheel.limitDistance - distToAnchor) + 2;
-                        transform.x -= springDir.x * overshoot * 0.95;
-                        transform.y -= springDir.y * overshoot * 0.95;
+
+                        // Si realmente ha pasado el límite, forzamos la posición hacia arriba
+                        if (distToAnchor <= wheel.limitDistance) {
+                            const overshoot = (wheel.limitDistance - distToAnchor) + 5;
+                            transform.x -= springDir.x * overshoot;
+                            transform.y -= springDir.y * overshoot;
+                            // Anulamos cualquier velocidad remanente en ese eje
+                            rb.velocity.x *= (1.0 - Math.abs(springDir.x));
+                            rb.velocity.y *= (1.0 - Math.abs(springDir.y));
+                        }
                     }
                 }
 
