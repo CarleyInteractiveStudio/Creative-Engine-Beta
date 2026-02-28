@@ -280,9 +280,13 @@ export class PhysicsSystem {
                 const materiaB = collidables[j];
 
                 // --- 2.1 Collision Filtering ---
-                // 1. Assembly Filter: Don't collide if they share a common ancestor or are siblings.
-                // Prevents vehicle parts (chassis, wheels, deco) from exploding due to internal collisions.
-                if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA) || (materiaA.parent && materiaA.parent === materiaB.parent)) {
+                // 1. Assembly Filter: Don't collide if they share the same VehicleController.
+                // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
+                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) || (materiaA.getComponent(Components.VehicleController) ? materiaA : null);
+                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) || (materiaB.getComponent(Components.VehicleController) ? materiaB : null);
+                if (vehicleA && vehicleA === vehicleB) continue;
+
+                if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
                     continue;
                 }
 
@@ -1374,12 +1378,12 @@ export class PhysicsSystem {
 
         // Ensure MTV axis points from B to A
         const centerA = {
-            x: (verticesA[0].x + verticesA[1].x + verticesA[2].x + verticesA[3].x) / 4,
-            y: (verticesA[0].y + verticesA[1].y + verticesA[2].y + verticesA[3].y) / 4
+            x: verticesA.reduce((sum, v) => sum + v.x, 0) / verticesA.length,
+            y: verticesA.reduce((sum, v) => sum + v.y, 0) / verticesA.length
         };
         const centerB = {
-            x: (verticesB[0].x + verticesB[1].x + verticesB[2].x + verticesB[3].x) / 4,
-            y: (verticesB[0].y + verticesB[1].y + verticesB[2].y + verticesB[3].y) / 4
+            x: verticesB.reduce((sum, v) => sum + v.x, 0) / verticesB.length,
+            y: verticesB.reduce((sum, v) => sum + v.y, 0) / verticesB.length
         };
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
@@ -1649,7 +1653,7 @@ export class PhysicsSystem {
         let minDistance = maxDistance;
 
         const collidables = this.scene.getAllMaterias().filter(m =>
-            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D))
+            m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D) || m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D))
         );
 
         let excludedIds = [];
@@ -1691,14 +1695,24 @@ export class PhysicsSystem {
             } else if (collider instanceof Components.TilemapCollider2D || collider instanceof Components.TerrenoCollider2D) {
                 if (collider.isDirty) collider.generate();
 
+                // Para Tilemaps, creamos un transform temporal con escala 1,1 para evitar doble escalado,
+                // ya que los colliders generados ya incluyen la escala de la rejilla.
+                if (!this._tempIdentityTransform) {
+                    this._tempIdentityTransform = { x: 0, y: 0, rotation: 0, scale: { x: 1, y: 1 } };
+                }
+                const identity = this._tempIdentityTransform;
+                identity.x = transform.x;
+                identity.y = transform.y;
+                identity.rotation = transform.rotation;
+
                 // Ray vs Multiple Rectangles
                 for (const rect of (collider.generatedColliders || [])) {
-                    // Use the original transform and pass the rectangle's position as an offset
                     const tempBox = {
                         size: { x: rect.width, y: rect.height },
                         offset: { x: rect.x, y: rect.y }
                     };
-                    const subHit = this._rayVsBox(origin, direction, transform, tempBox);
+                    // Usamos identity (escala 1) porque los rectángulos ya están escalados a píxeles
+                    const subHit = this._rayVsBox(origin, direction, identity, tempBox);
                     if (subHit && (!hit || subHit.distance < hit.distance)) {
                         hit = subHit;
                     }
@@ -1773,18 +1787,30 @@ export class PhysicsSystem {
         } else if (localOriginY < -halfH || localOriginY > halfH) return null;
 
         if (tmax >= tmin && tmax >= 0) {
-            const t = tmin > 0 ? tmin : tmax;
-            if (t < 0) return null;
+            // Regresamos el primer impacto positivo. Si tmin < 0, estamos dentro, regresamos 0.
+            let t = tmin;
+            let inside = false;
+            if (t < 0) {
+                t = 0;
+                inside = true;
+            }
+            if (t > 1e10) return null;
 
             const hitPointLocal = { x: localOriginX + localDirX * t, y: localOriginY + localDirY * t };
 
             // Calcular normal local
             let normalLocal = { x: 0, y: 0 };
-            const eps = 1e-4;
-            if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
-            else if (Math.abs(hitPointLocal.x + halfW) < eps) normalLocal.x = -1;
-            else if (Math.abs(hitPointLocal.y - halfH) < eps) normalLocal.y = 1;
-            else if (Math.abs(hitPointLocal.y + halfH) < eps) normalLocal.y = -1;
+            if (inside) {
+                // Si estamos dentro, la normal apunta opuesta a la dirección para empujar "hacia afuera"
+                const mag = Math.hypot(localDirX, localDirY);
+                normalLocal = mag > 0 ? { x: -localDirX / mag, y: -localDirY / mag } : { x: 0, y: -1 };
+            } else {
+                const eps = 1e-4;
+                if (Math.abs(hitPointLocal.x - halfW) < eps) normalLocal.x = 1;
+                else if (Math.abs(hitPointLocal.x + halfW) < eps) normalLocal.x = -1;
+                else if (Math.abs(hitPointLocal.y - halfH) < eps) normalLocal.y = 1;
+                else if (Math.abs(hitPointLocal.y + halfH) < eps) normalLocal.y = -1;
+            }
 
             // Transformar normal y punto de vuelta al espacio mundial
             const worldCos = Math.cos(angle);

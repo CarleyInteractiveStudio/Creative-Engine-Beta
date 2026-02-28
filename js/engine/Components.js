@@ -5264,11 +5264,14 @@ export class WheelSuspension extends Leyes {
                 y: anchorWorldY - springDir.y * wheel.wheelRadius
             };
 
-            // Excluir al vehículo y sus partes de la detección de suelo
+            // Excluir al vehículo, sus partes y las materias visuales de las ruedas
             const vehicleRoot = this.materia.parent || this.materia;
+            const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
+
             const filter = {
                 tags: this.gripTags,
-                excludeAncestors: [vehicleRoot]
+                excludeAncestors: [vehicleRoot],
+                excludeIds: excludeIds
             };
 
             const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, wheel.restLength + wheel.wheelRadius * 2, filter);
