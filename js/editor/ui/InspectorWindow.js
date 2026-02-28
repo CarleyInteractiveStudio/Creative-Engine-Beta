@@ -36,7 +36,7 @@ const availableComponents = {
     'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.AmortiguadorCollider],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.VehicleController, Components.WheelSuspension],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.VehicleController],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -55,7 +55,6 @@ const componentIcons = {
     'RaycastSource': 'route',
     'BasicAI': 'bot',
     'VehicleController': 'truck',
-    'WheelSuspension': 'disc',
     'AmortiguadorCollider': 'target'
 };
 
@@ -216,7 +215,6 @@ async function handleInspectorDrop(e) {
                 'BasicAI': Components.BasicAI,
                 'iaBasica': Components.BasicAI,
                 'VehicleController': Components.VehicleController,
-                'WheelSuspension': Components.WheelSuspension,
                 'VideoPlayer': Components.VideoPlayer,
                 'video': Components.VideoPlayer
             }[expectedType] || Components[expectedType];
@@ -412,24 +410,12 @@ function handleInspectorInput(e) {
         component.detectionTags = value.split(',').map(s => s.trim()).filter(s => s !== '');
         return;
     }
-    if (componentName === 'WheelSuspension' && propPath === 'gripTagsString') {
-        component.gripTags = value.split(',').map(s => s.trim()).filter(s => s !== '');
+    if (componentName === 'VehicleController' && propPath === 'slidingTagsString') {
+        component.slidingTags = value.split(',').map(s => s.trim()).filter(s => s !== '');
         return;
     }
-
-    if (componentName === 'WheelSuspension' && propPath.startsWith('constraintAxis.')) {
-        const axis = propPath.split('.')[1];
-        component.constraintAxis[axis] = value;
-        return;
-    }
-
     // Handle nested properties like scale.x
     const props = propPath.split('.');
-
-    // Auto-select wheel in SceneView when editing its properties in the Inspector
-    if (componentName === 'WheelSuspension' && props[0] === 'wheels' && !isNaN(parseInt(props[1]))) {
-        component.selectedIndex = parseInt(props[1]);
-    }
     let current = component;
     for (let i = 0; i < props.length - 1; i++) {
         current = current[props[i]];
@@ -646,27 +632,6 @@ function handleInspectorClick(e) {
                 initialOffset: { x: 0, y: 0 }
             });
             updateInspector();
-        }
-    }
-    if (e.target.closest('[data-action="add-wheel"]')) {
-        const suspension = selectedMateria.getComponent(Components.WheelSuspension);
-        if (suspension) {
-            suspension.wheels.push({
-                materiaId: null,
-                offset: { x: 0, y: 30 },
-                restDistance: 40,
-                limitDistance: 10,
-                absorptionTime: 0.5,
-                recoverySpeed: 100,
-                wheelRadius: 15,
-                isGrounded: false,
-                currentDist: 0,
-                _lastDist: 0,
-                _groundPoint: null
-            });
-            suspension.selectedIndex = suspension.wheels.length - 1;
-            updateInspector();
-            if (updateSceneCallback) updateSceneCallback();
         }
     }
 
@@ -3243,6 +3208,11 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="maxSpeed" value="${ley.maxSpeed}">
                     </div>
 
+                    <div class="prop-row-multi">
+                        <label>${L.get('SLIDING_TAGS', 'Tags Deslizamiento')}</label>
+                        <input type="text" class="prop-input" data-component="VehicleController" data-prop="slidingTagsString" value="${(ley.slidingTags || []).join(', ')}" placeholder="Ice, Slippery...">
+                    </div>
+
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="VehicleController" data-prop="autoFlip" ${ley.autoFlip ? 'checked' : ''}>
                         <label>${L.get('AUTO_FLIP', 'Voltear Automáticamente')}</label>
@@ -3299,133 +3269,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.WheelSuspension) {
-            componentHTML = `
-                ${renderComponentHeader(L.get('WHEEL_SUSPENSION', "Suspensión de Rueda"), icon, index)}
-                <div class="component-content">
-                    <div class="inspector-section-header">
-                        <span>${L.get('GENERAL', 'General')}</span>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('GRIP', 'Agarre (Grip)')}</label>
-                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="grip" value="${ley.grip}" step="0.1">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('GRIP_TAGS', 'Tags Suelo')}</label>
-                        <input type="text" class="prop-input" data-component="WheelSuspension" data-prop="gripTagsString" value="${(ley.gripTags || []).join(', ')}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('CONSTRAINT_AXIS', 'Eje (X, Y)')}</label>
-                        <div class="multi-input">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.x" value="${ley.constraintAxis.x}" step="0.1" title="X">
-                            <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="constraintAxis.y" value="${ley.constraintAxis.y}" step="0.1" title="Y">
-                        </div>
-                    </div>
-                    <div class="checkbox-field padded-checkbox-field">
-                        <input type="checkbox" class="prop-input" data-component="WheelSuspension" data-prop="showGizmo" ${ley.showGizmo ? 'checked' : ''}>
-                        <label>${L.get('SHOW_GIZMO', 'Mostrar Gizmo')}</label>
-                    </div>
-
-                    <hr>
-                    <div class="layer-manager-ui">
-                        <div class="layer-list-header">
-                            <h5>${L.get('WHEELS', 'Ruedas')}</h5>
-                            <button class="layer-btn add" data-action="add-wheel" data-component="WheelSuspension" title="${L.get('ADD_WHEEL', 'Añadir Rueda')}">+</button>
-                        </div>
-                        <div class="layer-list" style="max-height: 120px; overflow-y: auto; margin-bottom: 10px;">
-                            ${ley.wheels.map((wheel, wIdx) => `
-                                <div class="layer-item ${ley.selectedIndex === wIdx ? 'active' : ''}"
-                                     style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #333;"
-                                     onclick="const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.WheelSuspension); w.selectedIndex = ${wIdx}; window.updateInspector();">
-
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="component-icon" style="font-size: 10px; opacity: 0.7;">${getIconHTML('disc')}</span>
-                                        <span style="font-weight: ${ley.selectedIndex === wIdx ? 'bold' : 'normal'};">
-                                            ${L.get('WHEEL', 'Rueda')} ${wIdx + 1} ${wheel.materiaId ? '(' + (window.SceneManager.currentScene.findMateriaById(wheel.materiaId)?.name || '...') + ')' : ''}
-                                        </span>
-                                    </div>
-                                    <button class="layer-btn remove" onclick="event.stopPropagation(); const w = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.WheelSuspension); w.wheels.splice(${wIdx}, 1); if(w.selectedIndex >= w.wheels.length) w.selectedIndex = Math.max(0, w.wheels.length-1); window.updateInspector();">-</button>
-                                </div>
-                            `).join('')}
-                        </div>
-
-                        ${ley.wheels[ley.selectedIndex] ? `
-                            <div class="selected-item-settings" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; border: 1px solid #444;">
-                                <div style="margin-bottom: 8px; font-size: 0.9em; opacity: 0.8; border-bottom: 1px solid #555; padding-bottom: 4px;">
-                                    ${L.get('WHEEL_SETTINGS', 'Configuración de Rueda')} ${ley.selectedIndex + 1}
-                                </div>
-                                <div class="inspector-row">
-                                    <label>${L.get('VISUAL_MATERIA', 'Materia Visual')}</label>
-                                    ${renderPropertyDropper('Materia', ley.wheels[ley.selectedIndex].materiaId, `data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.materiaId"`)}
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('OFFSET_XY', 'Offset (X, Y)')}</label>
-                                    <div class="multi-input">
-                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.x" value="${ley.wheels[ley.selectedIndex].offset.x}" title="X">
-                                        <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.offset.y" value="${ley.wheels[ley.selectedIndex].offset.y}" title="Y">
-                                    </div>
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('ABSORPTION_TIME', 'Tiempo Absorción')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.absorptionTime" value="${ley.wheels[ley.selectedIndex].absorptionTime}" step="0.1">
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('RECOVERY_SPEED', 'Fuerza Recuperación')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.recoverySpeed" value="${ley.wheels[ley.selectedIndex].recoverySpeed}">
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('REST_DISTANCE', 'Distancia Reposo')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.restDistance" value="${ley.wheels[ley.selectedIndex].restDistance}">
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('LIMIT_DISTANCE', 'Límite Seguridad')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.limitDistance" value="${ley.wheels[ley.selectedIndex].limitDistance}">
-                                </div>
-                                <div class="prop-row-multi">
-                                    <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.wheelRadius" value="${ley.wheels[ley.selectedIndex].wheelRadius}">
-                                </div>
-                            </div>
-                        ` : `<p style="text-align: center; opacity: 0.5; padding: 10px;">${L.get('NO_WHEEL_SELECTED', 'Selecciona o añade una rueda')}</p>`}
-                    </div>
-                </div>
-            `;
-        } else if (ley instanceof Components.BasicAI) {
-            const renderAIFuncInput = (propName, label) => {
-                let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
-
-                if (ley.scriptTarget) {
-                    const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
-                    if (targetMateria) {
-                        const scripts = targetMateria.getComponents(Components.CreativeScript);
-                        let allFunctions = [];
-                        scripts.forEach(s => {
-                            const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
-                            if (metadata && metadata.publicFunctions) {
-                                allFunctions = allFunctions.concat(metadata.publicFunctions);
-                            }
-                        });
-
-                        if (allFunctions.length > 0) {
-                            inputHTML = `
-                                <select class="prop-input" data-component="BasicAI" data-prop="${propName}">
-                                    <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
-                                    ${allFunctions.map(f => `<option value="${f}" ${ley[propName] === f ? 'selected' : ''}>${f}</option>`).join('')}
-                                </select>
-                            `;
-                        }
-                    }
-                }
-                return `
-                    <div class="prop-row-multi">
-                        <label>${label}</label>
-                        ${inputHTML}
-                    </div>
-                `;
-            };
-
-            componentHTML = `
-                ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>

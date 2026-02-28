@@ -65,7 +65,6 @@ const componentAliases = {
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
     'VehicleController': 'controladorDeVehiculo',
-    'WheelSuspension': 'suspensionDeRueda',
     'AmortiguadorCollider': 'colisionadorAmortiguador',
 };
 
@@ -5008,6 +5007,7 @@ export class VehicleController extends Leyes {
         // Configuración Top-Down
         this.turnSpeed = 200;
         this.driftIntensity = 0.5;
+        this.slidingTags = ['Ice', 'Slippery'];
 
         // Gestión de Ruedas
         this.wheels = []; // { materiaId, freezeX: true, freezeY: false, limitY: 40, limitX: 40, initialOffset: {x,y} }
@@ -5072,6 +5072,7 @@ export class VehicleController extends Leyes {
 
     _handlePlatformer(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
+        const engine = RuntimeAPIManager.getAPI('engine');
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
         if (!input || !rb) return;
@@ -5085,10 +5086,56 @@ export class VehicleController extends Leyes {
         }
 
         const speed = Math.abs(rb.velocity.x);
-        if (moveInput !== 0 && speed < this.maxSpeed / 50) {
-            const forceMag = this.power * rb.mass * 0.5 * moveInput;
+        const isGrounded = this._checkGrounded();
+
+        // Lógica de Deslizamiento (Smart Realism)
+        let sliding = false;
+        if (engine && this.slidingTags.length > 0) {
+            for (const tag of this.slidingTags) {
+                if (engine.isTouchingTag(this.materia, tag)) {
+                    sliding = true;
+                    break;
+                }
+            }
+        }
+
+        if (moveInput !== 0 && isGrounded && speed < this.maxSpeed / 50) {
+            let accelMultiplier = sliding ? 0.2 : 1.0; // Difícil acelerar en hielo
+            const forceMag = this.power * rb.mass * 0.5 * moveInput * accelMultiplier;
             rb.addForce(forceMag * deltaTime * 100, 0);
         }
+
+        // Si está deslizando, reducir la fricción lateral/frenado (inercia)
+        if (sliding) {
+            rb.velocity.x *= 0.995; // Conservar inercia
+        }
+    }
+
+    _checkGrounded() {
+        if (!this.materia.scene) return false;
+        let grounded = false;
+
+        for (const w of this.wheels) {
+            if (!w.materiaId) continue;
+            const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
+            if (!wheelMtr) continue;
+
+            // Verificamos colisiones normales
+            const collisions = this.materia.scene.physicsSystem.getCollisionInfo(wheelMtr, 'stay', 'collision');
+            if (collisions.length > 0) {
+                grounded = true;
+                break;
+            }
+
+            // Verificamos si el Amortiguador está detectando algo
+            // (El motor de físicas guarda los triggers en activeCollisions)
+            const triggers = this.materia.scene.physicsSystem.getCollisionInfo(wheelMtr, 'stay', 'trigger');
+            if (triggers.length > 0) {
+                grounded = true;
+                break;
+            }
+        }
+        return grounded;
     }
 
     _handleTopDown(transform, deltaTime) {
@@ -5172,368 +5219,6 @@ export class VehicleController extends Leyes {
         const copy = new VehicleController(null);
         Object.assign(copy, this);
         copy.wheels = this.wheels.map(w => ({ ...w, initialOffset: { ...w.initialOffset } }));
-        return copy;
-    }
-}
-
-/**
- * Componente WheelSuspension (Suspensión de Rueda): Amortiguación y Grip realista.
- */
-export class WheelSuspension extends Leyes {
-    constructor(materia) {
-        super(materia);
-        this.wheels = [
-            {
-                materiaId: null,
-                offset: { x: -30, y: 30 },
-                restDistance: 40,
-                limitDistance: 10,
-                absorptionTime: 0.5,
-                recoverySpeed: 100,
-                wheelRadius: 15,
-                // Estado interno
-                isGrounded: false,
-                currentDist: 0,
-                _lastDist: 0,
-                _groundPoint: null
-            },
-            {
-                materiaId: null,
-                offset: { x: 30, y: 30 },
-                restDistance: 40,
-                limitDistance: 10,
-                absorptionTime: 0.5,
-                recoverySpeed: 100,
-                wheelRadius: 15,
-                isGrounded: false,
-                currentDist: 0,
-                _lastDist: 0,
-                _groundPoint: null
-            }
-        ];
-        this.gripTags = ['Ground', 'Road'];
-        this.grip = 1.0;
-        this.showGizmo = true;
-        this.constraintAxis = { x: 0, y: 1 };
-        this.selectedIndex = 0; // Para el editor
-    }
-
-    update(deltaTime) {
-        const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        const chassisRad = transform.rotation * Math.PI / 180;
-        const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
-
-        let springDir = {
-            x: (this.constraintAxis.x * transform.scale.x) * cos - (this.constraintAxis.y * transform.scale.y) * sin,
-            y: (this.constraintAxis.x * transform.scale.x) * sin + (this.constraintAxis.y * transform.scale.y) * cos
-        };
-        const mag = Math.hypot(springDir.x, springDir.y);
-        if (mag > 0) { springDir.x /= mag; springDir.y /= mag; }
-
-        for (const wheel of this.wheels) {
-            if (wheel.materiaId) {
-                const wheelMateria = this.materia.scene.findMateriaById(wheel.materiaId);
-                if (wheelMateria) {
-                    const wheelTransform = wheelMateria.getComponent(Transform);
-                    if (wheelTransform) {
-                        const scaledOffsetX = wheel.offset.x * transform.scale.x;
-                        const scaledOffsetY = wheel.offset.y * transform.scale.y;
-                        const anchorWorldX = transform.x + (scaledOffsetX * cos - scaledOffsetY * sin);
-                        const anchorWorldY = transform.y + (scaledOffsetX * sin + scaledOffsetY * cos);
-
-                        if (isGame) {
-                            // --- Sincronización Visual en Juego ---
-                            // La goma solo se queda "pegada" si el coche está lo suficientemente cerca para estar en contacto
-                            const distToGround = wheel._groundPoint ? Math.hypot(anchorWorldX - wheel._groundPoint.x, anchorWorldY - wheel._groundPoint.y) : Infinity;
-
-                            let actualRadius = wheel.wheelRadius;
-                            const col = wheelMateria.getComponent(CircleCollider2D);
-                            if (col) actualRadius = col.radius * Math.max(Math.abs(wheelTransform.scale.x), Math.abs(wheelTransform.scale.y));
-
-                            if (wheel.isGrounded && wheel._groundPoint && distToGround <= wheel.restDistance + actualRadius + 5) {
-                                // POSICIONAMIENTO CORRECTO: El centro de la rueda debe estar arriba del punto de impacto
-                                // para que la "goma" no atraviese el suelo.
-                                wheelTransform.x = wheel._groundPoint.x - springDir.x * actualRadius;
-                                wheelTransform.y = wheel._groundPoint.y - springDir.y * actualRadius;
-                            } else {
-                                // Sigue al coche a la distancia de reposo
-                                wheelTransform.x = anchorWorldX + springDir.x * wheel.restDistance;
-                                wheelTransform.y = anchorWorldY + springDir.y * wheel.restDistance;
-                            }
-
-                            // Forzamos a que la rueda visual sea Kinematic y SIN colisiones para evitar rebotes con el mapa
-                            const wheelRb = wheelMateria.getComponent(Rigidbody2D);
-                            if (wheelRb) {
-                                wheelRb.bodyType = 'Kinematic';
-                                wheelRb.simulated = false; // Desactiva la física activa para que no "salte"
-                            }
-
-                            // Rotación visual
-                            const rb = this.materia.getComponent(Rigidbody2D);
-                            const vehicle = this.materia.getComponent(VehicleController);
-                            if (rb) {
-                                const input = RuntimeAPIManager.getAPI('input');
-                                let rotDelta = 0;
-                                if (wheel.isGrounded) {
-                                    const rollDir = { x: -springDir.y, y: springDir.x };
-                                    const rollVel = rb.velocity.x * rollDir.x + rb.velocity.y * rollDir.y;
-                                    if (Math.abs(rollVel) > 1.5) rotDelta = rollVel * 30;
-                                    else if (input && vehicle && input.isKeyPressed(vehicle.accelerateKey)) rotDelta = 500;
-                                } else if (input && vehicle) {
-                                    if (input.isKeyPressed(vehicle.accelerateKey)) rotDelta = 450;
-                                    else if (input.isKeyPressed(vehicle.brakeKey)) rotDelta = -450;
-                                }
-                                if (Math.abs(rotDelta) > 0.1) wheelTransform.rotation += rotDelta * deltaTime;
-                            }
-                        } else {
-                            // --- Previsualización en Editor ---
-                            wheelTransform.x = anchorWorldX + springDir.x * wheel.restDistance;
-                            wheelTransform.y = anchorWorldY + springDir.y * wheel.restDistance;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fixedUpdate(deltaTime) {
-        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
-
-        const rb = this.materia.getComponent(Rigidbody2D);
-        const transform = this.materia.getComponent(Transform);
-        const engine = RuntimeAPIManager.getAPI('engine');
-        if (!rb || !transform || !engine) return;
-
-        // Capturar velocidad fija para este frame (estabilidad)
-        const frameVelocity = { x: rb.velocity.x, y: rb.velocity.y };
-
-        const chassisRad = transform.rotation * Math.PI / 180;
-        const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
-
-        let springDir = {
-            x: (this.constraintAxis.x * transform.scale.x) * cos - (this.constraintAxis.y * transform.scale.y) * sin,
-            y: (this.constraintAxis.x * transform.scale.x) * sin + (this.constraintAxis.y * transform.scale.y) * cos
-        };
-        const mag = Math.hypot(springDir.x, springDir.y);
-        if (mag > 0) { springDir.x /= mag; springDir.y /= mag; }
-
-        const perpDir = { x: -springDir.y, y: springDir.x };
-
-        // Buscar TODAS las ruedas en contacto de este vehículo (en este u otros componentes hermanos)
-        let vehicleRoot = this.materia.findAncestorWithComponent(VehicleController) || this.materia;
-        let allSuspensions = [];
-        const findSusp = (mtr) => {
-            mtr.leyes.forEach(l => { if (l instanceof WheelSuspension) allSuspensions.push(l); });
-            mtr.children.forEach(findSusp);
-        };
-        findSusp(vehicleRoot);
-
-        // Pre-detectar cuántas ruedas tocan el suelo en TODO el vehículo en este frame
-        // Usamos una caché por frame para no repetir este cálculo costoso por cada componente de suspensión
-        if (rb._lastGCountFrame !== this.materia.scene.physicsSystem.currentFrame) {
-            let count = 0;
-            allSuspensions.forEach(s => {
-                const sTrans = s.materia.getComponent(Transform);
-                const sRad = sTrans.rotation * Math.PI / 180;
-                const sCos = Math.cos(sRad), sSin = Math.sin(sRad);
-                const sSpringDir = {
-                    x: (s.constraintAxis.x * sTrans.scale.x) * sCos - (s.constraintAxis.y * sTrans.scale.y) * sSin,
-                    y: (s.constraintAxis.x * sTrans.scale.x) * sSin + (s.constraintAxis.y * sTrans.scale.y) * sCos
-                };
-                const sMag = Math.hypot(sSpringDir.x, sSpringDir.y);
-                if (sMag > 0) { sSpringDir.x /= sMag; sSpringDir.y /= sMag; }
-
-                s.wheels.forEach(w => {
-                    let r = w.wheelRadius;
-                    if (w.materiaId) {
-                        const wm = this.materia.scene.findMateriaById(w.materiaId);
-                        const col = wm?.getComponent(CircleCollider2D);
-                        const wt = wm?.getComponent(Transform);
-                        if (col && wt) r = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
-                    }
-
-                    const wOffX = w.offset.x * sTrans.scale.x;
-                    const wOffY = w.offset.y * sTrans.scale.y;
-                    const wAncW = {
-                        x: sTrans.x + (wOffX * sCos - wOffY * sSin),
-                        y: sTrans.y + (wOffX * sSin + wOffY * sCos)
-                    };
-                    // ORIGEN ELEVADO AL MÁXIMO (10 radios) para ver el suelo incluso si estamos enterrados
-                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 10), y: wAncW.y - sSpringDir.y * (r * 10) };
-                    const wMaxDist = w.restDistance + r * 10;
-                    const wHit = engine.circleCast(wOrigin, sSpringDir, r, wMaxDist, { tags: s.gripTags, excludeAncestors: [vehicleRoot] });
-                    if (wHit && wHit.distance <= wMaxDist) count++;
-                });
-            });
-            rb._globalGroundedCount = count;
-            rb._lastGCountFrame = this.materia.scene.physicsSystem.currentFrame;
-        }
-
-        const totalGroundedInFrame = rb._globalGroundedCount;
-
-        // Pre-detectar cuántas ruedas tocan el suelo para repartir la carga en esta instancia
-        let groundedWheels = [];
-        for (const wheel of this.wheels) {
-            const scaledOffsetX = wheel.offset.x * transform.scale.x;
-            const scaledOffsetY = wheel.offset.y * transform.scale.y;
-            const anchorWorldX = transform.x + (scaledOffsetX * cos - scaledOffsetY * sin);
-            const anchorWorldY = transform.y + (scaledOffsetX * sin + scaledOffsetY * cos);
-
-            // Obtener el radio real del colisionador si existe para mayor precisión
-            let actualRadius = wheel.wheelRadius;
-            if (wheel.materiaId) {
-                const wm = this.materia.scene.findMateriaById(wheel.materiaId);
-                if (wm) wm.isWheel = true; // Marca para el filtrado en Physics.js
-
-                const col = wm?.getComponent(CircleCollider2D);
-                const wt = wm?.getComponent(Transform);
-                if (col && wt) {
-                    actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
-                }
-
-                // Desactivar simulación de la rueda para que no cause lanzamientos violentos
-                const wrb = wm?.getComponent(Rigidbody2D);
-                if (wrb) {
-                    wrb.bodyType = 'Kinematic';
-                    wrb.simulated = false;
-                }
-            }
-
-            const castOrigin = {
-                x: anchorWorldX - springDir.x * (actualRadius * 10),
-                y: anchorWorldY - springDir.y * (actualRadius * 10)
-            };
-
-            const vehicleRoot = this.materia.parent || this.materia;
-            const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
-            const filter = { tags: this.gripTags, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
-
-            const maxCastDist = wheel.restDistance + actualRadius * 10;
-            const hit = engine.circleCast(castOrigin, springDir, actualRadius, maxCastDist, filter);
-
-            if (hit && hit.distance <= maxCastDist) {
-                groundedWheels.push({ wheel, hit, anchorWorld: { x: anchorWorldX, y: anchorWorldY } });
-            } else {
-                wheel.isGrounded = false;
-                wheel._groundPoint = null;
-                wheel.currentDist = wheel.restDistance;
-            }
-        }
-
-        const gCount = Math.max(1, totalGroundedInFrame);
-
-        for (const { wheel, hit, anchorWorld } of groundedWheels) {
-            const anchorWorldX = anchorWorld.x;
-            const anchorWorldY = anchorWorld.y;
-
-            if (hit) {
-                wheel.isGrounded = true;
-                wheel._groundPoint = { ...hit.point };
-
-                // Obtenemos el radio real de nuevo para el cálculo de distancia
-                let actualRadius = wheel.wheelRadius;
-                const wm = this.materia.scene.findMateriaById(wheel.materiaId);
-                const col = wm?.getComponent(CircleCollider2D);
-                const wt = wm?.getComponent(Transform);
-                if (col && wt) actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
-
-                const distToAnchor = (hit.distance - actualRadius * 10);
-                wheel.currentDist = distToAnchor;
-
-                // Velocidad proyectada (usamos la fija para estabilidad)
-                const velAlongSpring = frameVelocity.x * springDir.x + frameVelocity.y * springDir.y;
-
-                let totalForce = 0;
-
-                // --- LOGICA DE ABSORCIÓN (FRENADO) ---
-                if (velAlongSpring > 0) {
-                    const t = Math.max(0.01, wheel.absorptionTime);
-                    totalForce = (velAlongSpring * rb.mass) / (t * gCount);
-
-                    const forceToStopThisFrame = (velAlongSpring * rb.mass) / (deltaTime * gCount);
-                    totalForce = Math.min(totalForce, forceToStopThisFrame);
-
-                    // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
-                    if (distToAnchor <= wheel.limitDistance + 2) {
-                        totalForce = forceToStopThisFrame;
-
-                        if (distToAnchor < wheel.limitDistance) {
-                            const overshoot = (wheel.limitDistance - distToAnchor);
-
-                            // Corrección de posición promediada para evitar saltos violentos
-                            transform.x -= (springDir.x * overshoot * 0.5) / gCount;
-                            transform.y -= (springDir.y * overshoot * 0.5) / gCount;
-
-                            // Comprobamos la velocidad ACTUAL del Rigidbody (que puede haber sido modificada por otra rueda)
-                            const currentVelAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
-
-                            // SOLO anulamos si el coche SIGUE cayendo.
-                            // Esto evita que 4 ruedas sumen sus impulsos y lancen el coche hacia arriba.
-                            if (currentVelAlongSpring > 0) {
-                                rb.velocity.x -= (springDir.x * currentVelAlongSpring);
-                                rb.velocity.y -= (springDir.y * currentVelAlongSpring);
-                            }
-                        }
-                    }
-                }
-
-                // --- LOGICA DE RECUPERACIÓN (SUBIDA) ---
-                if (distToAnchor < wheel.restDistance) {
-                    const diff = wheel.restDistance - distToAnchor;
-                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 200)) / gCount;
-                    const damping = (velAlongSpring < 0) ? (Math.abs(velAlongSpring) * rb.mass * 6.0) / gCount : 0;
-
-                    const weightSupport = (9.8 * rb.mass) / gCount;
-                    const finalRecovery = Math.min(recoveryForce, weightSupport * 1.5);
-
-                    totalForce += (finalRecovery - damping);
-                }
-
-                // Seguridad: Permitimos fuerzas negativas moderadas
-                totalForce = Math.max(-rb.mass * 100, totalForce);
-                const maxForce = rb.mass * 12000;
-                totalForce = Math.min(totalForce, maxForce);
-
-                const worldForce = { x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime };
-                rb.addForce(worldForce);
-
-                // Aplicación de Torque para inclinación
-                const leverArm = { x: anchorWorldX - transform.x, y: anchorWorldY - transform.y };
-                const torque = (leverArm.x * worldForce.y - leverArm.y * worldForce.x);
-                rb.addTorque(torque);
-
-                // Grip y Fricción Lateral
-                const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
-                const lateralGrip = -lateralVel * this.grip * rb.mass * 400;
-                rb.addForce({ x: perpDir.x * lateralGrip * deltaTime, y: perpDir.y * lateralGrip * deltaTime });
-
-                // Fricción Longitudinal
-                const rollDir = { x: -springDir.y, y: springDir.x };
-                const forwardVel = rb.velocity.x * rollDir.x + rb.velocity.y * rollDir.y;
-                let rollingResistance = -forwardVel * 0.2 * rb.mass * 50;
-                rb.addForce({ x: rollDir.x * rollingResistance * deltaTime, y: rollDir.y * rollingResistance * deltaTime });
-            } else {
-                wheel.isGrounded = false;
-                wheel._groundPoint = null;
-                wheel.currentDist = wheel.restDistance;
-            }
-        }
-    }
-
-    estaTocandoSuelo() {
-        return this.wheels.some(w => w.isGrounded);
-    }
-
-    clone() {
-        const copy = new WheelSuspension(null);
-        copy.wheels = this.wheels.map(w => ({ ...w, offset: { ...w.offset } }));
-        copy.gripTags = [...this.gripTags];
-        copy.grip = this.grip;
-        copy.showGizmo = this.showGizmo;
-        copy.constraintAxis = { ...this.constraintAxis };
         return copy;
     }
 }
@@ -6135,7 +5820,6 @@ registerComponent('Patrol', Patrol);
 registerComponent('ParticleSystem', ParticleSystem);
 registerComponent('RaycastSource', RaycastSource);
 registerComponent('VehicleController', VehicleController);
-registerComponent('WheelSuspension', WheelSuspension);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('LineCollider2D', LineCollider2D);

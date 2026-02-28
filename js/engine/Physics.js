@@ -290,21 +290,22 @@ export class PhysicsSystem {
                 // --- 2.1 Collision Filtering ---
                 // 1. Assembly Filter: Don't collide if they share the same VehicleController.
                 // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
-                const vehicleA = (materiaA.getComponent(Components.VehicleController) || materiaA.getComponent(Components.WheelSuspension)) ? materiaA : (materiaA.findAncestorWithComponent(Components.VehicleController) || materiaA.findAncestorWithComponent(Components.WheelSuspension));
-                const vehicleB = (materiaB.getComponent(Components.VehicleController) || materiaB.getComponent(Components.WheelSuspension)) ? materiaB : (materiaB.findAncestorWithComponent(Components.VehicleController) || materiaB.findAncestorWithComponent(Components.WheelSuspension));
+                const vehicleA = (materiaA.getComponent(Components.VehicleController)) ? materiaA : (materiaA.findAncestorWithComponent(Components.VehicleController));
+                const vehicleB = (materiaB.getComponent(Components.VehicleController)) ? materiaB : (materiaB.findAncestorWithComponent(Components.VehicleController));
 
-                if (vehicleA && vehicleA === vehicleB) continue;
+                // 1. Assembly Filter: Don't collide if they share the same VehicleController.
+                // Exception: AmortiguadorCollider SHOULD interact with its own vehicle parts.
+                if (vehicleA && vehicleA === vehicleB) {
+                    const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
+                    if (!hasAmort) continue;
+                }
 
                 // 2. Wheel Filter: Ignore physical collisions for wheel materias.
-                // They are handled by the WheelSuspension component logic.
-                if (materiaA.isWheel || materiaB.isWheel) continue;
-
-                // Also check if one is explicitly registered as a wheel of a suspension on the other
-                const suspA = materiaA.getComponent(Components.WheelSuspension);
-                if (suspA && suspA.wheels.some(w => w.materiaId === materiaB.id)) continue;
-
-                const suspB = materiaB.getComponent(Components.WheelSuspension);
-                if (suspB && suspB.wheels.some(w => w.materiaId === materiaA.id)) continue;
+                // Exception: AmortiguadorCollider SHOULD interact with wheels.
+                if (materiaA.isWheel || materiaB.isWheel) {
+                    const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
+                    if (!hasAmort) continue;
+                }
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
                     continue;

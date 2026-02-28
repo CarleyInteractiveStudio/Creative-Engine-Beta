@@ -116,7 +116,6 @@ const componentShortcuts = [
     'raycastSource', 'rallo',
     'basicAI', 'iaBasica',
     'vehicleController', 'controladorDeVehiculo',
-    'wheelSuspension', 'suspensionDeRueda',
     'amortiguadorCollider', 'colisionadorAmortiguador',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
@@ -159,7 +158,7 @@ const componentShortcuts = [
     'azar', 'random', 'seno', 'sin', 'coseno', 'cos', 'tangente', 'tan',
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
     'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
-    'tono', 'pitch', 'estaTocandoSuelo'
+    'tono', 'pitch', 'estaTocandoSuelo', 'tagsDeDeslizamiento'
 ];
 
 function getDefaultValueForType(canonicalType) {

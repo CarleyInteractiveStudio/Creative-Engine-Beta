@@ -1810,8 +1810,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const water = materia.getComponent(Components.Water);
                 if (water) water.update(deltaTime);
 
-                const suspension = materia.getComponent(Components.WheelSuspension);
-                if (suspension) suspension.update(deltaTime);
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.
