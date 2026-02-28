@@ -66,6 +66,7 @@ const componentAliases = {
     'GridLayoutGroup': 'autoDisposicionRejilla',
     'VehicleController': 'controladorDeVehiculo',
     'WheelSuspension': 'suspensionDeRueda',
+    'AmortiguadorCollider': 'colisionadorAmortiguador',
 };
 
 
@@ -1089,6 +1090,31 @@ export class Rigidbody2D extends Leyes {
         newRb.velocity = { x: 0, y: 0 };
         newRb.angularVelocity = 0;
         return newRb;
+    }
+}
+
+export class AmortiguadorCollider extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = true;
+        this.offset = { x: 0, y: 0 };
+        this.size = { x: 50.0, y: 50.0 };
+        this.soporteMaximo = 2000;
+        this.amortiguacion = 0.8; // Drenaje de velocidad
+        this.fuerzaRecuperacion = 1.0; // Multiplicador de empuje
+        this.distanciaDeseada = 0.8; // 80-90% como dijo el usuario
+    }
+
+    clone() {
+        const copy = new AmortiguadorCollider(null);
+        copy.isTrigger = this.isTrigger;
+        copy.offset = { ...this.offset };
+        copy.size = { ...this.size };
+        copy.soporteMaximo = this.soporteMaximo;
+        copy.amortiguacion = this.amortiguacion;
+        copy.fuerzaRecuperacion = this.fuerzaRecuperacion;
+        copy.distanciaDeseada = this.distanciaDeseada;
+        return copy;
     }
 }
 
@@ -2312,6 +2338,7 @@ registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
 registerComponent('CircleCollider2D', CircleCollider2D);
 registerComponent('PolygonCollider2D', PolygonCollider2D);
+registerComponent('AmortiguadorCollider', AmortiguadorCollider);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
 registerComponent('SpriteRenderer', SpriteRenderer);
@@ -4973,195 +5000,178 @@ export class LineCollider2D extends Leyes {
 export class VehicleController extends Leyes {
     constructor(materia) {
         super(materia);
-        this.vehicleType = 'Car'; // 'Car', 'Plane', 'Helicopter'
-        this.viewMode = 'Side-View'; // 'Top-Down', 'Side-View'
+        this.viewMode = 'Platformer'; // 'Platformer', 'Top-Down'
         this.power = 2000;
         this.maxSpeed = 1000;
-        this.brakingForce = 1500;
-        this.steeringRange = 30;
-        this.turnSpeed = 100;
-        this.mass = 1200;
         this.autoFlip = false;
 
-        // Controles configurables
-        this.accelerateKey = 'd'; // A la derecha en Side-View
-        this.brakeKey = 'a';      // A la izquierda en Side-View
-        this.pitchUpKey = 'w';
-        this.pitchDownKey = 's';
-        this.upKey = 'space';
-        this.downKey = 'shift';
+        // Configuración Top-Down
+        this.turnSpeed = 200;
+        this.driftIntensity = 0.5;
 
-        // Ajustes realistas
-        this.pitchStrength = 5.0;
-        this.takeoffSpeed = 300;
-        this.heightControlMode = 'Potency';
+        // Gestión de Ruedas
+        this.wheels = []; // { materiaId, freezeX: true, freezeY: false, limitY: 40, limitX: 40, initialOffset: {x,y} }
+        this._wheelsInitialized = false;
+
+        // Controles
+        this.accelerateKey = 'd';
+        this.brakeKey = 'a';
+        this.leftKey = 'a';
+        this.rightKey = 'd';
+        this.upKey = 'w';
+        this.downKey = 's';
 
         // Estado interno
-        this.currentPotency = 0;
-        this.currentSteer = 0;
+        this._currentVelocity = { x: 0, y: 0 };
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+
+        const transform = this.materia.getComponent(Transform);
+        if (!transform) return;
+
+        if (isGame) {
+            // Inicializar offsets de ruedas si es el primer frame de juego
+            if (!this._wheelsInitialized) {
+                this.wheels.forEach(w => {
+                    if (w.materiaId) {
+                        const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
+                        if (wheelMtr) {
+                            const wTrans = wheelMtr.getComponent(Transform);
+                            const rad = -transform.rotation * Math.PI / 180;
+                            const cos = Math.cos(rad), sin = Math.sin(rad);
+                            const dx = wTrans.x - transform.x;
+                            const dy = wTrans.y - transform.y;
+
+                            w.initialOffset = {
+                                x: dx * cos - dy * sin,
+                                y: dx * sin + dy * cos
+                            };
+                        }
+                    }
+                });
+                this._wheelsInitialized = true;
+            }
+
+            if (this.viewMode === 'Top-Down') {
+                this._handleTopDown(transform, deltaTime);
+            }
+
+            this._syncWheels(transform);
+        }
     }
 
     fixedUpdate(deltaTime) {
         if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
 
+        if (this.viewMode === 'Platformer') {
+            this._handlePlatformer(deltaTime);
+        }
+    }
+
+    _handlePlatformer(deltaTime) {
         const input = RuntimeAPIManager.getAPI('input');
         const rb = this.materia.getComponent(Rigidbody2D);
         const transform = this.materia.getComponent(Transform);
-        if (!input || !rb || !transform) return;
+        if (!input || !rb) return;
 
-        if (rb.mass !== this.mass) rb.mass = this.mass;
+        let moveInput = 0;
+        if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
+        if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
 
-        // --- Lectura de Input según Modo ---
+        if (this.autoFlip && moveInput !== 0) {
+            transform.flipX = moveInput < 0;
+        }
+
+        const speed = Math.abs(rb.velocity.x);
+        if (moveInput !== 0 && speed < this.maxSpeed / 50) {
+            const forceMag = this.power * rb.mass * 0.5 * moveInput;
+            rb.addForce(forceMag * deltaTime * 100, 0);
+        }
+    }
+
+    _handleTopDown(transform, deltaTime) {
+        const input = RuntimeAPIManager.getAPI('input');
+        if (!input) return;
+
         let moveInput = 0;
         let steerInput = 0;
-        let pitchInput = 0;
 
-        if (this.viewMode === 'Side-View') {
-            // Derecha acelera, Izquierda frena/retrocede
-            if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
-            if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
+        if (input.isKeyPressed(this.upKey)) moveInput += 1;
+        if (input.isKeyPressed(this.downKey)) moveInput -= 1;
+        if (input.isKeyPressed(this.rightKey)) steerInput += 1;
+        if (input.isKeyPressed(this.leftKey)) steerInput -= 1;
 
-            // W/S inclinan el auto (Pitch)
-            if (input.isKeyPressed(this.pitchUpKey)) pitchInput -= 1;
-            if (input.isKeyPressed(this.pitchDownKey)) pitchInput += 1;
+        // Rotación
+        transform.rotation += steerInput * this.turnSpeed * deltaTime;
 
-            // Lógica de Auto-Flip
-            if (this.autoFlip && moveInput !== 0) {
-                transform.flipX = moveInput < 0;
-            }
-        } else {
-            // Top-Down tradicional
-            if (input.isKeyPressed('w')) moveInput += 1;
-            if (input.isKeyPressed('s')) moveInput -= 1;
-            if (input.isKeyPressed('d')) steerInput += 1;
-            if (input.isKeyPressed('a')) steerInput -= 1;
-        }
-
-        // Buscar amortiguadores en el mismo objeto o hijos para calcular tracción
-        const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
-            .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
-
-        let groundedCount = 0;
-        let totalWheels = 0;
-        if (suspensions.length > 0) {
-            suspensions.forEach(s => {
-                if (!s) return;
-                totalWheels += s.wheels.length;
-                groundedCount += s.wheels.filter(w => w && w.isGrounded).length;
-            });
-        }
-
-        // Tracción: proporcional a ruedas en suelo. Mínimo 1 si no hay suspensión (basado en collider del cuerpo)
-        const traction = totalWheels > 0 ? (groundedCount / Math.max(1, totalWheels / 2)) : (this.materia.isActive ? 1.0 : 0);
-        const finalTraction = Math.min(1.0, traction);
-
-        // --- Lógica según tipo ---
-        if (this.vehicleType === 'Car') {
-            this._handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, finalTraction, deltaTime);
-        } else if (this.vehicleType === 'Plane') {
-            this._handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, finalTraction, deltaTime);
-        } else if (this.vehicleType === 'Helicopter') {
-            const upInput = input.isKeyPressed(this.upKey) ? 1 : (input.isKeyPressed(this.downKey) ? -1 : 0);
-            this._handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, finalTraction, deltaTime);
-        }
-    }
-
-    _handleCarPhysics(rb, transform, moveInput, steerInput, pitchInput, finalTraction, deltaTime) {
+        // Movimiento Arcade
         const rad = transform.rotation * Math.PI / 180;
         const forward = { x: Math.cos(rad), y: Math.sin(rad) };
-        const speed = Math.hypot(rb.velocity.x, rb.velocity.y);
 
-        // Aceleración / Freno
-        if (moveInput !== 0 && speed < this.maxSpeed / 50) {
-            const forceMag = this.power * rb.mass * 0.8 * moveInput * finalTraction;
+        const targetVelX = forward.x * moveInput * (this.power / 10);
+        const targetVelY = forward.y * moveInput * (this.power / 10);
 
-            // En modo plataforma (Side-View), el coche avanza horizontalmente respecto al mundo si no está inclinado,
-            // o siguiendo su vector forward para subir cuestas.
-            rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
+        // Derrape (Interpolación de velocidad)
+        const lerpFactor = 1.0 - (this.driftIntensity * 0.9);
+        this._currentVelocity.x += (targetVelX - this._currentVelocity.x) * lerpFactor * deltaTime * 5;
+        this._currentVelocity.y += (targetVelY - this._currentVelocity.y) * lerpFactor * deltaTime * 5;
 
-            // Efecto de reacción: inclinar el chasis al acelerar (Wheelie effect)
-            if (this.viewMode === 'Side-View' && finalTraction > 0) {
-                const reactionTorque = moveInput * this.power * rb.mass * 0.2;
-                rb.addTorque(-reactionTorque * deltaTime);
-            }
-        }
-
-        // Giro o Pitch
-        if (this.viewMode === 'Side-View') {
-            // En el aire o suelo, el Pitch aplica torque para rotar el auto físicamente
-            if (pitchInput !== 0) {
-                const pitchTorque = pitchInput * this.pitchStrength * rb.mass * 200;
-                rb.addTorque(pitchTorque * deltaTime);
-            }
-            // Estabilización automática en el aire si no hay input (frenado angular)
-            if (finalTraction === 0 && pitchInput === 0) {
-                rb.angularVelocity *= Math.pow(0.5, deltaTime);
-            }
-        } else {
-            // Top-Down: Steer rota el auto
-            if (speed > 0.5 && finalTraction > 0) {
-                const turnDir = steerInput * this.turnSpeed * deltaTime * (rb.velocity.x * forward.x + rb.velocity.y * forward.y > 0 ? 1 : -1);
-                transform.rotation += turnDir;
-            }
-        }
+        transform.x += this._currentVelocity.x * deltaTime;
+        transform.y += this._currentVelocity.y * deltaTime;
     }
 
-    _handlePlanePhysics(rb, transform, moveInput, steerInput, pitchInput, finalTraction, deltaTime) {
-        const rad = transform.rotation * Math.PI / 180;
-        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
-        const speed = Math.hypot(rb.velocity.x, rb.velocity.y) * 50;
+    _syncWheels(transform) {
+        this.wheels.forEach(w => {
+            if (!w.materiaId) return;
+            const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
+            if (!wheelMtr) return;
+            const wTrans = wheelMtr.getComponent(Transform);
+            if (!wTrans) return;
 
-        // Empuje motor (Acelerar/Frenar) - Necesita tracción si está en el suelo para despegar
-        if (moveInput > 0) {
-            const engineForce = this.power * 100 * (finalTraction > 0 ? finalTraction : 0.8); // 0.8 de empuje hélice en aire
-            rb.addForce({ x: forward.x * engineForce * deltaTime, y: forward.y * engineForce * deltaTime });
-        }
+            // Calcular posición teórica basada en offset inicial y rotación del coche
+            const rad = transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
 
-        // Sustentación (Lift) - Solo si hay velocidad hacia adelante
-        const forwardSpeed = (rb.velocity.x * forward.x + rb.velocity.y * forward.y) * 50;
-        if (forwardSpeed > this.takeoffSpeed) {
-            const liftFactor = Math.min(1.2, (forwardSpeed - this.takeoffSpeed) / 500);
-            // La sustentación empuja "hacia arriba" relativo a la inclinación del ala (pitch)
-            // En coordenadas Y-Down, el vector "arriba" relativo al frente {x, y} es {y, -x}
-            const up = { x: forward.y, y: -forward.x };
-            // Aumentamos la fuerza de sustentación para que realmente pueda volar
-            rb.addForce({ x: up.x * 9.8 * rb.mass * 150 * liftFactor * deltaTime, y: up.y * 9.8 * rb.mass * 150 * liftFactor * deltaTime });
-        }
+            const ox = w.initialOffset.x;
+            const oy = w.initialOffset.y;
 
-        // Pitch (Inclinar para subir/bajar)
-        let actualPitch = pitchInput;
-        if (this.viewMode === 'Top-Down') actualPitch = steerInput; // Alias para top-down
-        transform.rotation += actualPitch * this.turnSpeed * deltaTime;
-    }
+            const rotatedX = ox * cos - oy * sin;
+            const rotatedY = ox * sin + oy * cos;
 
-    _handleHelicopterPhysics(rb, transform, moveInput, steerInput, upInput, finalTraction, deltaTime) {
-        const rad = transform.rotation * Math.PI / 180;
-        const up = { x: Math.sin(rad), y: -Math.cos(rad) };
-        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+            const targetX = transform.x + rotatedX;
+            const targetY = transform.y + rotatedY;
 
-        // Rotor Principal (Altura)
-        let liftForce = 9.8 * rb.mass * 50; // Fuerza base para contrarrestar gravedad
+            if (w.freezeX) {
+                wTrans.x = targetX;
+            } else if (w.limitX !== undefined) {
+                const distX = wTrans.x - targetX;
+                if (Math.abs(distX) > w.limitX) {
+                    wTrans.x = targetX + Math.sign(distX) * w.limitX;
+                }
+            }
 
-        // Si está en el suelo, el rotor necesita potencia para despegar
-        liftForce += upInput * this.power * 15;
+            if (w.freezeY) {
+                wTrans.y = targetY;
+            } else if (w.limitY !== undefined) {
+                const distY = wTrans.y - targetY;
+                if (Math.abs(distY) > w.limitY) {
+                    wTrans.y = targetY + Math.sign(distY) * w.limitY;
+                }
+            }
 
-        rb.addForce({ x: up.x * liftForce * deltaTime, y: up.y * liftForce * deltaTime });
-
-        // Giro y Movimiento lateral por inclinación (Solo si no está pegado al suelo)
-        if (finalTraction < 0.9) {
-            transform.rotation += steerInput * this.turnSpeed * deltaTime;
-        }
-
-        // Empuje motor (Avanzar/Retroceder) - Usa tracción si toca suelo, hélice si no
-        if (moveInput !== 0) {
-            const hForce = this.power * 5 * (finalTraction > 0 ? finalTraction : 0.6);
-            rb.addForce({ x: forward.x * moveInput * hForce * deltaTime, y: forward.y * moveInput * hForce * deltaTime });
-        }
+            // Sincronizar rotación si es Top-Down
+            if (this.viewMode === 'Top-Down') {
+                wTrans.rotation = transform.rotation;
+            }
+        });
     }
 
     clone() {
         const copy = new VehicleController(null);
         Object.assign(copy, this);
+        copy.wheels = this.wheels.map(w => ({ ...w, initialOffset: { ...w.initialOffset } }));
         return copy;
     }
 }

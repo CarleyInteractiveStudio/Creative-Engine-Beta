@@ -87,6 +87,8 @@ const typeMap = {
     'autoDisposicionHorizontal': 'HorizontalLayoutGroup',
     'autoDisposicionRejilla': 'GridLayoutGroup',
     'ajustadorDeTamanoDeContenido': 'ContentSizeFitter',
+    'AmortiguadorCollider': 'AmortiguadorCollider',
+    'colisionadorAmortiguador': 'AmortiguadorCollider',
     'variable': 'any',
     'any': 'any'
 };
@@ -115,6 +117,7 @@ const componentShortcuts = [
     'basicAI', 'iaBasica',
     'vehicleController', 'controladorDeVehiculo',
     'wheelSuspension', 'suspensionDeRueda',
+    'amortiguadorCollider', 'colisionadorAmortiguador',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
     'uiImage', 'imagenUI',

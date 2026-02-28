@@ -279,7 +279,7 @@ export class PhysicsSystem {
             return m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CapsuleCollider2D) ||
                    m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.PolygonCollider2D) ||
                    m.getComponent(Components.TilemapCollider2D) || m.getComponent(Components.TerrenoCollider2D) ||
-                   m.getComponent(Components.LineCollider2D);
+                   m.getComponent(Components.LineCollider2D) || m.getComponent(Components.AmortiguadorCollider);
         });
 
         for (let i = 0; i < collidables.length; i++) {
@@ -532,6 +532,15 @@ export class PhysicsSystem {
                  info.x = -info.x; info.y = -info.y;
                  collisionInfo = info;
              }
+        } else if (colliderA instanceof Components.AmortiguadorCollider) {
+            collisionInfo = this.isColliderVsAmortiguador(materiaB, materiaA);
+            if (collisionInfo) {
+                collisionInfo.x = -collisionInfo.x; collisionInfo.y = -collisionInfo.y;
+            }
+        }
+
+        if (colliderB instanceof Components.AmortiguadorCollider && !collisionInfo) {
+            collisionInfo = this.isColliderVsAmortiguador(materiaA, materiaB);
         }
 
         if (collisionInfo && !colliderA.isTrigger && !colliderB.isTrigger) {
@@ -664,7 +673,8 @@ export class PhysicsSystem {
                materia.getComponent(Components.PolygonCollider2D) ||
                materia.getComponent(Components.TilemapCollider2D) ||
                materia.getComponent(Components.TerrenoCollider2D) ||
-               materia.getComponent(Components.LineCollider2D);
+               materia.getComponent(Components.LineCollider2D) ||
+               materia.getComponent(Components.AmortiguadorCollider);
     }
 
     _getLineVertices(transform, collider) {
@@ -682,6 +692,84 @@ export class PhysicsSystem {
             x: centerX + (p.x * transform.scale.x * cos - p.y * transform.scale.y * sin),
             y: centerY + (p.x * transform.scale.x * sin + p.y * transform.scale.y * cos)
         }));
+    }
+
+    isColliderVsAmortiguador(colliderMateria, amortMateria) {
+        const otherCollider = this.getCollider(colliderMateria);
+        const amort = amortMateria.getComponent(Components.AmortiguadorCollider);
+        const transformA = amortMateria.getComponent(Components.Transform);
+
+        if (!otherCollider || !amort || !transformA) return null;
+
+        // Reutilizar lógica de Box vs Box/Circle para detección inicial
+        if (!this._tempAmortMateria) {
+            this._tempAmortMateria = new Materia('_physics_amort_temp');
+            this._tempAmortTransform = new Components.Transform(this._tempAmortMateria);
+            this._tempAmortBox = new Components.BoxCollider2D(this._tempAmortMateria);
+            this._tempAmortMateria.getComponent = (t) => {
+                if (t === Components.Transform) return this._tempAmortTransform;
+                if (t === Components.BoxCollider2D) return this._tempAmortBox;
+                return null;
+            };
+        }
+
+        this._tempAmortTransform.position = transformA.position;
+        this._tempAmortTransform.rotation = transformA.rotation;
+        this._tempAmortTransform.scale = transformA.scale;
+        this._tempAmortBox.size = amort.size;
+        this._tempAmortBox.offset = amort.offset;
+
+        let info = null;
+        if (otherCollider instanceof Components.BoxCollider2D) {
+            info = this.isBoxVsBox(colliderMateria, this._tempAmortMateria);
+        } else if (otherCollider instanceof Components.CircleCollider2D) {
+            info = this.isCircleVsBox(colliderMateria, this._tempAmortMateria);
+        } else if (otherCollider instanceof Components.CapsuleCollider2D) {
+            info = this.isBoxVsCapsule(this._tempAmortMateria, colliderMateria);
+            if (info) { info.x = -info.x; info.y = -info.y; }
+        }
+
+        if (info) {
+            // Aplicar lógica de amortiguación
+            const rb = colliderMateria.getComponent(Components.Rigidbody2D);
+            if (rb && rb.bodyType.toLowerCase() === 'dynamic') {
+                const normal = this._normalize({ x: info.x, y: info.y });
+
+                // 1. Drenar velocidad (Amortiguación)
+                const relativeVel = rb.velocity.x * normal.x + rb.velocity.y * normal.y;
+                if (relativeVel > 0) {
+                     rb.velocity.x -= normal.x * relativeVel * amort.amortiguacion;
+                     rb.velocity.y -= normal.y * relativeVel * amort.amortiguacion;
+                }
+
+                // 2. Fuerza de recuperación (Expulsión inteligente)
+                const penetration = info.magnitude;
+
+                // Calculamos cuánto 'debería' estar fuera según nivelExpulsion (0 a 1)
+                // Si nivelExpulsion es 1.0, queremos expulsarlo totalmente (objetivo penetración = 0)
+                // Si nivelExpulsion es 0.8, aceptamos un 20% de penetración.
+                const totalSize = Math.max(amort.size.x * transformA.scale.x, amort.size.y * transformA.scale.y);
+                const targetPenetration = totalSize * (1.0 - amort.distanciaDeseada);
+
+                // Si la penetración es mayor al objetivo, empujamos
+                if (penetration > targetPenetration) {
+                    const extraPenetration = penetration - targetPenetration;
+
+                    // El peso influye: si es demasiado pesado para el soporte, no lo expulsa del todo
+                    const weightFactor = Math.min(1.0, amort.soporteMaximo / (rb.mass * 10 || 1));
+                    const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 10;
+
+                    rb.addForce(-normal.x * pushForce * 100, -normal.y * pushForce * 100);
+                }
+            }
+
+            // Importante: No permitimos que Physics.js resuelva esta colisión de forma estándar
+            // devolvemos null después de aplicar nuestras fuerzas manuales si no queremos rebote brusco.
+            // O devolvemos el info si queremos que el sistema sepa que hay contacto para eventos.
+            return info;
+        }
+
+        return null;
     }
 
     isColliderVsLine(colliderMateria, lineMateria) {
