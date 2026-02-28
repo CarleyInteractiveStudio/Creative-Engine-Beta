@@ -2157,7 +2157,7 @@ export class VideoPlayer extends Leyes {
     }
 
     syncSizeToUITransform() {
-        const uiTransform = this.materia.getComponent(Components.UITransform);
+        const uiTransform = this.materia.getComponent(UITransform);
         if (uiTransform && this.videoWidth > 0 && this.videoHeight > 0) {
             uiTransform.size.width = this.videoWidth;
             uiTransform.size.height = this.videoHeight;

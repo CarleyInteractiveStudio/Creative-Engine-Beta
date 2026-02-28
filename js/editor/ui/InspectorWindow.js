@@ -3269,6 +3269,42 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
+        } else if (ley instanceof Components.BasicAI) {
+            const renderAIFuncInput = (propName, label) => {
+                let inputHTML = `<input type="text" class="prop-input" data-component="BasicAI" data-prop="${propName}" value="${ley[propName] || ''}" placeholder="${L.get('EXAMPLE_AI_FUNC', 'ej: alDetectarEnemigo')}">`;
+
+                if (ley.scriptTarget) {
+                    const targetMateria = window.SceneManager.currentScene.findMateriaById(ley.scriptTarget);
+                    if (targetMateria) {
+                        const scripts = targetMateria.getComponents(Components.CreativeScript);
+                        let allFunctions = [];
+                        scripts.forEach(s => {
+                            const metadata = CES_Transpiler.getScriptMetadata(s.scriptName);
+                            if (metadata && metadata.publicFunctions) {
+                                allFunctions = allFunctions.concat(metadata.publicFunctions);
+                            }
+                        });
+
+                        if (allFunctions.length > 0) {
+                            inputHTML = `
+                                <select class="prop-input" data-component="BasicAI" data-prop="${propName}">
+                                    <option value="">${L.get('SELECT_FUNCTION', '-- Seleccionar Función --')}</option>
+                                    ${allFunctions.map(f => `<option value="${f}" ${ley[propName] === f ? 'selected' : ''}>${f}</option>`).join('')}
+                                </select>
+                            `;
+                        }
+                    }
+                }
+                return `
+                    <div class="prop-row-multi">
+                        <label>${label}</label>
+                        ${inputHTML}
+                    </div>
+                `;
+            };
+
+            componentHTML = `
+                ${renderComponentHeader(L.get('BASIC_AI', "IA Básica"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
