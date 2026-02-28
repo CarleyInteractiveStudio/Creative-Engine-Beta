@@ -5077,13 +5077,14 @@ export class VehicleController extends Leyes {
 
         // Giro o Pitch
         if (this.viewMode === 'Side-View') {
-            // En el aire o suelo, el Pitch rota el auto
+            // En el aire o suelo, el Pitch aplica torque para rotar el auto físicamente
             if (pitchInput !== 0) {
-                rb.angularVelocity += pitchInput * this.pitchStrength * 0.15 * deltaTime;
+                const pitchTorque = pitchInput * this.pitchStrength * rb.mass * 200;
+                rb.addTorque(pitchTorque * deltaTime);
             }
-            // Estabilización automática en el aire si no hay input
+            // Estabilización automática en el aire si no hay input (frenado angular)
             if (finalTraction === 0 && pitchInput === 0) {
-                rb.angularVelocity *= (1.0 - 0.5 * deltaTime);
+                rb.angularVelocity *= Math.pow(0.5, deltaTime);
             }
         } else {
             // Top-Down: Steer rota el auto
@@ -5351,23 +5352,24 @@ export class WheelSuspension extends Leyes {
                 const compressionVelocity = (compressionAmount - prevCompression) / deltaTime;
 
                 // Fuerza del muelle (Hooke's Law: F = k * x)
-                // Multiplicador ajustado para que stiffness 1-100 sea equilibrado.
-                // Reducido drásticamente para evitar el efecto de lanzamiento violento.
-                const springForce = compressionAmount * (wheel.stiffness * 40);
+                // Multiplicador ajustado para máxima estabilidad y permitir hundimiento natural (sag).
+                const springForce = (compressionAmount * wheel.stiffness) * (rb.mass / 10) * 0.06;
 
                 // Amortiguación (Damping: F = c * v)
-                // Amortiguación fuerte pero controlada para disipar energía.
-                const dampingBase = wheel.damping * (rb.mass / 10);
-                const dampingFactor = compressionVelocity > 0 ? (dampingBase * 1.5) : (dampingBase * 4);
-                const dampingForce = compressionVelocity * dampingFactor;
+                // Protección: En el primer frame de impacto, evitamos impulsos violentos.
+                const safeCompVelocity = (wheel.isGrounded && Math.abs(compressionVelocity) < 500) ? compressionVelocity : 0;
+
+                // Amortiguación asimétrica para absorber el golpe y evitar el efecto "lanzamiento".
+                const dampingFactor = safeCompVelocity > 0 ? (wheel.damping * 0.02) : (wheel.damping * 0.12);
+                const dampingForce = safeCompVelocity * dampingFactor * rb.mass;
 
                 let totalForce = springForce + dampingForce;
 
                 // La suspensión solo empuja hacia afuera
                 totalForce = Math.max(0, totalForce);
 
-                // Seguridad: Limitar la fuerza máxima para evitar explosiones físicas (lanzamientos astronómicos)
-                const maxForce = rb.mass * 2000;
+                // Seguridad estricta: Evitar fuerzas absurdas
+                const maxForce = rb.mass * 800;
                 totalForce = Math.min(totalForce, maxForce);
 
                 // Aplicar la fuerza al chasis en el eje de la suspensión
@@ -5392,9 +5394,9 @@ export class WheelSuspension extends Leyes {
                 if (compressionAmount >= wheel.restLength) {
                     const overCompression = (compressionAmount - wheel.restLength);
                     if (overCompression > 0) {
-                        // Empuje directo de posición para evitar clipping profundo
-                        transform.x -= springDir.x * overCompression * 0.1;
-                        transform.y -= springDir.y * overCompression * 0.1;
+                        // Empuje directo de posición MUY suave para evitar clipping sin causar saltos
+                        transform.x -= springDir.x * overCompression * 0.02;
+                        transform.y -= springDir.y * overCompression * 0.02;
                     }
 
                     // Absorción de impacto extrema: Reducir drásticamente la velocidad en el eje del muelle
