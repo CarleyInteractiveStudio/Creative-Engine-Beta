@@ -5041,7 +5041,13 @@ export class VehicleController extends Leyes {
         // Contar cuántas ruedas están tocando suelo
         let groundedCount = 0;
         if (suspensions.length > 0) {
-            groundedCount = suspensions.reduce((acc, s) => acc + (s.wheels ? s.wheels.filter(w => w.isGrounded).length : (s.isGrounded ? 1 : 0)), 0);
+            groundedCount = suspensions.reduce((acc, s) => {
+                if (!s) return acc;
+                if (s.wheels && Array.isArray(s.wheels)) {
+                    return acc + s.wheels.filter(w => w && w.isGrounded).length;
+                }
+                return acc + (s.isGrounded ? 1 : 0);
+            }, 0);
         }
 
         const traction = suspensions.length > 0 ? (groundedCount / (suspensions.length * 2)) : (groundedCount > 0 ? 1.0 : 0);
@@ -5258,24 +5264,24 @@ export class WheelSuspension extends Leyes {
 
             if (hit) {
                 wheel.isGrounded = true;
-                // distToWheelCenter es la distancia desde el castOrigin al punto donde el CENTRO de la rueda tocaría el suelo.
-                // castOrigin está a -wheelRadius del anclaje.
-                const distToWheelCenterFromOrigin = hit.distance - wheel.wheelRadius;
-                // La distancia desde el anclaje real al centro de la rueda es:
-                const distToWheelCenter = distToWheelCenterFromOrigin - wheel.wheelRadius;
+                // distToWheelCenter es la distancia desde el anclaje real hasta el CENTRO de la rueda física.
+                // circleCast devuelve la distancia recorrida por el centro desde castOrigin.
+                // castOrigin = anclaje - springDir * wheelRadius.
+                // Por lo tanto: distToWheelCenter = hit.distance - wheel.wheelRadius;
+                const distToWheelCenter = hit.distance - wheel.wheelRadius;
 
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física (Amortiguación tipo Hill Climb)
                 // Multiplicadores ajustados para que el coche "absorba" el impacto y no rebote como loco
-                const springForce = (compressionAmount * wheel.stiffness) * 1500;
+                const springForce = (compressionAmount * wheel.stiffness) * 2000;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
-                const dampingForce = (compressionVelocity * wheel.damping) * 300;
+                const dampingForce = (compressionVelocity * wheel.damping) * 150;
                 let totalForce = Math.max(0, springForce + dampingForce);
 
                 // Limitar fuerza máxima para estabilidad
-                const maxForce = rb.mass * 200000;
+                const maxForce = rb.mass * 300000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });

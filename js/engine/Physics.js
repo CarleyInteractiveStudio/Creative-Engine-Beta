@@ -292,7 +292,7 @@ export class PhysicsSystem {
                 const colliderA = this.getCollider(materiaA);
                 const colliderB = this.getCollider(materiaB);
 
-                if (rbA && rbB && rbA.bodyType === 'Static' && rbB.bodyType === 'Static' && !colliderA.isTrigger && !colliderB.isTrigger) {
+                if (rbA && rbB && rbA.bodyType.toLowerCase() === 'static' && rbB.bodyType.toLowerCase() === 'static' && !colliderA.isTrigger && !colliderB.isTrigger) {
                     continue;
                 }
 
@@ -530,8 +530,8 @@ export class PhysicsSystem {
         const rbB = materiaB.getComponent(Components.Rigidbody2D);
 
         // --- 1. Position Correction (Penetration Resolution) ---
-        const isADynamic = rbA && rbA.bodyType === 'Dynamic';
-        const isBDynamic = rbB && rbB.bodyType === 'Dynamic';
+        const isADynamic = rbA && rbA.bodyType.toLowerCase() === 'dynamic';
+        const isBDynamic = rbB && rbB.bodyType.toLowerCase() === 'dynamic';
 
         if (isADynamic && !isBDynamic) {
             transformA.x += mtv.x; transformA.y += mtv.y;

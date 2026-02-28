@@ -112,6 +112,11 @@ function raycast(origin, direction, maxDistance = Infinity, tag = null) {
     return physicsSystem.raycast(origin, direction, maxDistance, tag);
 }
 
+function circleCast(origin, direction, radius, maxDistance = Infinity, tag = null) {
+    if (!physicsSystem) return null;
+    return physicsSystem.circleCast(origin, direction, radius, maxDistance, tag);
+}
+
 // --- The Public API Object ---
 // This object will be exposed to the user scripts.
 // We can add more global functions here in the future.
@@ -122,6 +127,7 @@ const engineAPIs = {
     getCollisionExit: getCollisionExit,
     isTouchingTag: isTouchingTag,
     raycast: raycast,
+    circleCast: circleCast,
 
     // Spanish aliases
     buscar: find,
@@ -130,6 +136,7 @@ const engineAPIs = {
     alSalirDeColision: getCollisionExit,
     estaTocandoTag: isTouchingTag,
     lanzarRayo: raycast,
+    lanzarCirculo: circleCast,
     getDeltaTime: getDeltaTime,
     obtenerDeltaTime: getDeltaTime,
 };
