@@ -3175,24 +3175,33 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.VehicleController) {
+            const isCar = ley.vehicleType === 'Car';
+            const isPlane = ley.vehicleType === 'Plane';
+            const isHelicopter = ley.vehicleType === 'Helicopter';
+            const isSideView = ley.viewMode === 'Side-View';
+
             componentHTML = `
                 ${renderComponentHeader(L.get('VEHICLE_CONTROLLER', "Controlador de Vehículo"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('VIEW_MODE', 'Modo Vista')}</label>
-                        <select class="prop-input" data-component="VehicleController" data-prop="viewMode">
-                            <option value="Side-View" ${ley.viewMode === 'Side-View' ? 'selected' : ''}>${L.get('SIDE_VIEW', 'Vista Lateral (2D)')}</option>
-                            <option value="Top-Down" ${ley.viewMode === 'Top-Down' ? 'selected' : ''}>${L.get('TOP_DOWN', 'Cenital (Top-Down)')}</option>
-                        </select>
-                    </div>
-                    <div class="prop-row-multi">
                         <label>${L.get('TYPE', 'Tipo')}</label>
-                        <select class="prop-input" data-component="VehicleController" data-prop="vehicleType">
-                            <option value="Car" ${ley.vehicleType === 'Car' ? 'selected' : ''}>${L.get('CAR', 'Auto')}</option>
-                            <option value="Plane" ${ley.vehicleType === 'Plane' ? 'selected' : ''}>${L.get('PLANE', 'Avión')}</option>
-                            <option value="Helicopter" ${ley.vehicleType === 'Helicopter' ? 'selected' : ''}>${L.get('HELICOPTER', 'Helicóptero')}</option>
+                        <select class="prop-input inspector-re-render" data-component="VehicleController" data-prop="vehicleType">
+                            <option value="Car" ${isCar ? 'selected' : ''}>${L.get('CAR', 'Auto')}</option>
+                            <option value="Plane" ${isPlane ? 'selected' : ''}>${L.get('PLANE', 'Avión')}</option>
+                            <option value="Helicopter" ${isHelicopter ? 'selected' : ''}>${L.get('HELICOPTER', 'Helicóptero')}</option>
                         </select>
                     </div>
+
+                    ${isCar ? `
+                    <div class="prop-row-multi">
+                        <label>${L.get('VIEW_MODE', 'Modo Vista')}</label>
+                        <select class="prop-input inspector-re-render" data-component="VehicleController" data-prop="viewMode">
+                            <option value="Side-View" ${isSideView ? 'selected' : ''}>${L.get('SIDE_VIEW', 'Vista Lateral (2D)')}</option>
+                            <option value="Top-Down" ${!isSideView ? 'selected' : ''}>${L.get('TOP_DOWN', 'Cenital (Top-Down)')}</option>
+                        </select>
+                    </div>
+                    ` : ''}
+
                     <div class="prop-row-multi">
                         <label>${L.get('POWER', 'Potencia')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="power" value="${ley.power}">
@@ -3205,16 +3214,27 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>${L.get('MASS', 'Peso (Masa)')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="mass" value="${ley.mass}">
                     </div>
+
+                    ${(isCar && isSideView) ? `
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VehicleController" data-prop="autoFlip" ${ley.autoFlip ? 'checked' : ''}>
+                        <label>${L.get('AUTO_FLIP', 'Voltear Automáticamente')}</label>
+                    </div>
+                    ` : ''}
+
                     <hr>
                     <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+
                     <div class="prop-row-multi">
-                        <label>${L.get('ACCELERATE', 'Acelerar')}</label>
+                        <label>${isSideView ? L.get('ACCEL_RIGHT', 'Derecha (Acelerar)') : L.get('ACCELERATE', 'Acelerar (W)')}</label>
                         <input type="text" class="prop-input" data-component="VehicleController" data-prop="accelerateKey" value="${ley.accelerateKey}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('BRAKE', 'Frenar')}</label>
+                        <label>${isSideView ? L.get('BRAKE_LEFT', 'Izquierda (Frenar)') : L.get('BRAKE', 'Frenar (S)')}</label>
                         <input type="text" class="prop-input" data-component="VehicleController" data-prop="brakeKey" value="${ley.brakeKey}">
                     </div>
+
+                    ${!isSideView || isHelicopter ? `
                     <div class="prop-row-multi">
                         <label>${L.get('LEFT', 'Izquierda')}</label>
                         <input type="text" class="prop-input" data-component="VehicleController" data-prop="leftKey" value="${ley.leftKey}">
@@ -3227,11 +3247,23 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>${L.get('TURN_SPEED', 'Fuerza Giro')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="turnSpeed" value="${ley.turnSpeed}">
                     </div>
+                    ` : ''}
+
+                    ${isSideView ? `
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_PITCH', 'Teclas Pitch (W/S)')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="VehicleController" data-prop="pitchUpKey" value="${ley.pitchUpKey}" title="Pitch Up">
+                            <input type="text" class="prop-input" data-component="VehicleController" data-prop="pitchDownKey" value="${ley.pitchDownKey}" title="Pitch Down">
+                        </div>
+                    </div>
                     <div class="prop-row-multi">
                         <label>${L.get('PITCH_STRENGTH', 'Inclinación (Pitch)')}</label>
                         <input type="number" class="prop-input" data-component="VehicleController" data-prop="pitchStrength" value="${ley.pitchStrength}" step="0.1">
                     </div>
-                    ${ley.vehicleType === 'Helicopter' ? `
+                    ` : ''}
+
+                    ${isHelicopter ? `
                         <div class="prop-row-multi">
                             <label>${L.get('UP', 'Subir')}</label>
                             <input type="text" class="prop-input" data-component="VehicleController" data-prop="upKey" value="${ley.upKey}">
