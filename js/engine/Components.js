@@ -5297,6 +5297,9 @@ export class WheelSuspension extends Leyes {
         const engine = RuntimeAPIManager.getAPI('engine');
         if (!rb || !transform || !engine) return;
 
+        // Capturar velocidad fija para este frame (estabilidad)
+        const frameVelocity = { x: rb.velocity.x, y: rb.velocity.y };
+
         const chassisRad = transform.rotation * Math.PI / 180;
         const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
 
@@ -5309,7 +5312,58 @@ export class WheelSuspension extends Leyes {
 
         const perpDir = { x: -springDir.y, y: springDir.x };
 
-        // Pre-detectar cuántas ruedas tocan el suelo para repartir la carga
+        // Buscar TODAS las ruedas en contacto de este vehículo (en este u otros componentes hermanos)
+        let vehicleRoot = this.materia.findAncestorWithComponent(VehicleController) || this.materia;
+        let allSuspensions = [];
+        const findSusp = (mtr) => {
+            mtr.leyes.forEach(l => { if (l instanceof WheelSuspension) allSuspensions.push(l); });
+            mtr.children.forEach(findSusp);
+        };
+        findSusp(vehicleRoot);
+
+        // Pre-detectar cuántas ruedas tocan el suelo en TODO el vehículo en este frame
+        // Usamos una caché por frame para no repetir este cálculo costoso por cada componente de suspensión
+        if (rb._lastGCountFrame !== this.materia.scene.physicsSystem.currentFrame) {
+            let count = 0;
+            allSuspensions.forEach(s => {
+                const sTrans = s.materia.getComponent(Transform);
+                const sRad = sTrans.rotation * Math.PI / 180;
+                const sCos = Math.cos(sRad), sSin = Math.sin(sRad);
+                const sSpringDir = {
+                    x: (s.constraintAxis.x * sTrans.scale.x) * sCos - (s.constraintAxis.y * sTrans.scale.y) * sSin,
+                    y: (s.constraintAxis.x * sTrans.scale.x) * sSin + (s.constraintAxis.y * sTrans.scale.y) * sCos
+                };
+                const sMag = Math.hypot(sSpringDir.x, sSpringDir.y);
+                if (sMag > 0) { sSpringDir.x /= sMag; sSpringDir.y /= sMag; }
+
+                s.wheels.forEach(w => {
+                    let r = w.wheelRadius;
+                    if (w.materiaId) {
+                        const wm = this.materia.scene.findMateriaById(w.materiaId);
+                        const col = wm?.getComponent(CircleCollider2D);
+                        const wt = wm?.getComponent(Transform);
+                        if (col && wt) r = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
+                    }
+
+                    const wOffX = w.offset.x * sTrans.scale.x;
+                    const wOffY = w.offset.y * sTrans.scale.y;
+                    const wAncW = {
+                        x: sTrans.x + (wOffX * sCos - wOffY * sSin),
+                        y: sTrans.y + (wOffX * sSin + wOffY * sCos)
+                    };
+                    const wOrigin = { x: wAncW.x - sSpringDir.x * (r * 2), y: wAncW.y - sSpringDir.y * (r * 2) };
+                    const wMaxDist = w.restDistance + r * 2;
+                    const wHit = engine.circleCast(wOrigin, sSpringDir, r, wMaxDist, { tags: s.gripTags, excludeAncestors: [vehicleRoot] });
+                    if (wHit && wHit.distance <= wMaxDist) count++;
+                });
+            });
+            rb._globalGroundedCount = count;
+            rb._lastGCountFrame = this.materia.scene.physicsSystem.currentFrame;
+        }
+
+        const totalGroundedInFrame = rb._globalGroundedCount;
+
+        // Pre-detectar cuántas ruedas tocan el suelo para repartir la carga en esta instancia
         let groundedWheels = [];
         for (const wheel of this.wheels) {
             const scaledOffsetX = wheel.offset.x * transform.scale.x;
@@ -5321,6 +5375,8 @@ export class WheelSuspension extends Leyes {
             let actualRadius = wheel.wheelRadius;
             if (wheel.materiaId) {
                 const wm = this.materia.scene.findMateriaById(wheel.materiaId);
+                if (wm) wm.isWheel = true; // Marca para el filtrado en Physics.js
+
                 const col = wm?.getComponent(CircleCollider2D);
                 const wt = wm?.getComponent(Transform);
                 if (col && wt) {
@@ -5356,7 +5412,7 @@ export class WheelSuspension extends Leyes {
             }
         }
 
-        const groundedCount = groundedWheels.length;
+        const gCount = Math.max(1, totalGroundedInFrame);
 
         for (const { wheel, hit, anchorWorld } of groundedWheels) {
             const anchorWorldX = anchorWorld.x;
@@ -5373,61 +5429,44 @@ export class WheelSuspension extends Leyes {
                 const wt = wm?.getComponent(Transform);
                 if (col && wt) actualRadius = col.radius * Math.max(Math.abs(wt.scale.x), Math.abs(wt.scale.y));
 
-                // El impacto se calcula desde el origen elevado (2 radios)
                 const distToAnchor = (hit.distance - actualRadius * 2);
                 wheel.currentDist = distToAnchor;
 
-                // Velocidad del chasis proyectada en el eje de suspensión
-                const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
+                // Velocidad proyectada (usamos la fija para estabilidad)
+                const velAlongSpring = frameVelocity.x * springDir.x + frameVelocity.y * springDir.y;
 
                 let totalForce = 0;
 
                 // --- LOGICA DE ABSORCIÓN (FRENADO) ---
                 if (velAlongSpring > 0) {
-                    // El coche está bajando hacia la goma. Aplicamos fuerza para frenar la caída.
-                    // Dividimos por groundedCount para no triplicar el impulso si caen varias ruedas.
                     const t = Math.max(0.01, wheel.absorptionTime);
-                    totalForce = (velAlongSpring * rb.mass) / (t * groundedCount);
+                    totalForce = (velAlongSpring * rb.mass) / (t * gCount);
 
-                    // El impulso de frenado no debe exceder lo necesario para detener el coche en este frame
-                    const forceToStopThisFrame = (velAlongSpring * rb.mass) / (deltaTime * groundedCount);
+                    const forceToStopThisFrame = (velAlongSpring * rb.mass) / (deltaTime * gCount);
                     totalForce = Math.min(totalForce, forceToStopThisFrame);
 
                     // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
                     if (distToAnchor <= wheel.limitDistance + 5) {
                         totalForce = forceToStopThisFrame;
-
-                        if (distToAnchor <= wheel.limitDistance) {
-                            const overshoot = (wheel.limitDistance - distToAnchor) + 5;
-                            // Dividimos la corrección de posición entre las ruedas apoyadas para evitar saltos violentos
-                            transform.x -= (springDir.x * overshoot) / groundedCount;
-                            transform.y -= (springDir.y * overshoot) / groundedCount;
-                            // Anulamos gradualmente la velocidad remanente
-                            rb.velocity.x *= (1.0 - (Math.abs(springDir.x) / groundedCount));
-                            rb.velocity.y *= (1.0 - (Math.abs(springDir.y) / groundedCount));
-                        }
+                        // NO modificar transform.x/y manualmente, causa conflictos con el motor de física
                     }
                 }
 
                 // --- LOGICA DE RECUPERACIÓN (SUBIDA) ---
                 if (distToAnchor < wheel.restDistance) {
                     const diff = wheel.restDistance - distToAnchor;
-                    // Fuerza de recuperación escalada correctamente por masa y repartida entre ruedas
-                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 200)) / groundedCount;
+                    const recoveryForce = (diff * (wheel.recoverySpeed || 100) * (rb.mass / 200)) / gCount;
+                    const damping = (velAlongSpring < 0) ? (Math.abs(velAlongSpring) * rb.mass * 6.0) / gCount : 0;
 
-                    // Amortiguación de retorno: frena el ascenso para que no salte al aire
-                    const damping = (velAlongSpring < 0) ? (Math.abs(velAlongSpring) * rb.mass * 6.0) / groundedCount : 0;
-
-                    // Capar la fuerza de recuperación para que no supere un empuje razonable (1.5x el peso total)
-                    const weightSupport = (9.8 * rb.mass) / groundedCount;
+                    const weightSupport = (9.8 * rb.mass) / gCount;
                     const finalRecovery = Math.min(recoveryForce, weightSupport * 1.5);
 
                     totalForce += (finalRecovery - damping);
                 }
 
-                // Seguridad: Permitimos fuerzas negativas moderadas para "sujetar" el coche al suelo durante el rebote
+                // Seguridad: Permitimos fuerzas negativas moderadas
                 totalForce = Math.max(-rb.mass * 100, totalForce);
-                const maxForce = rb.mass * 10000;
+                const maxForce = rb.mass * 12000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 const worldForce = { x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime };
