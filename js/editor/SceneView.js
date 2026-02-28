@@ -850,6 +850,48 @@ export function initialize(dependencies) {
             suspension.wheels[idx].wheelRadius = Math.max(2, Math.hypot(lx - cx, ly - cy));
         }
 
+        if (isString && dragState.handle.startsWith('advanced-wheel-')) {
+            const wheel = dragState.materia.getComponent(Components.AdvancedWheel);
+            const scene = SceneManager.currentScene;
+            const chassis = wheel.chassisId ? scene.findMateriaById(wheel.chassisId) : dragState.materia.findAncestorWithComponent(Components.Rigidbody2D);
+            const chTrans = chassis?.getComponent(Components.Transform);
+
+            if (chTrans) {
+                const rect = dom.sceneCanvas.getBoundingClientRect();
+                const worldMouse = screenToWorld(moveEvent.clientX - rect.left, moveEvent.clientY - rect.top);
+                const chRad = chTrans.rotation * Math.PI / 180;
+                const c = Math.cos(chRad), s = Math.sin(chRad);
+
+                if (dragState.handle === 'advanced-wheel-anchor') {
+                    const dx = worldMouse.x - chTrans.x;
+                    const dy = worldMouse.y - chTrans.y;
+                    const invRad = -chTrans.rotation * Math.PI / 180;
+                    wheel.localAnchor.x = dx * Math.cos(invRad) - dy * Math.sin(invRad);
+                    wheel.localAnchor.y = dx * Math.sin(invRad) + dy * Math.cos(invRad);
+                } else {
+                    const anchorWorld = {
+                        x: chTrans.x + (wheel.localAnchor.x * c - wheel.localAnchor.y * s),
+                        y: chTrans.y + (wheel.localAnchor.x * s + wheel.localAnchor.y * c)
+                    };
+                    const springDir = { x: (0 * c - (-1) * s), y: (0 * s + (-1) * c) };
+                    const downDir = { x: -springDir.x, y: -springDir.y };
+                    const pdx = -downDir.y, pdy = downDir.x;
+
+                    const distFromAnchor = (worldMouse.x - anchorWorld.x) * downDir.x + (worldMouse.y - anchorWorld.y) * downDir.y;
+
+                    if (dragState.handle === 'advanced-wheel-rest') {
+                        wheel.restLength = Math.max(5, distFromAnchor);
+                    } else if (dragState.handle === 'advanced-wheel-travel') {
+                        wheel.travelLimit = Math.max(wheel.restLength + 5, distFromAnchor);
+                    } else if (dragState.handle === 'advanced-wheel-radius') {
+                        const restX = anchorWorld.x + downDir.x * wheel.restLength;
+                        const restY = anchorWorld.y + downDir.y * wheel.restLength;
+                        wheel.wheelRadius = Math.max(2, Math.hypot(worldMouse.x - restX, worldMouse.y - restY));
+                    }
+                }
+            }
+        }
+
         switch (dragState.handle) {
             case 'camera-move': transform.x += dx; transform.y += dy; break;
             case 'move-x': transform.x += dx; break;
@@ -1475,7 +1517,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkAdvancedWheelGizmoHit(canvasPos) || checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -1889,6 +1931,8 @@ export function drawOverlay() {
 
     drawWheelSuspensionGizmos();
 
+    drawAdvancedWheelGizmos();
+
     drawBasicAIGizmos();
 }
 
@@ -1979,6 +2023,154 @@ function drawRaycastGizmos() {
         ctx.arc(endX, endY, dotSize / 2, 0, Math.PI * 2);
         ctx.fill();
     });
+
+    ctx.restore();
+}
+
+function checkAdvancedWheelGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const wheel = selectedMateria.getComponent(Components.AdvancedWheel);
+    if (!wheel) return null;
+
+    const scene = SceneManager.currentScene;
+    const chassis = wheel.chassisId ? scene.findMateriaById(wheel.chassisId) : selectedMateria.findAncestorWithComponent(Components.Rigidbody2D);
+    if (!chassis) return null;
+
+    const chTrans = chassis.getComponent(Components.Transform);
+    if (!chTrans) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+    const zoom = renderer.camera.effectiveZoom;
+    const handleHitboxSize = 12 / zoom;
+
+    const rad = chTrans.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+
+    const anchorWorld = {
+        x: chTrans.x + (wheel.localAnchor.x * cos - wheel.localAnchor.y * sin),
+        y: chTrans.y + (wheel.localAnchor.x * sin + wheel.localAnchor.y * cos)
+    };
+
+    const springDir = { x: (0 * cos - (-1) * sin), y: (0 * sin + (-1) * cos) };
+    const downDir = { x: -springDir.x, y: -springDir.y };
+    const pdx = -downDir.y, pdy = downDir.x;
+
+    // Hit Anchor
+    if (Math.abs(worldMouse.x - anchorWorld.x) < handleHitboxSize / 2 && Math.abs(worldMouse.y - anchorWorld.y) < handleHitboxSize / 2) {
+        return 'advanced-wheel-anchor';
+    }
+
+    // Hit Rest
+    const restX = anchorWorld.x + downDir.x * wheel.restLength;
+    const restY = anchorWorld.y + downDir.y * wheel.restLength;
+    if (Math.abs(worldMouse.x - restX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - restY) < handleHitboxSize / 2) {
+        return 'advanced-wheel-rest';
+    }
+
+    // Hit Travel
+    const travelX = anchorWorld.x + downDir.x * wheel.travelLimit;
+    const travelY = anchorWorld.y + downDir.y * wheel.travelLimit;
+    if (Math.abs(worldMouse.x - travelX) < handleHitboxSize / 2 && Math.abs(worldMouse.y - travelY) < handleHitboxSize / 2) {
+        return 'advanced-wheel-travel';
+    }
+
+    // Hit Radius
+    const rx = restX + pdx * wheel.wheelRadius;
+    const ry = restY + pdy * wheel.wheelRadius;
+    if (Math.abs(worldMouse.x - rx) < handleHitboxSize / 2 && Math.abs(worldMouse.y - ry) < handleHitboxSize / 2) {
+        return 'advanced-wheel-radius';
+    }
+
+    return null;
+}
+
+function drawAdvancedWheelGizmos() {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria) return;
+
+    const wheel = selectedMateria.getComponent(Components.AdvancedWheel);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!wheel || !transform || !wheel.showGizmo) return;
+
+    const scene = SceneManager.currentScene;
+    const chassis = wheel.chassisId ? scene.findMateriaById(wheel.chassisId) : selectedMateria.findAncestorWithComponent(Components.Rigidbody2D);
+    if (!chassis) return;
+
+    const chTrans = chassis.getComponent(Components.Transform);
+    if (!chTrans) return;
+
+    const { ctx, camera } = renderer;
+    const zoom = camera.effectiveZoom;
+
+    const rad = chTrans.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+
+    // World Anchor
+    const anchorWorld = {
+        x: chTrans.x + (wheel.localAnchor.x * cos - wheel.localAnchor.y * sin),
+        y: chTrans.y + (wheel.localAnchor.x * sin + wheel.localAnchor.y * cos)
+    };
+
+    const springDir = {
+        x: (0 * cos - (-1) * sin),
+        y: (0 * sin + (-1) * cos)
+    };
+    const downDir = { x: -springDir.x, y: -springDir.y };
+
+    ctx.save();
+
+    // 1. Draw Suspension Axis
+    ctx.beginPath();
+    ctx.moveTo(anchorWorld.x, anchorWorld.y);
+    ctx.lineTo(anchorWorld.x + downDir.x * wheel.travelLimit, anchorWorld.y + downDir.y * wheel.travelLimit);
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2 / zoom;
+    ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 2. Draw Rest Position Line
+    const restX = anchorWorld.x + downDir.x * wheel.restLength;
+    const restY = anchorWorld.y + downDir.y * wheel.restLength;
+    const pdx = -downDir.y, pdy = downDir.x; // Perpendicular
+
+    ctx.beginPath();
+    ctx.moveTo(restX - pdx * 20 / zoom, restY - pdy * 20 / zoom);
+    ctx.lineTo(restX + pdx * 20 / zoom, restY + pdy * 20 / zoom);
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 3 / zoom;
+    ctx.stroke();
+
+    // 3. Draw Wheel Radius (at rest position)
+    ctx.beginPath();
+    ctx.arc(restX, restY, wheel.wheelRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+    ctx.lineWidth = 1 / zoom;
+    ctx.stroke();
+
+    // 4. Handles
+    const handleSize = 8 / zoom;
+    ctx.fillStyle = '#ffffff';
+    // Anchor handle
+    ctx.fillRect(anchorWorld.x - handleSize/2, anchorWorld.y - handleSize/2, handleSize, handleSize);
+
+    // Rest Length handle
+    ctx.fillStyle = '#ffff00';
+    ctx.fillRect(restX - handleSize/2, restY - handleSize/2, handleSize, handleSize);
+
+    // Travel Limit handle
+    const travelX = anchorWorld.x + downDir.x * wheel.travelLimit;
+    const travelY = anchorWorld.y + downDir.y * wheel.travelLimit;
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(travelX - handleSize/2, travelY - handleSize/2, handleSize, handleSize);
+
+    // Radius handle
+    const rx = restX + pdx * wheel.wheelRadius;
+    const ry = restY + pdy * wheel.wheelRadius;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(rx - handleSize/2, ry - handleSize/2, handleSize, handleSize);
 
     ctx.restore();
 }

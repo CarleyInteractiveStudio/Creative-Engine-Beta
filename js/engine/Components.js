@@ -5043,9 +5043,16 @@ export class VehicleController extends Leyes {
         const suspensions = this.materia.leyes.filter(l => l instanceof WheelSuspension)
             .concat(this.materia.children.map(child => child.getComponent(WheelSuspension)).filter(s => s !== null));
 
-        const advancedWheels = (this.advancedWheelIds || []).map(id => this.materia.scene.findMateriaById(id))
-            .filter(m => m && m.getComponent(AdvancedWheel))
-            .map(m => m.getComponent(AdvancedWheel));
+        // Detección automática de ruedas avanzadas en la jerarquía
+        const advancedWheels = [];
+        const findAdvancedWheels = (mtr) => {
+            mtr.children.forEach(child => {
+                const wheel = child.getComponent(AdvancedWheel);
+                if (wheel) advancedWheels.push(wheel);
+                findAdvancedWheels(child);
+            });
+        };
+        findAdvancedWheels(this.materia);
 
         let groundedCount = 0;
         let totalWheels = 0;
@@ -5195,14 +5202,34 @@ export class AdvancedWheel extends Leyes {
         this.damping = 10;
         this.wheelRadius = 15;
         this.gripTags = ['Ground'];
-
-        // Configuración de restricciones
-        this.travelLimit = 50;
+        this.travelLimit = 60;
+        this.showGizmo = true;
 
         // Estado interno
         this.isGrounded = false;
         this.compression = 0;
-        this.currentDist = 0;
+        this.currentDist = 40;
+    }
+
+    update(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (isGame) return;
+
+        // En el Editor: Si no hay anclaje definido, usar la posición actual relativa al chasis
+        const scene = this.materia.scene;
+        if (!scene) return;
+        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : this.materia.findAncestorWithComponent(Rigidbody2D);
+        if (chassis && this.localAnchor.x === 0 && this.localAnchor.y === 0) {
+             const chTrans = chassis.getComponent(Transform);
+             const myTrans = this.materia.getComponent(Transform);
+             if (chTrans && myTrans) {
+                 const dx = myTrans.x - chTrans.x;
+                 const dy = myTrans.y - chTrans.y;
+                 const rad = -chTrans.rotation * Math.PI / 180;
+                 this.localAnchor.x = dx * Math.cos(rad) - dy * Math.sin(rad);
+                 this.localAnchor.y = dx * Math.sin(rad) + dy * Math.cos(rad);
+             }
+        }
     }
 
     fixedUpdate(deltaTime) {
@@ -5211,91 +5238,110 @@ export class AdvancedWheel extends Leyes {
         const scene = this.materia.scene;
         if (!scene) return;
 
-        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : null;
+        const chassis = this.chassisId ? scene.findMateriaById(this.chassisId) : this.materia.findAncestorWithComponent(Rigidbody2D);
         const myTrans = this.materia.getComponent(Transform);
         const myRb = this.materia.getComponent(Rigidbody2D);
         const engine = RuntimeAPIManager.getAPI('engine');
-        if (!myTrans || !engine) return;
+        if (!myTrans || !engine || !chassis) return;
 
-        let chassisTrans = null, chassisRb = null;
-        let springDir = { x: 0, y: -1 };
+        const chassisTrans = chassis.getComponent(Transform);
+        const chassisRb = chassis.getComponent(Rigidbody2D);
+        if (!chassisTrans || !chassisRb) return;
 
-        if (chassis) {
-            chassisTrans = chassis.getComponent(Transform);
-            chassisRb = chassis.getComponent(Rigidbody2D);
-            if (chassisTrans) {
-                const rad = chassisTrans.rotation * Math.PI / 180;
-                // Vector que apunta "arriba" desde la rueda hacia el coche
-                springDir = { x: Math.sin(rad), y: -Math.cos(rad) };
+        const rad = chassisTrans.rotation * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+
+        // Dirección de suspensión (Local UP respecto al chasis = 0, -1)
+        const springDir = {
+            x: (0 * cos - (-1) * sin),
+            y: (0 * sin + (-1) * cos)
+        };
+        const downDir = { x: -springDir.x, y: -springDir.y };
+
+        // 1. Anclaje en Espacio Mundial
+        const anchorWorld = {
+            x: chassisTrans.x + (this.localAnchor.x * cos - this.localAnchor.y * sin),
+            y: chassisTrans.y + (this.localAnchor.x * sin + this.localAnchor.y * cos)
+        };
+
+        // 2. Detección de Suelo
+        const excludeIds = [this.materia.id, chassis.id];
+        const filter = {
+            tags: (this.gripTags && this.gripTags.length > 0) ? this.gripTags : null,
+            excludeIds: excludeIds,
+            excludeAncestors: [chassis]
+        };
+
+        const margin = this.wheelRadius * 0.8;
+        const castOrigin = { x: anchorWorld.x - downDir.x * margin, y: anchorWorld.y - downDir.y * margin };
+        const maxSearch = this.travelLimit + margin;
+        const hit = engine.circleCast(castOrigin, downDir, this.wheelRadius, maxSearch, filter);
+
+        if (hit) {
+            this.isGrounded = true;
+            this.currentDist = Math.max(0, hit.distance - margin);
+        } else {
+            this.isGrounded = false;
+            this.currentDist = this.travelLimit;
+        }
+
+        // 3. Lógica de Suspensión
+        const velChassis = chassisRb.velocity.x * springDir.x + chassisRb.velocity.y * springDir.y;
+        const velWheel = myRb ? (myRb.velocity.x * springDir.x + myRb.velocity.y * springDir.y) : 0;
+        const relVel = velChassis - velWheel;
+
+        this.compression = Math.max(0, this.restLength - this.currentDist);
+
+        if (this.compression > 0) {
+            const forceMag = (this.compression * this.stiffness) - (relVel * this.damping);
+            const finalForce = Math.max(0, forceMag * chassisRb.mass * 0.06);
+
+            const worldForce = { x: springDir.x * finalForce * deltaTime, y: springDir.y * finalForce * deltaTime };
+            chassisRb.addForce(worldForce);
+
+            const leverArm = { x: anchorWorld.x - chassisTrans.x, y: anchorWorld.y - chassisTrans.y };
+            const torque = (leverArm.x * worldForce.y - leverArm.y * worldForce.x);
+            chassisRb.addTorque(torque);
+
+            if (myRb) {
+                myRb.addForce({ x: -worldForce.x, y: -worldForce.y });
             }
         }
 
-        const downDir = { x: -springDir.x, y: -springDir.y };
+        // 4. Posicionamiento Constreñido
+        const targetWorldPos = {
+            x: anchorWorld.x + downDir.x * this.currentDist,
+            y: anchorWorld.y + downDir.y * this.currentDist
+        };
 
-        if (chassisTrans) {
-            const rad = chassisTrans.rotation * Math.PI / 180;
-            const cos = Math.cos(rad), sin = Math.sin(rad);
-            const anchorWorld = {
-                x: chassisTrans.x + (this.localAnchor.x * cos - this.localAnchor.y * sin),
-                y: chassisTrans.y + (this.localAnchor.x * sin + this.localAnchor.y * cos)
-            };
+        if (myRb) {
+            // "Stick" a la posición del eje usando impulsos de velocidad
+            const posDiff = { x: targetWorldPos.x - myTrans.x, y: targetWorldPos.y - myTrans.y };
+            myRb.velocity.x += (posDiff.x / deltaTime) * 0.15;
+            myRb.velocity.y += (posDiff.y / deltaTime) * 0.15;
 
-            // 1. Detección de Suelo
-            const filter = { tags: (this.gripTags && this.gripTags.length > 0) ? this.gripTags : null, excludeIds: [this.materia.id] };
-            if (chassis) filter.excludeIds.push(chassis.id);
+            // Sincronizar velocidad lateral con chasis (evitar que la rueda se deslice sola)
+            const lateralDir = { x: -downDir.y, y: downDir.x };
+            const chassisLatVel = chassisRb.velocity.x * lateralDir.x + chassisRb.velocity.y * lateralDir.y;
+            const wheelLatVel = myRb.velocity.x * lateralDir.x + myRb.velocity.y * lateralDir.y;
+            const latVelDiff = chassisLatVel - wheelLatVel;
 
-            const margin = this.wheelRadius * 0.5;
-            const castOrigin = { x: anchorWorld.x - downDir.x * margin, y: anchorWorld.y - downDir.y * margin };
-            const maxSearch = this.travelLimit + margin;
-            const hit = engine.circleCast(castOrigin, downDir, this.wheelRadius, maxSearch, filter);
+            myRb.velocity.x += lateralDir.x * latVelDiff;
+            myRb.velocity.y += lateralDir.y * latVelDiff;
 
-            if (hit) {
-                this.isGrounded = true;
-                this.currentDist = Math.max(0, hit.distance - margin);
-            } else {
-                this.isGrounded = false;
-                this.currentDist = this.travelLimit;
-            }
-
-            // 2. Posicionamiento de la rueda (Siempre alineada al eje de suspensión)
-            myTrans.x = anchorWorld.x + downDir.x * this.currentDist;
-            myTrans.y = anchorWorld.y + downDir.y * this.currentDist;
             myTrans.rotation = chassisTrans.rotation;
+        } else {
+            myTrans.x = targetWorldPos.x;
+            myTrans.y = targetWorldPos.y;
+            myTrans.rotation = chassisTrans.rotation;
+        }
 
-            // 3. Lógica de Empuje (Fuerza de Suspensión)
-            // Chequeamos si el anclaje del chasis está dentro del área de influencia de la rueda
-            const relPos = { x: anchorWorld.x - myTrans.x, y: anchorWorld.y - myTrans.y };
-            const distOnAxis = relPos.x * springDir.x + relPos.y * springDir.y;
-            const lateralDist = Math.abs(relPos.x * (-springDir.y) + relPos.y * springDir.x);
-
-            this.compression = Math.max(0, this.restLength - distOnAxis);
-
-            if (this.compression > 0 && lateralDist < this.wheelRadius * 2 && chassisRb) {
-                const velChassis = chassisRb.velocity.x * springDir.x + chassisRb.velocity.y * springDir.y;
-                const velWheel = myRb ? (myRb.velocity.x * springDir.x + myRb.velocity.y * springDir.y) : 0;
-                const relVel = velChassis - velWheel;
-
-                const forceMag = (this.compression * this.stiffness) - (relVel * this.damping);
-                const finalForce = Math.max(0, forceMag * chassisRb.mass * 2.0);
-
-                chassisRb.addForce(springDir.x * finalForce * deltaTime, springDir.y * finalForce * deltaTime);
-
-                const leverArm = { x: anchorWorld.x - chassisTrans.x, y: anchorWorld.y - chassisTrans.y };
-                const torque = (leverArm.x * springDir.y - leverArm.y * springDir.x) * finalForce;
-                chassisRb.addTorque(torque * deltaTime);
-
-                if (myRb) {
-                    myRb.addForce(downDir.x * finalForce * deltaTime, downDir.y * finalForce * deltaTime);
-                    // Mantener la rueda sincronizada lateralmente si tiene Rigidbody
-                    myRb.velocity.x = chassisRb.velocity.x;
-                    myRb.velocity.y = chassisRb.velocity.y;
-                }
-
-                // 4. Rotación Visual
-                const rollDir = { x: springDir.y, y: -springDir.x };
-                const rollVel = chassisRb.velocity.x * rollDir.x + chassisRb.velocity.y * rollDir.y;
-                myTrans.rotation += rollVel * 20 * deltaTime;
-            }
+        // 5. Rotación Visual de Rodamiento
+        const rollDir = { x: springDir.y, y: -springDir.x };
+        const rollVel = chassisRb.velocity.x * rollDir.x + chassisRb.velocity.y * rollDir.y;
+        if (Math.abs(rollVel) > 0.1) {
+            const angVel = (rollVel * 50) / this.wheelRadius;
+            myTrans.rotation += angVel * deltaTime * (180 / Math.PI);
         }
     }
 
