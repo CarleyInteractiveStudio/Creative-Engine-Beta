@@ -174,6 +174,7 @@ SISTEMA_VERIFICACION: Sistema de Verificación
 TIENDA_ASSETS: Tienda de asset
 
 # Hierarchy Context
+CIRCLE_COLLIDER_2D: Colisionador de Círculo 2D
 CREAR_MATERIA: Crear Materia
 MATERIA_VACIA: Materia Vacía
 MATERIA_2D: Materia 2D
@@ -1131,6 +1132,7 @@ SISTEMA_VERIFICACION: Verification System
 TIENDA_ASSETS: Asset Store
 
 # Hierarchy Context
+CIRCLE_COLLIDER_2D: Circle Collider 2D
 CREAR_MATERIA: Create Matter
 MATERIA_VACIA: Empty Matter
 MATERIA_2D: 2D Matter

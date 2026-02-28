@@ -33,7 +33,7 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.VehicleController, Components.WheelSuspension],
@@ -41,7 +41,7 @@ const availableComponents = {
 };
 
 const componentIcons = {
-    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
+    Transform: 'move', Rigidbody2D: 'weight', BoxCollider2D: 'square', CapsuleCollider2D: 'pill', CircleCollider2D: 'disc', PolygonCollider2D: 'hexagon', SpriteRenderer: 'image',
     Animator: 'run', AnimatorController: 'gamepad', AudioSource: 'music', VideoPlayer: 'video', Camera: 'camera', CreativeScript: 'scroll',
     UITransform: 'box', UICanvas: 'image', UIImage: 'image', PointLight2D: 'lightbulb', SpotLight2D: 'flashlight', FreeformLight2D: 'pencil', SpriteLight2D: 'sparkles',
     Grid: 'grid', Tilemap: 'map', TilemapRenderer: 'brush', TilemapCollider2D: 'grid',
@@ -2038,7 +2038,32 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         }
-        else if (ley instanceof Components.SpriteRenderer) {
+        else if (ley instanceof Components.CircleCollider2D) {
+            componentHTML = `
+            <div class="component-inspector">
+                ${renderComponentHeader(L.get('CIRCLE_COLLIDER_2D', "Circle Collider 2D"), 'disc', index)}
+                <div class="component-content">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="CircleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
+                        <label>${L.get('IS_TRIGGER', 'Is Trigger')}</label>
+                    </div>
+                    <hr>
+                    <div class="prop-row-multi">
+                        <label>${L.get('OFFSET', 'Offset')}</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
+                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('RADIUS', 'Radius')}</label>
+                        <div class="prop-inputs">
+                            <input type="number" class="prop-input" step="0.1" data-component="CircleCollider2D" data-prop="radius" value="${ley.radius}" title="${L.get('RADIUS', 'Radius')}">
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        } else if (ley instanceof Components.SpriteRenderer) {
             let spriteSelectorHTML = '';
             // If a .ceSprite asset is loaded, show the dropdown to select a specific sprite
             if (ley.spriteSheet && ley.spriteSheet.sprites && Object.keys(ley.spriteSheet.sprites).length > 0) {

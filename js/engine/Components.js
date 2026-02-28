@@ -23,6 +23,7 @@ const componentAliases = {
     'AudioSource': 'fuenteDeAudio',
     'BoxCollider2D': 'colisionadorCaja2D',
     'CapsuleCollider2D': 'colisionadorCapsula2D',
+    'CircleCollider2D': 'colisionadorCirculo2D',
     'Camera': 'camara',
     'Animator': 'animador',
     'PointLight2D': 'luzPuntual2D',
@@ -1094,6 +1095,22 @@ export class BoxCollider2D extends Leyes {
         newCollider.offset = { ...this.offset };
         newCollider.size = { ...this.size };
         newCollider.edgeRadius = this.edgeRadius;
+        return newCollider;
+    }
+}
+
+export class CircleCollider2D extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.isTrigger = false;
+        this.offset = { x: 0, y: 0 };
+        this.radius = 25.0;
+    }
+    clone() {
+        const newCollider = new CircleCollider2D(null);
+        newCollider.isTrigger = this.isTrigger;
+        newCollider.offset = { ...this.offset };
+        newCollider.radius = this.radius;
         return newCollider;
     }
 }
@@ -2280,6 +2297,7 @@ registerComponent('CreativeScript', CreativeScript);
 registerComponent('Rigidbody2D', Rigidbody2D);
 registerComponent('BoxCollider2D', BoxCollider2D);
 registerComponent('CapsuleCollider2D', CapsuleCollider2D);
+registerComponent('CircleCollider2D', CircleCollider2D);
 registerComponent('PolygonCollider2D', PolygonCollider2D);
 registerComponent('Transform', Transform);
 registerComponent('Camera', Camera);
@@ -5215,21 +5233,14 @@ export class WheelSuspension extends Leyes {
             const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
             const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
 
-            // Multirayo para mejor detección de bordes (Centro, Izquierda, Derecha)
-            const rayOffsets = [0, -0.6, 0.6];
-            let closestHit = null;
+            // 2. Detección mediante CircleCast para robustez (Simula la rueda física)
+            // Iniciamos un poco "atrás" del anclaje para detectar suelo si el coche ya está hundido
+            const castOrigin = {
+                x: anchorWorldX - springDir.x * wheel.wheelRadius,
+                y: anchorWorldY - springDir.y * wheel.wheelRadius
+            };
 
-            for (const offset of rayOffsets) {
-                const startX = anchorWorldX + perpDir.x * wheel.wheelRadius * offset - springDir.x * wheel.wheelRadius;
-                const startY = anchorWorldY + perpDir.y * wheel.wheelRadius * offset - springDir.y * wheel.wheelRadius;
-
-                const hit = engine.raycast({ x: startX, y: startY }, springDir, wheel.restLength + wheel.wheelRadius * 2, this.gripTags);
-                if (hit && (!closestHit || hit.distance < closestHit.distance)) {
-                    closestHit = hit;
-                }
-            }
-
-            const hit = closestHit;
+            const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, wheel.restLength + wheel.wheelRadius * 2, this.gripTags);
 
             let wheelMateria = null;
             if (wheel.materiaId) {
@@ -5246,24 +5257,37 @@ export class WheelSuspension extends Leyes {
 
             if (hit) {
                 wheel.isGrounded = true;
-                // La distancia real desde el anclaje al suelo (restando el desplazamiento inicial del rayo)
-                const distFromAnchorToFloor = hit.distance - wheel.wheelRadius;
-                const distToWheelCenter = distFromAnchorToFloor - wheel.wheelRadius;
+                // La distancia desde el anclaje hasta el CENTRO de la rueda contactando el suelo
+                const distToWheelCenter = hit.distance - wheel.wheelRadius;
 
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física (Multiplicadores aumentados para evitar que el chasis toque el suelo)
-                const springForce = (compressionAmount * wheel.stiffness) * 12000;
+                const springForce = (compressionAmount * wheel.stiffness) * 15000;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
-                const dampingForce = (compressionVelocity * wheel.damping) * 2000;
+                const dampingForce = (compressionVelocity * wheel.damping) * 3000;
                 let totalForce = Math.max(0, springForce + dampingForce);
 
                 // Limitar fuerza máxima para evitar explosiones físicas
-                const maxForce = rb.mass * 2000000;
+                const maxForce = rb.mass * 3000000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
+
+                // --- TOPE RÍGIDO (Impact Absorption) ---
+                // Si la compresión es casi total (rueda toca el anclaje), aplicar una fuerza de impacto masiva
+                // y corregir posición para evitar que el chasis atraviese el suelo.
+                if (compressionAmount >= wheel.restLength) {
+                    const hardStopImpulse = rb.mass * 500;
+                    rb.velocity.x -= springDir.x * hardStopImpulse * deltaTime;
+                    rb.velocity.y -= springDir.y * hardStopImpulse * deltaTime;
+
+                    // Empujar chasis hacia afuera del suelo
+                    const correction = (compressionAmount - wheel.restLength) + 2;
+                    transform.x -= springDir.x * correction;
+                    transform.y -= springDir.y * correction;
+                }
 
                 // 4. Posicionamiento visual de la materia asignada
                 if (wheelMateria) {

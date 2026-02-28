@@ -1031,6 +1031,28 @@ export function initialize(dependencies) {
             }
         }
 
+        // --- Circle Collider Gizmo Logic ---
+        const circleCollider = dragState.materia.getComponent(Components.CircleCollider2D);
+        if (circleCollider && dragState.handle.startsWith('collider-circle-')) {
+            const rad = -transform.rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const localDx = dx * cos - dy * sin;
+            const localDy = dx * sin + dy * cos;
+
+            switch (dragState.handle) {
+                case 'collider-circle-handle':
+                    // Arrastrar desde el borde para cambiar radio
+                    circleCollider.radius = Math.max(1, circleCollider.radius + localDx);
+                    break;
+                case 'collider-circle-center':
+                    // Arrastrar centro para cambiar offset
+                    circleCollider.offset.x += localDx;
+                    circleCollider.offset.y += localDy;
+                    break;
+            }
+        }
+
         // --- Capsule Collider Gizmo Logic ---
         const capsuleCollider = dragState.materia.getComponent(Components.CapsuleCollider2D);
         if (capsuleCollider && dragState.handle.startsWith('collider-capsule-')) {
@@ -1442,7 +1464,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkWheelSuspensionGizmoHit(canvasPos) || checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
@@ -2103,6 +2125,38 @@ function drawTerrainBrushGizmo() {
     ctx.restore();
 }
 
+function checkCircleColliderGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const circleCollider = selectedMateria.getComponent(Components.CircleCollider2D);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!circleCollider || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - (transform.x + circleCollider.offset.x)) * cos - (worldMouse.y - (transform.y + circleCollider.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + circleCollider.offset.x)) * sin + (worldMouse.y - (transform.y + circleCollider.offset.y)) * cos;
+
+    const radius = circleCollider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y));
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+
+    // Check center hit
+    if (Math.hypot(localMouseX, localMouseY) < handleHitboxSize / 2) {
+        return 'collider-circle-center';
+    }
+
+    // Check radius handle hit (at local X = radius)
+    if (Math.abs(localMouseX - radius) < handleHitboxSize / 2 && Math.abs(localMouseY) < handleHitboxSize / 2) {
+        return 'collider-circle-handle';
+    }
+
+    return null;
+}
+
 function checkBoxColliderGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
@@ -2290,6 +2344,36 @@ function drawPhysicsGizmos() {
             : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: height / 2 }, { x: 0, y: -height / 2 }];
 
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
+
+        ctx.restore();
+    }
+
+    // Draw CircleCollider2D
+    const circleCollider = selectedMateria.getComponent(Components.CircleCollider2D);
+    if (circleCollider) {
+        const radius = circleCollider.radius * Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y));
+        const centerX = transform.x + circleCollider.offset.x;
+        const centerY = transform.y + circleCollider.offset.y;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(transform.rotation * Math.PI / 180);
+
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+        ctx.lineWidth = 2 / camera.effectiveZoom;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const handleSize = 8 / camera.effectiveZoom;
+        const halfHandle = handleSize / 2;
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+
+        // Central Handle
+        ctx.fillRect(-halfHandle, -halfHandle, handleSize, handleSize);
+        // Radius Handle
+        ctx.fillRect(radius - halfHandle, -halfHandle, handleSize, handleSize);
 
         ctx.restore();
     }
