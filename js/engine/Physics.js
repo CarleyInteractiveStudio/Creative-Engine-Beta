@@ -116,8 +116,9 @@ export class PhysicsSystem {
         const perp = { x: -direction.y, y: direction.x };
         let closestHit = null;
 
-        // Usamos 5 rayos: uno central, dos en los extremos y dos intermedios
-        const offsets = [-1, -0.5, 0, 0.5, 1];
+        // Usamos 5 rayos para cubrir el ancho del círculo.
+        // Reducimos el offset a 0.8 para evitar colisiones erróneas con paredes perfectamente verticales
+        const offsets = [-0.8, -0.4, 0, 0.4, 0.8];
 
         for (const offset of offsets) {
             const rayOrigin = {
@@ -125,19 +126,15 @@ export class PhysicsSystem {
                 y: origin.y + perp.y * radius * offset
             };
 
-            // Proyectamos el rayo. Para los rayos laterales, el impacto ocurre un poco "antes"
-            // en términos de profundidad de barrido si el suelo es plano.
-            // Compensamos la distancia por la curvatura del círculo?
-            // Para Hill Climb, es mejor tratarlo como un cilindro de barrido (rectángulo).
-            const hit = this.raycast(rayOrigin, direction, maxDistance, filter);
+            // Proyectamos el rayo. hit.distance es la distancia desde rayOrigin al suelo.
+            const hit = this.raycast(rayOrigin, direction, maxDistance + radius, filter);
 
             if (hit) {
-                // Ajuste de distancia para simular la curvatura de la base del círculo
-                // d_ajustada = d_rayo + (radius - base_circulo_en_este_punto)
-                // base_circulo = sqrt(radius^2 - (radius*offset)^2)
+                // El punto del círculo en este offset está a 'baseHeight' por debajo de la línea central.
+                // Usamos Math.abs para el offset para mayor seguridad matemática.
                 const baseHeight = Math.sqrt(radius * radius - (radius * offset) * (radius * offset));
-                const adjustment = radius - baseHeight;
-                const adjustedDist = hit.distance + adjustment;
+                // La distancia que recorre el CENTRO del círculo hasta que este punto toca es:
+                const adjustedDist = hit.distance - baseHeight;
 
                 if (adjustedDist <= maxDistance && (!closestHit || adjustedDist < closestHit.distance)) {
                     closestHit = {
@@ -251,6 +248,13 @@ export class PhysicsSystem {
                     }
                 }
 
+                // Apply linear drag
+                if (rigidbody.linearDrag > 0) {
+                    const dragFactor = Math.pow(1.0 - rigidbody.linearDrag, deltaTime);
+                    rigidbody.velocity.x *= dragFactor;
+                    rigidbody.velocity.y *= dragFactor;
+                }
+
                 // Update position
                 transform.x += rigidbody.velocity.x * PHYSICS_SCALE * deltaTime;
                 transform.y += rigidbody.velocity.y * PHYSICS_SCALE * deltaTime;
@@ -274,6 +278,13 @@ export class PhysicsSystem {
             for (let j = i + 1; j < collidables.length; j++) {
                 const materiaA = collidables[i];
                 const materiaB = collidables[j];
+
+                // --- 2.1 Collision Filtering ---
+                // 1. Assembly Filter: Don't collide if they share a common ancestor or are siblings.
+                // Prevents vehicle parts (chassis, wheels, deco) from exploding due to internal collisions.
+                if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA) || (materiaA.parent && materiaA.parent === materiaB.parent)) {
+                    continue;
+                }
 
                 // Basic check: two static bodies can't collide if neither is a trigger
                 const rbA = materiaA.getComponent(Components.Rigidbody2D);
@@ -518,25 +529,22 @@ export class PhysicsSystem {
         const rbA = materiaA.getComponent(Components.Rigidbody2D);
         const rbB = materiaB.getComponent(Components.Rigidbody2D);
 
-        // --- 1. Position Correction ---
+        // --- 1. Position Correction (Penetration Resolution) ---
         const isADynamic = rbA && rbA.bodyType === 'Dynamic';
         const isBDynamic = rbB && rbB.bodyType === 'Dynamic';
 
-        if (isADynamic && !isBDynamic) { // A is dynamic, B is static/kinematic
-            transformA.x += mtv.x;
-            transformA.y += mtv.y;
-        } else if (!isADynamic && isBDynamic) { // B is dynamic, A is static/kinematic
-            transformB.x -= mtv.x;
-            transformB.y -= mtv.y;
-        } else if (isADynamic && isBDynamic) { // Both are dynamic
-            transformA.x += mtv.x / 2;
-            transformA.y += mtv.y / 2;
-            transformB.x -= mtv.x / 2;
-            transformB.y -= mtv.y / 2;
+        if (isADynamic && !isBDynamic) {
+            transformA.x += mtv.x; transformA.y += mtv.y;
+        } else if (!isADynamic && isBDynamic) {
+            transformB.x -= mtv.x; transformB.y -= mtv.y;
+        } else if (isADynamic && isBDynamic) {
+            transformA.x += mtv.x / 2; transformA.y += mtv.y / 2;
+            transformB.x -= mtv.x / 2; transformB.y -= mtv.y / 2;
         }
 
-        // --- 2. Velocity Correction (Impulse Resolution) ---
+        // --- 2. Impulse Resolution (Bounce) ---
         const normal = this._normalize({ x: mtv.x, y: mtv.y });
+        const tangent = { x: -normal.y, y: normal.x };
 
         const ra = { x: contactPoint.x - transformA.x, y: contactPoint.y - transformA.y };
         const rb = { x: contactPoint.x - transformB.x, y: contactPoint.y - transformB.y };
@@ -557,29 +565,21 @@ export class PhysicsSystem {
         const relativeVelocity = { x: velA.x - velB.x, y: velA.y - velB.y };
         const velAlongNormal = this._dot(relativeVelocity, normal);
 
-        // Do not resolve if velocities are separating
         if (velAlongNormal > 0) return;
 
-        // Use the maximum bounciness of the two objects
-        const reboteA = rbA ? (rbA.rebote || 0) : 0;
-        const reboteB = rbB ? (rbB.rebote || 0) : 0;
-        const e = Math.max(reboteA, reboteB);
-
-        // Calculate impulse scalar
+        const e = Math.max(rbA ? rbA.rebote : 0, rbB ? rbB.rebote : 0);
         let invMassA = isADynamic ? 1 / (rbA.mass || 1) : 0;
         let invMassB = isBDynamic ? 1 / (rbB.mass || 1) : 0;
 
-        // Better Inertia Calculation based on collider size
         const getInertia = (materia, rb) => {
             if (!rb || rb.constraints.freezeRotation) return 0;
             const collider = this.getCollider(materia);
             const transform = materia.getComponent(Components.Transform);
-            let w = 100, h = 100;
+            let w = 50, h = 50;
             if (collider && collider.size) {
                 w = collider.size.x * (transform ? transform.scale.x : 1);
                 h = collider.size.y * (transform ? transform.scale.y : 1);
             }
-            // I = 1/12 * m * (w^2 + h^2)
             return (1/12) * rb.mass * (w * w + h * h);
         };
 
@@ -590,32 +590,45 @@ export class PhysicsSystem {
 
         const raCrossN = this._cross(ra, normal);
         const rbCrossN = this._cross(rb, normal);
-
         let denominator = invMassA + invMassB + (raCrossN * raCrossN * invInertiaA) + (rbCrossN * rbCrossN * invInertiaB);
 
         let j = -(1 + e) * velAlongNormal;
-        if (denominator > 0) {
-            j /= denominator;
-        } else {
-            return;
-        }
+        if (denominator > 0) j /= denominator;
+        else return;
 
-        // Apply impulse
         const impulse = { x: j * normal.x, y: j * normal.y };
 
+        // --- 3. Friction Resolution ---
+        const velAlongTangent = this._dot(relativeVelocity, tangent);
+        const raCrossT = this._cross(ra, tangent);
+        const rbCrossT = this._cross(rb, tangent);
+        let tangentDenominator = invMassA + invMassB + (raCrossT * raCrossT * invInertiaA) + (rbCrossT * rbCrossT * invInertiaB);
+
+        const mu = 0.4; // Friction coefficient
+        let jt = -velAlongTangent;
+        if (tangentDenominator > 0) jt /= tangentDenominator;
+
+        // Coulomb's Law: jt <= j * mu
+        const maxFriction = Math.abs(j * mu);
+        jt = this._clamp(jt, -maxFriction, maxFriction);
+
+        const frictionImpulse = { x: jt * tangent.x, y: jt * tangent.y };
+
         if (isADynamic) {
-            rbA.velocity.x += impulse.x * invMassA;
-            rbA.velocity.y += impulse.y * invMassA;
+            const totalImpulse = { x: impulse.x + frictionImpulse.x, y: impulse.y + frictionImpulse.y };
+            rbA.velocity.x += totalImpulse.x * invMassA;
+            rbA.velocity.y += totalImpulse.y * invMassA;
             if (!rbA.constraints.freezeRotation) {
-                rbA.angularVelocity += this._cross(ra, impulse) * invInertiaA;
+                rbA.angularVelocity += this._cross(ra, totalImpulse) * invInertiaA;
             }
         }
 
         if (isBDynamic) {
-            rbB.velocity.x -= impulse.x * invMassB;
-            rbB.velocity.y -= impulse.y * invMassB;
+            const totalImpulse = { x: impulse.x + frictionImpulse.x, y: impulse.y + frictionImpulse.y };
+            rbB.velocity.x -= totalImpulse.x * invMassB;
+            rbB.velocity.y -= totalImpulse.y * invMassB;
             if (!rbB.constraints.freezeRotation) {
-                rbB.angularVelocity -= this._cross(rb, impulse) * invInertiaB;
+                rbB.angularVelocity -= this._cross(rb, totalImpulse) * invInertiaB;
             }
         }
     }
@@ -1102,7 +1115,10 @@ export class PhysicsSystem {
         }
 
         // Asegurar que el eje apunta del círculo al polígono (B a A si A es polígono)
-        const polyCenter = vertices.reduce((acc, v) => ({ x: acc.x + v.x / vertices.length, y: acc.y + v.y / vertices.length }), { x: 0, y: 0 });
+        const polyCenter = {
+            x: vertices.reduce((sum, v) => sum + v.x, 0) / vertices.length,
+            y: vertices.reduce((sum, v) => sum + v.y, 0) / vertices.length
+        };
         const direction = { x: polyCenter.x - circleCenter.x, y: polyCenter.y - circleCenter.y };
         if (this._dot(direction, mtvAxis) < 0) {
             mtvAxis = { x: -mtvAxis.x, y: -mtvAxis.y };
@@ -1260,8 +1276,14 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / verticesA.length, y: acc.y + v.y / verticesA.length }), { x: 0, y: 0 });
-        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / verticesB.length, y: acc.y + v.y / verticesB.length }), { x: 0, y: 0 });
+        const centerA = {
+            x: verticesA.reduce((sum, v) => sum + v.x, 0) / verticesA.length,
+            y: verticesA.reduce((sum, v) => sum + v.y, 0) / verticesA.length
+        };
+        const centerB = {
+            x: verticesB.reduce((sum, v) => sum + v.x, 0) / verticesB.length,
+            y: verticesB.reduce((sum, v) => sum + v.y, 0) / verticesB.length
+        };
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {
@@ -1351,8 +1373,14 @@ export class PhysicsSystem {
         }
 
         // Ensure MTV axis points from B to A
-        const centerA = verticesA.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
-        const centerB = verticesB.reduce((acc, v) => ({ x: acc.x + v.x / 4, y: acc.y + v.y / 4 }), { x: 0, y: 0 });
+        const centerA = {
+            x: (verticesA[0].x + verticesA[1].x + verticesA[2].x + verticesA[3].x) / 4,
+            y: (verticesA[0].y + verticesA[1].y + verticesA[2].y + verticesA[3].y) / 4
+        };
+        const centerB = {
+            x: (verticesB[0].x + verticesB[1].x + verticesB[2].x + verticesB[3].x) / 4,
+            y: (verticesB[0].y + verticesB[1].y + verticesB[2].y + verticesB[3].y) / 4
+        };
         let direction = { x: centerA.x - centerB.x, y: centerA.y - centerB.y };
 
         if (this._dot(direction, mtvAxis) < 0) {

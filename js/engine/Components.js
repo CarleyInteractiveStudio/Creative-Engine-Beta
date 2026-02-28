@@ -5049,14 +5049,14 @@ export class VehicleController extends Leyes {
 
         // Aceleración / Freno
         if (moveInput !== 0 && speed < this.maxSpeed / 50) {
-            // Torque aumentado para trepar colinas (Hill Climb style)
-            const forceMag = this.power * 30000 * moveInput * finalTraction;
-            rb.addForce({ x: forward.x * forceMag * deltaTime, y: forward.y * forceMag * deltaTime });
+            // Torque ajustado para tracción realista
+            const forceMag = this.power * 500 * moveInput * finalTraction;
+            rb.addForce({ x: forward.x * forceMag, y: forward.y * forceMag });
 
             // Efecto de reacción: inclinar el chasis al acelerar (Wheelie effect)
             if (this.viewMode === 'Side-View' && finalTraction > 0) {
-                const reactionTorque = moveInput * this.power * 8000;
-                rb.addTorque(-reactionTorque * deltaTime);
+                const reactionTorque = moveInput * this.power * 200;
+                rb.addTorque(-reactionTorque);
             }
         }
 
@@ -5199,6 +5199,7 @@ export class WheelSuspension extends Leyes {
                     if (wheelTransform) {
                         const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
                         const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
+                        // En el editor mostramos la rueda en su posición de reposo (centro del círculo)
                         wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
                         wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
                     }
@@ -5257,46 +5258,53 @@ export class WheelSuspension extends Leyes {
 
             if (hit) {
                 wheel.isGrounded = true;
-                // La distancia desde el anclaje hasta el CENTRO de la rueda contactando el suelo
-                const distToWheelCenter = hit.distance - wheel.wheelRadius;
+                // distToWheelCenter es la distancia desde el castOrigin al punto donde el CENTRO de la rueda tocaría el suelo.
+                // castOrigin está a -wheelRadius del anclaje.
+                const distToWheelCenterFromOrigin = hit.distance - wheel.wheelRadius;
+                // La distancia desde el anclaje real al centro de la rueda es:
+                const distToWheelCenter = distToWheelCenterFromOrigin - wheel.wheelRadius;
 
                 const compressionAmount = Math.max(0, wheel.restLength - distToWheelCenter);
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
-                // 3. Física (Multiplicadores aumentados para evitar que el chasis toque el suelo)
-                const springForce = (compressionAmount * wheel.stiffness) * 15000;
+                // 3. Física (Amortiguación tipo Hill Climb)
+                // Multiplicadores ajustados para que el coche "absorba" el impacto y no rebote como loco
+                const springForce = (compressionAmount * wheel.stiffness) * 1500;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
-                const dampingForce = (compressionVelocity * wheel.damping) * 3000;
+                const dampingForce = (compressionVelocity * wheel.damping) * 300;
                 let totalForce = Math.max(0, springForce + dampingForce);
 
-                // Limitar fuerza máxima para evitar explosiones físicas
-                const maxForce = rb.mass * 3000000;
+                // Limitar fuerza máxima para estabilidad
+                const maxForce = rb.mass * 200000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
 
                 // --- TOPE RÍGIDO (Impact Absorption) ---
-                // Si la compresión es casi total (rueda toca el anclaje), aplicar una fuerza de impacto masiva
-                // y corregir posición para evitar que el chasis atraviese el suelo.
                 if (compressionAmount >= wheel.restLength) {
-                    const hardStopImpulse = rb.mass * 500;
-                    rb.velocity.x -= springDir.x * hardStopImpulse * deltaTime;
-                    rb.velocity.y -= springDir.y * hardStopImpulse * deltaTime;
+                    const overCompression = (compressionAmount - wheel.restLength);
+                    if (overCompression > 0) {
+                        transform.x -= springDir.x * (overCompression + 0.5);
+                        transform.y -= springDir.y * (overCompression + 0.5);
+                    }
 
-                    // Empujar chasis hacia afuera del suelo
-                    const correction = (compressionAmount - wheel.restLength) + 2;
-                    transform.x -= springDir.x * correction;
-                    transform.y -= springDir.y * correction;
+                    // Absorción de impacto: Matar velocidad en el eje de la suspensión
+                    const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
+                    if (velAlongSpring > 0) {
+                        rb.velocity.x -= springDir.x * velAlongSpring * 0.7;
+                        rb.velocity.y -= springDir.y * velAlongSpring * 0.7;
+                    }
                 }
 
                 // 4. Posicionamiento visual de la materia asignada
                 if (wheelMateria) {
                     const wheelTransform = wheelMateria.getComponent(Transform);
                     if (wheelTransform) {
-                        // Limitar la extensión para que no se vea que la rueda "vuela" debajo del suelo
-                        const extension = Math.min(wheel.restLength, distToWheelCenter);
-                        wheelTransform.x = anchorWorldX + springDir.x * extension;
-                        wheelTransform.y = anchorWorldY + springDir.y * extension;
+                        // El centro visual de la rueda debe estar en distToWheelCenter respecto al anclaje
+                        // Limitamos para que no se separe más de la cuenta ni se meta infinitamente
+                        const visualExtension = Math.min(wheel.restLength, distToWheelCenter);
+                        wheelTransform.x = anchorWorldX + springDir.x * visualExtension;
+                        wheelTransform.y = anchorWorldY + springDir.y * visualExtension;
 
                         // Rotación visual basada en movimiento relativo al chasis
                         const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
@@ -5305,9 +5313,9 @@ export class WheelSuspension extends Leyes {
                     }
                 }
 
-                // 5. Grip (Aumentado para Hill Climb)
+                // 5. Grip (Simula fricción lateral)
                 const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
-                const gripForce = -lateralVel * this.grip * rb.mass * 2000;
+                const gripForce = -lateralVel * this.grip * rb.mass * 400;
                 rb.addForce({ x: perpDir.x * gripForce * deltaTime, y: perpDir.y * gripForce * deltaTime });
 
                 wheel._lastCompression = wheel.currentCompression;
