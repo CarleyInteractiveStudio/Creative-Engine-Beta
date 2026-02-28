@@ -1033,11 +1033,22 @@ export class Rigidbody2D extends Leyes {
 
     addTorque(torque) {
         const mass = Math.max(0.1, this.mass);
-        // Coherent inertia approximation: (1/12) * mass * (w^2 + h^2)
-        // We use a base size of 50x50 which is common for most objects
-        const w = 50, h = 50;
+        // Better inertia approximation based on collider size
+        let w = 50, h = 50;
+        const box = this.materia.getComponent(BoxCollider2D);
+        const circle = this.materia.getComponent(CircleCollider2D);
+        const trans = this.materia.getComponent(Transform);
+
+        if (box) {
+            w = box.size.x * (trans ? Math.abs(trans.scale.x) : 1);
+            h = box.size.y * (trans ? Math.abs(trans.scale.y) : 1);
+        } else if (circle) {
+            w = h = circle.radius * 2 * (trans ? Math.max(Math.abs(trans.scale.x), Math.abs(trans.scale.y)) : 1);
+        }
+
+        // Inertia for a rectangular plate: (1/12) * m * (w^2 + h^2)
         const inertia = (1/12) * mass * (w * w + h * h);
-        this.angularVelocity += torque / inertia;
+        this.angularVelocity += torque / Math.max(1, inertia);
     }
 
     aplicarTorque(torque) { this.addTorque(torque); }
@@ -5289,6 +5300,8 @@ export class WheelSuspension extends Leyes {
 
         const perpDir = { x: -springDir.y, y: springDir.x };
 
+        // Pre-detectar cuántas ruedas tocan el suelo para repartir la carga
+        let groundedWheels = [];
         for (const wheel of this.wheels) {
             const scaledOffsetX = wheel.offset.x * transform.scale.x;
             const scaledOffsetY = wheel.offset.y * transform.scale.y;
@@ -5304,11 +5317,25 @@ export class WheelSuspension extends Leyes {
             const excludeIds = this.wheels.map(w => w.materiaId).filter(id => id !== null);
             const filter = { tags: this.gripTags, excludeAncestors: [vehicleRoot], excludeIds: excludeIds };
 
-            // Solo detectamos si la rueda realmente llegaría a tocar el suelo en su extensión máxima (restDistance)
             const maxCastDist = wheel.restDistance + wheel.wheelRadius;
             const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, maxCastDist, filter);
 
             if (hit && hit.distance <= maxCastDist + 2) {
+                groundedWheels.push({ wheel, hit, anchorWorld: { x: anchorWorldX, y: anchorWorldY } });
+            } else {
+                wheel.isGrounded = false;
+                wheel._groundPoint = null;
+                wheel.currentDist = wheel.restDistance;
+            }
+        }
+
+        const groundedCount = groundedWheels.length;
+
+        for (const { wheel, hit, anchorWorld } of groundedWheels) {
+            const anchorWorldX = anchorWorld.x;
+            const anchorWorldY = anchorWorld.y;
+
+            if (hit) {
                 wheel.isGrounded = true;
                 wheel._groundPoint = { ...hit.point };
                 const distToAnchor = hit.distance - wheel.wheelRadius;
@@ -5322,42 +5349,44 @@ export class WheelSuspension extends Leyes {
                 // --- LOGICA DE ABSORCIÓN (FRENADO) ---
                 if (velAlongSpring > 0) {
                     // El coche está bajando hacia la goma. Aplicamos fuerza para frenar la caída.
-                    // Queremos reducir velAlongSpring a 0 en 'absorptionTime' segundos.
-                    // Ley de Newton: F = m * a  donde a = DeltaV / DeltaT
                     const t = Math.max(0.01, wheel.absorptionTime);
                     totalForce = (velAlongSpring * rb.mass) / t;
 
-                    // Garantía: No aplicar más fuerza de la necesaria para frenar en este frame (evitar rebote)
+                    // El impulso de frenado no debe exceder lo necesario para detener el coche en este frame (evita rebote)
                     const forceToStopThisFrame = (velAlongSpring * rb.mass) / deltaTime;
                     totalForce = Math.min(totalForce, forceToStopThisFrame);
 
-                    // Hard Stop (Frenado Brusco): Si llegamos al límite físico, detenemos en seco.
+                    // Hard Stop (Tope Rígido): Evitar que el chasis atraviese el suelo
                     if (distToAnchor <= wheel.limitDistance) {
                         totalForce = forceToStopThisFrame;
-                        // Corrección de penetración suave
+                        // Corrección de posición agresiva (80%) para evitar enterrarse en el mapa
                         const overshoot = wheel.limitDistance - distToAnchor;
-                        transform.x -= springDir.x * overshoot * 0.2;
-                        transform.y -= springDir.y * overshoot * 0.2;
+                        transform.x -= springDir.x * overshoot * 0.8;
+                        transform.y -= springDir.y * overshoot * 0.8;
                     }
                 }
 
                 // --- LOGICA DE RECUPERACIÓN (SUBIDA) ---
                 if (distToAnchor < wheel.restDistance) {
-                    // El coche está por debajo de la altura de reposo, debe subir.
                     const diff = wheel.restDistance - distToAnchor;
-                    // Aplicamos una fuerza proporcional a la distancia faltante y la velocidad de recuperación.
-                    // Esto hará que el coche suba suavemente.
+                    // Fuerza de recuperación escalada correctamente por masa
                     const recoveryForce = diff * (wheel.recoverySpeed || 100) * (rb.mass / 100);
 
-                    // Si estamos subiendo (velAlongSpring negativa en Y-Down), la amortiguación frena para no rebotar
-                    const damping = (velAlongSpring < 0) ? Math.abs(velAlongSpring) * rb.mass * 1.5 : 0;
+                    // Amortiguación de retorno crítica:
+                    // Si estamos subiendo (v < 0), aplicamos una amortiguación fuerte para frenar justo en el reposo
+                    const damping = (velAlongSpring < 0) ? Math.abs(velAlongSpring) * rb.mass * 5.0 : 0;
 
-                    totalForce += (recoveryForce - damping);
+                    // Capar la fuerza de recuperación para que no sea superior al peso del coche (evitar lanzamientos)
+                    const weightSupport = 9.8 * rb.mass / groundedCount;
+                    const finalRecovery = Math.min(recoveryForce, weightSupport * 2.0);
+
+                    totalForce += (finalRecovery - damping);
                 }
 
-                // Seguridad: solo empujar hacia afuera (o frenar caída)
-                totalForce = Math.max(-rb.mass * 200, totalForce);
-                const maxForce = rb.mass * 5000;
+                // Seguridad: solo empujar hacia afuera.
+                // Aumentamos maxForce drásticamente para manejar impactos de alta velocidad sin "traspasar" el mapa.
+                totalForce = Math.max(0, totalForce);
+                const maxForce = rb.mass * 10000;
                 totalForce = Math.min(totalForce, maxForce);
 
                 const worldForce = { x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime };

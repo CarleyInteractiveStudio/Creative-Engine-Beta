@@ -282,13 +282,9 @@ export class PhysicsSystem {
                 // --- 2.1 Collision Filtering ---
                 // 1. Assembly Filter: Don't collide if they share the same VehicleController.
                 // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
-                const vehicleA = materiaA.findAncestorWithComponent(Components.VehicleController) ||
-                                 materiaA.findAncestorWithComponent(Components.WheelSuspension) ||
-                                (materiaA.getComponent(Components.VehicleController) || materiaA.getComponent(Components.WheelSuspension) ? materiaA : null);
+                const vehicleA = (materiaA.getComponent(Components.VehicleController) || materiaA.getComponent(Components.WheelSuspension)) ? materiaA : (materiaA.findAncestorWithComponent(Components.VehicleController) || materiaA.findAncestorWithComponent(Components.WheelSuspension));
 
-                const vehicleB = materiaB.findAncestorWithComponent(Components.VehicleController) ||
-                                 materiaB.findAncestorWithComponent(Components.WheelSuspension) ||
-                                (materiaB.getComponent(Components.VehicleController) || materiaB.getComponent(Components.WheelSuspension) ? materiaB : null);
+                const vehicleB = (materiaB.getComponent(Components.VehicleController) || materiaB.getComponent(Components.WheelSuspension)) ? materiaB : (materiaB.findAncestorWithComponent(Components.VehicleController) || materiaB.findAncestorWithComponent(Components.WheelSuspension));
 
                 if (vehicleA && vehicleA === vehicleB) continue;
 
