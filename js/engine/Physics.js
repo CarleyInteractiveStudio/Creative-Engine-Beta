@@ -116,9 +116,9 @@ export class PhysicsSystem {
         const perp = { x: -direction.y, y: direction.x };
         let closestHit = null;
 
-        // Usamos 5 rayos para cubrir el ancho del círculo.
-        // Reducimos el offset a 0.8 para evitar colisiones erróneas con paredes perfectamente verticales
-        const offsets = [-0.8, -0.4, 0, 0.4, 0.8];
+        // Usamos 9 rayos para cubrir el ancho del círculo de forma más densa.
+        // Esto evita que la rueda se "cuele" por pequeñas fisuras en el Tilemap o entre colliders.
+        const offsets = [-0.9, -0.67, -0.45, -0.22, 0, 0.22, 0.45, 0.67, 0.9];
 
         for (const offset of offsets) {
             const rayOrigin = {
@@ -1678,7 +1678,7 @@ export class PhysicsSystem {
 
         let excludedIds = [];
         let excludedAncestors = [];
-        let targetTags = [];
+        let targetTags = null;
 
         if (filter) {
             if (Array.isArray(filter)) {
@@ -1696,7 +1696,7 @@ export class PhysicsSystem {
         for (const materia of collidables) {
             if (excludedIds.includes(materia.id)) continue;
             if (excludedAncestors.some(ancestor => ancestor.id === materia.id || ancestor.isAncestorOf(materia))) continue;
-            if (targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
+            if (targetTags && targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
 
             const transform = materia.getComponent(Components.Transform);
             const collider = this.getCollider(materia);
