@@ -5181,12 +5181,10 @@ export class WheelSuspension extends Leyes {
     }
 
     update(deltaTime) {
-        // En el editor, posicionar las materias visuales de las ruedas para previsualización
-        if (typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts)) return;
-
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
 
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
         const chassisRad = transform.rotation * Math.PI / 180;
         const cos = Math.cos(chassisRad), sin = Math.sin(chassisRad);
 
@@ -5205,9 +5203,28 @@ export class WheelSuspension extends Leyes {
                     if (wheelTransform) {
                         const anchorWorldX = transform.x + (wheel.offset.x * cos - wheel.offset.y * sin);
                         const anchorWorldY = transform.y + (wheel.offset.x * sin + wheel.offset.y * cos);
-                        // En el editor mostramos la rueda en su posición de reposo (centro del círculo)
-                        wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
-                        wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
+
+                        if (isGame) {
+                            // --- Sincronización Visual en Juego ---
+                            // Usamos el estado de compresión calculado en fixedUpdate
+                            // distToWheelCenter = restLength - (currentCompression * restLength)
+                            const visualExtension = wheel.isGrounded ? (wheel.restLength * (1.0 - wheel.currentCompression)) : wheel.restLength;
+
+                            wheelTransform.x = anchorWorldX + springDir.x * visualExtension;
+                            wheelTransform.y = anchorWorldY + springDir.y * visualExtension;
+
+                            // Rotación visual basada en movimiento del chasis
+                            const rb = this.materia.getComponent(Rigidbody2D);
+                            if (rb) {
+                                const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
+                                const rotSpeed = Math.hypot(rb.velocity.x, rb.velocity.y) * 25;
+                                wheelTransform.rotation += rotSpeed * (moveDir >= 0 ? 1 : -1);
+                            }
+                        } else {
+                            // --- Previsualización en Editor ---
+                            wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
+                            wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
+                        }
                     }
                 }
             }
@@ -5247,7 +5264,14 @@ export class WheelSuspension extends Leyes {
                 y: anchorWorldY - springDir.y * wheel.wheelRadius
             };
 
-            const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, wheel.restLength + wheel.wheelRadius * 2, this.gripTags);
+            // Excluir al vehículo y sus partes de la detección de suelo
+            const vehicleRoot = this.materia.parent || this.materia;
+            const filter = {
+                tags: this.gripTags,
+                excludeAncestors: [vehicleRoot]
+            };
+
+            const hit = engine.circleCast(castOrigin, springDir, wheel.wheelRadius, wheel.restLength + wheel.wheelRadius * 2, filter);
 
             let wheelMateria = null;
             if (wheel.materiaId) {
@@ -5290,34 +5314,20 @@ export class WheelSuspension extends Leyes {
                 if (compressionAmount >= wheel.restLength) {
                     const overCompression = (compressionAmount - wheel.restLength);
                     if (overCompression > 0) {
-                        transform.x -= springDir.x * (overCompression + 0.5);
-                        transform.y -= springDir.y * (overCompression + 0.5);
+                        transform.x -= springDir.x * (overCompression + 0.2);
+                        transform.y -= springDir.y * (overCompression + 0.2);
                     }
 
-                    // Absorción de impacto: Matar velocidad en el eje de la suspensión
+                    // Absorción de impacto: Amortiguar velocidad en el eje de la suspensión
                     const velAlongSpring = rb.velocity.x * springDir.x + rb.velocity.y * springDir.y;
                     if (velAlongSpring > 0) {
-                        rb.velocity.x -= springDir.x * velAlongSpring * 0.7;
-                        rb.velocity.y -= springDir.y * velAlongSpring * 0.7;
+                        rb.velocity.x -= springDir.x * velAlongSpring * 0.4;
+                        rb.velocity.y -= springDir.y * velAlongSpring * 0.4;
                     }
                 }
 
-                // 4. Posicionamiento visual de la materia asignada
-                if (wheelMateria) {
-                    const wheelTransform = wheelMateria.getComponent(Transform);
-                    if (wheelTransform) {
-                        // El centro visual de la rueda debe estar en distToWheelCenter respecto al anclaje
-                        // Limitamos para que no se separe más de la cuenta ni se meta infinitamente
-                        const visualExtension = Math.min(wheel.restLength, distToWheelCenter);
-                        wheelTransform.x = anchorWorldX + springDir.x * visualExtension;
-                        wheelTransform.y = anchorWorldY + springDir.y * visualExtension;
-
-                        // Rotación visual basada en movimiento relativo al chasis
-                        const moveDir = rb.velocity.x * Math.cos(chassisRad) + rb.velocity.y * Math.sin(chassisRad);
-                        const rotSpeed = Math.hypot(rb.velocity.x, rb.velocity.y) * 25;
-                        wheelTransform.rotation += rotSpeed * (moveDir >= 0 ? 1 : -1);
-                    }
-                }
+                // El posicionamiento visual se ha movido a update() para mayor suavidad
+                // y evitar lag de transformación cuando la rueda es hija del coche.
 
                 // 5. Grip (Simula fricción lateral)
                 const lateralVel = rb.velocity.x * perpDir.x + rb.velocity.y * perpDir.y;
@@ -5330,13 +5340,7 @@ export class WheelSuspension extends Leyes {
                 wheel.currentCompression = 0;
                 wheel._lastCompression = 0;
 
-                if (wheelMateria) {
-                    const wheelTransform = wheelMateria.getComponent(Transform);
-                    if (wheelTransform) {
-                        wheelTransform.x = anchorWorldX + springDir.x * wheel.restLength;
-                        wheelTransform.y = anchorWorldY + springDir.y * wheel.restLength;
-                    }
-                }
+                // El posicionamiento visual se ha movido a update()
             }
         }
     }

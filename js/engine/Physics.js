@@ -108,7 +108,7 @@ export class PhysicsSystem {
      * @param {{x: number, y: number}} direction - Dirección del barrido (normalizada).
      * @param {number} radius - Radio del círculo.
      * @param {number} maxDistance - Distancia máxima del barrido.
-     * @param {string|string[]|number[]} [filter] - Opcional, filtrar por tag o excluir IDs.
+     * @param {string|string[]|number[]|object} [filter] - Opcional, filtrar por tag o excluir IDs/Nodos.
      */
     circleCast(origin, direction, radius, maxDistance = Infinity, filter = null) {
         if (!direction || (direction.x === 0 && direction.y === 0)) return null;
@@ -1652,11 +1652,26 @@ export class PhysicsSystem {
             m.isActive && (m.getComponent(Components.BoxCollider2D) || m.getComponent(Components.CircleCollider2D) || m.getComponent(Components.CapsuleCollider2D) || m.getComponent(Components.PolygonCollider2D) || m.getComponent(Components.LineCollider2D))
         );
 
-        const excludedIds = Array.isArray(filter) && typeof filter[0] === 'number' ? filter : [];
-        const targetTags = Array.isArray(filter) && typeof filter[0] === 'string' ? filter : (typeof filter === 'string' ? [filter] : []);
+        let excludedIds = [];
+        let excludedAncestors = [];
+        let targetTags = [];
+
+        if (filter) {
+            if (Array.isArray(filter)) {
+                if (typeof filter[0] === 'number') excludedIds = filter;
+                else if (typeof filter[0] === 'string') targetTags = filter;
+            } else if (typeof filter === 'string') {
+                targetTags = [filter];
+            } else if (typeof filter === 'object') {
+                if (filter.excludeIds) excludedIds = filter.excludeIds;
+                if (filter.excludeAncestors) excludedAncestors = filter.excludeAncestors;
+                if (filter.tags) targetTags = filter.tags;
+            }
+        }
 
         for (const materia of collidables) {
             if (excludedIds.includes(materia.id)) continue;
+            if (excludedAncestors.some(ancestor => ancestor.id === materia.id || ancestor.isAncestorOf(materia))) continue;
             if (targetTags.length > 0 && !targetTags.includes(materia.tag)) continue;
 
             const transform = materia.getComponent(Components.Transform);
