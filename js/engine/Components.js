@@ -5319,21 +5319,24 @@ export class WheelSuspension extends Leyes {
                 wheel.currentCompression = compressionAmount / wheel.restLength;
 
                 // 3. Física de Suspensión (Spring-Damper)
-                // Multiplicadores basados en masa para estabilidad en cualquier objeto.
-                // stiffness ~1000 y damping ~100 recomendados.
-                const springForce = (compressionAmount * wheel.stiffness) * rb.mass * 0.18;
+                // Multiplicadores ajustados para un comportamiento elástico pero muy controlado (Estilo Hill Climb).
+                // Reducimos la fuerza del muelle aún más para evitar el "lanzamiento".
+                const springForce = (compressionAmount * wheel.stiffness) * rb.mass * 0.035;
                 const compressionVelocity = (wheel.currentCompression - wheel._lastCompression) / deltaTime;
 
-                // Amortiguación asimétrica: MUCHO más fuerte al comprimir para absorber caídas.
-                const dampingMult = compressionVelocity > 0 ? 0.25 : 0.1;
+                // Amortiguación Crítica: Muy fuerte en expansión (cuando el coche sube) para evitar que rebote.
+                // compressionVelocity < 0 significa que la suspensión se está expandiendo (regresando).
+                const dampingMult = compressionVelocity > 0 ? 0.4 : 2.5;
                 const dampingForce = compressionVelocity * wheel.damping * rb.mass * dampingMult;
 
                 let totalForce = springForce + dampingForce;
+
+                // La suspensión solo puede empujar HACIA AFUERA (fuerza positiva en el eje del muelle).
+                // Si la amortiguación de expansión es muy fuerte, puede llegar a cancelar el empuje por completo.
                 totalForce = Math.max(0, totalForce);
 
-                // Limitar aceleración máxima (max force / mass) para evitar que salga volando.
-                // 5000 unidades de fuerza por unidad de masa (~5g a escala 100).
-                const maxForce = rb.mass * 8000;
+                // Limitamos la fuerza máxima para evitar que el coche "salte" solo por la suspensión.
+                const maxForce = rb.mass * 1500;
                 totalForce = Math.min(totalForce, maxForce);
 
                 rb.addForce({ x: -springDir.x * totalForce * deltaTime, y: -springDir.y * totalForce * deltaTime });
