@@ -639,13 +639,15 @@ function handleInspectorClick(e) {
             suspension.wheels.push({
                 materiaId: null,
                 offset: { x: 0, y: 30 },
-                restLength: 40,
+                restDistance: 40,
+                limitDistance: 10,
+                absorptionTime: 0.5,
+                recoverySpeed: 100,
                 wheelRadius: 15,
-                stiffness: 1000,
-                damping: 100,
                 isGrounded: false,
-                currentCompression: 0,
-                _lastCompression: 0
+                currentDist: 0,
+                _lastDist: 0,
+                _groundPoint: null
             });
             suspension.selectedIndex = suspension.wheels.length - 1;
             updateInspector();
@@ -3342,16 +3344,20 @@ async function updateInspectorForMateria(selectedMateria) {
                                     </div>
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>${L.get('STIFFNESS', 'Dureza (K)')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.stiffness" value="${ley.wheels[ley.selectedIndex].stiffness}">
+                                    <label>${L.get('ABSORPTION_TIME', 'Tiempo Absorción')}</label>
+                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.absorptionTime" value="${ley.wheels[ley.selectedIndex].absorptionTime}" step="0.1">
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>${L.get('DAMPING', 'Amortiguación (D)')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.damping" value="${ley.wheels[ley.selectedIndex].damping}">
+                                    <label>${L.get('RECOVERY_SPEED', 'Fuerza Recuperación')}</label>
+                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.recoverySpeed" value="${ley.wheels[ley.selectedIndex].recoverySpeed}">
                                 </div>
                                 <div class="prop-row-multi">
-                                    <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
-                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.restLength" value="${ley.wheels[ley.selectedIndex].restLength}">
+                                    <label>${L.get('REST_DISTANCE', 'Distancia Reposo')}</label>
+                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.restDistance" value="${ley.wheels[ley.selectedIndex].restDistance}">
+                                </div>
+                                <div class="prop-row-multi">
+                                    <label>${L.get('LIMIT_DISTANCE', 'Límite Seguridad')}</label>
+                                    <input type="number" class="prop-input" data-component="WheelSuspension" data-prop="wheels.${ley.selectedIndex}.limitDistance" value="${ley.wheels[ley.selectedIndex].limitDistance}">
                                 </div>
                                 <div class="prop-row-multi">
                                     <label>${L.get('WHEEL_RADIUS', 'Radio Rueda')}</label>

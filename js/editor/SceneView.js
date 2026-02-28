@@ -500,7 +500,8 @@ function checkWheelSuspensionGizmoHit(canvasPos) {
         const wheel = suspension.wheels[i];
         const ox = wheel.offset.x;
         const oy = wheel.offset.y;
-        const length = wheel.restLength;
+        const length = wheel.restDistance;
+        const limitDist = wheel.limitDistance;
         const radius = wheel.wheelRadius;
 
         // Hit para anclaje (offset)
@@ -511,9 +512,13 @@ function checkWheelSuspensionGizmoHit(canvasPos) {
         }
 
         if (suspension.selectedIndex === i) {
-            // Hit para largo
+            // Hit para largo (Reposo)
             if (Math.abs(localX - (ox + adx * length)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * length)) < handleHitboxSize / 2) {
                 return `suspension-length-${i}`;
+            }
+            // Hit para límite
+            if (Math.abs(localX - (ox + adx * limitDist)) < handleHitboxSize / 2 && Math.abs(localY - (oy + ady * limitDist)) < handleHitboxSize / 2) {
+                return `suspension-limit-${i}`;
             }
             // Hit para radio (usando perpendicular)
             const rx = ox + adx * length + pdx * radius;
@@ -794,7 +799,8 @@ export function initialize(dependencies) {
             const lx = (worldMouse.x - transform.x) * cos - (worldMouse.y - transform.y) * sin;
             const ly = (worldMouse.x - transform.x) * sin + (worldMouse.y - transform.y) * cos;
             suspension.wheels[idx].offset = { x: lx, y: ly };
-        } else if (isString && dragState.handle.startsWith('suspension-length-')) {
+        } else if (isString && (dragState.handle.startsWith('suspension-length-') || dragState.handle.startsWith('suspension-limit-'))) {
+            const isLimit = dragState.handle.startsWith('suspension-limit-');
             const idx = parseInt(dragState.handle.split('-').pop());
             const suspension = dragState.materia.getComponent(Components.WheelSuspension);
             const rect = dom.sceneCanvas.getBoundingClientRect();
@@ -811,7 +817,12 @@ export function initialize(dependencies) {
             const adx = mag > 0 ? axis.x / mag : 0;
             const ady = mag > 0 ? axis.y / mag : 1;
 
-            suspension.wheels[idx].restLength = Math.max(5, (lx - ox) * adx + (ly - oy) * ady);
+            const newDist = Math.max(1, (lx - ox) * adx + (ly - oy) * ady);
+            if (isLimit) {
+                suspension.wheels[idx].limitDistance = Math.min(newDist, suspension.wheels[idx].restDistance - 5);
+            } else {
+                suspension.wheels[idx].restDistance = Math.max(newDist, suspension.wheels[idx].limitDistance + 5);
+            }
         } else if (isString && dragState.handle.startsWith('suspension-radius-')) {
             const idx = parseInt(dragState.handle.split('-').pop());
             const suspension = dragState.materia.getComponent(Components.WheelSuspension);
@@ -831,9 +842,9 @@ export function initialize(dependencies) {
             const adx = mag > 0 ? axis.x / mag : 0;
             const ady = mag > 0 ? axis.y / mag : 1;
 
-            // Centro de la rueda
-            const cx = ox + adx * wheel.restLength;
-            const cy = oy + ady * wheel.restLength;
+            // Centro de la rueda (usamos el largo de reposo para el gizmo del radio)
+            const cx = ox + adx * wheel.restDistance;
+            const cy = oy + ady * wheel.restDistance;
 
             // Distancia del mouse al centro de la rueda
             suspension.wheels[idx].wheelRadius = Math.max(2, Math.hypot(lx - cx, ly - cy));
@@ -2001,10 +2012,11 @@ function drawWheelSuspensionGizmos() {
         const isSelected = suspension.selectedIndex === index;
         const ox = wheel.offset.x;
         const oy = wheel.offset.y;
-        const length = wheel.restLength;
+        const length = wheel.restDistance;
+        const limitDist = wheel.limitDistance;
         const radius = wheel.wheelRadius;
 
-        // 1. Dibujar eje del resorte
+        // 1. Dibujar eje del resorte (de anclaje a reposo)
         ctx.beginPath();
         ctx.moveTo(ox, oy);
         ctx.lineTo(ox + adx * length, oy + ady * length);
@@ -2020,19 +2032,31 @@ function drawWheelSuspensionGizmos() {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 3. Dibujar anclaje
+        // 3. Dibujar límite de seguridad (Hard Stop)
+        ctx.beginPath();
+        ctx.moveTo(ox + adx * limitDist - pdx * radius, oy + ady * limitDist - pdy * radius);
+        ctx.lineTo(ox + adx * limitDist + pdx * radius, oy + ady * limitDist + pdy * radius);
+        ctx.strokeStyle = isSelected ? '#ff0000' : 'rgba(255, 0, 0, 0.3)';
+        ctx.lineWidth = 2 / zoom;
+        ctx.stroke();
+
+        // 4. Dibujar anclaje
         ctx.fillStyle = isSelected ? '#ffaa00' : 'rgba(255, 170, 0, 0.4)';
         ctx.beginPath();
         ctx.arc(ox, oy, 4 / zoom, 0, Math.PI * 2);
         ctx.fill();
 
-        // 4. Manijas interactivas (Solo si está seleccionada la rueda)
+        // 5. Manijas interactivas (Solo si está seleccionada la rueda)
         if (isSelected) {
             ctx.fillStyle = '#ffffff';
             // Manija para posición (offset)
             ctx.fillRect(ox - handleSize / 2, oy - handleSize / 2, handleSize, handleSize);
             // Manija para el largo (al final del eje)
             ctx.fillRect(ox + adx * length - handleSize / 2, oy + ady * length - handleSize / 2, handleSize, handleSize);
+            // Manija para el límite (roja)
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(ox + adx * limitDist - handleSize / 2, oy + ady * limitDist - handleSize / 2, handleSize, handleSize);
+            ctx.fillStyle = '#ffffff';
             // Manija para el radio (en el borde de la rueda, perpendicular)
             const rx = ox + adx * length + pdx * radius;
             const ry = oy + ady * length + pdy * radius;
