@@ -5021,10 +5021,12 @@ export class SuspensionHC extends Leyes {
 
         this.potenciaMotor = 1000; // Aumentado para mejor tracción
         this.velocidadMaxima = 2000;
+        this.frenadoMotor = 0.5; // Resistencia al rodamiento/frenado (0-1)
 
         this.fuerzaInclinacion = 1.0; // Multiplicador para el "caballito"
         this.controlAire = 500;       // Fuerza de rotación manual
         this.estabilidadAire = 0.5;   // Fuerza de auto-nivelación (0-1)
+        this.recuperacionGiro = 0.5;  // Fuerza de centrado del chasis en suelo (0-1)
 
         // Configuración de controles
         this.teclaAcelerar = 'd';
@@ -5040,12 +5042,17 @@ export class SuspensionHC extends Leyes {
     set potencia(v) { this.potenciaMotor = v; }
     get velocidadLimite() { return this.velocidadMaxima; }
     set velocidadLimite(v) { this.velocidadMaxima = v; }
+    get frenado() { return this.frenadoMotor; }
+    set frenado(v) { this.frenadoMotor = v; }
+
     get inclinacionAire() { return this.controlAire; }
     set inclinacionAire(v) { this.controlAire = v; }
     get inclinacion() { return this.fuerzaInclinacion; }
     set inclinacion(v) { this.fuerzaInclinacion = v; }
     get autoEstabilidad() { return this.estabilidadAire; }
     set autoEstabilidad(v) { this.estabilidadAire = v; }
+    get centradoGiro() { return this.recuperacionGiro; }
+    set centradoGiro(v) { this.recuperacionGiro = v; }
 
     get suspensionHC() { return this; }
 
@@ -5169,6 +5176,21 @@ export class SuspensionHC extends Leyes {
                     // Efecto de inclinación mejorado con control de fuerza
                     const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;
                     rbChasis.addTorque(reactionTorque);
+                }
+            } else {
+                // Frenado de motor / Resistencia al rodamiento
+                if (this.frenadoMotor > 0) {
+                    rbRueda.angularVelocity *= Math.pow(1.0 - this.frenadoMotor, deltaTime * 10);
+                }
+
+                // Centrado del chasis (Recuperar posición horizontal en suelo)
+                if (this.recuperacionGiro > 0) {
+                    let currentRot = transChasis.rotation % 360;
+                    if (currentRot > 180) currentRot -= 360;
+                    if (currentRot < -180) currentRot += 360;
+
+                    const centeringTorque = -currentRot * this.recuperacionGiro * 2000 * deltaTime;
+                    rbChasis.addTorque(centeringTorque);
                 }
             }
         } else {

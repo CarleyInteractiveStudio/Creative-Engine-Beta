@@ -163,7 +163,7 @@ const componentShortcuts = [
     'tono', 'pitch', 'estaTocandoSuelo', 'tagsDeDeslizamiento',
     'nivelExpulsion', 'soporte', 'fuerza', 'modoVista', 'potencia', 'velocidadMaxima', 'autoVolteo', 'velocidadGiro', 'intensidadDerrape', 'amortiguacion',
     'dureza', 'longitudReposo', 'potenciaMotor', 'controlAire', 'teclaAcelerar', 'teclaFrenar', 'chasis', 'eje', 'velocidadLimite', 'inclinacionAire',
-    'fuerzaInclinacion', 'inclinacion', 'estabilidadAire', 'autoEstabilidad'
+    'fuerzaInclinacion', 'inclinacion', 'estabilidadAire', 'autoEstabilidad', 'frenadoMotor', 'frenado', 'recuperacionGiro', 'centradoGiro'
 ];
 
 function getDefaultValueForType(canonicalType) {
