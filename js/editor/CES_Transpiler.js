@@ -162,7 +162,8 @@ const componentShortcuts = [
     'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
     'tono', 'pitch', 'estaTocandoSuelo', 'tagsDeDeslizamiento',
     'nivelExpulsion', 'soporte', 'fuerza', 'modoVista', 'potencia', 'velocidadMaxima', 'autoVolteo', 'velocidadGiro', 'intensidadDerrape', 'amortiguacion',
-    'dureza', 'longitudReposo', 'potenciaMotor', 'controlAire', 'teclaAcelerar', 'teclaFrenar', 'chasis', 'eje', 'velocidadLimite', 'inclinacionAire'
+    'dureza', 'longitudReposo', 'potenciaMotor', 'controlAire', 'teclaAcelerar', 'teclaFrenar', 'chasis', 'eje', 'velocidadLimite', 'inclinacionAire',
+    'fuerzaInclinacion', 'inclinacion', 'estabilidadAire', 'autoEstabilidad'
 ];
 
 function getDefaultValueForType(canonicalType) {

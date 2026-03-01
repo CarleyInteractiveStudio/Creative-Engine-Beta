@@ -3204,10 +3204,18 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('AIR_CONTROL', 'Control Aire')}</label>
-                        <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="controlAire" value="${ley.controlAire}">
-                    </div>
+                        <div class="prop-row">
+                            <label title="Controla cuánto se inclina el chasis al acelerar">Inclinación</label>
+                            <input type="number" step="0.1" class="prop-input" data-component="SuspensionHC" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
+                        </div>
+                        <div class="prop-row">
+                            <label title="Control manual de giro en el aire">Giro Aire</label>
+                            <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="controlAire" value="${ley.controlAire}">
+                        </div>
+                        <div class="prop-row">
+                            <label title="Estabilización automática en el aire (0-1)">Auto-Estabilizar</label>
+                            <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
+                        </div>
 
                     <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">

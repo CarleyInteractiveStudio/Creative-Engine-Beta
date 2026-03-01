@@ -5021,7 +5021,10 @@ export class SuspensionHC extends Leyes {
 
         this.potenciaMotor = 1000; // Aumentado para mejor tracción
         this.velocidadMaxima = 2000;
-        this.controlAire = 500;    // Aumentado para mayor realismo en saltos
+
+        this.fuerzaInclinacion = 1.0; // Multiplicador para el "caballito"
+        this.controlAire = 500;       // Fuerza de rotación manual
+        this.estabilidadAire = 0.5;   // Fuerza de auto-nivelación (0-1)
 
         // Configuración de controles
         this.teclaAcelerar = 'd';
@@ -5039,6 +5042,10 @@ export class SuspensionHC extends Leyes {
     set velocidadLimite(v) { this.velocidadMaxima = v; }
     get inclinacionAire() { return this.controlAire; }
     set inclinacionAire(v) { this.controlAire = v; }
+    get inclinacion() { return this.fuerzaInclinacion; }
+    set inclinacion(v) { this.fuerzaInclinacion = v; }
+    get autoEstabilidad() { return this.estabilidadAire; }
+    set autoEstabilidad(v) { this.estabilidadAire = v; }
 
     get suspensionHC() { return this; }
 
@@ -5143,28 +5150,45 @@ export class SuspensionHC extends Leyes {
         if (input.isKeyPressed(this.teclaAcelerar)) moveInput += 1;
         if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
-        if (moveInput !== 0) {
-            // Detección de suelo mejorada: Usar el API del motor para mayor robustez
-            const engine = RuntimeAPIManager.getAPI('engine');
-            const isGrounded = engine ? (engine.alPermanecerEnColision(this.materia).length > 0 ||
-                                        engine.alEntrarEnColision(this.materia).length > 0) : false;
+        // 5. Control de Motor e Inclinación
+        const engine = RuntimeAPIManager.getAPI('engine');
+        const isGrounded = engine ? (engine.alPermanecerEnColision(this.materia).length > 0 ||
+                                    engine.alEntrarEnColision(this.materia).length > 0) : false;
 
-            if (isGrounded) {
+        if (isGrounded) {
+            // Aumentar el arrastre angular del chasis cuando toca el suelo para simular el peso de las gomas
+            rbChasis.angularVelocity *= Math.pow(0.9, deltaTime * 60);
+
+            if (moveInput !== 0) {
                 // Aplicar torque a la rueda para que avance
                 if (Math.abs(rbRueda.angularVelocity) < this.velocidadMaxima / 100) {
                     const torqueScale = 1500; // Multiplicador para sentir la fuerza
                     const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
                     rbRueda.addTorque(torque);
 
-                    // Efecto de inclinación (Acción/Reacción): Al acelerar hacia adelante, el chasis se levanta de atrás
-                    // En este motor, un torque negativo en el chasis lo inclina hacia atrás.
-                    const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * deltaTime;
+                    // Efecto de inclinación mejorado con control de fuerza
+                    const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * this.fuerzaInclinacion * deltaTime;
                     rbChasis.addTorque(reactionTorque);
                 }
-            } else {
-                // Control en el aire: Inclinar el coche para aterrizar bien
+            }
+        } else {
+            // Control en el aire
+            if (moveInput !== 0) {
+                // Rotación manual
                 const airTorque = -moveInput * this.controlAire * 2000 * deltaTime;
                 rbChasis.addTorque(airTorque);
+            } else if (this.estabilidadAire > 0) {
+                // Auto-nivelación: intentar mantener el chasis horizontal (rotación 0)
+                let currentRot = transChasis.rotation % 360;
+                if (currentRot > 180) currentRot -= 360;
+                if (currentRot < -180) currentRot += 360;
+
+                // Aplicar torque correctivo suave
+                const stabilityTorque = -currentRot * this.estabilidadAire * 1000 * deltaTime;
+                rbChasis.addTorque(stabilityTorque);
+
+                // Amortiguar rotación para evitar oscilaciones infinitas
+                rbChasis.angularVelocity *= Math.pow(0.95, deltaTime * 60);
             }
         }
     }
