@@ -5180,7 +5180,8 @@ export class SuspensionHC extends Leyes {
             } else {
                 // Frenado de motor / Resistencia al rodamiento
                 if (this.frenadoMotor > 0) {
-                    rbRueda.angularVelocity *= Math.pow(1.0 - this.frenadoMotor, deltaTime * 10);
+                    // Usamos una caída exponencial para mayor estabilidad con valores altos (>1.0)
+                    rbRueda.angularVelocity *= Math.exp(-this.frenadoMotor * deltaTime * 10);
                 }
 
                 // Centrado del chasis (Recuperar posición horizontal en suelo)
