@@ -5011,14 +5011,14 @@ export class SuspensionHC extends Leyes {
     constructor(materia) {
         super(materia);
         this.chasis = null; // ID de la materia o referencia al objeto
-        this.dureza = 250;  // Constante de muelle (K)
-        this.amortiguacion = 15; // Amortiguación (D)
-        this.longitudReposo = 40;
+        this.dureza = 50;  // Reducido para evitar explosiones iniciales
+        this.amortiguacion = 2; // Reducido
+        this.longitudReposo = 60; // Un poco más largo para que se vea la suspensión
         this.eje = { x: 0, y: 1 }; // Dirección local de la suspensión (hacia abajo)
 
-        this.potenciaMotor = 1200;
-        this.velocidadMaxima = 2500;
-        this.controlAire = 600;
+        this.potenciaMotor = 400;  // Valores más seguros para empezar
+        this.velocidadMaxima = 1500;
+        this.controlAire = 200;
 
         // Configuración de controles
         this.teclaAcelerar = 'd';
@@ -5041,10 +5041,11 @@ export class SuspensionHC extends Leyes {
 
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
-        if (!isGame) return;
 
-        // Marcar la rueda para filtros de colisión
+        // Siempre marcar como rueda para que el sistema de colisiones lo sepa en el editor también
         this.materia.isWheel = true;
+
+        if (!isGame) return;
     }
 
     fixedUpdate(deltaTime) {
@@ -5106,21 +5107,28 @@ export class SuspensionHC extends Leyes {
 
         const springForce = (this.longitudReposo - currentLength) * this.dureza;
         const dampingForce = -relVelAlongAxis * this.amortiguacion;
-        const totalForce = springForce + dampingForce;
+        let totalForce = springForce + dampingForce;
+
+        // Limitar la fuerza máxima para evitar explosiones físicas
+        const maxForce = 5000;
+        totalForce = Math.max(-maxForce, Math.min(maxForce, totalForce));
 
         const forceVec = { x: worldAxis.x * totalForce, y: worldAxis.y * totalForce };
 
         // Aplicar fuerzas
-        const forceScale = deltaTime * 10;
+        // NOTA: addForce en este motor suma directamente a la velocidad (v += F/m).
+        // Para que la fuerza sea estable e independiente del frame-rate, escalamos por deltaTime.
+        const forceScale = deltaTime * 0.5; // Escala conservadora para evitar saltos bruscos
         rbRueda.addForce(forceVec.x * forceScale, forceVec.y * forceScale);
         rbChasis.addForce(-forceVec.x * forceScale, -forceVec.y * forceScale);
 
-        // 4. Restricción lateral
+        // 4. Restricción lateral (Mantiene la rueda alineada con el eje de suspensión)
         const perpAxis = { x: -worldAxis.y, y: worldAxis.x };
         const lateralDiff = diff.x * perpAxis.x + diff.y * perpAxis.y;
         const lateralVel = relVel.x * perpAxis.x + relVel.y * perpAxis.y;
 
-        const lateralCorrection = -lateralDiff * 1000 - lateralVel * 50;
+        // Multiplicadores reducidos drásticamente (de 1000/50 a 100/10)
+        const lateralCorrection = -lateralDiff * 100 - lateralVel * 10;
         rbRueda.addForce(perpAxis.x * lateralCorrection * forceScale, perpAxis.y * lateralCorrection * forceScale);
         rbChasis.addForce(-perpAxis.x * lateralCorrection * forceScale, -perpAxis.y * lateralCorrection * forceScale);
 
