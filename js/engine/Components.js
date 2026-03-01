@@ -4577,7 +4577,8 @@ export class RaycastSource extends Leyes {
 
     update(deltaTime) {
         const scene = this.materia.scene;
-        if (!scene || !scene.physicsSystem) return;
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!scene || (!scene.physicsSystem && !engine)) return;
 
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
@@ -4588,7 +4589,9 @@ export class RaycastSource extends Leyes {
         this.lastHits = this.rays.map(ray => {
             const rad = (baseRotation + ray.angle) * Math.PI / 180;
             const direction = { x: Math.cos(rad), y: Math.sin(rad) };
-            return scene.physicsSystem.raycast(origin, direction, ray.length);
+            if (engine) return engine.lanzarRayo(origin, direction, ray.length);
+            if (scene.physicsSystem) return scene.physicsSystem.raycast(origin, direction, ray.length);
+            return null;
         });
 
         // Rotación automática hacia el impacto más cercano si está habilitado
@@ -5141,9 +5144,10 @@ export class SuspensionHC extends Leyes {
         if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
         if (moveInput !== 0) {
-            // Detección de suelo mejorada: Comprobar tanto 'enter' como 'stay'
-            const isGrounded = scene.physicsSystem.getCollisionInfo(this.materia, 'stay', 'collision').length > 0 ||
-                              scene.physicsSystem.getCollisionInfo(this.materia, 'enter', 'collision').length > 0;
+            // Detección de suelo mejorada: Usar el API del motor para mayor robustez
+            const engine = RuntimeAPIManager.getAPI('engine');
+            const isGrounded = engine ? (engine.alPermanecerEnColision(this.materia).length > 0 ||
+                                        engine.alEntrarEnColision(this.materia).length > 0) : false;
 
             if (isGrounded) {
                 // Aplicar torque a la rueda para que avance
@@ -5215,7 +5219,8 @@ export class BasicAI extends Leyes {
         if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
 
         const scene = this.materia.scene;
-        if (!scene) return;
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!scene || (!scene.physicsSystem && !engine)) return;
 
         const transform = this.materia.getComponent(Transform);
         if (!transform) return;
@@ -5350,7 +5355,7 @@ export class BasicAI extends Leyes {
         // Rayo hacia adelante a la altura de los "pies"
         const rad = transform.rotation * Math.PI / 180;
         const forward = { x: Math.cos(rad), y: Math.sin(rad) };
-        const hit = engine.raycast(transform.position, forward, 40, [this.materia.id]);
+        const hit = engine.raycast ? engine.raycast(transform.position, forward, 40, [this.materia.id]) : null;
 
         if (hit && hit.materia && !this.detectionTags.includes(hit.materia.tag)) {
             // Hay algo al frente, comprobar si hay espacio arriba para saltar

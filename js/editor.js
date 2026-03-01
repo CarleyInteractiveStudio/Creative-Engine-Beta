@@ -1925,6 +1925,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // This guarantees a clean state and prevents any data leaks from previous runs.
         console.log("Creating new PhysicsSystem instance for the game session.");
         physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+        SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
         uiSystem = UISystem;
         uiSystem.initialize(SceneManager.currentScene);
         EngineAPI.CEEngine.initialize({ physicsSystem }); // Re-initialize the API with the new instance
@@ -3612,6 +3613,7 @@ public start() {
 
             updateLoadingProgress(40, "Activando sistema de físicas...");
             physicsSystem = new PhysicsSystem(SceneManager.currentScene);
+            SceneManager.currentScene.physicsSystem = physicsSystem; // Link for components
             EngineAPI.CEEngine.initialize({ physicsSystem }); // Pass physics system to the API
             InputManager.initialize(dom.sceneCanvas, dom.gameCanvas);
             UISystem.initialize(SceneManager.currentScene);
