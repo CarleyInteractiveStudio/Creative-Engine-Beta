@@ -5016,9 +5016,9 @@ export class SuspensionHC extends Leyes {
         this.longitudReposo = 60; // Un poco más largo para que se vea la suspensión
         this.eje = { x: 0, y: 1 }; // Dirección local de la suspensión (hacia abajo)
 
-        this.potenciaMotor = 400;  // Valores más seguros para empezar
-        this.velocidadMaxima = 1500;
-        this.controlAire = 200;
+        this.potenciaMotor = 1000; // Aumentado para mejor tracción
+        this.velocidadMaxima = 2000;
+        this.controlAire = 500;    // Aumentado para mayor realismo en saltos
 
         // Configuración de controles
         this.teclaAcelerar = 'd';
@@ -5141,16 +5141,25 @@ export class SuspensionHC extends Leyes {
         if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
         if (moveInput !== 0) {
-            const isGrounded = scene.physicsSystem.getCollisionInfo(this.materia, 'stay', 'collision').length > 0;
+            // Detección de suelo mejorada: Comprobar tanto 'enter' como 'stay'
+            const isGrounded = scene.physicsSystem.getCollisionInfo(this.materia, 'stay', 'collision').length > 0 ||
+                              scene.physicsSystem.getCollisionInfo(this.materia, 'enter', 'collision').length > 0;
 
             if (isGrounded) {
+                // Aplicar torque a la rueda para que avance
                 if (Math.abs(rbRueda.angularVelocity) < this.velocidadMaxima / 100) {
-                    const torque = moveInput * this.potenciaMotor * 500 * deltaTime;
+                    const torqueScale = 1500; // Multiplicador para sentir la fuerza
+                    const torque = moveInput * this.potenciaMotor * torqueScale * deltaTime;
                     rbRueda.addTorque(torque);
-                    rbChasis.addTorque(-torque * 0.4);
+
+                    // Efecto de inclinación (Acción/Reacción): Al acelerar hacia adelante, el chasis se levanta de atrás
+                    // En este motor, un torque negativo en el chasis lo inclina hacia atrás.
+                    const reactionTorque = -moveInput * this.potenciaMotor * (torqueScale * 1.5) * deltaTime;
+                    rbChasis.addTorque(reactionTorque);
                 }
             } else {
-                const airTorque = -moveInput * this.controlAire * 1000 * deltaTime;
+                // Control en el aire: Inclinar el coche para aterrizar bien
+                const airTorque = -moveInput * this.controlAire * 2000 * deltaTime;
                 rbChasis.addTorque(airTorque);
             }
         }

@@ -308,16 +308,9 @@ export class PhysicsSystem {
                     }
                 }
 
-                // 3. Wheel Filter: Wheels should ONLY collide with terrain (Tilemap/Terreno) or via Amortiguador.
-                if (materiaA.isWheel || materiaB.isWheel) {
-                    const wheel = materiaA.isWheel ? materiaA : materiaB;
-                    const other = materiaA.isWheel ? materiaB : materiaA;
-
-                    const hasAmort = wheel.getComponent(Components.AmortiguadorCollider) || other.getComponent(Components.AmortiguadorCollider);
-                    const otherIsTerrain = other.getComponent(Components.TilemapCollider2D) || other.getComponent(Components.TerrenoCollider2D);
-
-                    if (!hasAmort && !otherIsTerrain) continue;
-                }
+                // 3. Wheel Filter: Allow wheels to collide with anything unless explicitly filtered.
+                // We rely on the SuspensionHC filter above to prevent chassis collisions.
+                // (Removed the restriction to ONLY terrain to allow collision with BoxCollider grounds)
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
                     const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
