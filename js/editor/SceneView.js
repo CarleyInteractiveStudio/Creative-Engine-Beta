@@ -871,7 +871,7 @@ export function initialize(dependencies) {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
                 const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
-                amort.size.y += localDy;
+                amort.size.y -= localDy;
                 amort.offset.y += localDy / 2;
                 break;
             }
@@ -879,7 +879,7 @@ export function initialize(dependencies) {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
                 const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
-                amort.size.y -= localDy;
+                amort.size.y += localDy;
                 amort.offset.y += localDy / 2;
                 break;
             }
@@ -2054,6 +2054,47 @@ function checkBoxColliderGizmoHit(canvasPos) {
     return null;
 }
 
+function checkAmortiguadorColliderGizmoHit(canvasPos) {
+    const selectedMateria = getSelectedMateria();
+    if (!selectedMateria || !renderer) return null;
+
+    const amort = selectedMateria.getComponent(Components.AmortiguadorCollider);
+    const transform = selectedMateria.getComponent(Components.Transform);
+    if (!amort || !transform) return null;
+
+    const worldMouse = screenToWorld(canvasPos.x, canvasPos.y);
+
+    const rad = -transform.rotation * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const localMouseX = (worldMouse.x - (transform.x + amort.offset.x)) * cos - (worldMouse.y - (transform.y + amort.offset.y)) * sin;
+    const localMouseY = (worldMouse.x - (transform.x + amort.offset.x)) * sin + (worldMouse.y - (transform.y + amort.offset.y)) * cos;
+
+    const width = amort.size.x * transform.scale.x;
+    const height = amort.size.y * transform.scale.y;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    const handleHitboxSize = 10 / renderer.camera.effectiveZoom;
+    const halfHitbox = handleHitboxSize / 2;
+
+    const handles = [
+        { x: 0, y: -halfHeight, name: 'amort-top' },
+        { x: 0, y: halfHeight, name: 'amort-bottom' },
+        { x: halfWidth, y: 0, name: 'amort-right' },
+        { x: -halfWidth, y: 0, name: 'amort-left' }
+    ];
+
+    for (const handle of handles) {
+        if ( localMouseX >= handle.x - halfHitbox && localMouseX <= handle.x + halfHitbox &&
+             localMouseY >= handle.y - halfHitbox && localMouseY <= handle.y + halfHitbox ) {
+            return handle.name;
+        }
+    }
+
+    return null;
+}
+
 function checkCapsuleColliderGizmoHit(canvasPos) {
     const selectedMateria = getSelectedMateria();
     if (!selectedMateria || !renderer) return null;
@@ -2230,7 +2271,7 @@ function drawPhysicsGizmos() {
         ctx.fillStyle = 'rgba(255, 100, 0, 0.9)';
 
         const handles = [
-            { x: 0, y: height / 2, name: 'amort-top' }, { x: 0, y: -height / 2, name: 'amort-bottom' },
+            { x: 0, y: -height / 2, name: 'amort-top' }, { x: 0, y: height / 2, name: 'amort-bottom' },
             { x: width / 2, y: 0, name: 'amort-right' }, { x: -width / 2, y: 0, name: 'amort-left' }
         ];
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));

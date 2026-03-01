@@ -91,6 +91,7 @@ export class PhysicsSystem {
 
     update(deltaTime) {
         this.currentFrame++;
+        this.lastDeltaTime = deltaTime;
 
         // Sub-stepping to prevent tunneling and improve stability
         const SUB_STEPS = 4;
@@ -304,7 +305,9 @@ export class PhysicsSystem {
                 // Exception: AmortiguadorCollider SHOULD interact with wheels.
                 if (materiaA.isWheel || materiaB.isWheel) {
                     const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
-                    if (!hasAmort) continue;
+            const other = materiaA.isWheel ? materiaB : materiaA;
+            const otherIsTerrain = other.getComponent(Components.TilemapCollider2D) || other.getComponent(Components.TerrenoCollider2D);
+            if (!hasAmort && !otherIsTerrain) continue;
                 }
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {
@@ -726,41 +729,81 @@ export class PhysicsSystem {
         } else if (otherCollider instanceof Components.CircleCollider2D) {
             info = this.isCircleVsBox(colliderMateria, this._tempAmortMateria);
         } else if (otherCollider instanceof Components.CapsuleCollider2D) {
+            // returns B->A, where A=Amort, B=Collider. So Collider -> Amort.
             info = this.isBoxVsCapsule(this._tempAmortMateria, colliderMateria);
+            // Negate to get Amort -> Collider
+            if (info) { info.x = -info.x; info.y = -info.y; }
+        } else if (otherCollider instanceof Components.PolygonCollider2D) {
+            info = this.isPolygonVsPolygon(colliderMateria, this._tempAmortMateria);
+        } else if (otherCollider instanceof Components.TilemapCollider2D || otherCollider instanceof Components.TerrenoCollider2D) {
+            // returns B->A, where A=Amort, B=Tilemap. So Tilemap -> Amort.
+            info = this.isColliderVsTilemap(this._tempAmortMateria, colliderMateria);
+            // Negate to get Amort -> Tilemap
             if (info) { info.x = -info.x; info.y = -info.y; }
         }
 
         if (info) {
-            // Aplicar lógica de amortiguación
-            const rb = colliderMateria.getComponent(Components.Rigidbody2D);
-            if (rb && rb.bodyType.toLowerCase() === 'dynamic') {
-                const normal = this._normalize({ x: info.x, y: info.y });
+            // Aplicar lógica de amortiguación a ambos cuerpos (Acción y Reacción)
+            const rbA = colliderMateria.getComponent(Components.Rigidbody2D);
+            const rbB = amortMateria.getComponent(Components.Rigidbody2D) || amortMateria.findAncestorWithComponent(Components.Rigidbody2D);
+
+            const isADynamic = rbA && rbA.bodyType.toLowerCase() === 'dynamic';
+            const isBDynamic = rbB && rbB.bodyType.toLowerCase() === 'dynamic';
+
+            if (isADynamic || isBDynamic) {
+                const normal = this._normalize({ x: info.x, y: info.y }); // Apunta de Amort (B) a Objeto (A)
+
+                const velA = isADynamic ? rbA.velocity : { x: 0, y: 0 };
+                const velB = isBDynamic ? rbB.velocity : { x: 0, y: 0 };
+                const relVelVec = { x: velA.x - velB.x, y: velA.y - velB.y };
+                const relativeVel = relVelVec.x * normal.x + relVelVec.y * normal.y;
 
                 // 1. Drenar velocidad (Amortiguación)
-                const relativeVel = rb.velocity.x * normal.x + rb.velocity.y * normal.y;
-                if (relativeVel > 0) {
-                     rb.velocity.x -= normal.x * relativeVel * amort.amortiguacion;
-                     rb.velocity.y -= normal.y * relativeVel * amort.amortiguacion;
+                // relativeVel < 0 significa que se están acercando
+                if (relativeVel < 0) {
+                    // Amortiguación suave: reducimos la velocidad de acercamiento proporcionalmente
+                    // Usamos un factor por sub-paso.
+                    const dampingFactor = Math.max(0, 1 - (amort.amortiguacion * 0.5));
+                    const newRelVel = relativeVel * dampingFactor;
+                    const velChange = newRelVel - relativeVel;
+
+                    if (isADynamic) {
+                        rbA.velocity.x += normal.x * velChange;
+                        rbA.velocity.y += normal.y * velChange;
+                    }
+                    if (isBDynamic) {
+                        rbB.velocity.x -= normal.x * velChange;
+                        rbB.velocity.y -= normal.y * velChange;
+                    }
                 }
 
                 // 2. Fuerza de recuperación (Expulsión inteligente)
                 const penetration = info.magnitude;
+                // Usamos la dimensión del amortiguador en la dirección de la colisión para el nivel de expulsión
+                const localNormalX = normal.x * Math.cos(-transformA.rotation * Math.PI / 180) - normal.y * Math.sin(-transformA.rotation * Math.PI / 180);
+                const localNormalY = normal.x * Math.sin(-transformA.rotation * Math.PI / 180) + normal.y * Math.cos(-transformA.rotation * Math.PI / 180);
+                const relevantDim = Math.abs(localNormalX) * amort.size.x * Math.abs(transformA.scale.x) +
+                                   Math.abs(localNormalY) * amort.size.y * Math.abs(transformA.scale.y);
 
-                // Calculamos cuánto 'debería' estar fuera según nivelExpulsion (0 a 1)
-                // Si nivelExpulsion es 1.0, queremos expulsarlo totalmente (objetivo penetración = 0)
-                // Si nivelExpulsion es 0.8, aceptamos un 20% de penetración.
-                const totalSize = Math.max(amort.size.x * transformA.scale.x, amort.size.y * transformA.scale.y);
-                const targetPenetration = totalSize * (1.0 - amort.distanciaDeseada);
+                const targetPenetration = relevantDim * (1.0 - amort.distanciaDeseada);
 
-                // Si la penetración es mayor al objetivo, empujamos
                 if (penetration > targetPenetration) {
                     const extraPenetration = penetration - targetPenetration;
 
-                    // El peso influye: si es demasiado pesado para el soporte, no lo expulsa del todo
-                    const weightFactor = Math.min(1.0, amort.soporteMaximo / (rb.mass * 10 || 1));
-                    const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 10;
+                    // El peso que el amortiguador siente (para el factor de soporte)
+                    const targetMass = isADynamic ? rbA.mass : (isBDynamic ? rbB.mass : 1);
+                    const weightFactor = Math.min(2.0, amort.soporteMaximo / (targetMass * 10 || 1));
 
-                    rb.addForce(-normal.x * pushForce * 100, -normal.y * pushForce * 100);
+                    // Fuerza proporcional a la penetración extra.
+                    const dt = this.lastDeltaTime || 0.016;
+                    const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 120000 * dt;
+
+                    if (isADynamic) {
+                        rbA.addForce(normal.x * pushForce, normal.y * pushForce);
+                    }
+                    if (isBDynamic) {
+                        rbB.addForce(-normal.x * pushForce, -normal.y * pushForce);
+                    }
                 }
             }
 

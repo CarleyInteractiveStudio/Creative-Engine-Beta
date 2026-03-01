@@ -1104,6 +1104,14 @@ export class AmortiguadorCollider extends Leyes {
         this.distanciaDeseada = 0.8; // 80-90% como dijo el usuario
     }
 
+    // --- Spanish Aliases ---
+    get nivelExpulsion() { return this.distanciaDeseada; }
+    set nivelExpulsion(v) { this.distanciaDeseada = v; }
+    get soporte() { return this.soporteMaximo; }
+    set soporte(v) { this.soporteMaximo = v; }
+    get fuerza() { return this.fuerzaRecuperacion; }
+    set fuerza(v) { this.fuerzaRecuperacion = v; }
+
     clone() {
         const copy = new AmortiguadorCollider(null);
         copy.isTrigger = this.isTrigger;
@@ -5025,6 +5033,22 @@ export class VehicleController extends Leyes {
         this._currentVelocity = { x: 0, y: 0 };
     }
 
+    // --- Spanish Aliases ---
+    get modoVista() { return this.viewMode; }
+    set modoVista(v) { this.viewMode = v; }
+    get potencia() { return this.power; }
+    set potencia(v) { this.power = v; }
+    get velocidadMaxima() { return this.maxSpeed; }
+    set velocidadMaxima(v) { this.maxSpeed = v; }
+    get autoVolteo() { return this.autoFlip; }
+    set autoVolteo(v) { this.autoFlip = v; }
+    get velocidadGiro() { return this.turnSpeed; }
+    set velocidadGiro(v) { this.turnSpeed = v; }
+    get intensidadDerrape() { return this.driftIntensity; }
+    set intensidadDerrape(v) { this.driftIntensity = v; }
+    get tagsDeDeslizamiento() { return this.slidingTags; }
+    set tagsDeDeslizamiento(v) { this.slidingTags = v; }
+
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
 
@@ -5048,6 +5072,7 @@ export class VehicleController extends Leyes {
                                 x: dx * cos - dy * sin,
                                 y: dx * sin + dy * cos
                             };
+                            wheelMtr.isWheel = true;
                         }
                     }
                 });
