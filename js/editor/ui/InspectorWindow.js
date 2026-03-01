@@ -33,7 +33,7 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.AmortiguadorCollider, Components.SuspensionHC],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.AmortiguadorCollider, Components.SuspensionHC, Components.VehicleTopDown],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
     'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
@@ -55,7 +55,8 @@ const componentIcons = {
     'RaycastSource': 'route',
     'BasicAI': 'bot',
     'AmortiguadorCollider': 'target',
-    'SuspensionHC': 'truck'
+    'SuspensionHC': 'truck',
+    'VehicleTopDown': 'rocket'
 };
 
 const fileIcons = {
@@ -3233,6 +3234,55 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label>${L.get('BRAKE_KEY', 'Tecla Frenar')}</label>
                         <input type="text" class="prop-input" data-component="SuspensionHC" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.VehicleTopDown) {
+            componentHTML = `
+                ${renderComponentHeader("Vehicle TopDown", icon, index)}
+                <div class="component-content">
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="VehicleTopDown" data-prop="autoAcelerar" ${ley.autoAcelerar ? 'checked' : ''}>
+                        <label>${L.get('AUTO_ACCELERATE', 'Auto-Acelerar')}</label>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('POWER', 'Potencia')}</label>
+                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="potencia" value="${ley.potencia}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('TURN_SPEED', 'Velocidad Giro')}</label>
+                        <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadGiro" value="${ley.velocidadGiro}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="0: Agarre total, 1: Hielo">${L.get('DRIFT_INTENSITY', 'Intensidad Derrape')}</label>
+                        <div class="prop-inputs">
+                            <input type="range" class="prop-input" data-component="VehicleTopDown" data-prop="intensidadDerrape" value="${ley.intensidadDerrape}" min="0" max="1" step="0.01" style="flex-grow: 1;">
+                            <span style="min-width: 30px; text-align: right;">${Math.round(ley.intensidadDerrape * 100)}%</span>
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
+                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_LEFT_RIGHT', 'Giro (Izq/Der)')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaIzquierda" value="${ley.teclaIzquierda}" title="Izquierda">
+                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaDerecha" value="${ley.teclaDerecha}" title="Derecha">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_ACCEL_BRAKE', 'Acel/Freno')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}" title="Acelerar">
+                            <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaFrenar" value="${ley.teclaFrenar}" title="Frenar">
+                        </div>
                     </div>
                 </div>
             `;

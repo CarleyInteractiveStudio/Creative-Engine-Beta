@@ -66,6 +66,7 @@ const componentAliases = {
     'GridLayoutGroup': 'autoDisposicionRejilla',
     'AmortiguadorCollider': 'colisionadorAmortiguador',
     'SuspensionHC': 'suspensionHC',
+    'VehicleTopDown': 'controladorVehiculoTopDown',
 };
 
 
@@ -5010,6 +5011,118 @@ export class LineCollider2D extends Leyes {
  * Componente SuspensionHC: Sistema de amortiguación tipo Hill Climb Racing.
  * Se añade a las ruedas y las conecta con un chasis.
  */
+/**
+ * Componente VehicleTopDown: Controlador de vehículo arcade en vista cenital (2D).
+ * Inspirado en Reckless Getaway 2.
+ */
+export class VehicleTopDown extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.autoAcelerar = true;
+        this.potencia = 1000;
+        this.velocidadMaxima = 800;
+        this.velocidadGiro = 180; // Grados por segundo
+        this.intensidadDerrape = 0.8; // 0: Sin derrape (agarre total), 1: Derrape total (hielo)
+        this.frenadoMotor = 0.1;
+
+        // Controles
+        this.teclaIzquierda = 'a';
+        this.teclaDerecha = 'd';
+        this.teclaAcelerar = 'w';
+        this.teclaFrenar = 's';
+
+        // Estado interno
+        this._isInitialized = false;
+    }
+
+    // --- Spanish Aliases ---
+    get potenciaMotor() { return this.potencia; }
+    set potenciaMotor(v) { this.potencia = v; }
+    get velocidadLimite() { return this.velocidadMaxima; }
+    set velocidadLimite(v) { this.velocidadMaxima = v; }
+    get giro() { return this.velocidadGiro; }
+    set giro(v) { this.velocidadGiro = v; }
+    get derrape() { return this.intensidadDerrape; }
+    set derrape(v) { this.intensidadDerrape = v; }
+    get freno() { return this.frenadoMotor; }
+    set freno(v) { this.frenadoMotor = v; }
+
+    fixedUpdate(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        if (!rb || !transform) return;
+
+        const input = RuntimeAPIManager.getAPI('input');
+        if (!input) return;
+
+        // 1. Manejar Giro (Rotación)
+        let steerInput = 0;
+        if (input.isKeyPressed(this.teclaIzquierda)) steerInput -= 1;
+        if (input.isKeyPressed(this.teclaDerecha)) steerInput += 1;
+
+        // Girar solo si el coche tiene algo de velocidad (opcional, para realismo arcade)
+        const speedSq = rb.velocity.x * rb.velocity.x + rb.velocity.y * rb.velocity.y;
+        if (speedSq > 0.01) {
+            const rotationStep = steerInput * this.velocidadGiro * deltaTime;
+            transform.rotation += rotationStep;
+        }
+
+        // 2. Manejar Aceleración
+        let accelInput = this.autoAcelerar ? 1 : 0;
+        if (input.isKeyPressed(this.teclaAcelerar)) accelInput = 1;
+        if (input.isKeyPressed(this.teclaFrenar)) accelInput = -1;
+
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+        const right = { x: -forward.y, y: forward.x };
+
+        // Aplicar fuerza de motor
+        if (accelInput !== 0) {
+            const currentSpeed = rb.velocity.x * forward.x + rb.velocity.y * forward.y;
+            if (Math.abs(currentSpeed) < this.velocidadMaxima / 100) {
+                const force = accelInput * this.potencia * deltaTime * 10;
+                rb.addForce(forward.x * force, forward.y * force);
+            }
+        } else {
+            // Freno motor suave
+            if (this.frenadoMotor > 0) {
+                rb.velocity.x *= Math.exp(-this.frenadoMotor * deltaTime * 5);
+                rb.velocity.y *= Math.exp(-this.frenadoMotor * deltaTime * 5);
+            }
+        }
+
+        // 3. Simulación de Derrape (Drifting)
+        // Calculamos la velocidad lateral (cuánto se desliza hacia los lados)
+        const lateralVelocity = rb.velocity.x * right.x + rb.velocity.y * right.y;
+
+        // El agarre arcade: eliminamos parte de la velocidad lateral cada frame
+        // intensidadDerrape 0 = agarre total (velocidad lateral -> 0)
+        // intensidadDerrape 1 = sin agarre (mantiene velocidad lateral)
+        const gripFactor = 1.0 - this.intensidadDerrape;
+
+        // Aplicamos la fricción lateral restando velocidad en el eje 'right'
+        const lateralForce = -lateralVelocity * gripFactor * 20; // Multiplicador arcade
+        rb.addForce(right.x * lateralForce * deltaTime * 60, right.y * lateralForce * deltaTime * 60);
+
+        // 4. Limitar velocidad máxima absoluta por seguridad física
+        const speed = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
+        if (speed > (this.velocidadMaxima / 50)) {
+            const ratio = (this.velocidadMaxima / 50) / speed;
+            rb.velocity.x *= ratio;
+            rb.velocity.y *= ratio;
+        }
+    }
+
+    clone() {
+        const copy = new VehicleTopDown(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
 export class SuspensionHC extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5824,6 +5937,7 @@ registerComponent('RaycastSource', RaycastSource);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('SuspensionHC', SuspensionHC);
+registerComponent('VehicleTopDown', VehicleTopDown);
 registerComponent('LineCollider2D', LineCollider2D);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
