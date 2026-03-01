@@ -289,25 +289,34 @@ export class PhysicsSystem {
                 const materiaB = collidables[j];
 
                 // --- 2.1 Collision Filtering ---
-                // 1. Assembly Filter: Don't collide if they share the same VehicleController.
-                // Prevents vehicle parts (chassis, wheels) from exploding due to internal collisions.
-                const vehicleA = (materiaA.getComponent(Components.VehicleController)) ? materiaA : (materiaA.findAncestorWithComponent(Components.VehicleController));
-                const vehicleB = (materiaB.getComponent(Components.VehicleController)) ? materiaB : (materiaB.findAncestorWithComponent(Components.VehicleController));
 
-                // 1. Assembly Filter: Don't collide if they share the same VehicleController.
-                // Exception: AmortiguadorCollider SHOULD interact with its own vehicle parts.
-                if (vehicleA && vehicleA === vehicleB) {
-                    const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
-                    if (!hasAmort) continue;
+                // 2. Assembly Filter (Vehicle Support):
+                // If they share a SuspensionHC connection (Wheel vs Chassis), don't collide.
+                const suspA = materiaA.getComponent(Components.SuspensionHC);
+                const suspB = materiaB.getComponent(Components.SuspensionHC);
+
+                if (suspA || suspB) {
+                    const susp = suspA || suspB;
+                    const wheel = suspA ? materiaA : materiaB;
+                    const other = suspA ? materiaB : materiaA;
+
+                    let chasisMtr = susp.chasis;
+                    if (typeof chasisMtr === 'number') chasisMtr = this.scene.findMateriaById(susp.chasis);
+
+                    if (chasisMtr && (other === chasisMtr || chasisMtr.isAncestorOf(other) || other.isAncestorOf(chasisMtr))) {
+                        continue; // No collision between wheel and its chassis/hierarchy
+                    }
                 }
 
-                // 2. Wheel Filter: Ignore physical collisions for wheel materias.
-                // Exception: AmortiguadorCollider SHOULD interact with wheels.
+                // 3. Wheel Filter: Wheels should ONLY collide with terrain (Tilemap/Terreno) or via Amortiguador.
                 if (materiaA.isWheel || materiaB.isWheel) {
-                    const hasAmort = materiaA.getComponent(Components.AmortiguadorCollider) || materiaB.getComponent(Components.AmortiguadorCollider);
-            const other = materiaA.isWheel ? materiaB : materiaA;
-            const otherIsTerrain = other.getComponent(Components.TilemapCollider2D) || other.getComponent(Components.TerrenoCollider2D);
-            if (!hasAmort && !otherIsTerrain) continue;
+                    const wheel = materiaA.isWheel ? materiaA : materiaB;
+                    const other = materiaA.isWheel ? materiaB : materiaA;
+
+                    const hasAmort = wheel.getComponent(Components.AmortiguadorCollider) || other.getComponent(Components.AmortiguadorCollider);
+                    const otherIsTerrain = other.getComponent(Components.TilemapCollider2D) || other.getComponent(Components.TerrenoCollider2D);
+
+                    if (!hasAmort && !otherIsTerrain) continue;
                 }
 
                 if (materiaA.isAncestorOf(materiaB) || materiaB.isAncestorOf(materiaA)) {

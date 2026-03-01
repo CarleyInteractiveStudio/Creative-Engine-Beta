@@ -89,6 +89,8 @@ const typeMap = {
     'ajustadorDeTamanoDeContenido': 'ContentSizeFitter',
     'AmortiguadorCollider': 'AmortiguadorCollider',
     'colisionadorAmortiguador': 'AmortiguadorCollider',
+    'SuspensionHC': 'SuspensionHC',
+    'suspensionHC': 'SuspensionHC',
     'variable': 'any',
     'any': 'any'
 };
@@ -115,7 +117,7 @@ const componentShortcuts = [
     'grid', 'rejilla',
     'raycastSource', 'rallo',
     'basicAI', 'iaBasica',
-    'vehicleController', 'controladorDeVehiculo',
+    'suspensionHC',
     'amortiguadorCollider', 'colisionadorAmortiguador',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
@@ -159,7 +161,8 @@ const componentShortcuts = [
     'raizCuadrada', 'sqrt', 'redondear', 'round', 'piso', 'floor', 'techo', 'ceil',
     'absoluto', 'abs', 'limitar', 'clamp', 'distancia', 'distance', 'Vector2', 'Color',
     'tono', 'pitch', 'estaTocandoSuelo', 'tagsDeDeslizamiento',
-    'nivelExpulsion', 'soporte', 'fuerza', 'modoVista', 'potencia', 'velocidadMaxima', 'autoVolteo', 'velocidadGiro', 'intensidadDerrape', 'amortiguacion'
+    'nivelExpulsion', 'soporte', 'fuerza', 'modoVista', 'potencia', 'velocidadMaxima', 'autoVolteo', 'velocidadGiro', 'intensidadDerrape', 'amortiguacion',
+    'dureza', 'longitudReposo', 'potenciaMotor', 'controlAire', 'teclaAcelerar', 'teclaFrenar', 'chasis', 'eje', 'velocidadLimite', 'inclinacionAire'
 ];
 
 function getDefaultValueForType(canonicalType) {

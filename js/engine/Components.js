@@ -64,8 +64,8 @@ const componentAliases = {
     'VerticalLayoutGroup': 'autoDisposicionVertical',
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
-    'VehicleController': 'controladorDeVehiculo',
     'AmortiguadorCollider': 'colisionadorAmortiguador',
+    'SuspensionHC': 'suspensionHC',
 };
 
 
@@ -5004,250 +5004,154 @@ export class LineCollider2D extends Leyes {
 }
 
 /**
- * Componente VehicleController (Controlador de Vehículo): Manejo de Autos, Aviones y Helicópteros con física realista.
+ * Componente SuspensionHC: Sistema de amortiguación tipo Hill Climb Racing.
+ * Se añade a las ruedas y las conecta con un chasis.
  */
-export class VehicleController extends Leyes {
+export class SuspensionHC extends Leyes {
     constructor(materia) {
         super(materia);
-        this.viewMode = 'Platformer'; // 'Platformer', 'Top-Down'
-        this.power = 2000;
-        this.maxSpeed = 1000;
-        this.autoFlip = false;
+        this.chasis = null; // ID de la materia o referencia al objeto
+        this.dureza = 250;  // Constante de muelle (K)
+        this.amortiguacion = 15; // Amortiguación (D)
+        this.longitudReposo = 40;
+        this.eje = { x: 0, y: 1 }; // Dirección local de la suspensión (hacia abajo)
 
-        // Configuración Top-Down
-        this.turnSpeed = 200;
-        this.driftIntensity = 0.5;
-        this.slidingTags = ['Ice', 'Slippery'];
+        this.potenciaMotor = 1200;
+        this.velocidadMaxima = 2500;
+        this.controlAire = 600;
 
-        // Gestión de Ruedas
-        this.wheels = []; // { materiaId, freezeX: true, freezeY: false, limitY: 40, limitX: 40, initialOffset: {x,y} }
-        this._wheelsInitialized = false;
-
-        // Controles
-        this.accelerateKey = 'd';
-        this.brakeKey = 'a';
-        this.leftKey = 'a';
-        this.rightKey = 'd';
-        this.upKey = 'w';
-        this.downKey = 's';
+        // Configuración de controles
+        this.teclaAcelerar = 'd';
+        this.teclaFrenar = 'a';
 
         // Estado interno
-        this._currentVelocity = { x: 0, y: 0 };
+        this._puntoAnclajeLocal = null;
+        this._isInitialized = false;
     }
 
     // --- Spanish Aliases ---
-    get modoVista() { return this.viewMode; }
-    set modoVista(v) { this.viewMode = v; }
-    get potencia() { return this.power; }
-    set potencia(v) { this.power = v; }
-    get velocidadMaxima() { return this.maxSpeed; }
-    set velocidadMaxima(v) { this.maxSpeed = v; }
-    get autoVolteo() { return this.autoFlip; }
-    set autoVolteo(v) { this.autoFlip = v; }
-    get velocidadGiro() { return this.turnSpeed; }
-    set velocidadGiro(v) { this.turnSpeed = v; }
-    get intensidadDerrape() { return this.driftIntensity; }
-    set intensidadDerrape(v) { this.driftIntensity = v; }
-    get tagsDeDeslizamiento() { return this.slidingTags; }
-    set tagsDeDeslizamiento(v) { this.slidingTags = v; }
+    get potencia() { return this.potenciaMotor; }
+    set potencia(v) { this.potenciaMotor = v; }
+    get velocidadLimite() { return this.velocidadMaxima; }
+    set velocidadLimite(v) { this.velocidadMaxima = v; }
+    get inclinacionAire() { return this.controlAire; }
+    set inclinacionAire(v) { this.controlAire = v; }
 
-    get controladorDeVehiculo() { return this; }
+    get suspensionHC() { return this; }
 
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
 
-        const transform = this.materia.getComponent(Transform);
-        if (!transform) return;
-
-        if (isGame) {
-            // Inicializar offsets de ruedas si es el primer frame de juego
-            if (!this._wheelsInitialized) {
-                this.wheels.forEach(w => {
-                    if (w.materiaId) {
-                        const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
-                        if (wheelMtr) {
-                            const wTrans = wheelMtr.getComponent(Transform);
-                            const rad = -transform.rotation * Math.PI / 180;
-                            const cos = Math.cos(rad), sin = Math.sin(rad);
-                            const dx = wTrans.x - transform.x;
-                            const dy = wTrans.y - transform.y;
-
-                            w.initialOffset = {
-                                x: dx * cos - dy * sin,
-                                y: dx * sin + dy * cos
-                            };
-                            wheelMtr.isWheel = true;
-                        }
-                    }
-                });
-                this._wheelsInitialized = true;
-            }
-
-            if (this.viewMode === 'Top-Down') {
-                this._handleTopDown(transform, deltaTime);
-            }
-
-            this._syncWheels(transform);
-        }
+        // Marcar la rueda para filtros de colisión
+        this.materia.isWheel = true;
     }
 
     fixedUpdate(deltaTime) {
-        if (typeof window !== 'undefined' && !window.isGameRunning && !window.CE_Standalone_Scripts) return;
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
 
-        if (this.viewMode === 'Platformer') {
-            this._handlePlatformer(deltaTime);
-        }
-    }
+        const scene = this.materia.scene;
+        if (!scene) return;
 
-    _handlePlatformer(deltaTime) {
-        const input = RuntimeAPIManager.getAPI('input');
-        const engine = RuntimeAPIManager.getAPI('engine');
-        const rb = this.materia.getComponent(Rigidbody2D);
-        const transform = this.materia.getComponent(Transform);
-        if (!input || !rb) return;
+        let chasisMtr = this.chasis;
+        if (typeof chasisMtr === 'number') chasisMtr = scene.findMateriaById(this.chasis);
+        if (!chasisMtr) return;
 
-        let moveInput = 0;
-        if (input.isKeyPressed(this.accelerateKey)) moveInput += 1;
-        if (input.isKeyPressed(this.brakeKey)) moveInput -= 1;
+        const rbRueda = this.materia.getComponent(Rigidbody2D);
+        const rbChasis = chasisMtr.getComponent(Rigidbody2D);
+        const transRueda = this.materia.getComponent(Transform);
+        const transChasis = chasisMtr.getComponent(Transform);
 
-        if (this.autoFlip && moveInput !== 0) {
-            transform.flipX = moveInput < 0;
-        }
+        if (!rbRueda || !rbChasis || !transRueda || !transChasis) return;
 
-        const speed = Math.abs(rb.velocity.x);
-        const isGrounded = this._checkGrounded();
-
-        // Lógica de Deslizamiento (Smart Realism)
-        let sliding = false;
-        if (engine && this.slidingTags.length > 0) {
-            for (const tag of this.slidingTags) {
-                if (engine.isTouchingTag(this.materia, tag)) {
-                    sliding = true;
-                    break;
-                }
-            }
+        // 1. Inicializar punto de anclaje relativo al chasis
+        if (!this._isInitialized) {
+            const dx = transRueda.x - transChasis.x;
+            const dy = transRueda.y - transChasis.y;
+            const rad = -transChasis.rotation * Math.PI / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            this._puntoAnclajeLocal = {
+                x: dx * cos - dy * sin,
+                y: dx * sin + dy * cos
+            };
+            this.materia.isWheel = true;
+            this._isInitialized = true;
         }
 
-        if (moveInput !== 0 && isGrounded && speed < this.maxSpeed / 50) {
-            let accelMultiplier = sliding ? 0.2 : 1.0; // Difícil acelerar en hielo
-            const forceMag = this.power * rb.mass * 0.5 * moveInput * accelMultiplier;
-            rb.addForce(forceMag * deltaTime * 100, 0);
-        }
+        // 2. Calcular posiciones y direcciones en el mundo
+        const radC = transChasis.rotation * Math.PI / 180;
+        const cosC = Math.cos(radC), sinC = Math.sin(radC);
 
-        // Si está deslizando, reducir la fricción lateral/frenado (inercia)
-        if (sliding) {
-            rb.velocity.x *= 0.995; // Conservar inercia
-        }
-    }
+        const worldAnchor = {
+            x: transChasis.x + (this._puntoAnclajeLocal.x * cosC - this._puntoAnclajeLocal.y * sinC),
+            y: transChasis.y + (this._puntoAnclajeLocal.x * sinC + this._puntoAnclajeLocal.y * cosC)
+        };
 
-    _checkGrounded() {
-        if (!this.materia.scene) return false;
-        let grounded = false;
+        const worldAxis = {
+            x: this.eje.x * cosC - this.eje.y * sinC,
+            y: this.eje.x * sinC + this.eje.y * cosC
+        };
 
-        for (const w of this.wheels) {
-            if (!w.materiaId) continue;
-            const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
-            if (!wheelMtr) continue;
+        // 3. Física de muelle amortiguado
+        const diff = { x: transRueda.x - worldAnchor.x, y: transRueda.y - worldAnchor.y };
+        const currentLength = diff.x * worldAxis.x + diff.y * worldAxis.y;
 
-            // Verificamos colisiones normales
-            const collisions = this.materia.scene.physicsSystem.getCollisionInfo(wheelMtr, 'stay', 'collision');
-            if (collisions.length > 0) {
-                grounded = true;
-                break;
-            }
+        // Velocidades en escala física (unidades/s)
+        const vRueda = { x: rbRueda.velocity.x * 100, y: rbRueda.velocity.y * 100 };
+        const vChasis = { x: rbChasis.velocity.x * 100, y: rbChasis.velocity.y * 100 };
 
-            // Verificamos si el Amortiguador está detectando algo
-            // (El motor de físicas guarda los triggers en activeCollisions)
-            const triggers = this.materia.scene.physicsSystem.getCollisionInfo(wheelMtr, 'stay', 'trigger');
-            if (triggers.length > 0) {
-                grounded = true;
-                break;
-            }
-        }
-        return grounded;
-    }
+        const relVel = { x: vRueda.x - vChasis.x, y: vRueda.y - vChasis.y };
+        const relVelAlongAxis = relVel.x * worldAxis.x + relVel.y * worldAxis.y;
 
-    _handleTopDown(transform, deltaTime) {
+        const springForce = (this.longitudReposo - currentLength) * this.dureza;
+        const dampingForce = -relVelAlongAxis * this.amortiguacion;
+        const totalForce = springForce + dampingForce;
+
+        const forceVec = { x: worldAxis.x * totalForce, y: worldAxis.y * totalForce };
+
+        // Aplicar fuerzas
+        const forceScale = deltaTime * 10;
+        rbRueda.addForce(forceVec.x * forceScale, forceVec.y * forceScale);
+        rbChasis.addForce(-forceVec.x * forceScale, -forceVec.y * forceScale);
+
+        // 4. Restricción lateral
+        const perpAxis = { x: -worldAxis.y, y: worldAxis.x };
+        const lateralDiff = diff.x * perpAxis.x + diff.y * perpAxis.y;
+        const lateralVel = relVel.x * perpAxis.x + relVel.y * perpAxis.y;
+
+        const lateralCorrection = -lateralDiff * 1000 - lateralVel * 50;
+        rbRueda.addForce(perpAxis.x * lateralCorrection * forceScale, perpAxis.y * lateralCorrection * forceScale);
+        rbChasis.addForce(-perpAxis.x * lateralCorrection * forceScale, -perpAxis.y * lateralCorrection * forceScale);
+
+        // 5. Control de Motor e Inclinación
         const input = RuntimeAPIManager.getAPI('input');
         if (!input) return;
 
         let moveInput = 0;
-        let steerInput = 0;
+        if (input.isKeyPressed(this.teclaAcelerar)) moveInput += 1;
+        if (input.isKeyPressed(this.teclaFrenar)) moveInput -= 1;
 
-        if (input.isKeyPressed(this.upKey)) moveInput += 1;
-        if (input.isKeyPressed(this.downKey)) moveInput -= 1;
-        if (input.isKeyPressed(this.rightKey)) steerInput += 1;
-        if (input.isKeyPressed(this.leftKey)) steerInput -= 1;
+        if (moveInput !== 0) {
+            const isGrounded = scene.physicsSystem.getCollisionInfo(this.materia, 'stay', 'collision').length > 0;
 
-        // Rotación
-        transform.rotation += steerInput * this.turnSpeed * deltaTime;
-
-        // Movimiento Arcade
-        const rad = transform.rotation * Math.PI / 180;
-        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
-
-        const targetVelX = forward.x * moveInput * (this.power / 10);
-        const targetVelY = forward.y * moveInput * (this.power / 10);
-
-        // Derrape (Interpolación de velocidad)
-        const lerpFactor = 1.0 - (this.driftIntensity * 0.9);
-        this._currentVelocity.x += (targetVelX - this._currentVelocity.x) * lerpFactor * deltaTime * 5;
-        this._currentVelocity.y += (targetVelY - this._currentVelocity.y) * lerpFactor * deltaTime * 5;
-
-        transform.x += this._currentVelocity.x * deltaTime;
-        transform.y += this._currentVelocity.y * deltaTime;
-    }
-
-    _syncWheels(transform) {
-        this.wheels.forEach(w => {
-            if (!w.materiaId) return;
-            const wheelMtr = this.materia.scene.findMateriaById(w.materiaId);
-            if (!wheelMtr) return;
-            const wTrans = wheelMtr.getComponent(Transform);
-            if (!wTrans) return;
-
-            // Calcular posición teórica basada en offset inicial y rotación del coche
-            const rad = transform.rotation * Math.PI / 180;
-            const cos = Math.cos(rad), sin = Math.sin(rad);
-
-            const ox = w.initialOffset.x;
-            const oy = w.initialOffset.y;
-
-            const rotatedX = ox * cos - oy * sin;
-            const rotatedY = ox * sin + oy * cos;
-
-            const targetX = transform.x + rotatedX;
-            const targetY = transform.y + rotatedY;
-
-            if (w.freezeX) {
-                wTrans.x = targetX;
-            } else if (w.limitX !== undefined) {
-                const distX = wTrans.x - targetX;
-                if (Math.abs(distX) > w.limitX) {
-                    wTrans.x = targetX + Math.sign(distX) * w.limitX;
+            if (isGrounded) {
+                if (Math.abs(rbRueda.angularVelocity) < this.velocidadMaxima / 100) {
+                    const torque = moveInput * this.potenciaMotor * 500 * deltaTime;
+                    rbRueda.addTorque(torque);
+                    rbChasis.addTorque(-torque * 0.4);
                 }
+            } else {
+                const airTorque = -moveInput * this.controlAire * 1000 * deltaTime;
+                rbChasis.addTorque(airTorque);
             }
-
-            if (w.freezeY) {
-                wTrans.y = targetY;
-            } else if (w.limitY !== undefined) {
-                const distY = wTrans.y - targetY;
-                if (Math.abs(distY) > w.limitY) {
-                    wTrans.y = targetY + Math.sign(distY) * w.limitY;
-                }
-            }
-
-            // Sincronizar rotación si es Top-Down
-            if (this.viewMode === 'Top-Down') {
-                wTrans.rotation = transform.rotation;
-            }
-        });
+        }
     }
 
     clone() {
-        const copy = new VehicleController(null);
+        const copy = new SuspensionHC(null);
         Object.assign(copy, this);
-        copy.wheels = this.wheels.map(w => ({ ...w, initialOffset: { ...w.initialOffset } }));
+        copy._puntoAnclajeLocal = this._puntoAnclajeLocal ? { ...this._puntoAnclajeLocal } : null;
         return copy;
     }
 }
@@ -5848,9 +5752,9 @@ registerComponent('Health', Health);
 registerComponent('Patrol', Patrol);
 registerComponent('ParticleSystem', ParticleSystem);
 registerComponent('RaycastSource', RaycastSource);
-registerComponent('VehicleController', VehicleController);
 registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
+registerComponent('SuspensionHC', SuspensionHC);
 registerComponent('LineCollider2D', LineCollider2D);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);
