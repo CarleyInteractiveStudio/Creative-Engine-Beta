@@ -755,55 +755,60 @@ export class PhysicsSystem {
 
                 const velA = isADynamic ? rbA.velocity : { x: 0, y: 0 };
                 const velB = isBDynamic ? rbB.velocity : { x: 0, y: 0 };
-                const relVelVec = { x: velA.x - velB.x, y: velA.y - velB.y };
-                const relativeVel = relVelVec.x * normal.x + relVelVec.y * normal.y;
 
-                // 1. Drenar velocidad (Amortiguación)
-                // relativeVel < 0 significa que se están acercando
-                if (relativeVel < 0) {
-                    // Amortiguación suave: reducimos la velocidad de acercamiento proporcionalmente
-                    // Usamos un factor por sub-paso.
-                    const dampingFactor = Math.max(0, 1 - (amort.amortiguacion * 0.5));
-                    const newRelVel = relativeVel * dampingFactor;
-                    const velChange = newRelVel - relativeVel;
+                // Si ambos objetos comparten el mismo Rigidbody (ej: partes de un vehículo sin articulaciones),
+                // las fuerzas se cancelan. En ese caso, aplicamos la fuerza a un "objeto virtual" o ignoramos.
+                // Sin embargo, si son diferentes (ej: rueda vs suelo), procedemos.
+                if (rbA !== rbB) {
+                    const relVelVec = { x: velA.x - velB.x, y: velA.y - velB.y };
+                    const relativeVel = relVelVec.x * normal.x + relVelVec.y * normal.y;
 
-                    if (isADynamic) {
-                        rbA.velocity.x += normal.x * velChange;
-                        rbA.velocity.y += normal.y * velChange;
+                    // 1. Drenar velocidad (Amortiguación)
+                    // relativeVel < 0 significa que se están acercando
+                    if (relativeVel < 0) {
+                        const dampingFactor = Math.max(0, 1 - (amort.amortiguacion * 0.5));
+                        const newRelVel = relativeVel * dampingFactor;
+                        const velChange = newRelVel - relativeVel;
+
+                        if (isADynamic) {
+                            rbA.velocity.x += normal.x * velChange;
+                            rbA.velocity.y += normal.y * velChange;
+                        }
+                        if (isBDynamic) {
+                            rbB.velocity.x -= normal.x * velChange;
+                            rbB.velocity.y -= normal.y * velChange;
+                        }
                     }
-                    if (isBDynamic) {
-                        rbB.velocity.x -= normal.x * velChange;
-                        rbB.velocity.y -= normal.y * velChange;
+
+                    // 2. Fuerza de recuperación (Expulsión inteligente)
+                    const penetration = info.magnitude;
+                    const localNormalX = normal.x * Math.cos(-transformA.rotation * Math.PI / 180) - normal.y * Math.sin(-transformA.rotation * Math.PI / 180);
+                    const localNormalY = normal.x * Math.sin(-transformA.rotation * Math.PI / 180) + normal.y * Math.cos(-transformA.rotation * Math.PI / 180);
+                    const relevantDim = Math.abs(localNormalX) * amort.size.x * Math.abs(transformA.scale.x) +
+                                       Math.abs(localNormalY) * amort.size.y * Math.abs(transformA.scale.y);
+
+                    const targetPenetration = relevantDim * (1.0 - amort.distanciaDeseada);
+
+                    if (penetration > targetPenetration) {
+                        const extraPenetration = penetration - targetPenetration;
+                        const targetMass = isADynamic ? rbA.mass : (isBDynamic ? rbB.mass : 1);
+                        const weightFactor = Math.min(2.0, amort.soporteMaximo / (targetMass * 10 || 1));
+
+                        const dt = this.lastDeltaTime || 0.016;
+                        // Aumentamos el multiplicador para asegurar que frene coches pesados.
+                        const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 150000 * dt;
+
+                        if (isADynamic) {
+                            rbA.addForce(normal.x * pushForce, normal.y * pushForce);
+                        }
+                        if (isBDynamic) {
+                            rbB.addForce(-normal.x * pushForce, -normal.y * pushForce);
+                        }
                     }
-                }
-
-                // 2. Fuerza de recuperación (Expulsión inteligente)
-                const penetration = info.magnitude;
-                // Usamos la dimensión del amortiguador en la dirección de la colisión para el nivel de expulsión
-                const localNormalX = normal.x * Math.cos(-transformA.rotation * Math.PI / 180) - normal.y * Math.sin(-transformA.rotation * Math.PI / 180);
-                const localNormalY = normal.x * Math.sin(-transformA.rotation * Math.PI / 180) + normal.y * Math.cos(-transformA.rotation * Math.PI / 180);
-                const relevantDim = Math.abs(localNormalX) * amort.size.x * Math.abs(transformA.scale.x) +
-                                   Math.abs(localNormalY) * amort.size.y * Math.abs(transformA.scale.y);
-
-                const targetPenetration = relevantDim * (1.0 - amort.distanciaDeseada);
-
-                if (penetration > targetPenetration) {
-                    const extraPenetration = penetration - targetPenetration;
-
-                    // El peso que el amortiguador siente (para el factor de soporte)
-                    const targetMass = isADynamic ? rbA.mass : (isBDynamic ? rbB.mass : 1);
-                    const weightFactor = Math.min(2.0, amort.soporteMaximo / (targetMass * 10 || 1));
-
-                    // Fuerza proporcional a la penetración extra.
-                    const dt = this.lastDeltaTime || 0.016;
-                    const pushForce = extraPenetration * amort.fuerzaRecuperacion * weightFactor * 120000 * dt;
-
-                    if (isADynamic) {
-                        rbA.addForce(normal.x * pushForce, normal.y * pushForce);
-                    }
-                    if (isBDynamic) {
-                        rbB.addForce(-normal.x * pushForce, -normal.y * pushForce);
-                    }
+                } else if (isADynamic) {
+                    // Mismo Rigidbody: Aplicamos fuerza interna si hay penetración excesiva
+                    // para evitar que el coche se "coma" sus propias ruedas, por ejemplo.
+                    // Pero típicamente esto se filtra en checkCollision.
                 }
             }
 

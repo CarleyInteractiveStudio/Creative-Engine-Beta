@@ -912,11 +912,11 @@ export function initialize(dependencies) {
 
             switch (dragState.handle) {
                 case 'collider-top':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-bottom':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-right':
@@ -928,25 +928,25 @@ export function initialize(dependencies) {
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-tr':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                  case 'collider-tl':
-                    boxCollider.size.y += localDy;
+                    boxCollider.size.y -= localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-br':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x += localDx;
                     boxCollider.offset.x += localDx / 2;
                     break;
                 case 'collider-bl':
-                    boxCollider.size.y -= localDy;
+                    boxCollider.size.y += localDy;
                     boxCollider.offset.y += localDy / 2;
                     boxCollider.size.x -= localDx;
                     boxCollider.offset.x += localDx / 2;
@@ -987,11 +987,11 @@ export function initialize(dependencies) {
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
-                    capsuleCollider.size.y += localDy;
+                    capsuleCollider.size.y -= localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-bottom':
-                    capsuleCollider.size.y -= localDy;
+                    capsuleCollider.size.y += localDy;
                     capsuleCollider.offset.y += localDy / 2;
                     break;
                 case 'collider-capsule-right':
@@ -2034,14 +2034,14 @@ function checkBoxColliderGizmoHit(canvasPos) {
     const halfHitbox = handleHitboxSize / 2;
 
     const handles = [
-        { x: 0, y: halfHeight, name: 'collider-top' },
-        { x: 0, y: -halfHeight, name: 'collider-bottom' },
+        { x: 0, y: -halfHeight, name: 'collider-top' },
+        { x: 0, y: halfHeight, name: 'collider-bottom' },
         { x: halfWidth, y: 0, name: 'collider-right' },
         { x: -halfWidth, y: 0, name: 'collider-left' },
-        { x: -halfWidth, y: halfHeight, name: 'collider-tl' },
-        { x: halfWidth, y: halfHeight, name: 'collider-tr' },
-        { x: -halfWidth, y: -halfHeight, name: 'collider-bl' },
-        { x: halfWidth, y: -halfHeight, name: 'collider-br' }
+        { x: -halfWidth, y: -halfHeight, name: 'collider-tl' },
+        { x: halfWidth, y: -halfHeight, name: 'collider-tr' },
+        { x: -halfWidth, y: halfHeight, name: 'collider-bl' },
+        { x: halfWidth, y: halfHeight, name: 'collider-br' }
     ];
 
     for (const handle of handles) {
@@ -2120,8 +2120,8 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
     let handles = [];
     if (capsuleCollider.direction === 'Vertical') {
         handles = [
-            { x: 0, y: height / 2, name: 'collider-capsule-top' },
-            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' },
+            { x: 0, y: -height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: height / 2, name: 'collider-capsule-bottom' },
             { x: width / 2, y: 0, name: 'collider-capsule-right' },
             { x: -width / 2, y: 0, name: 'collider-capsule-left' }
         ];
@@ -2129,8 +2129,8 @@ function checkCapsuleColliderGizmoHit(canvasPos) {
         handles = [
             { x: width / 2, y: 0, name: 'collider-capsule-right' },
             { x: -width / 2, y: 0, name: 'collider-capsule-left' },
-            { x: 0, y: height / 2, name: 'collider-capsule-top' },
-            { x: 0, y: -height / 2, name: 'collider-capsule-bottom' }
+            { x: 0, y: -height / 2, name: 'collider-capsule-top' },
+            { x: 0, y: height / 2, name: 'collider-capsule-bottom' }
         ];
     }
 
@@ -2199,10 +2199,10 @@ function drawPhysicsGizmos() {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
 
         const handles = [
-            { x: 0, y: height / 2 }, { x: 0, y: -height / 2 },
+            { x: 0, y: -height / 2 }, { x: 0, y: height / 2 },
             { x: width / 2, y: 0 }, { x: -width / 2, y: 0 },
-            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 },
-            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 }
+            { x: -width / 2, y: -height / 2 }, { x: width / 2, y: -height / 2 },
+            { x: -width / 2, y: height / 2 }, { x: width / 2, y: height / 2 }
         ];
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
@@ -2232,8 +2232,8 @@ function drawPhysicsGizmos() {
         ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
 
         let handles = (capsuleCollider.direction === 'Vertical')
-            ? [{ x: 0, y: height / 2 }, { x: 0, y: -height / 2 }, { x: width / 2, y: 0 }, { x: -width / 2, y: 0 }]
-            : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: height / 2 }, { x: 0, y: -height / 2 }];
+            ? [{ x: 0, y: -height / 2 }, { x: 0, y: height / 2 }, { x: width / 2, y: 0 }, { x: -width / 2, y: 0 }]
+            : [{ x: width / 2, y: 0 }, { x: -width / 2, y: 0 }, { x: 0, y: -height / 2 }, { x: 0, y: height / 2 }];
 
         handles.forEach(handle => ctx.fillRect(handle.x - halfHandle, handle.y - halfHandle, handleSize, handleSize));
 
