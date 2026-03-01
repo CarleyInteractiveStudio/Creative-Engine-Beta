@@ -1112,6 +1112,8 @@ export class AmortiguadorCollider extends Leyes {
     get fuerza() { return this.fuerzaRecuperacion; }
     set fuerza(v) { this.fuerzaRecuperacion = v; }
 
+    get colisionadorAmortiguador() { return this; }
+
     clone() {
         const copy = new AmortiguadorCollider(null);
         copy.isTrigger = this.isTrigger;
@@ -5048,6 +5050,8 @@ export class VehicleController extends Leyes {
     set intensidadDerrape(v) { this.driftIntensity = v; }
     get tagsDeDeslizamiento() { return this.slidingTags; }
     set tagsDeDeslizamiento(v) { this.slidingTags = v; }
+
+    get controladorDeVehiculo() { return this; }
 
     update(deltaTime) {
         const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);

@@ -870,7 +870,7 @@ export function initialize(dependencies) {
             case 'amort-top': {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
-                const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
+                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
                 amort.size.y -= localDy;
                 amort.offset.y += localDy / 2;
                 break;
@@ -878,7 +878,7 @@ export function initialize(dependencies) {
             case 'amort-bottom': {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
-                const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
+                const localDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
                 amort.size.y += localDy;
                 amort.offset.y += localDy / 2;
                 break;
@@ -886,7 +886,7 @@ export function initialize(dependencies) {
             case 'amort-right': {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
-                const localDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
                 amort.size.x += localDx;
                 amort.offset.x += localDx / 2;
                 break;
@@ -894,7 +894,7 @@ export function initialize(dependencies) {
             case 'amort-left': {
                 const amort = dragState.materia.getComponent(Components.AmortiguadorCollider);
                 const rad = -transform.rotation * Math.PI / 180;
-                const localDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+                const localDx = dx * Math.cos(rad) + dy * Math.sin(rad);
                 amort.size.x -= localDx;
                 amort.offset.x += localDx / 2;
                 break;
@@ -907,8 +907,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-top':
@@ -960,8 +960,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-circle-handle':
@@ -982,8 +982,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos - dy * sin;
-            const localDy = dx * sin + dy * cos;
+            const localDx = dx * cos + dy * sin;
+            const localDy = -dx * sin + dy * cos;
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':
@@ -1387,7 +1387,7 @@ export function initialize(dependencies) {
             if (!selectedMateria || activeTool === 'pan') return;
 
             const canvasPos = InputManager.getMousePositionInCanvas();
-            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
+            const hitHandle = checkCameraGizmoHit(canvasPos) || checkGizmoHit(canvasPos) || checkBoxColliderGizmoHit(canvasPos) || checkCircleColliderGizmoHit(canvasPos) || checkCapsuleColliderGizmoHit(canvasPos) || checkAmortiguadorColliderGizmoHit(canvasPos) || checkUIGizmoHit(canvasPos);
 
             if (hitHandle) {
                 e.stopPropagation();
