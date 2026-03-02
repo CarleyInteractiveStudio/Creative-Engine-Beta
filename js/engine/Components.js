@@ -67,6 +67,7 @@ const componentAliases = {
     'AmortiguadorCollider': 'colisionadorAmortiguador',
     'SuspensionHC': 'suspensionHC',
     'VehicleTopDown': 'controladorVehiculoTopDown',
+    'PlaneController': 'controladorDeAvion',
 };
 
 
@@ -5123,6 +5124,144 @@ export class VehicleTopDown extends Leyes {
     }
 }
 
+/**
+ * Componente PlaneController: Controlador de vuelo lateral (Side-scroller).
+ * Maneja potencia, sustentación, giro y coordina con la suspensión de las ruedas.
+ */
+export class PlaneController extends Leyes {
+    constructor(materia) {
+        super(materia);
+        this.potenciaMotor = 1500;
+        this.velocidadMaxima = 1200;
+        this.velocidadDespegue = 400;
+        this.fuerzaSustentacion = 1.2;
+        this.agilidadGiro = 120; // Grados por segundo
+        this.arrastreAire = 0.05;
+
+        // Controles
+        this.teclaPotencia = 'w';
+        this.teclaFreno = 's';
+        this.teclaNarizArriba = 'a';
+        this.teclaNarizAbajo = 'd';
+
+        // Estado interno
+        this.estaEnSuelo = false;
+        this.velocidadAvance = 0;
+    }
+
+    // --- Spanish Aliases ---
+    get potencia() { return this.potenciaMotor; }
+    set potencia(v) { this.potenciaMotor = v; }
+    get vDespegue() { return this.velocidadDespegue; }
+    set vDespegue(v) { this.velocidadDespegue = v; }
+    get sustentacion() { return this.fuerzaSustentacion; }
+    set sustentacion(v) { this.fuerzaSustentacion = v; }
+    get giro() { return this.agilidadGiro; }
+    set giro(v) { this.agilidadGiro = v; }
+    get arrastre() { return this.arrastreAire; }
+    set arrastre(v) { this.arrastreAire = v; }
+
+    get controladorDeAvion() { return this; }
+
+    fixedUpdate(deltaTime) {
+        const isGame = typeof window !== 'undefined' && (window.isGameRunning || window.CE_Standalone_Scripts);
+        if (!isGame) return;
+
+        const rb = this.materia.getComponent(Rigidbody2D);
+        const transform = this.materia.getComponent(Transform);
+        if (!rb || !transform) return;
+
+        const input = RuntimeAPIManager.getAPI('input');
+        const engine = RuntimeAPIManager.getAPI('engine');
+        if (!input) return;
+
+        // 1. Detección de Suelo
+        // El avión está en el suelo si ALGUNA de sus ruedas (hijos con SuspensionHC) toca algo
+        this.estaEnSuelo = false;
+        const suspensiones = this.materia.getChildrenWithComponent(SuspensionHC);
+        for (const susp of suspensiones) {
+            if (engine && (engine.alPermanecerEnColision(susp.materia).length > 0 ||
+                           engine.alEntrarEnColision(susp.materia).length > 0)) {
+                this.estaEnSuelo = true;
+                break;
+            }
+        }
+
+        // 2. Manejar Potencia (Thrust)
+        let thrustInput = 0;
+        if (input.isKeyPressed(this.teclaPotencia)) thrustInput = 1;
+        if (input.isKeyPressed(this.teclaFreno)) thrustInput = -1;
+
+        const rad = transform.rotation * Math.PI / 180;
+        const forward = { x: Math.cos(rad), y: Math.sin(rad) };
+
+        this.velocidadAvance = rb.velocity.x * forward.x + rb.velocity.y * forward.y;
+
+        if (thrustInput !== 0) {
+            if (Math.abs(this.velocidadAvance) < this.velocidadMaxima / 100) {
+                const force = thrustInput * this.potenciaMotor * deltaTime * 10;
+                rb.addForce(forward.x * force, forward.y * force);
+
+                // Si estamos en el suelo, también damos potencia a las ruedas para taxear
+                if (this.estaEnSuelo) {
+                    for (const susp of suspensiones) {
+                        const rbRueda = susp.materia.getComponent(Rigidbody2D);
+                        if (rbRueda) {
+                            rbRueda.addTorque(thrustInput * susp.potenciaMotor * 500 * deltaTime);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Manejar Rotación (Pitch)
+        let pitchInput = 0;
+        if (input.isKeyPressed(this.teclaNarizArriba)) pitchInput = -1; // En muchos juegos A es subir nariz
+        if (input.isKeyPressed(this.teclaNarizAbajo)) pitchInput = 1;
+
+        if (pitchInput !== 0) {
+            // La efectividad del giro depende de la velocidad del aire
+            const maneuverability = Math.min(1.0, Math.abs(this.velocidadAvance) / 2);
+            const torque = pitchInput * this.agilidadGiro * maneuverability * 5000 * deltaTime;
+            rb.addTorque(torque);
+        }
+
+        // 4. Física de Sustentación (Lift)
+        // La sustentación ocurre si la velocidad de avance supera el umbral de despegue
+        const speedKmh = Math.abs(this.velocidadAvance) * 100;
+        if (speedKmh > this.velocidadDespegue) {
+            const liftFactor = (speedKmh - this.velocidadDespegue) / 100;
+            // La sustentación es perpendicular al avance y depende de la potencia configurada
+            // También sumamos una pequeña fuerza hacia arriba absoluta para facilitar el vuelo
+            const liftMag = liftFactor * this.fuerzaSustentacion * 1500 * deltaTime;
+
+            const liftDir = { x: forward.y, y: -forward.x }; // Perpendicular "arriba" relativo al avión
+
+            // Aplicar sustentación
+            rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
+
+            // Efecto de estabilidad: el avión tiende a nivelarse solo si no hay input
+            if (pitchInput === 0) {
+                rb.angularVelocity *= Math.pow(0.95, deltaTime * 60);
+            }
+        }
+
+        // 5. Arrastre de Aire (Air Drag)
+        if (this.arrastreAire > 0) {
+            const drag = Math.pow(1.0 - this.arrastreAire, deltaTime);
+            rb.velocity.x *= drag;
+            rb.velocity.y *= drag;
+            rb.angularVelocity *= drag;
+        }
+    }
+
+    clone() {
+        const copy = new PlaneController(null);
+        Object.assign(copy, this);
+        return copy;
+    }
+}
+
 export class SuspensionHC extends Leyes {
     constructor(materia) {
         super(materia);
@@ -5263,6 +5402,10 @@ export class SuspensionHC extends Leyes {
         rbChasis.addForce(-perpAxis.x * lateralCorrection * forceScale, -perpAxis.y * lateralCorrection * forceScale);
 
         // 5. Control de Motor e Inclinación
+        // PRIORIDAD: Si hay un PlaneController en un ancestro, él manda.
+        const planeCtrl = this.materia.findAncestorWithComponent(PlaneController);
+        if (planeCtrl) return;
+
         const input = RuntimeAPIManager.getAPI('input');
         if (!input) return;
 
@@ -5938,6 +6081,7 @@ registerComponent('BasicAI', BasicAI);
 registerComponent('Water', Water);
 registerComponent('SuspensionHC', SuspensionHC);
 registerComponent('VehicleTopDown', VehicleTopDown);
+registerComponent('PlaneController', PlaneController);
 registerComponent('LineCollider2D', LineCollider2D);
 registerComponent('VerticalLayoutGroup', VerticalLayoutGroup);
 registerComponent('HorizontalLayoutGroup', HorizontalLayoutGroup);

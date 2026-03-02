@@ -94,6 +94,9 @@ const typeMap = {
     'VehicleTopDown': 'VehicleTopDown',
     'vehicleTopDown': 'VehicleTopDown',
     'controladorVehiculoTopDown': 'VehicleTopDown',
+    'PlaneController': 'PlaneController',
+    'planeController': 'PlaneController',
+    'controladorDeAvion': 'PlaneController',
     'variable': 'any',
     'any': 'any'
 };
@@ -123,6 +126,7 @@ const componentShortcuts = [
     'suspensionHC',
     'amortiguadorCollider', 'colisionadorAmortiguador',
     'vehicleTopDown', 'controladorVehiculoTopDown',
+    'planeController', 'controladorDeAvion',
     'textureRender', 'renderizadorDeTextura',
     'canvas', 'lienzo',
     'uiImage', 'imagenUI',
@@ -169,7 +173,8 @@ const componentShortcuts = [
     'dureza', 'longitudReposo', 'potenciaMotor', 'controlAire', 'teclaAcelerar', 'teclaFrenar', 'chasis', 'eje', 'velocidadLimite', 'inclinacionAire',
     'fuerzaInclinacion', 'inclinacion', 'estabilidadAire', 'autoEstabilidad', 'frenadoMotor', 'frenado', 'recuperacionGiro', 'centradoGiro',
     'autoAcelerar', 'potencia', 'potenciaMotor', 'velocidadMaxima', 'velocidadLimite', 'velocidadGiro', 'giro', 'intensidadDerrape', 'derrape',
-    'teclaIzquierda', 'teclaDerecha', 'frenadoMotor', 'frenado'
+    'teclaIzquierda', 'teclaDerecha', 'frenadoMotor', 'frenado', 'vDespegue', 'sustentacion', 'arrastre', 'teclaPotencia', 'teclaFreno',
+    'teclaNarizArriba', 'teclaNarizAbajo'
 ];
 
 function getDefaultValueForType(canonicalType) {

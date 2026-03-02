@@ -49,6 +49,12 @@ export class Materia {
         return this.leyes.filter(ley => ley instanceof componentClass);
     }
 
+    getChildrenWithComponent(componentClass) {
+        if (typeof componentClass !== 'function') return [];
+        return this.children.filter(child => child.getComponent(componentClass))
+                           .map(child => child.getComponent(componentClass));
+    }
+
     getComponentByName(name) {
         return this.leyes.find(ley => ley.constructor.name === name);
     }
