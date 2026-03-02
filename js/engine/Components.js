@@ -3224,11 +3224,12 @@ export class CameraFollow extends Leyes {
         const camTransform = this.materia.getComponent(Transform);
         if (!targetTransform || !camTransform) return;
 
-        const targetX = this.followX ? targetTransform.position.x + this.offset.x : camTransform.position.x;
-        const targetY = this.followY ? targetTransform.position.y + this.offset.y : camTransform.position.y;
+        const targetX = this.followX ? targetTransform.position.x + this.offset.x : camTransform.x;
+        const targetY = this.followY ? targetTransform.position.y + this.offset.y : camTransform.y;
 
-        camTransform.position.x += (targetX - camTransform.position.x) * this.smoothness;
-        camTransform.position.y += (targetY - camTransform.position.y) * this.smoothness;
+        // Apply movement using setters to ensure the actual transform is updated
+        camTransform.x += (targetX - camTransform.x) * this.smoothness;
+        camTransform.y += (targetY - camTransform.y) * this.smoothness;
     }
     clone() {
         const newFollow = new CameraFollow(null);
