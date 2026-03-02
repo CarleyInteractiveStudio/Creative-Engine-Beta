@@ -2423,14 +2423,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Global deselection
-        dom.editorContainer.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Ignore right/middle-clicks
-            // Deselect if clicking on a panel's background, but not on interactive items
-            if (e.target.matches('.panel-content, .panel-header, .editor-panel, #editor-main-content')) {
-                 selectMateria(null);
-            }
-        });
+        // Global deselection removed to maintain selection until another object is picked
 
         // Tab switching for the bottom panel (Assets/Console/Debug)
         const tabBar = dom.assetsPanel.querySelector('.tab-bar');

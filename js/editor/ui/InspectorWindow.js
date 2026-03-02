@@ -54,7 +54,6 @@ const componentIcons = {
     'Gyzmo': 'target',
     'RaycastSource': 'route',
     'BasicAI': 'bot',
-    'AmortiguadorCollider': 'target',
     'SuspensionHC': 'truck',
     'VehicleTopDown': 'rocket',
     'PlaneController': 'rocket',
@@ -1477,6 +1476,7 @@ async function updateInspectorForMateria(selectedMateria) {
     console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
+        try {
         console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
@@ -3144,35 +3144,6 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                 </div>
             `;
-        } else if (ley instanceof Components.AmortiguadorCollider) {
-            componentHTML = `
-                ${renderComponentHeader(L.get('AMORTIGUADOR_COLLIDER', "Amortiguador Collider"), icon, index)}
-                <div class="component-content">
-                    <div class="prop-row-multi">
-                        <label>${L.get('SIZE', 'Tamaño')}</label>
-                        <div class="prop-inputs">
-                            <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="size.x" value="${ley.size.x}" title="W">
-                            <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="size.y" value="${ley.size.y}" title="H">
-                        </div>
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('SOPORTE_MAXIMO', 'Soporte Máximo')}</label>
-                        <input type="number" class="prop-input" data-component="AmortiguadorCollider" data-prop="soporteMaximo" value="${ley.soporteMaximo}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('AMORTIGUACION', 'Amortiguación')}</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="AmortiguadorCollider" data-prop="amortiguacion" value="${ley.amortiguacion}">
-                    </div>
-                    <div class="prop-row-multi">
-                        <label>${L.get('FUERZA_RECUPERACION', 'Fuerza Empuje')}</label>
-                        <input type="number" class="prop-input" step="0.1" data-component="AmortiguadorCollider" data-prop="fuerzaRecuperacion" value="${ley.fuerzaRecuperacion}">
-                    </div>
-                     <div class="prop-row-multi">
-                        <label>${L.get('DISTANCIA_DESEADA', 'Nivel Expulsión')}</label>
-                        <input type="range" class="prop-input" min="0" max="1" step="0.01" data-component="AmortiguadorCollider" data-prop="distanciaDeseada" value="${ley.distanciaDeseada}">
-                    </div>
-                </div>
-            `;
         } else if (ley instanceof Components.SuspensionHC) {
             componentHTML = `
                 ${renderComponentHeader("Suspension HC", icon, index)}
@@ -3513,6 +3484,13 @@ async function updateInspectorForMateria(selectedMateria) {
             while(componentWrapper.firstChild) {
                 componentsWrapper.appendChild(componentWrapper.firstChild);
             }
+        }
+        } catch (e) {
+            console.error(`Error rendering component ${index}:`, e);
+            const errorWrapper = document.createElement('div');
+            errorWrapper.className = 'component-inspector error';
+            errorWrapper.innerHTML = `<div class="component-header"><h4>Error: ${ley.constructor.name}</h4></div><div class="component-content"><p>Error rendering this component. Check console for details.</p></div>`;
+            componentsWrapper.appendChild(errorWrapper);
         }
     });
 
