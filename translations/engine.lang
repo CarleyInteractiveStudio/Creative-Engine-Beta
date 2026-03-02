@@ -239,6 +239,13 @@ SIN_SCRIPTS_HINT: No se encontraron scripts (.ces) en la carpeta Assets.
 ERROR_BUSCAR_SCRIPTS: Error al buscar scripts.
 
 # Engine Terms
+HELICOPTER_SETTINGS: Configuración de Helicóptero
+MOTOR_POWER: Potencia Motor
+TAKEOFF_POWER: Potencia Despegue
+AUTO_STABILIZE: Auto-Estabilizar
+STABILITY: Estabilidad
+KEYS_THRUST_DESCEND: Subir/Bajar
+KEYS_TURN: Girar (A/D)
 MATERIA: Materia
 LEYES_LABEL: Leyes
 GRID: Rejilla
@@ -1197,6 +1204,13 @@ SIN_SCRIPTS_HINT: No scripts (.ces) found in the Assets folder.
 ERROR_BUSCAR_SCRIPTS: Error finding scripts.
 
 # Engine Terms
+HELICOPTER_SETTINGS: Helicopter Settings
+MOTOR_POWER: Motor Power
+TAKEOFF_POWER: Takeoff Power
+AUTO_STABILIZE: Auto-Stabilize
+STABILITY: Stability
+KEYS_THRUST_DESCEND: Rise/Descend
+KEYS_TURN: Turn (A/D)
 MATERIA: Matter
 LEYES_LABEL: Laws
 GRID: Grid

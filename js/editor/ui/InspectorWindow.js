@@ -33,10 +33,10 @@ const availableComponents = {
     'CAT_UTILIDADES': [Components.Gyzmo],
     'CAT_ANIMACION': [Components.Animator, Components.AnimatorController],
     'CAT_AUDIO': [Components.AudioSource],
-    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D, Components.AmortiguadorCollider, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController],
+    'CAT_FISICAS': [Components.Rigidbody2D, Components.BoxCollider2D, Components.CapsuleCollider2D, Components.CircleCollider2D, Components.PolygonCollider2D, Components.TilemapCollider2D, Components.TerrenoCollider2D, Components.LineCollider2D],
     'CAT_CAMARA': [Components.Camera],
     'CAT_UI': [Components.UITransform, Components.UIImage, Components.UIText, Components.Canvas, Components.Button, Components.VideoPlayer, Components.VerticalLayoutGroup, Components.HorizontalLayoutGroup, Components.GridLayoutGroup, Components.ContentSizeFitter],
-    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI],
+    'CAT_BASICO': [Components.Movement, Components.CameraFollow, Components.ProjectileLauncher, Components.AutoDestroy, Components.Health, Components.Patrol, Components.ParticleSystem, Components.RaycastSource, Components.BasicAI, Components.SuspensionHC, Components.VehicleTopDown, Components.PlaneController, Components.HelicopterController],
     'CAT_SCRIPTING': [Components.CreativeScript]
 };
 
@@ -57,7 +57,8 @@ const componentIcons = {
     'AmortiguadorCollider': 'target',
     'SuspensionHC': 'truck',
     'VehicleTopDown': 'rocket',
-    'PlaneController': 'rocket'
+    'PlaneController': 'rocket',
+    'HelicopterController': 'rocket'
 };
 
 const fileIcons = {
@@ -3334,6 +3335,57 @@ async function updateInspectorForMateria(selectedMateria) {
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizAbajo" value="${ley.teclaNarizAbajo}" title="Abajo">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (ley instanceof Components.HelicopterController) {
+            componentHTML = `
+                ${renderComponentHeader("Helicopter Controller", icon, index)}
+                <div class="component-content">
+                    <div class="inspector-section-header"><span>${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Fuerza base de sustentación">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
+                        <input type="number" class="prop-input" data-component="HelicopterController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input inspector-re-render" data-component="HelicopterController" data-prop="autoEstabilizar" ${ley.autoEstabilizar ? 'checked' : ''}>
+                        <label>${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${ley.autoEstabilizar ? 'flex' : 'none'};">
+                        <label title="Fuerza de auto-nivelación">${L.get('STABILITY', 'Estabilidad')}</label>
+                        <input type="number" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
+                    </div>
+                    <div class="prop-row-multi">
+                        <label title="Resistencia al aire (0-1)">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
+                        <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
+                    </div>
+
+                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_THRUST_DESCEND', 'Subir/Bajar')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Subir">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaDescenso" value="${ley.teclaDescenso}" title="Bajar">
+                        </div>
+                    </div>
+                    <div class="prop-row-multi">
+                        <label>${L.get('KEYS_TURN', 'Girar (A/D)')}</label>
+                        <div class="prop-inputs">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
+                            <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
                         </div>
                     </div>
                 </div>
