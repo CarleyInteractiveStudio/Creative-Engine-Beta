@@ -1120,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // MODIFICATION: In test mode (no handle), skip checks and just play.
         if (!projectsDirHandle) {
             console.log("Modo de prueba detectado (sin project handle). Iniciando el juego directamente.");
-            originalStartGame();
+            await originalStartGame();
             return;
         }
 
@@ -1161,12 +1161,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const projectName = new URLSearchParams(window.location.search).get('project') || 'TestProject';
         const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
-        // Escanear todo el proyecto para encontrar scripts
-        await findCesFiles(projectHandle);
+        const assetsHandle = await projectHandle.getDirectoryHandle('Assets');
+        // Escanear solo la carpeta Assets para encontrar scripts
+        await findCesFiles(assetsHandle, 'Assets');
 
         if (cesFiles.length === 0) {
             console.log("No se encontraron scripts .ces. Iniciando el juego directamente.");
-            originalStartGame(); // Usar la función original que guardamos
+            await originalStartGame(); // Usar la función original que guardamos
             return;
         }
 
@@ -1216,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.log("[Build] Build exitoso. Todos los scripts se compilaron sin errores.");
             // 4. Iniciar el juego. La lógica ahora está en startGame.
-            originalStartGame();
+            await originalStartGame();
         }
         } catch (e) {
             console.error("Error durante la preparación del juego:", e);
@@ -3854,12 +3855,17 @@ public start() {
             initializeFloatingPanels();
             editorLoopId = requestAnimationFrame(editorLoop);
 
-            const oldPlayButton = document.getElementById('btn-play');
-            const newPlayButton = oldPlayButton.cloneNode(true);
-            oldPlayButton.parentNode.replaceChild(newPlayButton, oldPlayButton);
-            dom.btnPlay = newPlayButton;
+            dom.btnPlay = document.getElementById('btn-play');
+            if (dom.btnPlay) {
+                // Ensure the button is not disabled if the editor is already ready (unlikely here but good for robustness)
+                if (isEditorReady) dom.btnPlay.disabled = false;
 
-            dom.btnPlay.addEventListener('click', runChecksAndPlay);
+                // Clear any existing listeners by replacing the node (standard editor practice here)
+                const newPlayButton = dom.btnPlay.cloneNode(true);
+                dom.btnPlay.parentNode.replaceChild(newPlayButton, dom.btnPlay);
+                dom.btnPlay = newPlayButton;
+                dom.btnPlay.addEventListener('click', runChecksAndPlay);
+            }
             dom.btnPause.addEventListener('click', () => {
                 isGamePaused = !isGamePaused;
                 console.log(isGamePaused ? "Game Paused" : "Game Resumed");

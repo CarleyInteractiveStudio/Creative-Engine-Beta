@@ -305,8 +305,8 @@ export class Materia {
         newMateria.tag = this.tag;
         newMateria.flags = JSON.parse(JSON.stringify(this.flags)); // Deep copy
 
-        // The parent ID is copied directly. The scene clone method will resolve this to an object reference.
-        newMateria.parent = this.parent ? (typeof this.parent === 'number' ? this.parent : this.parent.id) : null;
+        // Initial parent is null. The hierarchical cloning below will set parents via addChild.
+        newMateria.parent = null;
 
         // Clone components
         for (const component of this.leyes) {
