@@ -251,7 +251,8 @@ export class PhysicsSystem {
 
                 // Apply linear drag
                 if (rigidbody.linearDrag > 0) {
-                    const dragFactor = Math.pow(1.0 - rigidbody.linearDrag, deltaTime);
+                    // Stable exponential decay for linear drag
+                    const dragFactor = Math.exp(-rigidbody.linearDrag * deltaTime * 10);
                     rigidbody.velocity.x *= dragFactor;
                     rigidbody.velocity.y *= dragFactor;
                 }

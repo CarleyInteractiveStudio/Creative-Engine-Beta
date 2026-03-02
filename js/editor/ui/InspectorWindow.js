@@ -3327,6 +3327,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         </div>
                     </div>
                     <div class="prop-row-multi">
+                        <label>${L.get('KEY_BRAKE_SPACE', 'Freno (Espacio)')}</label>
+                        <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaBotonFreno" value="${ley.teclaBotonFreno}">
+                    </div>
+                    <div class="prop-row-multi">
                         <label>${L.get('KEYS_PITCH', 'Inclinación (Nariz)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">

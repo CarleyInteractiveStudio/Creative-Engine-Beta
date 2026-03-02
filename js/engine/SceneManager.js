@@ -90,7 +90,7 @@ export class Scene {
     }
 
     findAllCameras() {
-        return this.getAllMaterias().filter(m => m.getComponent(Camera));
+        return this.getAllMaterias().filter(m => m.isActive && m.getComponent(Camera));
     }
 
     findAllMateriasWithComponent(componentClass, rootMateria = null) {
@@ -225,6 +225,9 @@ export function serializeMateria(materia, recursive = false) {
     const materiaData = {
         id: materia.id,
         name: materia.name,
+        isActive: materia.isActive,
+        isCollapsed: materia.isCollapsed,
+        layer: materia.layer,
         tag: materia.tag,
         prefabPath: materia.prefabPath || null,
         parentId: materia.parent ? (typeof materia.parent === 'number' ? materia.parent : materia.parent.id) : null,
@@ -321,6 +324,9 @@ async function _deserializeMateriaRecursive(materiaData, projectsDirHandle, mate
     // Note: Do not override ID here if we are instantiating a prefab in an existing scene,
     // unless we are loading a full scene.
 
+    newMateria.isActive = materiaData.isActive !== undefined ? materiaData.isActive : true;
+    newMateria.isCollapsed = materiaData.isCollapsed !== undefined ? materiaData.isCollapsed : false;
+    newMateria.layer = materiaData.layer !== undefined ? materiaData.layer : 0;
     newMateria.tag = materiaData.tag || 'Untagged';
     newMateria.prefabPath = materiaData.prefabPath || null;
     newMateria.leyes = [];

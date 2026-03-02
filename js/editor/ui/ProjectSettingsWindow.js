@@ -216,6 +216,7 @@ function addLogoToList(fileOrPath, duration = 5) {
 
 function setupEventListeners() {
     document.getElementById('menu-project-settings').addEventListener('click', () => {
+        populateCameraList();
         dom.projectSettingsModal.classList.add('is-open');
     });
 
@@ -358,6 +359,8 @@ export function populateUI(config) {
         dom.settingsIconPreview.src = 'icons/box.svg';
     }
 
+    populateCameraList();
+
     dom.settingsLogoList.innerHTML = '';
     if (currentProjectConfig.splashLogos && currentProjectConfig.splashLogos.length > 0) {
         currentProjectConfig.splashLogos.forEach(logoData => {
@@ -366,4 +369,116 @@ export function populateUI(config) {
     }
 
     populateTagsAndLayers();
+}
+
+function populateCameraList() {
+    const cameraList = document.getElementById('settings-camera-list');
+    if (!cameraList || !window.SceneManager.currentScene) return;
+
+    const allMaterias = window.SceneManager.currentScene.getAllMaterias();
+    const cameraMaterias = allMaterias.filter(m => m.getComponent(window.Components.Camera));
+
+    cameraList.innerHTML = '';
+
+    if (cameraMaterias.length === 0) {
+        cameraList.innerHTML = `<p class="field-description">${window.Localization?.get('SIN_CAMARAS_HINT') || 'No hay cámaras en esta escena.'}</p>`;
+        return;
+    }
+
+    cameraMaterias.forEach(materia => {
+        const camera = materia.getComponent(window.Components.Camera);
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'stretch';
+        item.style.gap = '8px';
+        item.style.padding = '12px';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = materia.name;
+        nameSpan.style.fontWeight = 'bold';
+
+        const toggleContainer = document.createElement('div');
+        toggleContainer.style.display = 'flex';
+        toggleContainer.style.alignItems = 'center';
+        toggleContainer.style.gap = '10px';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = materia.isActive;
+        checkbox.title = 'Activar/Desactivar Cámara';
+        checkbox.addEventListener('change', () => {
+            materia.isActive = checkbox.checked;
+            if (window.updateScene) window.updateScene();
+        });
+
+        const soloBtn = document.createElement('button');
+        soloBtn.className = 'panel-tool-btn';
+        soloBtn.textContent = window.Localization?.get('SOLO') || 'Solo';
+        soloBtn.style.fontSize = '10px';
+        soloBtn.addEventListener('click', () => {
+            cameraMaterias.forEach(cm => cm.isActive = (cm.id === materia.id));
+            populateCameraList();
+            if (window.updateScene) window.updateScene();
+        });
+
+        toggleContainer.appendChild(soloBtn);
+        toggleContainer.appendChild(checkbox);
+        header.appendChild(nameSpan);
+        header.appendChild(toggleContainer);
+        item.appendChild(header);
+
+        // Viewport Rect UI
+        const rectContainer = document.createElement('div');
+        rectContainer.style.display = 'grid';
+        rectContainer.style.gridTemplateColumns = '1fr 1fr';
+        rectContainer.style.gap = '5px';
+        rectContainer.style.fontSize = '11px';
+
+        const createField = (label, prop) => {
+            const group = document.createElement('div');
+            group.style.display = 'flex';
+            group.style.alignItems = 'center';
+            group.style.gap = '4px';
+            const lb = document.createElement('span');
+            lb.textContent = label;
+            lb.style.opacity = '0.7';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.step = '0.05';
+            input.min = '0';
+            input.max = '1';
+            input.value = camera.rect[prop];
+            input.className = 'prop-input';
+            input.style.width = '100%';
+            input.addEventListener('input', () => {
+                camera.rect[prop] = parseFloat(input.value) || 0;
+                if (window.updateScene) window.updateScene();
+            });
+            group.appendChild(lb);
+            group.appendChild(input);
+            return group;
+        };
+
+        rectContainer.appendChild(createField('X', 'x'));
+        rectContainer.appendChild(createField('Y', 'y'));
+        rectContainer.appendChild(createField('W', 'w'));
+        rectContainer.appendChild(createField('H', 'h'));
+
+        const rectLabel = document.createElement('div');
+        rectLabel.textContent = 'Viewport Rect (0-1):';
+        rectLabel.style.fontSize = '10px';
+        rectLabel.style.opacity = '0.6';
+        rectLabel.style.marginBottom = '-2px';
+
+        item.appendChild(rectLabel);
+        item.appendChild(rectContainer);
+
+        cameraList.appendChild(item);
+    });
 }
