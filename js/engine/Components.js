@@ -64,7 +64,6 @@ const componentAliases = {
     'VerticalLayoutGroup': 'autoDisposicionVertical',
     'HorizontalLayoutGroup': 'autoDisposicionHorizontal',
     'GridLayoutGroup': 'autoDisposicionRejilla',
-    'AmortiguadorCollider': 'colisionadorAmortiguador',
     'SuspensionHC': 'suspensionHC',
     'VehicleTopDown': 'controladorVehiculoTopDown',
     'PlaneController': 'controladorDeAvion',
@@ -2276,22 +2275,49 @@ export class TextureRender extends Leyes {
         this.texturePath = '';
         this.orderInLayer = 0;
         this.texture = null; // Will hold the Image object
+        this._lastLoadedPath = '';
+        this.isLoading = false;
+        this.isError = false;
+    }
+
+    update(deltaTime) {
+        // Auto-load if path is set but not yet loaded
+        if (this.texturePath && this.texturePath !== this._lastLoadedPath && !this.isLoading && !this.isError) {
+            this.loadTexture(window.projectsDirHandle);
+        }
     }
 
     async loadTexture(projectsDirHandle) {
-        if (this.texturePath) {
-            const url = await getURLForAssetPath(this.texturePath, projectsDirHandle);
+        if (!this.texturePath) {
+            this.texture = null;
+            this._lastLoadedPath = '';
+            this.isError = false;
+            this.isLoading = false;
+            return;
+        }
+
+        const currentDirHandle = projectsDirHandle || window.projectsDirHandle;
+        this.isLoading = true;
+        this.isError = false;
+
+        try {
+            const url = await getURLForAssetPath(this.texturePath, currentDirHandle);
             if (url) {
                 this.texture = new Image();
-                this.texture.src = url;
-                // We might need to await loading if drawing happens immediately
                 await new Promise((resolve, reject) => {
                     this.texture.onload = resolve;
                     this.texture.onerror = reject;
-                }).catch(e => console.error(`Failed to load texture: ${this.texturePath}`, e));
+                    this.texture.src = url;
+                });
+                this._lastLoadedPath = this.texturePath;
+            } else {
+                this.isError = true;
             }
-        } else {
-            this.texture = null;
+        } catch (e) {
+            console.error(`Failed to load texture: ${this.texturePath}`, e);
+            this.isError = true;
+        } finally {
+            this.isLoading = false;
         }
     }
 

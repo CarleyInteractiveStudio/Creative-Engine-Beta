@@ -1810,6 +1810,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const water = materia.getComponent(Components.Water);
                 if (water) water.update(deltaTime);
 
+                const tr = materia.getComponent(Components.TextureRender);
+                if (tr) tr.update(deltaTime);
+
 
                 // ONLY update Animator and Controller for selected object to avoid performance issues
                 // but allow the user to see the character animate when selected.
