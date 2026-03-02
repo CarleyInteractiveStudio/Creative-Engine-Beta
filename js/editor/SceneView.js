@@ -2450,6 +2450,10 @@ function drawTilemapColliders() {
 
     for (let i = 0; i < tilemap.layers.length; i++) {
         const layer = tilemap.layers[i];
+
+        // Visual feedback: only draw active collision layers or ALL layers if 'useAllLayers' is true
+        if (!collider.useAllLayers && i !== collider.sourceLayerIndex) continue;
+
         // Use the new safe accessor method to prevent crashes
         const rects = collider.getMeshForLayer(i);
 
@@ -2594,7 +2598,7 @@ function paintTile(event) {
         if (erasedSomething) {
             tilemapRenderer.setDirty();
             const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
-            if (collider) collider.generateMesh();
+            if (collider) collider.isDirty = true;
             VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"));
         }
         return;
@@ -2693,10 +2697,10 @@ function paintTile(event) {
             lastPaintedCoords = { col, row };
             tilemapRenderer.setDirty();
 
-            // After painting, find the collider and regenerate its mesh
+            // After painting, find the collider and mark it dirty
             const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
             if (collider) {
-                collider.generateMesh();
+                collider.isDirty = true;
             }
 
             return;

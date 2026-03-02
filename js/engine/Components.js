@@ -3278,8 +3278,8 @@ registerComponent('Canvas', Canvas);
 export class Tilemap extends Leyes {
     constructor(materia) {
         super(materia);
-        this.width = 30;
-        this.height = 20;
+        this._width = 30;
+        this._height = 20;
         this.manualSize = false;
         this.layers = [{
             name: 'Base',
@@ -3289,12 +3289,31 @@ export class Tilemap extends Leyes {
         this.activeLayerIndex = 0;
     }
 
+    get width() { return this._width; }
+    set width(v) {
+        const val = parseInt(v, 10) || 0;
+        if (this._width !== val) {
+            this._width = val;
+            this._dirtyCollider();
+        }
+    }
+
+    get height() { return this._height; }
+    set height(v) {
+        const val = parseInt(v, 10) || 0;
+        if (this._height !== val) {
+            this._height = val;
+            this._dirtyCollider();
+        }
+    }
+
     addLayer(x = 0, y = 0) {
         this.layers.push({
             name: 'Layer ' + this.layers.length,
             position: { x, y },
             tileData: new Map()
         });
+        this._dirtyCollider();
     }
 
     removeLayer(index) {
@@ -3303,7 +3322,13 @@ export class Tilemap extends Leyes {
             if (this.activeLayerIndex >= index) {
                 this.activeLayerIndex = Math.max(0, this.activeLayerIndex - 1);
             }
+            this._dirtyCollider();
         }
+    }
+
+    _dirtyCollider() {
+        const collider = this.materia.getComponent(TilemapCollider2D);
+        if (collider) collider.isDirty = true;
     }
 
     clone() {
@@ -3406,13 +3431,32 @@ export class TilemapCollider2D extends Leyes {
         this.usedByEffector = false;
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
-        this.sourceLayerIndex = 0; // Which layer to use for collision
-        this.useAllLayers = false;
+        this._sourceLayerIndex = 0; // Which layer to use for collision
+        this._useAllLayers = false;
         this.generatedColliders = []; // Array of {x, y, width, height} objects
+        this.isDirty = true;
 
         // Always initialize _cachedMesh as a Map. This prevents corrupted data
         // from scene deserialization from breaking the renderer.
         this._cachedMesh = new Map();
+    }
+
+    get sourceLayerIndex() { return this._sourceLayerIndex; }
+    set sourceLayerIndex(v) {
+        const val = parseInt(v, 10) || 0;
+        if (this._sourceLayerIndex !== val) {
+            this._sourceLayerIndex = val;
+            this.isDirty = true;
+        }
+    }
+
+    get useAllLayers() { return this._useAllLayers; }
+    set useAllLayers(v) {
+        const val = v === true || v === 'true';
+        if (this._useAllLayers !== val) {
+            this._useAllLayers = val;
+            this.isDirty = true;
+        }
     }
 
     /**
@@ -3441,12 +3485,14 @@ export class TilemapCollider2D extends Leyes {
             this._cachedMesh = new Map();
         }
 
-        const tilemap = this.materia.getComponent(Tilemap);
-        const grid = this.materia.parent?.getComponent(Grid);
+        const tilemap = this.materia.getComponent(Tilemap) || this.materia.getComponentInParent(Tilemap) || this.materia.getComponentInChildren(Tilemap);
+        const grid = this.materia.getComponentInParent(Grid) || this.materia.getComponent(Grid) || this.materia.getComponentInChildren(Grid);
 
         if (!tilemap || !grid) {
+            console.warn("[TilemapCollider2D] No se encontró el componente Tilemap o Grid para generar colisiones.");
             this._cachedMesh.clear();
             this.generatedColliders = [];
+            this.isDirty = false;
             return;
         }
 
@@ -3505,7 +3551,8 @@ export class TilemapCollider2D extends Leyes {
 
             // Now, convert these rects to world-space colliders for the physics engine
             // This is only done for the layer specified in the component's properties
-            if (this.useAllLayers || i === this.sourceLayerIndex) {
+            // We use loose comparison just in case types are mixed
+            if (this.useAllLayers || i == this.sourceLayerIndex) {
                 const layerOffsetX = layer.position.x * layerWidth;
                 const layerOffsetY = layer.position.y * layerHeight;
 
@@ -3526,10 +3573,10 @@ export class TilemapCollider2D extends Leyes {
                 }
             }
         }
+        this.isDirty = false;
     }
 
     generate() {
-        console.warn("El método 'generate()' de TilemapCollider2D está obsoleto. Usa 'generateMesh()' en su lugar.");
         this.generateMesh();
     }
 
