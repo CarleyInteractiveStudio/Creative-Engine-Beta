@@ -38,7 +38,7 @@ const componentAliases = {
     'TextureRender': 'renderizadorDeTextura',
     'Canvas': 'lienzo',
     'UIImage': 'imagenUI',
-    'UITransform': 'transformacionUI',
+    'UITransform': 'posicionUI',
     'UIText': 'textoUI',
     'Button': 'boton',
     'UIEventTrigger': 'disparadorDeEventosUI',
@@ -127,6 +127,11 @@ export class CreativeScriptBehavior {
             if (componentName === 'Transform') {
                 if (!this.hasOwnProperty('transformacion')) {
                     this['transformacion'] = component;
+                }
+            }
+            if (componentName === 'UITransform') {
+                if (!this.hasOwnProperty('transformacionUI')) {
+                    this['transformacionUI'] = component;
                 }
             }
         }

@@ -3,7 +3,7 @@
 export class Localization {
     static translations = {};
     static currentLanguage = 'ES';
-    static languages = ['ES', 'EN'];
+    static languages = ['ES', 'EN', 'PT', 'RU', 'ZH'];
 
     static async init() {
         // Detect browser language

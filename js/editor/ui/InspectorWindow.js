@@ -1277,7 +1277,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
         }
     } else {
         const lowerType = type.toLowerCase();
-        displayName = `${L.get('NINGUNO', 'Ninguno')} (${type})`;
+        displayName = `${L.get('NINGUNO', 'Ninguno')} (${L.get(type.toUpperCase()) !== type.toUpperCase() ? L.get(type.toUpperCase()) : type})`;
 
         icon = componentIcons[type] || componentIcons[type.charAt(0).toUpperCase() + type.slice(1)] || 'help-circle';
 
@@ -1443,11 +1443,11 @@ async function updateInspectorForMateria(selectedMateria) {
         </div>
         <div class="tag-layer-container">
             <div class="inspector-row">
-                <label for="materia-tag-select" data-i18n="TAG">Tag</label>
+                <label for="materia-tag-select" data-i18n="TAG">${L.get('TAG', 'Tag')}</label>
                 <select id="materia-tag-select"></select>
             </div>
             <div class="inspector-row">
-                <label for="materia-layer-select" data-i18n="LAYER">Layer</label>
+                <label for="materia-layer-select" data-i18n="LAYER">${L.get('LAYER', 'Layer')}</label>
                 <select id="materia-layer-select"></select>
             </div>
         </div>
@@ -1543,10 +1543,10 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_SHAPE">${L.get('PROP_SHAPE', 'Shape')}</label>
                         <div class="prop-inputs">
                             <select class="prop-input inspector-re-render" data-component="TextureRender" data-prop="shape">
-                                <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''}>${L.get('RECTANGLE', 'Rectangle')}</option>
-                                <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''}>${L.get('CIRCLE', 'Circle')}</option>
-                                <option value="Triangle" ${ley.shape === 'Triangle' ? 'selected' : ''}>${L.get('TRIANGLE', 'Triangle')}</option>
-                                <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''}>${L.get('CAPSULE', 'Capsule')}</option>
+                                <option value="Rectangle" ${ley.shape === 'Rectangle' ? 'selected' : ''} data-i18n="RECTANGLE">${L.get('RECTANGLE', 'Rectangle')}</option>
+                                <option value="Circle" ${ley.shape === 'Circle' ? 'selected' : ''} data-i18n="CIRCLE">${L.get('CIRCLE', 'Circle')}</option>
+                                <option value="Triangle" ${ley.shape === 'Triangle' ? 'selected' : ''} data-i18n="TRIANGLE">${L.get('TRIANGLE', 'Triangle')}</option>
+                                <option value="Capsule" ${ley.shape === 'Capsule' ? 'selected' : ''} data-i18n="CAPSULE">${L.get('CAPSULE', 'Capsule')}</option>
                             </select>
                         </div>
                     </div>
@@ -1571,11 +1571,11 @@ async function updateInspectorForMateria(selectedMateria) {
         } else if (ley instanceof Components.VerticalLayoutGroup || ley instanceof Components.HorizontalLayoutGroup) {
             const isVertical = ley instanceof Components.VerticalLayoutGroup;
             const compName = isVertical ? 'VerticalLayoutGroup' : 'HorizontalLayoutGroup';
-            const title = isVertical ? L.get('VERTICAL_LAYOUT_GROUP', "Vertical Layout Group") : L.get('HORIZONTAL_LAYOUT_GROUP', "Horizontal Layout Group");
+            const title = isVertical ? L.get('VERTICAL_LAYOUT', "Vertical Layout") : L.get('HORIZONTAL_LAYOUT', "Horizontal Layout");
             componentHTML = `
                 ${renderComponentHeader(title, icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span>${L.get('PADDING', 'Padding')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="PADDING">${L.get('PADDING', 'Padding')}</span></div>
                     <div class="prop-row-multi">
                         <span>L</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.left" value="${ley.padding.left}">
                         <span>R</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.right" value="${ley.padding.right}">
@@ -1585,16 +1585,16 @@ async function updateInspectorForMateria(selectedMateria) {
                         <span>B</span><input type="number" class="prop-input" data-component="${compName}" data-prop="padding.bottom" value="${ley.padding.bottom}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPACING', 'Espaciado')}</label>
+                        <label data-i18n="SPACING">${L.get('SPACING', 'Espaciado')}</label>
                         <input type="number" class="prop-input" data-component="${compName}" data-prop="spacing" value="${ley.spacing}">
                     </div>
                 </div>
             `;
         } else if (ley instanceof Components.GridLayoutGroup) {
             componentHTML = `
-                ${renderComponentHeader(L.get('GRID_LAYOUT_GROUP', "Grid Layout Group"), icon, index)}
+                ${renderComponentHeader(L.get('GRID_LAYOUT', "Grid Layout"), icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span>${L.get('PADDING', 'Padding')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="PADDING">${L.get('PADDING', 'Padding')}</span></div>
                     <div class="prop-row-multi">
                         <span>L</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.left" value="${ley.padding.left}">
                         <span>R</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.right" value="${ley.padding.right}">
@@ -1603,12 +1603,12 @@ async function updateInspectorForMateria(selectedMateria) {
                         <span>T</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.top" value="${ley.padding.top}">
                         <span>B</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="padding.bottom" value="${ley.padding.bottom}">
                     </div>
-                    <div class="inspector-section-header"><span>${L.get('CELL_SIZE', 'Tamaño Celda')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</span></div>
                     <div class="prop-row-multi">
                         <span>W</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.width" value="${ley.cellSize.width}">
                         <span>H</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="cellSize.height" value="${ley.cellSize.height}">
                     </div>
-                    <div class="inspector-section-header"><span>${L.get('SPACING', 'Espaciado')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="SPACING">${L.get('SPACING', 'Espaciado')}</span></div>
                     <div class="prop-row-multi">
                         <span>X</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.x" value="${ley.spacing.x}">
                         <span>Y</span><input type="number" class="prop-input" data-component="GridLayoutGroup" data-prop="spacing.y" value="${ley.spacing.y}">
@@ -1617,20 +1617,20 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.ContentSizeFitter) {
              componentHTML = `
-                ${renderComponentHeader(L.get('CONTENT_SIZE_FITTER', "Content Size Fitter"), icon, index)}
+                ${renderComponentHeader(L.get('SIZE_FITTER', "Size Fitter"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('HORIZONTAL_FIT', 'Horizontal Fit')}</label>
+                        <label data-i18n="HORIZONTAL_FIT">${L.get('HORIZONTAL_FIT', 'Horizontal Fit')}</label>
                         <select class="prop-input" data-component="ContentSizeFitter" data-prop="horizontalFit">
-                            <option value="Unconstrained" ${ley.horizontalFit === 'Unconstrained' ? 'selected' : ''}>${L.get('UNCONSTRAINED', 'Unconstrained')}</option>
-                            <option value="Preferred Size" ${ley.horizontalFit === 'Preferred Size' ? 'selected' : ''}>${L.get('PREFERRED_SIZE', 'Preferred Size')}</option>
+                            <option value="Unconstrained" ${ley.horizontalFit === 'Unconstrained' ? 'selected' : ''} data-i18n="UNCONSTRAINED">${L.get('UNCONSTRAINED', 'Unconstrained')}</option>
+                            <option value="Preferred Size" ${ley.horizontalFit === 'Preferred Size' ? 'selected' : ''} data-i18n="PREFERRED_SIZE">${L.get('PREFERRED_SIZE', 'Preferred Size')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('VERTICAL_FIT', 'Vertical Fit')}</label>
+                        <label data-i18n="VERTICAL_FIT">${L.get('VERTICAL_FIT', 'Vertical Fit')}</label>
                         <select class="prop-input" data-component="ContentSizeFitter" data-prop="verticalFit">
-                            <option value="Unconstrained" ${ley.verticalFit === 'Unconstrained' ? 'selected' : ''}>${L.get('UNCONSTRAINED', 'Unconstrained')}</option>
-                            <option value="Preferred Size" ${ley.verticalFit === 'Preferred Size' ? 'selected' : ''}>${L.get('PREFERRED_SIZE', 'Preferred Size')}</option>
+                            <option value="Unconstrained" ${ley.verticalFit === 'Unconstrained' ? 'selected' : ''} data-i18n="UNCONSTRAINED">${L.get('UNCONSTRAINED', 'Unconstrained')}</option>
+                            <option value="Preferred Size" ${ley.verticalFit === 'Preferred Size' ? 'selected' : ''} data-i18n="PREFERRED_SIZE">${L.get('PREFERRED_SIZE', 'Preferred Size')}</option>
                         </select>
                     </div>
                 </div>
@@ -1669,17 +1669,17 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="prop-row-multi">
                         <label data-i18n="PRELOAD">${L.get('PRELOAD', 'Precarga')}</label>
                         <select class="prop-input" data-component="VideoPlayer" data-prop="preload">
-                            <option value="auto" ${ley.preload === 'auto' ? 'selected' : ''}>Auto</option>
-                            <option value="metadata" ${ley.preload === 'metadata' ? 'selected' : ''}>Metadata</option>
-                            <option value="none" ${ley.preload === 'none' ? 'selected' : ''}>None</option>
+                            <option value="auto" ${ley.preload === 'auto' ? 'selected' : ''} data-i18n="AUTO">Auto</option>
+                            <option value="metadata" ${ley.preload === 'metadata' ? 'selected' : ''} data-i18n="METADATA">Metadata</option>
+                            <option value="none" ${ley.preload === 'none' ? 'selected' : ''} data-i18n="NONE">None</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
                         <label data-i18n="SCALING_MODE">${L.get('SCALING_MODE', 'Escalado')}</label>
                         <select class="prop-input" data-component="VideoPlayer" data-prop="scalingMode">
-                            <option value="Fit" ${ley.scalingMode === 'Fit' ? 'selected' : ''}>Fit</option>
-                            <option value="Stretch" ${ley.scalingMode === 'Stretch' ? 'selected' : ''}>Stretch</option>
-                            <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''}>Fill</option>
+                            <option value="Fit" ${ley.scalingMode === 'Fit' ? 'selected' : ''} data-i18n="FIT">Fit</option>
+                            <option value="Stretch" ${ley.scalingMode === 'Stretch' ? 'selected' : ''} data-i18n="STRETCH">Stretch</option>
+                            <option value="Fill" ${ley.scalingMode === 'Fill' ? 'selected' : ''} data-i18n="FILL">Fill</option>
                         </select>
                     </div>
                     <button class="primary-btn inspector-action-btn" data-action="sync-video-size" data-ley-index="${index}" style="width: 100%; margin-top: 10px; font-weight: bold; border-radius: 4px;" title="${L.get('AJUSTAR_TAMANO_VIDEO_DESC', 'Ajusta el tamaño del objeto UI para que coincida con la resolución nativa del video.')}">${L.get('AJUSTAR_TAMANO_AL_VIDEO', 'Ajustar Tamaño al Video')}</button>
@@ -1690,16 +1690,16 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('HEALTH_COMPONENT', "Vida (Health)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_HEALTH', 'Vida Máxima')}</label>
+                        <label data-i18n="MAX_HEALTH">${L.get('MAX_HEALTH', 'Vida Máxima')}</label>
                         <input type="number" class="prop-input" step="1" min="1" data-component="Health" data-prop="maxHealth" value="${ley.maxHealth}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('CURRENT_HEALTH', 'Vida Actual')}</label>
+                        <label data-i18n="CURRENT_HEALTH">${L.get('CURRENT_HEALTH', 'Vida Actual')}</label>
                         <input type="number" class="prop-input" step="1" min="0" data-component="Health" data-prop="currentHealth" value="${ley.currentHealth}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Health" data-prop="destroyOnDeath" ${ley.destroyOnDeath ? 'checked' : ''}>
-                        <label>${L.get('DESTROY_ON_DEATH', 'Destruir al morir')}</label>
+                        <label data-i18n="DESTROY_ON_DEATH">${L.get('DESTROY_ON_DEATH', 'Destruir al morir')}</label>
                     </div>
                 </div>
             `;
@@ -1708,20 +1708,20 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('PATROL_COMPONENT', "Patrulla (Patrol)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('SPEED', 'Velocidad')}</label>
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('DISTANCE', 'Distancia')}</label>
+                        <label data-i18n="DISTANCE">${L.get('DISTANCE', 'Distancia')}</label>
                         <input type="number" class="prop-input" step="1" data-component="Patrol" data-prop="distance" value="${ley.distance}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('PAUSE_TIME', 'Tiempo Pausa (s)')}</label>
+                        <label data-i18n="PAUSE_TIME">${L.get('PAUSE_TIME', 'Tiempo Pausa (s)')}</label>
                         <input type="number" class="prop-input" step="0.1" min="0" data-component="Patrol" data-prop="pauseTime" value="${ley.pauseTime}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Patrol" data-prop="horizontal" ${ley.horizontal ? 'checked' : ''}>
-                        <label>${L.get('HORIZONTAL', 'Horizontal')}</label>
+                        <label data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</label>
                     </div>
                 </div>
             `;
@@ -1752,6 +1752,15 @@ async function updateInspectorForMateria(selectedMateria) {
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.x" value="${ley.localScale.x}" title="X">
                             <input type="number" class="prop-input" step="0.1" data-component="Transform" data-prop="localScale.y" value="${ley.localScale.y}" title="Y">
                         </div>
+                    </div>
+                    <div class="inspector-section-header"><span>${L.get('ORIENTATION', 'Orientación')}</span></div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Transform" data-prop="flipX" ${ley.flipX ? 'checked' : ''}>
+                        <label data-i18n="PROP_FLIP_X">${L.get('PROP_FLIP_X', 'Voltear Horizontal')}</label>
+                    </div>
+                    <div class="checkbox-field padded-checkbox-field">
+                        <input type="checkbox" class="prop-input" data-component="Transform" data-prop="flipY" ${ley.flipY ? 'checked' : ''}>
+                        <label data-i18n="PROP_FLIP_Y">${L.get('PROP_FLIP_Y', 'Voltear Vertical')}</label>
                     </div>
                 </div>
             </div>`;
@@ -1798,25 +1807,28 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
             ${renderComponentHeader(L.get('UI_TRANSFORM', "UI Transform"), icon, index)}
             <div class="component-content">
-                 <div class="anchor-grid-container">
-                    ${anchorGridHTML}
+                 <div class="inspector-row">
+                    <label data-i18n="ANCHOR_POINT">${L.get('ANCHOR_POINT', 'Punto de Anclaje')}</label>
+                    <div class="anchor-grid-container">
+                        ${anchorGridHTML}
+                    </div>
                 </div>
                 <div class="prop-row-multi">
-                    <label>${L.get('POSITION', 'Position')}</label>
+                    <label data-i18n="POSICION">${L.get('POSICION', 'Position')}</label>
                     <div class="prop-inputs">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.x" value="${ley.position.x}" title="${L.get('POSITION_X_OFFSET', 'Position X Offset')}">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="position.y" value="${ley.position.y}" title="${L.get('POSITION_Y_OFFSET', 'Position Y Offset')}">
                     </div>
                 </div>
                 <div class="prop-row-multi">
-                    <label>${L.get('SIZE', 'Size')}</label>
+                    <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                     <div class="prop-inputs">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.width" value="${ley.size.width}" title="${L.get('WIDTH', 'Width')}">
                         <input type="number" class="prop-input" step="1" data-component="UITransform" data-prop="size.height" value="${ley.size.height}" title="${L.get('HEIGHT', 'Height')}">
                     </div>
                 </div>
                 <div class="prop-row-multi">
-                    <label>${L.get('PIVOT', 'Pivot')}</label>
+                    <label data-i18n="PROP_PIVOT">${L.get('PROP_PIVOT', 'Pivot')}</label>
                     <div class="prop-inputs">
                         <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.x" value="${ley.pivot?.x ?? 0.5}" title="${L.get('PIVOT_X', 'Pivot X')}">
                         <input type="number" class="prop-input" step="0.01" data-component="UITransform" data-prop="pivot.y" value="${ley.pivot?.y ?? 0.5}" title="${L.get('PIVOT_Y', 'Pivot Y')}">
@@ -1845,26 +1857,26 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('UI_TEXT', "UI Text"), "type", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('TEXT', 'Text')}</label>
+                        <label data-i18n="TEXTO">${L.get('TEXTO', 'Text')}</label>
                         <textarea class="prop-input" data-component="UIText" data-prop="text" rows="3">${ley.text}</textarea>
                     </div>
                     <div class="inspector-row">
-                        <label>${L.get('FONT', 'Font')}</label>
+                        <label data-i18n="FONT">${L.get('FONT', 'Font')}</label>
                         ${renderPropertyDropper('Font', ley.fontAssetPath, 'data-component="UIText" data-prop="fontAssetPath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('FONT_SIZE', 'Font Size')}</label>
+                        <label data-i18n="FONT_SIZE">${L.get('FONT_SIZE', 'Font Size')}</label>
                         <input type="number" class="prop-input" data-component="UIText" data-prop="fontSize" value="${ley.fontSize}" min="1">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('COLOR', 'Color')}</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="UIText" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('ALIGNMENT', 'Alignment')}</label>
+                        <label data-i18n="ALIGNMENT">${L.get('ALIGNMENT', 'Alignment')}</label>
                         <select class="prop-input" data-component="UIText" data-prop="horizontalAlign">
                             <option value="left" ${ley.horizontalAlign === 'left' ? 'selected' : ''}>${L.get('LEFT', 'Left')}</option>
                             <option value="center" ${ley.horizontalAlign === 'center' ? 'selected' : ''}>${L.get('CENTER', 'Center')}</option>
@@ -1872,7 +1884,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         </select>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('TRANSFORM', 'Transform')}</label>
+                        <label data-i18n="TRANSFORM">${L.get('TRANSFORM', 'Transform')}</label>
                         <select class="prop-input" data-component="UIText" data-prop="textTransform">
                             <option value="none" ${ley.textTransform === 'none' ? 'selected' : ''}>${L.get('NONE', 'None')}</option>
                             <option value="uppercase" ${ley.textTransform === 'uppercase' ? 'selected' : ''}>${L.get('UPPERCASE', 'UPPERCASE')}</option>
@@ -1889,16 +1901,16 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('CANVAS', "Canvas"), "image", index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('RENDER_MODE', 'Render Mode')}</label>
+                        <label data-i18n="RENDER_MODE">${L.get('RENDER_MODE', 'Render Mode')}</label>
                         <select class="prop-input inspector-re-render" data-component="Canvas" data-prop="renderMode">
-                            <option value="Screen Space" ${!isWorldSpace ? 'selected' : ''}>${L.get('SCREEN_SPACE', 'Screen Space')}</option>
-                            <option value="World Space" ${isWorldSpace ? 'selected' : ''}>${L.get('WORLD_SPACE', 'World Space')}</option>
+                            <option value="Screen Space" ${!isWorldSpace ? 'selected' : ''} data-i18n="SCREEN_SPACE">${L.get('SCREEN_SPACE', 'Screen Space')}</option>
+                            <option value="World Space" ${isWorldSpace ? 'selected' : ''} data-i18n="WORLD_SPACE">${L.get('WORLD_SPACE', 'World Space')}</option>
                         </select>
                     </div>
 
                     <!-- World Space Properties -->
                     <div class="prop-row-multi" data-canvas-props="world" style="display: ${isWorldSpace ? 'flex' : 'none'};">
-                        <label>${L.get('SIZE', 'Size')}</label>
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="size.x" value="${ley.size.x}">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="size.y" value="${ley.size.y}">
@@ -1907,25 +1919,25 @@ async function updateInspectorForMateria(selectedMateria) {
 
                     <!-- Screen Space Properties -->
                     <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
-                        <label>${L.get('REFERENCE_RES', 'Reference Res')}</label>
+                        <label data-i18n="REFERENCE_RES">${L.get('REFERENCE_RES', 'Reference Res')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.width" value="${ssResolution.width}">
                             <input type="number" class="prop-input" data-component="Canvas" data-prop="referenceResolution.height" value="${ssResolution.height}">
                         </div>
                     </div>
                      <div class="prop-row-multi" data-canvas-props="screen" style="display: ${!isWorldSpace ? 'flex' : 'none'};">
-                        <label>${L.get('SCREEN_MATCH', 'Screen Match')}</label>
+                        <label data-i18n="SCREEN_MATCH">${L.get('SCREEN_MATCH', 'Screen Match')}</label>
                          <select class="prop-input" data-component="Canvas" data-prop="screenMatchMode">
-                            <option value="Match Width Or Height" ${ley.screenMatchMode === 'Match Width Or Height' ? 'selected' : ''}>${L.get('MATCH_WIDTH_HEIGHT', 'Match Width Or Height')}</option>
+                            <option value="Match Width Or Height" ${ley.screenMatchMode === 'Match Width Or Height' ? 'selected' : ''} data-i18n="MATCH_WIDTH_HEIGHT">${L.get('MATCH_WIDTH_HEIGHT', 'Match Width Or Height')}</option>
                         </select>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Canvas" data-prop="showGrid" ${ley.showGrid ? 'checked' : ''}>
-                        <label>${L.get('SHOW_GRID_GIZMO', 'Show Grid Gizmo')}</label>
+                        <label data-i18n="SHOW_GRID_GIZMO">${L.get('SHOW_GRID_GIZMO', 'Show Grid Gizmo')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Canvas" data-prop="scaleChildren" ${ley.scaleChildren ? 'checked' : ''}>
-                        <label>${L.get('SCALE_CHILDREN', 'Scale Children')}</label>
+                        <label data-i18n="SCALE_CHILDREN">${L.get('SCALE_CHILDREN', 'Scale Children')}</label>
                     </div>
                 </div>`;
         } else if (ley instanceof Components.Button) {
@@ -1937,67 +1949,67 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Button" data-prop="interactable" ${ley.interactable ? 'checked' : ''}>
-                        <label>${L.get('INTERACTABLE', 'Interactable')}</label>
+                        <label data-i18n="INTERACTABLE">${L.get('INTERACTABLE', 'Interactable')}</label>
                     </div>
                     <hr>
                     <div class="prop-row-multi">
-                        <label>${L.get('TRANSITION', 'Transition')}</label>
+                        <label data-i18n="TRANSITION">${L.get('TRANSITION', 'Transition')}</label>
                         <select class="prop-input inspector-re-render" data-component="Button" data-prop="transition">
-                            <option value="None" ${ley.transition === 'None' ? 'selected' : ''}>${L.get('NONE', 'None')}</option>
-                            <option value="Color Tint" ${isColorTint ? 'selected' : ''}>${L.get('COLOR_TINT', 'Color Tint')}</option>
-                            <option value="Sprite Swap" ${isSpriteSwap ? 'selected' : ''}>${L.get('SPRITE_SWAP', 'Sprite Swap')}</option>
-                            <option value="Animation" ${isAnimation ? 'selected' : ''}>${L.get('ANIMATION', 'Animation')}</option>
+                            <option value="None" ${ley.transition === 'None' ? 'selected' : ''} data-i18n="NONE">${L.get('NONE', 'None')}</option>
+                            <option value="Color Tint" ${isColorTint ? 'selected' : ''} data-i18n="COLOR_TINT">${L.get('COLOR_TINT', 'Color Tint')}</option>
+                            <option value="Sprite Swap" ${isSpriteSwap ? 'selected' : ''} data-i18n="SPRITE_SWAP">${L.get('SPRITE_SWAP', 'Sprite Swap')}</option>
+                            <option value="Animation" ${isAnimation ? 'selected' : ''} data-i18n="ANIMATION">${L.get('ANIMATION', 'Animation')}</option>
                         </select>
                     </div>
                     <div id="color-tint-settings" style="display: ${isColorTint ? 'block' : 'none'};">
                         <div class="prop-row-multi">
-                            <label>${L.get('NORMAL_COLOR', 'Normal Color')}</label>
+                            <label data-i18n="NORMAL_COLOR">${L.get('NORMAL_COLOR', 'Normal Color')}</label>
                             <input type="color" class="prop-input" data-component="Button" data-prop="colors.normalColor" value="${ley.colors.normalColor}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>${L.get('PRESSED_COLOR', 'Pressed Color')}</label>
+                            <label data-i18n="PRESSED_COLOR">${L.get('PRESSED_COLOR', 'Pressed Color')}</label>
                             <input type="color" class="prop-input" data-component="Button" data-prop="colors.pressedColor" value="${ley.colors.pressedColor}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>${L.get('DISABLED_COLOR', 'Disabled Color')}</label>
+                            <label data-i18n="DISABLED_COLOR">${L.get('DISABLED_COLOR', 'Disabled Color')}</label>
                             <input type="color" class="prop-input" data-component="Button" data-prop="colors.disabledColor" value="${ley.colors.disabledColor}">
                         </div>
                     </div>
                     <div id="sprite-swap-settings" style="display: ${isSpriteSwap ? 'block' : 'none'};">
                         <div class="inspector-row">
-                            <label>${L.get('HIGHLIGHTED_SPRITE', 'Highlighted Sprite')}</label>
+                            <label data-i18n="HIGHLIGHTED_SPRITE">${L.get('HIGHLIGHTED_SPRITE', 'Highlighted Sprite')}</label>
                             ${renderPropertyDropper('Sprite', ley.spriteSwap.highlightedSprite, 'data-component="Button" data-prop="spriteSwap.highlightedSprite"')}
                         </div>
                         <div class="inspector-row">
-                            <label>${L.get('PRESSED_SPRITE', 'Pressed Sprite')}</label>
+                            <label data-i18n="PRESSED_SPRITE">${L.get('PRESSED_SPRITE', 'Pressed Sprite')}</label>
                             ${renderPropertyDropper('Sprite', ley.spriteSwap.pressedSprite, 'data-component="Button" data-prop="spriteSwap.pressedSprite"')}
                         </div>
                         <div class="inspector-row">
-                            <label>${L.get('DISABLED_SPRITE', 'Disabled Sprite')}</label>
+                            <label data-i18n="DISABLED_SPRITE">${L.get('DISABLED_SPRITE', 'Disabled Sprite')}</label>
                             ${renderPropertyDropper('Sprite', ley.spriteSwap.disabledSprite, 'data-component="Button" data-prop="spriteSwap.disabledSprite"')}
                         </div>
                     </div>
                     <div id="animation-settings" style="display: ${isAnimation ? 'block' : 'none'};">
                         <div class="prop-row-multi">
-                            <label>${L.get('HIGHLIGHTED_TRIGGER', 'Highlighted Trigger')}</label>
+                            <label data-i18n="HIGHLIGHTED_TRIGGER">${L.get('HIGHLIGHTED_TRIGGER', 'Highlighted Trigger')}</label>
                             <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.highlightedTrigger" value="${ley.animationTriggers.highlightedTrigger}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>${L.get('PRESSED_TRIGGER', 'Pressed Trigger')}</label>
+                            <label data-i18n="PRESSED_TRIGGER">${L.get('PRESSED_TRIGGER', 'Pressed Trigger')}</label>
                             <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.pressedTrigger" value="${ley.animationTriggers.pressedTrigger}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>${L.get('DISABLED_TRIGGER', 'Disabled Trigger')}</label>
+                            <label data-i18n="DISABLED_TRIGGER">${L.get('DISABLED_TRIGGER', 'Disabled Trigger')}</label>
                             <input type="text" class="prop-input" data-component="Button" data-prop="animationTriggers.disabledTrigger" value="${ley.animationTriggers.disabledTrigger}">
                         </div>
                     </div>
                      <div class="inspector-section-header">
-                        <span>${L.get('ON_CLICK', 'On Click ()')}</span>
+                        <span data-i18n="ON_CLICK">${L.get('ON_CLICK', 'On Click ()')}</span>
                     </div>
                     <div class="onclick-event-list">
                         ${ley.onClick.map((event, index) => {
                             let targetName = 'None (Materia)';
-                            let functionsDropdown = '<option value="">No Function</option>';
+                            let functionsDropdown = `<option value="">${L.get('SIN_FUNCION', 'No Function')}</option>`;
 
                             if (event.targetMateriaId) {
                                 const targetMateria = window.SceneManager.currentScene.findMateriaById(event.targetMateriaId);
@@ -2067,7 +2079,7 @@ async function updateInspectorForMateria(selectedMateria) {
 
                 spriteSelectorHTML = `
                     <div class="inspector-row">
-                        <label for="sprite-name-select" data-i18n="SPRITE">Sprite</label>
+                        <label for="sprite-name-select" data-i18n="SPRITE">${L.get('SPRITE', 'Sprite')}</label>
                         <select id="sprite-name-select" class="prop-input inspector-re-render" data-component="SpriteRenderer" data-prop="spriteName">
                             ${options}
                         </select>
@@ -2076,7 +2088,7 @@ async function updateInspectorForMateria(selectedMateria) {
             }
 
             componentHTML = `
-                ${renderComponentHeader("Sprite Renderer", icon, index)}
+                ${renderComponentHeader(L.get('SPRITE_RENDERER', "Sprite Renderer"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
                         <label data-i18n="PROP_SOURCE">${L.get('PROP_SOURCE', 'Source')}</label>
@@ -2143,20 +2155,20 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('ANIMATOR', "Animator"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('ANIMATION_CLIP', 'Animation Clip')}</label>
+                        <label data-i18n="ANIMATION_CLIP">${L.get('ANIMATION_CLIP', 'Animation Clip')}</label>
                         ${renderPropertyDropper('Animation', ley.animationClipPath, 'data-component="Animator" data-prop="animationClipPath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPEED', 'Speed')}</label>
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Speed')}</label>
                         <input type="number" class="prop-input" step="1" min="0" data-component="Animator" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Animator" data-prop="loop" ${ley.loop ? 'checked' : ''}>
-                        <label>${L.get('LOOP', 'Loop')}</label>
+                        <label data-i18n="LOOP">${L.get('LOOP', 'Loop')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Animator" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
-                        <label>${L.get('PLAY_ON_AWAKE', 'Play On Awake')}</label>
+                        <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Play On Awake')}</label>
                     </div>
                 </div>`;
         } else if (ley instanceof Components.AnimatorController) {
@@ -2172,38 +2184,38 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('ANIMATOR_CONTROLLER', "Animator Controller"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('CONTROLLER', 'Controller')}</label>
+                        <label data-i18n="CONTROLLER">${L.get('CONTROLLER', 'Controller')}</label>
                         ${renderPropertyDropper('AnimatorController', ley.controllerPath, 'data-component="AnimatorController" data-prop="controllerPath"')}
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="AnimatorController" data-prop="smartMode" ${ley.smartMode ? 'checked' : ''}>
-                        <label>${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
+                        <label data-i18n="SMART_MODE_DIRECTIONS">${L.get('SMART_MODE_DIRECTIONS', 'Modo Inteligente (Direcciones)')}</label>
                     </div>
 
-                    <div class="inspector-section-header"><span>${L.get('RESPONSE_CONFIG', 'Configuración de Respuesta')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="RESPONSE_CONFIG">${L.get('RESPONSE_CONFIG', 'Configuración de Respuesta')}</span></div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('DEADZONE_DESC', 'Movimiento mínimo para activar dirección')}">${L.get('DEADZONE', 'Sensibilidad (Deadzone)')}</label>
+                        <label title="${L.get('DEADZONE_DESC', 'Movimiento mínimo para activar dirección')}" data-i18n="DEADZONE">${L.get('DEADZONE', 'Sensibilidad (Deadzone)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="AnimatorController" data-prop="deadZone" value="${ley.deadZone ?? 0.1}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('START_DELAY_DESC', 'Tiempo de espera para empezar animación')}">${L.get('START_DELAY', 'Retraso Inicio (s)')}</label>
+                        <label title="${L.get('START_DELAY_DESC', 'Tiempo de espera para empezar animación')}" data-i18n="START_DELAY">${L.get('START_DELAY', 'Retraso Inicio (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="startDelay" value="${ley.startDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('STOP_DELAY_DESC', 'Tiempo de espera para volver a parado')}">${L.get('STOP_DELAY', 'Retraso Parada (s)')}</label>
+                        <label title="${L.get('STOP_DELAY_DESC', 'Tiempo de espera para volver a parado')}" data-i18n="STOP_DELAY">${L.get('STOP_DELAY', 'Retraso Parada (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopDelay" value="${ley.stopDelay ?? 0.02}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('DIRECTION_DELAY_DESC', 'Tiempo de espera para cambiar dirección')}">${L.get('DIRECTION_DELAY', 'Retraso Giro (s)')}</label>
+                        <label title="${L.get('DIRECTION_DELAY_DESC', 'Tiempo de espera para cambiar dirección')}" data-i18n="DIRECTION_DELAY">${L.get('DIRECTION_DELAY', 'Retraso Giro (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="directionDelay" value="${ley.directionDelay ?? 0.05}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="${L.get('STOP_BUFFER_DESC', 'Tiempo que la animación sigue activa tras soltar')}">${L.get('STOP_BUFFER', 'Buffer Inercia (s)')}</label>
+                        <label title="${L.get('STOP_BUFFER_DESC', 'Tiempo que la animación sigue activa tras soltar')}" data-i18n="STOP_BUFFER">${L.get('STOP_BUFFER', 'Buffer Inercia (s)')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" data-component="AnimatorController" data-prop="stopBuffer" value="${ley.stopBuffer ?? 0.05}">
                     </div>
 
                     <div class="inspector-field-group">
-                        <label>${L.get('STATES', 'States')}</label>
+                        <label data-i18n="STATES">${L.get('STATES', 'States')}</label>
                         ${statesListHTML}
                     </div>
                 </div>`;
@@ -2215,38 +2227,38 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('CAMERA', "Camera"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('DEPTH', 'Depth')}</label>
+                        <label data-i18n="DEPTH">${L.get('DEPTH', 'Depth')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Camera" data-prop="depth" value="${ley.depth || 0}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('CLEAR_FLAGS', 'Clear Flags')}</label>
+                        <label data-i18n="CLEAR_FLAGS">${L.get('CLEAR_FLAGS', 'Clear Flags')}</label>
                         <div class="prop-inputs">
                             <select class="prop-input inspector-re-render" data-component="Camera" data-prop="clearFlags">
-                                <option value="SolidColor" ${clearFlags === 'SolidColor' ? 'selected' : ''}>${L.get('SOLID_COLOR', 'Solid Color')}</option>
-                                <option value="Skybox" ${clearFlags === 'Skybox' ? 'selected' : ''}>${L.get('SKYBOX', 'Skybox')}</option>
-                                <option value="DontClear" ${clearFlags === 'DontClear' ? 'selected' : ''}>${L.get('DONT_CLEAR', "Don't Clear")}</option>
+                                <option value="SolidColor" ${clearFlags === 'SolidColor' ? 'selected' : ''} data-i18n="SOLID_COLOR">${L.get('SOLID_COLOR', 'Solid Color')}</option>
+                                <option value="Skybox" ${clearFlags === 'Skybox' ? 'selected' : ''} data-i18n="SKYBOX">${L.get('SKYBOX', 'Skybox')}</option>
+                                <option value="DontClear" ${clearFlags === 'DontClear' ? 'selected' : ''} data-i18n="DONT_CLEAR">${L.get('DONT_CLEAR', "Don't Clear")}</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="prop-row-multi" style="display: ${clearFlags === 'SolidColor' ? 'flex' : 'none'};">
-                        <label>${L.get('BACKGROUND', 'Background')}</label>
+                        <label data-i18n="BACKGROUND">${L.get('BACKGROUND', 'Background')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="Camera" data-prop="backgroundColor" value="${ley.backgroundColor || '#1e293b'}">
                         </div>
                     </div>
 
                     <div class="prop-row-multi">
-                        <label>${L.get('CULLING_MASK', 'Culling Mask')}</label>
+                        <label data-i18n="CULLING_MASK">${L.get('CULLING_MASK', 'Culling Mask')}</label>
                         <div class="prop-inputs">
                             <button id="culling-mask-btn" class="prop-input-button">${getCullingMaskText(ley.cullingMask)}</button>
                         </div>
                     </div>
 
                      <div class="prop-row-multi">
-                        <label>${L.get('SIZE_ZOOM', 'Size (Zoom)')}</label>
+                        <label data-i18n="SIZE_ZOOM">${L.get('SIZE_ZOOM', 'Size (Zoom)')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Camera" data-prop="orthographicSize" value="${ley.orthographicSize || 5}" min="0.1">
                         </div>
@@ -2259,7 +2271,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('COLOR', 'Color')}</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="PointLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
@@ -2267,21 +2279,21 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${renderLightColorPresets("PointLight2D")}
                     <div class="prop-row-multi">
-                        <label>${L.get('INTENSITY', 'Intensidad')}</label>
+                        <label data-i18n="INTENSITY">${L.get('INTENSITY', 'Intensidad')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="PointLight2D" data-prop="intensity" value="${ley.intensity}">
                             <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
+                        <label data-i18n="LIGHT_FILTER">${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="PointLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('RADIUS', 'Radius')}</label>
+                        <label data-i18n="RADIUS">${L.get('RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="10" min="0" data-component="PointLight2D" data-prop="radius" value="${ley.radius}">
                         </div>
@@ -2294,7 +2306,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('COLOR', 'Color')}</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="width: 30px; padding: 0; border: none; height: 20px;">
                             <input type="text" class="prop-input hex-input" data-component="SpotLight2D" data-prop="color" value="${ley.color || '#ffffff'}" style="flex-grow: 1; font-family: monospace;">
@@ -2302,27 +2314,27 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     ${renderLightColorPresets("SpotLight2D")}
                     <div class="prop-row-multi">
-                        <label>${L.get('INTENSITY', 'Intensidad')}</label>
+                        <label data-i18n="INTENSITY">${L.get('INTENSITY', 'Intensidad')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="SpotLight2D" data-prop="intensity" value="${ley.intensity}">
                             <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
+                        <label data-i18n="LIGHT_FILTER">${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="SpotLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('RADIUS', 'Radius')}</label>
+                        <label data-i18n="RADIUS">${L.get('RADIUS', 'Radius')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="10" min="0" data-component="SpotLight2D" data-prop="radius" value="${ley.radius}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('ANGLE', 'Angle')}</label>
+                        <label data-i18n="ANGLE">${L.get('ANGLE', 'Angle')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" min="1" max="180" data-component="SpotLight2D" data-prop="angle" value="${ley.angle}">
                         </div>
@@ -2335,28 +2347,28 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('COLOR', 'Color')}</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="FreeformLight2D" data-prop="color" value="${ley.color}">
                         </div>
                     </div>
                     ${renderLightColorPresets("FreeformLight2D")}
                     <div class="prop-row-multi">
-                        <label>${L.get('INTENSITY', 'Intensidad')}</label>
+                        <label data-i18n="INTENSITY">${L.get('INTENSITY', 'Intensidad')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="FreeformLight2D" data-prop="intensity" value="${ley.intensity}">
                             <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
+                        <label data-i18n="LIGHT_FILTER">${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="FreeformLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
                         </div>
                     </div>
                     <hr>
-                    <p class="field-description">${L.get('VERTICES_EDIT_FUTURE', 'La edición de vértices se implementará en una futura actualización.')}</p>
+                    <p class="field-description" data-i18n="VERTICES_EDIT_FUTURE">${L.get('VERTICES_EDIT_FUTURE', 'La edición de vértices se implementará en una futura actualización.')}</p>
                 </div>
             </div>`;
         } else if (ley instanceof Components.Tilemap) {
@@ -2373,7 +2385,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 if (ley.manualSize) {
                     sizeInputHTML = `
                         <div class="prop-row-multi">
-                            <label>Size</label>
+                            <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                             <div class="prop-inputs">
                                 <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="width" value="${ley.width}" title="Width">
                                 <input type="number" class="prop-input" step="1" min="1" data-component="Tilemap" data-prop="height" value="${ley.height}" title="Height">
@@ -2383,7 +2395,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 } else {
                     sizeInputHTML = `
                         <div class="prop-row-multi">
-                            <label>Size</label>
+                            <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                             <div class="prop-inputs">
                                 <input type="number" class="prop-input" value="${ley.width}" readonly title="Width">
                                 <input type="number" class="prop-input" value="${ley.height}" readonly title="Height">
@@ -2397,13 +2409,13 @@ async function updateInspectorForMateria(selectedMateria) {
                     <div class="component-content">
                         <div class="checkbox-field">
                             <input type="checkbox" id="tilemap-manual-size-toggle" data-component="Tilemap" ${ley.manualSize ? 'checked' : ''}>
-                            <label for="tilemap-manual-size-toggle">${L.get('MANUAL_SIZE', 'Tamaño Manual')}</label>
+                            <label for="tilemap-manual-size-toggle" data-i18n="MANUAL_SIZE">${L.get('MANUAL_SIZE', 'Tamaño Manual')}</label>
                         </div>
                         ${sizeInputHTML}
                         <hr>
                         <div class="layer-manager-ui">
                             <div class="layer-list-header">
-                                <h5>${L.get('LAYERS', 'Capas')}</h5>
+                                <h5 data-i18n="LAYERS">${L.get('LAYERS', 'Capas')}</h5>
                                 <div class="layer-controls">
                                     <button class="layer-btn add" data-action="add-layer" title="${L.get('ADD_LAYER', 'Añadir Capa')}">+</button>
                                     <button class="layer-btn remove" data-action="remove-layer" title="${L.get('REMOVE_SELECTED_LAYER', 'Eliminar Capa Seleccionada')}">-</button>
@@ -2432,10 +2444,10 @@ async function updateInspectorForMateria(selectedMateria) {
             }
         } else if (ley instanceof Components.TilemapRenderer) {
             componentHTML = `
-                ${renderComponentHeader('Tilemap Renderer', 'brush', index)}
+                ${renderComponentHeader(L.get('TILEMAP_RENDERER', 'Tilemap Renderer'), 'brush', index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Order in Layer</label>
+                        <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="TilemapRenderer" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
                 </div>
@@ -2480,7 +2492,7 @@ async function updateInspectorForMateria(selectedMateria) {
             if (ley.isSimplified) {
                 sizeInputHTML = `
                     <div class="prop-row-multi">
-                        <label>Cell Size</label>
+                        <label data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="simplifiedSize" value="${cellSize.x}">
                         </div>
@@ -2489,7 +2501,7 @@ async function updateInspectorForMateria(selectedMateria) {
             } else {
                 sizeInputHTML = `
                     <div class="prop-row-multi">
-                        <label>Cell Size</label>
+                        <label data-i18n="CELL_SIZE">${L.get('CELL_SIZE', 'Cell Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.x" value="${cellSize.x}" title="X">
                             <input type="number" class="prop-input" step="1" min="1" data-component="Grid" data-prop="cellSize.y" value="${cellSize.y}" title="Y">
@@ -2504,7 +2516,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" id="grid-simplified-toggle" data-component="Grid" ${ley.isSimplified ? 'checked' : ''}>
-                        <label for="grid-simplified-toggle">${L.get('SIMPLIFIED', 'Simplificado')}</label>
+                        <label for="grid-simplified-toggle" data-i18n="SIMPLIFIED">${L.get('SIMPLIFIED', 'Simplificado')}</label>
                     </div>
                     ${sizeInputHTML}
                 </div>
@@ -2516,29 +2528,29 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CapsuleCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
-                        <label>${L.get('IS_TRIGGER', 'Is Trigger')}</label>
+                        <label data-i18n="IS_TRIGGER">${L.get('IS_TRIGGER', 'Is Trigger')}</label>
                     </div>
                     <hr>
                     <div class="prop-row-multi">
-                        <label>${L.get('OFFSET', 'Offset')}</label>
+                        <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
                             <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SIZE', 'Size')}</label>
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
                             <input type="number" class="prop-input" step="0.1" data-component="CapsuleCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('DIRECTION', 'Direction')}</label>
+                        <label data-i18n="DIRECTION">${L.get('DIRECTION', 'Direction')}</label>
                         <div class="prop-inputs">
                             <select class="prop-input inspector-re-render" data-component="CapsuleCollider2D" data-prop="direction">
-                                <option value="Vertical" ${ley.direction === 'Vertical' ? 'selected' : ''}>${L.get('VERTICAL', 'Vertical')}</option>
-                                <option value="Horizontal" ${ley.direction === 'Horizontal' ? 'selected' : ''}>${L.get('HORIZONTAL', 'Horizontal')}</option>
+                                <option value="Vertical" ${ley.direction === 'Vertical' ? 'selected' : ''} data-i18n="VERTICAL">${L.get('VERTICAL', 'Vertical')}</option>
+                                <option value="Horizontal" ${ley.direction === 'Horizontal' ? 'selected' : ''} data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</option>
                             </select>
                         </div>
                     </div>
@@ -2550,25 +2562,25 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('SPRITE_LIGHT_2D', "Sprite Light 2D"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('SPRITE', 'Sprite')}</label>
+                        <label data-i18n="SPRITE">${L.get('SPRITE', 'Sprite')}</label>
                         ${renderPropertyDropper('Sprite', ley.source, 'data-component="SpriteLight2D" data-prop="source"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('COLOR', 'Color')}</label>
+                        <label data-i18n="PROP_COLOR">${L.get('PROP_COLOR', 'Color')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="SpriteLight2D" data-prop="color" value="${ley.color}">
                         </div>
                     </div>
                     ${renderLightColorPresets("SpriteLight2D")}
                     <div class="prop-row-multi">
-                        <label>${L.get('INTENSITY', 'Intensidad')}</label>
+                        <label data-i18n="INTENSITY">${L.get('INTENSITY', 'Intensidad')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.1" min="0" max="10" data-component="SpriteLight2D" data-prop="intensity" value="${ley.intensity}">
                             <span style="min-width: 30px; text-align: right;">${ley.intensity}</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
+                        <label data-i18n="LIGHT_FILTER">${L.get('LIGHT_FILTER', 'Filtro Luz')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" step="0.01" min="0" max="1" data-component="SpriteLight2D" data-prop="filtroOpacidad" value="${ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0}">
                             <span style="min-width: 30px; text-align: right;">${Math.round((ley.filtroOpacidad !== undefined ? ley.filtroOpacidad : 1.0) * 100)}%</span>
@@ -2580,43 +2592,43 @@ async function updateInspectorForMateria(selectedMateria) {
             const rigidbody = ley; // Rename for clarity as suggested in review
             componentHTML = `
             <div class="component-inspector">
-                ${renderComponentHeader("Rigidbody 2D", icon, index)}
+                ${renderComponentHeader(L.get('RIGIDBODY_2D', "Rigidbody 2D"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>Body Type</label>
+                        <label data-i18n="BODY_TYPE">${L.get('BODY_TYPE', 'Body Type')}</label>
                         <select class="prop-input" data-component="Rigidbody2D" data-prop="bodyType">
-                            <option value="Dynamic" ${rigidbody.bodyType === 'Dynamic' ? 'selected' : ''}>Dynamic</option>
-                            <option value="Kinematic" ${rigidbody.bodyType === 'Kinematic' ? 'selected' : ''}>Kinematic</option>
-                            <option value="Static" ${rigidbody.bodyType === 'Static' ? 'selected' : ''}>Static</option>
+                            <option value="Dynamic" ${rigidbody.bodyType === 'Dynamic' ? 'selected' : ''} data-i18n="DYNAMIC">Dynamic</option>
+                            <option value="Kinematic" ${rigidbody.bodyType === 'Kinematic' ? 'selected' : ''} data-i18n="KINEMATIC">Kinematic</option>
+                            <option value="Static" ${rigidbody.bodyType === 'Static' ? 'selected' : ''} data-i18n="STATIC">Static</option>
                         </select>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="simulated" ${rigidbody.simulated ? 'checked' : ''}>
-                        <label>Simulated</label>
+                        <label data-i18n="ACTIVO">${L.get('ACTIVO', 'Simulated')}</label>
                     </div>
                     <div class="inspector-field-group">
                         <div class="prop-row-multi">
-                            <label>Mass</label>
+                            <label data-i18n="MASS">${L.get('MASS', 'Mass')}</label>
                             <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="mass" value="${rigidbody.mass}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>Gravity Scale</label>
+                            <label data-i18n="GRAVITY_SCALE">${L.get('GRAVITY_SCALE', 'Gravity Scale')}</label>
                             <input type="number" class="prop-input" step="0.1" data-component="Rigidbody2D" data-prop="gravityScale" value="${rigidbody.gravityScale}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>Rebote (Bounciness)</label>
+                            <label data-i18n="BOUNCINESS">${L.get('BOUNCINESS', 'Rebote (Bounciness)')}</label>
                             <input type="number" class="prop-input" step="0.1" min="0" max="1" data-component="Rigidbody2D" data-prop="rebote" value="${rigidbody.rebote || 0}">
                         </div>
                         <div class="prop-row-multi">
-                            <label>Angular Drag</label>
+                            <label data-i18n="DAMPING">${L.get('DAMPING', 'Angular Drag')}</label>
                             <input type="number" class="prop-input" step="0.01" min="0" data-component="Rigidbody2D" data-prop="angularDrag" value="${rigidbody.angularDrag || 0}">
                         </div>
                     </div>
                     <div class="inspector-field-group">
-                        <label>Constraints</label>
+                        <label data-i18n="CONSTRAINTS">${L.get('CONSTRAINTS', 'Constraints')}</label>
                         <div class="checkbox-field" style="padding-left: 10px;">
                             <input type="checkbox" class="prop-input" data-component="Rigidbody2D" data-prop="constraints.freezeRotation" ${rigidbody.constraints.freezeRotation ? 'checked' : ''}>
-                            <label>Freeze Rotation Z</label>
+                            <label data-i18n="FREEZE_ROTATION">${L.get('FREEZE_ROTATION', 'Freeze Rotation Z')}</label>
                         </div>
                     </div>
                 </div>
@@ -2658,18 +2670,18 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="BoxCollider2D" data-prop="isTrigger" ${ley.isTrigger ? 'checked' : ''}>
-                        <label>${L.get('IS_TRIGGER', 'Is Trigger')}</label>
+                        <label data-i18n="IS_TRIGGER">${L.get('IS_TRIGGER', 'Is Trigger')}</label>
                     </div>
                     <hr>
                     <div class="prop-row-multi">
-                        <label>${L.get('OFFSET', 'Offset')}</label>
+                        <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.x" value="${ley.offset.x}" title="${L.get('OFFSET_X', 'Offset X')}">
                             <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="offset.y" value="${ley.offset.y}" title="${L.get('OFFSET_Y', 'Offset Y')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SIZE', 'Size')}</label>
+                        <label data-i18n="PROP_DIMENSIONS">${L.get('PROP_DIMENSIONS', 'Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.x" value="${ley.size.x}" title="${L.get('SIZE_X', 'Size X')}">
                             <input type="number" class="prop-input" step="0.1" data-component="BoxCollider2D" data-prop="size.y" value="${ley.size.y}" title="${L.get('SIZE_Y', 'Size Y')}">
@@ -2682,74 +2694,74 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('MOVEMENT_BASIC', "Movimiento (Básico)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
+                        <label data-i18n="KEYS_UP_DOWN">${L.get('KEYS_UP_DOWN', 'Teclas (Arriba/Abajo)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="Movement" data-prop="upKey" value="${ley.upKey}" title="${L.get('UP', 'Arriba')}">
                             <input type="text" class="prop-input" data-component="Movement" data-prop="downKey" value="${ley.downKey}" title="${L.get('DOWN', 'Abajo')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_LEFT_RIGHT', 'Teclas (Izq/Der)')}</label>
+                        <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Teclas (Izq/Der)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="Movement" data-prop="leftKey" value="${ley.leftKey}" title="${L.get('LEFT', 'Izquierda')}">
                             <input type="text" class="prop-input" data-component="Movement" data-prop="rightKey" value="${ley.rightKey}" title="${L.get('RIGHT', 'Derecha')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('JUMP_KEY', 'Tecla Salto')}</label>
+                        <label data-i18n="JUMP_KEY">${L.get('JUMP_KEY', 'Tecla Salto')}</label>
                         <input type="text" class="prop-input" data-component="Movement" data-prop="jumpKey" value="${ley.jumpKey}">
                     </div>
                     <hr>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPEED', 'Velocidad')}</label>
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" data-component="Movement" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
+                        <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
                         <input type="number" class="prop-input" data-component="Movement" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="Movement" data-prop="useRigidbody" ${ley.useRigidbody ? 'checked' : ''}>
-                        <label>${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
+                        <label data-i18n="USE_RIGIDBODY">${L.get('USE_RIGIDBODY', 'Usar Rigidbody')}</label>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
+                        <label data-i18n="GROUND_TAG">${L.get('GROUND_TAG', 'Tag del Suelo')}</label>
                         <input type="text" class="prop-input" data-component="Movement" data-prop="groundTag" value="${ley.groundTag || 'Ground'}">
                     </div>
                 </div>
             `;
         } else if (ley instanceof Components.ProjectileLauncher) {
             componentHTML = `
-                ${renderComponentHeader(L.get('PROJECTILE_LAUNCHER', "Lanzador de Proyectiles"), icon, index)}
+                ${renderComponentHeader(L.get('PROJECTILE_LAUNCHER_COMPONENT', "Lanzador de Proyectiles"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
+                        <label data-i18n="PROJECTILE_PREFAB">${L.get('PROJECTILE_PREFAB', 'Prefab Proyectil')}</label>
                         <div class="file-picker">
                             <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="projectilePrefab" value="${ley.projectilePrefab}" placeholder="${L.get('HINT_ARRIASTRA_PREFAB', 'Arrastra un .ceprefab aquí')}">
                             <button class="panel-tool-btn" onclick="window.openAssetSelector((h, p) => { const input = this.previousElementSibling; input.value = p; input.dispatchEvent(new Event('change', { bubbles: true })); }, '.ceprefab')">...</button>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('FIRE_KEY', 'Tecla Disparo')}</label>
+                        <label data-i18n="FIRE_KEY">${L.get('FIRE_KEY', 'Tecla Disparo')}</label>
                         <input type="text" class="prop-input" data-component="ProjectileLauncher" data-prop="fireKey" value="${ley.fireKey}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('FIRE_RATE', 'Cadencia (segs)')}</label>
+                        <label data-i18n="FIRE_RATE">${L.get('FIRE_RATE', 'Cadencia (segs)')}</label>
                         <input type="number" class="prop-input" step="0.1" min="0" data-component="ProjectileLauncher" data-prop="fireRate" value="${ley.fireRate}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPEED', 'Velocidad')}</label>
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="projectileSpeed" value="${ley.projectileSpeed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('OFFSET', 'Offset')}</label>
+                        <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.x" value="${ley.offset.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="ProjectileLauncher" data-prop="offset.y" value="${ley.offset.y}" title="Y">
                         </div>
                     </div>
                      <div class="prop-row-multi">
-                        <label>${L.get('DIRECTION', 'Dirección')}</label>
+                        <label data-i18n="DIRECTION">${L.get('DIRECTION', 'Dirección')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.x" value="${ley.direction.x}" title="X">
                             <input type="number" class="prop-input" step="0.1" data-component="ProjectileLauncher" data-prop="direction.y" value="${ley.direction.y}" title="Y">
@@ -2762,7 +2774,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('AUTO_DESTROY_COMPONENT', "Destrucción Automática"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('DELAY_SECS', 'Retraso (segs)')}</label>
+                        <label data-i18n="DELAY_SECS">${L.get('DELAY_SECS', 'Retraso (segs)')}</label>
                         <input type="number" class="prop-input" step="0.1" min="0" data-component="AutoDestroy" data-prop="delay" value="${ley.delay}">
                     </div>
                 </div>
@@ -2772,15 +2784,15 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('CAMERA_FOLLOW_COMPONENT', "Seguimiento Cámara"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('TARGET', 'Objetivo')}</label>
+                        <label data-i18n="TARGET">${L.get('TARGET', 'Objetivo')}</label>
                         ${renderPropertyDropper('Materia', ley.target, 'data-component="CameraFollow" data-prop="target"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SMOOTHNESS', 'Suavidad')}</label>
+                        <label data-i18n="SMOOTHNESS">${L.get('SMOOTHNESS', 'Suavidad')}</label>
                         <input type="number" class="prop-input" step="0.01" min="0" max="1" data-component="CameraFollow" data-prop="smoothness" value="${ley.smoothness}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('OFFSET', 'Offset')}</label>
+                        <label data-i18n="OFFSET">${L.get('OFFSET', 'Offset')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.x" value="${ley.offset.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="CameraFollow" data-prop="offset.y" value="${ley.offset.y}" title="Y">
@@ -2788,11 +2800,11 @@ async function updateInspectorForMateria(selectedMateria) {
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CameraFollow" data-prop="followX" ${ley.followX ? 'checked' : ''}>
-                        <label>${L.get('FOLLOW_X', 'Seguir X')}</label>
+                        <label data-i18n="FOLLOW_X">${L.get('FOLLOW_X', 'Seguir X')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="CameraFollow" data-prop="followY" ${ley.followY ? 'checked' : ''}>
-                        <label>${L.get('FOLLOW_Y', 'Seguir Y')}</label>
+                        <label data-i18n="FOLLOW_Y">${L.get('FOLLOW_Y', 'Seguir Y')}</label>
                     </div>
                 </div>
             `;
@@ -2801,36 +2813,36 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('PARTICLE_SYSTEM', "Sistema de Partículas"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('PARTICLE_PREFAB', 'Prefab Partícula')}</label>
+                        <label data-i18n="PARTICLE_PREFAB">${L.get('PARTICLE_PREFAB', 'Prefab Partícula')}</label>
                         ${renderPropertyDropper('Prefab', ley.prefabPath, 'data-component="ParticleSystem" data-prop="prefabPath"')}
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_PARTICLES', 'Max Partículas')}</label>
+                        <label data-i18n="MAX_PARTICLES">${L.get('MAX_PARTICLES', 'Max Partículas')}</label>
                         <input type="number" class="prop-input" step="1" min="1" data-component="ParticleSystem" data-prop="maxParticles" value="${ley.maxParticles}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('EMISSION_RATE', 'Emisión (part/seg)')}</label>
+                        <label data-i18n="EMISSION_RATE">${L.get('EMISSION_RATE', 'Emisión (part/seg)')}</label>
                         <input type="number" class="prop-input" step="1" min="0" data-component="ParticleSystem" data-prop="emissionRate" value="${ley.emissionRate}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('LIFETIME', 'Vida (seg)')}</label>
+                        <label data-i18n="LIFETIME">${L.get('LIFETIME', 'Vida (seg)')}</label>
                         <input type="number" class="prop-input" step="0.1" min="0" data-component="ParticleSystem" data-prop="lifetime" value="${ley.lifetime}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPEED', 'Velocidad')}</label>
+                        <label data-i18n="SPEED">${L.get('SPEED', 'Velocidad')}</label>
                         <input type="number" class="prop-input" step="1" data-component="ParticleSystem" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SPREAD', 'Dispersión (spread)')}</label>
+                        <label data-i18n="SPREAD">${L.get('SPREAD', 'Dispersión (spread)')}</label>
                         <input type="number" class="prop-input" step="1" min="0" max="360" data-component="ParticleSystem" data-prop="spread" value="${ley.spread}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="loop" ${ley.loop ? 'checked' : ''}>
-                        <label>${L.get('LOOP', 'Loop')}</label>
+                        <label data-i18n="LOOP">${L.get('LOOP', 'Loop')}</label>
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="ParticleSystem" data-prop="playOnAwake" ${ley.playOnAwake ? 'checked' : ''}>
-                        <label>${L.get('PLAY_ON_AWAKE', 'Play On Awake')}</label>
+                        <label data-i18n="REPRODUCIR_AL_EMPEZAR">${L.get('REPRODUCIR_AL_EMPEZAR', 'Play On Awake')}</label>
                     </div>
                 </div>
             `;
@@ -2839,42 +2851,42 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('PARALLAX_COMPONENT', "Parallax (Avanzado)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('SCROLL_FACTOR', 'Scroll Factor X/Y')}</label>
+                        <label data-i18n="SCROLL_FACTOR">${L.get('SCROLL_FACTOR', 'Scroll Factor X/Y')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.x" value="${ley.scrollFactor.x}" title="X">
                             <input type="number" class="prop-input" step="0.01" data-component="Parallax" data-prop="scrollFactor.y" value="${ley.scrollFactor.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('REPEAT_INFINITE', 'Repetir (Infinito)')}</label>
+                        <label data-i18n="REPEAT_INFINITE">${L.get('REPEAT_INFINITE', 'Repetir (Infinito)')}</label>
                         <div class="prop-inputs" style="display: flex; align-items: center; gap: 10px; justify-content: flex-start;">
                             <div style="display: flex; align-items: center; gap: 4px;">
                                 <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatX" ${ley.repeatX ? 'checked' : ''} id="parallax-repeat-x-${index}">
-                                <label for="parallax-repeat-x-${index}" style="font-size: 10px; margin: 0;">${L.get('HORIZONTAL', 'Horizontal')}</label>
+                                <label for="parallax-repeat-x-${index}" style="font-size: 10px; margin: 0;" data-i18n="HORIZONTAL">${L.get('HORIZONTAL', 'Horizontal')}</label>
                             </div>
                             <div style="display: flex; align-items: center; gap: 4px;">
                                 <input type="checkbox" class="prop-input" data-component="Parallax" data-prop="repeatY" ${ley.repeatY ? 'checked' : ''} id="parallax-repeat-y-${index}">
-                                <label for="parallax-repeat-y-${index}" style="font-size: 10px; margin: 0;">${L.get('VERTICAL', 'Vertical')}</label>
+                                <label for="parallax-repeat-y-${index}" style="font-size: 10px; margin: 0;" data-i18n="VERTICAL">${L.get('VERTICAL', 'Vertical')}</label>
                             </div>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MIRRORING_XY', 'Mirroring X/Y')}</label>
+                        <label data-i18n="MIRRORING_XY">${L.get('MIRRORING_XY', 'Mirroring X/Y')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.x" value="${ley.mirroring.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="mirroring.y" value="${ley.mirroring.y}" title="Y">
                         </div>
                     </div>
-                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" data-action="parallax-match-sprite" data-ley-index="${index}">${L.get('MATCH_MIRRORING_SPRITE', 'Ajustar Mirroring al Sprite')}</button>
+                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" data-action="parallax-match-sprite" data-ley-index="${index}" data-i18n="MATCH_MIRRORING_SPRITE">${L.get('MATCH_MIRRORING_SPRITE', 'Ajustar Mirroring al Sprite')}</button>
                     <div class="prop-row-multi">
-                        <label>${L.get('OFFSET_XY', 'Offset X/Y')}</label>
+                        <label data-i18n="OFFSET_XY">${L.get('OFFSET_XY', 'Offset X/Y')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.x" value="${ley.offset.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="offset.y" value="${ley.offset.y}" title="Y">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('AUTOSCROLL_XY', 'Autoscroll X/Y')}</label>
+                        <label data-i18n="AUTOSCROLL_XY">${L.get('AUTOSCROLL_XY', 'Autoscroll X/Y')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.x" value="${ley.autoscroll.x}" title="X">
                             <input type="number" class="prop-input" step="1" data-component="Parallax" data-prop="autoscroll.y" value="${ley.autoscroll.y}" title="Y">
@@ -2889,14 +2901,14 @@ async function updateInspectorForMateria(selectedMateria) {
                 ${renderComponentHeader(L.get('TERRAIN_2D_COMPONENT', "Terreno 2D (Píxeles)"), icon, index)}
                 <div class="component-content">
                     <div class="prop-row-multi">
-                        <label>${L.get('CANVAS_SIZE', 'Canvas Size')}</label>
+                        <label data-i18n="CANVAS_SIZE">${L.get('CANVAS_SIZE', 'Canvas Size')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="Terreno2D" data-prop="width" value="${ley.width}" title="${L.get('WIDTH', 'Width')}">
                             <input type="number" class="prop-input" data-component="Terreno2D" data-prop="height" value="${ley.height}" title="${L.get('HEIGHT', 'Height')}">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('BASE_COLOR', 'Color Base')}</label>
+                        <label data-i18n="BASE_COLOR">${L.get('BASE_COLOR', 'Color Base')}</label>
                         <div class="prop-inputs">
                             <input type="color" class="prop-input" data-component="Terreno2D" data-prop="baseColor" value="${ley.baseColor || '#4a4a4a'}">
                         </div>
@@ -2905,25 +2917,25 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="PROP_ORDER_IN_LAYER">${L.get('PROP_ORDER_IN_LAYER', 'Order in Layer')}</label>
                         <input type="number" class="prop-input" step="1" data-component="Terreno2D" data-prop="orderInLayer" value="${ley.orderInLayer || 0}">
                     </div>
-                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.maskCtx.clearRect(0,0,t.width,t.height); window.updateScene();">${L.get('CLEAR_ALL', 'Limpiar Todo')}</button>
+                    <button class="panel-tool-btn" style="width:100%; margin-bottom: 8px;" onclick="const t = window.SceneManager.currentScene.findMateriaById(${selectedMateria.id}).getComponent(window.Components.Terreno2D); t.maskCtx.clearRect(0,0,t.width,t.height); window.updateScene();" data-i18n="BORRAR_TODO">${L.get('BORRAR_TODO', 'Limpiar Todo')}</button>
                     <hr>
-                    <h5>${L.get('TERRAIN_BRUSH', 'Pincel de Terreno')}</h5>
+                    <h5 data-i18n="TERRAIN_BRUSH">${L.get('TERRAIN_BRUSH', 'Pincel de Terreno')}</h5>
                     <div class="prop-row-multi">
-                        <label>${L.get('MODE', 'Modo')}</label>
+                        <label data-i18n="MODE">${L.get('MODE', 'Modo')}</label>
                         <select class="terrain-tool-input" onchange="window.TerrenoEditorWindow.setMode(this.value)">
-                            <option value="draw" ${settings.mode === 'draw' ? 'selected' : ''}>${L.get('DRAW_TERRAIN', 'Dibujar Terreno')}</option>
-                            <option value="erase" ${settings.mode === 'erase' ? 'selected' : ''}>${L.get('ERASE_TERRAIN', 'Borrar Terreno')}</option>
+                            <option value="draw" ${settings.mode === 'draw' ? 'selected' : ''} data-i18n="DRAW_TERRAIN">${L.get('DRAW_TERRAIN', 'Dibujar Terreno')}</option>
+                            <option value="erase" ${settings.mode === 'erase' ? 'selected' : ''} data-i18n="ERASE_TERRAIN">${L.get('ERASE_TERRAIN', 'Borrar Terreno')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('SIZE', 'Tamaño')}</label>
+                        <label data-i18n="SIZE">${L.get('SIZE', 'Tamaño')}</label>
                         <input type="range" min="1" max="200" value="${settings.brushSize}" oninput="window.TerrenoEditorWindow.setBrushSize(this.value); this.nextElementSibling.innerText = this.value;">
                         <span style="min-width: 30px; text-align: right;">${settings.brushSize}</span>
                     </div>
                     <hr>
                     <div class="layer-manager-ui">
                         <div class="layer-list-header">
-                            <h5>${L.get('FILL_TEXTURES', 'Texturas de Relleno')}</h5>
+                            <h5 data-i18n="FILL_TEXTURES">${L.get('FILL_TEXTURES', 'Texturas de Relleno')}</h5>
                             <button class="layer-btn add" data-action="terrain-add-layer" title="${L.get('ADD_LAYER', 'Añadir Capa')}">+</button>
                         </div>
                         <div class="layer-list">
@@ -3171,116 +3183,116 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.SuspensionHC) {
             componentHTML = `
-                ${renderComponentHeader("Suspension HC", icon, index)}
+                ${renderComponentHeader(L.get('SUSPENSION_HC', "Suspension HC"), icon, index)}
                 <div class="component-content">
                     <div class="inspector-row">
-                        <label>${L.get('CHASSIS', 'Chasis')}</label>
+                        <label data-i18n="CHASSIS">${L.get('CHASSIS', 'Chasis')}</label>
                         ${renderPropertyDropper('Materia', ley.chasis, 'data-component="SuspensionHC" data-prop="chasis"')}
                     </div>
-                    <div class="inspector-section-header"><span>${L.get('SPRING_SETTINGS', 'Configuración de Muelle')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="SPRING_SETTINGS">${L.get('SPRING_SETTINGS', 'Configuración de Muelle')}</span></div>
                     <div class="prop-row-multi">
-                        <label title="K">${L.get('STIFFNESS', 'Dureza')}</label>
+                        <label title="K" data-i18n="STIFFNESS">${L.get('STIFFNESS', 'Dureza')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="dureza" value="${ley.dureza}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="D">${L.get('DAMPING', 'Amortiguación')}</label>
+                        <label title="D" data-i18n="DAMPING">${L.get('DAMPING', 'Amortiguación')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="amortiguacion" value="${ley.amortiguacion}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('REST_LENGTH', 'Largo Reposo')}</label>
+                        <label data-i18n="REST_LENGTH">${L.get('REST_LENGTH', 'Largo Reposo')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="longitudReposo" value="${ley.longitudReposo}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('AXIS', 'Eje (Local)')}</label>
+                        <label data-i18n="CONSTRAINT_AXIS">${L.get('CONSTRAINT_AXIS', 'Eje (Local)')}</label>
                         <div class="prop-inputs">
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.x" value="${ley.eje.x}" title="X">
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="eje.y" value="${ley.eje.y}" title="Y">
                         </div>
                     </div>
 
-                    <div class="inspector-section-header"><span>${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="ENGINE_SETTINGS">${L.get('ENGINE_SETTINGS', 'Configuración de Motor')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('POWER', 'Potencia')}</label>
+                        <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
                         <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row">
-                        <label title="Resistencia al rodamiento o freno motor (0-1)">Freno Motor</label>
+                        <label title="Resistencia al rodamiento o freno motor (0-1)" data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
                         <div class="prop-row">
-                            <label title="Controla cuánto se inclina el chasis al acelerar">Inclinación</label>
+                            <label title="Controla cuánto se inclina el chasis al acelerar" data-i18n="PITCH_STRENGTH">${L.get('PITCH_STRENGTH', 'Inclinación')}</label>
                             <input type="number" step="0.1" class="prop-input" data-component="SuspensionHC" data-prop="fuerzaInclinacion" value="${ley.fuerzaInclinacion}">
                         </div>
                         <div class="prop-row">
-                            <label title="Control manual de giro en el aire">Giro Aire</label>
+                            <label title="Control manual de giro en el aire" data-i18n="AIR_TURN">${L.get('AIR_TURN', 'Giro Aire')}</label>
                             <input type="number" class="prop-input" data-component="SuspensionHC" data-prop="controlAire" value="${ley.controlAire}">
                         </div>
                         <div class="prop-row">
-                            <label title="Estabilización automática en el aire (0-1)">Auto-Estabilizar</label>
+                            <label title="Estabilización automática en el aire (0-1)" data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
                             <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="estabilidadAire" value="${ley.estabilidadAire}">
                         </div>
                         <div class="prop-row">
-                            <label title="Recuperación de posición horizontal en suelo (0-1)">Centrado Suelo</label>
+                            <label title="Recuperación de posición horizontal en suelo (0-1)" data-i18n="GROUND_CENTERING">${L.get('GROUND_CENTERING', 'Centrado Suelo')}</label>
                             <input type="number" step="0.1" min="0" max="1" class="prop-input" data-component="SuspensionHC" data-prop="recuperacionGiro" value="${ley.recuperacionGiro}">
                         </div>
 
-                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('ACCELERATE_KEY', 'Tecla Acelerar')}</label>
+                        <label data-i18n="ACCELERATE_KEY">${L.get('ACCELERATE_KEY', 'Tecla Acelerar')}</label>
                         <input type="text" class="prop-input" data-component="SuspensionHC" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('BRAKE_KEY', 'Tecla Frenar')}</label>
+                        <label data-i18n="BRAKE_KEY">${L.get('BRAKE_KEY', 'Tecla Frenar')}</label>
                         <input type="text" class="prop-input" data-component="SuspensionHC" data-prop="teclaFrenar" value="${ley.teclaFrenar}">
                     </div>
                 </div>
             `;
         } else if (ley instanceof Components.VehicleTopDown) {
             componentHTML = `
-                ${renderComponentHeader("Vehicle TopDown", icon, index)}
+                ${renderComponentHeader(L.get('VEHICLE_TOPDOWN', "Vehicle TopDown"), icon, index)}
                 <div class="component-content">
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input" data-component="VehicleTopDown" data-prop="autoAcelerar" ${ley.autoAcelerar ? 'checked' : ''}>
-                        <label>${L.get('AUTO_ACCELERATE', 'Auto-Acelerar')}</label>
+                        <label data-i18n="AUTO_ACCELERATE">${L.get('AUTO_ACCELERATE', 'Auto-Acelerar')}</label>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('POWER', 'Potencia')}</label>
+                        <label data-i18n="POWER">${L.get('POWER', 'Potencia')}</label>
                         <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="potencia" value="${ley.potencia}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
                         <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('TURN_SPEED', 'Velocidad Giro')}</label>
+                        <label data-i18n="TURN_SPEED">${L.get('TURN_SPEED', 'Velocidad Giro')}</label>
                         <input type="number" class="prop-input" data-component="VehicleTopDown" data-prop="velocidadGiro" value="${ley.velocidadGiro}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="0: Agarre total, 1: Hielo">${L.get('DRIFT_INTENSITY', 'Intensidad Derrape')}</label>
+                        <label title="0: Agarre total, 1: Hielo" data-i18n="DRIFT_INTENSITY">${L.get('DRIFT_INTENSITY', 'Intensidad Derrape')}</label>
                         <div class="prop-inputs">
                             <input type="range" class="prop-input" data-component="VehicleTopDown" data-prop="intensidadDerrape" value="${ley.intensidadDerrape}" min="0" max="1" step="0.01" style="flex-grow: 1;">
                             <span style="min-width: 30px; text-align: right;">${Math.round(ley.intensidadDerrape * 100)}%</span>
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
+                        <label data-i18n="MOTOR_BRAKE">${L.get('MOTOR_BRAKE', 'Freno Motor')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="VehicleTopDown" data-prop="frenadoMotor" value="${ley.frenadoMotor}">
                     </div>
 
-                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_LEFT_RIGHT', 'Giro (Izq/Der)')}</label>
+                        <label data-i18n="KEYS_LEFT_RIGHT">${L.get('KEYS_LEFT_RIGHT', 'Giro (Izq/Der)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaIzquierda" value="${ley.teclaIzquierda}" title="Izquierda">
                             <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaDerecha" value="${ley.teclaDerecha}" title="Derecha">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_ACCEL_BRAKE', 'Acel/Freno')}</label>
+                        <label data-i18n="KEYS_ACCEL_BRAKE">${L.get('KEYS_ACCEL_BRAKE', 'Acel/Freno')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaAcelerar" value="${ley.teclaAcelerar}" title="Acelerar">
                             <input type="text" class="prop-input" data-component="VehicleTopDown" data-prop="teclaFrenar" value="${ley.teclaFrenar}" title="Frenar">
@@ -3290,48 +3302,48 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.PlaneController) {
             componentHTML = `
-                ${renderComponentHeader("Plane Controller", icon, index)}
+                ${renderComponentHeader(L.get('PLANE_CONTROLLER', "Plane Controller"), icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span>${L.get('FLIGHT_SETTINGS', 'Configuración de Vuelo')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="FLIGHT_SETTINGS">${L.get('FLIGHT_SETTINGS', 'Configuración de Vuelo')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('THRUST', 'Potencia Motor')}</label>
+                        <label data-i18n="THRUST">${L.get('THRUST', 'Potencia Motor')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Velocidad necesaria para empezar a subir">${L.get('TAKEOFF_SPEED', 'Velocidad Despegue')}</label>
+                        <label title="Velocidad necesaria para empezar a subir" data-i18n="TAKEOFF_SPEED">${L.get('TAKEOFF_SPEED', 'Velocidad Despegue')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="velocidadDespegue" value="${ley.velocidadDespegue}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Multiplicador de fuerza ascendente">${L.get('LIFT_FORCE', 'Sustentación')}</label>
+                        <label title="Multiplicador de fuerza ascendente" data-i18n="LIFT_FORCE">${L.get('LIFT_FORCE', 'Sustentación')}</label>
                         <input type="number" step="0.1" class="prop-input" data-component="PlaneController" data-prop="fuerzaSustentacion" value="${ley.fuerzaSustentacion}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
+                        <label data-i18n="TURN_AGILITY">${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
                         <input type="number" class="prop-input" data-component="PlaneController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Resistencia al aire (0-1)">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
+                        <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="PlaneController" data-prop="arrastreAire" value="${ley.arrastreAire}">
                     </div>
 
-                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_POWER_BRAKE', 'Potencia/Freno')}</label>
+                        <label data-i18n="KEYS_POWER_BRAKE">${L.get('KEYS_POWER_BRAKE', 'Potencia/Freno')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Potencia">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaFreno" value="${ley.teclaFreno}" title="Freno">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEY_BRAKE_SPACE', 'Freno (Espacio)')}</label>
+                        <label data-i18n="KEY_BRAKE_SPACE">${L.get('KEY_BRAKE_SPACE', 'Freno (Espacio)')}</label>
                         <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaBotonFreno" value="${ley.teclaBotonFreno}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_PITCH', 'Inclinación (Nariz)')}</label>
+                        <label data-i18n="KEYS_PITCH">${L.get('KEYS_PITCH', 'Inclinación (Nariz)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizArriba" value="${ley.teclaNarizArriba}" title="Arriba">
                             <input type="text" class="prop-input" data-component="PlaneController" data-prop="teclaNarizAbajo" value="${ley.teclaNarizAbajo}" title="Abajo">
@@ -3341,48 +3353,48 @@ async function updateInspectorForMateria(selectedMateria) {
             `;
         } else if (ley instanceof Components.HelicopterController) {
             componentHTML = `
-                ${renderComponentHeader("Helicopter Controller", icon, index)}
+                ${renderComponentHeader(L.get('HELICOPTER_CONTROLLER', "Helicopter Controller"), icon, index)}
                 <div class="component-content">
-                    <div class="inspector-section-header"><span>${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="HELICOPTER_SETTINGS">${L.get('HELICOPTER_SETTINGS', 'Configuración de Helicóptero')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
+                        <label data-i18n="MOTOR_POWER">${L.get('MOTOR_POWER', 'Potencia Motor')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaMotor" value="${ley.potenciaMotor}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Fuerza base de sustentación">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
+                        <label title="Fuerza base de sustentación" data-i18n="TAKEOFF_POWER">${L.get('TAKEOFF_POWER', 'Potencia Despegue')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="potenciaDespegue" value="${ley.potenciaDespegue}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
+                        <label data-i18n="MAX_SPEED">${L.get('MAX_SPEED', 'Velocidad Máx')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="velocidadMaxima" value="${ley.velocidadMaxima}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
+                        <label data-i18n="TURN_AGILITY">${L.get('TURN_AGILITY', 'Agilidad Giro')}</label>
                         <input type="number" class="prop-input" data-component="HelicopterController" data-prop="agilidadGiro" value="${ley.agilidadGiro}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
                         <input type="checkbox" class="prop-input inspector-re-render" data-component="HelicopterController" data-prop="autoEstabilizar" ${ley.autoEstabilizar ? 'checked' : ''}>
-                        <label>${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
+                        <label data-i18n="AUTO_STABILIZE">${L.get('AUTO_STABILIZE', 'Auto-Estabilizar')}</label>
                     </div>
                     <div class="prop-row-multi" style="display: ${ley.autoEstabilizar ? 'flex' : 'none'};">
-                        <label title="Fuerza de auto-nivelación">${L.get('STABILITY', 'Estabilidad')}</label>
+                        <label title="Fuerza de auto-nivelación" data-i18n="STABILITY">${L.get('STABILITY', 'Estabilidad')}</label>
                         <input type="number" step="0.1" class="prop-input" data-component="HelicopterController" data-prop="estabilidad" value="${ley.estabilidad}">
                     </div>
                     <div class="prop-row-multi">
-                        <label title="Resistencia al aire (0-1)">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
+                        <label title="Resistencia al aire (0-1)" data-i18n="AIR_DRAG">${L.get('AIR_DRAG', 'Arrastre Aire')}</label>
                         <input type="number" step="0.01" min="0" max="1" class="prop-input" data-component="HelicopterController" data-prop="arrastreAire" value="${ley.arrastreAire}">
                     </div>
 
-                    <div class="inspector-section-header"><span>${L.get('CONTROLS', 'Controles')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="CONTROLS">${L.get('CONTROLS', 'Controles')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_THRUST_DESCEND', 'Subir/Bajar')}</label>
+                        <label data-i18n="KEYS_THRUST_DESCEND">${L.get('KEYS_THRUST_DESCEND', 'Subir/Bajar')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaPotencia" value="${ley.teclaPotencia}" title="Subir">
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaDescenso" value="${ley.teclaDescenso}" title="Bajar">
                         </div>
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('KEYS_TURN', 'Girar (A/D)')}</label>
+                        <label data-i18n="KEYS_TURN">${L.get('KEYS_TURN', 'Girar (A/D)')}</label>
                         <div class="prop-inputs">
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroIzquierda" value="${ley.teclaGiroIzquierda}" title="Izquierda">
                             <input type="text" class="prop-input" data-component="HelicopterController" data-prop="teclaGiroDerecha" value="${ley.teclaGiroDerecha}" title="Derecha">
@@ -3444,7 +3456,7 @@ async function updateInspectorForMateria(selectedMateria) {
                         <select class="prop-input" data-component="BasicAI" data-prop="movementType">
                             <option value="Top-Down" ${ley.movementType === 'Top-Down' ? 'selected' : ''} data-i18n="TOP_DOWN">Top-Down</option>
                             <option value="Platformer" ${ley.movementType === 'Platformer' ? 'selected' : ''} data-i18n="PLATFORMER">${L.get('PLATFORMER', 'Plataformas')}</option>
-                            <option value="Fighter" ${ley.movementType === 'Fighter' ? 'selected' : ''}>${L.get('FIGHTER', 'Fighter (Smash)')}</option>
+                            <option value="Fighter" ${ley.movementType === 'Fighter' ? 'selected' : ''} data-i18n="FIGHTER">${L.get('FIGHTER', 'Fighter (Smash)')}</option>
                         </select>
                     </div>
                     <div class="prop-row-multi">
@@ -3452,15 +3464,15 @@ async function updateInspectorForMateria(selectedMateria) {
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="speed" value="${ley.speed}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('STOP_DISTANCE', 'Distancia Parada')}</label>
+                        <label data-i18n="STOP_DISTANCE">${L.get('STOP_DISTANCE', 'Distancia Parada')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="stopDistance" value="${ley.stopDistance}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('ATTACK_DISTANCE', 'Distancia Ataque')}</label>
+                        <label data-i18n="ATTACK_DISTANCE">${L.get('ATTACK_DISTANCE', 'Distancia Ataque')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="attackDistance" value="${ley.attackDistance}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
+                        <label data-i18n="JUMP_FORCE">${L.get('JUMP_FORCE', 'Fuerza Salto')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="jumpForce" value="${ley.jumpForce}">
                     </div>
                     <div class="checkbox-field padded-checkbox-field">
@@ -3472,13 +3484,13 @@ async function updateInspectorForMateria(selectedMateria) {
                         <label data-i18n="OBSTACLE_AVOIDANCE">${L.get('OBSTACLE_AVOIDANCE', 'Esquivar Obstáculos')}</label>
                     </div>
                     <hr>
-                    <div class="inspector-section-header"><span>${L.get('STEERING_RAYS', 'Steering (Rayos)')}</span></div>
+                    <div class="inspector-section-header"><span data-i18n="STEERING_RAYS">${L.get('STEERING_RAYS', 'Steering (Rayos)')}</span></div>
                     <div class="prop-row-multi">
-                        <label>${L.get('RAY_COUNT', 'Num Rayos')}</label>
+                        <label data-i18n="RAY_COUNT">${L.get('RAY_COUNT', 'Num Rayos')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="rayCount" value="${ley.rayCount}">
                     </div>
                     <div class="prop-row-multi">
-                        <label>${L.get('RAY_SPREAD', 'Apertura Rayos')}</label>
+                        <label data-i18n="RAY_SPREAD">${L.get('RAY_SPREAD', 'Apertura Rayos')}</label>
                         <input type="number" class="prop-input" data-component="BasicAI" data-prop="raySpread" value="${ley.raySpread}">
                     </div>
                     <hr>
@@ -4127,7 +4139,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             preview.innerHTML = `
                 <img src="image/Paquete.png" class="asset-preview-icon">
                 <p><strong>UI Asset</strong></p>
-                <p>Doble-click en el Navegador para abrir en el Editor de UI.</p>
+                <p data-i18n="OPEN_UI_EDITOR_HINT">${L.get('OPEN_UI_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de UI.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.ceanim')) {
@@ -4136,7 +4148,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             preview.innerHTML = `
                 <img src="image/animacion_controler.svg" class="asset-preview-icon">
                 <p><strong>Animation Controller</strong></p>
-                <p>Doble-click en el Navegador para abrir en el Editor de Animación.</p>
+                <p data-i18n="OPEN_ANIM_EDITOR_HINT">${L.get('OPEN_ANIM_EDITOR_HINT', 'Doble-click en el Navegador para abrir en el Editor de Animación.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.ceScene')) {
@@ -4145,7 +4157,7 @@ async function updateInspectorForAsset(assetName, assetPath) {
             preview.innerHTML = `
                 <span class="asset-preview-icon" style="display: block; width: 48px; height: 48px; margin: 0 auto;">${getIconHTML('clapperboard')}</span>
                 <p><strong>Scene</strong></p>
-                <p>Doble-click en el Navegador para abrir la escena.</p>
+                <p data-i18n="OPEN_SCENE_HINT">${L.get('OPEN_SCENE_HINT', 'Doble-click en el Navegador para abrir la escena.')}</p>
             `;
             dom.inspectorContent.appendChild(preview);
         } else if (assetName.endsWith('.cmel')) {
@@ -4268,11 +4280,18 @@ export async function showAddComponentModal() {
         });
 
         availableComponents[category].forEach(ComponentClass => {
+            const L = window.Localization;
             const isPresent = existingComponents.has(ComponentClass);
             const componentItem = document.createElement('div');
             componentItem.className = `component-item ${isPresent ? 'already-added' : ''}`;
+            let compTitle = ComponentClass.name;
+            if (compTitle === 'Transform') compTitle = L.get('TRANSFORM', 'Posición (Transform)');
+            else if (compTitle === 'UITransform') compTitle = L.get('UI_TRANSFORM', 'Transformación UI');
+            else if (L.get(compTitle.toUpperCase()) !== compTitle.toUpperCase()) compTitle = L.get(compTitle.toUpperCase());
+            else if (compTitle === 'Rigidbody2D') compTitle = L.get('RIGIDBODY_2D', 'Rigidbody 2D');
+
             componentItem.innerHTML = `
-                <span>${ComponentClass.name}</span>
+                <span>${compTitle}</span>
                 ${isPresent ? `<span class="component-item-indicator">${getIconHTML('check')}</span>` : ''}
             `;
 

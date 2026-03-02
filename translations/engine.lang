@@ -209,10 +209,12 @@ ELIMINAR: Eliminar
 ADD_LEY: Añadir Ley
 LEY: Ley
 LEYES: Leyes
-TRANSFORM: Transform
+TRANSFORM: Posición (Transform)
 POSICION: Posición
 ROTACION: Rotación
 ESCALA: Escala
+PROP_FLIP_X: Voltear Horizontal
+PROP_FLIP_Y: Voltear Vertical
 NADA_SELECCIONADO: Nada seleccionado
 ACTIVAR_DESACTIVAR_MATERIA: Activar/Desactivar Materia
 TAG: Tag
@@ -260,6 +262,7 @@ WANDER: Vagar
 MOVEMENT_TYPE: Tipo Movimiento
 TOP_DOWN: Top-Down
 PLATFORMER: Plataformas
+FIGHTER: Luchador (Smash)
 SPEED: Velocidad
 AUTO_ROTATE: Rotación Automática
 OBSTACLE_AVOIDANCE: Esquivar Obstáculos
@@ -286,14 +289,14 @@ DISTANCIA_MAXIMA: Distancia Máxima
 RANGO_REPRODUCCION: Rango de Reproducción
 INICIO_SEG: Inicio (seg)
 FIN_SEG: Fin (seg, 0=fin)
-VIDEO_PLAYER: Video Player
+VIDEO_PLAYER: Reproductor de Video
 VIDEO_SOURCE: Video Source
-PLAYBACK_RATE: Velocidad Reproducción
+PLAYBACK_RATE: Velocidad
 SCALING_MODE: Modo de Escalado
 VERTICAL_LAYOUT_GROUP: Grupo de Disposición Vertical
 HORIZONTAL_LAYOUT_GROUP: Grupo de Disposición Horizontal
 GRID_LAYOUT_GROUP: Grupo de Disposición en Rejilla
-CONTENT_SIZE_FITTER: Ajustador de Tamaño de Contenido
+CONTENT_SIZE_FITTER: Ajustador de Tamaño
 PADDING: Padding
 SPACING: Espaciado
 CELL_SIZE: Tamaño de Celda
@@ -344,6 +347,224 @@ CURRENT_HEALTH: Vida Actual
 DESTROY_ON_DEATH: Destruir al morir
 PATROL_COMPONENT: Patrulla (Patrol)
 PAUSE_TIME: Tiempo Pausa (s)
+JUMP_FORCE: Fuerza Salto
+AIR_DRAG: Arrastre Aire
+CHASSIS: Chasis
+SPRING_SETTINGS: Configuración de Muelle
+ENGINE_SETTINGS: Configuración de Motor
+ACCELERATE_KEY: Tecla Acelerar
+BRAKE_KEY: Tecla Frenar
+AUTO_ACCELERATE: Auto-Acelerar
+DRIFT_INTENSITY: Intensidad Derrape
+MOTOR_BRAKE: Freno Motor
+KEYS_LEFT_RIGHT: Giro (Izq/Der)
+KEYS_ACCEL_BRAKE: Acel/Freno
+FLIGHT_SETTINGS: Configuración de Vuelo
+THRUST: Potencia Motor
+TAKEOFF_SPEED: Velocidad Despegue
+LIFT_FORCE: Sustentación
+TURN_AGILITY: Agilidad Giro
+KEYS_POWER_BRAKE: Potencia/Freno
+KEY_BRAKE_SPACE: Freno (Espacio)
+KEYS_PITCH: Inclinación (Nariz)
+AJUSTAR_TAMANO_AL_VIDEO: Ajustar Tamaño al Video
+TEXTURE_RENDER: Texture Render
+PROP_SHAPE: Forma
+PROP_ORDER_IN_LAYER: Orden en Capa
+HORIZONTAL_FIT: Ajuste Horizontal
+VERTICAL_FIT: Ajuste Vertical
+UNCONSTRAINED: Sin restricciones
+PREFERRED_SIZE: Tamaño preferido
+UI_TRANSFORM: Transformación UI
+ANCHOR_POINT: Punto de Anclaje
+UI_IMAGE: Imagen UI
+UI_TEXT: Texto UI
+FONT_SIZE: Tamaño Fuente
+ALIGNMENT: Alineación
+CANVAS: Lienzo (Canvas)
+RENDER_MODE: Modo de Renderizado
+SCREEN_SPACE: Espacio de Pantalla
+WORLD_SPACE: Espacio de Mundo
+REFERENCE_RES: Resolución Ref.
+SCREEN_MATCH: Ajuste Pantalla
+MATCH_WIDTH_HEIGHT: Ancho o Alto
+SHOW_GRID_GIZMO: Mostrar Rejilla
+SCALE_CHILDREN: Escalar Hijos
+BUTTON: Botón
+INTERACTABLE: Interactuable
+TRANSITION: Transición
+COLOR_TINT: Tinte de Color
+SPRITE_SWAP: Cambio de Sprite
+ANIMATION: Animación
+NORMAL_COLOR: Color Normal
+PRESSED_COLOR: Color Presionado
+DISABLED_COLOR: Color Desactivado
+HIGHLIGHTED_SPRITE: Sprite Resaltado
+PRESSED_SPRITE: Sprite Presionado
+DISABLED_SPRITE: Sprite Desactivado
+HIGHLIGHTED_TRIGGER: Trigger Resaltado
+PRESSED_TRIGGER: Trigger Presionado
+DISABLED_TRIGGER: Trigger Desactivado
+ON_CLICK: Al hacer click ()
+CIRCLE_COLLIDER_2D: Colisionador de Círculo 2D
+IS_TRIGGER: Es disparador
+OFFSET: Desplazamiento
+RADIUS: Radio
+PROJECTILE_LAUNCHER_COMPONENT: Lanzador de Proyectiles
+AUTO_DESTROY_COMPONENT: Destrucción Automática
+DELAY_SECS: Retraso (segs)
+CAMERA_FOLLOW_COMPONENT: Seguimiento Cámara
+SMOOTHNESS: Suavidad
+FOLLOW_X: Seguir X
+FOLLOW_Y: Seguir Y
+PARTICLE_PREFAB: Prefab Partícula
+MAX_PARTICLES: Máximo Partículas
+EMISSION_RATE: Tasa de Emisión
+SPREAD: Dispersión
+PARALLAX_COMPONENT: Parallax
+SCROLL_FACTOR: Factor de Scroll
+REPEAT_INFINITE: Repetir Infinito
+MIRRORING_XY: Mirroring X/Y
+MATCH_MIRRORING_SPRITE: Ajustar al Sprite
+SPRITE_RENDERER: Renderizador de Sprite
+SUSPENSION_HC: Suspensión HC
+VEHICLE_TOPDOWN: Vehículo TopDown
+PLANE_CONTROLLER: Controlador de Avión
+HELICOPTER_CONTROLLER: Controlador de Helicóptero
+ORIENTATION: Orientación
+OFFSET_XY: Offset X/Y
+AUTOSCROLL_XY: Autoscroll X/Y
+TERRAIN_2D_COMPONENT: Terreno 2D
+CANVAS_SIZE: Tamaño Lienzo
+BASE_COLOR: Color Base
+TERRAIN_BRUSH: Pincel de Terreno
+DRAW_TERRAIN: Dibujar
+ERASE_TERRAIN: Borrar
+FILL_TEXTURES: Texturas de Relleno
+TERRAIN_COLLIDER_2D: Colisionador de Terreno
+REGENERATE_COLLISIONS: Regenerar Colisiones
+GYZMO_AREAS: Áreas Gyzmo
+SHOW_IN_GAME_GLOBAL: Ver en Juego
+ADD_RECTANGLE: Añadir Rectángulo
+RIGIDBODY_2D: Cuerpo Rígido (Rigidbody 2D)
+BODY_TYPE: Tipo de Cuerpo
+GRAVITY_SCALE: Escala Gravedad
+BOUNCINESS: Rebote
+CONSTRAINTS: Restricciones
+FREEZE_ROTATION: Congelar Rotación
+DYNAMIC: Dinámico
+KINEMATIC: Cinemático
+STATIC: Estático
+STRUCTURE: Estructura
+ROOT_COMPONENTS: Componentes Raíz
+TILES: Azulejos
+EDIT_PREFAB: Editar Prefab
+ENGINE: Motor
+TEXTURE_TYPE: Tipo de Textura
+SPRITE_MODE: Modo de Sprite
+PIXELS_PER_UNIT: Píxeles por Unidad
+MESH_TYPE: Tipo de Malla
+FULL_RECT: Rectángulo Completo
+TIGHT: Ajustado
+FILTER_MODE: Modo de Filtro
+WRAP_MODE: Modo de Envoltura
+REPEAT: Repetir
+CLAMP: Sujetar (Clamp)
+MAX_SIZE: Tamaño Máximo
+COMPRESSION: Compresión
+QUALITY: Calidad
+ANIMATION_PREVIEW: Previsualización
+SLICING: Segmentación (Slice)
+COLUMNS: Columnas
+ROWS: Filas
+CREATE_ANIM_ASSET: Crear Asset de Animación
+APPLY: Aplicar
+AUDIO_PREVIEW: Previsualización de Audio
+FORMAT: Formato
+LOADING: Cargando...
+OPTIMIZATION_AND_QUALITY: Optimización y Calidad
+CALIDAD: Calidad
+ORIGINAL_SIN_CAMBIOS: Original (Sin cambios)
+ALTA_1080P: Alta (1080p)
+MEDIA_720P: Media (720p)
+BAJA_480P: Baja (480p)
+OPCIONES_CALIDAD_DESC: * Las opciones de calidad se aplicarán al exportar el juego para optimizar el rendimiento y espacio.
+APLICAR_CONFIGURACION: Aplicar Configuración
+RETROCEDER_5S: Retroceder 5s
+REPRODUCIR_PAUSA: Reproducir/Pausa
+ADELANTAR_5S: Adelantar 5s
+RESOLUCION: Resolución
+CAMBIOS_APLICADOS: Cambios aplicados correctamente.
+SIN_FUNCION: Sin Función
+OBJECT: Objeto
+ORIENTATION: Orientación
+AIR_TURN: Giro Aire
+GROUND_CENTERING: Centrado Suelo
+VERTICAL: Vertical
+HORIZONTAL: Horizontal
+TILEMAP_RENDERER: Renderizador de Mapa
+TILEMAP_COLLIDER: Colisionador de Mapa
+SOURCE_LAYER: Capa de Origen
+USE_ALL_LAYERS: Usar todas las capas
+GENERATE_COLLIDERS: Generar Colisionadores
+COLLIDERS_GENERATED: Colisionadores generados
+SIMPLIFIED: Simplificado
+SPRITE_RENDERER: Renderizador de Sprite
+ANIMATOR: Animador
+ANIMATOR_CONTROLLER: Controlador de Animación
+CAMERA: Cámara
+POINT_LIGHT_2D: Luz Puntual 2D
+SPOT_LIGHT_2D: Luz Focal 2D
+FREEFORM_LIGHT_2D: Luz de Forma Libre 2D
+SPRITE_LIGHT_2D: Luz de Sprite 2D
+AUDIO_SOURCE: Fuente de Audio
+VIDEO_PLAYER: Reproductor de Video
+MOVEMENT_BASIC: Movimiento (Básico)
+PROJECTILE_LAUNCHER: Lanzador de Proyectiles
+AUTO_DESTROY: Destrucción Automática
+CAMERA_FOLLOW: Seguimiento de Cámara
+PARTICLE_SYSTEM: Sistema de Partículas
+PARALLAX: Parallax
+TERRAIN_2D: Terreno 2D
+TERRAIN_COLLIDER: Colisionador de Terreno
+GYZMO: Gyzmo
+RAYCAST_SOURCE: Fuente de Rayos (Rallo)
+WATER: Agua
+LINE_COLLIDER: Colisionador de Línea
+VERTICAL_LAYOUT: Disposición Vertical
+HORIZONTAL_LAYOUT: Disposición Horizontal
+GRID_LAYOUT: Disposición en Rejilla
+SIZE_FITTER: Ajustador de Tamaño
+RESPONSE_CONFIG: Configuración de Respuesta
+DEADZONE: Zona Muerta (Deadzone)
+DEADZONE_DESC: Movimiento mínimo para activar dirección
+START_DELAY: Retraso de Inicio
+START_DELAY_DESC: Tiempo de espera para empezar animación
+STOP_DELAY: Retraso de Parada
+STOP_DELAY_DESC: Tiempo de espera para volver a parado
+DIRECTION_DELAY: Retraso de Dirección
+DIRECTION_DELAY_DESC: Tiempo de espera para cambiar dirección
+STOP_BUFFER: Buffer de Parada
+STOP_BUFFER_DESC: Tiempo que la animación sigue activa tras soltar
+STATES: Estados
+DEPTH: Profundidad
+CLEAR_FLAGS: Limpiar Flags
+SOLID_COLOR: Color Sólido
+SKYBOX: Skybox
+DONT_CLEAR: No Limpiar
+BACKGROUND: Fondo
+CULLING_MASK: Máscara de Capas
+SIZE_ZOOM: Tamaño (Zoom)
+INTENSITY: Intensidad
+LIGHT_FILTER: Filtro de Luz
+VERTICES_EDIT_FUTURE: La edición de vértices se implementará en una futura actualización.
+MANUAL_SIZE: Tamaño Manual
+REMOVE_SELECTED_LAYER: Eliminar Capa Seleccionada
+LAYER_OFFSET_X: Desplazamiento de Capa X
+LAYER_OFFSET_Y: Desplazamiento de Capa Y
+OPEN_UI_EDITOR_HINT: Doble-click en el Navegador para abrir en el Editor de UI.
+OPEN_ANIM_EDITOR_HINT: Doble-click en el Navegador para abrir en el Editor de Animación.
+OPEN_SCENE_HINT: Doble-click en el Navegador para abrir la escena.
 
 # Water Component
 PROP_WATER_DENSITY: Densidad del Agua
@@ -1177,10 +1398,12 @@ ELIMINAR: Delete
 ADD_LEY: Add Law
 LEY: Law
 LEYES: Laws
-TRANSFORM: Transform
+TRANSFORM: Transform (Position)
 POSICION: Position
 ROTACION: Rotation
 ESCALA: Scale
+PROP_FLIP_X: Flip Horizontal
+PROP_FLIP_Y: Flip Vertical
 NADA_SELECCIONADO: Nothing selected
 ACTIVAR_DESACTIVAR_MATERIA: Enable/Disable Matter
 TAG: Tag
@@ -1314,6 +1537,224 @@ CURRENT_HEALTH: Current Health
 DESTROY_ON_DEATH: Destroy On Death
 PATROL_COMPONENT: Patrol Component
 PAUSE_TIME: Pause Time (s)
+JUMP_FORCE: Jump Force
+AIR_DRAG: Air Drag
+CHASSIS: Chassis
+SPRING_SETTINGS: Spring Settings
+ENGINE_SETTINGS: Engine Settings
+ACCELERATE_KEY: Accelerate Key
+BRAKE_KEY: Brake Key
+AUTO_ACCELERATE: Auto-Accelerate
+DRIFT_INTENSITY: Drift Intensity
+MOTOR_BRAKE: Motor Brake
+KEYS_LEFT_RIGHT: Turn (Left/Right)
+KEYS_ACCEL_BRAKE: Accel/Brake
+FLIGHT_SETTINGS: Flight Settings
+THRUST: Motor Power (Thrust)
+TAKEOFF_SPEED: Takeoff Speed
+LIFT_FORCE: Lift Force
+TURN_AGILITY: Turn Agility
+KEYS_POWER_BRAKE: Power/Brake
+KEY_BRAKE_SPACE: Brake (Space)
+KEYS_PITCH: Pitch (Nose)
+AJUSTAR_TAMANO_AL_VIDEO: Sync Size to Video
+TEXTURE_RENDER: Texture Render
+PROP_SHAPE: Shape
+PROP_ORDER_IN_LAYER: Order in Layer
+HORIZONTAL_FIT: Horizontal Fit
+VERTICAL_FIT: Vertical Fit
+UNCONSTRAINED: Unconstrained
+PREFERRED_SIZE: Preferred Size
+UI_TRANSFORM: UI Transform
+ANCHOR_POINT: Anchor Point
+UI_IMAGE: UI Image
+UI_TEXT: UI Text
+FONT_SIZE: Font Size
+ALIGNMENT: Alignment
+CANVAS: Canvas
+RENDER_MODE: Render Mode
+SCREEN_SPACE: Screen Space
+WORLD_SPACE: World Space
+REFERENCE_RES: Reference Res.
+SCREEN_MATCH: Screen Match
+MATCH_WIDTH_HEIGHT: Width or Height
+SHOW_GRID_GIZMO: Show Grid
+SCALE_CHILDREN: Scale Children
+BUTTON: Button
+INTERACTABLE: Interactable
+TRANSITION: Transition
+COLOR_TINT: Color Tint
+SPRITE_SWAP: Sprite Swap
+ANIMATION: Animation
+NORMAL_COLOR: Normal Color
+PRESSED_COLOR: Pressed Color
+DISABLED_COLOR: Disabled Color
+HIGHLIGHTED_SPRITE: Highlighted Sprite
+PRESSED_SPRITE: Pressed Sprite
+DISABLED_SPRITE: Disabled Sprite
+HIGHLIGHTED_TRIGGER: Highlighted Trigger
+PRESSED_TRIGGER: Pressed Trigger
+DISABLED_TRIGGER: Disabled Trigger
+ON_CLICK: On Click ()
+CIRCLE_COLLIDER_2D: Circle Collider 2D
+IS_TRIGGER: Is Trigger
+OFFSET: Offset
+RADIUS: Radius
+PROJECTILE_LAUNCHER_COMPONENT: Projectile Launcher
+AUTO_DESTROY_COMPONENT: Auto Destroy
+DELAY_SECS: Delay (secs)
+CAMERA_FOLLOW_COMPONENT: Camera Follow
+SMOOTHNESS: Smoothness
+FOLLOW_X: Follow X
+FOLLOW_Y: Follow Y
+PARTICLE_PREFAB: Particle Prefab
+MAX_PARTICLES: Max Particles
+EMISSION_RATE: Emission Rate
+SPREAD: Spread
+PARALLAX_COMPONENT: Parallax
+SCROLL_FACTOR: Scroll Factor
+REPEAT_INFINITE: Repeat Infinite
+MIRRORING_XY: Mirroring X/Y
+MATCH_MIRRORING_SPRITE: Match to Sprite
+SPRITE_RENDERER: Sprite Renderer
+SUSPENSION_HC: Suspension HC
+VEHICLE_TOPDOWN: Vehicle TopDown
+PLANE_CONTROLLER: Plane Controller
+HELICOPTER_CONTROLLER: Helicopter Controller
+ORIENTATION: Orientation
+OFFSET_XY: Offset X/Y
+AUTOSCROLL_XY: Autoscroll X/Y
+TERRAIN_2D_COMPONENT: 2D Terrain
+CANVAS_SIZE: Canvas Size
+BASE_COLOR: Base Color
+TERRAIN_BRUSH: Terrain Brush
+DRAW_TERRAIN: Draw
+ERASE_TERRAIN: Erase
+FILL_TEXTURES: Fill Textures
+TERRAIN_COLLIDER_2D: Terrain Collider
+REGENERATE_COLLISIONS: Regenerate Collisions
+GYZMO_AREAS: Gyzmo Areas
+SHOW_IN_GAME_GLOBAL: Show in Game
+ADD_RECTANGLE: Add Rectangle
+RIGIDBODY_2D: Rigidbody 2D
+BODY_TYPE: Body Type
+GRAVITY_SCALE: Gravity Scale
+BOUNCINESS: Bounciness
+CONSTRAINTS: Constraints
+FREEZE_ROTATION: Freeze Rotation
+DYNAMIC: Dynamic
+KINEMATIC: Kinematic
+STATIC: Static
+STRUCTURE: Structure
+ROOT_COMPONENTS: Root Components
+TILES: Tiles
+EDIT_PREFAB: Edit Prefab
+ENGINE: Engine
+TEXTURE_TYPE: Texture Type
+SPRITE_MODE: Sprite Mode
+PIXELS_PER_UNIT: Pixels Per Unit
+MESH_TYPE: Mesh Type
+FULL_RECT: Full Rect
+TIGHT: Tight
+FILTER_MODE: Filter Mode
+WRAP_MODE: Wrap Mode
+REPEAT: Repeat
+CLAMP: Clamp
+MAX_SIZE: Max Size
+COMPRESSION: Compression
+QUALITY: Quality
+ANIMATION_PREVIEW: Animation Preview
+SLICING: Slicing
+COLUMNS: Columns
+ROWS: Rows
+CREATE_ANIM_ASSET: Create Animation Asset
+APPLY: Apply
+AUDIO_PREVIEW: Audio Preview
+FORMAT: Format
+LOADING: Loading...
+OPTIMIZATION_AND_QUALITY: Optimization & Quality
+CALIDAD: Quality
+ORIGINAL_SIN_CAMBIOS: Original (Unchanged)
+ALTA_1080P: High (1080p)
+MEDIA_720P: Medium (720p)
+BAJA_480P: Low (480p)
+OPCIONES_CALIDAD_DESC: * Quality options will be applied when exporting the game to optimize performance and space.
+APLICAR_CONFIGURACION: Apply Configuration
+RETROCEDER_5S: Rewind 5s
+REPRODUCIR_PAUSA: Play/Pause
+ADELANTAR_5S: Forward 5s
+RESOLUCION: Resolution
+CAMBIOS_APLICADOS: Changes applied successfully.
+SIN_FUNCION: No Function
+OBJECT: Object
+ORIENTATION: Orientation
+AIR_TURN: Air Turn
+GROUND_CENTERING: Ground Centering
+VERTICAL: Vertical
+HORIZONTAL: Horizontal
+TILEMAP_RENDERER: Tilemap Renderer
+TILEMAP_COLLIDER: Tilemap Collider
+SOURCE_LAYER: Source Layer
+USE_ALL_LAYERS: Use all layers
+GENERATE_COLLIDERS: Generate Colliders
+COLLIDERS_GENERATED: Colliders generated
+SIMPLIFIED: Simplified
+SPRITE_RENDERER: Sprite Renderer
+ANIMATOR: Animator
+ANIMATOR_CONTROLLER: Animator Controller
+CAMERA: Camera
+POINT_LIGHT_2D: Point Light 2D
+SPOT_LIGHT_2D: Spot Light 2D
+FREEFORM_LIGHT_2D: Freeform Light 2D
+SPRITE_LIGHT_2D: Sprite Light 2D
+AUDIO_SOURCE: Audio Source
+VIDEO_PLAYER: Video Player
+MOVEMENT_BASIC: Movement (Basic)
+PROJECTILE_LAUNCHER: Projectile Launcher
+AUTO_DESTROY: Auto Destroy
+CAMERA_FOLLOW: Camera Follow
+PARTICLE_SYSTEM: Particle System
+PARALLAX: Parallax
+TERRAIN_2D: Terrain 2D
+TERRAIN_COLLIDER: Terrain Collider
+GYZMO: Gyzmo
+RAYCAST_SOURCE: Raycast Source
+WATER: Water
+LINE_COLLIDER: Line Collider
+VERTICAL_LAYOUT: Vertical Layout
+HORIZONTAL_LAYOUT: Horizontal Layout
+GRID_LAYOUT: Grid Layout
+SIZE_FITTER: Content Size Fitter
+RESPONSE_CONFIG: Response Config
+DEADZONE: Deadzone
+DEADZONE_DESC: Minimum movement to activate direction
+START_DELAY: Start Delay
+START_DELAY_DESC: Delay before starting animation
+STOP_DELAY: Stop Delay
+STOP_DELAY_DESC: Delay before returning to idle
+DIRECTION_DELAY: Direction Delay
+DIRECTION_DELAY_DESC: Delay before changing direction
+STOP_BUFFER: Stop Buffer
+STOP_BUFFER_DESC: Time animation remains active after release
+STATES: States
+DEPTH: Depth
+CLEAR_FLAGS: Clear Flags
+SOLID_COLOR: Solid Color
+SKYBOX: Skybox
+DONT_CLEAR: Don't Clear
+BACKGROUND: Background
+CULLING_MASK: Culling Mask
+SIZE_ZOOM: Size (Zoom)
+INTENSITY: Intensity
+LIGHT_FILTER: Light Filter
+VERTICES_EDIT_FUTURE: Vertex editing will be implemented in a future update.
+MANUAL_SIZE: Manual Size
+REMOVE_SELECTED_LAYER: Remove Selected Layer
+LAYER_OFFSET_X: Layer Offset X
+LAYER_OFFSET_Y: Layer Offset Y
+OPEN_UI_EDITOR_HINT: Double-click in the Browser to open in the UI Editor.
+OPEN_ANIM_EDITOR_HINT: Double-click in the Browser to open in the Animation Editor.
+OPEN_SCENE_HINT: Double-click in the Browser to open the scene.
 
 # Water Component
 PROP_WATER_DENSITY: Water Density
@@ -1935,3 +2376,151 @@ CREAR_NUEVO_KEYSTORE: Create New Keystore...
 NINGUNO_SELECCIONADO: None selected
 HINT_ANDROID_BUILD: Configuration to sign Android builds.
 EXPORTAR_ASSETS_CEP: Export Assets (.cep)
+
+[PT]
+# Inspector
+ADD_LEY: Adicionar Lei
+LEY: Lei
+LEYES: Leis
+TRANSFORM: Posição (Transform)
+POSICION: Posição
+ROTACION: Rotação
+ESCALA: Escala
+PROP_FLIP_X: Inverter Horizontal
+PROP_FLIP_Y: Inverter Vertical
+NADA_SELECCIONADO: Nada selecionado
+# Add specific keys for PT if they were missed by generic L.get(type.toUpperCase())
+MATÉRIA: Matéria
+POSIÇÃO: Posição
+REPRODUZIR: Reproduzir
+TAG: Tag
+LAYER: Camada
+ADD_TAG_ELLIPSIS: Adicionar Tag...
+EDIT_LAYERS_ELLIPSIS: Editar Camadas...
+AÑADIR_LEY_TITULO: Adicionar Lei (Componente)
+CAT_AUDIO: Áudio/Vídeo
+CAT_RENDERIZADO: Renderização
+CAT_MAPA: Mapa
+CAT_ILUMINACION: Iluminação
+CAT_UTILIDADES: Utilitários
+CAT_ANIMACION: Animação
+CAT_CAMARA: Câmera
+CAT_FISICAS: Física
+CAT_UI: UI
+CAT_BASICO: Básico
+CAT_SCRIPTING: Scripting
+SCRIPTS: Scripts
+
+# Engine Terms
+POSICION: Posição
+ROTACION: Rotação
+ESCALA: Escala
+VELOCIDAD: Velocidade
+POTENCIA: Potência
+MASA: Massa
+GRAVEDAD: Gravidade
+REBOTE: Ressalto
+DISTANCIA: Distância
+ANGULO: Ângulo
+LONGITUD: Comprimento
+VOLUMEN: Volume
+BUCLE: Bucle (Loop)
+REPRODUCIR: Reproduzir
+DETENER: Parar
+PAUSAR: Pausar
+
+[RU]
+# Inspector
+ADD_LEY: Добавить закон
+LEY: Закон
+LEYES: Законы
+TRANSFORM: Позиция (Transform)
+POSICION: Позиция
+ROTACION: Вращение
+ESCALA: Масштаб
+PROP_FLIP_X: Отразить по горизонтали
+PROP_FLIP_Y: Отразить по вертикали
+NADA_SELECCIONADO: Ничего не выбрано
+TAG: Тег
+LAYER: Слой
+ADD_TAG_ELLIPSIS: Добавить тег...
+EDIT_LAYERS_ELLIPSIS: Редактировать слои...
+AÑADIR_LEY_TITULO: Добавить закон (Компонент)
+CAT_AUDIO: Аудио/Видео
+CAT_RENDERIZADO: Рендеринг
+CAT_MAPA: Карта
+CAT_ILUMINACION: Освещение
+CAT_UTILIDADES: Утилиты
+CAT_ANIMACION: Анимация
+CAT_CAMARA: Камера
+CAT_FISICAS: Физика
+CAT_UI: Интерфейс
+CAT_BASICO: Базовый
+CAT_SCRIPTING: Скриптинг
+SCRIPTS: Скрипты
+
+# Engine Terms
+POSICION: Позиция
+ROTACION: Вращение
+ESCALA: Масштаб
+VELOCIDAD: Скорость
+POTENCIA: Мощность
+MASA: Масса
+GRAVEDAD: Гравитация
+REBOTE: Отскок
+DISTANCIA: Дистанция
+ANGULO: Угол
+LONGITUD: Длина
+VOLUMEN: Громкость
+BUCLE: Цикл (Loop)
+REPRODUCIR: Воспроизвести
+DETENER: Стоп
+PAUSAR: Пауза
+
+[ZH]
+# Inspector
+ADD_LEY: 添加法律
+LEY: 法律
+LEYES: 法律
+TRANSFORM: 位置 (变换)
+POSICION: 位置
+ROTACION: 旋转
+ESCALA: 缩放
+PROP_FLIP_X: 水平翻转
+PROP_FLIP_Y: 垂直翻转
+NADA_SELECCIONADO: 未选择任何内容
+TAG: 标签
+LAYER: 图层
+ADD_TAG_ELLIPSIS: 添加标签...
+EDIT_LAYERS_ELLIPSIS: 编辑图层...
+AÑADIR_LEY_TITULO: 添加法律 (组件)
+CAT_AUDIO: 音频/视频
+CAT_RENDERIZADO: 渲染
+CAT_MAPA: 地图
+CAT_ILUMINACION: 照明
+CAT_UTILIDADES: 工具
+CAT_ANIMACION: 动画
+CAT_CAMARA: 摄像机
+CAT_FISICAS: 物理
+CAT_UI: 界面
+CAT_BASICO: 基础
+CAT_SCRIPTING: 脚本
+SCRIPTS: 脚本
+
+# Engine Terms
+POSICION: 位置
+ROTACION: 旋转
+ESCALA: 缩放
+VELOCIDAD: 速度
+POTENCIA: 功率
+MASA: 质量
+GRAVEDAD: 重力
+REBOTE: 弹力
+DISTANCIA: 距离
+ANGULO: 角度
+LONGITUD: 长度
+VOLUMEN: 音量
+BUCLE: 循环 (Loop)
+REPRODUCIR: 播放
+DETENER: 停止
+PAUSAR: 暂停
