@@ -3282,6 +3282,7 @@ export class Tilemap extends Leyes {
         this.height = 20;
         this.manualSize = false;
         this.layers = [{
+            name: 'Base',
             position: { x: 0, y: 0 },
             tileData: new Map()
         }];
@@ -3290,6 +3291,7 @@ export class Tilemap extends Leyes {
 
     addLayer(x = 0, y = 0) {
         this.layers.push({
+            name: 'Layer ' + this.layers.length,
             position: { x, y },
             tileData: new Map()
         });
@@ -3405,6 +3407,7 @@ export class TilemapCollider2D extends Leyes {
         this.isTrigger = false;
         this.offset = { x: 0, y: 0 };
         this.sourceLayerIndex = 0; // Which layer to use for collision
+        this.useAllLayers = false;
         this.generatedColliders = []; // Array of {x, y, width, height} objects
 
         // Always initialize _cachedMesh as a Map. This prevents corrupted data
@@ -3424,6 +3427,9 @@ export class TilemapCollider2D extends Leyes {
         }
         return this._cachedMesh.get(layerIndex) || [];
     }
+
+    get usarTodasLasCapas() { return this.useAllLayers; }
+    set usarTodasLasCapas(v) { this.useAllLayers = v; }
 
     /**
      * Generates an optimized mesh of rectangles for a specific layer using a greedy meshing algorithm.
@@ -3499,19 +3505,17 @@ export class TilemapCollider2D extends Leyes {
 
             // Now, convert these rects to world-space colliders for the physics engine
             // This is only done for the layer specified in the component's properties
-            if (i === this.sourceLayerIndex) {
+            if (this.useAllLayers || i === this.sourceLayerIndex) {
                 const layerOffsetX = layer.position.x * layerWidth;
                 const layerOffsetY = layer.position.y * layerHeight;
-                const layerTopLeftX = layerOffsetX - layerWidth / 2;
-                const layerTopLeftY = layerOffsetY - layerHeight / 2;
 
                 for (const rect of rects) {
                     const rectWidth_pixels = rect.width * cellSize.x;
                     const rectHeight_pixels = rect.height * cellSize.y;
 
                     // Ajuste clave: Restar la mitad de la altura total del layer para alinear con el pivote central
-                    const rectTopLeftX = (rect.col * cellSize.x) - (layerWidth / 2);
-                    const rectTopLeftY = (rect.row * cellSize.y) - (layerHeight / 2);
+                    const rectTopLeftX = (rect.col * cellSize.x) - (layerWidth / 2) + layerOffsetX;
+                    const rectTopLeftY = (rect.row * cellSize.y) - (layerHeight / 2) + layerOffsetY;
 
                     this.generatedColliders.push({
                         x: rectTopLeftX + rectWidth_pixels / 2,
@@ -3536,6 +3540,7 @@ export class TilemapCollider2D extends Leyes {
         newCollider.isTrigger = this.isTrigger;
         newCollider.offset = { ...this.offset };
         newCollider.sourceLayerIndex = this.sourceLayerIndex;
+        newCollider.useAllLayers = this.useAllLayers;
 
         // Deep copy the generated colliders and the cached mesh to preserve state
         newCollider.generatedColliders = JSON.parse(JSON.stringify(this.generatedColliders));
@@ -5226,27 +5231,44 @@ export class PlaneController extends Leyes {
             rb.addTorque(torque);
         }
 
-        // 4. Física de Sustentación (Lift)
-        // La sustentación ocurre si la velocidad de avance supera el umbral de despegue
+        // 4. Física de Sustentación (Lift) y Direccionalidad
         const speedKmh = Math.abs(this.velocidadAvance) * 100;
-        if (speedKmh > this.velocidadDespegue) {
-            const liftFactor = (speedKmh - this.velocidadDespegue) / 100;
-            // La sustentación es perpendicular al avance y depende de la potencia configurada
-            // También sumamos una pequeña fuerza hacia arriba absoluta para facilitar el vuelo
-            const liftMag = liftFactor * this.fuerzaSustentacion * 1500 * deltaTime;
 
-            const liftDir = { x: forward.y, y: -forward.x }; // Perpendicular "arriba" relativo al avión
+        // Arrastre parásito (aumenta con el cuadrado de la velocidad)
+        const dragFactor = (speedKmh / 1000) ** 2;
+        rb.addForce(-rb.velocity.x * this.arrastreAire * dragFactor * deltaTime * 100,
+                    -rb.velocity.y * this.arrastreAire * dragFactor * deltaTime * 100);
 
-            // Aplicar sustentación
+        if (speedKmh > this.velocidadDespegue * 0.5) {
+            // Factor de sustentación mejorado: decae si el ángulo de ataque es demasiado alto (stall)
+            const AoA = Math.abs(transform.rotation % 360); // Simplificado
+            const stallFactor = (AoA > 60 && AoA < 300) ? 0.2 : 1.0;
+
+            const liftFactor = Math.min(1.5, (speedKmh - this.velocidadDespegue * 0.5) / 400) * stallFactor;
+
+            // Fuerza hacia arriba relativa al avión (sustentación pura)
+            const liftDir = { x: forward.y, y: -forward.x };
+            const liftMag = liftFactor * this.fuerzaSustentacion * 600 * deltaTime;
             rb.addForce(liftDir.x * liftMag, liftDir.y * liftMag);
 
-            // Efecto de estabilidad: el avión tiende a nivelarse solo si no hay input
+            // 4.1 Alineación Aerodinámica (Seguir la nariz)
+            // Esto hace que el vector de velocidad se incline hacia donde apunta el avión
+            const velMag = Math.sqrt(rb.velocity.x**2 + rb.velocity.y**2);
+            if (velMag > 0.5) {
+                // Mezclamos la velocidad actual con la dirección 'forward'
+                // Factor de alineación más agresivo para evitar que "salga volando" de lado
+                const alignmentStrength = Math.min(0.2, (speedKmh / 1500) * deltaTime * 15);
+                rb.velocity.x = rb.velocity.x * (1 - alignmentStrength) + (forward.x * velMag) * alignmentStrength;
+                rb.velocity.y = rb.velocity.y * (1 - alignmentStrength) + (forward.y * velMag) * alignmentStrength;
+            }
+
+            // Efecto de estabilidad: el avión tiende a nivelarse solo si no hay input y tiene velocidad
             if (pitchInput === 0) {
-                rb.angularVelocity *= Math.pow(0.95, deltaTime * 60);
+                rb.angularVelocity *= Math.pow(0.85, deltaTime * 60);
             }
         }
 
-        // 5. Arrastre de Aire (Air Drag)
+        // 5. Arrastre de Aire Base
         if (this.arrastreAire > 0) {
             const drag = Math.pow(1.0 - this.arrastreAire, deltaTime);
             rb.velocity.x *= drag;
@@ -5387,7 +5409,7 @@ export class SuspensionHC extends Leyes {
         // Aplicar fuerzas
         // NOTA: addForce en este motor suma directamente a la velocidad (v += F/m).
         // Para que la fuerza sea estable e independiente del frame-rate, escalamos por deltaTime.
-        const forceScale = deltaTime * 0.5; // Escala conservadora para evitar saltos bruscos
+        const forceScale = deltaTime; // Eliminamos el 0.5 para mayor respuesta
         rbRueda.addForce(forceVec.x * forceScale, forceVec.y * forceScale);
         rbChasis.addForce(-forceVec.x * forceScale, -forceVec.y * forceScale);
 

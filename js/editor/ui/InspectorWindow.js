@@ -2426,7 +2426,11 @@ async function updateInspectorForMateria(selectedMateria) {
             componentHTML = `
                 ${renderComponentHeader(L.get('TILEMAP_COLLIDER_2D', 'Tilemap Collider 2D'), 'grid', index)}
                 <div class="component-content">
-                    <div class="prop-row-multi">
+                    <div class="checkbox-field">
+                        <input type="checkbox" class="prop-input inspector-re-render" data-component="TilemapCollider2D" data-prop="usarTodasLasCapas" ${ley.usarTodasLasCapas ? 'checked' : ''}>
+                        <label>${L.get('USE_ALL_LAYERS', 'Usar todas las capas')}</label>
+                    </div>
+                    <div class="prop-row-multi" style="display: ${ley.usarTodasLasCapas ? 'none' : 'flex'};">
                         <label for="collider-source-layer">${L.get('SOURCE_LAYER', 'Capa de Origen')}</label>
                         <select id="collider-source-layer" class="prop-input" data-component="TilemapCollider2D" data-prop="sourceLayerIndex">
                             ${layerOptions}

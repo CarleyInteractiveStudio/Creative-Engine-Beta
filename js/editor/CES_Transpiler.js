@@ -174,7 +174,8 @@ const componentShortcuts = [
     'fuerzaInclinacion', 'inclinacion', 'estabilidadAire', 'autoEstabilidad', 'frenadoMotor', 'frenado', 'recuperacionGiro', 'centradoGiro',
     'autoAcelerar', 'potencia', 'potenciaMotor', 'velocidadMaxima', 'velocidadLimite', 'velocidadGiro', 'giro', 'intensidadDerrape', 'derrape',
     'teclaIzquierda', 'teclaDerecha', 'frenadoMotor', 'frenado', 'vDespegue', 'sustentacion', 'arrastre', 'teclaPotencia', 'teclaFreno',
-    'teclaNarizArriba', 'teclaNarizAbajo'
+    'teclaNarizArriba', 'teclaNarizAbajo', 'usarTodasLasCapas', 'useAllLayers', 'sourceLayerIndex', 'velocidadDespegue', 'fuerzaSustentacion',
+    'agilidadGiro', 'arrastreAire'
 ];
 
 function getDefaultValueForType(canonicalType) {
