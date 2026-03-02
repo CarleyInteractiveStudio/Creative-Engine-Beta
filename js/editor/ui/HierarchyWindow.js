@@ -511,7 +511,7 @@ function setupEventListeners() {
                     if (targetItem) {
                         const targetId = parseInt(targetItem.dataset.id, 10);
                         const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
-                        if (targetMateria) targetMateria.addChild(newMateria);
+                        if (targetMateria) newMateria.setParent(targetMateria, true);
                     }
                     updateHierarchy();
                     selectMateriaCallback(newMateria.id);
@@ -520,11 +520,11 @@ function setupEventListeners() {
             }
 
             const newMateria = new Materia(data.name.split('.')[0]);
-            newMateria.addComponent(new Transform(newMateria));
+            newMateria.addComponent(new Components.Transform(newMateria));
             if (targetItem) {
                 const targetId = parseInt(targetItem.dataset.id, 10);
                 const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
-                if (targetMateria) targetMateria.addChild(newMateria);
+                if (targetMateria) newMateria.setParent(targetMateria, true);
             } else {
                 SceneManager.currentScene.addMateria(newMateria);
             }
@@ -556,15 +556,14 @@ function setupEventListeners() {
                 if (draggedId !== targetId) {
                     const targetMateria = SceneManager.currentScene.findMateriaById(targetId);
                     if (targetMateria && !draggedMateria.isAncestorOf(targetMateria)) {
-                        targetMateria.addChild(draggedMateria);
+                        draggedMateria.setParent(targetMateria, true);
                         updateHierarchy();
                     }
                 }
             } else {
                 // Un-parenting logic
                 if (draggedMateria.parent) {
-                    draggedMateria.parent.removeChild(draggedMateria);
-                    SceneManager.currentScene.addMateria(draggedMateria);
+                    draggedMateria.setParent(null, true);
                     updateHierarchy();
                 }
             }

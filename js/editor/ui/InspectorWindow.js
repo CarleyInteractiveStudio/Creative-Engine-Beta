@@ -619,7 +619,9 @@ function handleInspectorClick(e) {
             return;
         }
 
-        if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any' || componentIcons[expectedType]) {
+        const isSceneObjectReference = (expectedType === 'Materia' || expectedType === 'mtr' || componentIcons[expectedType]);
+
+        if (typeExtensionMap[expectedType] || expectedType === 'any') {
             if (openAssetSelectorCallback) {
                  openAssetSelectorCallback(async (fileHandle, fullPath) => {
                     const fakeEvent = {
@@ -635,7 +637,7 @@ function handleInspectorClick(e) {
                     title: `${L.get('SELECCIONAR', 'Seleccionar')} ${expectedType}`
                 });
             }
-        } else if (componentIcons[expectedType]) {
+        } else if (isSceneObjectReference) {
              window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('HINT_ASIGNAR_COMPONENTE', 'Para asignar un {expectedType}, arrastra un objeto de la jerarquía que tenga dicho componente.').replace('{expectedType}', expectedType));
         }
         return;
@@ -2771,7 +2773,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 <div class="component-content">
                     <div class="inspector-row">
                         <label>${L.get('TARGET', 'Objetivo')}</label>
-                        ${renderPropertyDropper('Materia', ley.target ? ley.target.id : null, 'data-component="CameraFollow" data-prop="target"')}
+                        ${renderPropertyDropper('Materia', ley.target, 'data-component="CameraFollow" data-prop="target"')}
                     </div>
                     <div class="prop-row-multi">
                         <label>${L.get('SMOOTHNESS', 'Suavidad')}</label>

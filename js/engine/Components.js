@@ -3215,7 +3215,8 @@ export class CameraFollow extends Leyes {
     update(deltaTime) {
         let targetObj = this.target;
         if (typeof targetObj === 'number') {
-            targetObj = this.materia.scene.findMateriaById(targetObj);
+            const scene = this.materia.scene || (typeof window !== 'undefined' ? window.SceneManager?.currentScene : null);
+            if (scene) targetObj = scene.findMateriaById(targetObj);
         }
         if (!targetObj) return;
 
