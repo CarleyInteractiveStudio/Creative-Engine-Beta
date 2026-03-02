@@ -190,7 +190,7 @@ export class Materia {
         if (this.parent === newParent) return;
 
         let worldPos, worldRot, worldScale;
-        const transform = this.getComponent(Transform);
+        const transform = this.getComponentByName('Transform') || this.getComponentByName('UITransform');
 
         if (keepWorldTransform && transform) {
             worldPos = transform.position;
@@ -236,7 +236,7 @@ export class Materia {
     }
 
     addChild(child) {
-        child.setParent(this, false); // Legacy addChild doesn't preserve world transform by default
+        child.setParent(this, true); // Keep world transform by default when adding children
     }
 
     removeChild(child) {

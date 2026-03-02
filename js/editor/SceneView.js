@@ -874,8 +874,9 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+            // Divide by scale to make the handle movement 1:1 with the mouse in world space
+            const localDx = (dx * cos + dy * sin) / (transform.scale.x || 1);
+            const localDy = (-dx * sin + dy * cos) / (transform.scale.y || 1);
 
             switch (dragState.handle) {
                 case 'collider-top':
@@ -927,8 +928,11 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+
+            // For circle, we use the max scale absolute value for the radius
+            const maxScale = Math.max(Math.abs(transform.scale.x), Math.abs(transform.scale.y)) || 1;
+            const localDx = (dx * cos + dy * sin) / maxScale;
+            const localDy = (-dx * sin + dy * cos) / maxScale;
 
             switch (dragState.handle) {
                 case 'collider-circle-handle':
@@ -937,8 +941,9 @@ export function initialize(dependencies) {
                     break;
                 case 'collider-circle-center':
                     // Arrastrar centro para cambiar offset
-                    circleCollider.offset.x += localDx;
-                    circleCollider.offset.y += localDy;
+                    // Note: offset is also affected by scale in world space, so we divide here too
+                    circleCollider.offset.x += (dx * cos + dy * sin) / (transform.scale.x || 1);
+                    circleCollider.offset.y += (-dx * sin + dy * cos) / (transform.scale.y || 1);
                     break;
             }
         }
@@ -949,8 +954,8 @@ export function initialize(dependencies) {
             const rad = -transform.rotation * Math.PI / 180;
             const cos = Math.cos(rad);
             const sin = Math.sin(rad);
-            const localDx = dx * cos + dy * sin;
-            const localDy = -dx * sin + dy * cos;
+            const localDx = (dx * cos + dy * sin) / (transform.scale.x || 1);
+            const localDy = (-dx * sin + dy * cos) / (transform.scale.y || 1);
 
             switch (dragState.handle) {
                 case 'collider-capsule-top':

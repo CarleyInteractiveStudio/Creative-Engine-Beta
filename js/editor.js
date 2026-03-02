@@ -3333,6 +3333,7 @@ Si el usuario te pide algo, usa siempre esta sintaxis en español para tus ejemp
         window.MateriaFactory = { ...MateriaFactory };
         window.Components = Components;
         window.updateHierarchy = updateHierarchy;
+        window.getSelectedMateria = () => selectedMateria;
         window.selectMateria = selectMateria;
         window.updateInspector = updateInspector;
         window.openAssetSelector = openAssetSelector;
