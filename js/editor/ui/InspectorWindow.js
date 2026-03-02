@@ -590,6 +590,35 @@ function handleInspectorClick(e) {
         const scriptName = dropper.dataset.scriptName;
         const componentId = dropper.dataset.componentId;
 
+        // --- Handle Clear Button ---
+        if (e.target.closest('.dropper-clear-btn')) {
+            e.stopPropagation();
+            let targetComponent;
+            if (componentName === 'CreativeScript') {
+                 targetComponent = selectedMateria.getComponents(Components.CreativeScript).find(s => s.scriptName === scriptName);
+            } else if (componentName === 'CustomComponent') {
+                 targetComponent = selectedMateria.leyes.find(ley => ley instanceof Components.CustomComponent && ley.id == componentId);
+            } else if (componentName) {
+                 targetComponent = selectedMateria.getComponent(Components[componentName]);
+            }
+
+            if (targetComponent) {
+                if (targetComponent instanceof Components.CreativeScript || targetComponent instanceof Components.CustomComponent) {
+                    targetComponent.publicVars[propName] = null;
+                } else {
+                    const props = propName.split('.');
+                    let current = targetComponent;
+                    for (let i = 0; i < props.length - 1; i++) {
+                        current = current[props[i]];
+                    }
+                    current[props[props.length - 1]] = null;
+                }
+                updateInspector();
+                if (updateSceneCallback) updateSceneCallback();
+            }
+            return;
+        }
+
         if (typeExtensionMap[expectedType] || expectedType === 'Materia' || expectedType === 'any' || componentIcons[expectedType]) {
             if (openAssetSelectorCallback) {
                  openAssetSelectorCallback(async (fileHandle, fullPath) => {
@@ -1204,6 +1233,7 @@ function renderLightColorPresets(componentName) {
 }
 
 function renderPropertyDropper(type, currentValue, commonAttrs) {
+    const L = window.Localization;
     let displayName = 'None';
     let icon = 'help-circle';
 
@@ -1244,7 +1274,6 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
             }
         }
     } else {
-        const L = window.Localization;
         const lowerType = type.toLowerCase();
         displayName = `${L.get('NINGUNO', 'Ninguno')} (${type})`;
 
@@ -1274,6 +1303,7 @@ function renderPropertyDropper(type, currentValue, commonAttrs) {
                 <span class="dropper-icon">${iconHTML}</span>
                 <span class="dropper-name" title="${currentValue || ''}">${displayName}</span>
             </div>
+            ${!isEmpty ? `<button class="dropper-clear-btn" title="${L.get('LIMPIAR', 'Limpiar')}">&times;</button>` : ''}
         </div>
     `;
 }
@@ -1473,11 +1503,9 @@ async function updateInspectorForMateria(selectedMateria) {
 
     const componentsWrapper = document.createElement('div');
     componentsWrapper.className = 'inspector-components-wrapper';
-    console.log('2. Created componentsWrapper. Looping through components...');
 
     selectedMateria.leyes.forEach((ley, index) => {
         try {
-        console.log(`[DEBUG] Inspector: Intentando renderizar componente #${index}: ${ley.constructor.name}`);
         let componentHTML = '';
         const componentName = ley.constructor.name;
         const icon = componentIcons[componentName] || 'settings';
@@ -1696,9 +1724,7 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.Transform) {
-            console.log('  - Is Transform component.');
             if (selectedMateria.getComponent(Components.UITransform)) {
-                console.log('  - UITransform also exists, skipping render of Transform.');
                 return;
             }
             componentHTML = `
@@ -2226,7 +2252,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             `;
         } else if (ley instanceof Components.PointLight2D) {
-            console.log('  - Is PointLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('POINT_LIGHT_2D', "Point Light 2D"), icon, index)}
@@ -2262,7 +2287,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.SpotLight2D) {
-            console.log('  - Is SpotLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('SPOT_LIGHT_2D', "Spot Light 2D"), icon, index)}
@@ -2304,7 +2328,6 @@ async function updateInspectorForMateria(selectedMateria) {
                 </div>
             </div>`;
         } else if (ley instanceof Components.FreeformLight2D) {
-            console.log('  - Is FreeformLight2D component.');
             componentHTML = `
             <div class="component-inspector">
                 ${renderComponentHeader(L.get('FREEFORM_LIGHT_2D', "Freeform Light 2D"), icon, index)}
@@ -3494,7 +3517,6 @@ async function updateInspectorForMateria(selectedMateria) {
         }
     });
 
-    console.log('6. Finished component loop. Appending main wrapper to DOM.');
     dom.inspectorContent.appendChild(componentsWrapper);
 
     const addComponentBtn = document.createElement('button');
@@ -3503,7 +3525,6 @@ async function updateInspectorForMateria(selectedMateria) {
     addComponentBtn.dataset.i18n = 'ADD_LEY';
     addComponentBtn.textContent = L.get('ADD_LEY', 'Añadir Ley');
     dom.inspectorContent.appendChild(addComponentBtn);
-    console.log('7. Inspector update complete.');
 }
 
 
