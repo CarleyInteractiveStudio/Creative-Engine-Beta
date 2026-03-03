@@ -40,8 +40,12 @@ import { getCustomComponentDefinitions } from './editor/EngineAPIExtension.js';
 import * as MateriaFactory from './editor/MateriaFactory.js';
 import MarkdownViewerWindow from './editor/ui/MarkdownViewerWindow.js';
 import { buildProject, runStandalonePreview } from './editor/BuildSystem.js';
-import { showNotification as showNotificationDialog, showConfirmation as showConfirmationDialog, showBuildDialog } from './editor/ui/DialogWindow.js';
+import * as Dialogs from './editor/ui/DialogWindow.js';
+const { showNotification: showNotificationDialog, showConfirmation: showConfirmationDialog, showBuildDialog } = Dialogs;
 import { Localization } from './engine/Localization.js';
+
+// Guarantee window-level access for non-module scripts (like auth.js)
+window.Dialogs = Dialogs;
 
 // Debug configuration
 window.CE_DEBUG_ANIMATION = false;

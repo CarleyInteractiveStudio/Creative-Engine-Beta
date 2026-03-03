@@ -82,15 +82,15 @@
             <div class="launcher-header">
                 <h2 data-i18n="MIS_PROYECTOS">Mis Proyectos</h2>
                 <div class="launcher-toolbar">
-                    <button id="btn-add-project-top" title="Añadir Proyecto" data-i18n-title="CREAR_NUEVO_PROYECTO">
-                        <img src="icons/plus.svg" class="ce-icon">
+                    <button id="btn-select-folder" class="launcher-btn secondary">
+                        <img src="icons/folder.svg" class="ce-icon"> <span data-i18n="ANADIR_PROYECTO">Añadir Proyecto</span>
                     </button>
-                    <button id="btn-delete-project-top" title="Borrar Proyecto Seleccionado" data-i18n-title="ELIMINAR_PROYECTO">
-                        <img src="icons/trash.svg" class="ce-icon">
+                    <button id="btn-add-project-top" class="launcher-btn green">
+                        <img src="icons/plus.svg" class="ce-icon"> <span data-i18n="CREAR_PROYECTO">Crear Proyecto</span>
                     </button>
                 </div>
             </div>
-            <div id="project-list" class="project-list">
+            <div id="project-list" class="project-grid">
                 <!-- Los proyectos se añadirán aquí dinámicamente -->
                 <p class="no-projects-message" data-i18n="SIN_PROYECTOS">Aún no tienes proyectos. ¡Crea uno para empezar!</p>
             </div>
@@ -146,16 +146,6 @@
         </div>
     </footer>
 
-    <!-- Modals -->
-    <div id="custom-dialog-modal" class="modal">
-        <div class="modal-content">
-            <h2 id="custom-dialog-title">Título</h2>
-            <p id="custom-dialog-message">Este es un mensaje de ejemplo.</p>
-            <div id="custom-dialog-buttons" class="dialog-buttons">
-                <!-- Buttons will be added here dynamically -->
-            </div>
-        </div>
-    </div>
 
     <div id="create-project-modal" class="modal">
         <div class="modal-content">

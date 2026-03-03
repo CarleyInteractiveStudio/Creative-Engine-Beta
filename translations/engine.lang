@@ -83,6 +83,8 @@ ENVIANDO: Enviando...
 
 # Launcher
 CARPETA: Carpeta
+ANADIR_PROYECTO: Añadir Proyecto
+CREAR_PROYECTO: Crear Proyecto
 MIS_PROYECTOS: Mis Proyectos
 CREAR_NUEVO_PROYECTO: Crear Nuevo Proyecto
 AVISO_STORAGE: Aviso Importante: Tus proyectos se guardan localmente en la carpeta que elijas. Creative Engine no almacena ninguna información en servidores externos.
@@ -90,6 +92,9 @@ NOMBRE_PROYECTO: Nombre del Proyecto:
 HINT_PROYECTO: Usa letras, números y guiones. Sin espacios ni caracteres especiales.
 CREAR: Crear
 SIN_PROYECTOS: Aún no tienes proyectos. ¡Crea uno para empezar!
+VER_UBICACION: Ver ubicación
+UBICACION_DEL_PROYECTO: Ubicación del Proyecto
+HINT_RUTA_PROYECTO: El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:
 
 # Libraries
 LIBRERIAS: Librerías
@@ -389,6 +394,8 @@ ENVIANDO: Sending...
 
 # Launcher
 CARPETA: Folder
+ANADIR_PROYECTO: Add Project
+CREAR_PROYECTO: Create Project
 MIS_PROYECTOS: My Projects
 CREAR_NUEVO_PROYECTO: Create New Project
 AVISO_STORAGE: Important Notice: Your projects are saved locally in the folder you choose. Creative Engine does not store any information on external servers.
@@ -396,6 +403,9 @@ NOMBRE_PROYECTO: Project Name:
 HINT_PROYECTO: Use letters, numbers, and hyphens. No spaces or special characters.
 CREAR: Create
 SIN_PROYECTOS: You don't have any projects yet. Create one to start!
+VER_UBICACION: View location
+UBICACION_DEL_PROYECTO: Project Location
+HINT_RUTA_PROYECTO: The project is located in the configured projects folder, inside the subfolder:
 
 # Libraries
 LIBRERIAS: Libraries

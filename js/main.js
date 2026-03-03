@@ -1,4 +1,8 @@
 import { Localization } from './engine/Localization.js';
+import * as Dialogs from './editor/ui/DialogWindow.js';
+
+// Guarantee window-level access for non-module scripts (like auth.js)
+window.Dialogs = Dialogs;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize localization
@@ -18,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Buttons
     const startButton = document.getElementById('btn-start');
     const createProjectBtn = document.getElementById('btn-add-project-top');
-    const deleteProjectBtn = document.getElementById('btn-delete-project-top');
+    const selectFolderBtn = document.getElementById('btn-select-folder');
 
     // Footer Links
     const licenseLinks = document.querySelectorAll('[data-i18n="LICENCIA"]');
@@ -152,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (dirHandle.queryPermission) {
                 if (await dirHandle.queryPermission({ mode: 'readwrite' }) !== 'granted') {
                     if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
-                        await showCustomAlert(Localization.get('PERMISOS_REQUERIDOS', 'Permisos Requeridos'), Localization.get('ERROR_PERMISOS_CARPETA', "No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar."));
+                        Dialogs.showNotification(Localization.get('PERMISOS_REQUERIDOS', 'Permisos Requeridos'), Localization.get('ERROR_PERMISOS_CARPETA', "No se pudo obtener permiso para leer la carpeta de proyectos. Por favor, concede el permiso para continuar."));
                         return;
                     }
                 }
@@ -167,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (projects.length === 0) {
-                projectList.innerHTML = '<p class="no-projects-message">No hay proyectos en esta carpeta. ¡Crea uno!</p>';
+                projectList.innerHTML = `<p class="no-projects-message">${Localization.get('SIN_PROYECTOS', 'No hay proyectos en esta carpeta. ¡Crea uno!')}</p>`;
                 return;
             }
 
@@ -186,19 +190,50 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const projectNameEl = document.createElement('h3');
                 projectNameEl.textContent = entry.name;
 
-                const openFolderBtn = document.createElement('div');
-                openFolderBtn.className = 'open-folder-btn';
-                openFolderBtn.innerHTML = '<img src="icons/folder.svg" class="ce-icon" style="filter: invert(0.5);">';
-                openFolderBtn.title = 'Mostrar nombre de la carpeta del proyecto';
+                const projectActions = document.createElement('div');
+                projectActions.className = 'project-actions';
+
+                const openFolderBtn = document.createElement('button');
+                openFolderBtn.className = 'project-action-btn location';
+                openFolderBtn.innerHTML = '<img src="icons/folder.svg" class="ce-icon">';
+                openFolderBtn.title = Localization.get('VER_UBICACION', 'Ver ubicación');
+                openFolderBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const workspace = await getDirHandle();
+                    const workspaceName = workspace ? (workspace.name || 'Creative Engine Projects') : '...';
+
+                    Dialogs.showNotification(
+                        Localization.get('UBICACION_DEL_PROYECTO', 'Ubicación del Proyecto'),
+                        `${Localization.get('HINT_RUTA_PROYECTO', 'El proyecto se encuentra en la carpeta de proyectos configurada, dentro de la subcarpeta:')}\n\n[${workspaceName}] / ${entry.name}`
+                    );
+                };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'project-action-btn delete';
+                deleteBtn.innerHTML = '<img src="icons/trash.svg" class="ce-icon" style="filter: invert(0.3) sepia(1) saturate(10) hue-rotate(-50deg);">';
+                deleteBtn.title = Localization.get('ELIMINAR_PROYECTO', 'Eliminar Proyecto');
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    currentProjectName = entry.name;
+                    handleDeleteProject();
+                };
+
+                projectActions.appendChild(openFolderBtn);
+                projectActions.appendChild(deleteBtn);
 
                 projectItem.appendChild(projectNameEl);
-                projectItem.appendChild(openFolderBtn);
+                projectItem.appendChild(projectActions);
                 projectList.appendChild(projectItem);
+
+                projectItem.onclick = () => {
+                    saveProjectTimestamp(entry.name);
+                    window.location.href = `editor.html?project=${encodeURIComponent(entry.name)}`;
+                };
             });
 
         } catch (error) {
             console.error("Error loading projects:", error);
-            projectList.innerHTML = '<p class="no-projects-message">Error al cargar los proyectos.</p>';
+            projectList.innerHTML = `<p class="no-projects-message">${Localization.get('HA_OCURRIDO_ERROR', 'Error al cargar los proyectos.')}</p>`;
         }
     }
 
@@ -212,20 +247,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const setupFooterLinks = () => {
         licenseLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); openModal(licenseModal); }));
-        policyLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Aviso', 'La política de privacidad estará disponible pronto.'); }));
-        cookiesLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Aviso', 'La política de cookies estará disponible pronto.'); }));
-        whatWeDoLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Donaciones', 'Sus donaciones se utilizan para el mantenimiento de servidores, licencias de software y el desarrollo continuo del motor para que siga siendo gratuito.'); }));
+        policyLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de privacidad estará disponible pronto.'); }));
+        cookiesLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de cookies estará disponible pronto.'); }));
+        whatWeDoLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Donaciones', 'Sus donaciones se utilizan para el mantenimiento de servidores, licencias de software y el desarrollo continuo del motor para que siga siendo gratuito.'); }));
     };
     setupFooterLinks();
 
     if(createProjectBtn) createProjectBtn.addEventListener('click', () => openModal(createProjectModal));
-    if(deleteProjectBtn) deleteProjectBtn.addEventListener('click', () => {
-        const selected = projectList.querySelector('.project-item.selected');
-        if (selected) {
-            currentProjectName = selected.dataset.projectName;
-            handleDeleteProject();
-        } else {
-            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un proyecto de la lista primero haciendo clic sobre él.');
+    if(selectFolderBtn) selectFolderBtn.addEventListener('click', async () => {
+        try {
+            const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'creative-engine-projects' });
+            saveDirHandle(dirHandle);
+            loadProjects();
+        } catch (e) {
+            if (e.name !== 'AbortError') console.error(e);
         }
     });
 
@@ -309,11 +344,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } else {
                     console.error("Auth script not loaded yet or window.auth is not defined.");
-                    await showCustomAlert("Sistema Ocupado", "El sistema de autenticación no está listo. Por favor, espera un momento y vuelve a intentarlo.");
+                    Dialogs.showNotification("Sistema Ocupado", "El sistema de autenticación no está listo. Por favor, espera un momento y vuelve a intentarlo.");
                 }
             } catch (error) {
                 console.error("An error occurred in the start button click handler:", error);
-                await showCustomAlert("Error Inesperado", `Ocurrió un error: ${error.message}`);
+                Dialogs.showNotification("Error Inesperado", `Ocurrió un error: ${error.message}`);
             } finally {
                 startButton.disabled = false;
                 startButton.textContent = originalText;
@@ -330,7 +365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const hasSandbox = !!(navigator.storage && navigator.storage.getDirectory);
 
         if (!hasPicker && !hasSandbox) {
-            await showCustomAlert(Localization.get('ERROR_COMPATIBILIDAD', 'Error de Compatibilidad'), Localization.get('ERROR_FS_NO_SOPORTADO', 'Tu navegador no es compatible con ninguna API de Acceso al Sistema de Archivos.'));
+            window.Dialogs.showNotification(Localization.get('ERROR_COMPATIBILIDAD', 'Error de Compatibilidad'), Localization.get('ERROR_FS_NO_SOPORTADO', 'Tu navegador no es compatible con ninguna API de Acceso al Sistema de Archivos.'));
             return;
         }
 
@@ -338,7 +373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const projectName = projectNameInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '-');
 
         if (!projectName) {
-            await showCustomAlert('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
+            window.Dialogs.showNotification('Entrada Inválida', 'Por favor, introduce un nombre de proyecto válido.');
             return;
         }
 
@@ -352,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Verificar si el proyecto ya existe
             try {
                 await dirHandle.getDirectoryHandle(projectName, { create: false });
-                await showCustomAlert('Error', `El proyecto "${projectName}" ya existe. Por favor, elige otro nombre.`);
+                window.Dialogs.showNotification('Error', `El proyecto "${projectName}" ya existe. Por favor, elige otro nombre.`);
                 return;
             } catch (e) {
                 // Si da error es porque no existe, lo cual es bueno. Continuamos.
@@ -428,98 +463,41 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
 
             projectNameInput.value = '';
             closeModal();
-            await showCustomAlert('¡Éxito!', `Proyecto "${projectName}" creado con éxito.`);
+            Dialogs.showNotification('¡Éxito!', `Proyecto "${projectName}" creado con éxito.`);
             loadProjects();
 
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error('Error creando el proyecto:', error);
-                await showCustomAlert('Error', 'Ocurrió un error al crear el proyecto.');
-            }
-        }
-    });
-
-    if(projectList) projectList.addEventListener('click', (event) => {
-        const openFolderBtn = event.target.closest('.open-folder-btn');
-        const projectItem = event.target.closest('.project-item');
-
-        if (openFolderBtn && projectItem) {
-            event.stopPropagation(); // Prevent opening the project
-            const projectName = projectItem.dataset.projectName;
-            window.Dialogs.showNotification('Ubicación del Proyecto', `El proyecto se encuentra en la carpeta que seleccionaste, dentro de una subcarpeta llamada:\n\n${projectName}`);
-            return;
-        }
-
-        if (projectItem) {
-            const projectName = projectItem.dataset.projectName;
-            if (projectName) {
-                saveProjectTimestamp(projectName);
-                window.location.href = `editor.html?project=${encodeURIComponent(projectName)}`;
+                Dialogs.showNotification('Error', 'Ocurrió un error al crear el proyecto.');
             }
         }
     });
 
     // --- Context Menu Logic ---
-    const contextMenu = document.getElementById('context-menu');
     let currentProjectName = null;
-
-    const hideContextMenu = () => {
-        if (contextMenu) contextMenu.classList.remove('visible');
-        document.querySelectorAll('.project-item.selected').forEach(item => item.classList.remove('selected'));
-    };
-
-    projectList.addEventListener('contextmenu', (e) => {
-        const projectItem = e.target.closest('.project-item');
-        if (!projectItem) {
-            hideContextMenu();
-            return;
-        }
-        e.preventDefault();
-
-        hideContextMenu(); // Hide any previous menu
-        projectItem.classList.add('selected');
-
-        currentProjectName = projectItem.dataset.projectName;
-
-        contextMenu.style.left = `${e.pageX}px`;
-        contextMenu.style.top = `${e.pageY}px`;
-        contextMenu.classList.add('visible');
-    });
-
-    window.addEventListener('click', (e) => {
-        if (!contextMenu.contains(e.target)) {
-            hideContextMenu();
-        }
-    });
 
     const handleDeleteProject = async () => {
         if (!currentProjectName) return;
 
-        const confirmed = await showCustomConfirm(
+        Dialogs.showConfirmation(
             'Confirmar Eliminación',
-            `¿Estás seguro de que quieres eliminar el proyecto "${currentProjectName}"? Esta acción no se puede deshacer.`
-        );
-
-        if (confirmed) {
-            try {
-                const dirHandle = await getDirHandle();
-                await dirHandle.removeEntry(currentProjectName, { recursive: true });
-                await showCustomAlert('Éxito', `Proyecto "${currentProjectName}" eliminado.`);
-                loadProjects();
-            } catch (err) {
-                console.error('Error deleting project:', err);
-                await showCustomAlert('Error', 'No se pudo eliminar el proyecto.');
+            `¿Estás seguro de que quieres eliminar el proyecto "${currentProjectName}"? Esta acción no se puede deshacer.`,
+            async () => {
+                try {
+                    const dirHandle = await getDirHandle();
+                    await dirHandle.removeEntry(currentProjectName, { recursive: true });
+                    Dialogs.showNotification('Éxito', `Proyecto "${currentProjectName}" eliminado.`);
+                    loadProjects();
+                } catch (err) {
+                    console.error('Error deleting project:', err);
+                    Dialogs.showNotification('Error', 'No se pudo eliminar el proyecto.');
+                }
             }
-        }
+        );
     };
 
-    document.getElementById('ctx-delete').addEventListener('click', async () => {
-        hideContextMenu();
-        handleDeleteProject();
-    });
-
-    document.getElementById('ctx-rename').addEventListener('click', () => {
-        hideContextMenu();
+    const handleRenameProject = () => {
         if (!currentProjectName) return;
 
         window.Dialogs.showPrompt(
@@ -625,49 +603,6 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
         }
     }
 
-    // --- Custom Dialog Logic ---
-    const dialogModal = document.getElementById('custom-dialog-modal');
-    const dialogTitle = document.getElementById('custom-dialog-title');
-    const dialogMessage = document.getElementById('custom-dialog-message');
-    const dialogButtons = document.getElementById('custom-dialog-buttons');
-
-    function showCustomAlert(title, message) {
-        dialogTitle.textContent = title;
-        dialogMessage.textContent = message;
-        dialogButtons.innerHTML = '<button class="btn-primary">Aceptar</button>';
-
-        dialogModal.classList.add('is-open');
-
-        return new Promise(resolve => {
-            dialogButtons.querySelector('button').addEventListener('click', () => {
-                dialogModal.classList.remove('is-open');
-                resolve();
-            }, { once: true });
-        });
-    }
-
-    function showCustomConfirm(title, message) {
-        dialogTitle.textContent = title;
-        dialogMessage.textContent = message;
-        dialogButtons.innerHTML = `
-            <button class="btn-secondary">Cancelar</button>
-            <button class="btn-primary">Aceptar</button>
-        `;
-
-        dialogModal.classList.add('is-open');
-
-        return new Promise((resolve, reject) => {
-            dialogButtons.querySelector('.btn-primary').addEventListener('click', () => {
-                dialogModal.classList.remove('is-open');
-                resolve(true);
-            }, { once: true });
-
-            dialogButtons.querySelector('.btn-secondary').addEventListener('click', () => {
-                dialogModal.classList.remove('is-open');
-                resolve(false); // Resolve with false for "Cancel"
-            }, { once: true });
-        });
-    }
 
 
     // --- Preferences Logic ---

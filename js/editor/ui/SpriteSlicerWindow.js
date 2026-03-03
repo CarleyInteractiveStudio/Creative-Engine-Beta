@@ -1,4 +1,5 @@
 import { clearAssetCache } from '../../engine/AssetUtils.js';
+import * as Dialogs from './DialogWindow.js';
 
 // --- Module State ---
 let localDom = {};
@@ -91,7 +92,7 @@ export function initialize(dependencies) {
     });
 
     localDom.newSpriteBtn.addEventListener('click', () => {
-        window.Dialogs.showPrompt("Nuevo Sprite", "Introduce el tamaño (ej: 256x256 o solo 256):", (val) => {
+        Dialogs.showPrompt("Nuevo Sprite", "Introduce el tamaño (ej: 256x256 o solo 256):", (val) => {
             if (!val) return;
             let [w, h] = val.toLowerCase().split('x').map(n => parseInt(n.trim()));
             if (isNaN(w)) return;
@@ -190,7 +191,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
         const file = await fileHandle.getFile();
         const L = window.Localization;
         if (!file.type.startsWith('image/')) {
-            window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
+            Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_IMAGEN_INVALIDA', "El archivo seleccionado no es una imagen válida."));
             return;
         }
 
@@ -230,7 +231,7 @@ async function loadImageFromFileHandle(fileHandle, directoryHandle, saveMetaCb) 
     } catch (error) {
         console.error("Error al cargar la imagen:", error);
         const L = window.Localization;
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen."));
+        Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_CARGAR_IMAGEN', "No se pudo cargar la imagen."));
         resetToDefaultState();
     }
 }
@@ -372,11 +373,11 @@ function executeSlice() {
 async function createSpriteAsset() {
     const L = window.Localization;
     if (generatedSlices.length === 0) {
-        window.Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
+        Dialogs.showNotification(L.get('AVISO', 'Aviso'), L.get('AVISO_SIN_SLICES', "No hay slices para aplicar. Usa el botón 'Slice' primero."));
         return;
     }
     if (!createAssetCallback || !getAssetsDirectoryHandle || !updateAssetBrowserCallback || !currentFileHandle) {
-        window.Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DEPS_ASSET', "Faltan funciones esenciales del editor para crear el asset."));
+        Dialogs.showNotification(L.get('ERROR', 'Error'), L.get('ERROR_DEPS_ASSET', "Faltan funciones esenciales del editor para crear el asset."));
         console.error("Error al crear/guardar asset: Faltan dependencias.");
         return;
     }
@@ -408,7 +409,7 @@ async function createSpriteAsset() {
         // For simplicity, if it's a new sprite, we'll prompt for a filename and save the .png
         if (currentFileHandle.name === "NewSprite.png") {
             const fileName = await new Promise(resolve => {
-                window.Dialogs.showPrompt("Guardar Imagen", "Nombre del archivo de imagen (.png):", (name) => {
+                Dialogs.showPrompt("Guardar Imagen", "Nombre del archivo de imagen (.png):", (name) => {
                     if (!name) resolve(null);
                     resolve(name.endsWith('.png') ? name : `${name}.png`);
                 });
@@ -456,7 +457,7 @@ async function createSpriteAsset() {
             const message = isEditing
                 ? L.get('EXITO_ASSET_GUARDADO_CON', "Asset '{name}' guardado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length)
                 : L.get('EXITO_ASSET_CREADO_CON', "Asset '{name}' creado con {count} sprites.").replace('{name}', assetName).replace('{count}', generatedSlices.length);
-            window.Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
+            Dialogs.showNotification(L.get('EXITO', "Éxito"), message);
 
             await updateAssetBrowserCallback(); // Refresh to show new/updated file
             localDom.panel.classList.add('hidden');
@@ -466,7 +467,7 @@ async function createSpriteAsset() {
     } catch (error) {
         console.error(`Error al ${isEditing ? 'guardar' : 'crear'} el asset de sprite:`, error);
         const errorMsg = isEditing ? L.get('ERROR_GUARDAR_CE_SPRITE', 'No se pudo guardar el archivo .ceSprite') : L.get('ERROR_CREAR_CE_SPRITE', 'No se pudo crear el archivo .ceSprite');
-        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${errorMsg}: ${error.message}`);
+        Dialogs.showNotification(L.get('ERROR', "Error"), `${errorMsg}: ${error.message}`);
     }
 }
 
@@ -592,7 +593,7 @@ async function loadCeSpriteForEditing(ceSpriteFileHandle, directoryHandle) {
     } catch (error) {
         console.error("Error loading .ceSprite for editing:", error);
         const L = window.Localization;
-        window.Dialogs.showNotification(L.get('ERROR', "Error"), `${L.get('ERROR_CARGAR_CE_SPRITE', 'No se pudo cargar el archivo .ceSprite para editar')}: ${ceSpriteFileHandle.name}`);
+        Dialogs.showNotification(L.get('ERROR', "Error"), `${L.get('ERROR_CARGAR_CE_SPRITE', 'No se pudo cargar el archivo .ceSprite para editar')}: ${ceSpriteFileHandle.name}`);
         resetToDefaultState();
     }
 }
