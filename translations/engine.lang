@@ -51,6 +51,19 @@ QUOTE_10: La creatividad no se enseña. Se desbloquea.
 # Auth State
 HOLA: Hola
 CERRAR_SESION: Cerrar Sesión
+AUTH_LOGIN: Iniciar Sesión
+AUTH_EMAIL: Correo Electrónico
+AUTH_PASSWORD: Contraseña
+AUTH_NO_ACCOUNT: ¿No tienes una cuenta?
+AUTH_FORGOT_PASS: ¿Olvidaste tu contraseña?
+AUTH_SIGNUP: Registrarse
+AUTH_USERNAME: Nombre de Usuario
+AUTH_PASS_HINT: La contraseña debe tener al menos 6 caracteres.
+AUTH_ALREADY_ACCOUNT: ¿Ya tienes una cuenta?
+AUTH_RESET_PASS: Recuperar Contraseña
+AUTH_RESET_HINT: Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+AUTH_SEND_RESET: Enviar Enlace de Recuperación
+AUTH_BACK_TO_LOGIN: Volver a Iniciar Sesión
 NO_TIENES_CUENTA: ¿No tienes una cuenta?
 REGISTRARSE: Regístrate
 OLVIDE_CONTRASENA: Olvidé mi contraseña
@@ -344,6 +357,19 @@ QUOTE_10: Creativity isn't taught. It's unlocked.
 # Auth State
 HOLA: Hello
 CERRAR_SESION: Log Out
+AUTH_LOGIN: Log In
+AUTH_EMAIL: Email Address
+AUTH_PASSWORD: Password
+AUTH_NO_ACCOUNT: Don't have an account?
+AUTH_FORGOT_PASS: Forgot your password?
+AUTH_SIGNUP: Sign Up
+AUTH_USERNAME: Username
+AUTH_PASS_HINT: Password must be at least 6 characters long.
+AUTH_ALREADY_ACCOUNT: Already have an account?
+AUTH_RESET_PASS: Recover Password
+AUTH_RESET_HINT: Enter your email and we'll send you a link to reset your password.
+AUTH_SEND_RESET: Send Recovery Link
+AUTH_BACK_TO_LOGIN: Back to Login
 NO_TIENES_CUENTA: Don't have an account?
 REGISTRARSE: Sign Up
 OLVIDE_CONTRASENA: Forgot my password
