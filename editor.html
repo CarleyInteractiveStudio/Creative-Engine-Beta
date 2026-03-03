@@ -1542,13 +1542,35 @@ public star() {
         <div class="panel-header">
             <span data-i18n="EDITOR_SPRITES">Editor de Sprites</span>
             <div class="panel-header-controls">
+                <button id="slicer-new-sprite-btn" class="panel-tool-btn" data-i18n="NUEVO_SPRITE">Nuevo Sprite</button>
                 <button id="slicer-load-image-btn" class="panel-tool-btn" data-i18n="CARGAR_IMAGEN">Cargar Imagen</button>
                 <button id="slicer-delete-sprite-btn" class="panel-tool-btn danger-btn" data-i18n="ELIMINAR_SPRITE">Eliminar Sprite</button>
                 <button id="slicer-create-asset-btn" class="panel-tool-btn primary-btn" data-i18n="CREAR_ASSET_SPRITE">Crear Asset de Sprite</button>
                 <button class="close-panel-btn" data-panel="sprite-slicer-panel">&times;</button>
             </div>
         </div>
-        <div class="panel-content no-padding">
+        <div class="panel-content no-padding" style="display: flex; flex-direction: column;">
+            <div id="slicer-toolbar" class="hidden">
+                <div class="toolbar-bubble-container">
+                    <div class="tool-bubble">
+                        <button class="tool-btn active" data-tool="pencil" title="Lápiz" data-i18n-title="LAPIZ"><img src="icons/pencil.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="eraser" title="Goma de Borrar" data-i18n-title="GOMA"><img src="icons/eraser.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="line" title="Línea" data-i18n-title="LINEA"><img src="icons/minus.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="square" title="Cuadrado" data-i18n-title="CUADRADO"><img src="icons/square.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="circle" title="Círculo" data-i18n-title="CIRCULO"><img src="icons/target.svg" class="ce-icon"></button>
+                        <button class="tool-btn" data-tool="triangle" title="Triángulo" data-i18n-title="TRIANGULO"><img src="icons/mountain.svg" class="ce-icon"></button>
+                    </div>
+                    <div class="toolbar-group">
+                        <label for="slicer-color-picker" data-i18n="COLOR">Color:</label>
+                        <input type="color" id="slicer-color-picker" value="#ffffff">
+                    </div>
+                    <div class="toolbar-group">
+                        <label for="slicer-brush-size" data-i18n="TAMANO">Tamaño:</label>
+                        <input type="range" id="slicer-brush-size" min="1" max="50" value="2">
+                        <span id="slicer-brush-size-val">2</span>
+                    </div>
+                </div>
+            </div>
             <div id="sprite-slicer-overlay" class="panel-overlay-message">
                 <p data-i18n="HINT_CARGAR_SPRITES">Carga una imagen para empezar a editar sprites.</p>
                 <p data-i18n="HINT_CARGAR_SPRITES_2">Puedes hacerlo desde el botón "Cargar Imagen" o abriendo un asset de imagen desde el Inspector.</p>
