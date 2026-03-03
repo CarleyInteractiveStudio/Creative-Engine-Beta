@@ -162,6 +162,10 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificación
 TIENDA_ASSETS: Tienda de asset
+VISTA_ESCENA: Escena
+VISTA_JUEGO: Juego
+VISTA_CODIGO: Codigo
+VISTA_TERMINAL: Terminal
 
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Colisionador de Círculo 2D
@@ -425,6 +429,10 @@ EDITOR_SPRITES: Sprite Editor
 CONTROL_AMBIENTE: Environment Control
 SISTEMA_VERIFICACION: Verification System
 TIENDA_ASSETS: Asset Store
+VISTA_ESCENA: Scene
+VISTA_JUEGO: Game
+VISTA_CODIGO: Code
+VISTA_TERMINAL: Terminal
 
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Circle Collider 2D
@@ -688,6 +696,10 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificação
 TIENDA_ASSETS: Loja de Assets
+VISTA_ESCENA: Cena
+VISTA_JUEGO: Jogo
+VISTA_CODIGO: Codigo
+VISTA_TERMINAL: Terminal
 
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: Colisor de Círculo 2D
@@ -951,6 +963,10 @@ EDITOR_SPRITES: Редактор спрайтов
 CONTROL_AMBIENTE: Управление окружением
 SISTEMA_VERIFICACION: Система проверки
 TIENDA_ASSETS: Магазин ассетов
+VISTA_ESCENA: Сцена
+VISTA_JUEGO: Игра
+VISTA_CODIGO: Код
+VISTA_TERMINAL: Терм.
 
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D Круговой коллайдер
@@ -1214,6 +1230,10 @@ EDITOR_SPRITES: 精灵编辑器
 CONTROL_AMBIENTE: 环境控制
 SISTEMA_VERIFICACION: 验证系统
 TIENDA_ASSETS: 资源商店
+VISTA_ESCENA: 场景
+VISTA_JUEGO: 游戏
+VISTA_CODIGO: 代码
+VISTA_TERMINAL: 终端
 
 # Hierarchy Context
 CIRCLE_COLLIDER_2D: 2D 圆形碰撞体

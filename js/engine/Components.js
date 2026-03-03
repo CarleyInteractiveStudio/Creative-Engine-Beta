@@ -128,6 +128,9 @@ export class CreativeScriptBehavior {
                 if (!this.hasOwnProperty('transformacion')) {
                     this['transformacion'] = component;
                 }
+                if (!this.hasOwnProperty('posicion')) {
+                    this['posicion'] = component;
+                }
             }
             if (componentName === 'UITransform') {
                 if (!this.hasOwnProperty('transformacionUI')) {

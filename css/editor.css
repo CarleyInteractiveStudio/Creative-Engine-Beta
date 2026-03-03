@@ -641,9 +641,18 @@ body {
     background-color: var(--bg-primary);
     border-radius: 4px;
     padding: 2px;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.view-toggle::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
 }
 
 .view-toggle-btn {
+    flex-shrink: 0;
     background-color: transparent;
     border: none;
     color: var(--text-secondary);
@@ -2673,6 +2682,7 @@ body {
 .game-controls {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .game-controls button {
