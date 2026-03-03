@@ -544,7 +544,7 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
             },
             currentProjectName // Valor por defecto en el input
         );
-    });
+    };
 
 
     // --- Music Logic ---

@@ -3564,16 +3564,18 @@ body.mobile-mode .grid-item {
  * like borders or backgrounds itself. It is a flex container to center its child.
  */
 .custom-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     display: none; /* Hidden by default */
     align-items: center;
     justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5); /* Add a backdrop */
-    z-index: 9998; /* High z-index, below loading overlay */
+    background-color: rgba(0, 0, 0, 0.85); /* Darker backdrop */
+    z-index: 40000 !important; /* Extremely high z-index */
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* The .is-open class makes the dialog visible */

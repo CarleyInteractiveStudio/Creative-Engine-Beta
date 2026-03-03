@@ -68,8 +68,10 @@ class DialogWindow {
 
     show() {
         // Calculate the highest z-index currently in use by panels or other dialogs
-        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open'))
-            .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), 0);
+        // Start with a high base (20000) to ensure it's above site footer and other elements
+        const baseZ = 20000;
+        const highestZ = Array.from(document.querySelectorAll('.floating-panel, .custom-dialog.is-open, .modal.is-open'))
+            .reduce((maxZ, el) => Math.max(maxZ, parseInt(window.getComputedStyle(el).zIndex) || 0), baseZ);
 
         // Set the new dialog's z-index to be on top of everything else
         this.dialogElement.style.zIndex = highestZ + 1;
