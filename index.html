@@ -53,19 +53,6 @@
 
     <main>
         <div id="welcome-view">
-            <!-- Contenedor para la secuencia de introducción animada -->
-            <div id="intro-sequence" style="display: none;">
-                <div id="intro-step-1" class="intro-step">
-                    <img src="image/Logo_C.png" alt="Creative Engine Logo">
-                </div>
-                <div id="intro-step-2" class="intro-step">
-                    <img src="image/Logo_C.png" alt="Carley Interactive Studio Logo">
-                </div>
-                <div id="intro-step-3" class="intro-step">
-                    <img src="image/flygame.png" alt="Flygame Logo">
-                </div>
-            </div>
-
             <!-- Contenido principal -->
             <div id="main-content" class="intro-step visible">
                 <section id="welcome">
@@ -86,33 +73,13 @@
                 </section>
 
                 <section id="actions">
-                    <button id="btn-start" class="rainbow-animated-btn" data-i18n="EMPEZAR">Empezar a Crear</button>
-                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-discord">
-                        <img src="icons/bot.svg" class="ce-icon"> <span data-i18n="DISCORD">Unirte a Discord</span>
+                    <a href="#" id="btn-start" class="main-cta-link">
+                        <img src="icons/play.svg" class="ce-icon"> <span data-i18n="EMPEZAR">Empezar a Crear</span>
                     </a>
-                    <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-donate-new">
-                        <img src="icons/heart.svg" class="ce-icon"> <span data-i18n="DONAR_BOTON">Donar</span>
-                    </a>
-                    <a href="#" target="_blank" rel="noopener noreferrer" class="button-link rainbow-animated-btn" id="btn-what-we-do">
-                        <img src="icons/help-circle.svg" class="ce-icon"> <span data-i18n="QUE_HACEMOS_DONACIONES">¿Qué hacemos con sus donaciones?</span>
+                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="main-cta-link">
+                        <img src="icons/bot.svg" class="ce-icon"> Discord
                     </a>
                 </section>
-
-                <div class="social-channels">
-                    <h3 data-i18n="NUESTROS_CANALES">Nuestros Canales</h3>
-                    <div class="social-buttons">
-                        <a href="https://www.facebook.com/profile.php?id=61575555791348" target="_blank" class="social-btn"><img src="icons/facebook.svg" class="ce-icon"> Facebook</a>
-                        <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" class="social-btn"><img src="icons/youtube.svg" class="ce-icon"> YouTube</a>
-                        <a href="https://whatsapp.com/channel/0029VbBXP5VL7UVaUDazCj0U" target="_blank" class="social-btn"><img src="icons/whatsapp.svg" class="ce-icon"> WhatsApp</a>
-                        <a href="https://www.facebook.com/groups/1264745161495908" target="_blank" class="social-btn"><img src="icons/facebook.svg" class="ce-icon"> Grupo de Facebook</a>
-                    </div>
-                </div>
-
-                <div class="footer-links">
-                    <a href="#" id="link-license" data-i18n="LICENCIA">Licencia</a>
-                    <a href="#" id="link-policy" data-i18n="POLITICA_PRIVACIDAD">Política de Privacidad</a>
-                    <a href="#" id="link-cookies" data-i18n="COOKIES">Cookies</a>
-                </div>
             </div>
         </div>
 
@@ -138,10 +105,60 @@
         </div>
     </main>
 
-    <footer>
-        <p>&copy; 2026 Carley Interactive Studio. Todos los derechos reservados.</p>
-    </footer>
     </div> <!-- Cierre de .container -->
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-column">
+                <h4 data-i18n="WELCOME_TITLE">Creative Engine</h4>
+                <a href="#" class="footer-link" id="btn-start-footer">
+                    <img src="icons/play.svg" class="ce-icon"> <span data-i18n="EMPEZAR">Empezar a Crear</span>
+                </a>
+                <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="footer-link">
+                    <img src="icons/bot.svg" class="ce-icon"> Discord
+                </a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="NUESTROS_CANALES">Nuestros Canales</h4>
+                <a href="https://www.facebook.com/profile.php?id=61575555791348" target="_blank" class="footer-link">
+                    <img src="icons/facebook.svg" class="ce-icon"> Facebook
+                </a>
+                <a href="https://www.youtube.com/@CarleyInteractiveStudioOficial" target="_blank" class="footer-link">
+                    <img src="icons/youtube.svg" class="ce-icon"> YouTube
+                </a>
+                <a href="https://whatsapp.com/channel/0029VbBXP5VL7UVaUDazCj0U" target="_blank" class="footer-link">
+                    <img src="icons/whatsapp.svg" class="ce-icon"> WhatsApp
+                </a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="FOROS">Foros</h4>
+                <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="footer-link">
+                    <img src="icons/bot.svg" class="ce-icon"> Discord
+                </a>
+                <a href="https://www.facebook.com/groups/1264745161495908" target="_blank" class="footer-link">
+                    <img src="icons/facebook.svg" class="ce-icon"> Grupo de Facebook
+                </a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="DONACIONES">Donaciones</h4>
+                <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" class="footer-link">
+                    <img src="icons/heart.svg" class="ce-icon"> <span data-i18n="DONAR_BOTON">Donar</span>
+                </a>
+                <a href="#" class="footer-link" id="link-what-we-do-footer">
+                    <img src="icons/help-circle.svg" class="ce-icon"> <span data-i18n="QUE_HACEMOS_DONACIONES">¿Qué hacemos con sus donaciones?</span>
+                </a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="LEGAL">Legal</h4>
+                <a href="#" class="footer-link" id="link-license-footer" data-i18n="LICENCIA">Licencia</a>
+                <a href="#" class="footer-link" id="link-policy-footer" data-i18n="POLITICA_PRIVACIDAD">Política de Privacidad</a>
+                <a href="#" class="footer-link" id="link-cookies-footer" data-i18n="COOKIES">Cookies</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p data-i18n="COPYRIGHT_FOOTER">&copy; 2026 Carley Interactive Studio. Todos los derechos reservados.</p>
+        </div>
+    </footer>
 
     <!-- Modals -->
     <div id="custom-dialog-modal" class="modal">

@@ -17,9 +17,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Buttons
     const startButton = document.getElementById('btn-start');
-    console.log("Attempting to find #btn-start. Found element:", startButton); // Debugging line
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const deleteProjectBtn = document.getElementById('btn-delete-project-top');
+
+    // Footer Links
+    const licenseLinks = document.querySelectorAll('[data-i18n="LICENCIA"]');
+    const policyLinks = document.querySelectorAll('[data-i18n="POLITICA_PRIVACIDAD"]');
+    const cookiesLinks = document.querySelectorAll('[data-i18n="COOKIES"]');
+    const whatWeDoLinks = document.querySelectorAll('[data-i18n="QUE_HACEMOS_DONACIONES"]');
+    const startFooterBtn = document.getElementById('btn-start-footer');
 
     // Modals & Forms
     const supportModal = document.getElementById('support-modal');
@@ -204,8 +210,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (createProjectModal) createProjectModal.classList.remove('is-open');
     };
 
-    if(supportButton) supportButton.addEventListener('click', () => openModal(supportModal));
-    if(licenseButton) licenseButton.addEventListener('click', () => openModal(licenseModal));
+    const setupFooterLinks = () => {
+        licenseLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); openModal(licenseModal); }));
+        policyLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Aviso', 'La política de privacidad estará disponible pronto.'); }));
+        cookiesLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Aviso', 'La política de cookies estará disponible pronto.'); }));
+        whatWeDoLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); window.Dialogs.showNotification('Donaciones', 'Sus donaciones se utilizan para el mantenimiento de servidores, licencias de software y el desarrollo continuo del motor para que siga siendo gratuito.'); }));
+    };
+    setupFooterLinks();
+
     if(createProjectBtn) createProjectBtn.addEventListener('click', () => openModal(createProjectModal));
     if(deleteProjectBtn) deleteProjectBtn.addEventListener('click', () => {
         const selected = projectList.querySelector('.project-item.selected');
@@ -213,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentProjectName = selected.dataset.projectName;
             handleDeleteProject();
         } else {
-            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un proyecto de la lista primero haciendo clic derecho sobre él.');
+            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un proyecto de la lista primero haciendo clic sobre él.');
         }
     });
 

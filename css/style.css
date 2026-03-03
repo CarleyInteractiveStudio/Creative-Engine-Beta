@@ -19,28 +19,28 @@ body {
     color: var(--primary-text-color);
     font-family: var(--font-family);
     margin: 0;
-    padding: 20px;
+    padding: 0;
     text-align: center;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
-
-
 
 /* --- Main Container --- */
 .container {
     display: flex;
     flex-direction: column;
     max-width: 800px;
-    width: 100%;
-    margin: 20px auto;
+    width: 95%;
+    margin: 40px auto;
     padding: 40px;
     background-color: var(--secondary-bg-color);
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 1px solid var(--border-color);
+    box-sizing: border-box;
 }
 
 /* --- Header & Main Content --- */
@@ -66,7 +66,7 @@ header h1 { color: var(--highlight-color); font-size: 2.5em; margin: 0; font-wei
 }
 
 #header-controls {
-    margin-left: auto; /* Pushes auth button to the right */
+    margin-left: auto;
 }
 
 #btn-mute-music {
@@ -76,23 +76,6 @@ header h1 { color: var(--highlight-color); font-size: 2.5em; margin: 0; font-wei
     cursor: pointer;
     color: var(--primary-text-color);
     padding: 0 15px;
-}
-
-#auth-status-container { text-align: right; }
-#btn-auth-action {
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--accent-color);
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease-in-out;
-}
-#btn-auth-action:hover {
-    background-color: var(--accent-color);
-    color: var(--secondary-bg-color);
-    border-color: var(--accent-color);
 }
 
 .account-btn {
@@ -115,231 +98,137 @@ header h1 { color: var(--highlight-color); font-size: 2.5em; margin: 0; font-wei
     border-color: var(--accent-color);
 }
 
-.account-btn .ce-icon {
-    width: 16px;
-    height: 16px;
-}
-
 main { padding: 20px 0; }
 
-/* --- Intro Animation Styles --- */
-#intro-sequence {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 30px;
-    min-height: 180px; /* Pre-allocate space */
-}
+/* --- Welcome Text --- */
+#welcome h2 { font-size: 2.2em; margin-bottom: 15px; color: var(--highlight-color); }
 
-.intro-step {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-}
-
-.intro-step.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-#intro-sequence img {
-    max-width: 150px;
-    height: auto;
-    border-radius: 8px;
-    background-color: rgba(0,0,0,0.2);
-    padding: 10px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-
-
-#welcome h2 { font-size: 2em; margin-bottom: 8px; color: var(--highlight-color); }
-#welcome .description { font-size: 1.1em; line-height: 1.6; max-width: 600px; margin: 0 auto 15px auto; }
-#motivational-quote {
-    font-size: 1.2em;
-    font-style: italic;
-    color: var(--accent-color);
-    margin: 20px auto;
-    min-height: 50px; /* Prevent layout shift */
-    transition: opacity 0.5s ease-in-out;
-}
-.quote-fade-out { opacity: 0; }
-.credits { font-size: 0.9em; margin-top: 30px; color: #8b949e; }
-
-/* --- Action Buttons --- */
-#actions {
-    margin-top: 25px;
-    margin-bottom: 30px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 15px;
-}
-
-#actions button {
-    background-color: #21262d;
-    color: var(--highlight-color);
-    border: 1px solid var(--border-color);
-    padding: 14px 20px;
-    font-size: 1em;
-    font-weight: 500;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-}
-#actions button:hover {
-    background-color: #484f58;
-    border-color: var(--accent-color);
-    transform: scale(1.05);
-}
-
-/* Style for <a> tags that should look like buttons */
-.button-link {
-    display: inline-block;
-    background-color: #21262d;
-    color: var(--highlight-color);
-    border: 1px solid var(--border-color);
-    padding: 14px 20px;
-    font-size: 1em;
-    font-weight: 500;
-    border-radius: 8px;
-    cursor: pointer;
-    text-decoration: none;
-    text-align: center;
-    transition: all 0.2s ease-in-out;
-}
-.button-link:hover {
-    background-color: #484f58;
-    border-color: var(--accent-color);
-    transform: scale(1.05);
-}
-
-#btn-donate {
-    background-color: #00457C; /* PayPal Blue */
-    border-color: #00457C;
-    color: #ffffff;
-    font-weight: bold;
-}
-#btn-donate:hover {
-    background-color: #002e54;
-    border-color: #002e54;
-}
-
-#btn-discord {
-    background-color: #5865F2; /* Discord Blurple */
-    border-color: #5865F2;
-    color: #ffffff;
-}
-#btn-discord:hover {
-    background-color: #4f5bda;
-    border-color: #4f5bda;
-}
-
-#actions button#btn-start {
-    background-color: var(--button-bg-color);
-    border-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    font-weight: bold;
-}
-#actions button#btn-start:hover {
-    background-color: var(--button-hover-bg-color);
-    border-color: var(--button-hover-bg-color);
-}
-
-/* --- Welcome Text Container --- */
 .welcome-text-container {
     max-width: 700px;
     margin: 0 auto 30px auto;
     text-align: left;
     background: rgba(255, 255, 255, 0.03);
-    padding: 20px;
+    padding: 25px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
 }
 
 .welcome-text-container p {
-    margin-bottom: 15px;
-    line-height: 1.6;
+    margin-bottom: 20px;
+    line-height: 1.7;
+    font-size: 1.05em;
 }
 
 .description-warning {
     color: #f8e3a1;
-    border-left: 3px solid #f8e3a1;
-    padding-left: 15px;
+    border-left: 4px solid #f8e3a1;
+    padding-left: 20px;
 }
 
 .description-community {
     color: var(--accent-color);
 }
 
-/* --- Social Channels --- */
-.social-channels {
-    margin: 40px 0;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 12px;
+#motivational-quote {
+    font-size: 1.2em;
+    font-style: italic;
+    color: var(--accent-color);
+    margin: 20px auto;
+    min-height: 50px;
+    transition: opacity 0.5s ease-in-out;
 }
 
-.social-channels h3 {
-    margin-bottom: 15px;
-    color: var(--highlight-color);
-}
-
-.social-buttons {
+/* --- Action Buttons --- */
+#actions {
+    margin-top: 40px;
     display: flex;
-    flex-wrap: wrap;
     justify-content: center;
-    gap: 15px;
+    gap: 40px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 40px;
 }
 
-.social-btn {
+.main-cta-link {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 18px;
-    background: #21262d;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
+    gap: 15px;
+    color: var(--highlight-color);
+    text-decoration: none;
+    font-size: 1.4em;
+    font-weight: 600;
+    transition: color 0.2s, transform 0.2s;
+    padding: 10px 20px;
+}
+
+.main-cta-link:hover {
+    color: var(--accent-color);
+    transform: translateY(-3px);
+}
+
+.main-cta-link .ce-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* --- Site Footer (Fat Footer) --- */
+.site-footer {
+    background-color: #010409;
+    padding: 80px 40px 40px 40px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 80px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.footer-content {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 50px;
+    text-align: left;
+}
+
+.footer-column h4 {
+    color: var(--highlight-color);
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.2em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent-color);
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+.footer-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     color: var(--primary-text-color);
     text-decoration: none;
-    font-weight: 500;
-    transition: all 0.2s;
+    margin-bottom: 15px;
+    font-size: 1em;
+    transition: color 0.2s, transform 0.2s;
 }
 
-.social-btn:hover {
-    background: #30363d;
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
+.footer-link:hover {
+    color: var(--accent-color);
+    transform: translateX(5px);
 }
 
-.social-btn .ce-icon {
+.footer-link .ce-icon {
     width: 18px;
     height: 18px;
+    opacity: 0.8;
 }
 
-/* --- Footer Links --- */
-.footer-links {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.footer-links a {
-    color: var(--accent-color);
-    text-decoration: none;
-    font-size: 0.9em;
-}
-
-.footer-links a:hover {
-    text-decoration: underline;
-}
-
-/* --- Footer --- */
-footer {
-    padding-top: 20px;
+.footer-bottom {
+    margin-top: 80px;
+    padding-top: 30px;
     border-top: 1px solid var(--border-color);
+    text-align: center;
+    color: #8b949e;
     font-size: 0.9em;
-    color: #8b949e; /* GitHub Dimmed faint text */
 }
 
 /* --- Modal Styles --- */
@@ -347,39 +236,39 @@ footer {
     display: none;
 }
 .modal.is-open {
-    display: flex; /* Use Flexbox for centering */
+    display: flex;
     align-items: center;
     justify-content: center;
     position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); animation: fadeIn 0.3s ease;
+    background-color: rgba(0, 0, 0, 0.85); animation: fadeIn 0.3s ease;
 }
 .modal-content {
     background: #161b22;
     padding: 30px; border: 1px solid var(--border-color);
-    width: 90%; max-width: 500px; /* Slightly smaller for alerts */
+    width: 90%; max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-    border-radius: 10px;
-    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); animation: slideIn 0.4s ease;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); animation: slideIn 0.4s ease;
     position: relative;
     z-index: 1001;
-    text-align: center; /* Center text for dialogs */
+    text-align: center;
 }
 
 .account-modal-content {
-    max-width: 800px;
+    max-width: 850px;
     width: 95%;
     padding: 0;
     overflow: hidden;
-    height: 600px;
+    height: 650px;
     display: flex;
     flex-direction: column;
 }
 
 .account-modal-content .close-button {
     position: absolute;
-    top: 15px;
-    right: 20px;
+    top: 20px;
+    right: 25px;
     z-index: 10;
 }
 
@@ -389,10 +278,10 @@ footer {
 }
 
 .split-sidebar {
-    width: 40%;
-    background: rgba(0, 0, 0, 0.2);
+    width: 35%;
+    background: rgba(0, 0, 0, 0.25);
     border-right: 1px solid var(--border-color);
-    padding: 20px 0;
+    padding: 30px 0;
     text-align: left;
 }
 
@@ -403,13 +292,14 @@ footer {
 }
 
 .split-sidebar li {
-    padding: 12px 20px;
+    padding: 15px 30px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 12px;
-    transition: background 0.2s;
+    gap: 15px;
+    transition: background 0.2s, color 0.2s;
     color: var(--primary-text-color);
+    font-weight: 500;
 }
 
 .split-sidebar li:hover {
@@ -419,12 +309,12 @@ footer {
 .split-sidebar li.active {
     background: rgba(88, 166, 255, 0.1);
     color: var(--accent-color);
-    border-left: 3px solid var(--accent-color);
+    border-left: 4px solid var(--accent-color);
 }
 
 .split-content {
-    width: 60%;
-    padding: 40px;
+    width: 65%;
+    padding: 50px;
     overflow-y: auto;
     text-align: left;
 }
@@ -437,179 +327,80 @@ footer {
     display: block;
 }
 
-.modal-input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    background-color: var(--primary-bg-color);
-    color: var(--primary-text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-sizing: border-box;
-}
-
-.field-description {
-    font-size: 0.85em;
-    color: #8b949e;
-    margin-top: -10px;
-    margin-bottom: 20px;
-}
 .close-button {
-    color: #8b949e; float: right; font-size: 32px; font-weight: bold; cursor: pointer; line-height: 0.8;
+    color: #8b949e; float: right; font-size: 36px; font-weight: bold; cursor: pointer; line-height: 0.7;
 }
-.close-button:hover, .close-button:focus { color: var(--button-text-color); }
-
-.modal h2 { color: var(--accent-color); margin-top: 0; }
-.modal p { color: var(--primary-text-color); line-height: 1.6; }
-.modal hr { border-color: var(--border-color); margin: 25px 0; }
+.close-button:hover { color: var(--highlight-color); }
 
 /* Form Styles */
 .modal form label {
     display: block;
     text-align: left;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: 500;
-    color: var(--primary-text-color);
+    color: var(--highlight-color);
 }
-.modal form input, .modal form textarea {
+.modal form input, .modal form textarea, .modal-input {
     width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
+    padding: 12px;
+    margin-bottom: 20px;
     background-color: var(--primary-bg-color);
     color: var(--primary-text-color);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     box-sizing: border-box;
-    transition: border-color 0.2s;
+    font-size: 1em;
 }
-.modal form input:focus, .modal form textarea:focus {
+.modal form input:focus, .modal form textarea:focus, .modal-input:focus {
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
 }
-.modal form textarea { resize: vertical; min-height: 120px; }
 
 .modal-btn {
     background-color: var(--accent-color);
     color: var(--button-text-color);
-    border: none; padding: 12px 20px; font-size: 1em; font-weight: bold;
-    border-radius: 6px; cursor: pointer; transition: background-color 0.3s;
+    border: none; padding: 14px 20px; font-size: 1.1em; font-weight: bold;
+    border-radius: 8px; cursor: pointer; transition: background-color 0.3s;
     width: 100%;
 }
 .modal-btn:hover { background-color: #6ab0ff; }
-.modal-btn:disabled { background-color: #30363d; cursor: not-allowed; }
-
-.dialog-buttons {
-    margin-top: 25px;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-.dialog-buttons button {
-    padding: 10px 25px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.dialog-buttons .btn-primary {
-    background-color: var(--accent-color);
-    color: var(--button-text-color);
-}
-.dialog-buttons .btn-primary:hover {
-    background-color: #6ab0ff;
-}
-
-.dialog-buttons .btn-secondary {
+.modal-btn.secondary {
     background-color: #30363d;
-    color: var(--primary-text-color);
-    border-color: var(--border-color);
-}
-.dialog-buttons .btn-secondary:hover {
-    background-color: #484f58;
-}
-
-.dialog-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background-color: var(--primary-bg-color);
-    color: var(--primary-text-color);
-    box-sizing: border-box; /* Ensures padding doesn't affect final width */
 }
-
-.dialog-input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
-}
-
-/* PayPal Button Container */
-#donate-button-container {
-    margin-top: 15px;
-    padding: 20px;
-    background-color: rgba(88, 166, 255, 0.05);
-    border-radius: 8px;
-    border: 1px dashed var(--border-color);
-}
-
-/* License Modal Styles */
-.license-text {
-    max-height: 400px;
-    overflow-y: auto;
-    background-color: var(--primary-bg-color);
-    padding: 15px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    text-align: left;
-    font-size: 0.9em;
-}
-.license-text h4 { color: var(--accent-color); margin-top: 15px; margin-bottom: 5px; }
-.license-highlight {
-    background-color: rgba(35, 134, 54, 0.15);
-    border-left: 3px solid var(--button-bg-color);
-    padding: 10px 15px;
-    margin: 15px 0;
-    border-radius: 4px;
-}
-.license-highlight p { margin: 0; }
+.modal-btn.secondary:hover { background-color: #484f58; }
 
 /* --- Launcher View Styles --- */
 .launcher-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--accent-color);
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 30px;
+    padding-bottom: 15px;
 }
 
 .launcher-header h2 {
     color: var(--highlight-color);
-    font-size: 2em;
+    font-size: 2.2em;
     margin: 0;
 }
 
 .launcher-toolbar {
     display: flex;
-    gap: 10px;
+    gap: 15px;
 }
 
 .launcher-toolbar button {
     background: #21262d;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 8px;
+    border-radius: 8px;
+    padding: 10px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    justify-content: center;
 }
 
 .launcher-toolbar button:hover {
@@ -617,138 +408,32 @@ footer {
     background: #30363d;
 }
 
-.launcher-toolbar button .ce-icon {
-    width: 20px;
-    height: 20px;
-}
-
-#btn-delete-project-top:hover {
-    border-color: #f85149;
-    background: rgba(248, 81, 73, 0.1);
-}
 .project-list {
     background-color: var(--primary-bg-color); border: 1px solid var(--border-color);
-    border-radius: 8px; min-height: 200px; padding: 15px; margin-bottom: 20px; text-align: left;
+    border-radius: 12px; min-height: 250px; padding: 20px; margin-bottom: 30px; text-align: left;
 }
-.no-projects-message { color: #888; text-align: center; padding: 50px 0; font-size: 1.1em; }
+
 .project-item {
-    background-color: var(--secondary-bg-color); padding: 15px; border-radius: 6px;
-    margin-bottom: 10px; border: 1px solid var(--border-color); cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-.project-item:hover { background-color: #21262d; border-color: var(--accent-color); }
-.project-item h3 { margin: 0; color: var(--highlight-color); font-size: 1.2em; }
-.launcher-actions { margin-bottom: 20px; }
-#btn-create-project {
-    background-color: var(--button-bg-color); color: var(--button-text-color);
-    border: 1px solid var(--button-hover-bg-color); padding: 15px 25px; font-size: 1.1em;
-    font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
-}
-#btn-create-project:hover { background-color: var(--button-hover-bg-color); }
-.storage-warning {
-    margin-top: 20px; padding: 15px; background-color: rgba(189, 147, 0, 0.1);
-    border: 1px solid rgba(189, 147, 0, 0.4); border-radius: 5px; font-size: 0.9em;
-}
-.storage-warning p { margin: 0; }
-
-/* Auth Modal Specific Styles */
-.auth-switch {
-    font-size: 0.9em;
-    margin-top: 15px;
-    text-align: center;
-}
-.auth-switch a {
-    color: var(--accent-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-.auth-switch a:hover {
-    text-decoration: underline;
-}
-.password-hint {
-    font-size: 0.8em;
-    color: #8b949e;
-    text-align: left;
-    margin-top: -10px;
-    margin-bottom: 15px;
+    background-color: var(--secondary-bg-color); padding: 20px; border-radius: 8px;
+    margin-bottom: 15px; border: 1px solid var(--border-color); cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: all 0.2s ease;
 }
 
-
-/* Verifying Overlay Styles */
-#verifying-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(13, 17, 23, 0.9);
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--highlight-color);
-    font-size: 1.5em;
-}
-.spinner {
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-left-color: var(--accent-color);
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+.project-item:hover {
+    background-color: #21262d;
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
+.project-item.selected {
+    border-color: var(--accent-color);
+    background-color: rgba(88, 166, 255, 0.1);
 }
-
-
-/* --- License Button Link Style --- */
-.license-container {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-}
-#btn-license {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--accent-color);
-    font-size: 0.9em;
-    cursor: pointer;
-    text-decoration: none;
-}
-#btn-license:hover {
-    text-decoration: underline;
-}
-
-.know-games-button {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--accent-color);
-    font-size: 0.9em;
-    cursor: pointer;
-    text-decoration: none;
-}
-
-.know-games-button:hover {
-    text-decoration: underline;
-}
-
-
-/* --- Keyframe Animations --- */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
 
 /* --- Context Menu Styles --- */
 .context-menu {
-    display: none;
+    display: none !important;
     position: absolute;
     z-index: 1000;
     background-color: #21262d;
@@ -757,13 +442,10 @@ footer {
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     padding: 5px 0;
     min-width: 150px;
-    max-height: 80vh;
-    overflow-y: auto;
-    overflow-x: hidden;
 }
 
 .context-menu.visible {
-    display: block;
+    display: block !important;
 }
 
 .context-menu ul {
@@ -777,6 +459,7 @@ footer {
     cursor: pointer;
     transition: background-color 0.2s;
     color: var(--primary-text-color);
+    text-align: left;
 }
 
 .context-menu ul li:hover {
@@ -785,7 +468,7 @@ footer {
 }
 
 #ctx-delete {
-    color: #f85149; /* GitHub red */
+    color: #f85149;
 }
 
 #ctx-delete:hover {
@@ -793,99 +476,32 @@ footer {
     background-color: #da3633;
 }
 
-/* Add a class to highlight the selected project item */
-.project-item.selected {
-    border-color: var(--accent-color);
-    background-color: #21262d;
-}
-
-.project-item {
-    position: relative; /* Needed for positioning the button */
-}
-
+/* --- Project Item Extra --- */
 .open-folder-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
     padding: 5px;
-    font-size: 1.2em;
     cursor: pointer;
     border-radius: 5px;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
 }
 
 .open-folder-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* --- Custom Dialog Windows (Copied from editor.css for consistency) --- */
-.custom-dialog {
-    display: none; /* Hidden by default, shown with .is-open from JS */
-    position: fixed;
-    z-index: 2000; /* High z-index for the backdrop */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent overlay */
-    align-items: center;
-    justify-content: center;
-}
+/* Keyframe Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-.custom-dialog.is-open {
-    display: flex;
+/* Utility Classes */
+.visible { opacity: 1; transform: translateY(0); }
+.spinner {
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-left-color: var(--accent-color);
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    animation: spin 1s linear infinite;
 }
-
-.dialog-container {
-    background-color: var(--secondary-bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    min-width: 300px;
-    max-width: 500px;
-    overflow: hidden;
-}
-
-.dialog-header {
-    padding: 10px 15px;
-    background-color: var(--primary-bg-color); /* Darker header */
-    color: var(--highlight-color);
-    font-weight: bold;
-    cursor: grab;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.dialog-header:active {
-    cursor: grabbing;
-}
-
-.dialog-content {
-    padding: 20px;
-    color: var(--primary-text-color);
-    line-height: 1.6;
-}
-
-.dialog-footer {
-    padding: 10px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    background-color: var(--primary-bg-color);
-    border-top: 1px solid var(--border-color);
-}
-
-.dialog-button {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background-color: var(--secondary-bg-color);
-    color: var(--primary-text-color);
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.dialog-button:hover {
-    background-color: var(--accent-color);
-    color: white;
-    border-color: var(--accent-color);
-}
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -121,6 +121,11 @@ SIN_PERMISOS: Sin permisos especiales.
 IMPORTAR_LIBRERIA: Importar Librería
 NO_ACTIVIDAD_RECIENTE: No hay actividad reciente.
 
+# General
+FOROS: Foros
+DONACIONES: Donaciones
+LEGAL: Legal
+
 # Asset Browser
 CREAR_CARPETA: Crear Carpeta
 NOMBRE_CARPETA_PROMPT: Introduce el nombre de la nueva carpeta:
@@ -408,6 +413,11 @@ SIN_DESCRIPCION: No description.
 SIN_PERMISOS: No special permissions.
 IMPORTAR_LIBRERIA: Import Library
 NO_ACTIVIDAD_RECIENTE: No recent activity.
+
+# General
+FOROS: Forums
+DONACIONES: Donations
+LEGAL: Legal
 
 # Asset Browser
 CREAR_CARPETA: Create Folder
