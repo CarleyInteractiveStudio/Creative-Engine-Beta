@@ -12,6 +12,15 @@ CREDITOS: Hecho por Carley Interactive Studio con la ayuda de Google Jules.
 LICENCIA_BTN: Lee nuestra licencia
 CONOCE_JUEGOS: conoce juegos hecho con con nuestro motor
 VERIFICANDO: Verificando...
+CUENTA: Cuenta
+DONAR_BOTON: Donar
+QUE_HACEMOS_DONACIONES: ¿Qué hacemos con sus donaciones?
+NUESTROS_CANALES: Nuestros Canales
+LICENCIA: Licencia
+POLITICA_PRIVACIDAD: Política de Privacidad
+COOKIES: Cookies
+ELIMINAR_PROYECTO: Borrar Proyecto Seleccionado
+MI_CUENTA: Mi Cuenta
 CARGANDO_PROYECTO: Cargando tu proyecto...
 CARGANDO_LIBS: Cargando librerías...
 HA_OCURRIDO_ERROR: Ha ocurrido un error.
@@ -22,7 +31,10 @@ VOLVER_INICIO: Volver al Inicio
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Tu juego empieza aquí. Lo que imagines, lo construyes.
 WELCOME_DESCRIPTION: Un motor de videojuegos 2D gratuito para crear directamente en tu navegador. Diseña sin límites, crea sin miedo y publica con orgullo.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+WELCOME_DESCRIPTION_LONG: ¡Bienvenido a Creative Engine! Esperamos que disfrute de una nueva experiencia en la creación de videojuegos. Este motor está diseñado especialmente para ti, pensando en facilitar tu flujo de trabajo creativo.
+WELCOME_DEV_NOTICE: Ten en cuenta que el motor se encuentra en una fase inicial y de desarrollo constante, por lo que puede presentar fallos inesperados. Si encuentras uno, con mucho gusto estaremos esperando que nos lo digas desde el reporte.
+WELCOME_COMMUNITY: Puedes unirte a nuestras comunidades y seguirnos en nuestros canales para estar siempre activo. ¡Únete a nuestro canal de WhatsApp! Tu apoyo ayuda a que el proyecto mejore cada día. No necesitas ser un programador profesional para apoyar al motor; también puedes colaborar mediante donaciones.
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos los derechos reservados.
 
 # Quotes
 QUOTE_1: Tu juego empieza aquí. Lo que imagines, lo construyes.
@@ -39,6 +51,14 @@ QUOTE_10: La creatividad no se enseña. Se desbloquea.
 # Auth State
 HOLA: Hola
 CERRAR_SESION: Cerrar Sesión
+NO_TIENES_CUENTA: ¿No tienes una cuenta?
+REGISTRARSE: Regístrate
+OLVIDE_CONTRASENA: Olvidé mi contraseña
+YA_TIENES_CUENTA: ¿Ya tienes una cuenta?
+RECUPERAR_CONTRASENA: Recuperar Contraseña
+ENVIAR_ENLACE: Enviar Enlace
+VOLVER_LOGIN: Volver al Inicio de Sesión
+LOGGED_IN_AS: Sesión iniciada como:
 REGISTRANDO: Registrando...
 ERROR_REGISTRO: Error de Registro
 REGISTRO_EXITOSO: ¡Registro Exitoso!
@@ -255,6 +275,7 @@ PAUSAR: Pausar
 # Preferences
 APARIENCIA: Apariencia
 IDIOMA: Idioma
+HINT_IDIOMA: Cambia el idioma de la interfaz del motor.
 TEMA_EDITOR: Tema del Editor
 OSCURO_MODERNO: Oscuro Moderno
 CLARO: Claro
@@ -279,6 +300,15 @@ CREDITOS: Made by Carley Interactive Studio with the help of Google Jules.
 LICENCIA_BTN: Read our license
 CONOCE_JUEGOS: discover games made with our engine
 VERIFICANDO: Verifying...
+CUENTA: Account
+DONAR_BOTON: Donate
+QUE_HACEMOS_DONACIONES: What do we do with your donations?
+NUESTROS_CANALES: Our Channels
+LICENCIA: License
+POLITICA_PRIVACIDAD: Privacy Policy
+COOKIES: Cookies
+ELIMINAR_PROYECTO: Delete Selected Project
+MI_CUENTA: My Account
 CARGANDO_PROYECTO: Loading your project...
 CARGANDO_LIBS: Loading libraries...
 HA_OCURRIDO_ERROR: An error occurred.
@@ -289,7 +319,10 @@ VOLVER_INICIO: Back to Start
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Your game starts here. What you imagine, you build.
 WELCOME_DESCRIPTION: A free 2D game engine to create directly in your browser. Design without limits, create without fear, and publish with pride.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+WELCOME_DESCRIPTION_LONG: Welcome to Creative Engine! We hope you enjoy a new experience in video game creation. This engine is designed especially for you, with your creative workflow in mind.
+WELCOME_DEV_NOTICE: Please note that the engine is in an initial phase and under constant development, so it may present unexpected failures. If you find one, we will be gladly waiting for you to tell us from the report.
+WELCOME_COMMUNITY: You can join our communities and follow us on our channels to stay active. Join our WhatsApp channel! Your support helps the project improve every day. You don't need to be a professional programmer to support the engine; you can also collaborate through donations.
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. All rights reserved.
 
 # Quotes
 QUOTE_1: Your game starts here. What you imagine, you build.
@@ -306,6 +339,14 @@ QUOTE_10: Creativity isn't taught. It's unlocked.
 # Auth State
 HOLA: Hello
 CERRAR_SESION: Log Out
+NO_TIENES_CUENTA: Don't have an account?
+REGISTRARSE: Sign Up
+OLVIDE_CONTRASENA: Forgot my password
+YA_TIENES_CUENTA: Already have an account?
+RECUPERAR_CONTRASENA: Recover Password
+ENVIAR_ENLACE: Send Link
+VOLVER_LOGIN: Back to Login
+LOGGED_IN_AS: Logged in as:
 REGISTRANDO: Registering...
 ERROR_REGISTRO: Registration Error
 REGISTRO_EXITOSO: Registration Successful!
@@ -522,6 +563,7 @@ PAUSAR: Pause
 # Preferences
 APARIENCIA: Appearance
 IDIOMA: Language
+HINT_IDIOMA: Change the engine interface language.
 TEMA_EDITOR: Editor Theme
 OSCURO_MODERNO: Modern Dark
 CLARO: Light

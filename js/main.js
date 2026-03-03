@@ -18,9 +18,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Buttons
     const startButton = document.getElementById('btn-start');
     console.log("Attempting to find #btn-start. Found element:", startButton); // Debugging line
-    const licenseButton = document.getElementById('btn-license');
-    const supportButton = document.getElementById('btn-support');
-    const createProjectBtn = document.getElementById('btn-create-project');
+    const createProjectBtn = document.getElementById('btn-add-project-top');
+    const deleteProjectBtn = document.getElementById('btn-delete-project-top');
 
     // Modals & Forms
     const supportModal = document.getElementById('support-modal');
@@ -208,6 +207,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(supportButton) supportButton.addEventListener('click', () => openModal(supportModal));
     if(licenseButton) licenseButton.addEventListener('click', () => openModal(licenseModal));
     if(createProjectBtn) createProjectBtn.addEventListener('click', () => openModal(createProjectModal));
+    if(deleteProjectBtn) deleteProjectBtn.addEventListener('click', () => {
+        const selected = projectList.querySelector('.project-item.selected');
+        if (selected) {
+            currentProjectName = selected.dataset.projectName;
+            handleDeleteProject();
+        } else {
+            window.Dialogs.showNotification('Aviso', 'Por favor, selecciona un proyecto de la lista primero haciendo clic derecho sobre él.');
+        }
+    });
 
     if(closeSupport) closeSupport.addEventListener('click', closeModal);
     if(closeLicense) closeLicense.addEventListener('click', closeModal);
@@ -472,8 +480,7 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
         }
     });
 
-    document.getElementById('ctx-delete').addEventListener('click', async () => {
-        hideContextMenu();
+    const handleDeleteProject = async () => {
         if (!currentProjectName) return;
 
         const confirmed = await showCustomConfirm(
@@ -492,6 +499,11 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
                 await showCustomAlert('Error', 'No se pudo eliminar el proyecto.');
             }
         }
+    };
+
+    document.getElementById('ctx-delete').addEventListener('click', async () => {
+        hideContextMenu();
+        handleDeleteProject();
     });
 
     document.getElementById('ctx-rename').addEventListener('click', () => {
@@ -645,6 +657,20 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
         });
     }
 
+
+    // --- Preferences Logic ---
+    const mainLangSelect = document.getElementById('main-lang-select');
+    if (mainLangSelect) {
+        mainLangSelect.value = Localization.currentLanguage;
+        mainLangSelect.addEventListener('change', () => {
+            Localization.setLanguage(mainLangSelect.value);
+        });
+    }
+
+    // Update account modal language select when language changes from elsewhere
+    window.addEventListener('ce-language-changed', (e) => {
+        if (mainLangSelect) mainLangSelect.value = e.detail;
+    });
 
     // --- Initialize ---
     openDB();

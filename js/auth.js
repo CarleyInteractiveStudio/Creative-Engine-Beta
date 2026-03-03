@@ -50,15 +50,39 @@ document.addEventListener('DOMContentLoaded', () => {
       return _getUserPromise;
     },
     openAuthModal: function() {
-      const authModal = document.getElementById('auth-modal');
-      if (authModal) {
-        const loginView = document.getElementById('login-view');
+      const accountModal = document.getElementById('account-modal');
+      if (accountModal) {
+        const sidebarItems = accountModal.querySelectorAll('.split-sidebar li');
+        const sections = accountModal.querySelectorAll('.section-view');
+
+        sidebarItems.forEach(i => i.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+
+        const accountSectionItem = accountModal.querySelector('[data-section="account-section"]');
+        const accountSection = document.getElementById('account-section');
+
+        if (accountSectionItem) accountSectionItem.classList.add('active');
+        if (accountSection) accountSection.classList.add('active');
+
+        const loggedOutView = document.getElementById('auth-logged-out');
         const signupView = document.getElementById('signup-view');
         const resetView = document.getElementById('reset-password-view');
-        if (loginView) loginView.style.display = 'block';
-        if (signupView) signupView.style.display = 'none';
-        if (resetView) resetView.style.display = 'none';
-        authModal.style.display = 'block';
+        const loggedInView = document.getElementById('auth-logged-in');
+
+        // Check if logged in
+        _supabase.auth.getSession().then(({data: {session}}) => {
+          if (session) {
+            if (loggedInView) loggedInView.style.display = 'block';
+            if (loggedOutView) loggedOutView.style.display = 'none';
+          } else {
+            if (loggedInView) loggedInView.style.display = 'none';
+            if (loggedOutView) loggedOutView.style.display = 'block';
+          }
+          if (signupView) signupView.style.display = 'none';
+          if (resetView) resetView.style.display = 'none';
+        });
+
+        accountModal.classList.add('is-open');
       }
     }
   };
@@ -69,11 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
     verifyingOverlay.style.display = 'flex';
   }
 
-  const authModal           = document.getElementById('auth-modal');
-  const closeAuthBtn        = document.getElementById('close-auth');
-  const loginView           = document.getElementById('login-view');
+  const accountModal        = document.getElementById('account-modal');
+  const closeAccountBtn     = document.getElementById('close-account');
+  const loginView           = document.getElementById('auth-logged-out');
   const signupView          = document.getElementById('signup-view');
   const resetPasswordView   = document.getElementById('reset-password-view');
+  const loggedInView        = document.getElementById('auth-logged-in');
   const loginForm           = document.getElementById('login-form');
   const signupForm          = document.getElementById('signup-form');
   const resetPasswordForm   = document.getElementById('reset-password-form');
@@ -81,12 +106,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const gotoLogin           = document.getElementById('goto-login');
   const gotoReset           = document.getElementById('goto-reset');
   const backToLogin         = document.getElementById('back-to-login');
+  const btnLogout           = document.getElementById('btn-logout');
+  const btnAccountModal     = document.getElementById('btn-account-modal');
+
+  // --- Sidebar Logic ---
+  if (accountModal) {
+      const sidebarItems = accountModal.querySelectorAll('.split-sidebar li');
+      const sections = accountModal.querySelectorAll('.section-view');
+
+      sidebarItems.forEach(item => {
+          item.addEventListener('click', () => {
+              const targetSection = item.getAttribute('data-section');
+
+              sidebarItems.forEach(i => i.classList.remove('active'));
+              sections.forEach(s => s.classList.remove('active'));
+
+              item.classList.add('active');
+              document.getElementById(targetSection).classList.add('active');
+          });
+      });
+  }
 
   // --- View Switching Logic ---
   const showView = (viewToShow) => {
     if (loginView) loginView.style.display = 'none';
     if (signupView) signupView.style.display = 'none';
     if (resetPasswordView) resetPasswordView.style.display = 'none';
+    if (loggedInView) loggedInView.style.display = 'none';
     if (viewToShow) viewToShow.style.display = 'block';
   };
 
@@ -96,11 +142,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (backToLogin) backToLogin.addEventListener('click', e => { e.preventDefault(); showView(loginView); });
 
   // --- Modal Closing Logic ---
-  const closeAuthModal = () => { if (authModal) authModal.style.display = 'none'; };
-  if (closeAuthBtn) closeAuthBtn.addEventListener('click', closeAuthModal);
+  const closeAccountModal = () => { if (accountModal) accountModal.classList.remove('is-open'); };
+  if (closeAccountBtn) closeAccountBtn.addEventListener('click', closeAccountModal);
   window.addEventListener('click', event => {
-    if (event.target === authModal) closeAuthModal();
+    if (event.target === accountModal) closeAccountModal();
   });
+
+  if (btnAccountModal) {
+      btnAccountModal.addEventListener('click', () => {
+          window.auth.openAuthModal();
+      });
+  }
 
   // --- Authentication Logic ---
   if (signupForm) signupForm.addEventListener('submit', async (e) => {
@@ -158,12 +210,18 @@ document.addEventListener('DOMContentLoaded', () => {
         error.message
       );
     } else {
-      closeAuthModal(); // onAuthStateChange handles the rest
+      closeAccountModal(); // onAuthStateChange handles the rest
     }
 
     button.disabled   = false;
     button.textContent = originalText;
   });
+
+  if (btnLogout) {
+      btnLogout.addEventListener('click', async () => {
+          await _supabase.auth.signOut();
+      });
+  }
 
   if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -194,47 +252,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (overlay) overlay.style.display = 'none';
 
     const contactEmailInput   = document.getElementById('contact-email');
-    const authStatusContainer = document.getElementById('auth-status-container');
-
     const loc = window.Localization;
+
+    const loggedOutView = document.getElementById('auth-logged-out');
+    const loggedInView = document.getElementById('auth-logged-in');
+    const userInfoText = document.getElementById('user-info-text');
 
     if (session) {
       const userName = session.user.user_metadata.full_name || session.user.email;
-      if (authStatusContainer) {
+      if (userInfoText) {
           const holaText = loc ? loc.get('HOLA', 'Hola') : 'Hola';
-          const cerrarSesionText = loc ? loc.get('CERRAR_SESION', 'Cerrar Sesión') : 'Cerrar Sesión';
-        authStatusContainer.innerHTML = `
-          <span class="user-greeting">${holaText}, ${userName}</span>
-          <button id="btn-auth-action">${cerrarSesionText}</button>
-        `;
+          userInfoText.textContent = `${holaText}, ${userName} (${session.user.email})`;
       }
+      if (loggedInView) loggedInView.style.display = 'block';
+      if (loggedOutView) loggedOutView.style.display = 'none';
+
       if (contactEmailInput) {
         contactEmailInput.value    = session.user.email;
         contactEmailInput.readOnly = true;
       }
     } else {
-      if (authStatusContainer) {
-          const iniciarSesionText = loc ? loc.get('INICIAR_SESION', 'Iniciar Sesión') : 'Iniciar Sesión';
-        authStatusContainer.innerHTML = `
-          <button id="btn-auth-action">${iniciarSesionText}</button>
-        `;
-      }
+      if (loggedInView) loggedInView.style.display = 'none';
+      if (loggedOutView) loggedOutView.style.display = 'block';
+
       if (contactEmailInput) {
         contactEmailInput.value    = '';
         contactEmailInput.readOnly = false;
       }
-    }
-
-    const btnAuthAction = document.getElementById('btn-auth-action');
-    if (btnAuthAction) btnAuthAction.addEventListener('click', handleAuthButtonClick);
-  };
-
-  const handleAuthButtonClick = async () => {
-    const { data: { session } } = await _supabase.auth.getSession();
-    if (session) {
-      await _supabase.auth.signOut();
-    } else {
-      window.auth.openAuthModal();
     }
   };
 
