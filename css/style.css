@@ -143,31 +143,31 @@ main { padding: 20px 0; }
     margin-top: 40px;
     display: flex;
     justify-content: center;
-    gap: 40px;
     border-top: 1px solid var(--border-color);
     padding-top: 40px;
 }
 
-.main-cta-link {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: var(--highlight-color);
-    text-decoration: none;
+.green-button {
+    background-color: var(--button-bg-color);
+    color: var(--button-text-color);
+    border: none;
+    padding: 18px 50px;
     font-size: 1.4em;
-    font-weight: 600;
-    transition: color 0.2s, transform 0.2s;
-    padding: 10px 20px;
+    font-weight: bold;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 15px rgba(35, 134, 54, 0.3);
 }
 
-.main-cta-link:hover {
-    color: var(--accent-color);
-    transform: translateY(-3px);
+.green-button:hover {
+    background-color: var(--button-hover-bg-color);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 8px 25px rgba(35, 134, 54, 0.5);
 }
 
-.main-cta-link .ce-icon {
-    width: 24px;
-    height: 24px;
+.green-button:active {
+    transform: scale(0.98);
 }
 
 /* --- Site Footer (Fat Footer) --- */
