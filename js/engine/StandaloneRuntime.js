@@ -56,7 +56,10 @@ export class StandaloneRuntime {
         InputManager.initialize(this.canvas, this.canvas);
 
         // --- Splash Screen Phase ---
-        if (this.config.splashScreens && this.config.splashScreens.show) {
+        const hasSplashes = this.config.splashScreens && (this.config.splashScreens.show || this.config.splashScreens.showEngineLogo);
+        const engineLogoEnabled = this.config.showEngineLogo || (this.config.splashScreens && this.config.splashScreens.showEngineLogo);
+
+        if (hasSplashes || engineLogoEnabled) {
             await this.playSplashScreens();
         }
 
@@ -246,13 +249,15 @@ export class StandaloneRuntime {
             splashText.style.cssText = 'color: white; font-size: 1.5rem; margin-top: 30px; opacity: 0; transition: opacity 0.8s; font-family: sans-serif; text-align: center;';
             container.appendChild(splashText);
 
-            const splashes = this.config.splashScreens.list || [];
+            const splashes = (this.config.splashScreens && this.config.splashScreens.list) ? [...this.config.splashScreens.list] : [];
 
-            // Default Engine Splash if requested
-            if (this.config.splashScreens.showEngineLogo) {
+            // Default Engine Splash if requested (either in splashScreens obj or root config)
+            const engineLogoEnabled = this.config.showEngineLogo || (this.config.splashScreens && this.config.splashScreens.showEngineLogo);
+
+            if (engineLogoEnabled) {
                 splashes.unshift({
                     path: 'engine/Logo_C.png',
-                    duration: this.config.splashScreens.engineLogoDuration || 10,
+                    duration: (this.config.splashScreens && this.config.splashScreens.engineLogoDuration) || 3,
                     sound: 'engine/startup.wav',
                     isEngineLogo: true
                 });

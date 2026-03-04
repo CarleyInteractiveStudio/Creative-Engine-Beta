@@ -205,7 +205,8 @@ export async function buildProject(projectsDirHandle, currentProjectConfig, opti
 
         // 6. Special Case: Engine Splash Logo and sound
         updateProgress("Configurando pantallas de splash...");
-        if (mergedConfig.splashScreens?.showEngineLogo) {
+        const engineLogoEnabled = mergedConfig.showEngineLogo || mergedConfig.splashScreens?.showEngineLogo;
+        if (engineLogoEnabled) {
             try {
                 const logoResp = await fetch('image/Logo_C.png');
                 if (logoResp.ok) await writeFile('image/Logo_C.png', await logoResp.blob());
