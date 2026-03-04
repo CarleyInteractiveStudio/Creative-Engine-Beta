@@ -287,7 +287,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     if (shareButton) {
-        shareButton.addEventListener('click', async () => {
+        shareButton.addEventListener('click', async (e) => {
+            e.preventDefault();
             if (navigator.share) {
                 try {
                     await navigator.share({
