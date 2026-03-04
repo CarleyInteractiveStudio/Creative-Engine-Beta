@@ -41,6 +41,9 @@ WELCOME_DESCRIPTION_LONG: ¡Bienvenido a Creative Engine! Esperamos que disfrute
 WELCOME_DEV_NOTICE: Ten en cuenta que el motor se encuentra en una fase inicial y de desarrollo constante, por lo que puede presentar fallos inesperados. Si encuentras uno, con mucho gusto estaremos esperando que nos lo digas desde el reporte.
 WELCOME_COMMUNITY: Puedes unirte a nuestras comunidades y seguirnos en nuestros canales para estar siempre activo. ¡Únete a nuestro canal de WhatsApp! Tu apoyo ayuda a que el proyecto mejore cada día. No necesitas ser un programador profesional para apoyar al motor; también puedes colaborar mediante donaciones.
 COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos los derechos reservados.
+PRUEBA_VIDSPRI: También prueba VidSpri
+NUESTRO_SITIO_WEB: Nuestro sitio web
+COMPARTIR_MOTOR: Compartir Motor
 
 # Quotes
 QUOTE_1: Tu juego empieza aquí. Lo que imagines, lo construyes.
@@ -361,6 +364,9 @@ WELCOME_DESCRIPTION_LONG: Welcome to Creative Engine! We hope you enjoy a new ex
 WELCOME_DEV_NOTICE: Please note that the engine is in an initial phase and under constant development, so it may present unexpected failures. If you find one, we will be gladly waiting for you to tell us from the report.
 WELCOME_COMMUNITY: You can join our communities and follow us on our channels to stay active. Join our WhatsApp channel! Your support helps the project improve every day. You don't need to be a professional programmer to support the engine; you can also collaborate through donations.
 COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. All rights reserved.
+PRUEBA_VIDSPRI: Also try VidSpri
+NUESTRO_SITIO_WEB: Our Website
+COMPARTIR_MOTOR: Share Engine
 
 # Quotes
 QUOTE_1: Your game starts here. What you imagine, you build.

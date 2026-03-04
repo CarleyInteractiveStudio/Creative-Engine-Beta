@@ -129,6 +129,19 @@ main { padding: 20px 0; }
     color: var(--accent-color);
 }
 
+.external-link-text {
+    color: var(--primary-text-color);
+    text-decoration: none;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.external-link-text:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
 #motivational-quote {
     font-size: 1.2em;
     font-style: italic;
