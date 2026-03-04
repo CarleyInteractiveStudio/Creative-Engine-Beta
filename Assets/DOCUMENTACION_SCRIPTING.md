@@ -1,153 +1,164 @@
-# 📜 Guía Maestra de Scripting: Creative Engine (CES/CHC)
+# 📜 Guía Definitiva de Scripting: Creative Engine (CES/CHC)
 
-Bienvenido a la documentación oficial de **Creative Engine**. Este motor utiliza un sistema de scripting transpilado que permite usar múltiples idiomas y una sintaxis simplificada para crear lógica compleja rápidamente.
+Bienvenido a la documentación maestra del lenguaje de scripting de **Creative Engine**. Este motor utiliza un sistema transpilado multilingüe único que permite a los desarrolladores escribir lógica en su idioma nativo mientras mantiene la potencia de una arquitectura orientada a objetos moderna.
 
 ---
 
-## 🛠️ Estructura y Reglas Básicas
+## 🛠️ Fundamentos del Lenguaje
 
-### Archivos y Clases
-- Los archivos `.ces` y `.chc` se transforman automáticamente en clases.
-- No es necesario declarar la clase manualmente; el nombre del archivo define el nombre del script.
+### Archivos y Compilación
+- Los scripts se guardan como archivos `.ces` (Creative Engine Script) o `.chc` (H-Code).
+- El transpilador convierte automáticamente estos archivos en clases de JavaScript asíncronas.
+- No es necesario manejar `import` o `export` para la lógica básica del juego; el motor inyecta las dependencias necesarias.
 
 ### Importación de Librerías (`go` / `ve`)
-Permite acceder a funcionalidades externas o del motor.
-- `ve motor;` (Importa las APIs base del motor)
-- `go "MiLibreria";` (Importa una librería creada por el usuario)
+Para acceder a las funciones del motor o a librerías de terceros:
+- `ve motor;` o `ve motor.ui;` (Acceso a las APIs internas).
+- `go "MiLibreria";` (Importa una librería `.celib` registrada).
 
 ---
 
-## 🔑 Palabras Clave y Lógica
+## 🔑 Palabras Clave por Idioma
 
-| Función | Español | Inglés | Portugués | Ruso | Chino |
+El motor detecta y traduce estas estructuras lógicas automáticamente.
+
+| Lógica | Español | English | Português | Русский | 中文 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Condicional** | `si` | `if` | `se` | `если` | `如果` |
-| **Sino** | `sino` | `else` | `senão` | `иначе` | `否则` |
+| **Condición** | `si` | `if` | `se` | `если` | `如果` |
+| **Alternativa** | `sino` | `else` | `senão` | `иначе` | `否则` |
 | **Bucle Mientras** | `mientras` | `while` | `enquanto` | `пока` | `当` |
 | **Bucle Para** | `para` | `for` | `para` | `для` | `对于` |
-| **Retornar** | `retornar` | `return` | - | `вернуть` | `返回` |
-| **Nuevo** | `nuevo` | `new` | - | `новый` | `新建` |
-| **Función** | `funcion` | `function` | `função` | `функция` | `函数` |
-| **Verdadero** | `verdadero` | `true` | `verdadeiro` | `истина` | `真` |
-| **Falso** | `falso` | `false` | `falso` | `ложь` | `假` |
+| **Retornar Valor** | `retornar` | `return` | - | `вернуть` | `返回` |
+| **Instanciar** | `nuevo` | `new` | - | `новый` | `新建` |
+| **Declarar Función** | `funcion` | `function` | `função` | `функция` | `函数` |
+| **Booleano (Sí)** | `verdadero` | `true` | `verdadeiro` | `истина` | `真` |
+| **Booleano (No)** | `falso` | `false` | `falso` | `ложь` | `假` |
 | **Variable** | `variable` | `let` | - | - | - |
 | **Constante** | `constante` | `const` | - | - | - |
 
 ---
 
-## 📦 Variables y Ámbitos (Scopes)
+## 📦 Tipos de Datos y Declaración
 
-### Declaración
+### Sintaxis de Declaración
 `[ámbito] [tipo] [nombre] = [valor];`
 
 **Ámbitos:**
-- `public` / `publico` / `公开`: Aparece en el Inspector para edición visual.
-- `private` / `privado` / `私有`: Solo accesible dentro del script.
+- `public` / `publico`: Expone la variable en el **Inspector** del editor.
+- `private` / `privado`: La variable solo existe dentro de este script.
 
-**Tipos:**
-- `number` / `numero`: Decimales o enteros.
-- `text` / `texto`: Cadenas de texto.
-- `boolean` / `booleano`: `verdadero` o `falso`.
-- `Materia` / `mtr`: Referencia a objetos de la escena.
-- `Sprite`, `Audio`, `Prefab`, `Scene`.
-- `Vector2`: `{x, y}`.
-- `Color`: `{r, g, b, a}`.
-
----
-
-## ⏳ Ciclo de Vida y Eventos
-
-El motor llama a estas funciones automáticamente. Puedes usar los nombres en cualquier idioma soportado.
-
-### Principales
-- `alEmpezar()` / `iniciar()` / `start()`: Al nacer el objeto.
-- `alActualizar(delta)` / `actualizar(delta)` / `update()`: Cada frame.
-- `actualizarFijo(delta)` / `fixedUpdate()`: Para físicas (50Hz).
-
-### Físicas y Colisiones
-- `alEntrarEnColision(otro)` / `OnCollisionEnter`: Al chocar.
-- `alPermanecerEnColision(otro)`: Mientras está chocando.
-- `alSalirDeColision(otro)`: Al separarse.
-- `alEntrarEnTrigger(otro)`: Al entrar en un área sensor (isTrigger).
-
-### Entrada de Usuario (Mouse/Touch)
-- `alPresionar()` / `onPointerDown()`
-- `alSoltar()` / `onPointerUp()`
-- `alHacerClick()` / `onPointerClick()`
-- `alDeslizar()` / `onPointerDrag()`
-- `alMantener()` / `onPointerHold()`
-
-### Animación y Mensajería
-- `alFinalizarAnimacion(nombre)` / `OnAnimationEnd`
-- `alRecibir(mensaje, datos)` / `onReceive`: Comunicación global entre scripts.
+| Tipo de Dato | Alias Soportados | Descripción |
+| :--- | :--- | :--- |
+| `number` | `numero`, `número`, `число`, `数字` | Números decimales o enteros. |
+| `text` | `texto`, `текст`, `文本` | Cadenas de caracteres entre comillas `"`. |
+| `boolean` | `booleano`, `булево`, `布尔值` | `verdadero` o `falso`. |
+| `Materia` | `mtr`, `материя`, `物质` | Referencia a cualquier objeto de la escena. |
+| `Sprite` | `спрайт`, `精灵` | Referencia a una imagen o asset de sprite. |
+| `Audio` | `sonido`, `áudio`, `аудио`, `音频` | Referencia a un archivo de sonido. |
+| `Prefab` | `префаб`, `预制件` | Objeto prefabricado para instanciación masiva. |
+| `Scene` | `escena`, `cena`, `сцена`, `场景` | Referencia a un archivo de nivel (.ceScene). |
+| `Vector2` | `вектор2`, `向量2` | Coordenadas XY: `nuevo Vector2(x, y)`. |
+| `Color` | `cor`, `цвет`, `颜色` | Colores RGBA o Hex: `nuevo Color(r, g, b, a)`. |
 
 ---
 
-## 🕰️ Tiempo y Control Avanzado
+## ⏳ Ciclo de Vida y Eventos (Hooks)
 
-### Temporizadores (`cada`)
-Ejecuta lógica repetidamente sin necesidad de variables contadoras.
+El motor llama a estos métodos en momentos específicos. Son **asíncronos** por defecto.
+
+### Inicialización y Frame
+- `alEmpezar()` / `iniciar()` / `start()`: Se ejecuta una vez al cargar el objeto.
+- `alActualizar(delta)` / `actualizar()` / `update()`: Se ejecuta cada frame. `delta` es el tiempo entre cuadros.
+
+### Físicas (50 veces por segundo)
+- `actualizarFijo(delta)` / `fixedUpdate()`: Ideal para aplicar fuerzas constantes.
+- `alEntrarEnColision(otro)` / `OnCollisionEnter`: Al iniciar el contacto físico.
+- `alPermanecerEnColision(otro)`: Mientras el contacto se mantiene.
+- `alSalirDeColision(otro)`: Al finalizar el contacto.
+- `alEntrarEnTrigger(otro)`: Al entrar en una zona sensor (isTrigger activado).
+
+### Interacción de Usuario (Mouse/Touch)
+- `alPresionar()` / `onPointerDown()`: Al hacer clic/tocar.
+- `alSoltar()` / `onPointerUp()`: Al levantar el dedo/clic.
+- `alEntrar()` / `onPointerEnter()`: Al pasar el cursor por encima.
+- `alSalir()` / `onPointerExit()`: Al sacar el cursor.
+- `alHacerClick()` / `onPointerClick()`: Clic rápido completo.
+- `alDeslizar()` / `onPointerDrag()`: Mientras se arrastra el objeto.
+- `alMantener()` / `onPointerHold()`: Mientras se mantiene presionado.
+
+---
+
+## 🕰️ Temporizadores y Control Avanzado
+
+### El Bloque `cada`
+Sintaxis simplificada para crear bucles de tiempo infinitos sin usar variables externas.
 ```ces
-cada(1.5) {
-    imprimir("Esto ocurre cada 1.5 segundos");
+// Ejecuta la lógica cada 2.5 segundos
+cada(2.5) {
+    imprimir("¡Evento de tiempo!");
+    reproducir.sonidoEfecto();
 }
 ```
 
 ### Corrutinas (`esperar`)
-Pausa el flujo de una función.
+Permite pausar la ejecución de una función de forma no bloqueante.
 ```ces
-funcion secuencia() {
-    imprimir("Inicio");
-    esperar(2);
-    imprimir("Fin después de 2 segundos");
+funcion secuenciaMuerte() {
+    animador.play("Morir");
+    esperar(1.2); // Pausa por 1.2 segundos
+    difundir("GameOver");
+    destruir(materia);
 }
 ```
 
 ---
 
-## 🧮 Funciones Matemáticas (Multilingües)
+## 🧮 Funciones Matemáticas Multilingües
 
-Puedes usar estas funciones directamente en cualquier parte de tu script.
+Accede a la potencia de cálculo sin importar el idioma.
 
-| Español | Inglés | Descripción |
-| :--- | :--- | :--- |
-| `azar(min, max)` | `random` | Número aleatorio entre min y max. |
-| `seno(v)` | `sin` | Seno trigonométrico. |
-| `coseno(v)` | `cos` | Coseno trigonométrico. |
-| `tangente(v)` | `tan` | Tangente trigonométrica. |
-| `raizCuadrada(v)`| `sqrt` | Raíz cuadrada de v. |
-| `redondear(v)` | `round` | Redondea al entero más cercano. |
-| `piso(v)` | `floor` | Redondea hacia abajo. |
-| `techo(v)` | `ceil` | Redondea hacia arriba. |
-| `absoluto(v)` | `abs` | Valor absoluto (sin signo). |
-| `limitar(v, min, max)`| `clamp` | Mantiene v entre min y max. |
-| `distancia(v1, v2)`| `distance` | Distancia entre dos puntos. |
+| Función | Español | English | Descripción |
+| :--- | :--- | :--- | :--- |
+| **Random** | `azar(min, max)` | `random` | Número aleatorio entre rango. |
+| **Trig** | `seno(v)`, `coseno(v)`| `sin`, `cos` | Funciones trigonométricas base. |
+| **Math** | `raizCuadrada(v)` | `sqrt` | Raíz cuadrada. |
+| **Round** | `redondear(v)` | `round` | Redondeo estándar. |
+| **Floor** | `piso(v)` | `floor` | Hacia abajo. |
+| **Ceil** | `techo(v)` | `ceil` | Hacia arriba. |
+| **Abs** | `absoluto(v)` | `abs` | Valor positivo. |
+| **Clamp** | `limitar(v, min, max)`| `clamp` | Restringe un valor a un rango. |
+| **Dist** | `distancia(v1, v2)` | `distance` | Distancia entre dos puntos o objetos. |
 
 ---
 
 ## ⚙️ Comandos del Motor (Atajos)
 
 ### Gestión de Objetos
-- `crear miPrefab`: Instancia un prefab (sintaxis ultra-rápida).
-- `instanciar(original, x, y)`: Copia una materia existente.
-- `destruir(mtr)`: Elimina el objeto de la escena.
-- `buscar("Nombre")`: Busca un objeto por su nombre.
-- `lanzarRayo(origen, dir, dist, tag)`: Detecta objetos en línea recta (Raycast).
+- `crear miPrefab`: Instancia un prefab en la posición actual.
+- `instanciar(original, x, y)`: Duplica una materia existente.
+- `destruir(mtr)`: Elimina el objeto (o una referencia) del juego.
+- `buscar("Nombre")`: Encuentra un objeto por su nombre en la escena.
 
-### Comunicación
-- `difundir("Evento", datos)`: Envía un mensaje a todos los scripts del juego.
-- `imprimir(msg)`: Escribe en la consola del editor.
+### Físicas y Sensores
+- `lanzarRayo(origen, dir, dist, tag)`: Lanza un Raycast para detectar impactos.
+- `estaTocandoTag("Suelo")`: Devuelve verdadero si el objeto colisiona con ese tag.
+
+### UI y Sistema
+- `imprimir(mensaje)`: Envía texto a la consola del editor.
+- `difundir("Mensaje", datos)`: Envía un evento global a todos los objetos.
+- `alRecibir("Mensaje", datos)`: Hook para reaccionar a mensajes globales.
 
 ---
 
-## 🎮 El Proxy `reproducir` / `play`
+## 🎮 El Sistema Proxy `reproducir` / `play`
 
-Creative Engine tiene un sistema inteligente para animaciones. Puedes llamar a estados de tu AnimatorController como si fueran funciones.
+Esta es una de las funciones más potentes de Creative Engine. Puedes llamar a los nombres de tus animaciones o sonidos directamente como si fueran funciones de la clase.
 
 ```ces
-// Si tienes un estado llamado "Correr" en tu controlador:
-reproducir.correr();
-// O en inglés:
-play.walk();
+// Si tienes un sonido en AudioSource llamado "Explosion"
+reproducir.Explosion();
+
+// Si tienes un estado en AnimatorController llamado "Atacar"
+play.Atacar();
 ```
-Esto buscará el estado en el `AnimatorController` y lo activará automáticamente respetando las transiciones.
+El motor buscará automáticamente en los componentes `AudioSource` o `AnimatorController` de la materia y ejecutará la acción correspondiente.
