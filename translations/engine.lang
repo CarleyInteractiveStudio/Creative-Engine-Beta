@@ -213,6 +213,7 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificación
 TIENDA_ASSETS: Tienda de asset
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Escena
 VISTA_JUEGO: Juego
 VISTA_CODIGO: Codigo
@@ -532,6 +533,7 @@ EDITOR_SPRITES: Sprite Editor
 CONTROL_AMBIENTE: Environment Control
 SISTEMA_VERIFICACION: Verification System
 TIENDA_ASSETS: Asset Store
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Scene
 VISTA_JUEGO: Game
 VISTA_CODIGO: Code
@@ -800,6 +802,7 @@ EDITOR_SPRITES: Editor de Sprites
 CONTROL_AMBIENTE: Control de Ambiente
 SISTEMA_VERIFICACION: Sistema de Verificação
 TIENDA_ASSETS: Loja de Assets
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Cena
 VISTA_JUEGO: Jogo
 VISTA_CODIGO: Codigo
@@ -1067,6 +1070,7 @@ EDITOR_SPRITES: Редактор спрайтов
 CONTROL_AMBIENTE: Управление окружением
 SISTEMA_VERIFICACION: Система проверки
 TIENDA_ASSETS: Магазин ассетов
+VID_SPRI: Vid Spri
 VISTA_ESCENA: Сцена
 VISTA_JUEGO: Игра
 VISTA_CODIGO: Код
@@ -1334,6 +1338,7 @@ EDITOR_SPRITES: 精灵编辑器
 CONTROL_AMBIENTE: 环境控制
 SISTEMA_VERIFICACION: 验证系统
 TIENDA_ASSETS: 资源商店
+VID_SPRI: Vid Spri
 VISTA_ESCENA: 场景
 VISTA_JUEGO: 游戏
 VISTA_CODIGO: 代码

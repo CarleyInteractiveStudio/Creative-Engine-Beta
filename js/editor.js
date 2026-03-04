@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'export-filename', 'export-confirm-btn', 'import-confirm-btn', 'resizer-left', 'resizer-right', 'resizer-bottom',
             'ui-editor-panel', 'ui-editor-save-btn', 'ui-canvas-maximize-btn', 'ui-editor-hierarchy',
             'ui-editor-canvas-container', 'ui-editor-canvas', 'ui-editor-inspector', 'ui-resizer-left', 'ui-resizer-right',
-            'asset-store-panel', 'btn-open-asset-store-ext',
+            'vid-spri-panel', 'btn-open-vid-spri-ext',
             // Carl IA Panel Elements
             'carl-ia-panel', 'carl-ia-view-selector-btn', 'carl-ia-brain-selector-btn', 'carl-ia-messages', 'carl-ia-input', 'carl-ia-send-btn', 'menubar-carl-ia-btn',
             // Terminal Elements
@@ -896,7 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'animator-controller-panel': 'menu-window-animator',
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
-            'asset-store-panel': 'menu-window-asset-store',
+            'vid-spri-panel': 'menu-window-vid-spri',
             'verification-system-panel': 'menu-window-verification-system',
             'ambiente-control-panel': 'menu-window-ambiente-control'
         };
@@ -2802,7 +2802,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
             else if (panelName === 'verification-system') panelId = 'verification-system-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
-            else if (panelName === 'asset-store') panelId = 'asset-store-panel';
+            else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';
             else if (panelName === 'ambiente-control') panelId = 'ambiente-control-panel';
             else if (panelName === 'animator') panelId = 'animator-controller-panel';
 
@@ -2899,9 +2899,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        if (dom.btnOpenAssetStoreExt) {
-            dom.btnOpenAssetStoreExt.addEventListener('click', () => {
-                const iframe = dom.assetStorePanel.querySelector('iframe');
+        if (dom.btnOpenVidSpriExt) {
+            dom.btnOpenVidSpriExt.addEventListener('click', () => {
+                const iframe = dom.vidSpriPanel.querySelector('iframe');
                 if (iframe && iframe.src) {
                     window.open(iframe.src, '_blank');
                 }
@@ -3004,7 +3004,7 @@ document.addEventListener('DOMContentLoaded', () => {
 IMPORTANTE: El idioma actual de la interfaz del motor es {idioma}. Debes responder preferiblemente en este idioma, a menos que el usuario te hable en otro.
 
 CONOCIMIENTO DE LA INTERFAZ (UI):
-- Menú Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuración del Proyecto, Preferencias), Ventana (Jerarquía, Inspector, Navegador, Consola, Editor de Animación, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Tienda de Assets), Librerías, Carl IA, Donar.
+- Menú Superior: Archivo (Nueva escena, Abrir, Guardar, Importar/Exportar), Editar (Configuración del Proyecto, Preferencias), Ventana (Jerarquía, Inspector, Navegador, Consola, Editor de Animación, Paleta de Tiles, Editor de Sprites, Control de Ambiente, Vid Spri), Librerías, Carl IA, Donar.
 - Paneles Principales:
   - Jerarquía: Gestiona los objetos (Materias) en la escena actual. Permite crear cámaras, sprites, luces, UI, etc.
   - Inspector: Edita propiedades del objeto seleccionado y permite añadir componentes (Leyes).
