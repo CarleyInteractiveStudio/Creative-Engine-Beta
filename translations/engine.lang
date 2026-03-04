@@ -5,7 +5,13 @@ SILENCIAR_MUSICA: Silenciar Música
 
 # General
 EMPEZAR: Empezar a Crear
-CONTACTO: Contacto y Soporte
+CONTACTO: Contacto
+SOPORTE: Soporte
+OPINIONES: Opiniones
+RECLAMOS: Reclamos
+INTEGRACIONES_IA: Integraciones de IA
+API_KEY: Clave de API
+OBTENER_API_KEY: Obtener una clave en Google AI Studio
 DONAR: Donar con PayPal
 DISCORD: Unirte a Discord
 CREDITOS: Hecho por Carley Interactive Studio con la ayuda de Google Jules.
@@ -180,6 +186,8 @@ ARCHIVO: Archivo
 EDITAR: Editar
 VENTANA: Ventana
 AYUDA: Ayuda
+TUTORIALES: Tutoriales
+REPORTAR_FALLOS: Reportar Bugs/Errores/Fallos
 NUEVA_ESCENA: Nueva Escena
 ABRIR_ESCENA: Abrir Escena...
 GUARDAR_ESCENA: Guardar Escena
@@ -316,7 +324,13 @@ SILENCIAR_MUSICA: Mute Music
 
 # General
 EMPEZAR: Start Creating
-CONTACTO: Contact & Support
+CONTACTO: Contact
+SOPORTE: Support
+OPINIONES: Opinions
+RECLAMOS: Claims
+INTEGRACIONES_IA: AI Integrations
+API_KEY: API Key
+OBTENER_API_KEY: Get a key at Google AI Studio
 DONAR: Donate with PayPal
 DISCORD: Join Discord
 CREDITOS: Made by Carley Interactive Studio with the help of Google Jules.
@@ -491,6 +505,8 @@ ARCHIVO: File
 EDITAR: Edit
 VENTANA: Window
 AYUDA: Help
+TUTORIALES: Tutorials
+REPORTAR_FALLOS: Report Bugs/Errors/Failures
 NUEVA_ESCENA: New Scene
 ABRIR_ESCENA: Open Scene...
 GUARDAR_ESCENA: Save Scene

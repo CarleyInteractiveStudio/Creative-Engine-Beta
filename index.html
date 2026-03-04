@@ -119,10 +119,22 @@
             <div class="footer-column">
                 <h4 data-i18n="FOROS">Foros</h4>
                 <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="footer-link">
-                    <img src="icons/bot.svg" class="ce-icon"> Discord
+                    <img src="icons/discord.svg" class="ce-icon"> Discord
                 </a>
                 <a href="https://www.facebook.com/groups/1264745161495908" target="_blank" class="footer-link">
                     <img src="icons/facebook.svg" class="ce-icon"> Grupo de Facebook
+                </a>
+            </div>
+            <div class="footer-column">
+                <h4 data-i18n="CONTACTO">Contacto</h4>
+                <a href="#" class="footer-link" id="link-support-footer">
+                    <img src="icons/help-circle.svg" class="ce-icon"> <span data-i18n="SOPORTE">Soporte</span>
+                </a>
+                <a href="#" class="footer-link" id="link-opinions-footer">
+                    <img src="icons/message-square.svg" class="ce-icon"> <span data-i18n="OPINIONES">Opiniones</span>
+                </a>
+                <a href="#" class="footer-link" id="link-claims-footer">
+                    <img src="icons/alert-circle.svg" class="ce-icon"> <span data-i18n="RECLAMOS">Reclamos</span>
                 </a>
             </div>
             <div class="footer-column">
@@ -277,6 +289,18 @@
                             <option value="ZH">中文</option>
                         </select>
                         <p class="field-description" data-i18n="HINT_IDIOMA">Cambia el idioma de la interfaz del motor.</p>
+
+                        <hr>
+
+                        <h2 data-i18n="INTEGRACIONES_IA">Integraciones de IA</h2>
+                        <label for="carl-ai-key" data-i18n="API_KEY">Clave de API (Carl IA):</label>
+                        <div class="api-key-container">
+                            <input id="carl-ai-key" type="password" class="modal-input" placeholder="Introduce tu clave de API">
+                            <button id="btn-save-ai-key" class="modal-btn small" data-i18n="GUARDAR">Guardar</button>
+                        </div>
+                        <p class="field-description">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" data-i18n="OBTENER_API_KEY">Obtener una clave en Google AI Studio</a>
+                        </p>
                     </div>
                 </div>
             </div>

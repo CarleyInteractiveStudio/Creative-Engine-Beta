@@ -2250,6 +2250,29 @@ document.addEventListener('DOMContentLoaded', () => {
         selectMateria(null);
     };
 
+    const captureThumbnail = async () => {
+        if (!projectsDirHandle) return;
+        const projectName = new URLSearchParams(window.location.search).get('project');
+        if (!projectName) return;
+
+        try {
+            const projectHandle = await projectsDirHandle.getDirectoryHandle(projectName);
+            const canvas = dom.sceneCanvas;
+
+            // Convert canvas to blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) return;
+
+            const thumbHandle = await projectHandle.getFileHandle('thumbnail.png', { create: true });
+            const writable = await thumbHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            console.log("[Editor] Miniatura del proyecto guardada.");
+        } catch (e) {
+            console.error("[Editor] Error al capturar miniatura:", e);
+        }
+    };
+
     saveScene = async function() {
         if (isPrefabMode) {
             await savePrefab();
@@ -2278,6 +2301,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 SceneManager.setSceneDirty(false);
                 showNotificationDialog('Éxito', '¡Escena guardada!');
                 updateAssetBrowser(); // Refresh to show the new file
+
+                // Capture thumbnail
+                await captureThumbnail();
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error("Error en 'Guardar Como':", error);
@@ -2293,6 +2319,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await writable.close();
                 SceneManager.setSceneDirty(false);
                 showNotificationDialog('Éxito', '¡Escena guardada!');
+
+                // Capture thumbnail
+                await captureThumbnail();
             } catch (error) {
                 console.error("Error al guardar la escena:", error);
                 showNotificationDialog('Error', 'No se pudo guardar la escena.');
@@ -2568,6 +2597,15 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             saveScene();
         });
+
+        const reportBugBtn = document.getElementById('menu-report-bug');
+        if (reportBugBtn) {
+            reportBugBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // We use the already available showNotification or a specialized one
+                showNotificationDialog('Reportar Fallo', '¡Gracias por querer ayudarnos! Por favor, envía un mensaje detallado a nuestro correo de soporte o usa el formulario de contacto en el inicio.');
+            });
+        }
 
         dom.menuBuild.addEventListener('click', (e) => {
             e.preventDefault();

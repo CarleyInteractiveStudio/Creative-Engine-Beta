@@ -182,10 +182,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return timeB - timeA; // Sort descending (newest first)
             });
 
-            projects.forEach(entry => {
+            projects.forEach(async entry => {
                 const projectItem = document.createElement('div');
                 projectItem.className = 'project-item';
                 projectItem.dataset.projectName = entry.name;
+
+                // Load thumbnail if exists
+                try {
+                    const projectDir = await dirHandle.getDirectoryHandle(entry.name);
+                    const thumbFile = await projectDir.getFileHandle('thumbnail.png');
+                    const file = await thumbFile.getFile();
+                    const url = URL.createObjectURL(file);
+                    projectItem.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${url})`;
+                    projectItem.style.backgroundSize = 'cover';
+                    projectItem.style.backgroundPosition = 'center';
+                } catch (e) {
+                    // No thumbnail, use default style
+                }
 
                 const projectNameEl = document.createElement('h3');
                 projectNameEl.textContent = entry.name;
@@ -250,6 +263,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         policyLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de privacidad estará disponible pronto.'); }));
         cookiesLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de cookies estará disponible pronto.'); }));
         whatWeDoLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Donaciones', 'Sus donaciones se utilizan para el mantenimiento de servidores, licencias de software y el desarrollo continuo del motor para que siga siendo gratuito.'); }));
+
+        const supportFooter = document.getElementById('link-support-footer');
+        const opinionsFooter = document.getElementById('link-opinions-footer');
+        const claimsFooter = document.getElementById('link-claims-footer');
+
+        if (supportFooter) supportFooter.addEventListener('click', (e) => { e.preventDefault(); openModal(supportModal); });
+        if (opinionsFooter) opinionsFooter.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Opiniones', '¡Gracias por querer compartir tu opinión! Esta sección estará disponible pronto.'); });
+        if (claimsFooter) claimsFooter.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Reclamos', 'Para reclamos legales o técnicos, por favor usa el formulario de soporte por el momento.'); });
     };
     setupFooterLinks();
 
@@ -618,6 +639,28 @@ Para más detalles, consulta la sección "Ayuda" del editor.`;
     window.addEventListener('ce-language-changed', (e) => {
         if (mainLangSelect) mainLangSelect.value = e.detail;
     });
+
+    // AI Key Logic
+    const aiKeyInput = document.getElementById('carl-ai-key');
+    const saveAiKeyBtn = document.getElementById('btn-save-ai-key');
+
+    if (aiKeyInput) {
+        const savedKey = localStorage.getItem('creativeEngine_gemini_apiKey');
+        if (savedKey) aiKeyInput.value = savedKey;
+    }
+
+    if (saveAiKeyBtn) {
+        saveAiKeyBtn.addEventListener('click', () => {
+            const key = aiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('creativeEngine_gemini_apiKey', key);
+                Dialogs.showNotification('Éxito', 'Clave de API guardada correctamente.');
+            } else {
+                localStorage.removeItem('creativeEngine_gemini_apiKey');
+                Dialogs.showNotification('Aviso', 'Clave de API eliminada.');
+            }
+        });
+    }
 
     // --- Initialize ---
     openDB();
