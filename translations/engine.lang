@@ -44,6 +44,7 @@ COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos los derechos rese
 PRUEBA_VIDSPRI: También prueba VidSpri
 NUESTRO_SITIO_WEB: Nuestro sitio web
 COMPARTIR_MOTOR: Compartir Motor
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Tu juego empieza aquí. Lo que imagines, lo construyes.
@@ -367,6 +368,7 @@ COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. All rights reserved.
 PRUEBA_VIDSPRI: Also try VidSpri
 NUESTRO_SITIO_WEB: Our Website
 COMPARTIR_MOTOR: Share Engine
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Your game starts here. What you imagine, you build.
@@ -668,7 +670,8 @@ VOLVER_INICIO: Voltar ao Início
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Seu jogo começa aqui. O que você imagina, você constrói.
 WELCOME_DESCRIPTION: Um motor de jogos 2D gratuito para criar diretamente no seu navegador. Projete sem limites, crie sem medo e publique com orgulho.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos os direitos reservados.
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Seu jogo começa aqui. O que você imagina, você constrói.
@@ -936,7 +939,8 @@ VOLVER_INICIO: Вернуться в начало
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: Ваша игра начинается здесь. Что вообразите, то и построите.
 WELCOME_DESCRIPTION: Бесплатный 2D-движок для создания игр прямо в браузере. Проектируйте без границ, творите без страха и публикуйте с гордостью.
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Все права защищены.
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: Ваша игра начинается здесь. Что вообразите, то и построите.
@@ -1204,7 +1208,8 @@ VOLVER_INICIO: 返回首页
 WELCOME_TITLE: Creative Engine
 WELCOME_SUBTITLE: 您的游戏从这里开始。所见即所造。
 WELCOME_DESCRIPTION: 一款可以在浏览器中直接创作的免费 2D 游戏引擎。无限制设计，无畏创作，自豪发布。
-COPYRIGHT_FOOTER: &copy; 2025 Carley Interactive Studio
+COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio。保留所有权利。
+TIKTOK: TikTok
 
 # Quotes
 QUOTE_1: 您的游戏从这里开始。所见即所造。
