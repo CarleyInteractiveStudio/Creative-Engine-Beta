@@ -3124,7 +3124,22 @@ Si el usuario no sabe dónde encontrar algo o cómo hacer algo, guíalo indicán
 
                 const msgDiv = document.createElement('div');
                 msgDiv.className = `carl-message-bubble carl-message-${sender} ${isError ? 'error' : ''}`;
-                msgDiv.textContent = text;
+
+                // --- Markdown Rendering for IA responses ---
+                if (sender === 'ia' && !isError && window.showdown) {
+                    const converter = new showdown.Converter({
+                        omitExtraWLInCodeBlocks: true,
+                        simplifiedAutoLink: true,
+                        strikethrough: true,
+                        tables: true,
+                        ghCodeBlocks: true,
+                        tasklists: true
+                    });
+                    msgDiv.innerHTML = converter.makeHtml(text);
+                } else {
+                    msgDiv.textContent = text;
+                }
+
                 msgDiv.style.padding = '10px 14px';
                 msgDiv.style.borderRadius = '18px';
                 msgDiv.style.lineHeight = '1.4';
