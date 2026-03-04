@@ -1,123 +1,152 @@
 # 🧩 Guía Maestra de Componentes (Leyes): Creative Engine
 
-Los componentes (llamados **Leyes** en este motor) son los bloques de construcción de tus objetos (Materias). Cada componente añade una funcionalidad específica, como movimiento, renderizado o físicas.
+En Creative Engine, los componentes (Leyes) definen el comportamiento y la apariencia de tus objetos (Materias). A continuación se detallan todos los componentes disponibles, sus propiedades y cómo controlarlos desde scripting.
 
 ---
 
-## 🏗️ Básicos y Transformación
+## 🏗️ Núcleo y Transformación
 
 ### 📍 Transform (Posición)
-Es el componente más importante. Define dónde está el objeto, hacia dónde mira y qué tan grande es.
-- **Propiedades:** Posición (X, Y), Rotación, Escala (X, Y).
-- **En Scripting:**
-  - `posicion.x = 100;`
-  - `posicion.rotation += 45;`
+Componente obligatorio en todo objeto espacial.
+- **Propiedades:** `position` (Vector2), `rotation` (número), `scale` (Vector2), `flipX`, `flipY`.
+- **Scripting:**
+  - `posicion.x = 500;`
+  - `posicion.rotation += 10;`
+  - `voltearH = verdadero;` (Atajo para flipX)
 
 ### 📷 Camera (Cámara)
-Define el área del mundo que el jugador ve.
-- **Propiedades:** Zoom, Fondo (Color), Capas de renderizado (Culling Mask).
-- **En Scripting:** `camara.zoom = 1.5;`
+Define la vista del jugador.
+- **Propiedades:** `zoom`, `backgroundColor`, `cullingMask` (capas visibles), `depth`.
+- **Scripting:** `camara.zoom = 2.0;`
 
 ---
 
 ## 🎨 Renderizado y Visuales
 
 ### 🖼️ SpriteRenderer
-Dibuja una imagen o un cuadro de una hoja de sprites.
-- **Propiedades:** Imagen (Sprite), Color (Tinte), Opacidad, Orden en capa.
-- **En Scripting:**
-  - `renderizadorDeSprite.color = "#FF0000";`
-  - `renderizadorDeSprite.flipX = verdadero;`
+Dibuja imágenes en 2D.
+- **Propiedades:** `source` (imagen), `spriteAssetPath` (.ceSprite), `color`, `opacity`, `orderInLayer`.
+- **Scripting:** `renderizadorDeSprite.color = "#00FF00";`
 
-### 🌊 Water (Agua)
-Crea una superficie de agua interactiva con físicas de flotación.
-- **Propiedades:** Fuerza de flotación, Nivel de agua, Color.
+### 🎞️ VideoPlayer
+Reproduce archivos de video.
+- **Propiedades:** `source`, `volume`, `loop`, `playbackRate`.
+- **Scripting:** `reproductorDeVideo.reproducir();`
+
+### 🌈 TextureRender
+Dibuja formas geométricas (Rectángulo, Círculo, Triángulo, Cápsula) rellenas de color o textura repetida.
+- **Scripting:** `renderizadorDeTextura.radius = 100;`
 
 ---
 
-## ⚙️ Físicas 2D
+## ⚙️ Físicas y Colisiones
 
 ### ⚖️ Rigidbody2D
-Permite que el objeto se vea afectado por la gravedad y las fuerzas.
-- **Propiedades:** Masa, Gravedad (Escala), Arrastre (Drag), Tipo (Dinámico/Estático).
-- **En Scripting:**
-  - `fisica.addForce(nuevo Vector2(100, 0));`
-  - `fisica.velocity = nuevo Vector2(0, -5);`
+Controla la física dinámica del objeto.
+- **Propiedades:** `mass`, `gravityScale`, `linearDrag`, `bodyType` (Dynamic/Static/Kinematic).
+- **Scripting:**
+  - `fisica.addForce(nuevo Vector2(0, -500));`
+  - `fisica.velocity.x = 5;`
 
-### 📦 BoxCollider2D / CircleCollider2D / CapsuleCollider2D
-Definen la "forma" física del objeto para que choque con otros.
-- **Propiedades:** Tamaño, Offset, ¿Es disparador? (Trigger).
+### 📦 Colisionadores
+Definen la forma física para impactos.
+- **Tipos:** `BoxCollider2D`, `CircleCollider2D`, `CapsuleCollider2D`, `PolygonCollider2D`, `LineCollider2D`.
+- **Propiedades:** `size`, `radius`, `offset`, `isTrigger`.
+- **Scripting:** `colisionador2d.isTrigger = verdadero;`
 
 ---
 
 ## 🚗 Vehículos y Movimiento
 
 ### 🚜 SuspensionHC
-Simula una suspensión de vehículo estilo "Hill Climb". Ideal para coches 2D con ruedas.
-- **Propiedades:** Dureza del resorte, Amortiguación, Longitud de reposo.
-- **Uso:** Debe asignarse un "Chasis" (otro objeto con Rigidbody2D).
+Simulación física para vehículos con ruedas.
+- **Propiedades:** `dureza` (stiffness), `amortiguacion` (damping), `longitudReposo`, `fuerzaInclinacion`.
+- **Uso:** Requiere un objeto "Chasis" asignado.
 
 ### 🏎️ VehicleTopDown
-Controlador para juegos de vista aérea con derrapes realistas.
-- **Propiedades:** Potencia del motor, Agilidad de giro, Intensidad de derrape.
+Controlador arcade para vista cenital.
+- **Propiedades:** `potencia`, `velocidadMaxima`, `intensidadDerrape` (drift).
+
+### ✈️ PlaneController
+Controlador de vuelo lateral con sustentación física.
+- **Propiedades:** `potenciaMotor`, `fuerzaSustentacion`, `vDespegue`.
+
+### 🚁 HelicopterController
+Vuelo de helicóptero con potencia vertical y balanceo.
 
 ---
 
-## 🤖 Inteligencia Artificial y Mapas
+## 🤖 Inteligencia y Lógica
 
 ### 🧠 BasicAI
-Un sistema de navegación simple para que los enemigos sigan objetivos o eviten obstáculos.
-- **Propiedades:** Objetivo (Materia), Velocidad, Distancia de detección.
+Comportamientos predefinidos de IA.
+- **Modos:** `Follow` (Seguir), `Escape` (Huir), `Wander` (Deambular).
+- **Propiedades:** `target`, `speed`, `detectionDistance`, `obstacleAvoidance`.
+- **Eventos de Script:** `onTargetSeen`, `onTargetLost`, `onTargetNear`.
 
-### 🗺️ Tilemap
-Permite pintar niveles usando azulejos (tiles).
-- **Uso:** Requiere una **Paleta de Tiles**. Se recomienda usarlo junto con **TilemapCollider2D** para colisiones automáticas.
+### 📡 RaycastSource (Rallo)
+Lanza múltiples rayos de detección.
+- **Propiedades:** `rays` (lista de ángulos y longitudes), `autoRotate`.
+- **Scripting:** `rallo.rayos[0].length = 500;`
 
 ---
 
-## 💡 Iluminación Dinámica
+## 🗺️ Mapas y Terreno
 
-### 🌟 PointLight2D / SpotLight2D
-Crea fuentes de luz en el mundo.
-- **Propiedades:** Radio, Intensidad, Color.
-- **Nota:** Requiere que el modo de gráficos en "Configuración del Proyecto" sea **Avanzado (Realista)**.
+### 🗺️ Tilemap
+Pintado de niveles por azulejos.
+- **Propiedades:** `width`, `height`, `layers`.
+- **Soporte:** `TilemapCollider2D` genera colisiones automáticas de los tiles pintados.
+
+### ⛰️ Terreno2D
+Terreno destructible por pincel (píxeles).
+- **Funciones:** `paint(x, y, radio, borrar, capa)`.
+- **Soporte:** `TerrenoCollider2D` actualiza la colisión dinámicamente al pintar/borrar.
 
 ---
 
 ## 📱 Interfaz de Usuario (UI)
 
-### 🖼️ UIImage / UIText
-Componentes para mostrar iconos o texto en pantalla.
-- **Atajo en Scripting:** `ui.texto = "Puntuación: 100";`
+### 🖼️ Canvas (Lienzo)
+El contenedor raíz para todos los elementos de UI.
+- **Propiedades:** `renderMode` (Screen/World Space).
 
-### 🖱️ Button
-Detecta clics y ejecuta acciones.
-- **Atajo en Scripting:** `ui.boton.alPresionar(() => { ... });`
+### 📑 Elementos de UI
+- **UIImage / UIText:** Muestran imágenes o texto.
+- **Button:** Botón interactivo.
+- **Layout Groups:** `VerticalLayoutGroup`, `HorizontalLayoutGroup`, `GridLayoutGroup`. Organizan hijos automáticamente.
+- **ContentSizeFitter:** Ajusta el tamaño del panel al contenido de sus hijos.
 
 ---
 
 ## 🔄 Animación
 
 ### 🎬 Animator
-Controla la reproducción de clips de animación (.cea).
-- **Atajo en Scripting:** `animador.play("Caminar");`
+Reproduce un clip de animación (.cea).
+- **Scripting:** `animador.reproducir("Assets/Caminar.cea");`
 
 ### 🎮 AnimatorController
-Una máquina de estados visual que permite cambiar animaciones según variables (Ej: pasar de "Quieto" a "Correr" si la velocidad > 0).
+Gestiona estados y transiciones complejas.
+- **Funciones:** `smartMode` (Mapeo automático de movimiento a animaciones).
 
 ---
 
-## Atajos de Scripting (Resumen)
+## Atajos de Scripting (Exhaustivo)
 
-Para facilitar el trabajo, puedes acceder a estos componentes usando nombres cortos en tus scripts:
-
-| Componente | Atajo en Script |
-| :--- | :--- |
-| **Transform** | `posicion` |
-| **Rigidbody2D** | `fisica` |
-| **Camera** | `camara` |
-| **AudioSource** | `fuenteDeAudio` |
-| **SpriteRenderer** | `renderizadorDeSprite` |
-| **Animator** | `animador` |
-| **Canvas** | `lienzo` |
-| **ParticleSystem** | `sistemaDeParticulas` |
+| Clase | Atajo (ES) | Atajo (EN) |
+| :--- | :--- | :--- |
+| **Transform** | `posicion` / `transformacion` | `transform` |
+| **Rigidbody2D** | `fisica` | `rigidbody2D` |
+| **SpriteRenderer** | `renderizadorDeSprite` | `spriteRenderer` |
+| **AudioSource** | `fuenteDeAudio` | `audioSource` |
+| **Camera** | `camara` | `camera` |
+| **Animator** | `animador` | `animator` |
+| **Tilemap** | `mapaDeAzulejos` | `tilemap` |
+| **Water** | `agua` | `water` |
+| **ParticleSystem**| `sistemaDeParticulas` | `particleSystem` |
+| **BasicAI** | `iaBasica` | `basicAI` |
+| **VideoPlayer** | `reproductorDeVideo` | `videoPlayer` |
+| **Canvas** | `lienzo` | `canvas` |
+| **UIText** | `texto` | `textoUI` |
+| **Button** | `boton` | `button` |
+| **UIImage** | `imagen` | `uiImage` |
