@@ -32,7 +32,6 @@ import { API as LibraryAPI } from './editor/LibraryAPI.js';
 import * as RuntimeAPIManager from './engine/RuntimeAPIManager.js';
 import * as CES_Transpiler from './editor/CES_Transpiler.js';
 import { initialize as initializeLibraryWindow } from './editor/ui/LibraryWindow.js';
-import * as VerificationSystem from './editor/ui/VerificationSystem.js';
 import { AmbienteControlWindow } from './editor/ui/AmbienteControlWindow.js';
 import { TerrenoEditorWindow } from './editor/ui/TerrenoEditorWindow.js';
 import * as EngineAPI from './engine/EngineAPI.js';
@@ -296,8 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'asset-selector-footer', 'asset-selector-confirm-btn',
             // Disassociate Sprite Modal
             'disassociate-sprite-modal', 'disassociate-sprite-list',
-            // Verification System Panel
-            'verification-system-panel', 'verification-tile-image', 'verification-status-text', 'verification-details-text',
             // Ambiente Control Panel
             'ambiente-control-panel', 'ambiente-tiempo', 'ambiente-tiempo-valor',
             'ambiente-noche-dia-intensidad', 'ambiente-noche-dia-intensidad-valor',
@@ -897,7 +894,6 @@ document.addEventListener('DOMContentLoaded', () => {
             'tile-palette-panel': 'menu-window-tile-palette',
             'sprite-slicer-panel': 'menu-window-sprite-editor',
             'vid-spri-panel': 'menu-window-vid-spri',
-            'verification-system-panel': 'menu-window-verification-system',
             'ambiente-control-panel': 'menu-window-ambiente-control'
         };
         const checkmark = '✓ ';
@@ -2800,7 +2796,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle exceptions where panel ID doesn't match menu ID perfectly
             if (panelName === 'sprite-editor') panelId = 'sprite-slicer-panel';
-            else if (panelName === 'verification-system') panelId = 'verification-system-panel';
             else if (panelName === 'tile-palette') panelId = 'tile-palette-panel';
             else if (panelName === 'vid-spri') panelId = 'vid-spri-panel';
             else if (panelName === 'ambiente-control') panelId = 'ambiente-control-panel';
@@ -3862,7 +3857,6 @@ public start() {
             initializeInspector({ dom, projectsDirHandle, currentDirectoryHandle: getCurrentDirectoryHandle, getSelectedMateria: () => selectedMateria, getSelectedAsset, openAssetSelectorCallback: openAssetSelector, saveAssetMetaCallback: saveAssetMeta, extractFramesFromSheetCallback: extractFramesAndCreateAsset, updateSceneCallback: () => updateScene(renderer, false), getCurrentProjectConfig: () => currentProjectConfig, showdown, updateAssetBrowserCallback: updateAssetBrowser, createAssetCallback: createAsset, onAssetOpened, enterAddTilemapLayerMode });
             initializeAssetBrowser({ dom, projectsDirHandle, exportContext, ...assetBrowserCallbacks });
             TilePalette.initialize({ dom, projectsDirHandle, openAssetSelectorCallback: openAssetSelector, setActiveToolCallback: SceneView.setActiveTool });
-            VerificationSystem.initialize({ dom });
             TerrenoEditorWindow.initialize({ dom, updateInspector });
             AmbienteControlWindow.initialize({
                 dom,

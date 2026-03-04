@@ -1,6 +1,5 @@
 // --- Module for Scene View Interactions and Gizmos ---
 
-import * as VerificationSystem from './ui/VerificationSystem.js';
 import { getAbsoluteRect, getClosestAnchorPoint, getAnchorPosition } from '../engine/UITransformUtils.js';
 import { TerrenoEditorWindow } from './ui/TerrenoEditorWindow.js';
 import { getCurrentDirectoryHandle, getCurrentDirectoryPath } from './ui/AssetBrowserWindow.js';
@@ -2406,7 +2405,6 @@ function paintTile(event) {
     const selectedMateria = getSelectedMateria();
     const L = window.Localization;
     if (!selectedMateria) {
-        VerificationSystem.updateStatus(null, false, L.get('ERROR_NO_OBJETO_SELECT', "Error: No hay ningún objeto seleccionado."));
         return;
     }
 
@@ -2425,7 +2423,6 @@ function paintTile(event) {
     const tilemapRenderer = tilemapMateria.getComponent(Components.TilemapRenderer);
 
     if (!tilemap || !transform || !tilemapRenderer) {
-        VerificationSystem.updateStatus(null, false, L.get('ERROR_TILEMAP_INVALIDO', "Error: El objeto seleccionado o sus hijos no contienen un Tilemap válido."));
         return;
     }
 
@@ -2437,7 +2434,6 @@ function paintTile(event) {
     }
 
     if (!grid) {
-        VerificationSystem.updateStatus(null, false, L.get('ERROR_GRID_FALTANTE', "Error: El objeto seleccionado o su padre no tienen un componente Grid."));
         return;
     }
 
@@ -2491,7 +2487,6 @@ function paintTile(event) {
             tilemapRenderer.setDirty();
             const collider = tilemapMateria.getComponent(Components.TilemapCollider2D);
             if (collider) collider.isDirty = true;
-            VerificationSystem.updateStatus(null, true, L.get('STATUS_TILE_BORRADO', "Tile Borrado"));
         }
         return;
     }
@@ -2565,10 +2560,7 @@ function paintTile(event) {
                         tilemapMateria.addComponent(new Components.Animator(tilemapMateria));
                         updateInspector();
                     }
-
-                    VerificationSystem.updateStatus(tilesToPaint[0], true, L.get('STATUS_TILE_PINTADO', "¡Tile Pintado!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 } else {
-                    VerificationSystem.updateStatus(null, false, L.get('ERROR_SIN_TILE_PALETA', "Error: No hay ningún tile seleccionado en la paleta."));
                     return;
                 }
             } else if (activeTool === 'tile-bucket') {
@@ -2581,8 +2573,6 @@ function paintTile(event) {
                         tilemapMateria.addComponent(new Components.Animator(tilemapMateria));
                         updateInspector();
                     }
-
-                    VerificationSystem.updateStatus(tileToPaint, true, L.get('STATUS_AREA_RELLENADA', "¡Área Rellenada!"), `${L.get('DETALLE_COORDENADAS', 'Coordenadas')}: [${col}, ${row}]`);
                 }
             }
 
@@ -2597,7 +2587,6 @@ function paintTile(event) {
 
             return;
         }
-    VerificationSystem.updateStatus(null, false, L.get('INFO_CLICK_FUERA_TILEMAP', "Info: El clic no cayó dentro de los límites de ninguna capa del tilemap."));
 }
 
 function drawCanvasGizmos() {
