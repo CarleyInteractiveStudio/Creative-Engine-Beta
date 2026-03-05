@@ -44,6 +44,7 @@ COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. Todos los derechos rese
 PRUEBA_VIDSPRI: También prueba VidSpri
 NUESTRO_SITIO_WEB: Nuestro sitio web
 COMPARTIR_MOTOR: Compartir Motor
+MAS: Más
 TIKTOK: TikTok
 
 # Quotes
@@ -372,6 +373,7 @@ COPYRIGHT_FOOTER: &copy; 2026 Carley Interactive Studio. All rights reserved.
 PRUEBA_VIDSPRI: Also try VidSpri
 NUESTRO_SITIO_WEB: Our Website
 COMPARTIR_MOTOR: Share Engine
+MAS: More
 TIKTOK: TikTok
 
 # Quotes
@@ -684,6 +686,7 @@ LEGAL: Legal
 PRUEBA_VIDSPRI: Também teste VidSpri
 NUESTRO_SITIO_WEB: Nosso site
 COMPARTIR_MOTOR: Compartilhar Motor
+MAS: Mais
 CARGANDO_PROYECTO: Carregando seu projeto...
 CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
@@ -973,6 +976,7 @@ LEGAL: Юридическая информация
 PRUEBA_VIDSPRI: Также попробуйте VidSpri
 NUESTRO_SITIO_WEB: Наш веб-сайт
 COMPARTIR_MOTOR: Поделиться движком
+MAS: Больше
 CARGANDO_PROYECTO: Загрузка проекта...
 CARGANDO_LIBS: Загрузка библиотек...
 HA_OCURRIDO_ERROR: Произошла ошибка.
@@ -1262,6 +1266,7 @@ LEGAL: 法律
 PRUEBA_VIDSPRI: 也请尝试 VidSpri
 NUESTRO_SITIO_WEB: 我们的网站
 COMPARTIR_MOTOR: 分享引擎
+MAS: 更多
 CARGANDO_PROYECTO: 正在加载您的项目...
 CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。

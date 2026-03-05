@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Buttons
     const startButton = document.getElementById('btn-start');
     const shareButton = document.getElementById('btn-share');
+    const shareButtonMain = document.getElementById('btn-share-main');
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
 
@@ -256,31 +257,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    if (shareButton) {
-        shareButton.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'Creative Engine',
-                        text: '¡Crea tus propios videojuegos 2D directamente en el navegador con Creative Engine!',
-                        url: window.location.href
-                    });
-                    console.log('Engine shared successfully');
-                } catch (error) {
-                    console.error('Error sharing engine:', error);
-                }
-            } else {
-                // Fallback: Copy to clipboard
-                try {
-                    await navigator.clipboard.writeText(window.location.href);
-                    Dialogs.showNotification('Enlace Copiado', 'El enlace al motor ha sido copiado al portapapeles.');
-                } catch (err) {
-                    console.error('Could not copy text: ', err);
-                }
+    const handleShare = async (e) => {
+        if (e) e.preventDefault();
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Creative Engine',
+                    text: '¡Crea tus propios videojuegos 2D directamente en el navegador con Creative Engine!',
+                    url: window.location.href
+                });
+                console.log('Engine shared successfully');
+            } catch (error) {
+                console.error('Error sharing engine:', error);
             }
-        });
-    }
+        } else {
+            // Fallback: Copy to clipboard
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                Dialogs.showNotification('Enlace Copiado', 'El enlace al motor ha sido copiado al portapapeles.');
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+            }
+        }
+    };
+
+    if (shareButton) shareButton.addEventListener('click', handleShare);
+    if (shareButtonMain) shareButtonMain.addEventListener('click', handleShare);
 
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
