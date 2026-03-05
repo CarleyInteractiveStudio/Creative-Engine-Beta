@@ -92,6 +92,10 @@ AUTH_RESET_SENT: Si existe una cuenta con este correo, se ha enviado un enlace d
 ENVIANDO: Enviando...
 
 # Launcher
+RESOURCE_LOADING_MODE: Modo de Carga de Recursos
+PRELOAD_STABLE: Precarga (Estable - Carga todo antes de iniciar)
+LAZY_LOAD_FAST: Carga Perezosa (Inicio Rápido - Carga mientras se juega)
+CARGANDO_RECURSOS: Cargando recursos...
 CARPETA: Carpeta
 ANADIR_PROYECTO: Añadir Proyecto
 CREAR_PROYECTO: Crear Proyecto
@@ -416,6 +420,10 @@ AUTH_RESET_SENT: If an account exists with this email, a recovery link has been 
 ENVIANDO: Sending...
 
 # Launcher
+RESOURCE_LOADING_MODE: Resource Loading Mode
+PRELOAD_STABLE: Preload (Stable - Loads everything before starting)
+LAZY_LOAD_FAST: Lazy Load (Fast Start - Loads while playing)
+CARGANDO_RECURSOS: Loading resources...
 CARPETA: Folder
 ANADIR_PROYECTO: Add Project
 CREAR_PROYECTO: Create Project
@@ -714,6 +722,10 @@ AUTH_RESET_SENT: Se existir uma conta com este e-mail, um link de recuperação 
 ENVIANDO: Enviando...
 
 # Launcher
+RESOURCE_LOADING_MODE: Modo de Carregamento de Recursos
+PRELOAD_STABLE: Pré-carregar (Estável - Carrega tudo antes de iniciar)
+LAZY_LOAD_FAST: Carregamento Lento (Início Rápido - Carrega enquanto joga)
+CARGANDO_RECURSOS: Carregando recursos...
 CARPETA: Pasta
 MIS_PROYECTOS: Meus Projetos
 CREAR_NUEVO_PROYECTO: Criar Novo Projeto
@@ -999,6 +1011,10 @@ AUTH_RESET_SENT: Если аккаунт с таким адресом сущес
 ENVIANDO: Отправка...
 
 # Launcher
+RESOURCE_LOADING_MODE: Режим загрузки ресурсов
+PRELOAD_STABLE: Предзагрузка (Стабильно - Загружает всё перед запуском)
+LAZY_LOAD_FAST: Отложенная загрузка (Быстрый старт - Загрузка во время игры)
+CARGANDO_RECURSOS: Загрузка ресурсов...
 CARPETA: Папка
 MIS_PROYECTOS: Мои проекты
 CREAR_NUEVO_PROYECTO: Создать новый проект
@@ -1284,6 +1300,10 @@ AUTH_RESET_SENT: 如果该电子邮件存在帐户，则已发送恢复链接。
 ENVIANDO: 正在发送...
 
 # Launcher
+RESOURCE_LOADING_MODE: 资源加载模式
+PRELOAD_STABLE: 预加载 (稳定 - 启动前加载所有内容)
+LAZY_LOAD_FAST: 懒加载 (快速启动 - 边玩边加载)
+CARGANDO_RECURSOS: 正在加载资源...
 CARPETA: 文件夹
 MIS_PROYECTOS: 我的项目
 CREAR_NUEVO_PROYECTO: 创建新项目

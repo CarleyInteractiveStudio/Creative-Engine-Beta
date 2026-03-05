@@ -317,6 +317,14 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     <input type="checkbox" id="run-after" checked style="margin-right:10px;">
                     <label>${L.get('RUN_AFTER_BUILD_CHECK', 'Probar juego tras construir')}</label>
                 </div>
+                <hr style="border:0; border-top:1px solid #444; margin-top: 15px; margin-bottom: 15px;">
+                <div class="dialog-row">
+                    <label style="display:block; margin-bottom:5px;">${L.get('RESOURCE_LOADING_MODE', 'Modo de Carga de Recursos')}:</label>
+                    <select id="resource-loading-mode" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white;">
+                        <option value="lazy" ${projectConfig.resourceLoadingMode === 'lazy' ? 'selected' : ''}>${L.get('LAZY_LOAD_FAST', 'Carga Perezosa (Inicio Rápido)')}</option>
+                        <option value="preload" ${projectConfig.resourceLoadingMode === 'preload' ? 'selected' : ''}>${L.get('PRELOAD_STABLE', 'Precarga (Estable)')}</option>
+                    </select>
+                </div>
             </div>
         </div>
     `;
@@ -331,6 +339,7 @@ export async function showBuildDialog(projectConfig, onConfirm) {
                     method: dialog.dialogElement.querySelector('#build-method').value,
                     includeUnusedAssets: dialog.dialogElement.querySelector('#include-unused').checked,
                     runAfterBuild: dialog.dialogElement.querySelector('#run-after').checked,
+                    resourceLoadingMode: dialog.dialogElement.querySelector('#resource-loading-mode').value,
                     exportTarget: dialog.dialogElement.querySelector('input[name="export-target"]:checked').value,
                     startScene: dialog.dialogElement.querySelector('input[name="start-scene"]:checked')?.value,
                     includedScenes: Array.from(dialog.dialogElement.querySelectorAll('.include-scene:checked')).map(el => el.dataset.path),
