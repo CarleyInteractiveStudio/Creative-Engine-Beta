@@ -208,65 +208,62 @@ main { padding: 20px 0; }
 
 /* --- More Section --- */
 .more-section {
-    margin-top: 50px;
-    padding-top: 30px;
+    margin-top: 60px;
+    padding-top: 20px;
     border-top: 1px solid var(--border-color);
     text-align: center;
-}
-
-.more-section h3 {
-    color: var(--highlight-color);
-    font-size: 1.5em;
-    margin-bottom: 25px;
-    opacity: 0.8;
 }
 
 .more-buttons-grid {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 15px;
+    align-items: center;
+    gap: 10px;
+}
+
+.text-separator {
+    color: var(--border-color);
+    font-size: 0.8em;
+    user-select: none;
 }
 
 .more-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 20px;
-    border-radius: 10px;
+    gap: 8px;
+    padding: 5px 10px;
     text-decoration: none;
-    font-weight: 600;
-    font-size: 1em;
+    font-weight: 500;
+    font-size: 0.95em;
     transition: all 0.2s ease;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--primary-text-color);
+    background: none;
+    border: none;
+    color: var(--accent-color);
     cursor: pointer;
 }
 
 .more-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-    border-color: var(--accent-color);
+    text-decoration: underline;
+    color: var(--highlight-color);
 }
 
 .more-btn .ce-icon {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
+    filter: none;
+    opacity: 0.8;
 }
 
 .more-btn.vidspri:hover {
-    background: rgba(88, 166, 255, 0.1);
-    color: var(--accent-color);
+    color: #58a6ff;
 }
 
 .more-btn.website:hover {
-    background: rgba(240, 246, 252, 0.05);
     color: var(--highlight-color);
 }
 
 .more-btn.share:hover {
-    background: rgba(35, 134, 54, 0.1);
     color: #3fb950;
 }
 
