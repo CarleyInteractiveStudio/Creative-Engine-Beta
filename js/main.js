@@ -25,21 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const createProjectBtn = document.getElementById('btn-add-project-top');
     const selectFolderBtn = document.getElementById('btn-select-folder');
 
-    // Footer Links
-    const licenseLinks = document.querySelectorAll('[data-i18n="LICENCIA"]');
-    const policyLinks = document.querySelectorAll('[data-i18n="POLITICA_PRIVACIDAD"]');
-    const cookiesLinks = document.querySelectorAll('[data-i18n="COOKIES"]');
-    const whatWeDoLinks = document.querySelectorAll('[data-i18n="QUE_HACEMOS_DONACIONES"]');
-    const startFooterBtn = document.getElementById('btn-start-footer');
-
     // Modals & Forms
-    const supportModal = document.getElementById('support-modal');
-    const licenseModal = document.getElementById('license-modal');
     const createProjectModal = document.getElementById('create-project-modal');
-    const closeSupport = document.getElementById('close-support');
-    const closeLicense = document.getElementById('close-license');
     const closeCreateProject = document.getElementById('close-create-project');
-    const contactForm = document.getElementById('contact-form');
     const createProjectForm = document.getElementById('create-project-form');
 
     // Dynamic Content
@@ -254,26 +242,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Modal Logic ---
     const openModal = (modal) => { if (modal) modal.classList.add('is-open'); };
     const closeModal = () => {
-        if (supportModal) supportModal.classList.remove('is-open');
-        if (licenseModal) licenseModal.classList.remove('is-open');
         if (createProjectModal) createProjectModal.classList.remove('is-open');
     };
-
-    const setupFooterLinks = () => {
-        licenseLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); openModal(licenseModal); }));
-        policyLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de privacidad estará disponible pronto.'); }));
-        cookiesLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Aviso', 'La política de cookies estará disponible pronto.'); }));
-        whatWeDoLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Donaciones', 'Sus donaciones se utilizan para el mantenimiento de servidores, licencias de software y el desarrollo continuo del motor para que siga siendo gratuito.'); }));
-
-        const supportFooter = document.getElementById('link-support-footer');
-        const opinionsFooter = document.getElementById('link-opinions-footer');
-        const claimsFooter = document.getElementById('link-claims-footer');
-
-        if (supportFooter) supportFooter.addEventListener('click', (e) => { e.preventDefault(); openModal(supportModal); });
-        if (opinionsFooter) opinionsFooter.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Opiniones', '¡Gracias por querer compartir tu opinión! Esta sección estará disponible pronto.'); });
-        if (claimsFooter) claimsFooter.addEventListener('click', (e) => { e.preventDefault(); Dialogs.showNotification('Reclamos', 'Para reclamos legales o técnicos, por favor usa el formulario de soporte por el momento.'); });
-    };
-    setupFooterLinks();
 
     if(createProjectBtn) createProjectBtn.addEventListener('click', () => openModal(createProjectModal));
     if(selectFolderBtn) selectFolderBtn.addEventListener('click', async () => {
@@ -312,58 +282,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if(closeSupport) closeSupport.addEventListener('click', closeModal);
-    if(closeLicense) closeLicense.addEventListener('click', closeModal);
     if(closeCreateProject) closeCreateProject.addEventListener('click', closeModal);
 
     window.addEventListener('click', (event) => {
-        if (event.target == supportModal || event.target == licenseModal || event.target == createProjectModal) {
+        if (event.target == createProjectModal) {
             closeModal();
         }
     });
-
-    // --- Form Submission with Fetch ---
-    function handleFormSubmit(form) {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const formData = new FormData(form);
-            const button = form.querySelector('button[type="submit"]');
-            const originalButtonText = button.textContent;
-            button.textContent = 'Enviando...';
-            button.disabled = true;
-
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(response => {
-                if (response.ok) {
-                    form.reset();
-                    window.Dialogs.showNotification('Mensaje Enviado', '¡Gracias! Tu mensaje ha sido enviado.');
-                    closeModal();
-                } else {
-                    response.json().then(data => {
-                        if (Object.hasOwn(data, 'errors')) {
-                            window.Dialogs.showNotification('Error', data["errors"].map(error => error["message"]).join(", "));
-                        } else {
-                            window.Dialogs.showNotification('Error', 'Hubo un error al enviar el formulario. Revisa la URL de Formspree en el código.');
-                        }
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Form submission error:', error);
-                window.Dialogs.showNotification('Error de Conexión', 'Hubo un problema de conexión. Por favor, revisa tu conexión a internet.');
-            })
-            .finally(() => {
-                button.textContent = originalButtonText;
-                button.disabled = false;
-            });
-        });
-    }
-
-    if(contactForm) handleFormSubmit(contactForm);
 
     // --- View Switching & Project Creation ---
     if (startButton) {

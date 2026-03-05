@@ -654,12 +654,28 @@ SILENCIAR_MUSICA: Silenciar Música
 # General
 EMPEZAR: Começar a Criar
 CONTACTO: Contato e Suporte
+SOPORTE: Suporte
+OPINIONES: Opiniões
+RECLAMOS: Reclamações
 DONAR: Doar com PayPal
 DISCORD: Juntar-se ao Discord
 CREDITOS: Feito por Carley Interactive Studio com a ajuda de Google Jules.
 LICENCIA_BTN: Leia nossa licença
 CONOCE_JUEGOS: conheça jogos feitos com nosso motor
 VERIFICANDO: Verificando...
+CUENTA: Conta
+DONAR_BOTON: Doar
+QUE_HACEMOS_DONACIONES: O que fazemos com as suas doações?
+NUESTROS_CANALES: Nossos Canais
+LICENCIA: Licença
+POLITICA_PRIVACIDAD: Política de Privacidade
+COOKIES: Cookies
+FOROS: Fóruns
+DONACIONES: Doações
+LEGAL: Legal
+PRUEBA_VIDSPRI: Também teste VidSpri
+NUESTRO_SITIO_WEB: Nosso site
+COMPARTIR_MOTOR: Compartilhar Motor
 CARGANDO_PROYECTO: Carregando seu projeto...
 CARGANDO_LIBS: Carregando bibliotecas...
 HA_OCURRIDO_ERROR: Ocorreu um erro.
@@ -923,12 +939,28 @@ SILENCIAR_MUSICA: Выключить музыку
 # General
 EMPEZAR: Начать создание
 CONTACTO: Контакты и поддержка
+SOPORTE: Поддержка
+OPINIONES: Мнения
+RECLAMOS: Претензии
 DONAR: Пожертвовать через PayPal
 DISCORD: Присоединиться к Discord
 CREDITOS: Сделано Carley Interactive Studio при помощи Google Jules.
 LICENCIA_BTN: Читать нашу лицензию
 CONOCE_JUEGOS: познакомьтесь с играми, сделанными на нашем движке
 VERIFICANDO: Проверка...
+CUENTA: Аккаунт
+DONAR_BOTON: Пожертвовать
+QUE_HACEMOS_DONACIONES: Что мы делаем с вашими пожертвованиями?
+NUESTROS_CANALES: Наши каналы
+LICENCIA: Лицензия
+POLITICA_PRIVACIDAD: Политика конфиденциальности
+COOKIES: Cookies
+FOROS: Форумы
+DONACIONES: Пожертвования
+LEGAL: Юридическая информация
+PRUEBA_VIDSPRI: Также попробуйте VidSpri
+NUESTRO_SITIO_WEB: Наш веб-сайт
+COMPARTIR_MOTOR: Поделиться движком
 CARGANDO_PROYECTO: Загрузка проекта...
 CARGANDO_LIBS: Загрузка библиотек...
 HA_OCURRIDO_ERROR: Произошла ошибка.
@@ -1192,12 +1224,28 @@ SILENCIAR_MUSICA: 静音
 # General
 EMPEZAR: 开始创作
 CONTACTO: 联系与支持
+SOPORTE: 支持
+OPINIONES: 意见
+RECLAMOS: 投诉
 DONAR: 通过 PayPal 捐赠
 DISCORD: 加入 Discord
 CREDITOS: 由 Carley Interactive Studio 在 Google Jules 的帮助下制作。
 LICENCIA_BTN: 阅读我们的许可证
 CONOCE_JUEGOS: 探索使用我们的引擎制作的游戏
 VERIFICANDO: 正在验证...
+CUENTA: 账户
+DONAR_BOTON: 捐赠
+QUE_HACEMOS_DONACIONES: 我们如何处理您的捐赠？
+NUESTROS_CANALES: 我们的频道
+LICENCIA: 许可证
+POLITICA_PRIVACIDAD: 隐私政策
+COOKIES: Cookies
+FOROS: 论坛
+DONACIONES: 捐赠
+LEGAL: 法律
+PRUEBA_VIDSPRI: 也请尝试 VidSpri
+NUESTRO_SITIO_WEB: 我们的网站
+COMPARTIR_MOTOR: 分享引擎
 CARGANDO_PROYECTO: 正在加载您的项目...
 CARGANDO_LIBS: 正在加载库...
 HA_OCURRIDO_ERROR: 发生错误。

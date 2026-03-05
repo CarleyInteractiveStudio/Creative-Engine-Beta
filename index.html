@@ -72,8 +72,11 @@
                     </div>
                 </section>
 
-                <section id="actions">
+                <section id="actions" class="hero-actions">
                     <button id="btn-start" class="green-button" data-i18n="EMPEZAR">Empezar a Crear</button>
+                    <a href="https://discord.gg/fBa9ZSAwk6" target="_blank" class="discord-hero-btn">
+                        <img src="icons/discord.svg" class="ce-icon"> Discord
+                    </a>
                 </section>
             </div>
         </div>
@@ -140,13 +143,13 @@
             </div>
             <div class="footer-column">
                 <h4 data-i18n="CONTACTO">Contacto</h4>
-                <a href="#" class="footer-link" id="link-support-footer">
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#report" target="_blank" class="footer-link">
                     <img src="icons/help-circle.svg" class="ce-icon"> <span data-i18n="SOPORTE">Soporte</span>
                 </a>
-                <a href="#" class="footer-link" id="link-opinions-footer">
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#opinions" target="_blank" class="footer-link">
                     <img src="icons/message-square.svg" class="ce-icon"> <span data-i18n="OPINIONES">Opiniones</span>
                 </a>
-                <a href="#" class="footer-link" id="link-claims-footer">
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#claims" target="_blank" class="footer-link">
                     <img src="icons/alert-circle.svg" class="ce-icon"> <span data-i18n="RECLAMOS">Reclamos</span>
                 </a>
             </div>
@@ -155,15 +158,15 @@
                 <a href="https://www.paypal.com/donate/?hosted_button_id=JZ4KM2VUD6AMQ" target="_blank" class="footer-link">
                     <img src="icons/heart.svg" class="ce-icon"> <span data-i18n="DONAR_BOTON">Donar</span>
                 </a>
-                <a href="#" class="footer-link" id="link-what-we-do-footer">
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#donations" target="_blank" class="footer-link">
                     <img src="icons/help-circle.svg" class="ce-icon"> <span data-i18n="QUE_HACEMOS_DONACIONES">¿Qué hacemos con sus donaciones?</span>
                 </a>
             </div>
             <div class="footer-column">
                 <h4 data-i18n="LEGAL">Legal</h4>
-                <a href="#" class="footer-link" id="link-license-footer" data-i18n="LICENCIA">Licencia</a>
-                <a href="#" class="footer-link" id="link-policy-footer" data-i18n="POLITICA_PRIVACIDAD">Política de Privacidad</a>
-                <a href="#" class="footer-link" id="link-cookies-footer" data-i18n="COOKIES">Cookies</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#license" target="_blank" class="footer-link" data-i18n="LICENCIA">Licencia</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#privacy" target="_blank" class="footer-link" data-i18n="POLITICA_PRIVACIDAD">Política de Privacidad</a>
+                <a href="https://carleyinteractivestudio.github.io/Carley-Interactive-Studio/creative-engine.html#coqui" target="_blank" class="footer-link" data-i18n="COOKIES">Cookies</a>
             </div>
         </div>
         <div class="footer-bottom">
@@ -185,56 +188,6 @@
         </div>
     </div>
 
-    <div id="support-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="close-support">&times;</span>
-            <h2 data-i18n="SUPPORT_TITLE">Contacto y Soporte</h2>
-            <form id="contact-form" action="https://formspree.io/f/xldlkbej" method="POST" enctype="multipart/form-data">
-                <p data-i18n="SUPPORT_HINT">Usa este formulario para enviar sugerencias, consultas o reportar errores. ¡Tu feedback es muy valioso!</p>
-                <label for="contact-email" data-i18n="SUPPORT_EMAIL">Tu Correo Electrónico:</label>
-                <input id="contact-email" type="email" name="email" placeholder="tu@email.com" required>
-                <label for="contact-message" data-i18n="SUPPORT_MESSAGE">Tu Mensaje:</label>
-                <textarea id="contact-message" name="message" placeholder="Escribe tu mensaje, sugerencia o reporte de error aquí..." data-i18n="SUPPORT_PLACEHOLDER_MSG" required></textarea>
-                <label for="contact-attachment" data-i18n="SUPPORT_ATTACHMENT">Adjuntar captura de pantalla (Opcional):</label>
-                <input id="contact-attachment" type="file" name="attachment" accept="image/*" style="margin-bottom: 20px;">
-                <button type="submit" class="modal-btn" data-i18n="SUPPORT_SEND">Enviar Mensaje</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="license-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="close-license">&times;</span>
-            <h2 data-i18n="EULA_TITLE">END USER LICENSE AGREEMENT (EULA)</h2>
-            <div class="license-text">
-                <p data-i18n="EULA_COPYRIGHT"><strong>Copyright (c) 2025 Carley Interactive Studio.</strong> Todos los derechos reservados.</p>
-
-                <h4 data-i18n="EULA_GRANT_TITLE">Concesión de licencia</h4>
-                <p data-i18n="EULA_GRANT_TEXT">El Licenciante otorga al Licenciatario un derecho no exclusivo, intransferible y revocable para utilizar el software en forma binaria “tal cual”, únicamente para el desarrollo de videojuegos, conforme a los términos de este acuerdo.</p>
-
-                <h4 data-i18n="EULA_WARRANTY_TITLE">Garantía limitada y soporte</h4>
-                <p data-i18n="EULA_WARRANTY_TEXT">El software se proporciona “tal cual”, sin garantía expresa o implícita. Sin embargo, en caso de fallos técnicos o errores graves, el Licenciatario podrá reportarlos al Licenciante, quien podrá brindar asistencia técnica sin compromiso de solución garantizada.</p>
-
-                <h4 data-i18n="EULA_RESTRICTIONS_TITLE">Restricciones de uso</h4>
-                <p data-i18n="EULA_RESTRICTIONS_TEXT">El Licenciatario no podrá, bajo ninguna circunstancia: Copiar, clonar, modificar, distribuir, revender, realizar ingeniería inversa o utilizar el software con fines comerciales no autorizados. En caso de incumplimiento, la licencia podrá ser revocada.</p>
-
-                <div class="license-highlight">
-                    <h4 data-i18n="EULA_RIGHTS_TITLE">Derechos sobre los juegos creados</h4>
-                    <p data-i18n="EULA_RIGHTS_TEXT">Todo videojuego creado con el motor es 100% propiedad del usuario. El Licenciante no reclama participación en las ganancias ni derechos sobre el contenido generado.</p>
-                </div>
-
-                <p data-i18n="EULA_PROMO_TEXT">Opcionalmente, el Licenciatario podrá colaborar con nosotros enviando material de su juego (imágenes, videos, enlaces) para que podamos usarlo en la promoción del motor, siempre respetando tu autoría.</p>
-
-                <h4 data-i18n="EULA_DURATION_TITLE">Duración y terminación</h4>
-                <p data-i18n="EULA_DURATION_TEXT">Este acuerdo entra en vigor en la fecha de descarga o instalación y permanecerá vigente hasta su terminación. La licencia se extingue automáticamente si el Licenciatario incumple cualquiera de sus términos.</p>
-
-                <h4 data-i18n="EULA_LAW_TITLE">Ley aplicable y jurisdicción</h4>
-                <p data-i18n="EULA_LAW_TEXT">Este acuerdo se regirá por las leyes de República Dominicana. Cualquier disputa será sometida a los tribunales competentes de Santo Domingo.</p>
-
-                <p data-i18n="EULA_ACCEPT"><strong>Al descargar, instalar o usar el software, el Licenciatario acepta íntegramente los términos de este acuerdo.</strong></p>
-            </div>
-        </div>
-    </div>
 
     <!-- Account / Settings Modal -->
     <div id="account-modal" class="modal">

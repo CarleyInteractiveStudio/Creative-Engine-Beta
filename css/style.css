@@ -170,6 +170,42 @@ main { padding: 20px 0; }
     transform: scale(0.98);
 }
 
+.hero-actions {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 40px;
+    border-top: 1px solid var(--border-color);
+}
+
+.discord-hero-btn {
+    background-color: #5865F2;
+    color: white;
+    text-decoration: none;
+    padding: 18px 30px;
+    font-size: 1.4em;
+    font-weight: bold;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);
+}
+
+.discord-hero-btn:hover {
+    background-color: #4752C4;
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 8px 25px rgba(88, 101, 242, 0.5);
+}
+
+.discord-hero-btn .ce-icon {
+    width: 24px;
+    height: 24px;
+}
+
 /* --- Site Footer (Fat Footer) --- */
 .site-footer {
     background-color: #010409;
